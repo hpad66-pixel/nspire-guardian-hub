@@ -1,14 +1,21 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, Filter, Loader2 } from 'lucide-react';
-import { useIssues } from '@/hooks/useIssues';
+import { AlertTriangle, Plus, Filter } from 'lucide-react';
+import { useIssues, Issue } from '@/hooks/useIssues';
+import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { IssueDetailSheet } from '@/components/issues/IssueDetailSheet';
+import { cn } from '@/lib/utils';
 
 export default function IssuesPage() {
   const { data: issues, isLoading, error } = useIssues();
+  const { user } = useAuth();
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const sourceLabels: Record<string, string> = {
     core: 'Core',
@@ -29,6 +36,11 @@ export default function IssuesPage() {
     low: issues.filter(i => i.severity === 'low' && i.status !== 'resolved').length,
     resolved: issues.filter(i => i.status === 'resolved').length,
   } : { severe: 0, moderate: 0, low: 0, resolved: 0 };
+
+  const handleIssueClick = (issue: Issue) => {
+    setSelectedIssue(issue);
+    setSheetOpen(true);
+  };
 
   if (error) {
     return (
@@ -119,32 +131,50 @@ export default function IssuesPage() {
             </div>
           ) : issues && issues.length > 0 ? (
             <div className="space-y-3">
-              {issues.map((issue) => (
-                <div key={issue.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
-                    <div>
-                      <p className="font-medium">{issue.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {issue.property?.name || 'Unknown property'}
-                        {issue.unit?.unit_number && ` • Unit ${issue.unit.unit_number}`}
-                      </p>
+              {issues.map((issue) => {
+                const isMyAction = issue.assigned_to === user?.id && issue.status !== 'resolved';
+                
+                return (
+                  <div 
+                    key={issue.id} 
+                    onClick={() => handleIssueClick(issue)}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer",
+                      isMyAction && "border-l-4 border-l-primary"
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{issue.title}</p>
+                          {isMyAction && (
+                            <Badge variant="default" className="text-xs">
+                              Your Action
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {issue.property?.name || 'Unknown property'}
+                          {issue.unit?.unit_number && ` • Unit ${issue.unit.unit_number}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {issue.area && <AreaBadge area={issue.area as 'outside' | 'inside' | 'unit'} />}
+                      <span className={`text-xs px-2 py-1 rounded ${sourceColors[issue.source_module] || sourceColors.core}`}>
+                        {sourceLabels[issue.source_module] || 'Core'}
+                      </span>
+                      <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'}>
+                        {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                      </Badge>
+                      {issue.proof_required && (
+                        <span className="text-xs text-warning">Proof required</span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {issue.area && <AreaBadge area={issue.area as 'outside' | 'inside' | 'unit'} />}
-                    <span className={`text-xs px-2 py-1 rounded ${sourceColors[issue.source_module] || sourceColors.core}`}>
-                      {sourceLabels[issue.source_module] || 'Core'}
-                    </span>
-                    <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'}>
-                      {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
-                    </Badge>
-                    {issue.proof_required && (
-                      <span className="text-xs text-warning">Proof required</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">
@@ -161,6 +191,13 @@ export default function IssuesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Issue Detail Sheet */}
+      <IssueDetailSheet 
+        issue={selectedIssue} 
+        open={sheetOpen} 
+        onOpenChange={setSheetOpen} 
+      />
     </div>
   );
 }
