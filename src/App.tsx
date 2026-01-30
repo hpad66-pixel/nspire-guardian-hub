@@ -16,6 +16,7 @@ import OutsideInspections from "./pages/inspections/OutsideInspections";
 import InsideInspections from "./pages/inspections/InsideInspections";
 import UnitInspections from "./pages/inspections/UnitInspections";
 import ProjectsDashboard from "./pages/projects/ProjectsDashboard";
+import ProjectDetailPage from "./pages/projects/ProjectDetailPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import PropertiesPage from "./pages/core/PropertiesPage";
 import UnitsPage from "./pages/core/UnitsPage";
@@ -65,6 +66,7 @@ const App = () => (
                         
                         {/* Projects Module */}
                         <Route path="/projects" element={<ProjectsDashboard />} />
+                        <Route path="/projects/:id" element={<ProjectDetailPage />} />
                         
                         {/* Settings */}
                         <Route path="/settings" element={<SettingsPage />} />
