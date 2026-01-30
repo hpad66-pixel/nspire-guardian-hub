@@ -446,6 +446,107 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      organization_documents: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          expiry_date: string | null
+          file_size: number | null
+          file_url: string
+          folder: string
+          id: string
+          is_archived: boolean | null
+          mime_type: string | null
+          name: string
+          previous_version_id: string | null
+          subfolder: string | null
+          tags: string[] | null
+          updated_at: string | null
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          file_size?: number | null
+          file_url: string
+          folder?: string
+          id?: string
+          is_archived?: boolean | null
+          mime_type?: string | null
+          name: string
+          previous_version_id?: string | null
+          subfolder?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          file_size?: number | null
+          file_url?: string
+          folder?: string
+          id?: string
+          is_archived?: boolean | null
+          mime_type?: string | null
+          name?: string
+          previous_version_id?: string | null
+          subfolder?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_documents_previous_version_id_fkey"
+            columns: ["previous_version_id"]
+            isOneToOne: false
+            referencedRelation: "organization_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

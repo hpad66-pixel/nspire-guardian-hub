@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, Filter, AtSign } from 'lucide-react';
+import { AlertTriangle, Plus, AtSign } from 'lucide-react';
 import { useIssues, Issue } from '@/hooks/useIssues';
 import { useMyMentionedIssueIds } from '@/hooks/useIssueMentions';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IssueDetailSheet } from '@/components/issues/IssueDetailSheet';
+import { IssueDialog } from '@/components/issues/IssueDialog';
+import { IssueFilterPopover, type IssueFilters } from '@/components/issues/IssueFilterPopover';
 import { cn } from '@/lib/utils';
 
 export default function IssuesPage() {
@@ -19,6 +21,13 @@ export default function IssuesPage() {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<IssueFilters>({
+    statuses: [],
+    severities: [],
+    sources: [],
+    propertyId: null,
+  });
 
   const sourceLabels: Record<string, string> = {
     core: 'Core',
@@ -46,13 +55,36 @@ export default function IssuesPage() {
     needsAttention: needsAttentionCount,
   } : { severe: 0, moderate: 0, low: 0, resolved: 0, needsAttention: 0 };
 
-  // Filter issues if needed
-  const displayedIssues = filterNeedsAttention && issues
-    ? issues.filter(i => 
-        i.status !== 'resolved' && 
-        (i.assigned_to === user?.id || mentionedIssueIds.includes(i.id))
-      )
-    : issues;
+  // Filter issues based on all active filters
+  const displayedIssues = issues?.filter(issue => {
+    // Needs attention filter
+    if (filterNeedsAttention) {
+      if (issue.status === 'resolved') return false;
+      if (issue.assigned_to !== user?.id && !mentionedIssueIds.includes(issue.id)) return false;
+    }
+    
+    // Status filter
+    if (filters.statuses.length > 0 && !filters.statuses.includes(issue.status || 'open')) {
+      return false;
+    }
+    
+    // Severity filter
+    if (filters.severities.length > 0 && !filters.severities.includes(issue.severity)) {
+      return false;
+    }
+    
+    // Source filter
+    if (filters.sources.length > 0 && !filters.sources.includes(issue.source_module)) {
+      return false;
+    }
+    
+    // Property filter
+    if (filters.propertyId && issue.property_id !== filters.propertyId) {
+      return false;
+    }
+    
+    return true;
+  });
 
   const handleIssueClick = (issue: Issue) => {
     setSelectedIssue(issue);
@@ -95,11 +127,8 @@ export default function IssuesPage() {
               </Badge>
             </Button>
           )}
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button>
+          <IssueFilterPopover filters={filters} onFiltersChange={setFilters} />
+          <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Issue
           </Button>
@@ -241,6 +270,12 @@ export default function IssuesPage() {
         issue={selectedIssue} 
         open={sheetOpen} 
         onOpenChange={setSheetOpen} 
+      />
+      
+      {/* Create Issue Dialog */}
+      <IssueDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
       />
     </div>
   );

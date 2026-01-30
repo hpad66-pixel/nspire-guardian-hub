@@ -2,26 +2,26 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SeverityBadge } from '@/components/ui/severity-badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Wrench, 
-  Plus, 
   Clock, 
   CheckCircle2, 
   AlertTriangle,
   Building,
   Calendar,
   User,
-  Loader2,
 } from 'lucide-react';
-import { useWorkOrders, useWorkOrderStats } from '@/hooks/useWorkOrders';
+import { useWorkOrders, useWorkOrderStats, type WorkOrder } from '@/hooks/useWorkOrders';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailSheet';
 
 export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   const { data: workOrders, isLoading } = useWorkOrders();
   const { data: stats } = useWorkOrderStats();
@@ -52,6 +52,11 @@ export default function WorkOrdersPage() {
       case 'verified': return 'Verified';
       default: return status;
     }
+  };
+
+  const handleWorkOrderClick = (wo: WorkOrder) => {
+    setSelectedWorkOrder(wo);
+    setDetailSheetOpen(true);
   };
 
   return (
@@ -150,10 +155,11 @@ export default function WorkOrdersPage() {
                 const now = new Date();
                 const isOverdue = dueDate < now && wo.status !== 'verified' && wo.status !== 'completed';
 
-                return (
-                  <div 
-                    key={wo.id} 
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                  return (
+                    <div 
+                      key={wo.id}
+                      onClick={() => handleWorkOrderClick(wo)}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
@@ -206,6 +212,12 @@ export default function WorkOrdersPage() {
           )}
         </CardContent>
       </Card>
+      
+      <WorkOrderDetailSheet
+        workOrder={selectedWorkOrder}
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+      />
     </div>
   );
 }

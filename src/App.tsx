@@ -23,6 +23,8 @@ import UnitsPage from "./pages/core/UnitsPage";
 import IssuesPage from "./pages/core/IssuesPage";
 import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
 import ReportsPage from "./pages/reports/ReportsPage";
+import DocumentsPage from "./pages/documents/DocumentsPage";
+import ActivityLogPage from "./pages/settings/ActivityLogPage";
 import PlaceholderPage from "./pages/core/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -56,9 +58,10 @@ const App = () => (
                         <Route path="/assets" element={<PlaceholderPage title="Assets" description="Asset inventory and tracking" />} />
                         <Route path="/issues" element={<IssuesPage />} />
                         <Route path="/work-orders" element={<WorkOrdersPage />} />
-                        <Route path="/documents" element={<PlaceholderPage title="Documents" description="Document library and management" />} />
+                        <Route path="/documents" element={<DocumentsPage />} />
                         <Route path="/people" element={<PlaceholderPage title="People" description="User and role management" />} />
                         <Route path="/reports" element={<ReportsPage />} />
+                        <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                         
                         {/* NSPIRE Inspections Module */}
                         <Route path="/inspections" element={<InspectionsDashboard />} />
