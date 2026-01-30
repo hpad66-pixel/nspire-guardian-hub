@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProjectsDashboard() {
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   
   const { data: projects, isLoading } = useProjects();
@@ -120,7 +122,8 @@ export default function ProjectsDashboard() {
                 return (
                   <div 
                     key={project.id} 
-                    className="p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                    className="p-4 rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate(`/projects/${project.id}`)}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
