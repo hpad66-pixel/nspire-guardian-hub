@@ -110,7 +110,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
                   <SelectValue placeholder="Select property" />
                 </SelectTrigger>
                 <SelectContent>
-                  {properties?.filter(p => p.projects_enabled).map((property) => (
+                  {properties?.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}
                     </SelectItem>
