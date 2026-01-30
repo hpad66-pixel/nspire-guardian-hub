@@ -1,15 +1,30 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { UNIT_DEFECTS } from '@/data/nspire-catalog';
-import { DoorOpen, Plus, ArrowLeft, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
+import { DoorOpen, Plus, ArrowLeft, CheckCircle2, AlertTriangle, Search, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { InspectionWizard } from '@/components/inspections/InspectionWizard';
+import { useInspectionsByArea } from '@/hooks/useInspections';
+import { useProperties } from '@/hooks/useProperties';
+import { useUnits } from '@/hooks/useUnits';
+import { useInspectionStats } from '@/hooks/useInspectionStats';
+import { format } from 'date-fns';
 
 export default function UnitInspections() {
-  // Group defects by category
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const { data: inspections, isLoading: inspectionsLoading } = useInspectionsByArea('unit');
+  const { data: properties } = useProperties();
+  const { data: units } = useUnits();
+  const { data: stats } = useInspectionStats();
+
+  // Group defects by category for catalog
   const defectsByCategory = UNIT_DEFECTS.reduce((acc, defect) => {
     if (!acc[defect.category]) {
       acc[defect.category] = [];
@@ -17,6 +32,40 @@ export default function UnitInspections() {
     acc[defect.category].push(defect);
     return acc;
   }, {} as Record<string, typeof UNIT_DEFECTS>);
+
+  // Filter properties that have NSPIRE enabled
+  const nspireProperties = properties?.filter(p => p.nspire_enabled) || [];
+  
+  // Calculate per-property unit inspection progress
+  const propertyProgress = nspireProperties.map(property => {
+    const propertyUnits = units?.filter(u => u.property_id === property.id) || [];
+    const inspectedUnits = inspections?.filter(i => 
+      i.property_id === property.id && 
+      i.status === 'completed'
+    ) || [];
+    
+    const uniqueInspectedUnitIds = new Set(inspectedUnits.map(i => i.unit_id));
+    const completed = uniqueInspectedUnitIds.size;
+    const total = propertyUnits.length;
+    
+    return {
+      property: property.name,
+      completed,
+      total,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0
+    };
+  });
+
+  // Overall progress
+  const totalUnits = units?.length || 0;
+  const inspectedUnitIds = new Set(
+    inspections?.filter(i => i.status === 'completed').map(i => i.unit_id) || []
+  );
+  const overallCompleted = inspectedUnitIds.size;
+  const overallPercentage = totalUnits > 0 ? Math.round((overallCompleted / totalUnits) * 100) : 0;
+
+  // Recent inspections
+  const recentInspections = inspections?.slice(0, 5) || [];
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -36,7 +85,7 @@ export default function UnitInspections() {
             Individual unit inspections • 100% annual requirement per NSPIRE
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Start Unit Inspection
         </Button>
@@ -53,29 +102,28 @@ export default function UnitInspections() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Overall Progress</span>
-                <span className="text-sm text-muted-foreground">712 / 847 units (84%)</span>
+                <span className="text-sm text-muted-foreground">
+                  {overallCompleted} / {totalUnits} units ({overallPercentage}%)
+                </span>
               </div>
-              <Progress value={84} className="h-3" />
+              <Progress value={overallPercentage} className="h-3" />
             </div>
-            <div className="grid gap-3 md:grid-cols-4">
-              {[
-                { property: 'Oak Ridge Apts', completed: 180, total: 200, percentage: 90 },
-                { property: 'Maple Commons', completed: 245, total: 280, percentage: 88 },
-                { property: 'Pine View', completed: 167, total: 220, percentage: 76 },
-                { property: 'Cedar Heights', completed: 120, total: 147, percentage: 82 },
-              ].map((prop, i) => (
-                <div key={i} className="p-3 rounded-lg border bg-card">
-                  <p className="font-medium text-sm">{prop.property}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <Progress value={prop.percentage} className="h-2 flex-1 mr-2" />
-                    <span className="text-xs text-muted-foreground">{prop.percentage}%</span>
+            {propertyProgress.length > 0 && (
+              <div className="grid gap-3 md:grid-cols-4">
+                {propertyProgress.map((prop, i) => (
+                  <div key={i} className="p-3 rounded-lg border bg-card">
+                    <p className="font-medium text-sm truncate">{prop.property}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <Progress value={prop.percentage} className="h-2 flex-1 mr-2" />
+                      <span className="text-xs text-muted-foreground">{prop.percentage}%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {prop.completed} / {prop.total} units
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {prop.completed} / {prop.total} units
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -90,7 +138,12 @@ export default function UnitInspections() {
           <div className="flex gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by unit number, property, or address..." className="pl-10" />
+              <Input 
+                placeholder="Search by unit number, property, or address..." 
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
             <Button variant="outline">Search</Button>
           </div>
@@ -161,41 +214,63 @@ export default function UnitInspections() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              { unit: 'Unit 204', property: 'Oak Ridge Apts', date: '2024-01-29', status: 'failed', defects: 2 },
-              { unit: 'Unit 118', property: 'Oak Ridge Apts', date: '2024-01-29', status: 'completed', defects: 1 },
-              { unit: 'Unit 305', property: 'Maple Commons', date: '2024-01-28', status: 'completed', defects: 0 },
-              { unit: 'Unit 112', property: 'Maple Commons', date: '2024-01-28', status: 'failed', defects: 1 },
-              { unit: 'Unit 401', property: 'Pine View', date: '2024-01-27', status: 'completed', defects: 0 },
-            ].map((inspection, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                <div className="flex items-center gap-4">
-                  {inspection.status === 'completed' ? (
-                    <CheckCircle2 className="h-5 w-5 text-success" />
-                  ) : (
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                  )}
-                  <div>
-                    <p className="font-medium">{inspection.unit}</p>
-                    <p className="text-sm text-muted-foreground">{inspection.property} • {inspection.date}</p>
+          {inspectionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : recentInspections.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No unit inspections yet. Click "Start Unit Inspection" to begin.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentInspections.map((inspection) => {
+                const defectCount = inspection.defects?.length || 0;
+                const hasSevereDefects = inspection.defects?.some(d => d.severity === 'severe');
+                
+                return (
+                  <div key={inspection.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="flex items-center gap-4">
+                      {inspection.status === 'completed' && defectCount === 0 ? (
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                      ) : hasSevereDefects ? (
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-warning" />
+                      )}
+                      <div>
+                        <p className="font-medium">
+                          Unit {inspection.unit?.unit_number || 'Unknown'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {inspection.property?.name} • {format(new Date(inspection.inspection_date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Badge variant={inspection.status === 'completed' ? 'secondary' : 'outline'}>
+                        {inspection.status === 'completed' ? (defectCount === 0 ? 'Passed' : 'Completed') : 'In Progress'}
+                      </Badge>
+                      {defectCount > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {defectCount} defect{defectCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Badge variant={inspection.status === 'completed' ? 'secondary' : 'destructive'}>
-                    {inspection.status === 'completed' ? 'Passed' : 'Failed'}
-                  </Badge>
-                  {inspection.defects > 0 && (
-                    <span className="text-sm text-muted-foreground">
-                      {inspection.defects} defect{inspection.defects !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Inspection Wizard */}
+      <InspectionWizard 
+        open={wizardOpen} 
+        onOpenChange={setWizardOpen}
+        defaultArea="unit"
+      />
     </div>
   );
 }
