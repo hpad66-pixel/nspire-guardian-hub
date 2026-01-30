@@ -13,7 +13,7 @@ type PropertyRow = Database['public']['Tables']['properties']['Row'];
 interface PropertyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  property?: PropertyRow | null;
+  property?: Partial<PropertyRow> & { id?: string } | null;
 }
 
 const US_STATES = [
