@@ -21,11 +21,15 @@ import { useProject } from '@/hooks/useProjects';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
 import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
+import { useRFIStats } from '@/hooks/useRFIs';
+import { usePunchItemStats } from '@/hooks/usePunchItems';
 import { MilestoneTimeline } from '@/components/projects/MilestoneTimeline';
 import { DailyReportsList } from '@/components/projects/DailyReportsList';
 import { ChangeOrdersList } from '@/components/projects/ChangeOrdersList';
 import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { RFIList } from '@/components/projects/RFIList';
+import { PunchListTab } from '@/components/projects/PunchListTab';
 
 const statusColors: Record<string, string> = {
   planning: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -52,6 +56,8 @@ export default function ProjectDetailPage() {
   const { data: milestones } = useMilestonesByProject(id ?? null);
   const { data: dailyReports } = useDailyReportsByProject(id ?? null);
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
+  const { data: rfiStats } = useRFIStats(id ?? null);
+  const { data: punchStats } = usePunchItemStats(id ?? null);
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
@@ -209,11 +215,27 @@ export default function ProjectDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
           <TabsTrigger value="daily-logs">Daily Logs</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
+          <TabsTrigger value="rfis" className="gap-1">
+            RFIs
+            {(rfiStats?.open ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {rfiStats?.open}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="punch-list" className="gap-1">
+            Punch List
+            {(punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {(punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -324,6 +346,14 @@ export default function ProjectDetailPage() {
             project={project}
             changeOrders={changeOrders || []}
           />
+        </TabsContent>
+
+        <TabsContent value="rfis">
+          <RFIList projectId={id!} />
+        </TabsContent>
+
+        <TabsContent value="punch-list">
+          <PunchListTab projectId={id!} />
         </TabsContent>
       </Tabs>
 
