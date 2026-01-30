@@ -449,9 +449,16 @@ export type Database = {
         Row: {
           address: string
           city: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           created_by: string | null
           id: string
+          mailing_address: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_zip: string | null
           name: string
           nspire_enabled: boolean | null
           projects_enabled: boolean | null
@@ -465,9 +472,16 @@ export type Database = {
         Insert: {
           address: string
           city: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          mailing_address?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
           name: string
           nspire_enabled?: boolean | null
           projects_enabled?: boolean | null
@@ -481,9 +495,16 @@ export type Database = {
         Update: {
           address?: string
           city?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          mailing_address?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
           name?: string
           nspire_enabled?: boolean | null
           projects_enabled?: boolean | null
