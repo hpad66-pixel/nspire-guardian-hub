@@ -143,14 +143,14 @@ export function PunchItemDialog({ open, onOpenChange, projectId, punchItem }: Pu
             <div className="space-y-2">
               <Label>Assign To</Label>
               <Select
-                value={formData.assigned_to}
-                onValueChange={(value) => setFormData({ ...formData, assigned_to: value })}
+                value={formData.assigned_to || 'unassigned'}
+                onValueChange={(value) => setFormData({ ...formData, assigned_to: value === 'unassigned' ? '' : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select person" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {profiles?.map((profile) => (
                     <SelectItem key={profile.user_id} value={profile.user_id}>
                       {profile.full_name || profile.email || 'Unknown'}
