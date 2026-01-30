@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,22 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
+import { useInspectionStats, useAnnualInspectionProgress } from '@/hooks/useInspectionStats';
+import { InspectionWizard } from '@/components/inspections/InspectionWizard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InspectionsDashboard() {
+  const [wizardOpen, setWizardOpen] = useState(false);
+  
+  const { data: defectStats, isLoading: loadingDefects } = useDefectStats();
+  const { data: openDefects } = useOpenDefects();
+  const { data: inspectionStats } = useInspectionStats();
+  const { data: annualProgress } = useAnnualInspectionProgress();
+
+  // Get urgent defects (first 5 sorted by deadline)
+  const urgentDefects = openDefects?.slice(0, 5) || [];
+
   return (
     <div className="p-6 space-y-8 animate-fade-in">
       {/* Header */}
@@ -33,7 +48,7 @@ export default function InspectionsDashboard() {
             100% annual unit inspections • NSPIRE compliant defect tracking
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Inspection
         </Button>
@@ -41,34 +56,49 @@ export default function InspectionsDashboard() {
 
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Severe Defects"
-          value={4}
-          subtitle="24hr deadline"
-          icon={AlertTriangle}
-          variant="severe"
-        />
-        <StatCard
-          title="Moderate Defects"
-          value={18}
-          subtitle="30 day deadline"
-          icon={Clock}
-          variant="moderate"
-        />
-        <StatCard
-          title="Low Priority"
-          value={32}
-          subtitle="60 day deadline"
-          icon={Clock}
-          variant="low"
-        />
-        <StatCard
-          title="Resolved"
-          value={156}
-          subtitle="This month"
-          icon={CheckCircle2}
-          variant="success"
-        />
+        {loadingDefects ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-4 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Severe Defects"
+              value={defectStats?.severe || 0}
+              subtitle="24hr deadline"
+              icon={AlertTriangle}
+              variant="severe"
+            />
+            <StatCard
+              title="Moderate Defects"
+              value={defectStats?.moderate || 0}
+              subtitle="30 day deadline"
+              icon={Clock}
+              variant="moderate"
+            />
+            <StatCard
+              title="Low Priority"
+              value={defectStats?.low || 0}
+              subtitle="60 day deadline"
+              icon={Clock}
+              variant="low"
+            />
+            <StatCard
+              title="Resolved"
+              value={defectStats?.resolved || 0}
+              subtitle="This month"
+              icon={CheckCircle2}
+              variant="success"
+            />
+          </>
+        )}
       </div>
 
       {/* Annual Compliance Progress */}
@@ -87,9 +117,11 @@ export default function InspectionsDashboard() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Overall Progress</span>
-                <span className="text-sm text-muted-foreground">712 / 847 units (84%)</span>
+                <span className="text-sm text-muted-foreground">
+                  {annualProgress?.units.completed || 0} / {annualProgress?.units.total || 0} units ({annualProgress?.units.percentage || 0}%)
+                </span>
               </div>
-              <Progress value={84} className="h-3" />
+              <Progress value={annualProgress?.units.percentage || 0} className="h-3" />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="p-4 rounded-lg border bg-card">
@@ -99,11 +131,13 @@ export default function InspectionsDashboard() {
                   </div>
                   <div>
                     <p className="font-medium">Outside</p>
-                    <p className="text-xs text-muted-foreground">12 properties</p>
+                    <p className="text-xs text-muted-foreground">{annualProgress?.outside.total || 0} properties</p>
                   </div>
                 </div>
-                <Progress value={100} className="h-2 mb-2" />
-                <p className="text-xs text-success font-medium">Complete</p>
+                <Progress value={annualProgress?.outside.percentage || 0} className="h-2 mb-2" />
+                <p className={`text-xs font-medium ${annualProgress?.outside.percentage === 100 ? 'text-success' : 'text-muted-foreground'}`}>
+                  {annualProgress?.outside.percentage === 100 ? 'Complete' : `${annualProgress?.outside.percentage || 0}% complete`}
+                </p>
               </div>
               <div className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-3 mb-3">
@@ -112,11 +146,11 @@ export default function InspectionsDashboard() {
                   </div>
                   <div>
                     <p className="font-medium">Inside (Common)</p>
-                    <p className="text-xs text-muted-foreground">12 properties</p>
+                    <p className="text-xs text-muted-foreground">{annualProgress?.inside.total || 0} properties</p>
                   </div>
                 </div>
-                <Progress value={92} className="h-2 mb-2" />
-                <p className="text-xs text-muted-foreground">92% complete</p>
+                <Progress value={annualProgress?.inside.percentage || 0} className="h-2 mb-2" />
+                <p className="text-xs text-muted-foreground">{annualProgress?.inside.percentage || 0}% complete</p>
               </div>
               <div className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-3 mb-3">
@@ -125,11 +159,13 @@ export default function InspectionsDashboard() {
                   </div>
                   <div>
                     <p className="font-medium">Units</p>
-                    <p className="text-xs text-muted-foreground">847 total</p>
+                    <p className="text-xs text-muted-foreground">{annualProgress?.units.total || 0} total</p>
                   </div>
                 </div>
-                <Progress value={84} className="h-2 mb-2" />
-                <p className="text-xs text-muted-foreground">712 of 847 complete</p>
+                <Progress value={annualProgress?.units.percentage || 0} className="h-2 mb-2" />
+                <p className="text-xs text-muted-foreground">
+                  {annualProgress?.units.completed || 0} of {annualProgress?.units.total || 0} complete
+                </p>
               </div>
             </div>
           </div>
@@ -152,8 +188,9 @@ export default function InspectionsDashboard() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="mt-4 flex gap-2">
-                <span className="text-xs px-2 py-1 rounded bg-muted">2 scheduled</span>
-                <span className="text-xs px-2 py-1 rounded bg-severity-severe text-white">1 urgent</span>
+                <span className="text-xs px-2 py-1 rounded bg-muted">
+                  {inspectionStats?.byArea.outside.completed || 0} completed
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -173,8 +210,9 @@ export default function InspectionsDashboard() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="mt-4 flex gap-2">
-                <span className="text-xs px-2 py-1 rounded bg-muted">4 scheduled</span>
-                <span className="text-xs px-2 py-1 rounded bg-severity-moderate text-white">3 pending</span>
+                <span className="text-xs px-2 py-1 rounded bg-muted">
+                  {inspectionStats?.byArea.inside.completed || 0} completed
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -194,8 +232,14 @@ export default function InspectionsDashboard() {
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="mt-4 flex gap-2">
-                <span className="text-xs px-2 py-1 rounded bg-muted">135 remaining</span>
-                <span className="text-xs px-2 py-1 rounded bg-severity-severe text-white">2 urgent</span>
+                <span className="text-xs px-2 py-1 rounded bg-muted">
+                  {(annualProgress?.units.total || 0) - (annualProgress?.units.completed || 0)} remaining
+                </span>
+                {defectStats && defectStats.severe > 0 && (
+                  <span className="text-xs px-2 py-1 rounded bg-severity-severe text-white">
+                    {defectStats.severe} urgent
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -210,45 +254,70 @@ export default function InspectionsDashboard() {
               <CardTitle>Defects Requiring Attention</CardTitle>
               <CardDescription>Sorted by deadline urgency</CardDescription>
             </div>
-            <Button variant="outline" size="sm">View All Defects</Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/work-orders">View All Work Orders</Link>
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              { item: 'GFCI Protection', condition: 'GFCI not functioning', area: 'Unit 204', property: 'Oak Ridge Apts', severity: 'severe' as const, deadline: '6 hours', proofRequired: true },
-              { item: 'Smoke Detector', condition: 'Missing', area: 'Unit 112', property: 'Maple Commons', severity: 'severe' as const, deadline: '18 hours', proofRequired: true },
-              { item: 'Emergency Exit', condition: 'Door not functioning', area: 'Building A', property: 'Pine View', severity: 'severe' as const, deadline: '22 hours', proofRequired: true },
-              { item: 'Water Heater', condition: 'Leaking', area: 'Unit 305', property: 'Cedar Heights', severity: 'moderate' as const, deadline: '28 days', proofRequired: false },
-              { item: 'Bath Ventilation', condition: 'Non-functional fan', area: 'Unit 118', property: 'Oak Ridge Apts', severity: 'moderate' as const, deadline: '29 days', proofRequired: false },
-            ].map((defect, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <SeverityBadge severity={defect.severity} />
-                  <div>
-                    <p className="font-medium">{defect.item}</p>
-                    <p className="text-sm text-muted-foreground">{defect.condition}</p>
+          {urgentDefects.length > 0 ? (
+            <div className="space-y-3">
+              {urgentDefects.map((defect) => {
+                const deadline = new Date(defect.repair_deadline);
+                const now = new Date();
+                const hoursRemaining = Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60));
+                const daysRemaining = Math.floor(hoursRemaining / 24);
+                
+                let deadlineText = '';
+                if (hoursRemaining < 0) {
+                  deadlineText = 'Overdue';
+                } else if (hoursRemaining < 48) {
+                  deadlineText = `${hoursRemaining} hours`;
+                } else {
+                  deadlineText = `${daysRemaining} days`;
+                }
+
+                return (
+                  <div 
+                    key={defect.id} 
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <SeverityBadge severity={defect.severity} />
+                      <div>
+                        <p className="font-medium">{defect.item_name}</p>
+                        <p className="text-sm text-muted-foreground">{defect.defect_condition}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm">{defect.inspection?.unit?.unit_number ? `Unit ${defect.inspection.unit.unit_number}` : defect.inspection?.area}</p>
+                        <p className="text-xs text-muted-foreground">{defect.inspection?.property?.name}</p>
+                      </div>
+                      <div className="text-right min-w-[80px]">
+                        <p className={`text-sm font-medium ${defect.severity === 'severe' || hoursRemaining < 0 ? 'text-destructive' : ''}`}>
+                          {deadlineText}
+                        </p>
+                        {defect.proof_required && (
+                          <p className="text-xs text-warning">Proof required</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm">{defect.area}</p>
-                    <p className="text-xs text-muted-foreground">{defect.property}</p>
-                  </div>
-                  <div className="text-right min-w-[80px]">
-                    <p className={`text-sm font-medium ${defect.severity === 'severe' ? 'text-destructive' : ''}`}>
-                      {defect.deadline}
-                    </p>
-                    {defect.proofRequired && (
-                      <p className="text-xs text-warning">Proof required</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-success mb-4" />
+              <p className="font-medium">All Clear!</p>
+              <p className="text-sm text-muted-foreground">No open defects requiring attention</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <InspectionWizard open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 }

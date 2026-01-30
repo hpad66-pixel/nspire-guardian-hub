@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Building, Plus, MapPin, DoorOpen, Calendar, Loader2 } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PropertyDialog } from '@/components/properties/PropertyDialog';
 
 export default function PropertiesPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: properties, isLoading, error } = useProperties();
 
   if (error) {
@@ -23,7 +26,7 @@ export default function PropertiesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
           <p className="text-muted-foreground">Manage your property portfolio</p>
         </div>
-        <Button>
+        <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Property
         </Button>
@@ -113,13 +116,15 @@ export default function PropertiesPage() {
               <h3 className="text-lg font-semibold">No properties yet</h3>
               <p className="text-muted-foreground">Add your first property to get started</p>
             </div>
-            <Button>
+            <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Property
             </Button>
           </div>
         </Card>
       )}
+
+      <PropertyDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );
 }

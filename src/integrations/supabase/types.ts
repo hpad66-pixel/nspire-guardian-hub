@@ -14,6 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      change_orders: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          project_id: string
+          requested_by: string | null
+          status: Database["public"]["Enums"]["change_order_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id: string
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          project_id?: string
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_reports: {
+        Row: {
+          created_at: string
+          id: string
+          issues_encountered: string | null
+          photos: string[] | null
+          project_id: string
+          report_date: string
+          submitted_by: string | null
+          weather: string | null
+          work_performed: string
+          workers_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issues_encountered?: string | null
+          photos?: string[] | null
+          project_id: string
+          report_date?: string
+          submitted_by?: string | null
+          weather?: string | null
+          work_performed: string
+          workers_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issues_encountered?: string | null
+          photos?: string[] | null
+          project_id?: string
+          report_date?: string
+          submitted_by?: string | null
+          weather?: string | null
+          work_performed?: string
+          workers_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       defects: {
         Row: {
           category: string
@@ -245,6 +342,109 @@ export type Database = {
         }
         Relationships: []
       }
+      project_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due_date: string
+          id: string
+          name: string
+          notes: string | null
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          name: string
+          notes?: string | null
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          actual_end_date: string | null
+          budget: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          property_id: string
+          scope: string | null
+          spent: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          target_end_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_end_date?: string | null
+          budget?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          property_id: string
+          scope?: string | null
+          spent?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          target_end_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_end_date?: string | null
+          budget?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          property_id?: string
+          scope?: string | null
+          spent?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          target_end_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           address: string
@@ -364,11 +564,98 @@ export type Database = {
         }
         Relationships: []
       }
+      work_orders: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          defect_id: string | null
+          description: string | null
+          due_date: string
+          id: string
+          issue_id: string | null
+          priority: Database["public"]["Enums"]["work_order_priority"]
+          proof_photos: string[] | null
+          property_id: string
+          status: Database["public"]["Enums"]["work_order_status"]
+          title: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          defect_id?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          issue_id?: string | null
+          priority?: Database["public"]["Enums"]["work_order_priority"]
+          proof_photos?: string[] | null
+          property_id: string
+          status?: Database["public"]["Enums"]["work_order_status"]
+          title: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          defect_id?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          issue_id?: string | null
+          priority?: Database["public"]["Enums"]["work_order_priority"]
+          proof_photos?: string[] | null
+          property_id?: string
+          status?: Database["public"]["Enums"]["work_order_status"]
+          title?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_defect_id_fkey"
+            columns: ["defect_id"]
+            isOneToOne: false
+            referencedRelation: "defects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      calculate_nspire_deadline: {
+        Args: { p_severity: Database["public"]["Enums"]["severity_level"] }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -379,9 +666,18 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "inspector" | "user"
+      change_order_status: "draft" | "pending" | "approved" | "rejected"
       inspection_area: "outside" | "inside" | "unit"
       issue_source: "core" | "nspire" | "projects"
+      project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
       severity_level: "low" | "moderate" | "severe"
+      work_order_priority: "emergency" | "routine"
+      work_order_status:
+        | "pending"
+        | "assigned"
+        | "in_progress"
+        | "completed"
+        | "verified"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,9 +806,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "inspector", "user"],
+      change_order_status: ["draft", "pending", "approved", "rejected"],
       inspection_area: ["outside", "inside", "unit"],
       issue_source: ["core", "nspire", "projects"],
+      project_status: ["planning", "active", "on_hold", "completed", "closed"],
       severity_level: ["low", "moderate", "severe"],
+      work_order_priority: ["emergency", "routine"],
+      work_order_status: [
+        "pending",
+        "assigned",
+        "in_progress",
+        "completed",
+        "verified",
+      ],
     },
   },
 } as const
