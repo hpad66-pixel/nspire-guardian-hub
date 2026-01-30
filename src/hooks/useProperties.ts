@@ -14,6 +14,13 @@ export interface Property {
   status: string | null;
   nspire_enabled: boolean | null;
   projects_enabled: boolean | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  mailing_address: string | null;
+  mailing_city: string | null;
+  mailing_state: string | null;
+  mailing_zip: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
