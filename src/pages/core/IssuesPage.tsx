@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, Filter } from 'lucide-react';
+import { AlertTriangle, Plus, Filter, AtSign } from 'lucide-react';
 import { useIssues, Issue } from '@/hooks/useIssues';
+import { useMyMentionedIssueIds } from '@/hooks/useIssueMentions';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IssueDetailSheet } from '@/components/issues/IssueDetailSheet';
@@ -13,9 +14,11 @@ import { cn } from '@/lib/utils';
 
 export default function IssuesPage() {
   const { data: issues, isLoading, error } = useIssues();
+  const { data: mentionedIssueIds = [] } = useMyMentionedIssueIds();
   const { user } = useAuth();
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
 
   const sourceLabels: Record<string, string> = {
     core: 'Core',
@@ -29,13 +32,27 @@ export default function IssuesPage() {
     projects: 'bg-module-projects/10 text-violet-700',
   };
 
-  // Calculate stats
+  // Calculate stats including attention count
+  const needsAttentionCount = issues ? issues.filter(i => 
+    i.status !== 'resolved' && 
+    (i.assigned_to === user?.id || mentionedIssueIds.includes(i.id))
+  ).length : 0;
+
   const stats = issues ? {
     severe: issues.filter(i => i.severity === 'severe' && i.status !== 'resolved').length,
     moderate: issues.filter(i => i.severity === 'moderate' && i.status !== 'resolved').length,
     low: issues.filter(i => i.severity === 'low' && i.status !== 'resolved').length,
     resolved: issues.filter(i => i.status === 'resolved').length,
-  } : { severe: 0, moderate: 0, low: 0, resolved: 0 };
+    needsAttention: needsAttentionCount,
+  } : { severe: 0, moderate: 0, low: 0, resolved: 0, needsAttention: 0 };
+
+  // Filter issues if needed
+  const displayedIssues = filterNeedsAttention && issues
+    ? issues.filter(i => 
+        i.status !== 'resolved' && 
+        (i.assigned_to === user?.id || mentionedIssueIds.includes(i.id))
+      )
+    : issues;
 
   const handleIssueClick = (issue: Issue) => {
     setSelectedIssue(issue);
@@ -65,6 +82,19 @@ export default function IssuesPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {needsAttentionCount > 0 && (
+            <Button 
+              variant={filterNeedsAttention ? "default" : "outline"}
+              onClick={() => setFilterNeedsAttention(!filterNeedsAttention)}
+              className="gap-2"
+            >
+              <AtSign className="h-4 w-4" />
+              Needs Your Attention
+              <Badge variant="secondary" className="ml-1">
+                {needsAttentionCount}
+              </Badge>
+            </Button>
+          )}
           <Button variant="outline">
             <Filter className="h-4 w-4 mr-2" />
             Filter
@@ -107,8 +137,14 @@ export default function IssuesPage() {
       {/* Issues List */}
       <Card>
         <CardHeader>
-          <CardTitle>All Issues</CardTitle>
-          <CardDescription>Sorted by severity and deadline</CardDescription>
+          <CardTitle>
+            {filterNeedsAttention ? 'Issues Needing Your Attention' : 'All Issues'}
+          </CardTitle>
+          <CardDescription>
+            {filterNeedsAttention 
+              ? 'Issues assigned to you or where you were mentioned'
+              : 'Sorted by severity and deadline'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -129,10 +165,12 @@ export default function IssuesPage() {
                 </div>
               ))}
             </div>
-          ) : issues && issues.length > 0 ? (
+          ) : displayedIssues && displayedIssues.length > 0 ? (
             <div className="space-y-3">
-              {issues.map((issue) => {
-                const isMyAction = issue.assigned_to === user?.id && issue.status !== 'resolved';
+              {displayedIssues.map((issue) => {
+                const isAssigned = issue.assigned_to === user?.id && issue.status !== 'resolved';
+                const isMentioned = mentionedIssueIds.includes(issue.id) && issue.status !== 'resolved';
+                const needsAttention = isAssigned || isMentioned;
                 
                 return (
                   <div 
@@ -140,17 +178,23 @@ export default function IssuesPage() {
                     onClick={() => handleIssueClick(issue)}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer",
-                      isMyAction && "border-l-4 border-l-primary"
+                      needsAttention && "border-l-4 border-l-primary"
                     )}
                   >
                     <div className="flex items-center gap-4">
                       <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{issue.title}</p>
-                          {isMyAction && (
+                          {isAssigned && (
                             <Badge variant="default" className="text-xs">
-                              Your Action
+                              Assigned to You
+                            </Badge>
+                          )}
+                          {isMentioned && !isAssigned && (
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <AtSign className="h-3 w-3" />
+                              Mentioned
                             </Badge>
                           )}
                         </div>
