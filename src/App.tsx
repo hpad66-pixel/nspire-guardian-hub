@@ -18,7 +18,9 @@ import UnitInspections from "./pages/inspections/UnitInspections";
 import ProjectsDashboard from "./pages/projects/ProjectsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
 import PropertiesPage from "./pages/core/PropertiesPage";
+import UnitsPage from "./pages/core/UnitsPage";
 import IssuesPage from "./pages/core/IssuesPage";
+import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
 import PlaceholderPage from "./pages/core/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -48,9 +50,10 @@ const App = () => (
                         
                         {/* Core Platform */}
                         <Route path="/properties" element={<PropertiesPage />} />
-                        <Route path="/units" element={<PlaceholderPage title="Units" description="Unit inventory management" />} />
+                        <Route path="/units" element={<UnitsPage />} />
                         <Route path="/assets" element={<PlaceholderPage title="Assets" description="Asset inventory and tracking" />} />
                         <Route path="/issues" element={<IssuesPage />} />
+                        <Route path="/work-orders" element={<WorkOrdersPage />} />
                         <Route path="/documents" element={<PlaceholderPage title="Documents" description="Document library and management" />} />
                         <Route path="/people" element={<PlaceholderPage title="People" description="User and role management" />} />
                         

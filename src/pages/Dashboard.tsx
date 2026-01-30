@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useModules } from '@/contexts/ModuleContext';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +16,37 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useProperties } from '@/hooks/useProperties';
+import { useUnitStats } from '@/hooks/useUnits';
+import { useIssues } from '@/hooks/useIssues';
+import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
+import { useProjectStats } from '@/hooks/useProjects';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
   const { isModuleEnabled } = useModules();
+  
+  const { data: properties, isLoading: loadingProperties } = useProperties();
+  const { data: unitStats } = useUnitStats();
+  const { data: issues, isLoading: loadingIssues } = useIssues();
+  const { data: defectStats } = useDefectStats();
+  const { data: openDefects } = useOpenDefects();
+  const { data: projectStats } = useProjectStats();
+
+  const openIssues = issues?.filter(i => i.status !== 'resolved' && i.status !== 'verified');
+  const urgentDefects = openDefects?.filter(d => d.severity === 'severe').slice(0, 2);
+
+  // Calculate compliance rate (resolved issues / total issues)
+  const complianceRate = issues && issues.length > 0 
+    ? Math.round((issues.filter(i => i.status === 'resolved' || i.status === 'verified').length / issues.length) * 100)
+    : 100;
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    }
+    return `$${(amount / 1000).toFixed(0)}K`;
+  };
 
   return (
     <div className="p-6 space-y-8 animate-fade-in">
@@ -31,32 +60,47 @@ export default function Dashboard() {
 
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Properties"
-          value={12}
-          subtitle="3 require attention"
-          icon={Building}
-        />
-        <StatCard
-          title="Total Units"
-          value={847}
-          subtitle="94% occupancy"
-          icon={DoorOpen}
-        />
-        <StatCard
-          title="Open Issues"
-          value={23}
-          subtitle="8 due this week"
-          icon={AlertTriangle}
-          variant="moderate"
-        />
-        <StatCard
-          title="Compliance Rate"
-          value="96%"
-          subtitle="Annual target: 98%"
-          icon={CheckCircle2}
-          variant="success"
-        />
+        {loadingProperties ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-4 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Properties"
+              value={properties?.length || 0}
+              subtitle={`${properties?.filter(p => p.nspire_enabled).length || 0} NSPIRE enabled`}
+              icon={Building}
+            />
+            <StatCard
+              title="Total Units"
+              value={unitStats?.total || 0}
+              subtitle={`${unitStats?.occupancyRate || 0}% occupancy`}
+              icon={DoorOpen}
+            />
+            <StatCard
+              title="Open Issues"
+              value={openIssues?.length || 0}
+              subtitle={`${openIssues?.filter(i => i.severity === 'severe').length || 0} severe`}
+              icon={AlertTriangle}
+              variant={openIssues && openIssues.length > 0 ? 'moderate' : undefined}
+            />
+            <StatCard
+              title="Compliance Rate"
+              value={`${complianceRate}%`}
+              subtitle="Based on resolved issues"
+              icon={CheckCircle2}
+              variant={complianceRate >= 90 ? 'success' : 'moderate'}
+            />
+          </>
+        )}
       </div>
 
       {/* Module Workspaces */}
@@ -79,48 +123,52 @@ export default function Dashboard() {
               {/* Inspection Stats */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">156</p>
-                  <p className="text-xs text-muted-foreground">Completed</p>
+                  <p className="text-2xl font-bold">{defectStats?.resolved || 0}</p>
+                  <p className="text-xs text-muted-foreground">Resolved</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">24</p>
-                  <p className="text-xs text-muted-foreground">Scheduled</p>
+                  <p className="text-2xl font-bold">{(defectStats?.severe || 0) + (defectStats?.moderate || 0) + (defectStats?.low || 0)}</p>
+                  <p className="text-xs text-muted-foreground">Open</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">12</p>
-                  <p className="text-xs text-muted-foreground">Overdue</p>
+                  <p className="text-2xl font-bold">{defectStats?.severe || 0}</p>
+                  <p className="text-xs text-muted-foreground">Urgent</p>
                 </div>
               </div>
 
               {/* Critical Defects */}
-              <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-severity-severe" />
-                  Urgent Repairs Required
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <div className="flex items-center gap-3">
-                      <SeverityBadge severity="severe" />
-                      <div>
-                        <p className="text-sm font-medium">GFCI Not Functioning</p>
-                        <p className="text-xs text-muted-foreground">Unit 204 • Oak Ridge Apts</p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-destructive font-medium">Due in 6h</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <div className="flex items-center gap-3">
-                      <SeverityBadge severity="severe" />
-                      <div>
-                        <p className="text-sm font-medium">Smoke Detector Missing</p>
-                        <p className="text-xs text-muted-foreground">Unit 112 • Maple Commons</p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-destructive font-medium">Due in 18h</span>
+              {urgentDefects && urgentDefects.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-severity-severe" />
+                    Urgent Repairs Required
+                  </h4>
+                  <div className="space-y-2">
+                    {urgentDefects.map((defect) => {
+                      const deadline = new Date(defect.repair_deadline);
+                      const now = new Date();
+                      const hoursRemaining = Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60));
+                      
+                      return (
+                        <div key={defect.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                          <div className="flex items-center gap-3">
+                            <SeverityBadge severity="severe" />
+                            <div>
+                              <p className="text-sm font-medium">{defect.item_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {defect.inspection?.unit?.unit_number ? `Unit ${defect.inspection.unit.unit_number}` : ''} • {defect.inspection?.property?.name}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-destructive font-medium">
+                            {hoursRemaining > 0 ? `Due in ${hoursRemaining}h` : 'Overdue'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick Actions */}
               <div className="flex gap-2 pt-2">
@@ -153,47 +201,18 @@ export default function Dashboard() {
               {/* Project Stats */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">8</p>
+                  <p className="text-2xl font-bold">{projectStats?.active || 0}</p>
                   <p className="text-xs text-muted-foreground">Active</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">3</p>
+                  <p className="text-2xl font-bold">{projectStats?.planning || 0}</p>
                   <p className="text-xs text-muted-foreground">Planning</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold">$2.4M</p>
+                  <p className="text-2xl font-bold">
+                    {projectStats ? formatCurrency(projectStats.totalBudget) : '$0'}
+                  </p>
                   <p className="text-xs text-muted-foreground">Budget</p>
-                </div>
-              </div>
-
-              {/* Active Projects */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">Active Projects</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <div>
-                      <p className="text-sm font-medium">Roof Replacement</p>
-                      <p className="text-xs text-muted-foreground">Oak Ridge Apts • Phase 2</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full w-3/4 bg-module-projects rounded-full" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">75%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <div>
-                      <p className="text-sm font-medium">HVAC Upgrade</p>
-                      <p className="text-xs text-muted-foreground">Maple Commons • All Units</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full w-1/3 bg-module-projects rounded-full" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">33%</span>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -225,30 +244,42 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              { title: 'Blocked emergency exit', area: 'inside' as const, severity: 'severe' as const, source: 'NSPIRE', property: 'Oak Ridge Apts' },
-              { title: 'Water heater leaking', area: 'unit' as const, severity: 'moderate' as const, source: 'NSPIRE', property: 'Maple Commons' },
-              { title: 'Parking lot drainage issue', area: 'outside' as const, severity: 'moderate' as const, source: 'Core', property: 'Pine View' },
-              { title: 'Elevator inspection overdue', area: 'inside' as const, severity: 'low' as const, source: 'Core', property: 'Cedar Heights' },
-            ].map((issue, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <SeverityBadge severity={issue.severity} />
-                  <div>
-                    <p className="font-medium">{issue.title}</p>
-                    <p className="text-sm text-muted-foreground">{issue.property}</p>
+          {loadingIssues ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : issues && issues.length > 0 ? (
+            <div className="space-y-3">
+              {issues.slice(0, 5).map((issue) => (
+                <div 
+                  key={issue.id} 
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <SeverityBadge severity={issue.severity} />
+                    <div>
+                      <p className="font-medium">{issue.title}</p>
+                      <p className="text-sm text-muted-foreground">{issue.property?.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {issue.area && <AreaBadge area={issue.area} />}
+                    <span className="text-xs text-muted-foreground px-2 py-1 rounded bg-muted">
+                      {issue.source_module.toUpperCase()}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <AreaBadge area={issue.area} />
-                  <span className="text-xs text-muted-foreground px-2 py-1 rounded bg-muted">
-                    {issue.source}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-success mb-4" />
+              <p className="font-medium">No issues</p>
+              <p className="text-sm text-muted-foreground">Everything is running smoothly</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
