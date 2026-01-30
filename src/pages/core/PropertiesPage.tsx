@@ -2,14 +2,53 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building, Plus, MapPin, DoorOpen, Calendar, Loader2 } from 'lucide-react';
-import { useProperties } from '@/hooks/useProperties';
+import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PropertyDialog } from '@/components/properties/PropertyDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function PropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [deletingProperty, setDeletingProperty] = useState<Property | null>(null);
+  
   const { data: properties, isLoading, error } = useProperties();
+  const deleteProperty = useDeleteProperty();
+
+  const handleEdit = (property: Property) => {
+    setEditingProperty(property);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (deletingProperty) {
+      await deleteProperty.mutateAsync(deletingProperty.id);
+      setDeletingProperty(null);
+    }
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingProperty(null);
+    }
+  };
 
   if (error) {
     return (
@@ -69,9 +108,31 @@ export default function PropertiesPage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge variant={property.status === 'active' ? 'secondary' : 'outline'}>
-                    {property.status === 'active' ? 'Active' : property.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={property.status === 'active' ? 'secondary' : 'outline'}>
+                      {property.status === 'active' ? 'Active' : property.status}
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(property)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => setDeletingProperty(property)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -124,7 +185,32 @@ export default function PropertiesPage() {
         </Card>
       )}
 
-      <PropertyDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <PropertyDialog 
+        open={dialogOpen} 
+        onOpenChange={handleDialogClose} 
+        property={editingProperty}
+      />
+
+      <AlertDialog open={!!deletingProperty} onOpenChange={(open) => !open && setDeletingProperty(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Property</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingProperty?.name}"? This action cannot be undone 
+              and will remove all associated units, inspections, and issues.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

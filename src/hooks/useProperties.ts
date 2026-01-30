@@ -10,10 +10,11 @@ export interface Property {
   state: string;
   zip_code: string | null;
   year_built: number | null;
-  total_units: number;
-  status: string;
-  nspire_enabled: boolean;
-  projects_enabled: boolean;
+  total_units: number | null;
+  status: string | null;
+  nspire_enabled: boolean | null;
+  projects_enabled: boolean | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,7 +55,7 @@ export function useCreateProperty() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
