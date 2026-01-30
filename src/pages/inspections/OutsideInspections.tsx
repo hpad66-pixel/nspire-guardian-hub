@@ -1,12 +1,19 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
-import { OUTSIDE_DEFECTS, SEVERITY_CONFIG } from '@/data/nspire-catalog';
-import { TreePine, Plus, ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { OUTSIDE_DEFECTS } from '@/data/nspire-catalog';
+import { TreePine, Plus, ArrowLeft, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { InspectionWizard } from '@/components/inspections/InspectionWizard';
+import { useInspectionsByArea } from '@/hooks/useInspections';
+import { format } from 'date-fns';
 
 export default function OutsideInspections() {
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const { data: inspections, isLoading } = useInspectionsByArea('outside');
+
   // Group defects by category
   const defectsByCategory = OUTSIDE_DEFECTS.reduce((acc, defect) => {
     if (!acc[defect.category]) {
@@ -15,6 +22,9 @@ export default function OutsideInspections() {
     acc[defect.category].push(defect);
     return acc;
   }, {} as Record<string, typeof OUTSIDE_DEFECTS>);
+
+  // Recent inspections
+  const recentInspections = inspections?.slice(0, 5) || [];
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -34,7 +44,7 @@ export default function OutsideInspections() {
             Site, grounds, and exterior area inspections per NSPIRE standards
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Start Inspection
         </Button>
@@ -104,40 +114,63 @@ export default function OutsideInspections() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              { property: 'Oak Ridge Apartments', date: '2024-01-28', status: 'completed', defects: 2 },
-              { property: 'Maple Commons', date: '2024-01-25', status: 'completed', defects: 0 },
-              { property: 'Pine View Residences', date: '2024-01-22', status: 'completed', defects: 3 },
-              { property: 'Cedar Heights', date: '2024-01-20', status: 'in_progress', defects: 1 },
-            ].map((inspection, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                <div className="flex items-center gap-4">
-                  {inspection.status === 'completed' ? (
-                    <CheckCircle2 className="h-5 w-5 text-success" />
-                  ) : (
-                    <AlertTriangle className="h-5 w-5 text-warning" />
-                  )}
-                  <div>
-                    <p className="font-medium">{inspection.property}</p>
-                    <p className="text-sm text-muted-foreground">{inspection.date}</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : recentInspections.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No outside inspections yet. Click "Start Inspection" to begin.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentInspections.map((inspection) => {
+                const defectCount = inspection.defects?.length || 0;
+                const hasSevereDefects = inspection.defects?.some(d => d.severity === 'severe');
+                
+                return (
+                  <div key={inspection.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                    <div className="flex items-center gap-4">
+                      {inspection.status === 'completed' && defectCount === 0 ? (
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                      ) : hasSevereDefects ? (
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                      ) : inspection.status === 'completed' ? (
+                        <CheckCircle2 className="h-5 w-5 text-warning" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-warning" />
+                      )}
+                      <div>
+                        <p className="font-medium">{inspection.property?.name || 'Unknown Property'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(inspection.inspection_date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Badge variant={inspection.status === 'completed' ? 'secondary' : 'outline'}>
+                        {inspection.status === 'completed' ? 'Completed' : 'In Progress'}
+                      </Badge>
+                      {defectCount > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {defectCount} defect{defectCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Badge variant={inspection.status === 'completed' ? 'secondary' : 'outline'}>
-                    {inspection.status === 'completed' ? 'Completed' : 'In Progress'}
-                  </Badge>
-                  {inspection.defects > 0 && (
-                    <span className="text-sm text-muted-foreground">
-                      {inspection.defects} defect{inspection.defects !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Inspection Wizard */}
+      <InspectionWizard 
+        open={wizardOpen} 
+        onOpenChange={setWizardOpen}
+        defaultArea="outside"
+      />
     </div>
   );
 }
