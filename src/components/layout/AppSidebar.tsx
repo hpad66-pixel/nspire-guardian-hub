@@ -30,6 +30,7 @@ import {
   TreePine,
   LogOut,
   User,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -153,6 +154,18 @@ export function AppSidebar() {
                   >
                     <Users className="h-4 w-4" />
                     {!collapsed && <span>People</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/reports"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    {!collapsed && <span>Reports</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
