@@ -3,44 +3,40 @@ import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, Filter } from 'lucide-react';
-import { IssueSource, InspectionArea, SeverityLevel } from '@/types/modules';
-
-interface IssueItem {
-  id: string;
-  title: string;
-  description: string;
-  sourceModule: IssueSource;
-  property: string;
-  unit?: string;
-  area?: InspectionArea;
-  severity: SeverityLevel;
-  deadline: string;
-  status: 'open' | 'in_progress' | 'resolved';
-  proofRequired: boolean;
-}
+import { AlertTriangle, Plus, Filter, Loader2 } from 'lucide-react';
+import { useIssues } from '@/hooks/useIssues';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function IssuesPage() {
-  const issues: IssueItem[] = [
-    { id: '1', title: 'Blocked emergency exit', description: 'Door not functioning properly', sourceModule: 'nspire', property: 'Oak Ridge Apts', area: 'inside', severity: 'severe', deadline: '2024-01-30', status: 'open', proofRequired: true },
-    { id: '2', title: 'GFCI not functioning', description: 'Kitchen outlet needs replacement', sourceModule: 'nspire', property: 'Oak Ridge Apts', unit: 'Unit 204', area: 'unit', severity: 'severe', deadline: '2024-01-30', status: 'open', proofRequired: true },
-    { id: '3', title: 'Water heater leaking', description: 'Minor leak detected at base', sourceModule: 'nspire', property: 'Maple Commons', unit: 'Unit 305', area: 'unit', severity: 'moderate', deadline: '2024-02-28', status: 'in_progress', proofRequired: false },
-    { id: '4', title: 'Parking lot drainage issue', description: 'Standing water after rain', sourceModule: 'core', property: 'Pine View', area: 'outside', severity: 'moderate', deadline: '2024-02-28', status: 'open', proofRequired: false },
-    { id: '5', title: 'Elevator inspection overdue', description: 'Annual inspection needed', sourceModule: 'core', property: 'Cedar Heights', area: 'inside', severity: 'low', deadline: '2024-03-30', status: 'open', proofRequired: false },
-    { id: '6', title: 'Roof repair needed', description: 'Related to renovation project', sourceModule: 'projects', property: 'Oak Ridge Apts', severity: 'moderate', deadline: '2024-02-15', status: 'in_progress', proofRequired: false },
-  ];
+  const { data: issues, isLoading, error } = useIssues();
 
-  const sourceLabels: Record<IssueSource, string> = {
+  const sourceLabels: Record<string, string> = {
     core: 'Core',
     nspire: 'NSPIRE',
     projects: 'Projects',
   };
 
-  const sourceColors: Record<IssueSource, string> = {
+  const sourceColors: Record<string, string> = {
     core: 'bg-muted text-muted-foreground',
     nspire: 'bg-module-inspections/10 text-cyan-700',
     projects: 'bg-module-projects/10 text-violet-700',
   };
+
+  // Calculate stats
+  const stats = issues ? {
+    severe: issues.filter(i => i.severity === 'severe' && i.status !== 'resolved').length,
+    moderate: issues.filter(i => i.severity === 'moderate' && i.status !== 'resolved').length,
+    low: issues.filter(i => i.severity === 'low' && i.status !== 'resolved').length,
+    resolved: issues.filter(i => i.status === 'resolved').length,
+  } : { severe: 0, moderate: 0, low: 0, resolved: 0 };
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-destructive">Failed to load issues: {error.message}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -72,26 +68,26 @@ export default function IssuesPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-destructive">4</div>
+            <div className="text-2xl font-bold text-destructive">{stats.severe}</div>
             <p className="text-sm text-muted-foreground">Severe (24hr)</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-warning">12</div>
+            <div className="text-2xl font-bold text-warning">{stats.moderate}</div>
             <p className="text-sm text-muted-foreground">Moderate (30 day)</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-muted-foreground">7</div>
+            <div className="text-2xl font-bold text-muted-foreground">{stats.low}</div>
             <p className="text-sm text-muted-foreground">Low (60 day)</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-success">156</div>
-            <p className="text-sm text-muted-foreground">Resolved (30 days)</p>
+            <div className="text-2xl font-bold text-success">{stats.resolved}</div>
+            <p className="text-sm text-muted-foreground">Resolved</p>
           </CardContent>
         </Card>
       </div>
@@ -103,34 +99,66 @@ export default function IssuesPage() {
           <CardDescription>Sorted by severity and deadline</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {issues.map((issue) => (
-              <div key={issue.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <SeverityBadge severity={issue.severity} />
-                  <div>
-                    <p className="font-medium">{issue.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {issue.property}
-                      {issue.unit && ` • ${issue.unit}`}
-                    </p>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-6 w-16" />
+                    <div>
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32 mt-1" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-20" />
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {issue.area && <AreaBadge area={issue.area} />}
-                  <span className={`text-xs px-2 py-1 rounded ${sourceColors[issue.sourceModule]}`}>
-                    {sourceLabels[issue.sourceModule]}
-                  </span>
-                  <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'}>
-                    {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
-                  </Badge>
-                  {issue.proofRequired && (
-                    <span className="text-xs text-warning">Proof required</span>
-                  )}
+              ))}
+            </div>
+          ) : issues && issues.length > 0 ? (
+            <div className="space-y-3">
+              {issues.map((issue) => (
+                <div key={issue.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
+                    <div>
+                      <p className="font-medium">{issue.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {issue.property?.name || 'Unknown property'}
+                        {issue.unit?.unit_number && ` • Unit ${issue.unit.unit_number}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {issue.area && <AreaBadge area={issue.area as 'outside' | 'inside' | 'unit'} />}
+                    <span className={`text-xs px-2 py-1 rounded ${sourceColors[issue.source_module] || sourceColors.core}`}>
+                      {sourceLabels[issue.source_module] || 'Core'}
+                    </span>
+                    <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'}>
+                      {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                    </Badge>
+                    {issue.proof_required && (
+                      <span className="text-xs text-warning">Proof required</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">No issues yet</h3>
+                  <p className="text-muted-foreground">Issues will appear here as they're created from inspections or manually</p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
