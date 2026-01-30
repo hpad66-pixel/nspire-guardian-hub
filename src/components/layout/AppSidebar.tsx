@@ -1,5 +1,6 @@
 import { NavLink } from '@/components/NavLink';
 import { useModules } from '@/contexts/ModuleContext';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Sidebar,
   SidebarContent,
@@ -27,15 +28,24 @@ import {
   Building,
   DoorOpen,
   TreePine,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function AppSidebar() {
   const { isModuleEnabled, userRole } = useModules();
+  const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
 
   const isAdmin = userRole === 'super_admin' || userRole === 'tenant_admin';
+  
+  const userInitials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -245,10 +255,35 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      {/* Settings Footer */}
-      {isAdmin && (
-        <SidebarFooter className="border-t border-sidebar-border p-2">
-          <SidebarMenu>
+      {/* Footer with user and settings */}
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          {/* User info */}
+          <SidebarMenuItem>
+            <div className={cn(
+              "flex items-center gap-3 px-2 py-2",
+              collapsed && "justify-center"
+            )}>
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {user?.user_metadata?.full_name || 'User'}
+                  </p>
+                  <p className="text-xs text-sidebar-muted truncate">
+                    {user?.email}
+                  </p>
+                </div>
+              )}
+            </div>
+          </SidebarMenuItem>
+          
+          {/* Settings - Admin only */}
+          {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <NavLink
@@ -261,9 +296,20 @@ export function AppSidebar() {
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      )}
+          )}
+          
+          {/* Logout */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={signOut}
+              className="flex items-center gap-3 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+              {!collapsed && <span>Log out</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
