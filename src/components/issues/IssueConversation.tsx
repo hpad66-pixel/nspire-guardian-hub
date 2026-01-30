@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useIssueComments, useCreateIssueComment, IssueComment } from '@/hooks/useIssueComments';
+import { useCreateIssueMentions } from '@/hooks/useIssueMentions';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MentionInput } from './MentionInput';
 import { Send, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -21,6 +22,35 @@ function getInitials(name: string | null, email: string | null): string {
     return email[0].toUpperCase();
   }
   return '?';
+}
+
+// Highlight @mentions in comment text
+function formatCommentContent(content: string): React.ReactNode {
+  const mentionRegex = /@([^\s@]+(?:\s[^\s@]+)?)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = mentionRegex.exec(content)) !== null) {
+    // Add text before the mention
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+    // Add the mention with styling
+    parts.push(
+      <span key={match.index} className="text-primary font-medium bg-primary/10 px-1 rounded">
+        {match[0]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+  
+  return parts.length > 0 ? parts : content;
 }
 
 function CommentItem({ comment, isCurrentUser }: { comment: IssueComment; isCurrentUser: boolean }) {
@@ -42,7 +72,9 @@ function CommentItem({ comment, isCurrentUser }: { comment: IssueComment; isCurr
             {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
           </span>
         </div>
-        <p className="text-sm text-foreground whitespace-pre-wrap">{comment.content}</p>
+        <p className="text-sm text-foreground whitespace-pre-wrap">
+          {formatCommentContent(comment.content)}
+        </p>
       </div>
     </div>
   );
@@ -52,7 +84,9 @@ export function IssueConversation({ issueId }: IssueConversationProps) {
   const { user } = useAuth();
   const { data: comments, isLoading } = useIssueComments(issueId);
   const createComment = useCreateIssueComment();
+  const createMentions = useCreateIssueMentions();
   const [newComment, setNewComment] = useState('');
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to bottom when new comments arrive
@@ -62,11 +96,27 @@ export function IssueConversation({ issueId }: IssueConversationProps) {
     }
   }, [comments]);
   
+  const handleCommentChange = (value: string, userIds: string[]) => {
+    setNewComment(value);
+    setMentionedUserIds(userIds);
+  };
+  
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
     
-    await createComment.mutateAsync({ issueId, content: newComment.trim() });
+    const result = await createComment.mutateAsync({ issueId, content: newComment.trim() });
+    
+    // Create mentions if any users were tagged
+    if (mentionedUserIds.length > 0 && result?.id) {
+      await createMentions.mutateAsync({
+        issueId,
+        commentId: result.id,
+        mentionedUserIds: [...new Set(mentionedUserIds)], // dedupe
+      });
+    }
+    
     setNewComment('');
+    setMentionedUserIds([]);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -85,8 +135,8 @@ export function IssueConversation({ issueId }: IssueConversationProps) {
         </h3>
       </div>
       
-      <ScrollArea className="flex-1 pr-2" ref={scrollRef}>
-        <div className="space-y-2">
+      <ScrollArea className="flex-1 pr-2">
+        <div className="space-y-2" ref={scrollRef}>
           {isLoading ? (
             <>
               <Skeleton className="h-16 w-full" />
@@ -109,12 +159,11 @@ export function IssueConversation({ issueId }: IssueConversationProps) {
       </ScrollArea>
       
       <div className="mt-3 flex gap-2">
-        <Textarea
-          placeholder="Type your message..."
+        <MentionInput
           value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
+          onChange={handleCommentChange}
           onKeyDown={handleKeyDown}
-          className="min-h-[60px] resize-none"
+          placeholder="Type your message... Use @ to tag users"
         />
         <Button 
           size="icon" 

@@ -325,6 +325,45 @@ export type Database = {
           },
         ]
       }
+      issue_mentions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          issue_id: string
+          mentioned_user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          issue_id: string
+          mentioned_user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          issue_id?: string
+          mentioned_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issue_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "issue_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issue_mentions_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issues: {
         Row: {
           area: Database["public"]["Enums"]["inspection_area"] | null
