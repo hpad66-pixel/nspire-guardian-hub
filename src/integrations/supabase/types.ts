@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       change_orders: {
         Row: {
           amount: number
@@ -67,38 +103,65 @@ export type Database = {
       daily_reports: {
         Row: {
           created_at: string
+          delays: string | null
+          equipment_used: string[] | null
           id: string
           issues_encountered: string | null
+          materials_received: string | null
           photos: string[] | null
           project_id: string
           report_date: string
+          safety_notes: string | null
+          signature: string | null
+          signature_date: string | null
+          subcontractors: Json | null
           submitted_by: string | null
+          visitor_log: Json | null
           weather: string | null
           work_performed: string
+          work_performed_html: string | null
           workers_count: number | null
         }
         Insert: {
           created_at?: string
+          delays?: string | null
+          equipment_used?: string[] | null
           id?: string
           issues_encountered?: string | null
+          materials_received?: string | null
           photos?: string[] | null
           project_id: string
           report_date?: string
+          safety_notes?: string | null
+          signature?: string | null
+          signature_date?: string | null
+          subcontractors?: Json | null
           submitted_by?: string | null
+          visitor_log?: Json | null
           weather?: string | null
           work_performed: string
+          work_performed_html?: string | null
           workers_count?: number | null
         }
         Update: {
           created_at?: string
+          delays?: string | null
+          equipment_used?: string[] | null
           id?: string
           issues_encountered?: string | null
+          materials_received?: string | null
           photos?: string[] | null
           project_id?: string
           report_date?: string
+          safety_notes?: string | null
+          signature?: string | null
+          signature_date?: string | null
+          subcontractors?: Json | null
           submitted_by?: string | null
+          visitor_log?: Json | null
           weather?: string | null
           work_performed?: string
+          work_performed_html?: string | null
           workers_count?: number | null
         }
         Relationships: [
@@ -342,6 +405,100 @@ export type Database = {
         }
         Relationships: []
       }
+      project_communications: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          participants: string[] | null
+          project_id: string
+          subject: string
+          type: Database["public"]["Enums"]["communication_type"]
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          participants?: string[] | null
+          project_id: string
+          subject: string
+          type?: Database["public"]["Enums"]["communication_type"]
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          participants?: string[] | null
+          project_id?: string
+          subject?: string
+          type?: Database["public"]["Enums"]["communication_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_communications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_documents: {
+        Row: {
+          created_at: string
+          file_size: number | null
+          file_url: string
+          folder: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          project_id: string
+          updated_at: string
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number | null
+          file_url: string
+          folder?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          project_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          file_size?: number | null
+          file_url?: string
+          folder?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          project_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_milestones: {
         Row: {
           completed_at: string | null
@@ -379,6 +536,162 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_rfis: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          project_id: string
+          question: string
+          responded_at: string | null
+          responded_by: string | null
+          response: string | null
+          rfi_number: number
+          status: Database["public"]["Enums"]["rfi_status"]
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          project_id: string
+          question: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          rfi_number?: number
+          status?: Database["public"]["Enums"]["rfi_status"]
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          project_id?: string
+          question?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          rfi_number?: number
+          status?: Database["public"]["Enums"]["rfi_status"]
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_rfis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_submittals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          file_urls: string[] | null
+          id: string
+          project_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          revision: number | null
+          status: Database["public"]["Enums"]["submittal_status"]
+          submittal_number: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          file_urls?: string[] | null
+          id?: string
+          project_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revision?: number | null
+          status?: Database["public"]["Enums"]["submittal_status"]
+          submittal_number?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          file_urls?: string[] | null
+          id?: string
+          project_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revision?: number | null
+          status?: Database["public"]["Enums"]["submittal_status"]
+          submittal_number?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_submittals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_team_members: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          project_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_team_members_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -516,6 +829,106 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: []
+      }
+      punch_items: {
+        Row: {
+          after_photos: string[] | null
+          assigned_to: string | null
+          before_photos: string[] | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          location: string
+          priority: string | null
+          project_id: string
+          status: Database["public"]["Enums"]["punch_status"]
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          after_photos?: string[] | null
+          assigned_to?: string | null
+          before_photos?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          location: string
+          priority?: string | null
+          project_id: string
+          status?: Database["public"]["Enums"]["punch_status"]
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          after_photos?: string[] | null
+          assigned_to?: string | null
+          before_photos?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          location?: string
+          priority?: string | null
+          project_id?: string
+          status?: Database["public"]["Enums"]["punch_status"]
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "punch_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_emails: {
+        Row: {
+          error_message: string | null
+          id: string
+          recipients: string[]
+          report_id: string
+          sent_at: string
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          recipients: string[]
+          report_id: string
+          sent_at?: string
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          recipients?: string[]
+          report_id?: string
+          sent_at?: string
+          status?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_emails_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "daily_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       units: {
         Row: {
@@ -686,12 +1099,25 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "inspector" | "user"
+      app_role:
+        | "admin"
+        | "manager"
+        | "inspector"
+        | "user"
+        | "owner"
+        | "project_manager"
+        | "superintendent"
+        | "subcontractor"
+        | "viewer"
       change_order_status: "draft" | "pending" | "approved" | "rejected"
+      communication_type: "call" | "email" | "meeting" | "note"
       inspection_area: "outside" | "inside" | "unit"
       issue_source: "core" | "nspire" | "projects"
       project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
+      punch_status: "open" | "in_progress" | "completed" | "verified"
+      rfi_status: "open" | "pending" | "answered" | "closed"
       severity_level: "low" | "moderate" | "severe"
+      submittal_status: "pending" | "approved" | "rejected" | "revise"
       work_order_priority: "emergency" | "routine"
       work_order_status:
         | "pending"
@@ -826,12 +1252,26 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "inspector", "user"],
+      app_role: [
+        "admin",
+        "manager",
+        "inspector",
+        "user",
+        "owner",
+        "project_manager",
+        "superintendent",
+        "subcontractor",
+        "viewer",
+      ],
       change_order_status: ["draft", "pending", "approved", "rejected"],
+      communication_type: ["call", "email", "meeting", "note"],
       inspection_area: ["outside", "inside", "unit"],
       issue_source: ["core", "nspire", "projects"],
       project_status: ["planning", "active", "on_hold", "completed", "closed"],
+      punch_status: ["open", "in_progress", "completed", "verified"],
+      rfi_status: ["open", "pending", "answered", "closed"],
       severity_level: ["low", "moderate", "severe"],
+      submittal_status: ["pending", "approved", "rejected", "revise"],
       work_order_priority: ["emergency", "routine"],
       work_order_status: [
         "pending",
