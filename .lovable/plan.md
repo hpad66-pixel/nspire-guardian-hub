@@ -1,591 +1,457 @@
 
-# Enterprise-Grade Property & Construction Management Platform
+
+# Simplified Asset-Based Grounds Inspection System
 
 ## Overview
 
-This comprehensive plan transforms the current application into a fully-featured enterprise construction management platform comparable to Procore. It addresses missing functionality, broken CTAs, document management, enhanced reporting, and professional-grade features for construction managers and property owners worldwide.
+This plan redesigns the inspections module to create a simple, mobile-first daily inspection workflow that a 10th grader can complete. The system automatically populates assets (cleanouts, catch basins, lift stations, retention ponds) for daily inspections, with photo capture, voice dictation via ElevenLabs, and attachment support.
 
 ---
 
-## Part 1: Broken CTAs and Missing Functionality
+## Part 1: Database Design
 
-### 1.1 Issues Page - Create Issue Button (Currently Non-Functional)
+### 1.1 New `assets` Table
 
-The "Create Issue" button exists but doesn't open any dialog.
-
-**Fix Required:**
-- Import and wire up the existing `IssueDialog` component
-- Add state management for dialog open/close
-- Pass correct props to create new issues
+Stores infrastructure assets that require daily inspection.
 
 ```text
-IssuesPage.tsx changes:
-- Add: const [createDialogOpen, setCreateDialogOpen] = useState(false);
-- Wire Button onClick: () => setCreateDialogOpen(true)
-- Add: <IssueDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
-```
-
-### 1.2 Issues Page - Filter Button (Non-Functional)
-
-The "Filter" button has no functionality.
-
-**Implementation:**
-- Create filter popover with options for:
-  - Status (Open, In Progress, Resolved)
-  - Severity (Severe, Moderate, Low)
-  - Source Module (Core, NSPIRE, Projects)
-  - Property filter
-  - Date range
-
-### 1.3 Projects Dashboard - Quick Action Cards (Non-Functional)
-
-The "Daily Reports", "Change Orders", and "Milestones" cards are clickable but go nowhere.
-
-**Fix Required:**
-- Make cards navigate to project list with default tab selected
-- Or open a global view of all pending items
-
-### 1.4 Work Orders Page - Missing Work Order Detail View
-
-Work orders can be viewed in a list but cannot be clicked to see details or take action.
-
-**Implementation:**
-- Create `WorkOrderDetailSheet.tsx` component
-- Add status update workflow
-- Add assignee management
-- Add proof photo upload for completion
-
----
-
-## Part 2: Enterprise Document Center
-
-### 2.1 Organization-Level Document Library
-
-Replace the placeholder `/documents` page with a full document management system.
-
-**Features:**
-- Folder-based organization (Contracts, Permits, Insurance, Drawings, Photos)
-- Document upload with drag-and-drop
-- File versioning with history
-- Document metadata (uploaded by, date, size, type)
-- Full-text search across documents
-- Document preview (PDF, images)
-- Download and share functionality
-- Access permissions per folder
-
-**Database Schema:**
-```text
-organization_documents
+assets
 - id (uuid)
-- folder (text) - e.g., "Contracts", "Insurance"
-- subfolder (text) - optional
-- name (text)
-- description (text)
-- file_url (text)
-- file_size (bigint)
-- mime_type (text)
-- version (integer)
-- previous_version_id (uuid) - self-reference
-- uploaded_by (uuid)
-- created_at (timestamp)
-- updated_at (timestamp)
-- expiry_date (date) - for contracts, insurance
-- tags (text[])
-- is_archived (boolean)
+- property_id (uuid) - links to property
+- name (text) - e.g., "Cleanout #1", "Catch Basin North"
+- asset_type (enum) - cleanout, catch_basin, lift_station, retention_pond, general_grounds
+- location_description (text) - where on property
+- latitude (decimal) - optional GPS
+- longitude (decimal) - optional GPS  
+- status (text) - active, inactive, needs_repair
+- photo_url (text) - reference photo of asset
+- qr_code (text) - optional for scanning
+- created_at, updated_at
 ```
 
-**Storage Bucket:**
-- Create `organization-documents` bucket (private)
+### 1.2 New `daily_inspections` Table
 
-**Components:**
-- `DocumentLibraryPage.tsx` - Main page with folder navigation
-- `DocumentUploadDialog.tsx` - Upload modal with metadata
-- `DocumentPreviewSheet.tsx` - Side panel viewer
-- `DocumentVersionHistory.tsx` - Version tracking
+Separate from NSPIRE inspections - this is for daily grounds checks.
 
-### 2.2 Project-Level Documents (Already Exists - Enhance)
-
-The `project_documents` table exists but needs UI implementation.
-
-**Add to ProjectDetailPage:**
-- New "Documents" tab
-- Project-specific folders (Plans, Permits, Submittals, Contracts, Closeout)
-- Same functionality as org-level but scoped to project
-
----
-
-## Part 3: Enhanced Project Management (Procore-Style)
-
-### 3.1 RFI Management Interface
-
-The `project_rfis` table exists. Build the UI.
-
-**New Component:** `RFIList.tsx`
-- List view with filters (Open, Pending, Closed)
-- RFI number, subject, assignee, due date, status
-- Click to open detail sheet
-
-**New Component:** `RFIDialog.tsx`
-- Create/edit RFI form
-- Subject, question (rich text), assignee, due date
-- Response section with who answered
-
-**New Component:** `RFIDetailSheet.tsx`
-- Full question and response view
-- Response input for assigned user
-- Status workflow (Open -> Pending -> Closed)
-
-### 3.2 Submittal Tracking Interface
-
-The `project_submittals` table exists. Build the UI.
-
-**New Component:** `SubmittalList.tsx`
-- List with status badges (Pending, Approved, Rejected, Revise)
-- Submittal number, title, revision, due date
-
-**New Component:** `SubmittalDialog.tsx`
-- Create/edit submittal
-- Title, description, due date
-- File upload for submittal documents
-- Revision tracking
-
-**New Component:** `SubmittalDetailSheet.tsx`
-- Review interface
-- Approve/Reject/Revise actions
-- Comment on rejection with requirements
-
-### 3.3 Punch List Management
-
-The `punch_items` table exists. Build the UI.
-
-**New Component:** `PunchListTab.tsx`
-- Add as new tab in ProjectDetailPage
-- Location-based grouping
-- Before/after photo comparison
-- Status workflow (Open -> Completed -> Verified)
-
-**New Component:** `PunchItemDialog.tsx`
-- Create punch item with location, description
-- Photo upload (before)
-- Assign to subcontractor
-
-**New Component:** `PunchItemCard.tsx`
-- Visual card with photos
-- Quick status update
-- After photo upload for completion
-
-### 3.4 Project Communications Log
-
-The `project_communications` table exists. Build the UI.
-
-**New Component:** `CommunicationsTab.tsx`
-- Add as new tab in ProjectDetailPage
-- Log phone calls, emails, meetings, notes
-- Chronological timeline view
-- Filter by type
-
-**New Component:** `CommunicationDialog.tsx`
-- Log new communication
-- Type selector, subject, content
-- Participants list
-
-### 3.5 Project Team Management
-
-The `project_team_members` table exists. Build the UI.
-
-**New Component:** `ProjectTeamTab.tsx`
-- Add as new tab in ProjectDetailPage
-- Team directory with roles
-- Add/remove team members
-- Contact information
-
----
-
-## Part 4: Advanced Reporting and Export
-
-### 4.1 Report Export Functionality
-
-Add export capabilities to all reports.
-
-**Features:**
-- Export to CSV
-- Export to PDF
-- Print-optimized layouts
-- Email report as PDF attachment
-
-**Implementation:**
-- Create `useExportReport` hook
-- Add export buttons to each report card
-- Use html2pdf for PDF generation
-- Use Papa Parse for CSV export
-
-### 4.2 Scheduled Report Emails
-
-Allow users to schedule recurring report delivery.
-
-**New Table:** `scheduled_reports`
 ```text
+daily_inspections
 - id (uuid)
-- user_id (uuid)
-- report_type (text)
-- frequency (text) - daily, weekly, monthly
-- recipients (text[])
-- filters (jsonb)
-- next_run (timestamp)
-- is_active (boolean)
+- property_id (uuid)
+- inspection_date (date)
+- inspector_id (uuid)
+- weather (text)
+- general_notes (text) - main notes area
+- general_notes_html (text) - rich text version
+- voice_transcript (text) - from dictation
+- status (enum) - in_progress, completed
+- attachments (text[]) - file URLs
+- created_at, completed_at
 ```
 
-**New Edge Function:** `send-scheduled-reports`
-- Triggered by cron job
-- Generate report PDF
-- Email to recipients
+### 1.3 New `daily_inspection_items` Table
 
-### 4.3 Enhanced Report Visualizations
+Individual asset checks within a daily inspection.
 
-Add charts to existing reports.
-
-**Using Recharts (already installed):**
-- Add line chart for trends over time
-- Add bar charts for comparisons
-- Add pie charts for distributions
-- Interactive tooltips
-
-**New Visualizations:**
-- Defect trends by month
-- Issue resolution time distribution
-- Work order completion by priority
-- Budget vs. actual spend over time
-- Milestone timeline Gantt view
-
-### 4.4 Custom Report Builder (Phase 2)
-
-Allow users to create custom reports.
-
-**Features:**
-- Select data sources
-- Choose columns to display
-- Set filters
-- Save as custom report
-- Share with team
-
----
-
-## Part 5: Role-Based Access Enhancements
-
-### 5.1 Implement Role Checks Throughout App
-
-Currently roles exist but aren't enforced in UI.
-
-**Implementation:**
-- Create `useUserRole` hook that checks actual database roles
-- Add role guards to all CRUD operations
-- Hide/show UI elements based on role
-- Redirect unauthorized users
-
-### 5.2 Owner Portal (Filtered View)
-
-Property owners should see a simplified view.
-
-**New Route:** `/owner`
-- Filtered dashboard showing only their properties
-- High-level project status
-- Approved change orders only
-- Daily report summaries (not full details)
-- Document access (owner-shared only)
-
-**Implementation:**
-- Create owner-specific pages
-- Filter queries by owner's assigned properties
-- Hide internal notes and sensitive data
-
-### 5.3 Subcontractor Portal
-
-Subcontractors see only their assigned work.
-
-**Features:**
-- Assigned punch items
-- Assigned work orders
-- Submit completion photos
-- View relevant project documents
-
----
-
-## Part 6: Audit Trail and Activity Logging
-
-### 6.1 Activity Log Viewer
-
-The `activity_log` table exists. Build the UI.
-
-**New Page:** `/settings/activity-log`
-
-**Features:**
-- Filterable activity stream
-- Entity type filter (project, issue, work order, etc.)
-- User filter
-- Date range filter
-- Action type (create, update, delete)
-- View change diff (before/after)
-
-**New Component:** `ActivityLogViewer.tsx`
-- Virtualized list for performance
-- Change detail expansion
-- User avatar and name display
-
-### 6.2 Automatic Activity Logging
-
-Create database triggers to log all changes automatically.
-
-**Implementation:**
-- Create trigger function for key tables
-- Capture before/after state
-- Store as JSONB diff
-- Include user context
-
-**Tables to Log:**
-- projects (all changes)
-- issues (all changes)
-- work_orders (all changes)
-- defects (all changes)
-- change_orders (status changes)
-- daily_reports (creation)
-
----
-
-## Part 7: Enhanced User Experience
-
-### 7.1 Global Search
-
-Add command palette / global search.
-
-**Features:**
-- Press Cmd+K to open
-- Search across all entities
-- Properties, projects, issues, work orders
-- Quick navigation
-- Recent items
-
-**Implementation:**
-- Use existing cmdk package (already installed)
-- Create `GlobalSearch.tsx` component
-- Add to AppLayout header
-
-### 7.2 Notification Center
-
-In-app notifications for important events.
-
-**New Table:** `notifications`
 ```text
+daily_inspection_items
 - id (uuid)
-- user_id (uuid)
-- type (text) - mention, assignment, deadline, approval
-- title (text)
-- message (text)
-- entity_type (text)
-- entity_id (uuid)
-- is_read (boolean)
-- created_at (timestamp)
+- daily_inspection_id (uuid)
+- asset_id (uuid)
+- status (enum) - ok, needs_attention, defect_found
+- photo_urls (text[])
+- notes (text)
+- defect_description (text) - if defect found
+- checked_at (timestamp)
 ```
 
+### 1.4 Seed Data
+
+Pre-populate assets for the property:
+- 20 Cleanouts (Cleanout #1 through #20)
+- 15 Catch Basins (Catch Basin #1 through #15)
+- 1 Lift Station
+- 1 Retention Pond
+- 1 General Grounds/Housekeeping
+
+---
+
+## Part 2: ElevenLabs Integration for Voice Dictation
+
+### 2.1 API Key Setup
+
+Using the ElevenLabs Speech-to-Text API for real transcription.
+
+- Create connector or prompt for ElevenLabs API key
+- Store as `ELEVENLABS_API_KEY` secret
+
+### 2.2 New Edge Function: `elevenlabs-transcribe`
+
+```text
+supabase/functions/elevenlabs-transcribe/index.ts
+
+- Accepts base64 audio from client
+- Sends to ElevenLabs API:
+  POST https://api.elevenlabs.io/v1/speech-to-text
+  model_id: "scribe_v2"
+  file: [audio data]
+- Returns transcript text
+```
+
+### 2.3 Enhanced Voice Dictation Component
+
+Update `VoiceDictation.tsx` to:
+- Use ElevenLabs edge function
+- Show real-time recording indicator
+- Display transcribed text immediately
+- Support appending to existing notes
+
+---
+
+## Part 3: Mobile-First UI Components
+
+### 3.1 New Page: `/inspections/daily`
+
+The main entry point for daily grounds inspections.
+
 **Features:**
-- Bell icon in header with badge count
-- Notification dropdown
-- Mark as read
-- Click to navigate to entity
-- Email notifications for critical items
+- Big, friendly "Start Today's Inspection" button
+- Show today's date prominently
+- Property selector (if multiple)
+- List of recent inspections with status
 
-### 7.3 Dashboard Customization
+### 3.2 New Component: `DailyInspectionWizard.tsx`
 
-Allow users to customize their dashboard.
+A step-by-step mobile wizard with large touch targets.
+
+**Step 1: Start**
+- Confirm property
+- Weather selector (icons for sun, clouds, rain, snow)
+- Big "Let's Go!" button
+
+**Step 2: Asset Checklist (Swipeable Cards)**
+- One asset per screen (like Tinder swipe)
+- Asset name and type icon at top
+- Large photo capture button (full width)
+- Three big buttons: ✓ OK | ⚠️ Attention | ✗ Defect
+- Quick notes input
+- Swipe or tap to next asset
+- Progress bar showing X of Y assets
+
+**Step 3: General Notes**
+- Large text area
+- Voice dictation button (microphone icon)
+- "Exterior Defects Observed" section
+- General housekeeping checklist
+- Attachment upload area
+
+**Step 4: Review & Submit**
+- Summary of all checks
+- Count: 38 OK, 2 Need Attention
+- Photo gallery
+- Submit button
+- Option to sign
+
+### 3.3 New Component: `AssetCard.tsx`
+
+Individual asset inspection card (mobile optimized).
+
+```text
++----------------------------------+
+|  🔧 CLEANOUT #1                  |
+|  Location: North parking lot     |
++----------------------------------+
+|                                  |
+|     [ TAKE PHOTO 📷 ]           |
+|     (big touch target)           |
+|                                  |
+|  +------+ +------+ +------+     |
+|  |  ✓   | |  ⚠️  | |  ✗   |     |
+|  |  OK  | | ATN  | | DEF  |     |
+|  +------+ +------+ +------+     |
+|                                  |
+|  Notes: ___________________     |
+|                                  |
+|         [NEXT →]                |
++----------------------------------+
+```
+
+### 3.4 Enhanced Photo Capture
+
+Optimize for mobile with:
+- Full-screen camera overlay option
+- Auto-compress large images
+- Thumbnail preview immediately
+- "Capture" attribute for native camera on mobile
+- GPS location embedding (optional)
+
+---
+
+## Part 4: Asset Management Page
+
+### 4.1 Replace Placeholder `/assets` Page
+
+Full asset inventory management.
 
 **Features:**
-- Drag-and-drop widget arrangement
-- Show/hide widgets
-- Widget size options
-- Save per-user preferences
+- List all assets by property
+- Filter by type (cleanouts, catch basins, etc.)
+- Add new assets
+- Edit/delete assets
+- Upload reference photos
+- Bulk import option
 
-### 7.4 Mobile Responsiveness Audit
+### 4.2 New Components
 
-Ensure all new features work on mobile.
+| Component | Purpose |
+|-----------|---------|
+| `AssetsPage.tsx` | Main asset inventory page |
+| `AssetDialog.tsx` | Create/edit asset form |
+| `AssetCard.tsx` | Asset display card |
+| `AssetTypeIcon.tsx` | Icons for each asset type |
 
-**Checklist:**
-- Test all new dialogs on mobile
-- Ensure touch-friendly interactions
-- Optimize table views for small screens
-- Test photo upload from mobile camera
+### 4.3 New Hook: `useAssets.ts`
 
----
-
-## Part 8: Technical Improvements
-
-### 8.1 Performance Optimizations
-
-- Add query caching with appropriate stale times
-- Implement infinite scroll for long lists
-- Use React.memo for expensive components
-- Add skeleton loaders to all async areas
-
-### 8.2 Error Handling
-
-- Add global error boundary
-- Improve error messages for users
-- Add retry logic for failed requests
-- Offline detection and messaging
-
-### 8.3 Form Validation
-
-- Use Zod schemas for all forms
-- Show validation errors inline
-- Prevent submission of invalid data
-- Add confirmation dialogs for destructive actions
+CRUD operations for assets:
+- `useAssets(propertyId)` - list assets
+- `useAssetsByType(propertyId, type)` - filtered list
+- `useCreateAsset()` - add new
+- `useUpdateAsset()` - edit
+- `useDeleteAsset()` - remove
 
 ---
 
-## Implementation Priority
+## Part 5: Hooks and Data Layer
 
-### Phase 1 (Immediate - This Implementation)
-1. Fix all broken CTAs (Issues Create, Filter, Quick Actions)
-2. Work Order detail sheet with actions
-3. Organization Document Center
-4. Project Documents tab
-5. RFI management interface
-6. Punch List management
-7. Report export (CSV/PDF)
-8. Activity Log viewer
+### 5.1 New Hooks
 
-### Phase 2 (Next Sprint)
-9. Submittal tracking
-10. Project Communications log
-11. Project Team management
-12. Global search (Cmd+K)
-13. Notification center
-14. Chart visualizations for reports
+| Hook | Purpose |
+|------|---------|
+| `useAssets.ts` | Asset CRUD |
+| `useDailyInspections.ts` | Daily inspection CRUD |
+| `useTodayInspection.ts` | Get/create today's inspection |
+| `useElevenLabsTranscribe.ts` | Voice-to-text hook |
 
-### Phase 3 (Future)
-15. Owner Portal
-16. Subcontractor Portal
-17. Scheduled report emails
-18. Custom report builder
-19. Dashboard customization
+### 5.2 Updated Components
+
+| File | Changes |
+|------|---------|
+| `VoiceDictation.tsx` | Use ElevenLabs API instead of placeholder |
 
 ---
 
-## New Files to Create
+## Part 6: File Structure
 
-### Pages
-| File | Purpose |
-|------|---------|
-| `src/pages/documents/DocumentsPage.tsx` | Organization document library |
-| `src/pages/settings/ActivityLogPage.tsx` | Audit trail viewer |
+### New Files
 
-### Components - Documents
-| File | Purpose |
-|------|---------|
-| `src/components/documents/DocumentLibrary.tsx` | Main library component |
-| `src/components/documents/DocumentUploadDialog.tsx` | Upload modal |
-| `src/components/documents/DocumentPreviewSheet.tsx` | File viewer |
-| `src/components/documents/FolderNav.tsx` | Folder navigation |
+```text
+src/pages/
+├── assets/
+│   └── AssetsPage.tsx           # Asset inventory management
+├── inspections/
+│   └── DailyGroundsPage.tsx     # Daily grounds inspection entry
 
-### Components - Projects
-| File | Purpose |
-|------|---------|
-| `src/components/projects/ProjectDocumentsTab.tsx` | Project docs tab |
-| `src/components/projects/RFIList.tsx` | RFI list |
-| `src/components/projects/RFIDialog.tsx` | RFI create/edit |
-| `src/components/projects/RFIDetailSheet.tsx` | RFI detail view |
-| `src/components/projects/SubmittalList.tsx` | Submittal list |
-| `src/components/projects/SubmittalDialog.tsx` | Submittal create/edit |
-| `src/components/projects/PunchListTab.tsx` | Punch list management |
-| `src/components/projects/PunchItemDialog.tsx` | Punch item form |
-| `src/components/projects/CommunicationsTab.tsx` | Communications log |
-| `src/components/projects/ProjectTeamTab.tsx` | Team management |
+src/components/
+├── assets/
+│   ├── AssetDialog.tsx          # Create/edit asset
+│   ├── AssetCard.tsx            # Asset display card
+│   └── AssetTypeIcon.tsx        # Type icons
+├── inspections/
+│   ├── DailyInspectionWizard.tsx    # Main wizard
+│   ├── AssetCheckCard.tsx           # Per-asset check UI
+│   ├── WeatherSelector.tsx          # Weather picker
+│   └── InspectionProgress.tsx       # Progress indicator
 
-### Components - Work Orders
-| File | Purpose |
-|------|---------|
-| `src/components/workorders/WorkOrderDetailSheet.tsx` | WO detail view |
-| `src/components/workorders/WorkOrderActions.tsx` | Status updates |
+src/hooks/
+├── useAssets.ts
+├── useDailyInspections.ts
+└── useElevenLabsTranscribe.ts
 
-### Components - Global
-| File | Purpose |
-|------|---------|
-| `src/components/global/GlobalSearch.tsx` | Cmd+K search |
-| `src/components/global/NotificationCenter.tsx` | Notifications |
-| `src/components/settings/ActivityLogViewer.tsx` | Audit log UI |
-
-### Hooks
-| File | Purpose |
-|------|---------|
-| `src/hooks/useDocuments.ts` | Document CRUD |
-| `src/hooks/useRFIs.ts` | RFI CRUD |
-| `src/hooks/useSubmittals.ts` | Submittal CRUD |
-| `src/hooks/usePunchItems.ts` | Punch item CRUD |
-| `src/hooks/useCommunications.ts` | Communications CRUD |
-| `src/hooks/useProjectTeam.ts` | Team management |
-| `src/hooks/useActivityLog.ts` | Activity log queries |
-| `src/hooks/useNotifications.ts` | Notification management |
-| `src/hooks/useExportReport.ts` | Report export utilities |
+supabase/functions/
+└── elevenlabs-transcribe/
+    └── index.ts
+```
 
 ---
 
-## Database Changes Required
+## Part 7: User Experience Flow
 
-### New Table: `organization_documents`
+### Happy Path
+
+1. **User opens app on phone**
+2. **Taps "Inspections" → "Daily Grounds"**
+3. **Sees big "Start Today's Inspection" button**
+4. **Selects weather with friendly icons**
+5. **Asset cards appear one-by-one:**
+   - Takes photo with one tap
+   - Taps green checkmark for "OK"
+   - Swipes to next
+6. **After all assets, enters general notes:**
+   - Taps microphone, speaks observations
+   - Text appears automatically
+   - Adds any attachments
+7. **Reviews summary, taps "Submit"**
+8. **Done! Shows confirmation with stats**
+
+### Design Principles
+
+- **Minimal taps** - most common action is biggest button
+- **Large touch targets** - minimum 44px, prefer 60px+
+- **Clear visual feedback** - color changes on selection
+- **Progress visibility** - always show how far along
+- **Forgiving** - easy to go back and correct
+- **Works offline** - queue uploads for later
+
+---
+
+## Part 8: Technical Considerations
+
+### Mobile Camera Integration
+
+```tsx
+<input
+  type="file"
+  accept="image/*"
+  capture="environment"  // Use back camera
+  onChange={handleCapture}
+/>
+```
+
+### ElevenLabs Transcription
+
+Using `scribe_v2` model for high-quality transcription:
+- Supports multiple languages
+- Handles construction terminology
+- Returns clean, formatted text
+
+### Responsive Breakpoints
+
+- **Mobile (default)**: Full-width cards, stacked layout
+- **Tablet (md)**: 2-column grid, larger touch targets
+- **Desktop (lg)**: 3-column grid, sidebar navigation
+
+---
+
+## Part 9: Database Migrations
+
+### Migration 1: Create Asset Types and Tables
+
 ```sql
-CREATE TABLE organization_documents (
+-- Asset types enum
+CREATE TYPE asset_type AS ENUM (
+  'cleanout', 
+  'catch_basin', 
+  'lift_station', 
+  'retention_pond', 
+  'general_grounds'
+);
+
+-- Inspection item status
+CREATE TYPE inspection_item_status AS ENUM (
+  'ok', 
+  'needs_attention', 
+  'defect_found'
+);
+
+-- Assets table
+CREATE TABLE assets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  folder TEXT NOT NULL DEFAULT 'General',
-  subfolder TEXT,
+  property_id UUID NOT NULL REFERENCES properties(id),
   name TEXT NOT NULL,
-  description TEXT,
-  file_url TEXT NOT NULL,
-  file_size BIGINT,
-  mime_type TEXT,
-  version INTEGER DEFAULT 1,
-  previous_version_id UUID REFERENCES organization_documents(id),
-  uploaded_by UUID REFERENCES auth.users(id),
-  expiry_date DATE,
-  tags TEXT[] DEFAULT '{}',
-  is_archived BOOLEAN DEFAULT FALSE,
+  asset_type asset_type NOT NULL,
+  location_description TEXT,
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
+  status TEXT DEFAULT 'active',
+  photo_url TEXT,
+  qr_code TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
 
-### New Table: `notifications`
-```sql
-CREATE TABLE notifications (
+-- Daily inspections
+CREATE TABLE daily_inspections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  message TEXT,
-  entity_type TEXT,
-  entity_id UUID,
-  is_read BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  property_id UUID NOT NULL REFERENCES properties(id),
+  inspection_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  inspector_id UUID REFERENCES auth.users(id),
+  weather TEXT,
+  general_notes TEXT,
+  general_notes_html TEXT,
+  voice_transcript TEXT,
+  status TEXT DEFAULT 'in_progress',
+  attachments TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  UNIQUE(property_id, inspection_date)
+);
+
+-- Inspection items (per asset)
+CREATE TABLE daily_inspection_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_inspection_id UUID NOT NULL REFERENCES daily_inspections(id),
+  asset_id UUID NOT NULL REFERENCES assets(id),
+  status inspection_item_status DEFAULT 'ok',
+  photo_urls TEXT[] DEFAULT '{}',
+  notes TEXT,
+  defect_description TEXT,
+  checked_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-### New Storage Bucket
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('organization-documents', 'organization-documents', false);
-```
+### Migration 2: RLS Policies
+
+- Authenticated users can view/create assets
+- Inspectors can create/update inspections
+- Admins can manage all
+
+### Migration 3: Seed Sample Assets
+
+Insert the 38 default assets:
+- Cleanout #1 through #20
+- Catch Basin #1 through #15
+- Lift Station #1
+- Retention Pond #1
+- General Grounds
+
+---
+
+## Part 10: Implementation Steps
+
+### Phase 1: Database & Assets (Day 1)
+1. Run database migrations
+2. Create `useAssets.ts` hook
+3. Build `AssetsPage.tsx` with full CRUD
+4. Replace placeholder assets route
+
+### Phase 2: ElevenLabs Integration (Day 1)
+5. Add ElevenLabs API key secret
+6. Create `elevenlabs-transcribe` edge function
+7. Update `VoiceDictation.tsx` to use real transcription
+
+### Phase 3: Daily Inspection UI (Day 2)
+8. Create `DailyGroundsPage.tsx`
+9. Build `DailyInspectionWizard.tsx` with steps
+10. Create `AssetCheckCard.tsx` for mobile
+11. Add weather selector
+
+### Phase 4: Polish & Navigation (Day 2)
+12. Add routes to App.tsx
+13. Update sidebar navigation
+14. Test on mobile devices
+15. Add offline support (optional)
 
 ---
 
 ## Expected Outcome
 
-After full implementation:
+After implementation:
 
-- All CTAs functional with proper dialogs and actions
-- Complete document management at org and project level
-- Full RFI, Submittal, and Punch List workflows
-- Exportable reports in CSV and PDF
-- Complete audit trail of all system changes
-- Role-enforced access throughout the application
-- Global search for quick navigation
-- In-app notifications for assignments and mentions
-- Mobile-optimized enterprise experience
-- Professional-grade construction management comparable to Procore
+- Simple, intuitive daily inspection flow
+- Mobile-first design usable by anyone
+- Real voice-to-text via ElevenLabs
+- Photo capture directly from phone camera
+- All assets auto-populated for each property
+- Progress tracking through checklist
+- Attachment support for additional files
+- Professional-grade yet simple UX
 
