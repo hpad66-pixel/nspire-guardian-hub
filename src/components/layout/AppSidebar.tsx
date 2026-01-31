@@ -31,6 +31,7 @@ import {
   LogOut,
   User,
   BarChart3,
+  Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -183,20 +184,32 @@ export function AppSidebar() {
               </div>
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections"
-                      end
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <ClipboardCheck className="h-4 w-4" />
-                      {!collapsed && <span>Dashboard</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inspections"
+                    end
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
+                    {!collapsed && <span>Dashboard</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inspections/daily"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Sun className="h-4 w-4" />
+                    {!collapsed && <span>Daily Grounds</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink

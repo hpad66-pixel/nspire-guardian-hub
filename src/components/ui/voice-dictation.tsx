@@ -84,8 +84,8 @@ export function VoiceDictation({ onTranscript, disabled, className }: VoiceDicta
       reader.readAsDataURL(audioBlob);
       const base64Audio = await base64Promise;
 
-      // Call the transcription edge function
-      const { data, error } = await supabase.functions.invoke('ai-transcribe', {
+      // Call the ElevenLabs transcription edge function
+      const { data, error } = await supabase.functions.invoke('elevenlabs-transcribe', {
         body: { audio: base64Audio },
       });
 
