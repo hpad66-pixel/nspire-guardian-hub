@@ -50,6 +50,59 @@ export type Database = {
         }
         Relationships: []
       }
+      assets: {
+        Row: {
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          created_at: string | null
+          id: string
+          latitude: number | null
+          location_description: string | null
+          longitude: number | null
+          name: string
+          photo_url: string | null
+          property_id: string
+          qr_code: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          location_description?: string | null
+          longitude?: number | null
+          name: string
+          photo_url?: string | null
+          property_id: string
+          qr_code?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          asset_type?: Database["public"]["Enums"]["asset_type"]
+          created_at?: string | null
+          id?: string
+          latitude?: number | null
+          location_description?: string | null
+          longitude?: number | null
+          name?: string
+          photo_url?: string | null
+          property_id?: string
+          qr_code?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_orders: {
         Row: {
           amount: number
@@ -96,6 +149,107 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_inspection_items: {
+        Row: {
+          asset_id: string
+          checked_at: string | null
+          daily_inspection_id: string
+          defect_description: string | null
+          id: string
+          notes: string | null
+          photo_urls: string[] | null
+          status: Database["public"]["Enums"]["inspection_item_status"] | null
+        }
+        Insert: {
+          asset_id: string
+          checked_at?: string | null
+          daily_inspection_id: string
+          defect_description?: string | null
+          id?: string
+          notes?: string | null
+          photo_urls?: string[] | null
+          status?: Database["public"]["Enums"]["inspection_item_status"] | null
+        }
+        Update: {
+          asset_id?: string
+          checked_at?: string | null
+          daily_inspection_id?: string
+          defect_description?: string | null
+          id?: string
+          notes?: string | null
+          photo_urls?: string[] | null
+          status?: Database["public"]["Enums"]["inspection_item_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_inspection_items_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_inspection_items_daily_inspection_id_fkey"
+            columns: ["daily_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_inspections: {
+        Row: {
+          attachments: string[] | null
+          completed_at: string | null
+          created_at: string | null
+          general_notes: string | null
+          general_notes_html: string | null
+          id: string
+          inspection_date: string
+          inspector_id: string | null
+          property_id: string
+          status: string | null
+          voice_transcript: string | null
+          weather: string | null
+        }
+        Insert: {
+          attachments?: string[] | null
+          completed_at?: string | null
+          created_at?: string | null
+          general_notes?: string | null
+          general_notes_html?: string | null
+          id?: string
+          inspection_date?: string
+          inspector_id?: string | null
+          property_id: string
+          status?: string | null
+          voice_transcript?: string | null
+          weather?: string | null
+        }
+        Update: {
+          attachments?: string[] | null
+          completed_at?: string | null
+          created_at?: string | null
+          general_notes?: string | null
+          general_notes_html?: string | null
+          id?: string
+          inspection_date?: string
+          inspector_id?: string | null
+          property_id?: string
+          status?: string | null
+          voice_transcript?: string | null
+          weather?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_inspections_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -1281,9 +1435,16 @@ export type Database = {
         | "superintendent"
         | "subcontractor"
         | "viewer"
+      asset_type:
+        | "cleanout"
+        | "catch_basin"
+        | "lift_station"
+        | "retention_pond"
+        | "general_grounds"
       change_order_status: "draft" | "pending" | "approved" | "rejected"
       communication_type: "call" | "email" | "meeting" | "note"
       inspection_area: "outside" | "inside" | "unit"
+      inspection_item_status: "ok" | "needs_attention" | "defect_found"
       issue_source: "core" | "nspire" | "projects"
       project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
       punch_status: "open" | "in_progress" | "completed" | "verified"
@@ -1435,9 +1596,17 @@ export const Constants = {
         "subcontractor",
         "viewer",
       ],
+      asset_type: [
+        "cleanout",
+        "catch_basin",
+        "lift_station",
+        "retention_pond",
+        "general_grounds",
+      ],
       change_order_status: ["draft", "pending", "approved", "rejected"],
       communication_type: ["call", "email", "meeting", "note"],
       inspection_area: ["outside", "inside", "unit"],
+      inspection_item_status: ["ok", "needs_attention", "defect_found"],
       issue_source: ["core", "nspire", "projects"],
       project_status: ["planning", "active", "on_hold", "completed", "closed"],
       punch_status: ["open", "in_progress", "completed", "verified"],
