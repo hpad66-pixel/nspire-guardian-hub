@@ -38,6 +38,7 @@ import PermitDetailPage from "./pages/permits/PermitDetailPage";
 import PeoplePage from "./pages/people/PeoplePage";
 import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import QRScannerPage from "./pages/qr/QRScannerPage";
+import TrainingPage from "./pages/training/TrainingPage";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
                         <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/occupancy" element={<OccupancyPage />} />
                         <Route path="/qr-scanner" element={<QRScannerPage />} />
+                        <Route path="/training" element={<TrainingPage />} />
                         <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                         
                         {/* NSPIRE Inspections Module */}

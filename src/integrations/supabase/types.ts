@@ -2037,6 +2037,146 @@ export type Database = {
           },
         ]
       }
+      training_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          resource_id: string
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          resource_id: string
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          resource_id?: string
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_progress_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "training_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_requests: {
+        Row: {
+          admin_response: string | null
+          category: string | null
+          created_at: string
+          description: string
+          id: string
+          priority: string | null
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          category?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      training_resources: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          embed_code: string | null
+          external_url: string | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          resource_type: string
+          sort_order: number | null
+          target_roles: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          embed_code?: string | null
+          external_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          resource_type: string
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          embed_code?: string | null
+          external_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          resource_type?: string
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       units: {
         Row: {
           bathrooms: number | null
