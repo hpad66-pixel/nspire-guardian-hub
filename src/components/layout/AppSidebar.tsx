@@ -38,6 +38,7 @@ import {
   QrCode,
   Home,
   GraduationCap,
+  Contact,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -196,16 +197,38 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/people"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Users className="h-4 w-4" />
-                    {!collapsed && <span>People</span>}
-                  </NavLink>
-                </SidebarMenuButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/people"
+                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                      >
+                        <Users className="h-4 w-4" />
+                        {!collapsed && <span>People</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Team member management</TooltipContent>
+                </Tooltip>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/contacts"
+                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                      >
+                        <Contact className="h-4 w-4" />
+                        {!collapsed && <span>Contacts</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">CRM - Vendors, regulators & contacts</TooltipContent>
+                </Tooltip>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

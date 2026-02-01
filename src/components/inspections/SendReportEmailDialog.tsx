@@ -14,9 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useSendReportEmail } from "@/hooks/useReportEmails";
 import { generatePDFBase64 } from "@/lib/generatePDF";
-import { X, Loader2, Mail, Paperclip, Send } from "lucide-react";
+import { X, Loader2, Mail, Paperclip, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { ContactPicker } from "@/components/crm/ContactPicker";
 
 interface SendReportEmailDialogProps {
   open: boolean;
@@ -151,7 +152,19 @@ export function SendReportEmailDialog({
         <div className="space-y-4 py-4">
           {/* Recipients */}
           <div className="space-y-2">
-            <Label htmlFor="recipients">To</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="recipients">To</Label>
+              <ContactPicker
+                selectedEmails={recipients}
+                onSelect={setRecipients}
+                trigger={
+                  <Button variant="ghost" size="sm" className="h-7 gap-1">
+                    <Users className="h-3 w-3" />
+                    From Contacts
+                  </Button>
+                }
+              />
+            </div>
             <div className="flex flex-wrap gap-2 p-2 min-h-[42px] border rounded-md bg-background">
               {recipients.map((email) => (
                 <Badge
@@ -181,7 +194,7 @@ export function SendReportEmailDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Press Enter or comma to add multiple recipients
+              Press Enter or comma to add recipients, or select from your contacts
             </p>
           </div>
 
