@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,8 @@ import {
   Play,
   Lock,
   FileText,
-  Plus
+  Plus,
+  History
 } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 
@@ -222,10 +224,18 @@ export default function DailyGroundsPage() {
             {recentInspections.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Recent Inspections
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Recent Inspections
+                    </CardTitle>
+                    <Link to="/inspections/history">
+                      <Button variant="ghost" size="sm" className="text-xs gap-1">
+                        <History className="h-3 w-3" />
+                        View All
+                      </Button>
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {recentInspections.map((inspection) => {
