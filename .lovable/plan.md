@@ -1,382 +1,324 @@
 
-# Inspection Review Workflow & Addendum System
+# Implementation Plan: Voice Dictation + Complete Inspection Workflow
 
 ## Overview
 
-This plan implements a professional inspection lifecycle with supervisor review, automatic issue creation from defects, redirect-on-completion, and an addendum system that prevents editing completed reports while allowing appended corrections.
+This plan addresses three main areas:
+1. **Reduce assets to 5 per property** (not 38)
+2. **Add voice dictation everywhere there's text input**
+3. **Complete the 6-point inspection workflow** that was only partially implemented
 
 ---
 
-## Part 1: Database Schema Changes
+## Current Status Assessment
 
-### 1.1 Add Review Workflow Columns to `daily_inspections`
+### What's Already Done (Database Only)
+- Review status columns added to `daily_inspections` table
+- `daily_inspection_addendums` table created
+- `issue_id` column added to `daily_inspection_items`
 
-New columns for the review lifecycle:
+### What's NOT Done (UI/Logic)
+1. **Post-completion redirect** - Wizard stays on page instead of going to dashboard
+2. **Supervisor review interface** - No review queue page exists
+3. **Issue creation from defects** - No database trigger to auto-create issues
+4. **Unified issues dashboard** - `daily_grounds` not added to issue source enum
+5. **No direct editing after completion** - Still shows "View or Edit" button
+6. **Addendum system** - No UI components built yet
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `review_status` | ENUM | `pending_review`, `approved`, `needs_revision`, `rejected` |
-| `reviewed_by` | UUID | Supervisor who reviewed |
-| `reviewed_at` | TIMESTAMP | When reviewed |
-| `reviewer_notes` | TEXT | Feedback from supervisor |
-| `submitted_at` | TIMESTAMP | When inspector submitted |
+---
 
-### 1.2 New `daily_inspection_addendums` Table
+## Part 1: Reduce Assets to 5 Per Property
 
-Stores amendments to completed inspections:
+### Current State
+- Riverside Manor: 38 assets
+- Glorieta Gardens: 38 assets
 
-```text
-daily_inspection_addendums
-- id (uuid)
-- daily_inspection_id (uuid) - parent inspection
-- created_by (uuid) - who created addendum
-- content (text) - addendum text
-- attachments (text[]) - additional files
-- created_at (timestamp)
+### Action
+Delete excess assets, keeping only 5 per property:
+- 2 Cleanouts
+- 2 Catch Basins  
+- 1 General Grounds
+
+SQL to execute:
+```sql
+-- Keep first 2 cleanouts, first 2 catch basins, first general_grounds per property
+-- Delete the rest
 ```
 
-### 1.3 Update `daily_inspection_items` Table
-
-Add flag to track if item created an issue:
-
-| Column | Type | Purpose |
-|--------|------|---------|
-| `issue_id` | UUID | Links to created issue (if defect) |
-
 ---
 
-## Part 2: Review Status Workflow
+## Part 2: Universal Voice Dictation
 
-### 2.1 Status Flow Diagram
+### Design: VoiceDictationTextarea Component
+
+Create a composite component that wraps Textarea with built-in voice:
 
 ```text
-Inspector submits
-       |
-       v
-+----------------+
-| pending_review |  <-- Supervisor sees in queue
-+----------------+
-       |
-  Supervisor action
-       |
-  +----+----+----+
-  |         |    |
-  v         v    v
-+--------+ +--------+ +--------+
-|approved| |needs   | |rejected|
-|        | |revision|  |        |
-+--------+ +--------+ +--------+
-              |
-              v
-     Inspector revises
-     (via addendum only)
+VoiceDictationTextarea
+├── Textarea (standard input)
+└── VoiceDictation button (inline or adjacent)
 ```
 
-### 2.2 Review Permissions by Role
+### Files Needing Voice Integration
 
-| Role | Can Submit | Can Review | Can View All |
-|------|------------|------------|--------------|
-| inspector | Yes | No | Own only |
-| superintendent | Yes | Yes | Own property |
-| manager | Yes | Yes | All |
-| admin | Yes | Yes | All |
+| Component | Text Fields |
+|-----------|-------------|
+| `AssetCheckCard.tsx` | Defect description, Quick notes |
+| `IssueDialog.tsx` | Description |
+| `IssueConversation.tsx` | Comment input |
+| `RFIDialog.tsx` | Question |
+| `RFIDetailSheet.tsx` | Response |
+| `ChangeOrderDialog.tsx` | Description |
+| `EnhancedDailyReportDialog.tsx` | Work performed, Issues, Safety notes, Delays |
+| `MentionInput.tsx` | Comment content |
+| `WorkOrderDetailSheet.tsx` | Notes/descriptions |
+| `PunchItemDialog.tsx` | Description |
 
----
+### Implementation Approach
 
-## Part 3: Automatic Issue Creation
-
-### 3.1 Trigger Logic
-
-When an inspection is approved, automatically create Issues from items with `defect_found` status:
-
-- Source: `daily_grounds` (new enum value for issue_source)
-- Severity: Map from defect type or default to `moderate`
-- Property: From inspection
-- Title: Asset name + "Defect Found"
-- Description: Include notes, defect description
-- Photo URLs: Copied from inspection item
-
-### 3.2 Link Back to Source
-
-Each created issue links back via `daily_inspection_item_id` field on issues table (new column).
+1. Create `VoiceDictationTextarea` wrapper component
+2. Add `onTranscript` prop that appends dictated text
+3. Replace standard Textarea usage across all forms
 
 ---
 
-## Part 4: Post-Completion Redirect
+## Part 3: Complete the 6-Point Workflow
 
-### 4.1 Updated Wizard Flow
+### 3.1 Post-Completion Redirect
 
-When inspector clicks "Submit Inspection":
+**File:** `src/components/inspections/DailyInspectionWizard.tsx`
 
-1. Update inspection status to `completed`
-2. Set `review_status` to `pending_review`
-3. Set `submitted_at` timestamp
-4. Show success toast with summary
-5. **Redirect to Dashboard** using `react-router-dom` navigate
+Update `handleSubmit`:
+```typescript
+import { useNavigate } from 'react-router-dom';
 
-### 4.2 Dashboard Integration
+const navigate = useNavigate();
 
-Add "Pending Reviews" section to Dashboard for supervisors/managers:
-- Count of inspections awaiting review
-- Quick action to go to review queue
+const handleSubmit = async () => {
+  await updateInspection.mutateAsync({
+    id: inspection.id,
+    general_notes: generalNotes,
+    attachments,
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    review_status: 'pending_review',  // NEW
+    submitted_at: new Date().toISOString(),  // NEW
+  });
+  
+  toast.success('Inspection submitted for review!');
+  navigate('/');  // Redirect to dashboard
+};
+```
 
----
+### 3.2 Supervisor Review Interface
 
-## Part 5: Supervisor Review Interface
+**New Files:**
+- `src/pages/inspections/InspectionReviewPage.tsx` - Review queue
+- `src/components/inspections/InspectionReviewSheet.tsx` - Detail view
+- `src/hooks/useInspectionReview.ts` - Review hooks
 
-### 5.1 New Page: `/inspections/review`
-
-Review queue for supervisors showing:
-- List of pending inspections
+**Features:**
+- List all inspections with `review_status = 'pending_review'`
 - Filter by property, date, inspector
-- Quick approve/reject actions
+- Approve / Request Revision / Reject actions
+- Reviewer notes field
 
-### 5.2 Review Detail View
+**Sidebar Update:** Add "Review Queue" link for managers/admins
 
-When viewing a pending inspection:
-- Read-only view of all asset checks
-- Photos gallery
-- General notes
-- Approve / Request Revision / Reject buttons
-- Add reviewer notes field
+### 3.3 Automatic Issue Creation from Defects
 
-### 5.3 New Components
+**Database Trigger:**
+```sql
+CREATE OR REPLACE FUNCTION create_issues_from_approved_inspection()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.review_status = 'approved' AND 
+     (OLD.review_status IS NULL OR OLD.review_status != 'approved') THEN
+    
+    INSERT INTO issues (property_id, source_module, severity, ...)
+    SELECT 
+      NEW.property_id,
+      'daily_grounds',
+      'moderate',
+      ...
+    FROM daily_inspection_items
+    WHERE daily_inspection_id = NEW.id
+      AND status = 'defect_found'
+      AND issue_id IS NULL;
+      
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-| Component | Purpose |
-|-----------|---------|
-| `InspectionReviewPage.tsx` | Review queue page |
-| `InspectionReviewSheet.tsx` | Slide-out detail view |
-| `ReviewActionButtons.tsx` | Approve/Reject controls |
+CREATE TRIGGER trigger_create_issues_on_approval
+AFTER UPDATE ON daily_inspections
+FOR EACH ROW
+EXECUTE FUNCTION create_issues_from_approved_inspection();
+```
 
----
+**Also add `daily_grounds` to issue_source enum:**
+```sql
+ALTER TYPE issue_source ADD VALUE 'daily_grounds';
+```
 
-## Part 6: Addendum System
+### 3.4 Unified Issues Dashboard
 
-### 6.1 Addendum UI
+The Issues page already shows all sources. Once `daily_grounds` is added to the enum:
+- New issues from approved inspections appear automatically
+- Source badge shows "DAILY_GROUNDS"
+- Existing filters work
 
-For completed inspections, show:
-- Locked icon indicating "Report Finalized"
-- "Add Addendum" button
-- List of existing addendums with timestamps
+### 3.5 No Direct Editing After Completion
 
-### 6.2 Addendum Dialog
+**File:** `src/pages/inspections/DailyGroundsPage.tsx`
 
-Simple form:
-- Rich text area for addendum content
+Update completed inspection display:
+```typescript
+{todayInspection?.status === 'completed' ? (
+  <div className="text-center space-y-3">
+    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100">
+      <Lock className="h-7 w-7 text-green-600" />
+    </div>
+    <div>
+      <h3 className="font-semibold">Today's Inspection Complete!</h3>
+      <p className="text-sm text-muted-foreground">
+        Status: {todayInspection.review_status || 'Pending Review'}
+      </p>
+    </div>
+    <div className="flex gap-2 justify-center">
+      <Button variant="outline" onClick={() => setShowViewOnly(true)}>
+        View Report
+      </Button>
+      <Button variant="outline" onClick={() => setShowAddendum(true)}>
+        Add Addendum
+      </Button>
+    </div>
+  </div>
+)}
+```
+
+### 3.6 Addendum System
+
+**New Files:**
+- `src/components/inspections/AddendumDialog.tsx` - Create addendum
+- `src/components/inspections/AddendumList.tsx` - Display addendums
+- `src/hooks/useInspectionAddendums.ts` - CRUD hooks
+
+**AddendumDialog Features:**
+- Rich text content area (with voice dictation)
 - Attachment upload
 - Submit button
+- Links to parent inspection
 
-### 6.3 Display
-
-Addendums appear at bottom of inspection view:
+**Display:**
+- Addendums shown below inspection report
 - Chronological order
 - Author name + timestamp
-- Full content with attachments
+- Cannot be edited after creation
+
+### 3.7 Dashboard: Pending Reviews Section
+
+**File:** `src/pages/Dashboard.tsx`
+
+Add for supervisors/managers:
+```typescript
+// Pending Reviews Card (for managers)
+{canReview && pendingReviewCount > 0 && (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <ClipboardCheck className="h-5 w-5" />
+        Pending Reviews
+        <Badge variant="destructive">{pendingReviewCount}</Badge>
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Button asChild>
+        <Link to="/inspections/review">Review Inspections</Link>
+      </Button>
+    </CardContent>
+  </Card>
+)}
+```
 
 ---
 
-## Part 7: Unified Issues Dashboard
+## Part 4: Implementation Order
 
-### 7.1 Issue Source Integration
+### Phase 1: Database & Quick Fixes
+1. Delete excess assets (keep 5 per property)
+2. Add `daily_grounds` to issue_source enum
+3. Create trigger for issue creation on approval
+4. Update DailyInspectionWizard with redirect + review_status
 
-Add `daily_grounds` to issue source enum:
-- Issues page already shows all sources
-- New issues from daily inspections appear automatically
-- Filtered by source module
+### Phase 2: Lock & Addendum
+5. Update DailyGroundsPage to lock completed inspections
+6. Create AddendumDialog component
+7. Create AddendumList component
+8. Create useInspectionAddendums hook
 
-### 7.2 Visibility
+### Phase 3: Voice Everywhere
+9. Create VoiceDictationTextarea component
+10. Update AssetCheckCard with voice
+11. Update all form dialogs with voice capability
 
-All roles see the same Issues dashboard:
-- Filter by property (existing)
-- Filter by source (existing)
-- New source badge: "Daily Grounds"
+### Phase 4: Supervisor Review
+12. Create InspectionReviewPage
+13. Create InspectionReviewSheet
+14. Create useInspectionReview hook
+15. Update AppSidebar with Review Queue link
+16. Update Dashboard with pending reviews section
 
 ---
 
-## Part 8: Implementation Files
+## File Changes Summary
 
-### New Files
-
+### New Files (10)
 ```text
-src/pages/inspections/
-  InspectionReviewPage.tsx     # Supervisor review queue
-
-src/components/inspections/
-  InspectionReviewSheet.tsx    # Review detail slide-out
-  AddendumDialog.tsx           # Add addendum form
-  AddendumList.tsx             # Display addendums
-  ReviewActionButtons.tsx      # Approve/Reject controls
-
-src/hooks/
-  useInspectionReview.ts       # Review CRUD operations
-  useInspectionAddendums.ts    # Addendum CRUD operations
+src/components/ui/voice-dictation-textarea.tsx
+src/components/inspections/AddendumDialog.tsx
+src/components/inspections/AddendumList.tsx
+src/components/inspections/InspectionReviewSheet.tsx
+src/pages/inspections/InspectionReviewPage.tsx
+src/hooks/useInspectionAddendums.ts
+src/hooks/useInspectionReview.ts
 ```
 
-### Modified Files
-
+### Modified Files (12)
 ```text
-src/components/inspections/DailyInspectionWizard.tsx
-  - Add useNavigate for redirect
-  - Update handleSubmit to redirect to dashboard
-
-src/pages/inspections/DailyGroundsPage.tsx
-  - Show lock icon for completed inspections
-  - Show "Add Addendum" for completed inspections
-  - Prevent editing completed inspections
-
-src/pages/Dashboard.tsx
-  - Add "Pending Reviews" section for supervisors
-
-src/hooks/useDailyInspections.ts
-  - Add review status fields to interface
-  - Add usePendingReviews hook
-  - Add useSubmitForReview mutation
-  - Add useReviewInspection mutation
-
-src/components/layout/AppSidebar.tsx
-  - Add "Review Queue" nav item for supervisors
+src/components/inspections/DailyInspectionWizard.tsx - redirect + review_status
+src/components/inspections/AssetCheckCard.tsx - add voice
+src/pages/inspections/DailyGroundsPage.tsx - lock editing, show addendums
+src/pages/Dashboard.tsx - pending reviews section
+src/components/layout/AppSidebar.tsx - Review Queue link
+src/components/issues/IssueDialog.tsx - add voice
+src/components/projects/RFIDialog.tsx - add voice
+src/components/projects/RFIDetailSheet.tsx - add voice
+src/components/projects/ChangeOrderDialog.tsx - add voice
+src/components/projects/EnhancedDailyReportDialog.tsx - add voice
+src/components/projects/PunchItemDialog.tsx - add voice
+src/App.tsx - add /inspections/review route
 ```
+
+### Database Migrations (3)
+1. Delete excess assets to keep 5 per property
+2. Add `daily_grounds` to issue_source enum
+3. Create trigger for auto-issue creation
 
 ---
 
-## Part 9: Database Migration SQL
+## Voice Dictation Technical Details
 
-### Migration: Add Review Workflow
+Uses existing ElevenLabs integration (`elevenlabs-transcribe` edge function) with `scribe_v2` model.
 
-```sql
--- Review status enum
-CREATE TYPE daily_inspection_review_status AS ENUM (
-  'pending_review',
-  'approved', 
-  'needs_revision',
-  'rejected'
-);
+The VoiceDictationTextarea component:
+```typescript
+interface VoiceDictationTextareaProps 
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  onValueChange?: (value: string) => void;
+}
 
--- Add review columns to daily_inspections
-ALTER TABLE daily_inspections
-ADD COLUMN review_status daily_inspection_review_status,
-ADD COLUMN reviewed_by UUID REFERENCES auth.users(id),
-ADD COLUMN reviewed_at TIMESTAMPTZ,
-ADD COLUMN reviewer_notes TEXT,
-ADD COLUMN submitted_at TIMESTAMPTZ;
-
--- Addendums table
-CREATE TABLE daily_inspection_addendums (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  daily_inspection_id UUID NOT NULL REFERENCES daily_inspections(id),
-  created_by UUID REFERENCES auth.users(id),
-  content TEXT NOT NULL,
-  attachments TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Link inspection items to issues
-ALTER TABLE daily_inspection_items
-ADD COLUMN issue_id UUID REFERENCES issues(id);
-
--- Add daily_grounds source
--- (Depends on current enum - may need ALTER TYPE)
-
--- RLS for addendums
-ALTER TABLE daily_inspection_addendums ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can view addendums"
-ON daily_inspection_addendums FOR SELECT
-USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "Authenticated users can create addendums"
-ON daily_inspection_addendums FOR INSERT
-WITH CHECK (auth.uid() = created_by);
+// Renders Textarea with microphone button inline
+// Appends transcribed text to existing content
 ```
-
----
-
-## Part 10: User Experience Flow
-
-### Inspector Flow
-
-1. Start daily inspection
-2. Check all assets with photos
-3. Add notes, attachments
-4. Click "Submit Inspection"
-5. **Redirect to Dashboard**
-6. See status: "Pending Review"
-7. Cannot edit - only add addendum if needed
-
-### Supervisor Flow
-
-1. See notification badge: "3 Pending Reviews"
-2. Click to open Review Queue
-3. Select inspection to review
-4. View all asset checks, photos, notes
-5. Either:
-   - **Approve**: Issues created from defects
-   - **Request Revision**: Inspector notified
-   - **Reject**: With notes
-
-### After Approval
-
-1. Issues auto-created from defects
-2. Appear in unified Issues dashboard
-3. Assigned per normal workflow
-4. Work orders can be created
-5. Everyone sees same issues
-
----
-
-## Part 11: Implementation Order
-
-### Phase 1: Core Database & Redirect
-1. Run database migration (review columns, addendums table)
-2. Update wizard to redirect on completion
-3. Update inspection interfaces with new fields
-
-### Phase 2: Addendum System
-4. Create AddendumDialog component
-5. Create AddendumList component
-6. Update DailyGroundsPage to show addendums
-7. Prevent editing completed inspections
-
-### Phase 3: Supervisor Review
-8. Create InspectionReviewPage
-9. Create InspectionReviewSheet
-10. Add review hooks
-11. Update sidebar with Review Queue link
-
-### Phase 4: Issue Integration
-12. Add trigger/function to create issues from approved defects
-13. Add daily_grounds source to issues
-14. Test end-to-end flow
-
----
-
-## Technical Notes
-
-### Preventing Edits
-
-In `DailyGroundsPage.tsx`, when showing completed inspection:
-- Hide "View or Edit" button
-- Show "View Report" + "Add Addendum" instead
-- Wizard receives `readOnly` prop
-
-### Navigation
-
-Use `react-router-dom`:
-```tsx
-import { useNavigate } from 'react-router-dom';
-const navigate = useNavigate();
-// After submit:
-navigate('/');
-```
-
-### Role Checking
-
-Leverage existing `has_role` function:
-```tsx
-// Client-side (for UI only)
-const canReview = userRoles.includes('manager') || 
-                  userRoles.includes('superintendent') || 
-                  userRoles.includes('admin');
-```
-
-RLS policies enforce server-side.
