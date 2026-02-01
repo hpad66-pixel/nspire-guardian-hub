@@ -153,6 +153,57 @@ export type Database = {
           },
         ]
       }
+      company_branding: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          company_name: string
+          created_at: string
+          email: string | null
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          phone: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          company_name: string
+          created_at?: string
+          email?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          company_name?: string
+          created_at?: string
+          email?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       daily_inspection_addendums: {
         Row: {
           attachments: string[] | null
@@ -1145,6 +1196,118 @@ export type Database = {
           },
         ]
       }
+      project_proposals: {
+        Row: {
+          ai_generated: boolean | null
+          ai_prompt: string | null
+          attachment_ids: string[] | null
+          content_html: string | null
+          content_text: string | null
+          created_at: string
+          created_by: string
+          id: string
+          include_letterhead: boolean | null
+          include_logo: boolean | null
+          letterhead_config: Json | null
+          parent_version_id: string | null
+          project_id: string
+          proposal_number: number
+          proposal_type: Database["public"]["Enums"]["proposal_type"]
+          recipient_address: string | null
+          recipient_company: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          sent_by: string | null
+          sent_email_id: string | null
+          status: Database["public"]["Enums"]["proposal_status"]
+          subject: string | null
+          title: string
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          ai_prompt?: string | null
+          attachment_ids?: string[] | null
+          content_html?: string | null
+          content_text?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          include_letterhead?: boolean | null
+          include_logo?: boolean | null
+          letterhead_config?: Json | null
+          parent_version_id?: string | null
+          project_id: string
+          proposal_number?: number
+          proposal_type?: Database["public"]["Enums"]["proposal_type"]
+          recipient_address?: string | null
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_email_id?: string | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          subject?: string | null
+          title: string
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          ai_generated?: boolean | null
+          ai_prompt?: string | null
+          attachment_ids?: string[] | null
+          content_html?: string | null
+          content_text?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          include_letterhead?: boolean | null
+          include_logo?: boolean | null
+          letterhead_config?: Json | null
+          parent_version_id?: string | null
+          project_id?: string
+          proposal_number?: number
+          proposal_type?: Database["public"]["Enums"]["proposal_type"]
+          recipient_address?: string | null
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_email_id?: string | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_proposals_parent_version_id_fkey"
+            columns: ["parent_version_id"]
+            isOneToOne: false
+            referencedRelation: "project_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_proposals_sent_email_id_fkey"
+            columns: ["sent_email_id"]
+            isOneToOne: false
+            referencedRelation: "report_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_rfis: {
         Row: {
           assigned_to: string | null
@@ -1435,6 +1598,42 @@ export type Database = {
         }
         Relationships: []
       }
+      proposal_templates: {
+        Row: {
+          content_template: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          prompt_template: string
+          proposal_type: Database["public"]["Enums"]["proposal_type"]
+        }
+        Insert: {
+          content_template?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          prompt_template: string
+          proposal_type: Database["public"]["Enums"]["proposal_type"]
+        }
+        Update: {
+          content_template?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          prompt_template?: string
+          proposal_type?: Database["public"]["Enums"]["proposal_type"]
+        }
+        Relationships: []
+      }
       punch_items: {
         Row: {
           after_photos: string[] | null
@@ -1507,6 +1706,7 @@ export type Database = {
           error_message: string | null
           id: string
           is_read: boolean | null
+          proposal_id: string | null
           recipients: string[]
           report_id: string | null
           report_type: string | null
@@ -1524,6 +1724,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_read?: boolean | null
+          proposal_id?: string | null
           recipients: string[]
           report_id?: string | null
           report_type?: string | null
@@ -1541,6 +1742,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_read?: boolean | null
+          proposal_id?: string | null
           recipients?: string[]
           report_id?: string | null
           report_type?: string | null
@@ -1555,6 +1757,13 @@ export type Database = {
             columns: ["daily_inspection_id"]
             isOneToOne: false
             referencedRelation: "daily_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "project_proposals"
             referencedColumns: ["id"]
           },
           {
@@ -1780,6 +1989,15 @@ export type Database = {
         | "ada"
         | "other"
       project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
+      proposal_status: "draft" | "review" | "approved" | "sent" | "archived"
+      proposal_type:
+        | "project_proposal"
+        | "change_order_request"
+        | "scope_amendment"
+        | "cost_estimate"
+        | "letter"
+        | "memo"
+        | "correspondence"
       punch_status: "open" | "in_progress" | "completed" | "verified"
       requirement_frequency:
         | "one_time"
@@ -1990,6 +2208,16 @@ export const Constants = {
         "other",
       ],
       project_status: ["planning", "active", "on_hold", "completed", "closed"],
+      proposal_status: ["draft", "review", "approved", "sent", "archived"],
+      proposal_type: [
+        "project_proposal",
+        "change_order_request",
+        "scope_amendment",
+        "cost_estimate",
+        "letter",
+        "memo",
+        "correspondence",
+      ],
       punch_status: ["open", "in_progress", "completed", "verified"],
       requirement_frequency: [
         "one_time",
