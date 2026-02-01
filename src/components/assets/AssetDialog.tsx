@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateAsset, useUpdateAsset, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
@@ -246,12 +246,13 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
 
           <div className="space-y-2">
             <Label htmlFor="location">Location Description</Label>
-            <Textarea
+            <VoiceDictationTextareaWithAI
               id="location"
               value={formData.location_description}
-              onChange={(e) => setFormData({ ...formData, location_description: e.target.value })}
+              onValueChange={(val) => setFormData({ ...formData, location_description: val })}
               placeholder="e.g., North parking lot near building A"
               rows={2}
+              context="description"
             />
           </div>
 

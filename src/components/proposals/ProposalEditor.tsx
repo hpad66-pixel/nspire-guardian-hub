@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import {
   Select,
   SelectContent,
@@ -273,11 +273,12 @@ export function ProposalEditor({
 
                   <div className="space-y-2">
                     <Label>Additional Context</Label>
-                    <Textarea
+                    <VoiceDictationTextareaWithAI
                       value={userNotes}
-                      onChange={(e) => setUserNotes(e.target.value)}
+                      onValueChange={setUserNotes}
                       placeholder="Add any specific requirements, key points, or context for the AI to consider..."
                       rows={3}
+                      context="notes"
                     />
                   </div>
 

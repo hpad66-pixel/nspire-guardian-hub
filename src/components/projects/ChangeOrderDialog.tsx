@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import {
   Select,
   SelectContent,
@@ -157,10 +157,12 @@ export function ChangeOrderDialog({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <VoiceDictationTextareaWithAI
                       placeholder="Describe the scope change and justification..."
                       className="resize-none min-h-[100px]"
-                      {...field}
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                      context="description"
                     />
                   </FormControl>
                   <FormMessage />

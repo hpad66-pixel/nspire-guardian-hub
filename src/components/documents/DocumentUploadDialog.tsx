@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, File, X } from 'lucide-react';
 import { useUploadOrganizationDocument, DOCUMENT_FOLDERS } from '@/hooks/useDocuments';
@@ -191,12 +191,13 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea
+            <VoiceDictationTextareaWithAI
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onValueChange={setDescription}
               placeholder="Optional description..."
               rows={2}
+              context="notes"
             />
           </div>
           

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.elevenlabs-transcribe]
 verify_jwt = false
+
+[functions.polish-text]
+verify_jwt = false

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
@@ -121,23 +121,25 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
 
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
+              <VoiceDictationTextareaWithAI
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the project..."
+                onValueChange={(val) => setFormData({ ...formData, description: val })}
+                placeholder="Brief description of the project... Use voice or AI to enhance."
                 rows={2}
+                context="description"
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="scope">Scope</Label>
-              <Textarea
+              <VoiceDictationTextareaWithAI
                 id="scope"
                 value={formData.scope}
-                onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
-                placeholder="Detailed scope of work..."
+                onValueChange={(val) => setFormData({ ...formData, scope: val })}
+                placeholder="Detailed scope of work... Use voice or AI to enhance."
                 rows={3}
+                context="scope"
               />
             </div>
 

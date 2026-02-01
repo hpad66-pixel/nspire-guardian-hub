@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -191,11 +191,12 @@ export function ProposalSendDialog({
 
           <div className="space-y-2">
             <Label>Additional Message (optional)</Label>
-            <Textarea
+            <VoiceDictationTextareaWithAI
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onValueChange={setMessage}
               placeholder="Add a personal note..."
               rows={3}
+              context="correspondence"
             />
           </div>
         </div>

@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import {
   Select,
   SelectContent,
@@ -325,10 +325,12 @@ export function PermitDialog({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <VoiceDictationTextareaWithAI
                       placeholder="Brief description of the permit..."
                       className="min-h-[80px]"
-                      {...field} 
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                      context="description"
                     />
                   </FormControl>
                   <FormMessage />
@@ -343,10 +345,12 @@ export function PermitDialog({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <VoiceDictationTextareaWithAI
                       placeholder="Additional notes..."
                       className="min-h-[60px]"
-                      {...field} 
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                      context="notes"
                     />
                   </FormControl>
                   <FormMessage />
