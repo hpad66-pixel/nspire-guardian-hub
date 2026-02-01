@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, UserCheck, Archive, Building2, Shield, Plus, Search } from 'lucide-react';
+import { Users, UserCheck, Archive, Building2, Shield, Plus, Search, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,12 @@ import { usePeople, usePeopleStats, type PersonWithAssignments } from '@/hooks/u
 import { useRoleDefinitions } from '@/hooks/useRoleDefinitions';
 import { useProperties } from '@/hooks/useProperties';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/hooks/useAuth';
 import { PersonDetailSheet } from '@/components/people/PersonDetailSheet';
 import { PersonDialog } from '@/components/people/PersonDialog';
 import { RolesPermissionsTab } from '@/components/people/RolesPermissionsTab';
 import { PeopleTable } from '@/components/people/PeopleTable';
+import { InviteUserDialog } from '@/components/people/InviteUserDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -24,9 +26,11 @@ export default function PeoplePage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [selectedPerson, setSelectedPerson] = useState<PersonWithAssignments | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
   const { canCreate } = useUserPermissions();
+  const { userRole } = useAuth();
 
   const { data: stats } = usePeopleStats();
   const { data: roles } = useRoleDefinitions();
@@ -55,12 +59,20 @@ export default function PeoplePage() {
             Manage team members across all properties
           </p>
         </div>
-        {canCreate('people') && (
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Person
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {(userRole === 'admin' || userRole === 'manager') && (
+            <Button variant="outline" onClick={() => setShowInviteDialog(true)}>
+              <Mail className="mr-2 h-4 w-4" />
+              Invite User
+            </Button>
+          )}
+          {canCreate('people') && (
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Person
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -233,6 +245,12 @@ export default function PeoplePage() {
       <PersonDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
+      />
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={showInviteDialog}
+        onOpenChange={setShowInviteDialog}
       />
     </div>
   );
