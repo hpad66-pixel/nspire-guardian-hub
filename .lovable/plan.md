@@ -1,379 +1,418 @@
 
-# Implementation Plan: Comprehensive QA/QC and Feature Completion
+# Implementation Plan: Training Academy Module
 
 ## Executive Summary
 
-This plan addresses six critical areas:
-1. **Implement Placeholder Features** - Occupancy Tracking, Mailbox Integration (already functional), QR Code Scanning
-2. **Module Visibility Control** - Show/hide navigation based on activation status
-3. **Navigation Organization & Audit** - Ensure all features are accessible with proper tooltips
-4. **Data Filtering** - Add search/filter capabilities to all data tables
-5. **Voice Dictation Editability** - Verify all voice dictation fields allow post-transcription editing
-6. **Tooltip Implementation** - Add contextual help throughout the application
+This plan creates a comprehensive Training Academy page designed for operational, hands-on learning for property management staff, subcontractors, and employees. The page will integrate LearnWorld LMS access, embedded eBooks/flipbooks, and a feedback system to capture learner inputs.
 
 ---
 
-## Part 1: Current State Analysis
+## Part 1: Design Philosophy
 
-### Placeholder Features Status
-| Feature | Current State | Action Required |
-|---------|---------------|-----------------|
-| Occupancy Tracking | Toggle exists in Settings, no functionality | Implement basic occupancy management |
-| Email Inbox Integration | **Already functional** at `/inbox` | Remove "Coming Soon" badge, fully integrate |
-| QR Code Scanning | Toggle exists in Settings, no functionality | Implement QR scanning for assets |
+### Operational Learning Focus
+Unlike academic learning management systems, this training page prioritizes:
+- **Hands-on skills** - Property inspections, maintenance procedures, safety protocols
+- **Quick access** - One-click access to LearnWorld courses and eBook resources
+- **Role-based content** - Content organized by job function (Inspector, Superintendent, etc.)
+- **Onboarding workflows** - New employee/subcontractor orientation paths
+- **Feedback loop** - Capture training requests and suggestions from the field
 
-### Voice Dictation Components Status
-| Component | Uses | Editable After? | Action |
-|-----------|------|-----------------|--------|
-| `VoiceDictationTextareaWithAI` | ProjectDialog, ChangeOrderDialog, PermitDialog, AssetDialog, ProposalEditor, etc. | Yes - textarea with `readOnly={false}` | Verify in all 8 locations |
-| `VoiceDictationTextarea` (basic) | IssueDialog, RFIDialog, PunchItemDialog, AddendumDialog, InspectionReviewSheet, EnhancedDailyReportDialog | Yes - standard textarea | Upgrade to include AI polish |
-
-### Pages Missing Search/Filters
-| Page | Current Filters | Needs Added |
-|------|-----------------|-------------|
-| PropertiesPage | None | Search bar, status filter |
-| WorkOrdersPage | Status, Priority | Search bar |
-| PeoplePage | Property, Role, Status | Search bar |
-| MailboxPage | Folder only | Search bar, source module filter |
-| ReportsPage | None | Type filter |
+### Apple-Inspired Design
+Following the existing dashboard aesthetic:
+- Clean, minimalist interface with generous whitespace
+- Card-based content organization
+- Gradient accents for visual hierarchy
+- Smooth transitions and hover states
 
 ---
 
-## Part 2: Occupancy Tracking Module
+## Part 2: Page Structure
 
-### Implementation Scope
-Create a functional tenant/occupancy management system that:
-- Tracks tenant occupancy per unit
-- Manages lease dates and status
-- Provides occupancy analytics
+### Training Academy Layout
 
-### Database Schema
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ Training Academy                                                                     │
+│ Operational training resources for your team                                         │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐│
+│  │ Total Courses    │  │ Quick Reference  │  │ Team Members     │  │ Feedback     ││
+│  │      24          │  │ Guides           │  │ Enrolled         │  │ Requests     ││
+│  │                  │  │      12          │  │     18           │  │      5       ││
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────┘│
+│                                                                                      │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │ [All Training] [By Role] [Quick Start Guides] [eBooks] [Request Training]     │ │
+│  └────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                      │
+│  ═══════════════════════════════════════════════════════════════════════════════   │
+│                                                                                      │
+│  QUICK ACCESS                                                     [Open LearnWorld] │
+│  ─────────────                                                                       │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                              │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │   │
+│  │  │ 🎓          │  │ 🔧          │  │ 🛡️          │  │ 📋          │        │   │
+│  │  │ New Hire    │  │ Maintenance │  │ Safety      │  │ NSPIRE      │        │   │
+│  │  │ Onboarding  │  │ Essentials  │  │ Protocols   │  │ Compliance  │        │   │
+│  │  │             │  │             │  │             │  │             │        │   │
+│  │  │ 8 modules   │  │ 12 modules  │  │ 6 modules   │  │ 15 modules  │        │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │   │
+│  │                                                                              │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+│  eBook LIBRARY                                                                       │
+│  ─────────────                                                                       │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                              │   │
+│  │  ┌─────────────────────────────────────────────────────────────────────┐    │   │
+│  │  │                                                                     │    │   │
+│  │  │             [EMBEDDED FLIPBOOK iFrame]                              │    │   │
+│  │  │                                                                     │    │   │
+│  │  │             PRD Professional eBook                                  │    │   │
+│  │  │                                                                     │    │   │
+│  │  └─────────────────────────────────────────────────────────────────────┘    │   │
+│  │                                                                              │   │
+│  │  [← Previous]                                                [Next →]       │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+│  ROLE-BASED LEARNING PATHS                                                          │
+│  ─────────────────────────                                                           │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐            │
+│  │ Inspector Track    │  │ Superintendent     │  │ Property Manager   │            │
+│  │ 12 required courses│  │ Track              │  │ Track              │            │
+│  │                    │  │ 18 required courses│  │ 22 required courses│            │
+│  │ [View Path →]      │  │ [View Path →]      │  │ [View Path →]      │            │
+│  └────────────────────┘  └────────────────────┘  └────────────────────┘            │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tabs Structure
+
+| Tab | Content |
+|-----|---------|
+| **All Training** | Full catalog of courses and resources |
+| **By Role** | Learning paths organized by job function |
+| **Quick Start Guides** | Short, operational how-to guides |
+| **eBooks** | Embedded flipbook viewer with library navigation |
+| **Request Training** | Feedback form for training requests |
+
+---
+
+## Part 3: Database Schema
+
+### New Tables
+
+**1. `training_resources`** - Catalog of training materials
 ```sql
--- Tenant/Occupancy tracking table
-CREATE TABLE tenants (
+CREATE TABLE training_resources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  unit_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  lease_start DATE NOT NULL,
-  lease_end DATE,
-  rent_amount NUMERIC,
-  deposit_amount NUMERIC,
-  status TEXT NOT NULL DEFAULT 'active', -- active, notice_given, moved_out
-  move_in_date DATE,
-  move_out_date DATE,
-  notes TEXT,
+  title TEXT NOT NULL,
+  description TEXT,
+  resource_type TEXT NOT NULL, -- 'course', 'ebook', 'video', 'guide', 'document'
+  category TEXT NOT NULL, -- 'onboarding', 'maintenance', 'safety', 'compliance', 'operations'
+  target_roles app_role[] DEFAULT '{}', -- Which roles this is for
+  external_url TEXT, -- LearnWorld course URL
+  embed_code TEXT, -- For eBooks/flipbooks
+  thumbnail_url TEXT,
+  duration_minutes INTEGER,
+  is_required BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
-### New Files
-| File | Purpose |
-|------|---------|
-| `src/pages/occupancy/OccupancyPage.tsx` | Main occupancy dashboard |
-| `src/components/occupancy/TenantDialog.tsx` | Add/edit tenant |
-| `src/components/occupancy/TenantDetailSheet.tsx` | View tenant details |
-| `src/hooks/useTenants.ts` | Tenant CRUD operations |
-
-### Navigation
-- Add "Occupancy" link to sidebar under Platform section (conditionally shown when `occupancyEnabled`)
-
----
-
-## Part 3: QR Code Scanning Module
-
-### Implementation Scope
-Enable mobile-friendly QR scanning for quick asset identification:
-- Generate QR codes for each asset
-- Scan QR to navigate to asset details
-- Quick inspection start from QR scan
-
-### Implementation Approach
-1. Use browser native camera API for scanning (no heavy dependencies)
-2. Generate QR codes containing asset ID
-3. Create scanner component with camera access
-
-### New Files
-| File | Purpose |
-|------|---------|
-| `src/pages/qr/QRScannerPage.tsx` | QR scanner interface |
-| `src/components/qr/QRCodeGenerator.tsx` | Generate QR for assets |
-| `src/components/qr/QRScanner.tsx` | Camera-based scanner component |
-
-### Integration Points
-- Add QR code display to Asset cards
-- Add "Scan Asset" option in mobile navigation
-- Quick-start inspection from scanned asset
-
----
-
-## Part 4: Module Visibility Control
-
-### Current Issue
-- All core platform items show regardless of module activation
-- Inbox shows always but is labeled "Phase 2" in Settings
-
-### Solution
-Update `AppSidebar.tsx` to:
-1. Show Inbox link always (it's already functional)
-2. Conditionally show Occupancy when `occupancyEnabled`
-3. Add QR Scanner link when `qrScanningEnabled`
-4. Remove "Coming Soon" badges from functional features
-
-### Navigation Structure (Updated)
-```text
-Platform Section:
-├── Dashboard (always)
-├── Properties (always)
-├── Units (always)
-├── Assets (always)
-├── Issues (always)
-├── Work Orders (always)
-├── Documents (always)
-├── Permits (always)
-├── Inbox (always - functional)
-├── People (always)
-├── Reports (always)
-├── Occupancy (when occupancyEnabled) ← NEW
-└── QR Scanner (when qrScanningEnabled) ← NEW
-
-Daily Grounds Module: (when dailyGroundsEnabled)
-├── Today's Inspection
-├── History
-└── Review Queue
-
-NSPIRE Compliance Module: (when nspireEnabled)
-├── Dashboard
-├── Outside
-├── Inside
-└── Units
-
-Projects Module: (when projectsEnabled)
-├── All Projects
-└── Proposals (admin only)
-```
-
----
-
-## Part 5: Tooltip Implementation
-
-### Approach
-Wrap key navigation items and action buttons with `Tooltip` components to provide contextual help.
-
-### Priority Areas for Tooltips
-| Location | Element | Tooltip Text |
-|----------|---------|--------------|
-| Sidebar | Dashboard | "Overview of your property portfolio" |
-| Sidebar | Properties | "Manage your real estate properties" |
-| Sidebar | Units | "View and manage individual units" |
-| Sidebar | Assets | "Infrastructure and equipment inventory" |
-| Sidebar | Issues | "Track and resolve property issues" |
-| Sidebar | Work Orders | "Manage repair and maintenance tasks" |
-| Sidebar | Documents | "Organization-wide file library" |
-| Sidebar | Permits | "Compliance permits and requirements" |
-| Sidebar | Inbox | "Sent emails and communications" |
-| Sidebar | People | "Team member management" |
-| Sidebar | Reports | "Analytics and performance reports" |
-| Sidebar | Occupancy | "Tenant and lease management" |
-| Actions | + Add Property | "Add a new property to your portfolio" |
-| Actions | Voice Mic | "Click to record, click again to stop" |
-| Actions | Polish AI | "Use AI to improve and professionalize text" |
-
-### Implementation
-- Update `AppSidebar.tsx` to wrap menu items with tooltips
-- Add tooltips to all primary action buttons
-- Use consistent tooltip positioning (right side for sidebar, bottom for buttons)
-
----
-
-## Part 6: Search & Filter Additions
-
-### PropertiesPage
-```typescript
-// Add state
-const [searchQuery, setSearchQuery] = useState('');
-const [statusFilter, setStatusFilter] = useState<string>('all');
-
-// Add filter UI
-<div className="flex gap-4">
-  <div className="relative flex-1 max-w-sm">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
-    <Input
-      placeholder="Search properties..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      className="pl-10"
-    />
-  </div>
-  <Select value={statusFilter} onValueChange={setStatusFilter}>
-    <SelectTrigger className="w-[150px]">
-      <SelectValue placeholder="All Statuses" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">All Statuses</SelectItem>
-      <SelectItem value="active">Active</SelectItem>
-      <SelectItem value="inactive">Inactive</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-```
-
-### WorkOrdersPage
-- Add search input to existing filter row
-- Search across title, property name, defect description
-
-### PeoplePage
-- Already has filters, add search input
-
-### MailboxPage
-- Add source_module filter dropdown
-- Already has search via `searchQuery` state
-
----
-
-## Part 7: Voice Dictation Verification
-
-### Components Using VoiceDictationTextarea (basic)
-These should be upgraded to `VoiceDictationTextareaWithAI` for consistency:
-
-1. `IssueDialog.tsx` - Description field
-2. `RFIDialog.tsx` - Question field  
-3. `PunchItemDialog.tsx` - Description field
-4. `AddendumDialog.tsx` - Content field
-5. `InspectionReviewSheet.tsx` - Reviewer Notes field
-6. `EnhancedDailyReportDialog.tsx` - Multiple fields
-
-### Verification Checklist
-All voice dictation textareas should:
-- [x] Use controlled value prop
-- [x] Have onChange handler for typing
-- [x] Have onValueChange for programmatic updates
-- [x] Not have `readOnly` or `disabled` attributes
-- [x] Return focus after AI polish
-
-The `VoiceDictationTextareaWithAI` component already has `readOnly={false}` and focus return logic. The basic `VoiceDictationTextarea` should also work for editing since it's a standard textarea.
-
----
-
-## Part 8: Settings Page Updates
-
-### Remove "Coming Soon" Labels
-Update Settings page to:
-1. Remove "Coming Soon" badge from Occupancy (now functional)
-2. Change "Phase 2" badge on Email Inbox to "Available" (it's functional)
-3. Keep QR Scanning as "Phase 2" until fully implemented
-
-### Add Database Columns
+**2. `training_progress`** - Track user completion
 ```sql
--- Add to properties table for module persistence
-ALTER TABLE properties ADD COLUMN occupancy_enabled BOOLEAN DEFAULT false;
-ALTER TABLE properties ADD COLUMN qr_scanning_enabled BOOLEAN DEFAULT false;
+CREATE TABLE training_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  resource_id UUID NOT NULL REFERENCES training_resources(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'not_started', -- 'not_started', 'in_progress', 'completed'
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, resource_id)
+);
 ```
 
-### Update ModuleContext
-Map new module flags to database columns:
-```typescript
-const moduleColumnMap: Record<string, string> = {
-  nspireEnabled: 'nspire_enabled',
-  dailyGroundsEnabled: 'daily_grounds_enabled',
-  projectsEnabled: 'projects_enabled',
-  occupancyEnabled: 'occupancy_enabled',     // NEW
-  qrScanningEnabled: 'qr_scanning_enabled',  // NEW
-};
+**3. `training_requests`** - Feedback and requests from staff
+```sql
+CREATE TABLE training_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT, -- 'new_topic', 'improvement', 'question', 'resource_request'
+  priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'under_review', 'approved', 'implemented', 'declined'
+  admin_response TEXT,
+  responded_by UUID REFERENCES auth.users(id),
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### RLS Policies
+
+```sql
+-- training_resources: All authenticated users can view
+CREATE POLICY "Authenticated users can view training resources"
+  ON training_resources FOR SELECT
+  USING (auth.uid() IS NOT NULL AND is_active = true);
+
+CREATE POLICY "Admins can manage training resources"
+  ON training_resources FOR ALL
+  USING (has_role(auth.uid(), 'admin'));
+
+-- training_progress: Users can manage their own progress
+CREATE POLICY "Users can view own progress"
+  ON training_progress FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own progress"
+  ON training_progress FOR ALL
+  USING (auth.uid() = user_id);
+
+-- training_requests: Users can create and view own requests
+CREATE POLICY "Users can manage own requests"
+  ON training_requests FOR ALL
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all requests"
+  ON training_requests FOR SELECT
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
+
+CREATE POLICY "Admins can respond to requests"
+  ON training_requests FOR UPDATE
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
 ```
 
 ---
 
-## Part 9: Files to Create
+## Part 4: UI Components
+
+### Training Page Components
+
+| Component | Purpose |
+|-----------|---------|
+| `TrainingPage.tsx` | Main training academy page with tabs |
+| `TrainingCatalog.tsx` | Grid of training resources with filtering |
+| `LearningPathCard.tsx` | Role-based learning path display |
+| `EBookViewer.tsx` | Embedded flipbook/eBook component |
+| `TrainingRequestDialog.tsx` | Form for submitting training requests |
+| `TrainingProgressCard.tsx` | Individual resource progress display |
+| `QuickAccessCard.tsx` | Quick access category cards |
+
+### EBook Viewer Component
+
+```typescript
+// Handles the provided embed code beautifully
+function EBookViewer({ embedCode, title }: { embedCode: string; title: string }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="relative w-full aspect-[4/3] bg-muted">
+          {/* Embed iframe safely */}
+          <iframe
+            src={extractSrcFromEmbed(embedCode)}
+            className="absolute inset-0 w-full h-full border-0"
+            allowFullScreen
+            title={title}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Training Request Form
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ Request Training                                                                     │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  What type of request is this?                                                       │
+│  [○ New Topic] [○ Improvement] [○ Question] [○ Resource Request]                    │
+│                                                                                      │
+│  Title:                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
+│  │ e.g., "Need training on new HVAC systems"                                   │    │
+│  └─────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                      │
+│  Description:                                                                        │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
+│  │ Tell us what you need and why it would help your work...    [🎤] [✨ Polish]│    │
+│  │                                                                             │    │
+│  │                                                                             │    │
+│  └─────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                      │
+│  Priority:                                                                           │
+│  [Normal ▼]                                                                          │
+│                                                                                      │
+│                                              [Cancel]  [Submit Request]             │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 5: New Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/pages/occupancy/OccupancyPage.tsx` | Occupancy dashboard |
-| `src/components/occupancy/TenantDialog.tsx` | Tenant add/edit form |
-| `src/components/occupancy/TenantDetailSheet.tsx` | Tenant details view |
-| `src/hooks/useTenants.ts` | Tenant CRUD hooks |
-| `src/pages/qr/QRScannerPage.tsx` | QR scanner page |
-| `src/components/qr/QRCodeGenerator.tsx` | QR code generation |
-| `src/components/qr/QRScanner.tsx` | Camera scanner component |
+| `src/pages/training/TrainingPage.tsx` | Main training academy page |
+| `src/components/training/TrainingCatalog.tsx` | Resource catalog grid |
+| `src/components/training/LearningPathCard.tsx` | Role-based learning paths |
+| `src/components/training/EBookViewer.tsx` | Embedded eBook display |
+| `src/components/training/TrainingRequestDialog.tsx` | Training request form |
+| `src/components/training/QuickAccessCard.tsx` | Quick access category cards |
+| `src/hooks/useTrainingResources.ts` | CRUD for training resources |
+| `src/hooks/useTrainingProgress.ts` | Track user progress |
+| `src/hooks/useTrainingRequests.ts` | Training requests management |
 
 ---
 
-## Part 10: Files to Modify
+## Part 6: Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/layout/AppSidebar.tsx` | Add tooltips, conditional nav for Occupancy & QR |
-| `src/pages/settings/SettingsPage.tsx` | Update badges, fix module status labels |
-| `src/contexts/ModuleContext.tsx` | Add new module columns to map |
-| `src/types/modules.ts` | Already has types (no change needed) |
-| `src/App.tsx` | Add routes for Occupancy and QR pages |
-| `src/pages/core/PropertiesPage.tsx` | Add search and status filter |
-| `src/pages/workorders/WorkOrdersPage.tsx` | Add search input |
-| `src/pages/inbox/MailboxPage.tsx` | Add source_module filter |
-| `src/components/inbox/MailboxFolders.tsx` | Add module category filters |
-| `src/components/issues/IssueDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
-| `src/components/projects/RFIDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
-| `src/components/projects/PunchItemDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
-| `src/components/inspections/AddendumDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
-| `src/components/inspections/InspectionReviewSheet.tsx` | Upgrade to VoiceDictationTextareaWithAI |
-| `src/components/assets/AssetDialog.tsx` | Add QR code display |
+| `src/App.tsx` | Add `/training` route |
+| `src/components/layout/AppSidebar.tsx` | Add Training link with tooltip |
+| `src/types/modules.ts` | Add `trainingEnabled` to ModuleConfig |
+| `src/contexts/ModuleContext.tsx` | Add training module support |
 
 ---
 
-## Part 11: Implementation Order
+## Part 7: Navigation Integration
 
-### Phase 1: Database & Core Infrastructure
-1. Database migration for tenants table and property columns
-2. Update ModuleContext with new column mappings
-3. Update Settings page badges
+### Sidebar Addition
 
-### Phase 2: Occupancy Module
-4. Create useTenants hook
-5. Build OccupancyPage
-6. Build TenantDialog and TenantDetailSheet
-7. Add navigation link
+```typescript
+// In AppSidebar.tsx - Platform section
+<SidebarMenuItem>
+  <SidebarMenuButton asChild>
+    <NavLink
+      to="/training"
+      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+    >
+      <GraduationCap className="h-4 w-4" />
+      {!collapsed && <span>Training</span>}
+    </NavLink>
+  </SidebarMenuButton>
+</SidebarMenuItem>
+```
 
-### Phase 3: QR Scanning Module
-8. Create QR generator component
-9. Create scanner component (camera access)
-10. Build QRScannerPage
-11. Add QR to asset cards
-12. Add navigation link
+Tooltip: "Training Academy - Operational skills and certifications"
 
-### Phase 4: Navigation & Tooltips
-13. Update AppSidebar with tooltips on all items
-14. Add conditional rendering for new modules
-15. Verify all links work
+---
 
-### Phase 5: Search & Filters
-16. Add search to PropertiesPage
-17. Add search to WorkOrdersPage
-18. Add module filter to MailboxPage
+## Part 8: Seed Data
 
-### Phase 6: Voice Dictation Upgrade
-19. Upgrade basic VoiceDictationTextarea to WithAI in 6 components
-20. Test editability after transcription and polish
+### Default Training Categories
 
-### Phase 7: QA/QC Verification
-21. End-to-end test all module toggles
-22. Verify navigation visibility changes
-23. Test all voice dictation fields
-24. Verify all search/filter functionality
+| Category | Icon | Description |
+|----------|------|-------------|
+| **New Hire Onboarding** | 🎓 | Essential orientation for all new team members |
+| **Maintenance Essentials** | 🔧 | Core maintenance and repair procedures |
+| **Safety Protocols** | 🛡️ | OSHA compliance and workplace safety |
+| **NSPIRE Compliance** | 📋 | HUD inspection standards and procedures |
+| **Property Operations** | 🏢 | Day-to-day property management |
+| **Emergency Response** | 🚨 | Emergency procedures and protocols |
+
+### Default eBook Entry
+
+```sql
+INSERT INTO training_resources (
+  title, description, resource_type, category, embed_code, is_active
+) VALUES (
+  'PRD Professional Handbook',
+  'Comprehensive operational guide for property management professionals',
+  'ebook',
+  'operations',
+  '<iframe src="https://3e4ed0b2-6b22-4160-aee9-ee4110f6dd2f.lovableproject.com/embed/enzark-prd-professional-1769980229295"...',
+  true
+);
+```
+
+---
+
+## Part 9: Implementation Order
+
+### Phase 1: Database & Infrastructure
+1. Create database migration for training tables
+2. Add RLS policies
+3. Seed default categories and sample eBook entry
+
+### Phase 2: Core Hooks
+4. Create `useTrainingResources.ts`
+5. Create `useTrainingProgress.ts`
+6. Create `useTrainingRequests.ts`
+
+### Phase 3: Main Page
+7. Build `TrainingPage.tsx` with tabs structure
+8. Build `QuickAccessCard.tsx` for category navigation
+9. Build `EBookViewer.tsx` for flipbook embedding
+
+### Phase 4: Training Features
+10. Build `TrainingCatalog.tsx` with search/filter
+11. Build `LearningPathCard.tsx` for role-based paths
+12. Build `TrainingRequestDialog.tsx` with voice dictation
+
+### Phase 5: Integration
+13. Add route to `App.tsx`
+14. Add navigation link to `AppSidebar.tsx`
+15. Add admin management in Settings (optional)
+
+---
+
+## Part 10: Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **LearnWorld Integration** | Direct link to external LMS with SSO potential |
+| **Embedded eBooks** | Flipbook viewer for operational manuals |
+| **Role-Based Paths** | Curated learning paths per job function |
+| **Progress Tracking** | Track completion status per user |
+| **Training Requests** | Feedback loop for staff to request topics |
+| **Quick Access** | Category cards for fast navigation |
+| **Search & Filter** | Find resources by keyword, category, or role |
+| **Voice Dictation** | Use AI polish in request forms |
+
+---
+
+## Technical Notes
+
+1. **Embed Safety**: Sanitize and validate embed codes before rendering
+2. **LearnWorld SSO**: Future enhancement for seamless login integration
+3. **Mobile Responsive**: Ensure eBook viewer works on tablets/phones
+4. **Progress Sync**: Consider real-time updates for progress tracking
+5. **Admin Panel**: Allow admins to add/remove resources from Settings
 
 ---
 
 ## Summary
 
-This comprehensive QA/QC implementation addresses:
+This Training Academy implementation provides:
 
-1. **Feature Completion** - Occupancy Tracking and QR Scanning modules fully implemented
-2. **Module Visibility** - Navigation items conditionally shown based on activation
-3. **Discoverability** - Tooltips added to all major navigation and action elements
-4. **Data Findability** - Search and filter capabilities across all data views
-5. **Voice Input UX** - All dictation fields support post-transcription editing with AI polish
-6. **Professional Polish** - Consistent UX patterns throughout the application
-
-The implementation prioritizes user experience with minimal friction, following the established Apple-inspired design language.
+1. **Operational Focus** - Hands-on, job-relevant training for property staff
+2. **LearnWorld Integration** - Easy access to external LMS courses
+3. **eBook Library** - Embedded flipbook viewer for digital manuals
+4. **Role-Based Learning** - Curated paths for each job function
+5. **Feedback Loop** - Staff can request new training topics
+6. **Professional UX** - Apple-inspired design matching existing platform
