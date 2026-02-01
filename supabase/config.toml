@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.polish-text]
 verify_jwt = false
+
+[functions.send-invitation]
+verify_jwt = false

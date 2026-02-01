@@ -40,6 +40,8 @@ import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import QRScannerPage from "./pages/qr/QRScannerPage";
 import TrainingPage from "./pages/training/TrainingPage";
 import ContactsPage from "./pages/crm/ContactsPage";
+import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -53,6 +55,7 @@ const App = () => (
             <Routes>
               {/* Auth */}
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
               
               {/* Protected Routes */}
               <Route

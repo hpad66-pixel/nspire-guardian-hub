@@ -24,6 +24,8 @@ import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
 import { useProjectStats } from '@/hooks/useProjects';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 
 // Apple-inspired metric card
 function MetricCard({ 
@@ -171,6 +173,7 @@ function UrgentItem({
 
 export default function Dashboard() {
   const { isModuleEnabled } = useModules();
+  const { shouldShowOnboarding } = useOnboarding();
   
   const { data: properties, isLoading: loadingProperties } = useProperties();
   const { data: unitStats } = useUnitStats();
@@ -178,6 +181,11 @@ export default function Dashboard() {
   const { data: defectStats } = useDefectStats();
   const { data: openDefects } = useOpenDefects();
   const { data: projectStats } = useProjectStats();
+
+  const handleOnboardingComplete = () => {
+    // Force reload to refresh data after onboarding
+    window.location.reload();
+  };
 
   const openIssues = issues?.filter(i => i.status !== 'resolved' && i.status !== 'verified');
   const urgentDefects = openDefects?.filter(d => d.severity === 'severe').slice(0, 3);
@@ -207,8 +215,14 @@ export default function Dashboard() {
   const hasAnyModule = hasNspire || hasDailyGrounds || hasProjects;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10 animate-fade-in">
+    <>
+      {/* Onboarding Wizard Modal */}
+      {shouldShowOnboarding && (
+        <OnboardingWizard onComplete={handleOnboardingComplete} />
+      )}
+      
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10 animate-fade-in">
         {/* Hero Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">{greeting}</h1>
@@ -450,5 +464,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
