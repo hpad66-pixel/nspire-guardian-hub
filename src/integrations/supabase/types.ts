@@ -1299,9 +1299,14 @@ export type Database = {
       }
       report_emails: {
         Row: {
+          attachment_filename: string | null
+          attachment_size: number | null
+          body_html: string | null
+          body_text: string | null
           daily_inspection_id: string | null
           error_message: string | null
           id: string
+          is_read: boolean | null
           recipients: string[]
           report_id: string | null
           report_type: string | null
@@ -1311,9 +1316,14 @@ export type Database = {
           subject: string
         }
         Insert: {
+          attachment_filename?: string | null
+          attachment_size?: number | null
+          body_html?: string | null
+          body_text?: string | null
           daily_inspection_id?: string | null
           error_message?: string | null
           id?: string
+          is_read?: boolean | null
           recipients: string[]
           report_id?: string | null
           report_type?: string | null
@@ -1323,9 +1333,14 @@ export type Database = {
           subject: string
         }
         Update: {
+          attachment_filename?: string | null
+          attachment_size?: number | null
+          body_html?: string | null
+          body_text?: string | null
           daily_inspection_id?: string | null
           error_message?: string | null
           id?: string
+          is_read?: boolean | null
           recipients?: string[]
           report_id?: string | null
           report_type?: string | null
