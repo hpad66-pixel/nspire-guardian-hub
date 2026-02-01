@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.send-report-email]
 verify_jwt = false
+
+[functions.generate-proposal]
+verify_jwt = false
+
+[functions.elevenlabs-transcribe]
+verify_jwt = false

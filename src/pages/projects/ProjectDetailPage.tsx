@@ -30,6 +30,8 @@ import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
+import { ProposalList } from '@/components/proposals/ProposalList';
+import { useAuth } from '@/hooks/useAuth';
 
 const statusColors: Record<string, string> = {
   planning: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -236,6 +238,7 @@ export default function ProjectDetailPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="proposals">Proposals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -354,6 +357,10 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="punch-list">
           <PunchListTab projectId={id!} />
+        </TabsContent>
+
+        <TabsContent value="proposals">
+          <ProposalList projectId={id!} />
         </TabsContent>
       </Tabs>
 
