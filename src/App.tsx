@@ -31,7 +31,7 @@ import AssetsPage from "./pages/assets/AssetsPage";
 import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
 import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
 import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
-import ReportInboxPage from "./pages/inbox/ReportInboxPage";
+import MailboxPage from "./pages/inbox/MailboxPage";
 
 const queryClient = new QueryClient();
 
@@ -65,7 +65,7 @@ const App = () => (
                         <Route path="/work-orders" element={<WorkOrdersPage />} />
                         <Route path="/documents" element={<DocumentsPage />} />
                         <Route path="/people" element={<PlaceholderPage title="People" description="User and role management" />} />
-                        <Route path="/inbox" element={<ReportInboxPage />} />
+                        <Route path="/inbox" element={<MailboxPage />} />
                         <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                         

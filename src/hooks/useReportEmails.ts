@@ -15,6 +15,14 @@ export interface ReportEmail {
   sent_by: string | null;
 }
 
+export interface ReportEmailFull extends ReportEmail {
+  body_html: string | null;
+  body_text: string | null;
+  is_read: boolean;
+  attachment_filename: string | null;
+  attachment_size: number | null;
+}
+
 export interface ReportEmailFilters {
   status?: string;
   search?: string;
@@ -111,7 +119,7 @@ export function useReportEmailStats() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("report_emails")
-        .select("status");
+        .select("status, is_read");
 
       if (error) {
         console.error("Error fetching report email stats:", error);
@@ -123,9 +131,46 @@ export function useReportEmailStats() {
         sent: data.filter((e) => e.status === "sent").length,
         failed: data.filter((e) => e.status === "failed").length,
         pending: data.filter((e) => e.status === "pending").length,
+        unread: data.filter((e) => !e.is_read).length,
       };
 
       return stats;
+    },
+  });
+}
+
+export function useReportEmail(id: string | null) {
+  return useQuery({
+    queryKey: ["report-email", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("report_emails")
+        .select("*")
+        .eq("id", id!)
+        .single();
+
+      if (error) throw error;
+      return data as ReportEmailFull;
+    },
+  });
+}
+
+export function useMarkEmailRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("report_emails")
+        .update({ is_read: true })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
     },
   });
 }

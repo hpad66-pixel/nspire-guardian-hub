@@ -233,6 +233,11 @@ const handler = async (req: Request): Promise<Response> => {
       report_type: reportType,
       sent_by: userId,
       status: "sent",
+      body_html: htmlContent,
+      body_text: message || "",
+      attachment_filename: pdfFilename,
+      attachment_size: pdfBase64.length,
+      is_read: true, // Sender has "read" their own email
     };
 
     if (reportType === "daily_inspection") {
