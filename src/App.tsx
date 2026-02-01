@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
+import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/auth/AuthPage";
 import InspectionsDashboard from "./pages/inspections/InspectionsDashboard";
 import OutsideInspections from "./pages/inspections/OutsideInspections";
@@ -26,7 +27,6 @@ import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
 import ReportsPage from "./pages/reports/ReportsPage";
 import DocumentsPage from "./pages/documents/DocumentsPage";
 import ActivityLogPage from "./pages/settings/ActivityLogPage";
-import PlaceholderPage from "./pages/core/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import AssetsPage from "./pages/assets/AssetsPage";
 import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
@@ -53,7 +53,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Auth */}
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
               
@@ -65,7 +66,7 @@ const App = () => (
                     <AppLayout>
                       <Routes>
                         {/* Dashboard */}
-                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         
                         {/* Core Platform */}
                         <Route path="/properties" element={<PropertiesPage />} />

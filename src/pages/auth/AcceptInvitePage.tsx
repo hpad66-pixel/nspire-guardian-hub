@@ -87,7 +87,7 @@ export default function AcceptInvitePage() {
 
       // Redirect after a short delay
       setTimeout(() => {
-        navigate('/');
+        navigate('/dashboard');
       }, 2000);
     } catch (error: any) {
       if (error.message?.includes('already registered')) {
