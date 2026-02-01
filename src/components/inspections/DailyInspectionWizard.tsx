@@ -234,7 +234,7 @@ export function DailyInspectionWizard({
 
   const handleGoToDashboard = () => {
     onComplete();
-    navigate('/');
+    navigate('/dashboard');
   };
 
   const handleStartNewInspection = () => {
