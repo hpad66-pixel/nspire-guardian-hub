@@ -1,379 +1,795 @@
 
-# Implementation Plan: CSV Import for Units
+# Implementation Plan: AI-Powered Project Proposal & Correspondence System
 
-## Overview
+## Executive Summary
 
-Add a bulk import feature to the Units page that allows users to upload a CSV file containing unit data. The system will parse the CSV, validate the data, match property names to IDs, and insert all valid units into the database with a preview and confirmation workflow.
+Build a comprehensive proposal generation and correspondence management system within the Projects module. This system enables super admins/consultants to create AI-powered proposals, edit them with a rich text editor, brand them with company letterheads, attach documents, and send them to clients - all tracked within the existing mailbox system.
 
 ---
 
-## Part 1: Feature Design
+## Part 1: Architecture Overview
 
-### User Flow
+### System Flow
 
 ```text
-1. User clicks "Import CSV" button on Units page
-2. Dialog opens with:
-   - File drop zone for CSV upload
-   - Download template link
-3. User uploads CSV file
-4. System parses and validates data
-5. Preview table shows:
-   - Valid rows (green) ready to import
-   - Invalid rows (red) with error messages
-   - Property name to ID mapping status
-6. User reviews and clicks "Import X Units"
-7. System bulk inserts valid records
-8. Success toast with count of imported units
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PROPOSAL LIFECYCLE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐              │
+│   │  DRAFT   │ -> │  REVIEW  │ -> │ APPROVED │ -> │   SENT   │              │
+│   └──────────┘    └──────────┘    └──────────┘    └──────────┘              │
+│        │                                                                     │
+│        v                                                                     │
+│   ┌──────────────────────────────────────────┐                              │
+│   │     AI GENERATION (Gemini)               │                              │
+│   │  • Project context auto-included         │                              │
+│   │  • Prompt templates for proposal types   │                              │
+│   │  • Streaming response                    │                              │
+│   └──────────────────────────────────────────┘                              │
+│        │                                                                     │
+│        v                                                                     │
+│   ┌──────────────────────────────────────────┐                              │
+│   │     RICH TEXT EDITING                    │                              │
+│   │  • Full formatting controls              │                              │
+│   │  • Insert images/tables                  │                              │
+│   │  • Version history                       │                              │
+│   └──────────────────────────────────────────┘                              │
+│        │                                                                     │
+│        v                                                                     │
+│   ┌──────────────────────────────────────────┐                              │
+│   │     BRANDING & FINALIZATION              │                              │
+│   │  • Company letterhead                    │                              │
+│   │  • Logo placement                        │                              │
+│   │  • PDF generation                        │                              │
+│   └──────────────────────────────────────────┘                              │
+│        │                                                                     │
+│        v                                                                     │
+│   ┌──────────────────────────────────────────┐                              │
+│   │     SEND & TRACK                         │                              │
+│   │  • Email via Resend                      │                              │
+│   │  • Tracked in Mailbox                    │                              │
+│   │  • PDF attachment stored                 │                              │
+│   └──────────────────────────────────────────┘                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### CSV Template Format
+### Role-Based Access
 
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| property_name | Yes | Must match existing property name | Riverside Manor |
-| unit_number | Yes | Unit identifier | 101A |
-| bedrooms | No | Number of bedrooms (default: 1) | 2 |
-| bathrooms | No | Number of bathrooms (default: 1) | 1.5 |
-| square_feet | No | Unit size in sq ft | 850 |
-| floor | No | Floor number | 2 |
-| status | No | occupied/vacant/maintenance (default: occupied) | vacant |
+| Role | Can View | Can Create | Can Edit | Can Send | Can Delete |
+|------|----------|------------|----------|----------|------------|
+| Admin | All | Yes | Yes | Yes | Yes |
+| Manager | All | No | No | No | No |
+| Other Roles | None | No | No | No | No |
 
 ---
 
-## Part 2: New Components
+## Part 2: Database Schema
 
-### UnitImportDialog.tsx
+### New Tables
 
-Main dialog component with:
+```sql
+-- Proposal types enum
+CREATE TYPE proposal_type AS ENUM (
+  'project_proposal',
+  'change_order_request',
+  'scope_amendment',
+  'cost_estimate',
+  'letter',
+  'memo',
+  'correspondence'
+);
 
-```text
-+----------------------------------------------------------+
-|  Import Units from CSV                              [X]  |
-+----------------------------------------------------------+
-|                                                          |
-|  [Download CSV Template]                                 |
-|                                                          |
-|  +----------------------------------------------------+  |
-|  |                                                    |  |
-|  |     📄 Drag and drop your CSV file here           |  |
-|  |        or click to browse                         |  |
-|  |                                                    |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-|  PREVIEW (after file upload):                            |
-|  +----------------------------------------------------+  |
-|  | ✓ 101A | Riverside Manor | 2 bed | 1 bath | vacant |  |
-|  | ✓ 102B | Riverside Manor | 1 bed | 1 bath | occ.   |  |
-|  | ✗ 201  | Unknown Prop    | Error: Property not found |
-|  | ✗ 301A | Riverside Manor | Error: Invalid status   |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-|  Summary: 15 valid, 2 errors                             |
-|                                                          |
-|  [Cancel]                      [Import 15 Units]         |
-+----------------------------------------------------------+
-```
+-- Proposal status enum
+CREATE TYPE proposal_status AS ENUM (
+  'draft',
+  'review',
+  'approved',
+  'sent',
+  'archived'
+);
 
-### Features
-- Drag and drop file upload
-- CSV parsing with Papa Parse (no external dependency - use native parsing)
-- Property name to ID matching
-- Row validation with detailed error messages
-- Preview table with status indicators
-- Downloadable CSV template
-- Bulk insert with progress feedback
-
----
-
-## Part 3: CSV Parsing Logic
-
-### Native CSV Parser
-
-```typescript
-function parseCSV(text: string): { headers: string[], rows: string[][] } {
-  const lines = text.split('\n').filter(line => line.trim());
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-  const rows = lines.slice(1).map(line => {
-    // Handle quoted values with commas
-    const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-    return matches ? matches.map(v => v.replace(/^"|"$/g, '').trim()) : [];
-  });
-  return { headers, rows };
-}
-```
-
-### Validation Rules
-
-```typescript
-interface ValidationResult {
-  isValid: boolean;
-  error?: string;
-  data?: UnitInsert;
-}
-
-function validateRow(row: Record<string, string>, properties: Property[]): ValidationResult {
-  // Required fields
-  if (!row.property_name) return { isValid: false, error: 'Property name is required' };
-  if (!row.unit_number) return { isValid: false, error: 'Unit number is required' };
+-- Project proposals table
+CREATE TABLE project_proposals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   
-  // Find property by name (case-insensitive)
-  const property = properties.find(p => 
-    p.name.toLowerCase() === row.property_name.toLowerCase()
+  -- Proposal metadata
+  proposal_number SERIAL,
+  proposal_type proposal_type NOT NULL DEFAULT 'project_proposal',
+  title TEXT NOT NULL,
+  subject TEXT,
+  status proposal_status NOT NULL DEFAULT 'draft',
+  
+  -- Content
+  content_html TEXT,
+  content_text TEXT,
+  
+  -- AI generation metadata
+  ai_prompt TEXT,
+  ai_generated BOOLEAN DEFAULT false,
+  
+  -- Branding
+  include_letterhead BOOLEAN DEFAULT true,
+  include_logo BOOLEAN DEFAULT true,
+  letterhead_config JSONB DEFAULT '{}',
+  
+  -- Recipients
+  recipient_name TEXT,
+  recipient_email TEXT,
+  recipient_company TEXT,
+  recipient_address TEXT,
+  
+  -- Tracking
+  sent_at TIMESTAMPTZ,
+  sent_by UUID REFERENCES auth.users(id),
+  sent_email_id UUID REFERENCES report_emails(id),
+  
+  -- Attachments (stored as array of document IDs)
+  attachment_ids UUID[] DEFAULT '{}',
+  
+  -- Audit
+  created_by UUID NOT NULL REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  -- Version control
+  version INTEGER DEFAULT 1,
+  parent_version_id UUID REFERENCES project_proposals(id)
+);
+
+-- Proposal templates for AI generation
+CREATE TABLE proposal_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  proposal_type proposal_type NOT NULL,
+  prompt_template TEXT NOT NULL,
+  content_template TEXT,
+  is_default BOOLEAN DEFAULT false,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Company branding settings (stored per user/organization)
+CREATE TABLE company_branding (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  company_name TEXT NOT NULL,
+  logo_url TEXT,
+  primary_color TEXT DEFAULT '#1e40af',
+  secondary_color TEXT DEFAULT '#3b82f6',
+  address_line1 TEXT,
+  address_line2 TEXT,
+  phone TEXT,
+  email TEXT,
+  website TEXT,
+  footer_text TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id)
+);
+
+-- Indexes
+CREATE INDEX idx_proposals_project ON project_proposals(project_id);
+CREATE INDEX idx_proposals_status ON project_proposals(status);
+CREATE INDEX idx_proposals_created_by ON project_proposals(created_by);
+
+-- RLS
+ALTER TABLE project_proposals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proposal_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE company_branding ENABLE ROW LEVEL SECURITY;
+
+-- Only admins can manage proposals
+CREATE POLICY "Admins can manage proposals" ON project_proposals
+  FOR ALL USING (has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can view all proposals" ON project_proposals
+  FOR SELECT USING (
+    has_role(auth.uid(), 'admin') OR 
+    has_role(auth.uid(), 'manager')
   );
-  if (!property) return { isValid: false, error: `Property "${row.property_name}" not found` };
-  
-  // Validate status if provided
-  const validStatuses = ['occupied', 'vacant', 'maintenance'];
-  if (row.status && !validStatuses.includes(row.status.toLowerCase())) {
-    return { isValid: false, error: `Invalid status "${row.status}". Use: occupied, vacant, or maintenance` };
-  }
-  
-  // Parse numeric fields
-  const bedrooms = row.bedrooms ? parseInt(row.bedrooms) : 1;
-  const bathrooms = row.bathrooms ? parseFloat(row.bathrooms) : 1;
-  const squareFeet = row.square_feet ? parseInt(row.square_feet) : undefined;
-  const floor = row.floor ? parseInt(row.floor) : undefined;
-  
-  if (isNaN(bedrooms)) return { isValid: false, error: 'Bedrooms must be a number' };
-  if (isNaN(bathrooms)) return { isValid: false, error: 'Bathrooms must be a number' };
-  
-  return {
-    isValid: true,
-    data: {
-      property_id: property.id,
-      unit_number: row.unit_number.trim(),
-      bedrooms,
-      bathrooms,
-      square_feet: squareFeet,
-      floor,
-      status: (row.status?.toLowerCase() || 'occupied') as 'occupied' | 'vacant' | 'maintenance',
-    }
-  };
-}
+
+-- Templates accessible to admins
+CREATE POLICY "Admins can manage templates" ON proposal_templates
+  FOR ALL USING (has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "All authenticated can view templates" ON proposal_templates
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Branding owned by user
+CREATE POLICY "Users manage own branding" ON company_branding
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Triggers
+CREATE TRIGGER update_proposals_updated_at BEFORE UPDATE ON project_proposals
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_branding_updated_at BEFORE UPDATE ON company_branding
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default templates
+INSERT INTO proposal_templates (name, description, proposal_type, prompt_template, is_default) VALUES
+(
+  'Project Proposal',
+  'Standard project proposal template',
+  'project_proposal',
+  'Generate a professional project proposal for the following project:
+
+Project Name: {{project_name}}
+Property: {{property_name}}
+Description: {{project_description}}
+Scope: {{project_scope}}
+Budget: {{budget}}
+Timeline: {{start_date}} to {{target_end_date}}
+
+The proposal should include:
+1. Executive Summary
+2. Project Understanding
+3. Proposed Approach
+4. Scope of Work
+5. Timeline and Milestones
+6. Investment Summary
+7. Terms and Conditions
+8. Next Steps
+
+Write in a professional, confident tone. Be specific about deliverables.',
+  true
+),
+(
+  'Change Order Request',
+  'Request for project scope or cost changes',
+  'change_order_request',
+  'Generate a professional change order request for:
+
+Project Name: {{project_name}}
+Property: {{property_name}}
+Current Status: {{project_status}}
+
+Change Details:
+{{user_notes}}
+
+The request should include:
+1. Change Order Summary
+2. Reason for Change
+3. Impact on Timeline
+4. Cost Impact
+5. Required Approvals',
+  true
+),
+(
+  'Professional Letter',
+  'General business correspondence',
+  'letter',
+  'Generate a professional business letter regarding:
+
+Project Name: {{project_name}}
+Property: {{property_name}}
+Subject: {{subject}}
+
+Key Points:
+{{user_notes}}
+
+The letter should be formal, clear, and professional.',
+  true
+);
 ```
 
 ---
 
-## Part 4: Hook for Bulk Import
+## Part 3: Edge Function for AI Proposal Generation
 
-### useBulkCreateUnits
-
-Add to `src/hooks/useUnits.ts`:
+### New Edge Function: `generate-proposal`
 
 ```typescript
-export function useBulkCreateUnits() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (units: UnitInsert[]) => {
-      // Insert in batches of 100 to avoid request size limits
-      const batchSize = 100;
-      const results = [];
+// supabase/functions/generate-proposal/index.ts
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface GenerateProposalRequest {
+  projectId: string;
+  proposalType: string;
+  templateId?: string;
+  userNotes?: string;
+  subject?: string;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Auth validation
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body: GenerateProposalRequest = await req.json();
+    const { projectId, proposalType, templateId, userNotes, subject } = body;
+
+    // Fetch project details
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select(`*, property:properties(name, address, city, state)`)
+      .eq("id", projectId)
+      .single();
+
+    if (projectError || !project) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch template
+    let template;
+    if (templateId) {
+      const { data } = await supabase
+        .from("proposal_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+      template = data;
+    } else {
+      const { data } = await supabase
+        .from("proposal_templates")
+        .select("*")
+        .eq("proposal_type", proposalType)
+        .eq("is_default", true)
+        .single();
+      template = data;
+    }
+
+    if (!template) {
+      return new Response(JSON.stringify({ error: "Template not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Build prompt with project context
+    const prompt = template.prompt_template
+      .replace("{{project_name}}", project.name)
+      .replace("{{property_name}}", project.property?.name || "N/A")
+      .replace("{{project_description}}", project.description || "N/A")
+      .replace("{{project_scope}}", project.scope || "N/A")
+      .replace("{{budget}}", project.budget ? `$${project.budget.toLocaleString()}` : "TBD")
+      .replace("{{start_date}}", project.start_date || "TBD")
+      .replace("{{target_end_date}}", project.target_end_date || "TBD")
+      .replace("{{project_status}}", project.status)
+      .replace("{{user_notes}}", userNotes || "")
+      .replace("{{subject}}", subject || "");
+
+    // Call Lovable AI Gateway
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional business consultant and proposal writer. 
+            Generate clear, professional, and persuasive business documents.
+            Use proper formatting with headings, bullet points, and clear sections.
+            Output in HTML format suitable for rendering in a rich text editor.
+            Use semantic HTML tags: h2 for main sections, h3 for subsections, p for paragraphs, ul/li for lists.`,
+          },
+          { role: "user", content: prompt },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const error = await aiResponse.text();
+      console.error("AI Gateway error:", error);
       
-      for (let i = 0; i < units.length; i += batchSize) {
-        const batch = units.slice(i, i + batchSize);
-        const { data, error } = await supabase
-          .from('units')
-          .insert(batch)
-          .select();
-        
-        if (error) throw error;
-        results.push(...(data || []));
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
-      return results;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['units'] });
-      toast.success(`Successfully imported ${data.length} units`);
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to import units: ${error.message}`);
-    },
-  });
-}
+      throw new Error("Failed to generate proposal");
+    }
+
+    // Stream response back
+    return new Response(aiResponse.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  } catch (error) {
+    console.error("Error in generate-proposal:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
 ```
 
 ---
 
-## Part 5: CSV Template Generation
+## Part 4: Frontend Components
 
-### Template Download Function
-
-```typescript
-function downloadTemplate() {
-  const headers = [
-    'property_name',
-    'unit_number', 
-    'bedrooms',
-    'bathrooms',
-    'square_feet',
-    'floor',
-    'status'
-  ];
-  
-  const exampleRow = [
-    'Riverside Manor',
-    '101A',
-    '2',
-    '1.5',
-    '850',
-    '1',
-    'occupied'
-  ];
-  
-  const csv = [
-    headers.join(','),
-    exampleRow.join(','),
-    '# Add your units below. Delete this example row.',
-  ].join('\n');
-  
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'units-import-template.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-```
-
----
-
-## Part 6: UI Updates
-
-### UnitsPage.tsx Changes
-
-Add import button next to "Add Unit":
-
-```tsx
-<div className="flex gap-2">
-  <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-    <Upload className="h-4 w-4 mr-2" />
-    Import CSV
-  </Button>
-  <Button onClick={() => setDialogOpen(true)}>
-    <Plus className="h-4 w-4 mr-2" />
-    Add Unit
-  </Button>
-</div>
-```
-
----
-
-## Part 7: Preview Table Design
-
-### Import Preview Component
-
-```text
-┌────────────────────────────────────────────────────────────────┐
-│ Status │ Unit # │ Property        │ Beds │ Baths │ Sq Ft │ Fl │
-├────────────────────────────────────────────────────────────────┤
-│   ✓    │ 101A   │ Riverside Manor │  2   │  1.5  │  850  │  1 │
-│   ✓    │ 102B   │ Riverside Manor │  1   │  1    │  700  │  1 │
-│   ✓    │ 201A   │ Oak Gardens     │  3   │  2    │ 1200  │  2 │
-│   ✗    │ 301    │ Unknown Prop    │  -   │   -   │   -   │  - │
-│        │        │ ⚠ Property "Unknown Prop" not found        │
-│   ✗    │ 401A   │ Riverside Manor │  2   │  1    │  850  │  4 │
-│        │        │ ⚠ Invalid status "rented" - use occupied   │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### Summary Section
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│  📊 Import Summary                                       │
-├──────────────────────────────────────────────────────────┤
-│  ✓ 23 units ready to import                             │
-│  ✗ 2 units have errors (will be skipped)                │
-│                                                          │
-│  Properties detected:                                    │
-│  • Riverside Manor - 15 units                            │
-│  • Oak Gardens - 8 units                                 │
-└──────────────────────────────────────────────────────────┘
-```
-
----
-
-## Part 8: File Structure
-
-### New Files
+### New Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/components/units/UnitImportDialog.tsx` | Main import dialog with file upload and preview |
-| `src/lib/csvParser.ts` | CSV parsing and validation utilities |
+| `src/hooks/useProposals.ts` | CRUD hooks for proposals |
+| `src/hooks/useCompanyBranding.ts` | Branding settings hook |
+| `src/hooks/useProposalGeneration.ts` | AI streaming hook |
+| `src/components/proposals/ProposalList.tsx` | List of proposals for a project |
+| `src/components/proposals/ProposalEditor.tsx` | Full proposal editor with AI |
+| `src/components/proposals/ProposalPreview.tsx` | Branded preview for PDF |
+| `src/components/proposals/ProposalAIPanel.tsx` | AI generation sidebar |
+| `src/components/proposals/ProposalSendDialog.tsx` | Send to recipient dialog |
+| `src/components/proposals/BrandingSettings.tsx` | Company branding config |
+| `src/components/proposals/LetterheadPreview.tsx` | Letterhead preview |
 
-### Modified Files
+### Project Detail Page Update
 
-| File | Changes |
-|------|---------|
-| `src/pages/core/UnitsPage.tsx` | Add Import CSV button and dialog state |
-| `src/hooks/useUnits.ts` | Add `useBulkCreateUnits` hook |
+Add new "Proposals" tab to the project detail page:
+
+```text
+TABS: [Overview] [Schedule] [Daily Logs] [Financials] [RFIs] [Punch List] [Proposals]
+                                                                              ^NEW
+```
 
 ---
 
-## Part 9: Error Handling
+## Part 5: UI Design - Apple-Inspired
 
-### Duplicate Detection
+### Proposal Editor Layout
 
-```typescript
-// Check for duplicates within the CSV
-const seenUnits = new Set<string>();
-for (const row of rows) {
-  const key = `${row.property_name}:${row.unit_number}`;
-  if (seenUnits.has(key)) {
-    return { isValid: false, error: 'Duplicate unit in CSV' };
-  }
-  seenUnits.add(key);
-}
-
-// Check against existing units in database
-const existingUnits = await supabase
-  .from('units')
-  .select('unit_number, property_id');
-  
-const existingSet = new Set(existingUnits.data?.map(u => `${u.property_id}:${u.unit_number}`));
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  [← Back]  New Proposal                    [Preview] [Save Draft] [Send ▼] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────┬──────────────────────────────────────┐  │
+│  │  AI ASSISTANT                  │  DOCUMENT EDITOR                     │  │
+│  │  ─────────────────────         │  ────────────────                    │  │
+│  │                                │                                      │  │
+│  │  Template:                     │  ┌──────────────────────────────┐    │  │
+│  │  [Project Proposal    ▼]       │  │ [B] [I] [U] [H2] [H3] [•] [1]│    │  │
+│  │                                │  ├──────────────────────────────┤    │  │
+│  │  Additional Context:           │  │                              │    │  │
+│  │  ┌────────────────────────┐    │  │  <Content appears here>      │    │  │
+│  │  │ Describe any specific  │    │  │                              │    │  │
+│  │  │ requirements...        │    │  │  The generated proposal      │    │  │
+│  │  └────────────────────────┘    │  │  with full editing...        │    │  │
+│  │                                │  │                              │    │  │
+│  │  [✨ Generate with AI]         │  │                              │    │  │
+│  │                                │  │                              │    │  │
+│  │  ─────────────────────         │  │                              │    │  │
+│  │                                │  │                              │    │  │
+│  │  Recipient:                    │  │                              │    │  │
+│  │  Name: _______________         │  │                              │    │  │
+│  │  Email: ______________         │  │                              │    │  │
+│  │  Company: ____________         │  │                              │    │  │
+│  │                                │  │                              │    │  │
+│  │  ─────────────────────         │  │                              │    │  │
+│  │                                │  └──────────────────────────────┘    │  │
+│  │  Attachments:                  │                                      │  │
+│  │  [+ Add from Documents]        │  Branding:                           │  │
+│  │  📎 Scope_Document.pdf         │  ☑ Include letterhead                │  │
+│  │  📎 Cost_Estimate.xlsx         │  ☑ Include logo                      │  │
+│  │                                │  [Configure Branding →]              │  │
+│  │                                │                                      │  │
+│  └────────────────────────────────┴──────────────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Database Error Handling
+### Proposal List View
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  📄 PROPOSALS & CORRESPONDENCE                        [+ New Proposal]      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ #1  Project Proposal - Elevator Modernization       [Sent ✓]           │ │
+│  │     To: John Smith (john@client.com)               Feb 1, 2026         │ │
+│  │     Sent via email with 2 attachments                                  │ │
+│  │                                                    [View] [Duplicate]  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ #2  Change Order Request - Additional HVAC Work     [Draft]            │ │
+│  │     Not sent                                       Updated 2h ago      │ │
+│  │                                                                        │ │
+│  │                                          [Edit] [Preview] [Delete]     │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Branded PDF Preview
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ ┌───────────────────────────────────────────────────────────────┐   │    │
+│  │ │  [COMPANY LOGO]                                               │   │    │
+│  │ │                                                               │   │    │
+│  │ │  COMPANY NAME                                                 │   │    │
+│  │ │  123 Business Street, City, State 12345                       │   │    │
+│  │ │  Phone: (555) 123-4567 | Email: info@company.com              │   │    │
+│  │ ├───────────────────────────────────────────────────────────────┤   │    │
+│  │ │                                                               │   │    │
+│  │ │  February 1, 2026                                             │   │    │
+│  │ │                                                               │   │    │
+│  │ │  John Smith                                                   │   │    │
+│  │ │  Client Company                                               │   │    │
+│  │ │  456 Client Ave, City, State 67890                            │   │    │
+│  │ │                                                               │   │    │
+│  │ │  RE: Project Proposal - Elevator Modernization                │   │    │
+│  │ │                                                               │   │    │
+│  │ │  Dear Mr. Smith,                                              │   │    │
+│  │ │                                                               │   │    │
+│  │ │  [Generated proposal content...]                              │   │    │
+│  │ │                                                               │   │    │
+│  │ ├───────────────────────────────────────────────────────────────┤   │    │
+│  │ │  [Footer with company info]                                   │   │    │
+│  │ └───────────────────────────────────────────────────────────────┘   │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  [◀ Page 1 of 3 ▶]                       [Download PDF] [Print] [Send →]    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 6: Company Branding Settings
+
+### Branding Configuration Dialog
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚙️ Company Branding Settings                                         [X]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  COMPANY INFO                                                                │
+│  ─────────────                                                               │
+│  Company Name: _________________________________                             │
+│  Address Line 1: _______________________________                             │
+│  Address Line 2: _______________________________                             │
+│  Phone: ________________________________________                             │
+│  Email: ________________________________________                             │
+│  Website: ______________________________________                             │
+│                                                                              │
+│  BRANDING                                                                    │
+│  ─────────                                                                   │
+│  Logo:                                                                       │
+│  ┌────────────────────┐                                                     │
+│  │  [Upload Logo]     │  Recommended: 400x100px PNG                         │
+│  │  📷 Current logo   │                                                     │
+│  └────────────────────┘                                                     │
+│                                                                              │
+│  Primary Color: [■ #1e40af]  Secondary Color: [■ #3b82f6]                   │
+│                                                                              │
+│  Footer Text:                                                                │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ Confidential - For intended recipient only                             │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  PREVIEW                                                                     │
+│  ───────                                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  [Letterhead Preview]                                                  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│                                                    [Cancel]  [Save Changes] │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 7: Integration with Mailbox
+
+When a proposal is sent:
+1. Generate branded PDF
+2. Call `send-report-email` edge function (extended to support proposals)
+3. Store email record in `report_emails` table with type `proposal`
+4. Link back to proposal via `sent_email_id`
+5. Proposal appears in Sent folder of Mailbox
+6. Track open/read status
+
+### Update `report_emails` Table
+
+```sql
+-- Add proposal type support
+ALTER TABLE report_emails 
+ADD COLUMN proposal_id UUID REFERENCES project_proposals(id);
+
+-- Update report_type check or add new value
+UPDATE report_emails SET report_type = 'proposal' WHERE proposal_id IS NOT NULL;
+```
+
+---
+
+## Part 8: Hooks Architecture
+
+### useProposals.ts
 
 ```typescript
-try {
-  await bulkCreate.mutateAsync(validUnits);
-} catch (error) {
-  if (error.message.includes('unique_unit_per_property')) {
-    toast.error('Some units already exist in the database');
-  } else {
-    toast.error(`Import failed: ${error.message}`);
-  }
+// Core CRUD operations
+export function useProposalsByProject(projectId: string | null)
+export function useProposal(id: string | null)
+export function useCreateProposal()
+export function useUpdateProposal()
+export function useDeleteProposal()
+export function useSendProposal()
+
+// Proposal stats
+export function useProposalStats(projectId: string | null)
+```
+
+### useProposalGeneration.ts
+
+```typescript
+// AI streaming generation
+export function useGenerateProposal({
+  onDelta: (chunk: string) => void,
+  onDone: () => void,
+  onError: (error: Error) => void,
+})
+```
+
+### useCompanyBranding.ts
+
+```typescript
+export function useCompanyBranding()
+export function useUpdateBranding()
+export function useUploadLogo()
+```
+
+---
+
+## Part 9: Admin-Only Access Control
+
+### Frontend Guard
+
+```typescript
+// In ProposalList.tsx and ProposalEditor.tsx
+const { data: userRole } = useCurrentUserRole();
+const isAdmin = userRole === 'admin';
+
+if (!isAdmin) {
+  return (
+    <div className="text-center py-12">
+      <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+      <h3 className="text-lg font-semibold">Admin Access Required</h3>
+      <p className="text-muted-foreground">
+        Proposal creation is available to administrators only.
+      </p>
+    </div>
+  );
 }
 ```
+
+### Backend RLS (Already Included)
+
+The RLS policies in Part 2 ensure only users with the `admin` role can create, update, or delete proposals.
 
 ---
 
 ## Part 10: Implementation Order
 
-1. Create `src/lib/csvParser.ts` with parsing and validation utilities
-2. Add `useBulkCreateUnits` hook to `src/hooks/useUnits.ts`
-3. Create `src/components/units/UnitImportDialog.tsx` with:
-   - File upload drop zone
-   - CSV parsing on file select
-   - Validation with property matching
-   - Preview table with error highlighting
-   - Import button with progress
-   - Template download
-4. Update `src/pages/core/UnitsPage.tsx` to include import button and dialog
+### Phase 1: Database Setup
+1. Create database migration with all new tables
+2. Add proposal templates
+3. Update report_emails for proposal support
+
+### Phase 2: Backend
+4. Create `generate-proposal` edge function
+5. Update `send-report-email` to handle proposals
+
+### Phase 3: Hooks
+6. Create `useProposals.ts`
+7. Create `useProposalGeneration.ts`
+8. Create `useCompanyBranding.ts`
+
+### Phase 4: UI Components
+9. Create `ProposalList.tsx`
+10. Create `ProposalEditor.tsx` with AI panel
+11. Create `ProposalPreview.tsx` with branding
+12. Create `ProposalSendDialog.tsx`
+13. Create `BrandingSettings.tsx`
+
+### Phase 5: Integration
+14. Add Proposals tab to ProjectDetailPage
+15. Add branding settings to Settings page
+16. Update Mailbox to show proposal emails
+17. Test full workflow end-to-end
 
 ---
 
-## Technical Notes
+## Part 11: File Structure Summary
 
-1. **Native CSV Parsing**: Using native JavaScript to parse CSV avoids adding external dependencies
-2. **Property Matching**: Case-insensitive matching to be user-friendly
-3. **Batch Inserts**: Insert in batches of 100 to handle large files
-4. **Validation First**: All validation happens client-side before any database calls
-5. **Skip Invalid Rows**: Only valid rows are imported; invalid rows are shown with errors
-6. **Template**: Downloadable template includes headers and one example row
+### New Files
+
+| Category | File |
+|----------|------|
+| Edge Function | `supabase/functions/generate-proposal/index.ts` |
+| Hooks | `src/hooks/useProposals.ts` |
+| Hooks | `src/hooks/useProposalGeneration.ts` |
+| Hooks | `src/hooks/useCompanyBranding.ts` |
+| Components | `src/components/proposals/ProposalList.tsx` |
+| Components | `src/components/proposals/ProposalEditor.tsx` |
+| Components | `src/components/proposals/ProposalPreview.tsx` |
+| Components | `src/components/proposals/ProposalAIPanel.tsx` |
+| Components | `src/components/proposals/ProposalSendDialog.tsx` |
+| Components | `src/components/proposals/BrandingSettings.tsx` |
+| Components | `src/components/proposals/LetterheadPreview.tsx` |
+| Components | `src/components/proposals/PrintableProposal.tsx` |
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `src/pages/projects/ProjectDetailPage.tsx` | Add Proposals tab |
+| `src/pages/settings/SettingsPage.tsx` | Add Branding section |
+| `supabase/functions/send-report-email/index.ts` | Support proposal emails |
+
+---
+
+## Summary
+
+This implementation creates a complete proposal generation and correspondence system that:
+
+1. **AI-Powered**: Uses Gemini via Lovable AI to generate professional proposals
+2. **Admin-Only**: Restricted to super admin/consultant role via RLS
+3. **Rich Editing**: Full formatting with the existing TipTap editor
+4. **Branded Output**: Company letterhead, logo, colors for professional PDFs
+5. **Attachment Support**: Link documents from the project document center
+6. **Email Integration**: Send via Resend, tracked in Mailbox
+7. **Version History**: Track revisions and maintain proposal history
+8. **Apple-Inspired UX**: Clean, minimalist, intuitive interface
+
+The system integrates seamlessly with existing infrastructure (mailbox, documents, PDF generation) while adding powerful AI capabilities for professional document generation.
