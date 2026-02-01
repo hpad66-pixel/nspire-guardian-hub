@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateRFI, useUpdateRFI, type RFI } from '@/hooks/useRFIs';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -104,13 +104,12 @@ export function RFIDialog({ open, onOpenChange, projectId, rfi }: RFIDialogProps
           
           <div className="space-y-2">
             <Label htmlFor="question">Question *</Label>
-            <Textarea
+            <VoiceDictationTextarea
               id="question"
               value={formData.question}
-              onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+              onValueChange={(value) => setFormData({ ...formData, question: value })}
               placeholder="Describe your question in detail..."
-              rows={5}
-              required
+              className="min-h-[120px]"
             />
           </div>
           

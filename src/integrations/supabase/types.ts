@@ -153,6 +153,41 @@ export type Database = {
           },
         ]
       }
+      daily_inspection_addendums: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          daily_inspection_id: string
+          id: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          daily_inspection_id: string
+          id?: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          daily_inspection_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_inspection_addendums_daily_inspection_id_fkey"
+            columns: ["daily_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_inspection_items: {
         Row: {
           asset_id: string
@@ -160,6 +195,7 @@ export type Database = {
           daily_inspection_id: string
           defect_description: string | null
           id: string
+          issue_id: string | null
           notes: string | null
           photo_urls: string[] | null
           status: Database["public"]["Enums"]["inspection_item_status"] | null
@@ -170,6 +206,7 @@ export type Database = {
           daily_inspection_id: string
           defect_description?: string | null
           id?: string
+          issue_id?: string | null
           notes?: string | null
           photo_urls?: string[] | null
           status?: Database["public"]["Enums"]["inspection_item_status"] | null
@@ -180,6 +217,7 @@ export type Database = {
           daily_inspection_id?: string
           defect_description?: string | null
           id?: string
+          issue_id?: string | null
           notes?: string | null
           photo_urls?: string[] | null
           status?: Database["public"]["Enums"]["inspection_item_status"] | null
@@ -199,6 +237,13 @@ export type Database = {
             referencedRelation: "daily_inspections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "daily_inspection_items_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["id"]
+          },
         ]
       }
       daily_inspections: {
@@ -212,7 +257,14 @@ export type Database = {
           inspection_date: string
           inspector_id: string | null
           property_id: string
+          review_status:
+            | Database["public"]["Enums"]["daily_inspection_review_status"]
+            | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
           status: string | null
+          submitted_at: string | null
           voice_transcript: string | null
           weather: string | null
         }
@@ -226,7 +278,14 @@ export type Database = {
           inspection_date?: string
           inspector_id?: string | null
           property_id: string
+          review_status?:
+            | Database["public"]["Enums"]["daily_inspection_review_status"]
+            | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
           status?: string | null
+          submitted_at?: string | null
           voice_transcript?: string | null
           weather?: string | null
         }
@@ -240,7 +299,14 @@ export type Database = {
           inspection_date?: string
           inspector_id?: string | null
           property_id?: string
+          review_status?:
+            | Database["public"]["Enums"]["daily_inspection_review_status"]
+            | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
           status?: string | null
+          submitted_at?: string | null
           voice_transcript?: string | null
           weather?: string | null
         }
@@ -524,6 +590,7 @@ export type Database = {
           assigned_to: string | null
           created_at: string
           created_by: string | null
+          daily_inspection_item_id: string | null
           deadline: string | null
           defect_id: string | null
           description: string | null
@@ -543,6 +610,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           created_by?: string | null
+          daily_inspection_item_id?: string | null
           deadline?: string | null
           defect_id?: string | null
           description?: string | null
@@ -562,6 +630,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           created_by?: string | null
+          daily_inspection_item_id?: string | null
           deadline?: string | null
           defect_id?: string | null
           description?: string | null
@@ -577,6 +646,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "issues_daily_inspection_item_id_fkey"
+            columns: ["daily_inspection_item_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inspection_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "issues_defect_id_fkey"
             columns: ["defect_id"]
@@ -1443,9 +1519,14 @@ export type Database = {
         | "general_grounds"
       change_order_status: "draft" | "pending" | "approved" | "rejected"
       communication_type: "call" | "email" | "meeting" | "note"
+      daily_inspection_review_status:
+        | "pending_review"
+        | "approved"
+        | "needs_revision"
+        | "rejected"
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
-      issue_source: "core" | "nspire" | "projects"
+      issue_source: "core" | "nspire" | "projects" | "daily_grounds"
       project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
       punch_status: "open" | "in_progress" | "completed" | "verified"
       rfi_status: "open" | "pending" | "answered" | "closed"
@@ -1605,9 +1686,15 @@ export const Constants = {
       ],
       change_order_status: ["draft", "pending", "approved", "rejected"],
       communication_type: ["call", "email", "meeting", "note"],
+      daily_inspection_review_status: [
+        "pending_review",
+        "approved",
+        "needs_revision",
+        "rejected",
+      ],
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
-      issue_source: ["core", "nspire", "projects"],
+      issue_source: ["core", "nspire", "projects", "daily_grounds"],
       project_status: ["planning", "active", "on_hold", "completed", "closed"],
       punch_status: ["open", "in_progress", "completed", "verified"],
       rfi_status: ["open", "pending", "answered", "closed"],

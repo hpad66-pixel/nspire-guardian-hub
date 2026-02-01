@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DailyInspectionWizard } from '@/components/inspections/DailyInspectionWizard';
+import { AddendumDialog } from '@/components/inspections/AddendumDialog';
+import { AddendumList } from '@/components/inspections/AddendumList';
 import { useProperties } from '@/hooks/useProperties';
 import { useDailyInspections, useTodayInspection, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
@@ -13,13 +15,16 @@ import {
   CheckCircle2, 
   Clock, 
   Play,
-  ChevronRight
+  Lock,
+  FileText,
+  Plus
 } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 
 export default function DailyGroundsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [showWizard, setShowWizard] = useState(false);
+  const [showAddendum, setShowAddendum] = useState(false);
   
   const { data: properties = [] } = useProperties();
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
@@ -44,11 +49,23 @@ export default function DailyGroundsPage() {
     setShowWizard(false);
   };
 
+  // Get review status display
+  const getReviewStatusBadge = (status: string | null) => {
+    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+      pending_review: { label: 'Pending Review', variant: 'secondary' },
+      approved: { label: 'Approved', variant: 'default' },
+      needs_revision: { label: 'Needs Revision', variant: 'destructive' },
+      rejected: { label: 'Rejected', variant: 'destructive' },
+    };
+    const config = statusConfig[status || ''] || { label: 'Pending', variant: 'secondary' as const };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
   if (showWizard && selectedPropertyId) {
     return (
       <DailyInspectionWizard
         propertyId={selectedPropertyId}
-        existingInspection={todayInspection}
+        existingInspection={todayInspection?.status === 'in_progress' ? todayInspection : null}
         onComplete={handleCompleteInspection}
         onCancel={() => setShowWizard(false)}
       />
@@ -90,31 +107,33 @@ export default function DailyGroundsPage() {
           </Card>
         )}
 
-        {/* Auto-select single property - handled by useEffect */}
-        {properties.length === 1 && !selectedPropertyId && (
-          <div className="hidden" />
-        
-        )}
-
         {selectedPropertyId && (
           <>
             {/* Today's Status */}
             <Card className="border-2">
               <CardContent className="pt-6 pb-4">
                 {todayInspection?.status === 'completed' ? (
-                  <div className="text-center space-y-3">
+                  <div className="text-center space-y-4">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900">
-                      <CheckCircle2 className="h-7 w-7 text-green-600" />
+                      <Lock className="h-7 w-7 text-green-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg">Today's Inspection Complete!</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-2">
                         Completed at {format(parseISO(todayInspection.completed_at!), 'h:mm a')}
                       </p>
+                      {getReviewStatusBadge((todayInspection as any).review_status)}
                     </div>
-                    <Button variant="outline" onClick={handleStartInspection}>
-                      View or Edit
-                    </Button>
+                    <div className="flex gap-2 justify-center">
+                      <Button variant="outline" onClick={() => setShowWizard(true)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Report
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowAddendum(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Addendum
+                      </Button>
+                    </div>
                   </div>
                 ) : todayInspection?.status === 'in_progress' ? (
                   <div className="text-center space-y-3">
@@ -152,6 +171,11 @@ export default function DailyGroundsPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Addendums for completed inspection */}
+            {todayInspection?.status === 'completed' && (
+              <AddendumList inspectionId={todayInspection.id} />
+            )}
 
             {/* Asset Summary */}
             <Card>
@@ -256,6 +280,15 @@ export default function DailyGroundsPage() {
           </Card>
         )}
       </div>
+
+      {/* Addendum Dialog */}
+      {todayInspection && (
+        <AddendumDialog
+          open={showAddendum}
+          onOpenChange={setShowAddendum}
+          inspectionId={todayInspection.id}
+        />
+      )}
     </div>
   );
 }

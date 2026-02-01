@@ -29,6 +29,7 @@ import PlaceholderPage from "./pages/core/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import AssetsPage from "./pages/assets/AssetsPage";
 import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
+import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
                         {/* NSPIRE Inspections Module */}
                         <Route path="/inspections" element={<InspectionsDashboard />} />
                         <Route path="/inspections/daily" element={<DailyGroundsPage />} />
+                        <Route path="/inspections/review" element={<InspectionReviewPage />} />
                         <Route path="/inspections/outside" element={<OutsideInspections />} />
                         <Route path="/inspections/inside" element={<InsideInspections />} />
                         <Route path="/inspections/units" element={<UnitInspections />} />
