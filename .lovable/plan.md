@@ -1,418 +1,337 @@
 
-# Implementation Plan: Training Academy Module
+# Implementation Plan: UX/UI Fixes, Spanish Translation & Enhanced Daily Grounds
 
 ## Executive Summary
 
-This plan creates a comprehensive Training Academy page designed for operational, hands-on learning for property management staff, subcontractors, and employees. The page will integrate LearnWorld LMS access, embedded eBooks/flipbooks, and a feedback system to capture learner inputs.
+This plan addresses three major areas:
+1. **Layout Consistency** - Fix text spacing issues on pages where content is too close to borders
+2. **Spanish-to-English Auto-Translation** - Add automatic translation for voice dictation
+3. **Daily Grounds Page Enhancement** - Add hero banner with clear instructions
 
 ---
 
-## Part 1: Design Philosophy
+## Part 1: Layout/Spacing Issue Analysis
 
-### Operational Learning Focus
-Unlike academic learning management systems, this training page prioritizes:
-- **Hands-on skills** - Property inspections, maintenance procedures, safety protocols
-- **Quick access** - One-click access to LearnWorld courses and eBook resources
-- **Role-based content** - Content organized by job function (Inspector, Superintendent, etc.)
-- **Onboarding workflows** - New employee/subcontractor orientation paths
-- **Feedback loop** - Capture training requests and suggestions from the field
+### Root Cause
+The main content area renders inside `AppLayout` with only `overflow-auto` but no padding. Some pages add their own `p-6` padding while others omit it, causing inconsistent spacing.
 
-### Apple-Inspired Design
-Following the existing dashboard aesthetic:
-- Clean, minimalist interface with generous whitespace
-- Card-based content organization
-- Gradient accents for visual hierarchy
-- Smooth transitions and hover states
+### Pages WITH Proper Padding (`p-6`)
+| Page | Container Class | Status |
+|------|-----------------|--------|
+| PropertiesPage | `p-6 space-y-6 animate-fade-in` | Good |
+| WorkOrdersPage | `p-6 space-y-6 animate-fade-in` | Good |
+| IssuesPage | `p-6 space-y-6 animate-fade-in` | Good |
+| OccupancyPage | `p-6 space-y-6 animate-fade-in` | Good |
+| ActivityLogPage | `p-6 space-y-6 animate-fade-in` | Good |
+
+### Pages MISSING Padding (THE ISSUE)
+| Page | Current Class | Problem |
+|------|---------------|---------|
+| ReportsPage | `space-y-6` | No padding - text touches edges |
+| TrainingPage | `space-y-6` | No padding - text touches edges |
+| ContactsPage | `space-y-6` | No padding - text touches edges |
+| PermitsDashboard | `space-y-6` | No padding - text touches edges |
+| PermitDetailPage | `space-y-6` | No padding - text touches edges |
+
+### Dashboard (Special Case)
+The Dashboard has its own centered layout: `max-w-7xl mx-auto p-6 md:p-8`. This is correct and should remain unchanged.
+
+### DailyGroundsPage (Special Case)
+Has a centered mobile-optimized layout: `max-w-2xl mx-auto p-4 space-y-6`. This works well for its mobile-first design.
 
 ---
 
-## Part 2: Page Structure
+## Part 2: Fixing Layout Issues
 
-### Training Academy Layout
+### Solution
+Add consistent `p-6` padding to all pages missing it. This is a simple but important fix for visual consistency.
+
+### Files to Update
+
+| File | Change |
+|------|--------|
+| `src/pages/reports/ReportsPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+| `src/pages/training/TrainingPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+| `src/pages/crm/ContactsPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+| `src/pages/permits/PermitsDashboard.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+| `src/pages/permits/PermitDetailPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+
+---
+
+## Part 3: Spanish-to-English Auto-Translation
+
+### Current Flow
+1. User speaks into microphone
+2. ElevenLabs transcribes audio (currently fixed to `language_code: 'eng'`)
+3. Transcript returned to user
+
+### Enhanced Flow
+1. User speaks in ANY language (Spanish, English, etc.)
+2. ElevenLabs transcribes audio using auto-detect mode
+3. If source language is NOT English, translate to English via AI
+4. Return BOTH original transcript and English translation
+5. User can review and edit before accepting
+
+### Technical Implementation
+
+**Update `elevenlabs-transcribe` Edge Function:**
+```typescript
+// Remove fixed language_code to enable auto-detection
+formData.append('model_id', 'scribe_v2');
+// Don't set language_code - let it auto-detect
+
+// After transcription, if detected language != English, translate
+if (result.language_code && result.language_code !== 'eng') {
+  // Call translation service (using existing Gemini/OpenAI integration)
+  const translated = await translateToEnglish(result.text);
+  return { 
+    transcript: translated,
+    originalTranscript: result.text,
+    detectedLanguage: result.language_code
+  };
+}
+```
+
+**Update Voice Dictation Component:**
+Show a small indicator when translation occurred, allowing user to see original if needed.
+
+---
+
+## Part 4: Enhanced Daily Grounds Page
+
+### Current State
+The page is functional but lacks onboarding context. Users see a start button but no guidance on what to expect.
+
+### Enhanced Design
+Add an inviting hero section with clear instructions and visual cues.
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ Training Academy                                                                     │
-│ Operational training resources for your team                                         │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐│
-│  │ Total Courses    │  │ Quick Reference  │  │ Team Members     │  │ Feedback     ││
-│  │      24          │  │ Guides           │  │ Enrolled         │  │ Requests     ││
-│  │                  │  │      12          │  │     18           │  │      5       ││
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────┘│
-│                                                                                      │
-│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
-│  │ [All Training] [By Role] [Quick Start Guides] [eBooks] [Request Training]     │ │
-│  └────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                      │
-│  ═══════════════════════════════════════════════════════════════════════════════   │
-│                                                                                      │
-│  QUICK ACCESS                                                     [Open LearnWorld] │
-│  ─────────────                                                                       │
-│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
-│  │                                                                              │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │   │
-│  │  │ 🎓          │  │ 🔧          │  │ 🛡️          │  │ 📋          │        │   │
-│  │  │ New Hire    │  │ Maintenance │  │ Safety      │  │ NSPIRE      │        │   │
-│  │  │ Onboarding  │  │ Essentials  │  │ Protocols   │  │ Compliance  │        │   │
-│  │  │             │  │             │  │             │  │             │        │   │
-│  │  │ 8 modules   │  │ 12 modules  │  │ 6 modules   │  │ 15 modules  │        │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │   │
-│  │                                                                              │   │
-│  └──────────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                      │
-│  eBook LIBRARY                                                                       │
-│  ─────────────                                                                       │
-│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
-│  │                                                                              │   │
-│  │  ┌─────────────────────────────────────────────────────────────────────┐    │   │
-│  │  │                                                                     │    │   │
-│  │  │             [EMBEDDED FLIPBOOK iFrame]                              │    │   │
-│  │  │                                                                     │    │   │
-│  │  │             PRD Professional eBook                                  │    │   │
-│  │  │                                                                     │    │   │
-│  │  └─────────────────────────────────────────────────────────────────────┘    │   │
-│  │                                                                              │   │
-│  │  [← Previous]                                                [Next →]       │   │
-│  └──────────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                      │
-│  ROLE-BASED LEARNING PATHS                                                          │
-│  ─────────────────────────                                                           │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐            │
-│  │ Inspector Track    │  │ Superintendent     │  │ Property Manager   │            │
-│  │ 12 required courses│  │ Track              │  │ Track              │            │
-│  │                    │  │ 18 required courses│  │ 22 required courses│            │
-│  │ [View Path →]      │  │ [View Path →]      │  │ [View Path →]      │            │
-│  └────────────────────┘  └────────────────────┘  └────────────────────┘            │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│                    [Icon: ClipboardCheck]                           │
+│                                                                      │
+│              Daily Grounds Inspection                               │
+│              Monday, February 3, 2026                               │
+│                                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐ │
+│  │  What You'll Do Today                                          │ │
+│  │  ─────────────────────                                         │ │
+│  │                                                                 │ │
+│  │  ☀️ Report Weather Conditions                                   │ │
+│  │  📋 Check Infrastructure Assets (Cleanouts, Catch Basins, etc.)│ │
+│  │  📸 Document Findings with Photos                               │ │
+│  │  🎤 Add Voice Notes (Spanish OK - auto-translated!)             │ │
+│  │  ✅ Submit for Supervisor Review                                 │ │
+│  │                                                                 │ │
+│  │  Estimated Time: 10-15 minutes                                  │ │
+│  └───────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  [Property Selector - if multiple properties]                       │
+│                                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐ │
+│  │                                                                 │ │
+│  │         Ready for Today's Inspection                           │ │
+│  │         5 assets to check                                       │ │
+│  │                                                                 │ │
+│  │     ┌─────────────────────────────────────────────────────┐   │ │
+│  │     │         🏃 Start Today's Inspection                  │   │ │
+│  │     └─────────────────────────────────────────────────────┘   │ │
+│  │                                                                 │ │
+│  └───────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  [Assets to Inspect Grid]                                           │
+│  [Recent Inspections List]                                          │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Tabs Structure
-
-| Tab | Content |
-|-----|---------|
-| **All Training** | Full catalog of courses and resources |
-| **By Role** | Learning paths organized by job function |
-| **Quick Start Guides** | Short, operational how-to guides |
-| **eBooks** | Embedded flipbook viewer with library navigation |
-| **Request Training** | Feedback form for training requests |
+### New Component: InspectionGuideCard
+A friendly instructional card that explains what the inspection involves.
 
 ---
 
-## Part 3: Database Schema
+## Part 5: Voice Dictation Editability
 
-### New Tables
+### Current State
+The `VoiceDictationTextareaWithAI` component already has:
+- `readOnly={false}` explicitly set
+- Focus return after polishing
+- Standard textarea that accepts typing
 
-**1. `training_resources`** - Catalog of training materials
-```sql
-CREATE TABLE training_resources (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT,
-  resource_type TEXT NOT NULL, -- 'course', 'ebook', 'video', 'guide', 'document'
-  category TEXT NOT NULL, -- 'onboarding', 'maintenance', 'safety', 'compliance', 'operations'
-  target_roles app_role[] DEFAULT '{}', -- Which roles this is for
-  external_url TEXT, -- LearnWorld course URL
-  embed_code TEXT, -- For eBooks/flipbooks
-  thumbnail_url TEXT,
-  duration_minutes INTEGER,
-  is_required BOOLEAN DEFAULT false,
-  sort_order INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+### Verification
+All fields using this component are already editable. The transcript populates the textarea, and users can immediately edit the text before submitting.
 
-**2. `training_progress`** - Track user completion
-```sql
-CREATE TABLE training_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  resource_id UUID NOT NULL REFERENCES training_resources(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'not_started', -- 'not_started', 'in_progress', 'completed'
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, resource_id)
-);
-```
-
-**3. `training_requests`** - Feedback and requests from staff
-```sql
-CREATE TABLE training_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  category TEXT, -- 'new_topic', 'improvement', 'question', 'resource_request'
-  priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
-  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'under_review', 'approved', 'implemented', 'declined'
-  admin_response TEXT,
-  responded_by UUID REFERENCES auth.users(id),
-  responded_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-### RLS Policies
-
-```sql
--- training_resources: All authenticated users can view
-CREATE POLICY "Authenticated users can view training resources"
-  ON training_resources FOR SELECT
-  USING (auth.uid() IS NOT NULL AND is_active = true);
-
-CREATE POLICY "Admins can manage training resources"
-  ON training_resources FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
-
--- training_progress: Users can manage their own progress
-CREATE POLICY "Users can view own progress"
-  ON training_progress FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own progress"
-  ON training_progress FOR ALL
-  USING (auth.uid() = user_id);
-
--- training_requests: Users can create and view own requests
-CREATE POLICY "Users can manage own requests"
-  ON training_requests FOR ALL
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins can view all requests"
-  ON training_requests FOR SELECT
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-
-CREATE POLICY "Admins can respond to requests"
-  ON training_requests FOR UPDATE
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-```
+### Enhancement
+Add a small "Edit before saving" hint after transcription to make it clearer users can modify the text.
 
 ---
 
-## Part 4: UI Components
+## Part 6: Files to Modify
 
-### Training Page Components
+### Layout Fixes (5 files)
+| File | Change |
+|------|--------|
+| `src/pages/reports/ReportsPage.tsx` | Add `p-6` padding |
+| `src/pages/training/TrainingPage.tsx` | Add `p-6` padding |
+| `src/pages/crm/ContactsPage.tsx` | Add `p-6` padding |
+| `src/pages/permits/PermitsDashboard.tsx` | Add `p-6` padding |
+| `src/pages/permits/PermitDetailPage.tsx` | Add `p-6` padding |
 
-| Component | Purpose |
-|-----------|---------|
-| `TrainingPage.tsx` | Main training academy page with tabs |
-| `TrainingCatalog.tsx` | Grid of training resources with filtering |
-| `LearningPathCard.tsx` | Role-based learning path display |
-| `EBookViewer.tsx` | Embedded flipbook/eBook component |
-| `TrainingRequestDialog.tsx` | Form for submitting training requests |
-| `TrainingProgressCard.tsx` | Individual resource progress display |
-| `QuickAccessCard.tsx` | Quick access category cards |
+### Spanish Translation (2 files)
+| File | Change |
+|------|--------|
+| `supabase/functions/elevenlabs-transcribe/index.ts` | Add auto-detect + translation |
+| `src/components/ui/voice-dictation.tsx` | Show translation indicator |
 
-### EBook Viewer Component
+### Daily Grounds Enhancement (1 file)
+| File | Change |
+|------|--------|
+| `src/pages/inspections/DailyGroundsPage.tsx` | Add instructional hero card |
 
+---
+
+## Part 7: Implementation Details
+
+### Layout Padding Fix Pattern
 ```typescript
-// Handles the provided embed code beautifully
-function EBookViewer({ embedCode, title }: { embedCode: string; title: string }) {
+// BEFORE
+return (
+  <div className="space-y-6">
+    ...
+  </div>
+);
+
+// AFTER
+return (
+  <div className="p-6 space-y-6 animate-fade-in">
+    ...
+  </div>
+);
+```
+
+### Spanish Translation Edge Function Update
+```typescript
+// In elevenlabs-transcribe/index.ts
+
+// 1. Remove hardcoded language_code for auto-detection
+formData.append('model_id', 'scribe_v2');
+// formData.append('language_code', 'eng'); // REMOVED
+
+// 2. After transcription, check if translation needed
+const result = await response.json();
+
+let transcript = result.text || '';
+let originalTranscript = null;
+let detectedLanguage = result.language_code || null;
+
+// If detected language is not English, translate
+if (detectedLanguage && detectedLanguage !== 'eng' && transcript) {
+  originalTranscript = transcript;
+  
+  // Use Lovable AI for translation
+  const translationResponse = await fetch('https://api.lovable.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [{
+        role: 'user',
+        content: `Translate the following text to English. Return ONLY the translation, no explanations:\n\n${transcript}`
+      }],
+    }),
+  });
+  
+  const translationData = await translationResponse.json();
+  transcript = translationData.choices?.[0]?.message?.content || transcript;
+}
+
+return new Response(
+  JSON.stringify({ 
+    transcript,
+    originalTranscript,
+    detectedLanguage,
+    wasTranslated: originalTranscript !== null
+  }),
+  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+);
+```
+
+### Daily Grounds Hero Card
+```typescript
+// New component inside DailyGroundsPage.tsx
+function InspectionGuideCard() {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="relative w-full aspect-[4/3] bg-muted">
-          {/* Embed iframe safely */}
-          <iframe
-            src={extractSrcFromEmbed(embedCode)}
-            className="absolute inset-0 w-full h-full border-0"
-            allowFullScreen
-            title={title}
-          />
-        </div>
+    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+      <CardContent className="pt-6">
+        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+          <Info className="h-5 w-5 text-primary" />
+          What You'll Do Today
+        </h3>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li className="flex items-center gap-2">
+            <span>☀️</span> Report current weather conditions
+          </li>
+          <li className="flex items-center gap-2">
+            <span>📋</span> Check infrastructure assets (Cleanouts, Catch Basins, etc.)
+          </li>
+          <li className="flex items-center gap-2">
+            <span>📸</span> Document any findings with photos
+          </li>
+          <li className="flex items-center gap-2">
+            <span>🎤</span> Add voice notes (Spanish OK - auto-translated!)
+          </li>
+          <li className="flex items-center gap-2">
+            <span>✅</span> Submit for supervisor review
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Estimated time: 10-15 minutes
+        </p>
       </CardContent>
     </Card>
   );
 }
 ```
 
-### Training Request Form
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ Request Training                                                                     │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  What type of request is this?                                                       │
-│  [○ New Topic] [○ Improvement] [○ Question] [○ Resource Request]                    │
-│                                                                                      │
-│  Title:                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
-│  │ e.g., "Need training on new HVAC systems"                                   │    │
-│  └─────────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                      │
-│  Description:                                                                        │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
-│  │ Tell us what you need and why it would help your work...    [🎤] [✨ Polish]│    │
-│  │                                                                             │    │
-│  │                                                                             │    │
-│  └─────────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                      │
-│  Priority:                                                                           │
-│  [Normal ▼]                                                                          │
-│                                                                                      │
-│                                              [Cancel]  [Submit Request]             │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ---
 
-## Part 5: New Files to Create
+## Part 8: Implementation Order
 
-| File | Purpose |
-|------|---------|
-| `src/pages/training/TrainingPage.tsx` | Main training academy page |
-| `src/components/training/TrainingCatalog.tsx` | Resource catalog grid |
-| `src/components/training/LearningPathCard.tsx` | Role-based learning paths |
-| `src/components/training/EBookViewer.tsx` | Embedded eBook display |
-| `src/components/training/TrainingRequestDialog.tsx` | Training request form |
-| `src/components/training/QuickAccessCard.tsx` | Quick access category cards |
-| `src/hooks/useTrainingResources.ts` | CRUD for training resources |
-| `src/hooks/useTrainingProgress.ts` | Track user progress |
-| `src/hooks/useTrainingRequests.ts` | Training requests management |
+1. **Phase 1: Layout Fixes** (Quick wins)
+   - Fix padding on ReportsPage
+   - Fix padding on TrainingPage
+   - Fix padding on ContactsPage
+   - Fix padding on PermitsDashboard
+   - Fix padding on PermitDetailPage
 
----
+2. **Phase 2: Daily Grounds Enhancement**
+   - Add InspectionGuideCard component
+   - Update page layout with hero section
 
-## Part 6: Files to Modify
+3. **Phase 3: Spanish Translation**
+   - Update elevenlabs-transcribe edge function
+   - Add language auto-detection
+   - Implement translation via Lovable AI
+   - Update VoiceDictation component to show translation indicator
 
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Add `/training` route |
-| `src/components/layout/AppSidebar.tsx` | Add Training link with tooltip |
-| `src/types/modules.ts` | Add `trainingEnabled` to ModuleConfig |
-| `src/contexts/ModuleContext.tsx` | Add training module support |
-
----
-
-## Part 7: Navigation Integration
-
-### Sidebar Addition
-
-```typescript
-// In AppSidebar.tsx - Platform section
-<SidebarMenuItem>
-  <SidebarMenuButton asChild>
-    <NavLink
-      to="/training"
-      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-    >
-      <GraduationCap className="h-4 w-4" />
-      {!collapsed && <span>Training</span>}
-    </NavLink>
-  </SidebarMenuButton>
-</SidebarMenuItem>
-```
-
-Tooltip: "Training Academy - Operational skills and certifications"
-
----
-
-## Part 8: Seed Data
-
-### Default Training Categories
-
-| Category | Icon | Description |
-|----------|------|-------------|
-| **New Hire Onboarding** | 🎓 | Essential orientation for all new team members |
-| **Maintenance Essentials** | 🔧 | Core maintenance and repair procedures |
-| **Safety Protocols** | 🛡️ | OSHA compliance and workplace safety |
-| **NSPIRE Compliance** | 📋 | HUD inspection standards and procedures |
-| **Property Operations** | 🏢 | Day-to-day property management |
-| **Emergency Response** | 🚨 | Emergency procedures and protocols |
-
-### Default eBook Entry
-
-```sql
-INSERT INTO training_resources (
-  title, description, resource_type, category, embed_code, is_active
-) VALUES (
-  'PRD Professional Handbook',
-  'Comprehensive operational guide for property management professionals',
-  'ebook',
-  'operations',
-  '<iframe src="https://3e4ed0b2-6b22-4160-aee9-ee4110f6dd2f.lovableproject.com/embed/enzark-prd-professional-1769980229295"...',
-  true
-);
-```
-
----
-
-## Part 9: Implementation Order
-
-### Phase 1: Database & Infrastructure
-1. Create database migration for training tables
-2. Add RLS policies
-3. Seed default categories and sample eBook entry
-
-### Phase 2: Core Hooks
-4. Create `useTrainingResources.ts`
-5. Create `useTrainingProgress.ts`
-6. Create `useTrainingRequests.ts`
-
-### Phase 3: Main Page
-7. Build `TrainingPage.tsx` with tabs structure
-8. Build `QuickAccessCard.tsx` for category navigation
-9. Build `EBookViewer.tsx` for flipbook embedding
-
-### Phase 4: Training Features
-10. Build `TrainingCatalog.tsx` with search/filter
-11. Build `LearningPathCard.tsx` for role-based paths
-12. Build `TrainingRequestDialog.tsx` with voice dictation
-
-### Phase 5: Integration
-13. Add route to `App.tsx`
-14. Add navigation link to `AppSidebar.tsx`
-15. Add admin management in Settings (optional)
-
----
-
-## Part 10: Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **LearnWorld Integration** | Direct link to external LMS with SSO potential |
-| **Embedded eBooks** | Flipbook viewer for operational manuals |
-| **Role-Based Paths** | Curated learning paths per job function |
-| **Progress Tracking** | Track completion status per user |
-| **Training Requests** | Feedback loop for staff to request topics |
-| **Quick Access** | Category cards for fast navigation |
-| **Search & Filter** | Find resources by keyword, category, or role |
-| **Voice Dictation** | Use AI polish in request forms |
-
----
-
-## Technical Notes
-
-1. **Embed Safety**: Sanitize and validate embed codes before rendering
-2. **LearnWorld SSO**: Future enhancement for seamless login integration
-3. **Mobile Responsive**: Ensure eBook viewer works on tablets/phones
-4. **Progress Sync**: Consider real-time updates for progress tracking
-5. **Admin Panel**: Allow admins to add/remove resources from Settings
+4. **Phase 4: Testing**
+   - Verify all pages have consistent spacing
+   - Test voice dictation in Spanish
+   - Verify all fields remain editable after transcription
 
 ---
 
 ## Summary
 
-This Training Academy implementation provides:
+This implementation addresses:
 
-1. **Operational Focus** - Hands-on, job-relevant training for property staff
-2. **LearnWorld Integration** - Easy access to external LMS courses
-3. **eBook Library** - Embedded flipbook viewer for digital manuals
-4. **Role-Based Learning** - Curated paths for each job function
-5. **Feedback Loop** - Staff can request new training topics
-6. **Professional UX** - Apple-inspired design matching existing platform
+1. **Visual Consistency** - All pages will have proper `p-6` padding, fixing the "text stuck to border" issue shown in the screenshot
+2. **Multilingual Support** - Spanish-speaking users can dictate in their native language, with automatic English translation
+3. **User Guidance** - Daily Grounds page gets a friendly instructional card explaining the inspection process
+4. **Editability** - All voice dictation fields remain fully editable after transcription/translation
