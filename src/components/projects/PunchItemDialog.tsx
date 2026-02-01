@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreatePunchItem, useUpdatePunchItem, type PunchItem } from '@/hooks/usePunchItems';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -110,13 +110,12 @@ export function PunchItemDialog({ open, onOpenChange, projectId, punchItem }: Pu
           
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
-            <Textarea
+            <VoiceDictationTextarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onValueChange={(value) => setFormData({ ...formData, description: value })}
               placeholder="Describe the issue or work to be completed..."
-              rows={4}
-              required
+              className="min-h-[100px]"
             />
           </div>
           

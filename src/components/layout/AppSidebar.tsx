@@ -32,6 +32,7 @@ import {
   User,
   BarChart3,
   Sun,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -207,6 +208,18 @@ export function AppSidebar() {
                   >
                     <Sun className="h-4 w-4" />
                     {!collapsed && <span>Daily Grounds</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inspections/review"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    {!collapsed && <span>Review Queue</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

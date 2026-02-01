@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -202,6 +203,8 @@ export function DailyInspectionWizard({
     }
   };
 
+  const navigate = useNavigate();
+
   const handleSubmit = async () => {
     if (!inspection) return;
 
@@ -212,10 +215,12 @@ export function DailyInspectionWizard({
         attachments,
         status: 'completed',
         completed_at: new Date().toISOString(),
-      });
+        review_status: 'pending_review',
+        submitted_at: new Date().toISOString(),
+      } as any);
 
-      toast.success('Inspection completed!');
-      onComplete();
+      toast.success('Inspection submitted for review!');
+      navigate('/');
     } catch (error) {
       console.error('Submit error:', error);
     }
