@@ -1,337 +1,257 @@
 
-# Implementation Plan: UX/UI Fixes, Spanish Translation & Enhanced Daily Grounds
+# Implementation Plan: Authentication Hardening & First-Time Onboarding Experience
 
 ## Executive Summary
 
-This plan addresses three major areas:
-1. **Layout Consistency** - Fix text spacing issues on pages where content is too close to borders
-2. **Spanish-to-English Auto-Translation** - Add automatic translation for voice dictation
-3. **Daily Grounds Page Enhancement** - Add hero banner with clear instructions
+Your application **already has authentication fully implemented**. However, you want to:
+1. **Restrict who can sign up** (not allow the world to register)
+2. **Create a guided onboarding flow** for first-time setup of properties and people
+
+This plan covers both requirements to prepare the app for go-live.
 
 ---
 
-## Part 1: Layout/Spacing Issue Analysis
+## Part 1: Current Authentication Status
 
-### Root Cause
-The main content area renders inside `AppLayout` with only `overflow-auto` but no padding. Some pages add their own `p-6` padding while others omit it, causing inconsistent spacing.
+### What's Already Built
 
-### Pages WITH Proper Padding (`p-6`)
-| Page | Container Class | Status |
-|------|-----------------|--------|
-| PropertiesPage | `p-6 space-y-6 animate-fade-in` | Good |
-| WorkOrdersPage | `p-6 space-y-6 animate-fade-in` | Good |
-| IssuesPage | `p-6 space-y-6 animate-fade-in` | Good |
-| OccupancyPage | `p-6 space-y-6 animate-fade-in` | Good |
-| ActivityLogPage | `p-6 space-y-6 animate-fade-in` | Good |
+| Feature | Status | Location |
+|---------|--------|----------|
+| Login page | Done | `/auth` route |
+| Sign up form | Done | `/auth` (tabs) |
+| Password validation | Done | Zod schema (6+ chars) |
+| Email validation | Done | Zod schema |
+| Protected routes | Done | `ProtectedRoute` component |
+| Session management | Done | `useAuth` hook |
+| Role-based access | Done | `user_roles` table + `has_role()` function |
+| Auto-redirect | Done | Redirects to `/` after login |
 
-### Pages MISSING Padding (THE ISSUE)
-| Page | Current Class | Problem |
-|------|---------------|---------|
-| ReportsPage | `space-y-6` | No padding - text touches edges |
-| TrainingPage | `space-y-6` | No padding - text touches edges |
-| ContactsPage | `space-y-6` | No padding - text touches edges |
-| PermitsDashboard | `space-y-6` | No padding - text touches edges |
-| PermitDetailPage | `space-y-6` | No padding - text touches edges |
+### Security Concern: Open Registration
 
-### Dashboard (Special Case)
-The Dashboard has its own centered layout: `max-w-7xl mx-auto p-6 md:p-8`. This is correct and should remain unchanged.
-
-### DailyGroundsPage (Special Case)
-Has a centered mobile-optimized layout: `max-w-2xl mx-auto p-4 space-y-6`. This works well for its mobile-first design.
+Currently, **anyone can create an account** by visiting `/auth` and clicking "Sign Up". For a go-live scenario, you need to control who can register.
 
 ---
 
-## Part 2: Fixing Layout Issues
+## Part 2: Registration Control Options
 
-### Solution
-Add consistent `p-6` padding to all pages missing it. This is a simple but important fix for visual consistency.
+### Option A: Invitation-Only System (Recommended)
 
-### Files to Update
+Only existing admins can invite new users. New users receive an email with a magic link to set their password.
 
-| File | Change |
-|------|--------|
-| `src/pages/reports/ReportsPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
-| `src/pages/training/TrainingPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
-| `src/pages/crm/ContactsPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
-| `src/pages/permits/PermitsDashboard.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
-| `src/pages/permits/PermitDetailPage.tsx` | Change `space-y-6` to `p-6 space-y-6 animate-fade-in` |
+**How it works:**
+1. Remove public sign-up tab from `/auth`
+2. Admin invites user via People page (enters email + role)
+3. System sends invitation email with secure link
+4. User clicks link, sets password, account is created
 
----
+**Benefits:**
+- Complete control over who joins
+- Users are pre-assigned roles before first login
+- Audit trail of who invited whom
 
-## Part 3: Spanish-to-English Auto-Translation
+### Option B: Email Domain Restriction
 
-### Current Flow
-1. User speaks into microphone
-2. ElevenLabs transcribes audio (currently fixed to `language_code: 'eng'`)
-3. Transcript returned to user
+Only allow sign-ups from specific email domains (e.g., `@yourcompany.com`).
 
-### Enhanced Flow
-1. User speaks in ANY language (Spanish, English, etc.)
-2. ElevenLabs transcribes audio using auto-detect mode
-3. If source language is NOT English, translate to English via AI
-4. Return BOTH original transcript and English translation
-5. User can review and edit before accepting
+**How it works:**
+1. Add domain validation to sign-up form
+2. Reject registrations from non-approved domains
 
-### Technical Implementation
+**Benefits:**
+- Simpler to implement
+- Self-service for approved domain users
 
-**Update `elevenlabs-transcribe` Edge Function:**
-```typescript
-// Remove fixed language_code to enable auto-detection
-formData.append('model_id', 'scribe_v2');
-// Don't set language_code - let it auto-detect
+### Option C: Admin Approval Queue
 
-// After transcription, if detected language != English, translate
-if (result.language_code && result.language_code !== 'eng') {
-  // Call translation service (using existing Gemini/OpenAI integration)
-  const translated = await translateToEnglish(result.text);
-  return { 
-    transcript: translated,
-    originalTranscript: result.text,
-    detectedLanguage: result.language_code
-  };
-}
-```
+Users can request access, but must be approved by an admin before gaining access.
 
-**Update Voice Dictation Component:**
-Show a small indicator when translation occurred, allowing user to see original if needed.
+**How it works:**
+1. User submits registration request
+2. Account created but marked as "pending"
+3. Admin reviews and approves in dashboard
+4. User receives email when approved
 
 ---
 
-## Part 4: Enhanced Daily Grounds Page
+## Part 3: First-Time Onboarding Wizard
 
-### Current State
-The page is functional but lacks onboarding context. Users see a start button but no guidance on what to expect.
+When a new admin logs in to an empty system, they should see a guided setup wizard.
 
-### Enhanced Design
-Add an inviting hero section with clear instructions and visual cues.
+### Wizard Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                      │
-│                    [Icon: ClipboardCheck]                           │
-│                                                                      │
-│              Daily Grounds Inspection                               │
-│              Monday, February 3, 2026                               │
-│                                                                      │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  What You'll Do Today                                          │ │
-│  │  ─────────────────────                                         │ │
-│  │                                                                 │ │
-│  │  ☀️ Report Weather Conditions                                   │ │
-│  │  📋 Check Infrastructure Assets (Cleanouts, Catch Basins, etc.)│ │
-│  │  📸 Document Findings with Photos                               │ │
-│  │  🎤 Add Voice Notes (Spanish OK - auto-translated!)             │ │
-│  │  ✅ Submit for Supervisor Review                                 │ │
-│  │                                                                 │ │
-│  │  Estimated Time: 10-15 minutes                                  │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  [Property Selector - if multiple properties]                       │
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │                                                                 │ │
-│  │         Ready for Today's Inspection                           │ │
-│  │         5 assets to check                                       │ │
-│  │                                                                 │ │
-│  │     ┌─────────────────────────────────────────────────────┐   │ │
-│  │     │         🏃 Start Today's Inspection                  │   │ │
-│  │     └─────────────────────────────────────────────────────┘   │ │
-│  │                                                                 │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  [Assets to Inspect Grid]                                           │
-│  [Recent Inspections List]                                          │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+Step 1: Welcome
+-----------------
+"Welcome to NSPIRE Property OS!"
+"Let's set up your first property in just a few steps."
+
+    [Get Started]
+
+Step 2: Add Your First Property
+--------------------------------
+[Property Name        ]
+[Street Address       ]
+[City     ] [State] [ZIP]
+[Total Units          ]
+
+"Which modules do you need?"
+[ ] Daily Grounds Inspections
+[ ] NSPIRE Compliance
+[ ] Projects Management
+
+    [Continue]
+
+Step 3: Invite Your Team (Optional)
+------------------------------------
+"Add team members to help manage this property"
+
+[Email Address    ] [Role Selector] [+ Add]
+
+Listed invites:
+- john@example.com (Inspector)
+- jane@example.com (Manager)
+
+    [Skip for Now]  [Send Invites]
+
+Step 4: All Set!
+-----------------
+"Your property is ready!"
+
+Summary:
+- Property: Oak Ridge Apartments (50 units)
+- Modules: Daily Grounds, NSPIRE
+- Team: 2 invitations sent
+
+    [Go to Dashboard]
 ```
 
-### New Component: InspectionGuideCard
-A friendly instructional card that explains what the inspection involves.
+### Trigger Conditions
+
+Show onboarding wizard when:
+- User is logged in
+- User has admin or manager role
+- No properties exist in the system
 
 ---
 
-## Part 5: Voice Dictation Editability
+## Part 4: Technical Implementation
 
-### Current State
-The `VoiceDictationTextareaWithAI` component already has:
-- `readOnly={false}` explicitly set
-- Focus return after polishing
-- Standard textarea that accepts typing
+### Database Changes
 
-### Verification
-All fields using this component are already editable. The transcript populates the textarea, and users can immediately edit the text before submitting.
-
-### Enhancement
-Add a small "Edit before saving" hint after transcription to make it clearer users can modify the text.
-
----
-
-## Part 6: Files to Modify
-
-### Layout Fixes (5 files)
-| File | Change |
-|------|--------|
-| `src/pages/reports/ReportsPage.tsx` | Add `p-6` padding |
-| `src/pages/training/TrainingPage.tsx` | Add `p-6` padding |
-| `src/pages/crm/ContactsPage.tsx` | Add `p-6` padding |
-| `src/pages/permits/PermitsDashboard.tsx` | Add `p-6` padding |
-| `src/pages/permits/PermitDetailPage.tsx` | Add `p-6` padding |
-
-### Spanish Translation (2 files)
-| File | Change |
-|------|--------|
-| `supabase/functions/elevenlabs-transcribe/index.ts` | Add auto-detect + translation |
-| `src/components/ui/voice-dictation.tsx` | Show translation indicator |
-
-### Daily Grounds Enhancement (1 file)
-| File | Change |
-|------|--------|
-| `src/pages/inspections/DailyGroundsPage.tsx` | Add instructional hero card |
-
----
-
-## Part 7: Implementation Details
-
-### Layout Padding Fix Pattern
-```typescript
-// BEFORE
-return (
-  <div className="space-y-6">
-    ...
-  </div>
-);
-
-// AFTER
-return (
-  <div className="p-6 space-y-6 animate-fade-in">
-    ...
-  </div>
+**1. New table: `user_invitations`**
+```sql
+CREATE TABLE user_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  role app_role NOT NULL DEFAULT 'user',
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  invited_by UUID REFERENCES auth.users(id),
+  token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-### Spanish Translation Edge Function Update
-```typescript
-// In elevenlabs-transcribe/index.ts
-
-// 1. Remove hardcoded language_code for auto-detection
-formData.append('model_id', 'scribe_v2');
-// formData.append('language_code', 'eng'); // REMOVED
-
-// 2. After transcription, check if translation needed
-const result = await response.json();
-
-let transcript = result.text || '';
-let originalTranscript = null;
-let detectedLanguage = result.language_code || null;
-
-// If detected language is not English, translate
-if (detectedLanguage && detectedLanguage !== 'eng' && transcript) {
-  originalTranscript = transcript;
-  
-  // Use Lovable AI for translation
-  const translationResponse = await fetch('https://api.lovable.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [{
-        role: 'user',
-        content: `Translate the following text to English. Return ONLY the translation, no explanations:\n\n${transcript}`
-      }],
-    }),
-  });
-  
-  const translationData = await translationResponse.json();
-  transcript = translationData.choices?.[0]?.message?.content || transcript;
-}
-
-return new Response(
-  JSON.stringify({ 
-    transcript,
-    originalTranscript,
-    detectedLanguage,
-    wasTranslated: originalTranscript !== null
-  }),
-  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+**2. New table: `onboarding_status`**
+```sql
+CREATE TABLE onboarding_status (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  completed_at TIMESTAMPTZ,
+  steps_completed JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-### Daily Grounds Hero Card
-```typescript
-// New component inside DailyGroundsPage.tsx
-function InspectionGuideCard() {
-  return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-      <CardContent className="pt-6">
-        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-          <Info className="h-5 w-5 text-primary" />
-          What You'll Do Today
-        </h3>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex items-center gap-2">
-            <span>☀️</span> Report current weather conditions
-          </li>
-          <li className="flex items-center gap-2">
-            <span>📋</span> Check infrastructure assets (Cleanouts, Catch Basins, etc.)
-          </li>
-          <li className="flex items-center gap-2">
-            <span>📸</span> Document any findings with photos
-          </li>
-          <li className="flex items-center gap-2">
-            <span>🎤</span> Add voice notes (Spanish OK - auto-translated!)
-          </li>
-          <li className="flex items-center gap-2">
-            <span>✅</span> Submit for supervisor review
-          </li>
-        </ul>
-        <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          Estimated time: 10-15 minutes
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-```
+### New Components
+
+| Component | Purpose |
+|-----------|---------|
+| `OnboardingWizard.tsx` | Multi-step setup flow |
+| `InviteUserDialog.tsx` | Admin dialog to invite users |
+| `AcceptInvitePage.tsx` | Page for invited users to set password |
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `AuthPage.tsx` | Remove/hide Sign Up tab (invitation-only) |
+| `App.tsx` | Add `/accept-invite/:token` route |
+| `Dashboard.tsx` | Check onboarding status, show wizard if needed |
+| `PeoplePage.tsx` | Add "Invite User" button for admins |
+
+### New Edge Function
+
+**`send-invitation`** - Sends invitation emails to new users
 
 ---
 
-## Part 8: Implementation Order
+## Part 5: Implementation Order
 
-1. **Phase 1: Layout Fixes** (Quick wins)
-   - Fix padding on ReportsPage
-   - Fix padding on TrainingPage
-   - Fix padding on ContactsPage
-   - Fix padding on PermitsDashboard
-   - Fix padding on PermitDetailPage
+### Phase 1: Registration Control
+1. Create `user_invitations` table with RLS
+2. Build `send-invitation` edge function
+3. Create `InviteUserDialog` component
+4. Add invite functionality to People page
+5. Create `/accept-invite/:token` route
+6. Build `AcceptInvitePage` with password setup
+7. Hide public Sign Up from `/auth` (login-only)
 
-2. **Phase 2: Daily Grounds Enhancement**
-   - Add InspectionGuideCard component
-   - Update page layout with hero section
+### Phase 2: Onboarding Wizard
+1. Create `onboarding_status` table
+2. Build `useOnboarding` hook to check status
+3. Create multi-step `OnboardingWizard` component
+4. Integrate wizard trigger into Dashboard
+5. Add property creation step
+6. Add team invitation step
+7. Mark onboarding complete when finished
 
-3. **Phase 3: Spanish Translation**
-   - Update elevenlabs-transcribe edge function
-   - Add language auto-detection
-   - Implement translation via Lovable AI
-   - Update VoiceDictation component to show translation indicator
+### Phase 3: Polish
+1. Add loading states and animations
+2. Handle edge cases (expired invitations, etc.)
+3. Add ability to resend invitations
+4. Add progress indicator to wizard
 
-4. **Phase 4: Testing**
-   - Verify all pages have consistent spacing
-   - Test voice dictation in Spanish
-   - Verify all fields remain editable after transcription
+---
+
+## Part 6: Files to Create/Modify
+
+### New Files (8 files)
+| File | Description |
+|------|-------------|
+| `src/components/onboarding/OnboardingWizard.tsx` | Main wizard component |
+| `src/components/onboarding/WelcomeStep.tsx` | Step 1: Welcome |
+| `src/components/onboarding/PropertyStep.tsx` | Step 2: Add property |
+| `src/components/onboarding/TeamStep.tsx` | Step 3: Invite team |
+| `src/components/onboarding/CompleteStep.tsx` | Step 4: Success |
+| `src/components/people/InviteUserDialog.tsx` | Invite new users |
+| `src/pages/auth/AcceptInvitePage.tsx` | Accept invitation page |
+| `src/hooks/useOnboarding.ts` | Onboarding state management |
+| `supabase/functions/send-invitation/index.ts` | Send invite emails |
+
+### Modified Files (5 files)
+| File | Changes |
+|------|---------|
+| `src/pages/auth/AuthPage.tsx` | Hide Sign Up tab |
+| `src/pages/Dashboard.tsx` | Show wizard for new admins |
+| `src/pages/people/PeoplePage.tsx` | Add Invite User button |
+| `src/App.tsx` | Add accept-invite route |
+| `src/hooks/useAuth.tsx` | Add invitation acceptance logic |
+
+### Database Migrations (2)
+1. Create `user_invitations` table
+2. Create `onboarding_status` table
 
 ---
 
 ## Summary
 
-This implementation addresses:
+This implementation transforms your application from an open-registration system to a controlled, invitation-only platform with a guided first-time setup experience:
 
-1. **Visual Consistency** - All pages will have proper `p-6` padding, fixing the "text stuck to border" issue shown in the screenshot
-2. **Multilingual Support** - Spanish-speaking users can dictate in their native language, with automatic English translation
-3. **User Guidance** - Daily Grounds page gets a friendly instructional card explaining the inspection process
-4. **Editability** - All voice dictation fields remain fully editable after transcription/translation
+1. **Secure Access** - Only invited users can join
+2. **Admin Control** - Admins invite team members with pre-assigned roles
+3. **Guided Setup** - First-time wizard walks through property and team setup
+4. **Go-Live Ready** - Clean, controlled user base from day one
+
+The existing authentication infrastructure (login, sessions, roles) remains intact. We're adding an invitation layer on top and a friendly onboarding experience for new administrators.
