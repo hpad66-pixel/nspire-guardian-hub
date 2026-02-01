@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Loader2 } from 'lucide-react';
+import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Loader2, Upload } from 'lucide-react';
 import { useUnits, useUnitStats } from '@/hooks/useUnits';
 import { useProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
+import { UnitImportDialog } from '@/components/units/UnitImportDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UnitsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [propertyFilter, setPropertyFilter] = useState<string>('all');
 
@@ -34,10 +36,16 @@ export default function UnitsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Units</h1>
           <p className="text-muted-foreground">Manage units across your properties</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Unit
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Unit
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -185,6 +193,7 @@ export default function UnitsPage() {
       )}
 
       <UnitDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   );
 }

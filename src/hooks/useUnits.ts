@@ -143,6 +143,38 @@ export function useDeleteUnit() {
   });
 }
 
+export function useBulkCreateUnits() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (units: Omit<UnitInsert, 'id' | 'created_at' | 'updated_at'>[]) => {
+      // Insert in batches of 100 to avoid request size limits
+      const batchSize = 100;
+      const results = [];
+      
+      for (let i = 0; i < units.length; i += batchSize) {
+        const batch = units.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('units')
+          .insert(batch)
+          .select();
+        
+        if (error) throw error;
+        results.push(...(data || []));
+      }
+      
+      return results;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      toast.success(`Successfully imported ${data.length} units`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import units: ${error.message}`);
+    },
+  });
+}
+
 export function useUnitStats() {
   return useQuery({
     queryKey: ['units', 'stats'],
