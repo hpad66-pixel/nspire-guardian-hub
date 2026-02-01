@@ -32,6 +32,8 @@ import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
 import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
 import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
 import MailboxPage from "./pages/inbox/MailboxPage";
+import PermitsDashboard from "./pages/permits/PermitsDashboard";
+import PermitDetailPage from "./pages/permits/PermitDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,10 @@ const App = () => (
                         {/* Projects Module */}
                         <Route path="/projects" element={<ProjectsDashboard />} />
                         <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                        
+                        {/* Permits & Compliance */}
+                        <Route path="/permits" element={<PermitsDashboard />} />
+                        <Route path="/permits/:id" element={<PermitDetailPage />} />
                         
                         {/* Settings */}
                         <Route path="/settings" element={<SettingsPage />} />
