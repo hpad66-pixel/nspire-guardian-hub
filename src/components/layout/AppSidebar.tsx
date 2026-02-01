@@ -18,7 +18,6 @@ import {
   Building2,
   ClipboardCheck,
   FolderKanban,
-  Home,
   Settings,
   AlertTriangle,
   Users,
@@ -29,7 +28,6 @@ import {
   DoorOpen,
   TreePine,
   LogOut,
-  User,
   BarChart3,
   History,
   Sun,
@@ -37,10 +35,18 @@ import {
   Wrench,
   Mail,
   Shield,
+  QrCode,
+  Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export function AppSidebar() {
   const { isModuleEnabled, userRole } = useModules();
@@ -55,8 +61,9 @@ export function AppSidebar() {
     : user?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+    <TooltipProvider delayDuration={300}>
+      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+        <SidebarHeader className="border-b border-sidebar-border p-4">
         <NavLink to="/" className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
             <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
@@ -211,6 +218,34 @@ export function AppSidebar() {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isModuleEnabled('occupancyEnabled') && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/occupancy"
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Home className="h-4 w-4" />
+                      {!collapsed && <span>Occupancy</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {isModuleEnabled('qrScanningEnabled') && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/qr-scanner"
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      {!collapsed && <span>QR Scanner</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -428,9 +463,10 @@ export function AppSidebar() {
               <LogOut className="h-4 w-4" />
               {!collapsed && <span>Log out</span>}
             </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    </TooltipProvider>
   );
 }

@@ -1564,7 +1564,9 @@ export type Database = {
           mailing_zip: string | null
           name: string
           nspire_enabled: boolean | null
+          occupancy_enabled: boolean | null
           projects_enabled: boolean | null
+          qr_scanning_enabled: boolean | null
           state: string
           status: string | null
           total_units: number | null
@@ -1588,7 +1590,9 @@ export type Database = {
           mailing_zip?: string | null
           name: string
           nspire_enabled?: boolean | null
+          occupancy_enabled?: boolean | null
           projects_enabled?: boolean | null
+          qr_scanning_enabled?: boolean | null
           state: string
           status?: string | null
           total_units?: number | null
@@ -1612,7 +1616,9 @@ export type Database = {
           mailing_zip?: string | null
           name?: string
           nspire_enabled?: boolean | null
+          occupancy_enabled?: boolean | null
           projects_enabled?: boolean | null
+          qr_scanning_enabled?: boolean | null
           state?: string
           status?: string | null
           total_units?: number | null
@@ -1962,6 +1968,74 @@ export type Database = {
           role_key?: string
         }
         Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deposit_amount: number | null
+          email: string | null
+          first_name: string
+          id: string
+          last_name: string
+          lease_end: string | null
+          lease_start: string
+          move_in_date: string | null
+          move_out_date: string | null
+          notes: string | null
+          phone: string | null
+          rent_amount: number | null
+          status: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          email?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          lease_end?: string | null
+          lease_start: string
+          move_in_date?: string | null
+          move_out_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          rent_amount?: number | null
+          status?: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deposit_amount?: number | null
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          lease_end?: string | null
+          lease_start?: string
+          move_in_date?: string | null
+          move_out_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          rent_amount?: number | null
+          status?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenants_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       units: {
         Row: {
