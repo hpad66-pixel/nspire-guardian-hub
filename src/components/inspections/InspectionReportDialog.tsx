@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -10,12 +10,13 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PrintableDailyInspectionReport } from './PrintableDailyInspectionReport';
+import { SendReportEmailDialog } from './SendReportEmailDialog';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 import { useInspectionItems, DailyInspection } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
 import { useProperties } from '@/hooks/useProperties';
 import { useProfiles } from '@/hooks/useProfiles';
-import { Download, Printer, Loader2, X } from 'lucide-react';
+import { Download, Printer, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 
@@ -34,6 +35,7 @@ export function InspectionReportDialog({
 }: InspectionReportDialogProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const { data: items = [], isLoading: itemsLoading } = useInspectionItems(inspectionId || '');
   const { data: properties = [] } = useProperties();
@@ -53,6 +55,14 @@ export function InspectionReportDialog({
   const inspectorName = inspector?.full_name || inspector?.email || 'Unknown Inspector';
 
   const reportFilename = `daily-grounds-inspection-${format(parseISO(inspection.inspection_date), 'yyyy-MM-dd')}-${inspection.id.slice(0, 8)}.pdf`;
+
+  // Calculate status summary for email
+  const statusSummary = useMemo(() => {
+    const okCount = items.filter(i => i.status === 'ok').length;
+    const attentionCount = items.filter(i => i.status === 'needs_attention').length;
+    const defectCount = items.filter(i => i.status === 'defect_found').length;
+    return { ok: okCount, attention: attentionCount, defect: defectCount };
+  }, [items]);
 
   const handleDownloadPDF = async () => {
     setIsGenerating(true);
@@ -118,9 +128,18 @@ export function InspectionReportDialog({
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" />
                 )}
                 <span className="hidden sm:inline ml-2">Download PDF</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => setShowEmailDialog(true)}
+                disabled={isLoading}
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Email</span>
               </Button>
             </div>
           </div>
@@ -148,6 +167,18 @@ export function InspectionReportDialog({
             </div>
           )}
         </ScrollArea>
+
+        {/* Email Dialog */}
+        <SendReportEmailDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          inspectionId={inspectionId}
+          propertyName={propertyName}
+          inspectorName={inspectorName}
+          inspectionDate={inspection.inspection_date}
+          reportElementId="printable-inspection-report"
+          statusSummary={statusSummary}
+        />
       </DialogContent>
     </Dialog>
   );

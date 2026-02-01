@@ -1299,33 +1299,49 @@ export type Database = {
       }
       report_emails: {
         Row: {
+          daily_inspection_id: string | null
           error_message: string | null
           id: string
           recipients: string[]
-          report_id: string
+          report_id: string | null
+          report_type: string | null
           sent_at: string
+          sent_by: string | null
           status: string | null
           subject: string
         }
         Insert: {
+          daily_inspection_id?: string | null
           error_message?: string | null
           id?: string
           recipients: string[]
-          report_id: string
+          report_id?: string | null
+          report_type?: string | null
           sent_at?: string
+          sent_by?: string | null
           status?: string | null
           subject: string
         }
         Update: {
+          daily_inspection_id?: string | null
           error_message?: string | null
           id?: string
           recipients?: string[]
-          report_id?: string
+          report_id?: string | null
+          report_type?: string | null
           sent_at?: string
+          sent_by?: string | null
           status?: string | null
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "report_emails_daily_inspection_id_fkey"
+            columns: ["daily_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inspections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "report_emails_report_id_fkey"
             columns: ["report_id"]
