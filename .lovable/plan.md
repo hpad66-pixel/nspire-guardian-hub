@@ -1,433 +1,477 @@
 
-# Implementation Plan: Outlook-Style Email Mailbox Interface
+# Implementation Plan: Permit & Regulatory Compliance Tracking System
 
 ## Overview
 
-Transform the current simple "Report Inbox" into a full-featured Outlook-style email client with folder navigation (Inbox, Sent, Drafts), a two-panel master-detail layout, and full email viewing with attachments.
+Build a comprehensive permit and regulatory compliance tracking system that manages permits, their requirements, deliverables, and compliance status. This system will integrate with the existing Document Center for file storage while providing dedicated tracking, deadline management, and compliance reporting.
 
 ---
 
-## Current State Analysis
+## Architecture Decision: Standalone Module vs. Document Center Extension
 
-### What Exists
-- Simple list view of sent emails at `/inbox`
-- Basic filtering by status (All, Sent, Failed)
-- Search functionality
-- Date grouping (Today, Yesterday, This Week, Earlier)
-- No email detail view - clicking does nothing
-- No folder structure (Inbox vs Sent)
-- No attachment viewing capability
-- No resend/forward/reply actions
+### Recommended Approach: Hybrid Architecture
 
-### Database Schema (report_emails)
-| Column | Type | Purpose |
-|--------|------|---------|
-| id | uuid | Primary key |
-| recipients | text[] | Email addresses |
-| subject | text | Email subject |
-| sent_at | timestamp | When sent |
-| status | text | sent/failed/pending |
-| error_message | text | Error details if failed |
-| report_type | text | daily_inspection/daily_report |
-| sent_by | uuid | User who sent |
-| daily_inspection_id | uuid | Link to inspection |
-| report_id | uuid | Link to daily report |
+The permit system should be a **standalone module** that **links to** the Document Center for file storage. This provides:
 
-### Missing for Outlook Experience
-1. **Email body content** - We don't store the message body
-2. **Attachment metadata** - We don't store filename/size info
-3. **Read/unread status** - No tracking of viewed emails
-4. **Folder structure** - No distinction between incoming/outgoing
+1. **Dedicated data structures** for permit metadata (issue dates, expiry dates, jurisdictions, etc.)
+2. **Requirement tracking** with deadlines, deliverables, and compliance status
+3. **Integration with existing documents** - permits stored in "Permits" folder remain linked
+4. **Issues integration** - non-compliance creates issues in the unified Issues system
 
 ---
 
-## Part 1: Database Schema Updates
+## Part 1: Data Model Design
 
-Add columns to support full email viewing:
+### Core Tables
+
+```text
++---------------------+       +------------------------+       +------------------------+
+|      permits        |       |  permit_requirements   |       | permit_deliverables    |
++---------------------+       +------------------------+       +------------------------+
+| id                  |       | id                     |       | id                     |
+| property_id (FK)    |<------| permit_id (FK)         |<------| requirement_id (FK)    |
+| permit_type         |       | title                  |       | title                  |
+| permit_number       |       | description            |       | description            |
+| name                |       | requirement_type       |       | due_date               |
+| description         |       | frequency              |       | submitted_at           |
+| issuing_authority   |       | start_date             |       | status                 |
+| issue_date          |       | end_date               |       | document_id (FK)       |
+| expiry_date         |       | status                 |       | submitted_by           |
+| status              |       | next_due_date          |       | notes                  |
+| document_id (FK)    |       | notes                  |       | created_at             |
+| notes               |       | created_at             |       +------------------------+
+| created_by          |       +------------------------+
+| created_at          |
++---------------------+
+```
+
+### Permit Types (Enum)
+- `building_permit` - Construction/renovation permits
+- `occupancy_certificate` - Certificate of Occupancy
+- `fire_safety` - Fire department permits/inspections
+- `elevator` - Elevator operating permits
+- `pool` - Pool/spa permits
+- `boiler` - Boiler inspection certificates
+- `environmental` - Environmental compliance permits
+- `hud_compliance` - HUD/Section 8 compliance
+- `ada` - ADA compliance certifications
+- `other` - Custom permit types
+
+### Requirement Types (Enum)
+- `inspection` - Periodic inspections required
+- `report` - Reports that must be submitted
+- `certification` - Certifications that must be renewed
+- `filing` - Documents to be filed with authorities
+- `payment` - Fees or payments due
+- `training` - Required training/certifications for staff
+- `other` - Custom requirements
+
+### Frequency Options (Enum)
+- `one_time` - One-time requirement
+- `monthly` - Every month
+- `quarterly` - Every 3 months
+- `semi_annual` - Every 6 months
+- `annual` - Every year
+- `biennial` - Every 2 years
+- `as_needed` - No fixed schedule
+
+### Status Values
+**Permit Status**: `draft`, `active`, `expired`, `renewed`, `revoked`
+**Requirement Status**: `pending`, `in_progress`, `compliant`, `non_compliant`, `waived`
+**Deliverable Status**: `pending`, `submitted`, `approved`, `rejected`, `overdue`
+
+---
+
+## Part 2: Database Schema
 
 ```sql
--- Add columns for full email content and read tracking
-ALTER TABLE report_emails
-ADD COLUMN body_html TEXT,
-ADD COLUMN body_text TEXT,
-ADD COLUMN is_read BOOLEAN DEFAULT false,
-ADD COLUMN attachment_filename TEXT,
-ADD COLUMN attachment_size BIGINT;
+-- Create permit types enum
+CREATE TYPE permit_type AS ENUM (
+  'building_permit', 'occupancy_certificate', 'fire_safety', 
+  'elevator', 'pool', 'boiler', 'environmental', 
+  'hud_compliance', 'ada', 'other'
+);
 
--- Add index for read status filtering
-CREATE INDEX idx_report_emails_is_read ON report_emails(is_read);
-CREATE INDEX idx_report_emails_sent_by ON report_emails(sent_by);
+-- Create requirement types enum
+CREATE TYPE requirement_type AS ENUM (
+  'inspection', 'report', 'certification', 
+  'filing', 'payment', 'training', 'other'
+);
+
+-- Create frequency enum
+CREATE TYPE requirement_frequency AS ENUM (
+  'one_time', 'monthly', 'quarterly', 'semi_annual', 
+  'annual', 'biennial', 'as_needed'
+);
+
+-- Create permit status enum
+CREATE TYPE permit_status AS ENUM (
+  'draft', 'active', 'expired', 'renewed', 'revoked'
+);
+
+-- Create requirement status enum
+CREATE TYPE requirement_status AS ENUM (
+  'pending', 'in_progress', 'compliant', 'non_compliant', 'waived'
+);
+
+-- Create deliverable status enum
+CREATE TYPE deliverable_status AS ENUM (
+  'pending', 'submitted', 'approved', 'rejected', 'overdue'
+);
+
+-- Permits table
+CREATE TABLE permits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  permit_type permit_type NOT NULL,
+  permit_number TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  issuing_authority TEXT,
+  issue_date DATE,
+  expiry_date DATE,
+  status permit_status NOT NULL DEFAULT 'draft',
+  document_id UUID REFERENCES organization_documents(id),
+  notes TEXT,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Permit requirements table
+CREATE TABLE permit_requirements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  permit_id UUID NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  requirement_type requirement_type NOT NULL,
+  frequency requirement_frequency NOT NULL DEFAULT 'annual',
+  start_date DATE,
+  end_date DATE,
+  status requirement_status NOT NULL DEFAULT 'pending',
+  next_due_date DATE,
+  last_completed_date DATE,
+  responsible_user_id UUID REFERENCES auth.users(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Permit deliverables table (specific submissions for requirements)
+CREATE TABLE permit_deliverables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requirement_id UUID NOT NULL REFERENCES permit_requirements(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date DATE NOT NULL,
+  submitted_at TIMESTAMPTZ,
+  status deliverable_status NOT NULL DEFAULT 'pending',
+  document_id UUID REFERENCES organization_documents(id),
+  submitted_by UUID REFERENCES auth.users(id),
+  approved_by UUID REFERENCES auth.users(id),
+  approved_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_permits_property ON permits(property_id);
+CREATE INDEX idx_permits_status ON permits(status);
+CREATE INDEX idx_permits_expiry ON permits(expiry_date);
+CREATE INDEX idx_requirements_permit ON permit_requirements(permit_id);
+CREATE INDEX idx_requirements_due ON permit_requirements(next_due_date);
+CREATE INDEX idx_deliverables_requirement ON permit_deliverables(requirement_id);
+CREATE INDEX idx_deliverables_due ON permit_deliverables(due_date);
+CREATE INDEX idx_deliverables_status ON permit_deliverables(status);
+
+-- Enable RLS
+ALTER TABLE permits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE permit_requirements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE permit_deliverables ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies (similar to other tables)
+CREATE POLICY "Authenticated users can view permits" ON permits
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins and managers can manage permits" ON permits
+  FOR ALL USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
+
+-- Similar policies for requirements and deliverables...
+
+-- Trigger to update updated_at
+CREATE TRIGGER update_permits_updated_at BEFORE UPDATE ON permits
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON permit_requirements
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_deliverables_updated_at BEFORE UPDATE ON permit_deliverables
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
 ---
 
-## Part 2: Update Edge Function to Store Email Content
+## Part 3: UI Architecture
 
-**File**: `supabase/functions/send-report-email/index.ts`
+### New Pages
 
-Modify to store the full email body and attachment info when logging:
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/permits` | `PermitsDashboard.tsx` | Overview of all permits with stats |
+| `/permits/:id` | `PermitDetailPage.tsx` | Single permit with requirements |
+
+### Page Structure
+
+```text
+PERMITS DASHBOARD
++------------------------------------------------------------------+
+|  [Shield] Permits & Compliance            [+ Add Permit]         |
+|  Track regulatory requirements and deadlines                     |
++------------------------------------------------------------------+
+
+STATS CARDS:
++------------+ +------------+ +------------+ +------------+
+|   Active   | |  Expiring  | |    Due     | | Non-Compl. |
+|     12     | |   Soon 3   | |   This Mo  | |     2      |
+|  permits   | |  (30 days) | |     5      | |  critical  |
++------------+ +------------+ +------------+ +------------+
+
+FILTERS:  [Property ▼] [Type ▼] [Status ▼] [Search...]
+
+PERMIT CARDS:
++------------------------------------------------------------------+
+| [Fire] Fire Safety Certificate         [Active] [Exp: Mar 2026]  |
+|        Riverside Manor                                            |
+|        FDNY Certificate #12345                                    |
+|        +--------------------------------------------------+       |
+|        | Requirements: 2/3 compliant | Next Due: Feb 15  |       |
+|        +--------------------------------------------------+       |
++------------------------------------------------------------------+
+
+| [Elevator] Elevator Operating Permit   [Expiring] [Exp: Feb 2026]|
+|        ...                                                        |
++------------------------------------------------------------------+
+```
+
+### Permit Detail Page
+
+```text
+PERMIT DETAIL
++------------------------------------------------------------------+
+|  [← Back]  Fire Safety Certificate              [Edit] [Archive] |
+|                                          [Active] [Expires: Mar] |
++------------------------------------------------------------------+
+|  Property: Riverside Manor                                       |
+|  Permit #: FDNY-2024-12345                                       |
+|  Authority: NYC Fire Department                                  |
+|  Issued: Jan 15, 2024                                            |
+|  Expires: Mar 15, 2026                                           |
+|                                                                  |
+|  [📄 View Permit Document]                                       |
++------------------------------------------------------------------+
+
+TABS: [Requirements] [Deliverables] [History] [Documents]
+
+REQUIREMENTS TAB:
++------------------------------------------------------------------+
+| ● Annual Fire Inspection                    [Compliant]          |
+|   Frequency: Annual | Next Due: Jan 15, 2027                     |
+|   Last Completed: Jan 10, 2026                                   |
+|   Assigned to: John Smith                                        |
+|   +---------------------------------------------------+          |
+|   | Deliverables:                                     |          |
+|   | ✓ Inspection Report (submitted)                  |          |
+|   | ✓ Corrective Action Plan (approved)              |          |
+|   | ○ Fire Drill Documentation (due Feb 28)          |          |
+|   +---------------------------------------------------+          |
++------------------------------------------------------------------+
+| ○ Monthly Fire Extinguisher Check           [Pending]            |
+|   Frequency: Monthly | Next Due: Feb 1, 2026                     |
+|   ...                                                            |
++------------------------------------------------------------------+
+```
+
+---
+
+## Part 4: New Components
+
+### Components to Create
+
+| Component | Purpose |
+|-----------|---------|
+| `PermitsDashboard.tsx` | Main permits listing page |
+| `PermitDetailPage.tsx` | Single permit detail view |
+| `PermitDialog.tsx` | Create/edit permit form |
+| `PermitCard.tsx` | Permit summary card |
+| `RequirementDialog.tsx` | Create/edit requirement |
+| `RequirementCard.tsx` | Requirement with progress |
+| `DeliverableDialog.tsx` | Create/edit deliverable |
+| `DeliverableItem.tsx` | Individual deliverable row |
+| `PermitCalendar.tsx` | Calendar view of due dates |
+| `ComplianceStats.tsx` | Stats card component |
+
+---
+
+## Part 5: Hooks Architecture
+
+### New Hooks
 
 ```typescript
-const emailRecord: Record<string, unknown> = {
-  recipients,
-  subject,
-  report_type: reportType,
-  sent_by: userId,
-  status: "sent",
-  body_html: htmlContent,        // NEW: Store full HTML
-  body_text: message || "",       // NEW: Store plain text
-  attachment_filename: pdfFilename, // NEW: Store filename
-  attachment_size: pdfBase64.length, // NEW: Approximate size
-  is_read: true,                  // Sender has "read" their own email
-};
+// src/hooks/usePermits.ts
+export function usePermits(propertyId?: string)
+export function usePermit(id: string)
+export function usePermitStats()
+export function useExpiringPermits(days: number)
+export function useCreatePermit()
+export function useUpdatePermit()
+export function useArchivePermit()
+
+// src/hooks/usePermitRequirements.ts
+export function useRequirementsByPermit(permitId: string)
+export function useUpcomingRequirements(days: number)
+export function useNonCompliantRequirements()
+export function useCreateRequirement()
+export function useUpdateRequirement()
+export function useCompleteRequirement()
+
+// src/hooks/usePermitDeliverables.ts
+export function useDeliverablesByRequirement(requirementId: string)
+export function useOverdueDeliverables()
+export function useCreateDeliverable()
+export function useSubmitDeliverable()
+export function useApproveDeliverable()
+export function useRejectDeliverable()
 ```
 
 ---
 
-## Part 3: Outlook-Style Layout Architecture
+## Part 6: Integration Points
 
-Replace the current simple list with a full Outlook-inspired layout:
+### 1. Issues Integration
+When a requirement becomes non-compliant or a deliverable is overdue, automatically create an Issue:
 
-```
-+------------------+----------------------------------------+
-|  FOLDERS         |  EMAIL LIST          |  EMAIL PREVIEW  |
-|  +-----------+   |  +---------------+   |  +-----------+  |
-|  | Inbox     |   |  | Email 1    → |   |  | Subject   |  |
-|  | Sent   ✓  |   |  | Email 2       |   |  | From: ... |  |
-|  | Drafts    |   |  | Email 3       |   |  | To: ...   |  |
-|  | Failed    |   |  | Email 4       |   |  | Date: ... |  |
-|  +-----------+   |  +---------------+   |  |-----------|  |
-|                  |                      |  | Body      |  |
-|  ACTIONS         |  [Search...]         |  |           |  |
-|  [+ Compose]     |                      |  |-----------|  |
-|                  |                      |  | 📎 PDF    |  |
-+------------------+----------------------------------------+
-```
-
-### Three-Column Layout
-1. **Left Panel (Folders)**: Inbox, Sent, Failed, All
-2. **Middle Panel (Email List)**: List of emails with preview
-3. **Right Panel (Email Detail)**: Full email view with attachments
-
----
-
-## Part 4: New Component Architecture
-
-### New Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/pages/inbox/MailboxPage.tsx` | Main Outlook-style layout (replaces ReportInboxPage) |
-| `src/components/inbox/MailboxFolders.tsx` | Left folder navigation |
-| `src/components/inbox/EmailList.tsx` | Middle email list panel |
-| `src/components/inbox/EmailPreview.tsx` | Right email detail panel |
-| `src/components/inbox/EmailDetailSheet.tsx` | Mobile-friendly full-screen email view |
-| `src/components/inbox/ComposeEmailDialog.tsx` | New email composition (future) |
-
-### Component Breakdown
-
-#### MailboxPage.tsx (Main Container)
-```tsx
-// Three-panel responsive layout
-// Desktop: 3 columns with resizable panels
-// Mobile: Single column with drill-down navigation
-
-<ResizablePanelGroup direction="horizontal">
-  <ResizablePanel defaultSize={20} minSize={15}>
-    <MailboxFolders 
-      currentFolder={folder}
-      onFolderChange={setFolder}
-      folderCounts={stats}
-    />
-  </ResizablePanel>
+```sql
+-- Trigger function to create issue on non-compliance
+CREATE OR REPLACE FUNCTION create_issue_from_permit_noncompliance()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_permit RECORD;
+  v_requirement RECORD;
+BEGIN
+  -- When deliverable becomes overdue or requirement non-compliant
+  IF NEW.status = 'overdue' AND OLD.status != 'overdue' THEN
+    -- Get requirement and permit details
+    SELECT * INTO v_requirement FROM permit_requirements WHERE id = NEW.requirement_id;
+    SELECT * INTO v_permit FROM permits WHERE id = v_requirement.permit_id;
+    
+    -- Create issue
+    INSERT INTO issues (
+      property_id, source_module, severity, deadline,
+      title, description, status
+    ) VALUES (
+      v_permit.property_id, 'permits', 'moderate',
+      NEW.due_date + INTERVAL '7 days',
+      v_permit.name || ' - ' || NEW.title || ' Overdue',
+      'Permit deliverable is overdue and requires immediate attention.',
+      'open'
+    );
+  END IF;
   
-  <ResizableHandle />
-  
-  <ResizablePanel defaultSize={35} minSize={25}>
-    <EmailList 
-      folder={folder}
-      selectedId={selectedEmailId}
-      onSelect={setSelectedEmailId}
-      searchQuery={search}
-      onSearchChange={setSearch}
-    />
-  </ResizablePanel>
-  
-  <ResizableHandle />
-  
-  <ResizablePanel defaultSize={45} minSize={30}>
-    <EmailPreview 
-      emailId={selectedEmailId}
-      onClose={() => setSelectedEmailId(null)}
-    />
-  </ResizablePanel>
-</ResizablePanelGroup>
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 ```
 
-#### MailboxFolders.tsx
-- Folder list with icons and unread counts
-- Folders: Inbox (future for received), Sent, Failed, All
-- Actions: Compose new (opens SendReportEmailDialog)
-- Collapsible on mobile
+### 2. Document Center Integration
+- Permit documents stored in existing `organization_documents` table
+- Link via `document_id` foreign key
+- Deliverables also link to uploaded documents
+- "Permits" folder in Document Center shows linked documents
 
-#### EmailList.tsx
-- Scrollable list of emails
-- Each item shows: sender avatar, subject, recipients preview, time, status icon
-- Unread emails in bold
-- Selected email highlighted
-- Search bar at top
-- Date group headers
+### 3. Dashboard Integration
+Add permit compliance stats to main Dashboard:
+- Expiring permits count
+- Upcoming requirements due
+- Non-compliant items requiring action
 
-#### EmailPreview.tsx
-- Full email view when selected
-- Header: Subject, From, To, Date, Status badge
-- Body: HTML content rendered safely
-- Attachments section with download button
-- Actions: Download PDF, Resend (if failed), Mark read/unread
+### 4. Notifications
+Create notifications for:
+- Permits expiring in 30/60/90 days
+- Requirements due in 7/14/30 days
+- Deliverables approaching deadline
+- Non-compliance status changes
 
 ---
 
-## Part 5: Updated Hook for Full Email Data
+## Part 7: Navigation Update
 
-**File**: `src/hooks/useReportEmails.ts`
+Add to `AppSidebar.tsx`:
 
-Add new interfaces and queries:
-
-```typescript
-export interface ReportEmailFull extends ReportEmail {
-  body_html: string | null;
-  body_text: string | null;
-  is_read: boolean;
-  attachment_filename: string | null;
-  attachment_size: number | null;
-}
-
-// Fetch single email with full content
-export function useReportEmail(id: string | null) {
-  return useQuery({
-    queryKey: ["report-email", id],
-    enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("report_emails")
-        .select("*")
-        .eq("id", id)
-        .single();
-      
-      if (error) throw error;
-      return data as ReportEmailFull;
-    },
-  });
-}
-
-// Mark email as read
-export function useMarkEmailRead() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("report_emails")
-        .update({ is_read: true })
-        .eq("id", id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["report-emails"] });
-      queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
-    },
-  });
-}
-
-// Update stats to include unread count
-export function useReportEmailStats() {
-  return useQuery({
-    queryKey: ["report-email-stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("report_emails")
-        .select("status, is_read");
-      
-      if (error) throw error;
-      
-      return {
-        total: data.length,
-        sent: data.filter((e) => e.status === "sent").length,
-        failed: data.filter((e) => e.status === "failed").length,
-        pending: data.filter((e) => e.status === "pending").length,
-        unread: data.filter((e) => !e.is_read).length,
-      };
-    },
-  });
-}
+```text
+PLATFORM (in sidebar)
+├── Dashboard
+├── Properties
+├── Units
+├── Issues
+├── Documents
+├── Permits & Compliance    ← NEW
+└── Inbox
 ```
 
 ---
 
-## Part 6: UI Design Details
+## Part 8: Implementation Order
 
-### Email List Item
-```
-┌───────────────────────────────────────────────────────────┐
-│ ●  ✓  Daily Grounds Inspection - Rivers...    2:34 PM    │
-│       To: john@example.com, sarah@...         📎         │
-│       Please find attached the daily...                   │
-└───────────────────────────────────────────────────────────┘
-  │   │   │                                │        │
-  │   │   └─ Subject (truncated)           │        └─ Attachment indicator
-  │   └─ Status icon (✓/✗/⏳)              └─ Time
-  └─ Unread indicator (blue dot)
-```
+### Phase 1: Database & Core
+1. Create database migration with all tables, enums, RLS
+2. Create `usePermits.ts` hook with CRUD operations
+3. Create `usePermitRequirements.ts` hook
+4. Create `usePermitDeliverables.ts` hook
 
-### Email Preview Panel
-```
-┌─────────────────────────────────────────────────────────┐
-│  Daily Grounds Inspection - Riverside Manor             │
-│  February 1, 2026                                       │
-├─────────────────────────────────────────────────────────┤
-│  From: You                                  [✓ Sent]    │
-│  To: john@example.com, sarah@company.com               │
-│  Date: February 1, 2026 at 2:34 PM                     │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  <Rendered HTML Email Body>                             │
-│                                                         │
-│  Property: Riverside Manor                              │
-│  Date: February 1, 2026                                 │
-│  Inspector: John Smith                                  │
-│                                                         │
-│  +------+ +------+ +------+                             │
-│  |  4   | |  1   | |  0   |                             │
-│  |  OK  | | ATT  | | DEF  |                             │
-│  +------+ +------+ +------+                             │
-│                                                         │
-├─────────────────────────────────────────────────────────┤
-│  Attachments                                            │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │ 📄 daily-grounds-inspection-2026-02-01.pdf      │    │
-│  │    245 KB                           [Download]  │    │
-│  └─────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────┤
-│  [📤 Forward]  [🔄 Resend]  [🗑 Delete]                  │
-└─────────────────────────────────────────────────────────┘
-```
+### Phase 2: UI - Permits Dashboard
+5. Create `PermitCard.tsx` component
+6. Create `PermitDialog.tsx` for create/edit
+7. Create `PermitsDashboard.tsx` page
+8. Add route and navigation
 
-### Folder Panel
-```
-┌─────────────────────────┐
-│  📬 MAILBOX             │
-├─────────────────────────┤
-│  📥 Inbox          (0)  │  ← Future: incoming emails
-│  📤 Sent          (24)  │  ← Currently active
-│  ❌ Failed          (2)  │
-│  📋 All            (26)  │
-├─────────────────────────┤
-│  [+ Compose Email]      │
-└─────────────────────────┘
-```
+### Phase 3: UI - Permit Detail
+9. Create `RequirementCard.tsx` component
+10. Create `RequirementDialog.tsx` for create/edit
+11. Create `DeliverableItem.tsx` and `DeliverableDialog.tsx`
+12. Create `PermitDetailPage.tsx` with tabs
+
+### Phase 4: Integrations
+13. Add Issues integration trigger
+14. Update Dashboard with permit stats
+15. Create notification triggers
+16. Add to existing reports
 
 ---
 
-## Part 7: Mobile Responsive Design
+## Part 9: Future Enhancements (Not in Initial Scope)
 
-On mobile devices, switch to a single-column drill-down pattern:
-
-1. **Folders screen** → tap folder →
-2. **Email list** → tap email →
-3. **Email detail** (full screen sheet)
-
-Use `EmailDetailSheet.tsx` for mobile email viewing:
-- Full-screen Sheet component
-- Swipe to dismiss
-- All actions in bottom toolbar
+- **Permit Templates**: Pre-built templates for common permit types
+- **Automated Reminders**: Email notifications for upcoming deadlines
+- **Bulk Import**: Import permits from CSV/Excel
+- **Regulatory API Integration**: Auto-check permit status with authorities
+- **Calendar Sync**: Export deadlines to calendar apps
+- **Audit Trail**: Detailed history of all changes
+- **Multi-property View**: Cross-property compliance reporting
 
 ---
 
-## Part 8: Route Updates
+## Summary
 
-**File**: `src/App.tsx`
+This implementation creates a robust permit and regulatory compliance tracking system that:
 
-The `/inbox` route already exists, just update to use the new `MailboxPage`:
+1. **Stores permit metadata** separately from documents for better querying
+2. **Tracks requirements** with flexible frequency options
+3. **Manages deliverables** with approval workflows
+4. **Integrates with Issues** for unified problem tracking
+5. **Links to Document Center** for file storage
+6. **Provides dashboards** with compliance visibility
+7. **Follows existing patterns** in the codebase for consistency
 
-```tsx
-<Route path="/inbox" element={<MailboxPage />} />
-```
-
----
-
-## Implementation Summary
-
-### Database Changes
-1. Add columns: `body_html`, `body_text`, `is_read`, `attachment_filename`, `attachment_size`
-2. Add indexes for performance
-
-### Modified Files
-| File | Changes |
-|------|---------|
-| `supabase/functions/send-report-email/index.ts` | Store email content and attachment info |
-| `src/hooks/useReportEmails.ts` | Add `useReportEmail`, `useMarkEmailRead`, update stats |
-| `src/App.tsx` | Update route to use new MailboxPage |
-
-### New Files
-| File | Purpose |
-|------|---------|
-| `src/pages/inbox/MailboxPage.tsx` | Main Outlook-style three-panel layout |
-| `src/components/inbox/MailboxFolders.tsx` | Left folder navigation panel |
-| `src/components/inbox/EmailList.tsx` | Middle email list panel |
-| `src/components/inbox/EmailPreview.tsx` | Right email detail panel |
-| `src/components/inbox/EmailDetailSheet.tsx` | Mobile full-screen email view |
-
-### Deleted Files
-| File | Reason |
-|------|--------|
-| `src/pages/inbox/ReportInboxPage.tsx` | Replaced by MailboxPage |
-
----
-
-## User Experience Flow
-
-### Viewing Sent Emails
-1. Click "Inbox" in sidebar
-2. See folder list on left, email list in middle
-3. Click an email to see full preview on right
-4. View rendered HTML body with inspection summary
-5. Click "Download" to get PDF attachment
-
-### Resending Failed Email
-1. Filter by "Failed" folder
-2. Select failed email
-3. See error message in preview
-4. Click "Resend" button
-5. Email resent with toast confirmation
-
-### Mobile Experience
-1. Tap "Inbox" in sidebar
-2. See folder list
-3. Tap "Sent" folder
-4. See email list (full width)
-5. Tap email
-6. Email opens in full-screen sheet
-7. Swipe down or tap X to close
-
----
-
-## Technical Notes
-
-1. **HTML Sanitization**: Use DOMPurify or similar to safely render email HTML content
-2. **Resizable Panels**: Use `react-resizable-panels` (already installed)
-3. **PDF Re-download**: Since we don't store PDFs, re-download from inspection report or show "unavailable"
-4. **Read Status**: Auto-mark as read when previewed for 2+ seconds
-5. **Virtualization**: Consider virtualizing email list for performance with many emails
-
----
-
-## Future Enhancements (Not in Scope)
-
-- Inbox folder for receiving external emails
-- Draft saving before sending
-- Email threading/conversations
-- Forward to new recipients
-- Bulk actions (delete, mark read)
-- Email templates
-- Scheduled sending
+The system ensures properties stay compliant with all regulatory requirements through proactive deadline tracking and automated issue creation when items become non-compliant.
