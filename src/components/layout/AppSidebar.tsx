@@ -36,6 +36,7 @@ import {
   ClipboardList,
   Wrench,
   Mail,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -159,6 +160,18 @@ export function AppSidebar() {
                   >
                     <FileText className="h-4 w-4" />
                     {!collapsed && <span>Documents</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/permits"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Shield className="h-4 w-4" />
+                    {!collapsed && <span>Permits</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

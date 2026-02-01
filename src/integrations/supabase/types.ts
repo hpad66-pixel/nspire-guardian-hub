@@ -777,6 +777,206 @@ export type Database = {
           },
         ]
       }
+      permit_deliverables: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          description: string | null
+          document_id: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          rejection_reason: string | null
+          requirement_id: string
+          status: Database["public"]["Enums"]["deliverable_status"]
+          submitted_at: string | null
+          submitted_by: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          rejection_reason?: string | null
+          requirement_id: string
+          status?: Database["public"]["Enums"]["deliverable_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          rejection_reason?: string | null
+          requirement_id?: string
+          status?: Database["public"]["Enums"]["deliverable_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_deliverables_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "organization_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_deliverables_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "permit_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permit_requirements: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          frequency: Database["public"]["Enums"]["requirement_frequency"]
+          id: string
+          last_completed_date: string | null
+          next_due_date: string | null
+          notes: string | null
+          permit_id: string
+          requirement_type: Database["public"]["Enums"]["requirement_type"]
+          responsible_user_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["requirement_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["requirement_frequency"]
+          id?: string
+          last_completed_date?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          permit_id: string
+          requirement_type: Database["public"]["Enums"]["requirement_type"]
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["requirement_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["requirement_frequency"]
+          id?: string
+          last_completed_date?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          permit_id?: string
+          requirement_type?: Database["public"]["Enums"]["requirement_type"]
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["requirement_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_requirements_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          document_id: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          name: string
+          notes: string | null
+          permit_number: string | null
+          permit_type: Database["public"]["Enums"]["permit_type"]
+          property_id: string
+          status: Database["public"]["Enums"]["permit_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          name: string
+          notes?: string | null
+          permit_number?: string | null
+          permit_type: Database["public"]["Enums"]["permit_type"]
+          property_id: string
+          status?: Database["public"]["Enums"]["permit_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_id?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          name?: string
+          notes?: string | null
+          permit_number?: string | null
+          permit_type?: Database["public"]["Enums"]["permit_type"]
+          property_id?: string
+          status?: Database["public"]["Enums"]["permit_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permits_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "organization_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1558,11 +1758,51 @@ export type Database = {
         | "approved"
         | "needs_revision"
         | "rejected"
+      deliverable_status:
+        | "pending"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "overdue"
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
-      issue_source: "core" | "nspire" | "projects" | "daily_grounds"
+      issue_source: "core" | "nspire" | "projects" | "daily_grounds" | "permits"
+      permit_status: "draft" | "active" | "expired" | "renewed" | "revoked"
+      permit_type:
+        | "building_permit"
+        | "occupancy_certificate"
+        | "fire_safety"
+        | "elevator"
+        | "pool"
+        | "boiler"
+        | "environmental"
+        | "hud_compliance"
+        | "ada"
+        | "other"
       project_status: "planning" | "active" | "on_hold" | "completed" | "closed"
       punch_status: "open" | "in_progress" | "completed" | "verified"
+      requirement_frequency:
+        | "one_time"
+        | "monthly"
+        | "quarterly"
+        | "semi_annual"
+        | "annual"
+        | "biennial"
+        | "as_needed"
+      requirement_status:
+        | "pending"
+        | "in_progress"
+        | "compliant"
+        | "non_compliant"
+        | "waived"
+      requirement_type:
+        | "inspection"
+        | "report"
+        | "certification"
+        | "filing"
+        | "payment"
+        | "training"
+        | "other"
       rfi_status: "open" | "pending" | "answered" | "closed"
       severity_level: "low" | "moderate" | "severe"
       submittal_status: "pending" | "approved" | "rejected" | "revise"
@@ -1726,11 +1966,56 @@ export const Constants = {
         "needs_revision",
         "rejected",
       ],
+      deliverable_status: [
+        "pending",
+        "submitted",
+        "approved",
+        "rejected",
+        "overdue",
+      ],
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
-      issue_source: ["core", "nspire", "projects", "daily_grounds"],
+      issue_source: ["core", "nspire", "projects", "daily_grounds", "permits"],
+      permit_status: ["draft", "active", "expired", "renewed", "revoked"],
+      permit_type: [
+        "building_permit",
+        "occupancy_certificate",
+        "fire_safety",
+        "elevator",
+        "pool",
+        "boiler",
+        "environmental",
+        "hud_compliance",
+        "ada",
+        "other",
+      ],
       project_status: ["planning", "active", "on_hold", "completed", "closed"],
       punch_status: ["open", "in_progress", "completed", "verified"],
+      requirement_frequency: [
+        "one_time",
+        "monthly",
+        "quarterly",
+        "semi_annual",
+        "annual",
+        "biennial",
+        "as_needed",
+      ],
+      requirement_status: [
+        "pending",
+        "in_progress",
+        "compliant",
+        "non_compliant",
+        "waived",
+      ],
+      requirement_type: [
+        "inspection",
+        "report",
+        "certification",
+        "filing",
+        "payment",
+        "training",
+        "other",
+      ],
       rfi_status: ["open", "pending", "answered", "closed"],
       severity_level: ["low", "moderate", "severe"],
       submittal_status: ["pending", "approved", "rejected", "revise"],
