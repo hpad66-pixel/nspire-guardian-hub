@@ -35,6 +35,7 @@ import {
   Sun,
   ClipboardList,
   Wrench,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -158,6 +159,18 @@ export function AppSidebar() {
                   >
                     <FileText className="h-4 w-4" />
                     {!collapsed && <span>Documents</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inbox"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Mail className="h-4 w-4" />
+                    {!collapsed && <span>Inbox</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
