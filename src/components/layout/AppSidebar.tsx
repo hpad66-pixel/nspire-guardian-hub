@@ -31,6 +31,7 @@ import {
   LogOut,
   User,
   BarChart3,
+  History,
   Sun,
   ClipboardList,
 } from 'lucide-react';
@@ -208,6 +209,18 @@ export function AppSidebar() {
                   >
                     <Sun className="h-4 w-4" />
                     {!collapsed && <span>Daily Grounds</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inspections/history"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <History className="h-4 w-4" />
+                    {!collapsed && <span>History</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
