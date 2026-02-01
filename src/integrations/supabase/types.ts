@@ -1169,6 +1169,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           created_by: string | null
+          daily_grounds_enabled: boolean | null
           id: string
           mailing_address: string | null
           mailing_city: string | null
@@ -1192,6 +1193,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          daily_grounds_enabled?: boolean | null
           id?: string
           mailing_address?: string | null
           mailing_city?: string | null
@@ -1215,6 +1217,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          daily_grounds_enabled?: boolean | null
           id?: string
           mailing_address?: string | null
           mailing_city?: string | null

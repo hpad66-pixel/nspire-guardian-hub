@@ -13,6 +13,7 @@ export interface Property {
   total_units: number | null;
   status: string | null;
   nspire_enabled: boolean | null;
+  daily_grounds_enabled: boolean | null;
   projects_enabled: boolean | null;
   contact_name: string | null;
   contact_email: string | null;
