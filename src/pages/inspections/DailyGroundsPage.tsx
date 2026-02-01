@@ -20,9 +20,69 @@ import {
   Lock,
   FileText,
   Plus,
-  History
+  History,
+  Info,
+  Sun,
+  Camera,
+  Mic,
+  Send
 } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
+
+// Instructional Guide Card Component
+function InspectionGuideCard() {
+  return (
+    <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20 overflow-hidden relative">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <CardContent className="pt-5 pb-5">
+        <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
+          <Info className="h-4 w-4 text-primary" />
+          What You'll Do Today
+        </h3>
+        <ul className="space-y-2.5 text-sm">
+          <li className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <Sun className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <span className="text-muted-foreground">Report current weather conditions</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <ClipboardCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-muted-foreground">Check infrastructure assets (Cleanouts, Catch Basins, etc.)</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <Camera className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <span className="text-muted-foreground">Document findings with photos</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <Mic className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+            </div>
+            <span className="text-muted-foreground">
+              Add voice notes <span className="text-primary font-medium">(Spanish OK – auto-translated!)</span>
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Send className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <span className="text-muted-foreground">Submit for supervisor review</span>
+          </li>
+        </ul>
+        <div className="mt-4 pt-3 border-t border-primary/10">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            Estimated time: 10-15 minutes
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DailyGroundsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
@@ -89,6 +149,11 @@ export default function DailyGroundsPage() {
             {format(new Date(), 'EEEE, MMMM d, yyyy')}
           </p>
         </div>
+
+        {/* Instructional Guide - Show when inspection not started */}
+        {(!todayInspection || todayInspection.status !== 'completed') && selectedPropertyId && (
+          <InspectionGuideCard />
+        )}
 
         {/* Property Selector */}
         {properties.length > 1 && (

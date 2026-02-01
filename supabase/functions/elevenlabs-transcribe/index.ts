@@ -37,12 +37,12 @@ serve(async (req) => {
     console.log('Audio blob size:', audioBlob.size);
 
     // Create form data for ElevenLabs API
+    // Remove language_code to enable auto-detection
     const formData = new FormData();
     formData.append('file', audioBlob, 'recording.webm');
     formData.append('model_id', 'scribe_v2');
-    formData.append('language_code', 'eng');
 
-    console.log('Sending request to ElevenLabs Speech-to-Text API...');
+    console.log('Sending request to ElevenLabs Speech-to-Text API with auto-detect...');
 
     const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
@@ -63,8 +63,61 @@ serve(async (req) => {
     const result = await response.json();
     console.log('Transcription result:', result);
 
+    let transcript = result.text || '';
+    let originalTranscript: string | null = null;
+    const detectedLanguage = result.language_code || null;
+    let wasTranslated = false;
+
+    // If detected language is not English, translate using Lovable AI
+    if (detectedLanguage && detectedLanguage !== 'eng' && transcript) {
+      console.log(`Detected language: ${detectedLanguage}, translating to English...`);
+      originalTranscript = transcript;
+
+      try {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (!LOVABLE_API_KEY) {
+          console.warn('LOVABLE_API_KEY not configured, skipping translation');
+        } else {
+          const translationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [{
+                role: 'user',
+                content: `Translate the following text to English. Return ONLY the translation, no explanations, no quotes, just the translated text:\n\n${transcript}`
+              }],
+            }),
+          });
+
+          if (translationResponse.ok) {
+            const translationData = await translationResponse.json();
+            const translatedText = translationData.choices?.[0]?.message?.content;
+            if (translatedText) {
+              transcript = translatedText.trim();
+              wasTranslated = true;
+              console.log('Translation successful:', transcript);
+            }
+          } else {
+            console.error('Translation API error:', translationResponse.status);
+          }
+        }
+      } catch (translationError) {
+        console.error('Translation error:', translationError);
+        // Keep original transcript if translation fails
+      }
+    }
+
     return new Response(
-      JSON.stringify({ transcript: result.text || '' }),
+      JSON.stringify({ 
+        transcript,
+        originalTranscript,
+        detectedLanguage,
+        wasTranslated
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
