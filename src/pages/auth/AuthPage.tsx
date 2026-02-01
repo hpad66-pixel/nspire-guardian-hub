@@ -74,7 +74,7 @@ export default function AuthPage() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl">NSPIRE Property OS</CardTitle>
+            <CardTitle className="text-2xl">Glorieta Gardens Apartments</CardTitle>
             <CardDescription>
               Property inspection and management platform
             </CardDescription>

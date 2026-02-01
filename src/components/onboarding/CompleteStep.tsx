@@ -92,7 +92,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold">You're All Set!</CardTitle>
             <CardDescription className="text-lg">
-              Your property is ready to go. Welcome to NSPIRE Property OS!
+              Your property is ready to go. Welcome to Glorieta Gardens!
             </CardDescription>
           </div>
         </CardHeader>

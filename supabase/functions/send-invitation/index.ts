@@ -76,13 +76,13 @@ const handler = async (req: Request): Promise<Response> => {
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
               </svg>
             </div>
-            <h1 style="margin: 16px 0 8px; font-size: 24px; font-weight: 600;">NSPIRE Property OS</h1>
+            <h1 style="margin: 16px 0 8px; font-size: 24px; font-weight: 600;">Glorieta Gardens Apartments</h1>
           </div>
 
           <div style="background: #f8fafc; border-radius: 12px; padding: 32px; margin-bottom: 24px;">
             <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">You're invited!</h2>
             <p style="margin: 0 0 16px; color: #64748b;">
-              ${inviterName} has invited you to join NSPIRE Property OS as a <strong>${roleLabels[invitation.role] || invitation.role}</strong>.
+              ${inviterName} has invited you to join Glorieta Gardens Apartments as a <strong>${roleLabels[invitation.role] || invitation.role}</strong>.
             </p>
             <p style="margin: 0 0 24px; color: #64748b;">
               Click the button below to create your account and get started.
@@ -110,9 +110,9 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "NSPIRE Property OS <noreply@resend.dev>",
+        from: "Glorieta Gardens <noreply@resend.dev>",
         to: [invitation.email],
-        subject: `${inviterName} invited you to NSPIRE Property OS`,
+        subject: `${inviterName} invited you to Glorieta Gardens Apartments`,
         html: emailHtml,
       }),
     });
