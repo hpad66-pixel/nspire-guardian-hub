@@ -1,255 +1,357 @@
 
-# Implementation Plan: Email Report Delivery & Professional Inbox
+# Implementation Plan: Outlook-Style Email Mailbox Interface
 
 ## Overview
 
-This plan adds two major features:
-1. **Send Report via Email** - Ability to send inspection reports to multiple recipients with PDF attachment
-2. **Report Inbox** - A professional inbox interface to track all sent reports and their delivery status
+Transform the current simple "Report Inbox" into a full-featured Outlook-style email client with folder navigation (Inbox, Sent, Drafts), a two-panel master-detail layout, and full email viewing with attachments.
 
 ---
 
 ## Current State Analysis
 
 ### What Exists
-- `report_emails` table in database with: `id`, `report_id`, `recipients[]`, `subject`, `sent_at`, `status`, `error_message`
-- `InspectionReportDialog` with Print and Download PDF buttons
-- PDF generation utility (`generatePDF`) already working
-- No email-sending edge function
-- No RESEND_API_KEY configured
+- Simple list view of sent emails at `/inbox`
+- Basic filtering by status (All, Sent, Failed)
+- Search functionality
+- Date grouping (Today, Yesterday, This Week, Earlier)
+- No email detail view - clicking does nothing
+- No folder structure (Inbox vs Sent)
+- No attachment viewing capability
+- No resend/forward/reply actions
 
-### What's Missing
-1. No edge function for sending emails with PDF attachments
-2. No "Send Email" button in report dialog
-3. No inbox/outbox page to track sent reports
-4. `report_emails.report_id` references `daily_reports`, not `daily_inspections`
+### Database Schema (report_emails)
+| Column | Type | Purpose |
+|--------|------|---------|
+| id | uuid | Primary key |
+| recipients | text[] | Email addresses |
+| subject | text | Email subject |
+| sent_at | timestamp | When sent |
+| status | text | sent/failed/pending |
+| error_message | text | Error details if failed |
+| report_type | text | daily_inspection/daily_report |
+| sent_by | uuid | User who sent |
+| daily_inspection_id | uuid | Link to inspection |
+| report_id | uuid | Link to daily report |
+
+### Missing for Outlook Experience
+1. **Email body content** - We don't store the message body
+2. **Attachment metadata** - We don't store filename/size info
+3. **Read/unread status** - No tracking of viewed emails
+4. **Folder structure** - No distinction between incoming/outgoing
 
 ---
 
-## Part 1: Database Schema Update
+## Part 1: Database Schema Updates
 
-Update `report_emails` table to support both inspection reports and daily reports:
+Add columns to support full email viewing:
 
 ```sql
--- Add report_type column to distinguish between report types
-ALTER TABLE report_emails 
-ADD COLUMN report_type TEXT DEFAULT 'daily_report';
-
--- Add sender info
+-- Add columns for full email content and read tracking
 ALTER TABLE report_emails
-ADD COLUMN sent_by UUID REFERENCES auth.users(id);
+ADD COLUMN body_html TEXT,
+ADD COLUMN body_text TEXT,
+ADD COLUMN is_read BOOLEAN DEFAULT false,
+ADD COLUMN attachment_filename TEXT,
+ADD COLUMN attachment_size BIGINT;
 
--- Add optional reference to daily_inspection
-ALTER TABLE report_emails
-ADD COLUMN daily_inspection_id UUID REFERENCES daily_inspections(id);
-
--- Make report_id nullable since we're adding daily_inspection_id
-ALTER TABLE report_emails
-ALTER COLUMN report_id DROP NOT NULL;
-
--- Add check constraint to ensure at least one reference exists
-ALTER TABLE report_emails
-ADD CONSTRAINT report_reference_check 
-CHECK (report_id IS NOT NULL OR daily_inspection_id IS NOT NULL);
+-- Add index for read status filtering
+CREATE INDEX idx_report_emails_is_read ON report_emails(is_read);
+CREATE INDEX idx_report_emails_sent_by ON report_emails(sent_by);
 ```
 
 ---
 
-## Part 2: Create Email-Sending Edge Function
+## Part 2: Update Edge Function to Store Email Content
 
 **File**: `supabase/functions/send-report-email/index.ts`
 
-Create an edge function that:
-1. Receives report data (HTML content, recipients, subject)
-2. Uses Resend API to send formatted email with PDF attachment
-3. Returns delivery status
+Modify to store the full email body and attachment info when logging:
 
-### API Contract
 ```typescript
-// Request
-{
-  recipients: string[];          // Array of email addresses
-  subject: string;               // Email subject line
-  reportType: 'daily_inspection' | 'daily_report';
-  reportId: string;              // ID of the inspection/report
-  propertyName: string;
-  inspectorName: string;
-  inspectionDate: string;
-  htmlContent: string;           // Report HTML for email body preview
-  pdfBase64?: string;            // Optional: Pre-generated PDF as base64
-}
-
-// Response
-{
-  success: boolean;
-  emailId?: string;
-  error?: string;
-}
-```
-
-### Email Template Design
-- Professional HTML email template with:
-  - Branded header
-  - Summary section (property, date, inspector)
-  - Quick status overview (OK/Attention/Defect counts)
-  - Link to view full report online (optional future)
-  - PDF attachment
-
----
-
-## Part 3: Add "Send Email" Button to Report Dialog
-
-**File**: `src/components/inspections/InspectionReportDialog.tsx`
-
-### Changes
-1. Add "Share" or "Email" button next to Print/Download
-2. Opens `SendReportEmailDialog` component
-
-### Updated Header Buttons
-```
-┌──────────────────────────────────────────────────────────┐
-│ Daily Grounds Inspection Report           [Print] [↓PDF] │
-│ Riverside Manor • February 1, 2026         [📧 Email]   │
-└──────────────────────────────────────────────────────────┘
+const emailRecord: Record<string, unknown> = {
+  recipients,
+  subject,
+  report_type: reportType,
+  sent_by: userId,
+  status: "sent",
+  body_html: htmlContent,        // NEW: Store full HTML
+  body_text: message || "",       // NEW: Store plain text
+  attachment_filename: pdfFilename, // NEW: Store filename
+  attachment_size: pdfBase64.length, // NEW: Approximate size
+  is_read: true,                  // Sender has "read" their own email
+};
 ```
 
 ---
 
-## Part 4: Create Send Report Email Dialog
+## Part 3: Outlook-Style Layout Architecture
 
-**File**: `src/components/inspections/SendReportEmailDialog.tsx`
+Replace the current simple list with a full Outlook-inspired layout:
 
-A modal for composing and sending the report email:
-
-### UI Design
 ```
-┌─────────────────────────────────────────────────────────┐
-│  📧 Send Inspection Report                         [X]  │
-├─────────────────────────────────────────────────────────┤
-│  To:                                                    │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ john@example.com [x]  sarah@company.com [x]      │   │
-│  │ + Add recipient...                               │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  Subject:                                               │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Daily Grounds Inspection - Riverside Manor - ... │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  Message (optional):                                    │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Please find attached the daily grounds           │   │
-│  │ inspection report for today.                     │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  📎 Attachment: inspection-report-2026-02-01.pdf       │
-│                                                         │
-├─────────────────────────────────────────────────────────┤
-│                               [Cancel]  [📤 Send Email] │
-└─────────────────────────────────────────────────────────┘
++------------------+----------------------------------------+
+|  FOLDERS         |  EMAIL LIST          |  EMAIL PREVIEW  |
+|  +-----------+   |  +---------------+   |  +-----------+  |
+|  | Inbox     |   |  | Email 1    → |   |  | Subject   |  |
+|  | Sent   ✓  |   |  | Email 2       |   |  | From: ... |  |
+|  | Drafts    |   |  | Email 3       |   |  | To: ...   |  |
+|  | Failed    |   |  | Email 4       |   |  | Date: ... |  |
+|  +-----------+   |  +---------------+   |  |-----------|  |
+|                  |                      |  | Body      |  |
+|  ACTIONS         |  [Search...]         |  |           |  |
+|  [+ Compose]     |                      |  |-----------|  |
+|                  |                      |  | 📎 PDF    |  |
++------------------+----------------------------------------+
 ```
 
-### Features
-- Multiple recipient input with tag-style chips
-- Email validation
-- Auto-generated subject line
-- Optional custom message
-- Preview attachment filename
-- Loading state during send
-- Success/error toast notifications
+### Three-Column Layout
+1. **Left Panel (Folders)**: Inbox, Sent, Failed, All
+2. **Middle Panel (Email List)**: List of emails with preview
+3. **Right Panel (Email Detail)**: Full email view with attachments
 
 ---
 
-## Part 5: Create Report Inbox Page
+## Part 4: New Component Architecture
 
-**File**: `src/pages/inbox/ReportInboxPage.tsx`
+### New Files to Create
 
-A professional inbox-style interface for tracking sent reports.
+| File | Purpose |
+|------|---------|
+| `src/pages/inbox/MailboxPage.tsx` | Main Outlook-style layout (replaces ReportInboxPage) |
+| `src/components/inbox/MailboxFolders.tsx` | Left folder navigation |
+| `src/components/inbox/EmailList.tsx` | Middle email list panel |
+| `src/components/inbox/EmailPreview.tsx` | Right email detail panel |
+| `src/components/inbox/EmailDetailSheet.tsx` | Mobile-friendly full-screen email view |
+| `src/components/inbox/ComposeEmailDialog.tsx` | New email composition (future) |
 
-### UI Design - Inbox Style
+### Component Breakdown
+
+#### MailboxPage.tsx (Main Container)
+```tsx
+// Three-panel responsive layout
+// Desktop: 3 columns with resizable panels
+// Mobile: Single column with drill-down navigation
+
+<ResizablePanelGroup direction="horizontal">
+  <ResizablePanel defaultSize={20} minSize={15}>
+    <MailboxFolders 
+      currentFolder={folder}
+      onFolderChange={setFolder}
+      folderCounts={stats}
+    />
+  </ResizablePanel>
+  
+  <ResizableHandle />
+  
+  <ResizablePanel defaultSize={35} minSize={25}>
+    <EmailList 
+      folder={folder}
+      selectedId={selectedEmailId}
+      onSelect={setSelectedEmailId}
+      searchQuery={search}
+      onSearchChange={setSearch}
+    />
+  </ResizablePanel>
+  
+  <ResizableHandle />
+  
+  <ResizablePanel defaultSize={45} minSize={30}>
+    <EmailPreview 
+      emailId={selectedEmailId}
+      onClose={() => setSelectedEmailId(null)}
+    />
+  </ResizablePanel>
+</ResizablePanelGroup>
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  📬 Report Inbox                              [Search...]       │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ Tabs: [All] [Sent ✓] [Failed ✗] [Pending ⏳]                ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ ✓  Daily Grounds - Riverside Manor              2 min ago  ││
-│  │    To: john@example.com, sarah@company.com                  ││
-│  │    Sent by You                                              ││
-│  ├─────────────────────────────────────────────────────────────┤│
-│  │ ✓  Daily Grounds - Glorieta Gardens           Yesterday    ││
-│  │    To: admin@property.com                                   ││
-│  │    Sent by John Smith                                       ││
-│  ├─────────────────────────────────────────────────────────────┤│
-│  │ ✗  NSPIRE Report - Sunset Apartments          Jan 30       ││
-│  │    To: invalid@email                                        ││
-│  │    Error: Recipient address rejected                        ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  Showing 3 of 24 emails                      [← Prev] [Next →] │
-└─────────────────────────────────────────────────────────────────┘
-```
 
-### Features
-- Filter by status (All, Sent, Failed, Pending)
-- Search by subject, recipient, or property
-- Click to view report detail
-- Resend option for failed emails
-- Pagination for large lists
-- Time-based grouping (Today, Yesterday, This Week, etc.)
+#### MailboxFolders.tsx
+- Folder list with icons and unread counts
+- Folders: Inbox (future for received), Sent, Failed, All
+- Actions: Compose new (opens SendReportEmailDialog)
+- Collapsible on mobile
+
+#### EmailList.tsx
+- Scrollable list of emails
+- Each item shows: sender avatar, subject, recipients preview, time, status icon
+- Unread emails in bold
+- Selected email highlighted
+- Search bar at top
+- Date group headers
+
+#### EmailPreview.tsx
+- Full email view when selected
+- Header: Subject, From, To, Date, Status badge
+- Body: HTML content rendered safely
+- Attachments section with download button
+- Actions: Download PDF, Resend (if failed), Mark read/unread
 
 ---
 
-## Part 6: Create Report Email Hooks
+## Part 5: Updated Hook for Full Email Data
 
 **File**: `src/hooks/useReportEmails.ts`
 
+Add new interfaces and queries:
+
 ```typescript
-// Fetch sent emails with filtering
-export function useReportEmails(filters?: ReportEmailFilters)
+export interface ReportEmailFull extends ReportEmail {
+  body_html: string | null;
+  body_text: string | null;
+  is_read: boolean;
+  attachment_filename: string | null;
+  attachment_size: number | null;
+}
 
-// Send a new email
-export function useSendReportEmail()
+// Fetch single email with full content
+export function useReportEmail(id: string | null) {
+  return useQuery({
+    queryKey: ["report-email", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("report_emails")
+        .select("*")
+        .eq("id", id)
+        .single();
+      
+      if (error) throw error;
+      return data as ReportEmailFull;
+    },
+  });
+}
 
-// Get stats (sent, failed, pending counts)
-export function useReportEmailStats()
+// Mark email as read
+export function useMarkEmailRead() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("report_emails")
+        .update({ is_read: true })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
+    },
+  });
+}
+
+// Update stats to include unread count
+export function useReportEmailStats() {
+  return useQuery({
+    queryKey: ["report-email-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("report_emails")
+        .select("status, is_read");
+      
+      if (error) throw error;
+      
+      return {
+        total: data.length,
+        sent: data.filter((e) => e.status === "sent").length,
+        failed: data.filter((e) => e.status === "failed").length,
+        pending: data.filter((e) => e.status === "pending").length,
+        unread: data.filter((e) => !e.is_read).length,
+      };
+    },
+  });
+}
 ```
 
 ---
 
-## Part 7: Add Inbox to Sidebar Navigation
+## Part 6: UI Design Details
 
-**File**: `src/components/layout/AppSidebar.tsx`
-
-Add inbox link under Platform section:
-
+### Email List Item
 ```
-Platform
-├── Dashboard
-├── Properties
-├── Units
-├── Assets
-├── Issues
-├── Work Orders
-├── Documents
-├── 📬 Inbox     ← NEW
-├── People
-└── Reports
+┌───────────────────────────────────────────────────────────┐
+│ ●  ✓  Daily Grounds Inspection - Rivers...    2:34 PM    │
+│       To: john@example.com, sarah@...         📎         │
+│       Please find attached the daily...                   │
+└───────────────────────────────────────────────────────────┘
+  │   │   │                                │        │
+  │   │   └─ Subject (truncated)           │        └─ Attachment indicator
+  │   └─ Status icon (✓/✗/⏳)              └─ Time
+  └─ Unread indicator (blue dot)
+```
+
+### Email Preview Panel
+```
+┌─────────────────────────────────────────────────────────┐
+│  Daily Grounds Inspection - Riverside Manor             │
+│  February 1, 2026                                       │
+├─────────────────────────────────────────────────────────┤
+│  From: You                                  [✓ Sent]    │
+│  To: john@example.com, sarah@company.com               │
+│  Date: February 1, 2026 at 2:34 PM                     │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  <Rendered HTML Email Body>                             │
+│                                                         │
+│  Property: Riverside Manor                              │
+│  Date: February 1, 2026                                 │
+│  Inspector: John Smith                                  │
+│                                                         │
+│  +------+ +------+ +------+                             │
+│  |  4   | |  1   | |  0   |                             │
+│  |  OK  | | ATT  | | DEF  |                             │
+│  +------+ +------+ +------+                             │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│  Attachments                                            │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │ 📄 daily-grounds-inspection-2026-02-01.pdf      │    │
+│  │    245 KB                           [Download]  │    │
+│  └─────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────┤
+│  [📤 Forward]  [🔄 Resend]  [🗑 Delete]                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Folder Panel
+```
+┌─────────────────────────┐
+│  📬 MAILBOX             │
+├─────────────────────────┤
+│  📥 Inbox          (0)  │  ← Future: incoming emails
+│  📤 Sent          (24)  │  ← Currently active
+│  ❌ Failed          (2)  │
+│  📋 All            (26)  │
+├─────────────────────────┤
+│  [+ Compose Email]      │
+└─────────────────────────┘
 ```
 
 ---
 
-## Part 8: Update App Router
+## Part 7: Mobile Responsive Design
+
+On mobile devices, switch to a single-column drill-down pattern:
+
+1. **Folders screen** → tap folder →
+2. **Email list** → tap email →
+3. **Email detail** (full screen sheet)
+
+Use `EmailDetailSheet.tsx` for mobile email viewing:
+- Full-screen Sheet component
+- Swipe to dismiss
+- All actions in bottom toolbar
+
+---
+
+## Part 8: Route Updates
 
 **File**: `src/App.tsx`
 
-Add route for inbox page:
-```typescript
-<Route path="/inbox" element={<ReportInboxPage />} />
+The `/inbox` route already exists, just update to use the new `MailboxPage`:
+
+```tsx
+<Route path="/inbox" element={<MailboxPage />} />
 ```
 
 ---
@@ -257,76 +359,75 @@ Add route for inbox page:
 ## Implementation Summary
 
 ### Database Changes
-1. Add columns to `report_emails`: `report_type`, `sent_by`, `daily_inspection_id`
-2. Make `report_id` nullable
-3. Add check constraint
-
-### New Files
-| File | Purpose |
-|------|---------|
-| `supabase/functions/send-report-email/index.ts` | Edge function for email delivery via Resend |
-| `src/components/inspections/SendReportEmailDialog.tsx` | Email composition modal |
-| `src/pages/inbox/ReportInboxPage.tsx` | Professional inbox interface |
-| `src/hooks/useReportEmails.ts` | React Query hooks for emails |
+1. Add columns: `body_html`, `body_text`, `is_read`, `attachment_filename`, `attachment_size`
+2. Add indexes for performance
 
 ### Modified Files
 | File | Changes |
 |------|---------|
-| `supabase/config.toml` | Register new edge function |
-| `src/components/inspections/InspectionReportDialog.tsx` | Add "Email" button |
-| `src/components/layout/AppSidebar.tsx` | Add Inbox navigation |
-| `src/App.tsx` | Add inbox route |
+| `supabase/functions/send-report-email/index.ts` | Store email content and attachment info |
+| `src/hooks/useReportEmails.ts` | Add `useReportEmail`, `useMarkEmailRead`, update stats |
+| `src/App.tsx` | Update route to use new MailboxPage |
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/inbox/MailboxPage.tsx` | Main Outlook-style three-panel layout |
+| `src/components/inbox/MailboxFolders.tsx` | Left folder navigation panel |
+| `src/components/inbox/EmailList.tsx` | Middle email list panel |
+| `src/components/inbox/EmailPreview.tsx` | Right email detail panel |
+| `src/components/inbox/EmailDetailSheet.tsx` | Mobile full-screen email view |
+
+### Deleted Files
+| File | Reason |
+|------|--------|
+| `src/pages/inbox/ReportInboxPage.tsx` | Replaced by MailboxPage |
 
 ---
 
-## User Workflow
+## User Experience Flow
 
-### Sending a Report
-1. Complete daily grounds inspection
-2. Click "View Report" to open report dialog
-3. Click "📧 Email" button
-4. Enter recipient email(s)
-5. Customize subject (optional)
-6. Add personal message (optional)
-7. Click "Send Email"
-8. Receive confirmation toast
-9. Report logged to inbox
-
-### Tracking Sent Reports
+### Viewing Sent Emails
 1. Click "Inbox" in sidebar
-2. View all sent reports chronologically
-3. Filter by status (Sent/Failed)
-4. Search for specific reports
-5. Click to view original report
-6. Resend failed emails if needed
+2. See folder list on left, email list in middle
+3. Click an email to see full preview on right
+4. View rendered HTML body with inspection summary
+5. Click "Download" to get PDF attachment
+
+### Resending Failed Email
+1. Filter by "Failed" folder
+2. Select failed email
+3. See error message in preview
+4. Click "Resend" button
+5. Email resent with toast confirmation
+
+### Mobile Experience
+1. Tap "Inbox" in sidebar
+2. See folder list
+3. Tap "Sent" folder
+4. See email list (full width)
+5. Tap email
+6. Email opens in full-screen sheet
+7. Swipe down or tap X to close
 
 ---
 
 ## Technical Notes
 
-1. **Resend API** - Requires `RESEND_API_KEY` secret to be configured
-2. **PDF as Attachment** - Generate PDF client-side, convert to base64, send to edge function
-3. **Email Validation** - Validate emails client-side before sending
-4. **Rate Limiting** - Consider adding rate limits to prevent spam
-5. **RLS Policies** - Users can only view emails they sent or where they're admin/manager
+1. **HTML Sanitization**: Use DOMPurify or similar to safely render email HTML content
+2. **Resizable Panels**: Use `react-resizable-panels` (already installed)
+3. **PDF Re-download**: Since we don't store PDFs, re-download from inspection report or show "unavailable"
+4. **Read Status**: Auto-mark as read when previewed for 2+ seconds
+5. **Virtualization**: Consider virtualizing email list for performance with many emails
 
 ---
 
-## API Key Requirement
+## Future Enhancements (Not in Scope)
 
-Before implementing the email functionality, the `RESEND_API_KEY` secret must be configured:
-1. User needs a Resend account (https://resend.com)
-2. Generate API key at https://resend.com/api-keys
-3. Verify email domain at https://resend.com/domains
-4. Add secret via Lovable secrets UI
-
----
-
-## Future Enhancements (Not in Current Scope)
-
-- Email templates (choose from preset designs)
-- Scheduled sends (send tomorrow morning)
-- CC/BCC support
-- Email read receipts
-- Attachment history
-- Email thread replies
+- Inbox folder for receiving external emails
+- Draft saving before sending
+- Email threading/conversations
+- Forward to new recipients
+- Bulk actions (delete, mark read)
+- Email templates
+- Scheduled sending
