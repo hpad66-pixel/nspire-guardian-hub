@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface VoiceDictationProps {
-  onTranscript: (text: string) => void;
+  onTranscript: (text: string, metadata?: { wasTranslated?: boolean; originalTranscript?: string; detectedLanguage?: string }) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -54,7 +54,7 @@ export function VoiceDictation({ onTranscript, disabled, className }: VoiceDicta
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Collect data every second
       setIsRecording(true);
-      toast.info('Recording started - speak clearly');
+      toast.info('Recording started - speak clearly (any language)');
     } catch (error) {
       console.error('Error starting recording:', error);
       toast.error('Could not access microphone. Please check permissions.');
@@ -94,8 +94,23 @@ export function VoiceDictation({ onTranscript, disabled, className }: VoiceDicta
       }
 
       if (data?.transcript) {
-        onTranscript(data.transcript);
-        toast.success('Transcription complete');
+        onTranscript(data.transcript, {
+          wasTranslated: data.wasTranslated,
+          originalTranscript: data.originalTranscript,
+          detectedLanguage: data.detectedLanguage,
+        });
+        
+        if (data.wasTranslated) {
+          toast.success(
+            <div className="flex items-center gap-2">
+              <Languages className="h-4 w-4" />
+              <span>Translated from {getLanguageName(data.detectedLanguage)} to English</span>
+            </div>,
+            { duration: 4000 }
+          );
+        } else {
+          toast.success('Transcription complete');
+        }
       } else {
         toast.error('No transcript received');
       }
@@ -127,7 +142,7 @@ export function VoiceDictation({ onTranscript, disabled, className }: VoiceDicta
         isRecording && 'animate-pulse',
         className
       )}
-      title={isRecording ? 'Stop recording' : 'Start voice dictation'}
+      title={isRecording ? 'Stop recording' : 'Start voice dictation (any language)'}
     >
       {isProcessing ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -141,4 +156,43 @@ export function VoiceDictation({ onTranscript, disabled, className }: VoiceDicta
       )}
     </Button>
   );
+}
+
+// Helper function to convert language codes to readable names
+function getLanguageName(code: string | null): string {
+  if (!code) return 'another language';
+  
+  const languageMap: Record<string, string> = {
+    'spa': 'Spanish',
+    'fra': 'French',
+    'deu': 'German',
+    'ita': 'Italian',
+    'por': 'Portuguese',
+    'rus': 'Russian',
+    'zho': 'Chinese',
+    'jpn': 'Japanese',
+    'kor': 'Korean',
+    'ara': 'Arabic',
+    'hin': 'Hindi',
+    'pol': 'Polish',
+    'ukr': 'Ukrainian',
+    'vie': 'Vietnamese',
+    'tha': 'Thai',
+    'tur': 'Turkish',
+    'nld': 'Dutch',
+    'swe': 'Swedish',
+    'nor': 'Norwegian',
+    'dan': 'Danish',
+    'fin': 'Finnish',
+    'ell': 'Greek',
+    'heb': 'Hebrew',
+    'ind': 'Indonesian',
+    'msa': 'Malay',
+    'fil': 'Filipino',
+    'ces': 'Czech',
+    'ron': 'Romanian',
+    'hun': 'Hungarian',
+  };
+  
+  return languageMap[code] || 'another language';
 }

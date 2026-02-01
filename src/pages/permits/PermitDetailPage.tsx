@@ -109,7 +109,7 @@ export default function PermitDetailPage() {
   const totalRequirements = requirements?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
