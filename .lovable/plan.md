@@ -1,473 +1,379 @@
 
-# Implementation Plan: Complete People Management System
+# Implementation Plan: Comprehensive QA/QC and Feature Completion
 
 ## Executive Summary
 
-This plan implements a comprehensive People management system with property-specific assignments, dynamic role-based permissions, archival capabilities for departed staff, and complete audit trails for legal compliance and forensic purposes.
+This plan addresses six critical areas:
+1. **Implement Placeholder Features** - Occupancy Tracking, Mailbox Integration (already functional), QR Code Scanning
+2. **Module Visibility Control** - Show/hide navigation based on activation status
+3. **Navigation Organization & Audit** - Ensure all features are accessible with proper tooltips
+4. **Data Filtering** - Add search/filter capabilities to all data tables
+5. **Voice Dictation Editability** - Verify all voice dictation fields allow post-transcription editing
+6. **Tooltip Implementation** - Add contextual help throughout the application
 
 ---
 
 ## Part 1: Current State Analysis
 
-### What Exists
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `profiles` table | Exists | Stores user profile information |
-| `user_roles` table | Exists | Stores global roles per user |
-| `project_team_members` table | Exists | Project-specific role assignments |
-| `UserManagement` component | Exists | Basic role management in Settings |
-| `has_role()` function | Exists | Security definer for RLS checks |
-| `activity_log` table | Exists | General audit trail |
+### Placeholder Features Status
+| Feature | Current State | Action Required |
+|---------|---------------|-----------------|
+| Occupancy Tracking | Toggle exists in Settings, no functionality | Implement basic occupancy management |
+| Email Inbox Integration | **Already functional** at `/inbox` | Remove "Coming Soon" badge, fully integrate |
+| QR Code Scanning | Toggle exists in Settings, no functionality | Implement QR scanning for assets |
 
-### What's Missing
-- **Property-specific team assignments** (like `project_team_members` but for properties)
-- **Custom role definitions** with granular permissions
-- **User status management** (active/archived/deactivated)
-- **Historical tracking** of role changes
-- **Departure/archival workflow** with reason tracking
-- **Dedicated People page** with full CRUD and filtering
+### Voice Dictation Components Status
+| Component | Uses | Editable After? | Action |
+|-----------|------|-----------------|--------|
+| `VoiceDictationTextareaWithAI` | ProjectDialog, ChangeOrderDialog, PermitDialog, AssetDialog, ProposalEditor, etc. | Yes - textarea with `readOnly={false}` | Verify in all 8 locations |
+| `VoiceDictationTextarea` (basic) | IssueDialog, RFIDialog, PunchItemDialog, AddendumDialog, InspectionReviewSheet, EnhancedDailyReportDialog | Yes - standard textarea | Upgrade to include AI polish |
+
+### Pages Missing Search/Filters
+| Page | Current Filters | Needs Added |
+|------|-----------------|-------------|
+| PropertiesPage | None | Search bar, status filter |
+| WorkOrdersPage | Status, Priority | Search bar |
+| PeoplePage | Property, Role, Status | Search bar |
+| MailboxPage | Folder only | Search bar, source module filter |
+| ReportsPage | None | Type filter |
 
 ---
 
-## Part 2: Database Architecture
+## Part 2: Occupancy Tracking Module
 
-### New Tables
+### Implementation Scope
+Create a functional tenant/occupancy management system that:
+- Tracks tenant occupancy per unit
+- Manages lease dates and status
+- Provides occupancy analytics
 
-**1. `property_team_members`** - Links users to properties with roles
+### Database Schema
 ```sql
-CREATE TABLE property_team_members (
+-- Tenant/Occupancy tracking table
+CREATE TABLE tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role app_role NOT NULL DEFAULT 'user',
-  title TEXT, -- Job title: "Site Manager", "Lead Inspector"
-  department TEXT, -- "Operations", "Maintenance", "Compliance"
-  start_date DATE DEFAULT CURRENT_DATE,
-  end_date DATE, -- NULL = active, date = departed
-  status TEXT NOT NULL DEFAULT 'active', -- active, archived, deactivated
-  departure_reason TEXT, -- resignation, termination, transfer, contract_end
-  departure_notes TEXT, -- Additional context for records
-  added_by UUID REFERENCES auth.users(id),
-  archived_by UUID REFERENCES auth.users(id),
-  archived_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(property_id, user_id, end_date) -- Allow same user to rejoin
-);
-```
-
-**2. `role_definitions`** - Custom role configuration
-```sql
-CREATE TABLE role_definitions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  role_key TEXT UNIQUE NOT NULL, -- Maps to app_role enum
-  display_name TEXT NOT NULL,
-  description TEXT,
-  priority INTEGER NOT NULL DEFAULT 1, -- For hierarchy
-  is_system_role BOOLEAN DEFAULT false, -- Can't be deleted
-  permissions JSONB NOT NULL DEFAULT '{}',
-  created_by UUID REFERENCES auth.users(id),
+  unit_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  lease_start DATE NOT NULL,
+  lease_end DATE,
+  rent_amount NUMERIC,
+  deposit_amount NUMERIC,
+  status TEXT NOT NULL DEFAULT 'active', -- active, notice_given, moved_out
+  move_in_date DATE,
+  move_out_date DATE,
+  notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
-**3. `role_permissions`** - Granular permission assignments
-```sql
-CREATE TABLE role_permissions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  role_key TEXT NOT NULL,
-  module TEXT NOT NULL, -- 'properties', 'inspections', 'projects', 'work_orders', etc.
-  action TEXT NOT NULL, -- 'view', 'create', 'update', 'delete', 'approve', 'assign'
-  allowed BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(role_key, module, action)
-);
-```
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/occupancy/OccupancyPage.tsx` | Main occupancy dashboard |
+| `src/components/occupancy/TenantDialog.tsx` | Add/edit tenant |
+| `src/components/occupancy/TenantDetailSheet.tsx` | View tenant details |
+| `src/hooks/useTenants.ts` | Tenant CRUD operations |
 
-**4. `user_status_history`** - Track all status changes for audit
-```sql
-CREATE TABLE user_status_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  property_id UUID REFERENCES properties(id), -- NULL = global change
-  previous_status TEXT,
-  new_status TEXT NOT NULL,
-  previous_role app_role,
-  new_role app_role,
-  reason TEXT,
-  notes TEXT,
-  changed_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+### Navigation
+- Add "Occupancy" link to sidebar under Platform section (conditionally shown when `occupancyEnabled`)
 
-### Schema Updates
+---
 
-**Update `profiles` table:**
-```sql
-ALTER TABLE profiles ADD COLUMN status TEXT DEFAULT 'active';
-ALTER TABLE profiles ADD COLUMN phone TEXT;
-ALTER TABLE profiles ADD COLUMN job_title TEXT;
-ALTER TABLE profiles ADD COLUMN department TEXT;
-ALTER TABLE profiles ADD COLUMN emergency_contact TEXT;
-ALTER TABLE profiles ADD COLUMN emergency_phone TEXT;
-ALTER TABLE profiles ADD COLUMN hire_date DATE;
-ALTER TABLE profiles ADD COLUMN last_active_at TIMESTAMPTZ;
+## Part 3: QR Code Scanning Module
+
+### Implementation Scope
+Enable mobile-friendly QR scanning for quick asset identification:
+- Generate QR codes for each asset
+- Scan QR to navigate to asset details
+- Quick inspection start from QR scan
+
+### Implementation Approach
+1. Use browser native camera API for scanning (no heavy dependencies)
+2. Generate QR codes containing asset ID
+3. Create scanner component with camera access
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/qr/QRScannerPage.tsx` | QR scanner interface |
+| `src/components/qr/QRCodeGenerator.tsx` | Generate QR for assets |
+| `src/components/qr/QRScanner.tsx` | Camera-based scanner component |
+
+### Integration Points
+- Add QR code display to Asset cards
+- Add "Scan Asset" option in mobile navigation
+- Quick-start inspection from scanned asset
+
+---
+
+## Part 4: Module Visibility Control
+
+### Current Issue
+- All core platform items show regardless of module activation
+- Inbox shows always but is labeled "Phase 2" in Settings
+
+### Solution
+Update `AppSidebar.tsx` to:
+1. Show Inbox link always (it's already functional)
+2. Conditionally show Occupancy when `occupancyEnabled`
+3. Add QR Scanner link when `qrScanningEnabled`
+4. Remove "Coming Soon" badges from functional features
+
+### Navigation Structure (Updated)
+```text
+Platform Section:
+├── Dashboard (always)
+├── Properties (always)
+├── Units (always)
+├── Assets (always)
+├── Issues (always)
+├── Work Orders (always)
+├── Documents (always)
+├── Permits (always)
+├── Inbox (always - functional)
+├── People (always)
+├── Reports (always)
+├── Occupancy (when occupancyEnabled) ← NEW
+└── QR Scanner (when qrScanningEnabled) ← NEW
+
+Daily Grounds Module: (when dailyGroundsEnabled)
+├── Today's Inspection
+├── History
+└── Review Queue
+
+NSPIRE Compliance Module: (when nspireEnabled)
+├── Dashboard
+├── Outside
+├── Inside
+└── Units
+
+Projects Module: (when projectsEnabled)
+├── All Projects
+└── Proposals (admin only)
 ```
 
 ---
 
-## Part 3: Role & Permission System
+## Part 5: Tooltip Implementation
 
-### Default System Roles
+### Approach
+Wrap key navigation items and action buttons with `Tooltip` components to provide contextual help.
 
-| Role Key | Display Name | Priority | Description |
-|----------|--------------|----------|-------------|
-| `admin` | Administrator | 100 | Full system access |
-| `manager` | Property Manager | 80 | Manage properties, approve actions |
-| `project_manager` | Project Manager | 70 | Manage projects, budgets, teams |
-| `superintendent` | Superintendent | 60 | Field operations, work orders |
-| `inspector` | Inspector | 50 | Inspections, defect reporting |
-| `owner` | Property Owner | 40 | Read-only oversight, reports |
-| `subcontractor` | Subcontractor | 30 | Limited project access |
-| `viewer` | Viewer | 10 | Read-only access |
-| `user` | Standard User | 1 | Basic authenticated access |
+### Priority Areas for Tooltips
+| Location | Element | Tooltip Text |
+|----------|---------|--------------|
+| Sidebar | Dashboard | "Overview of your property portfolio" |
+| Sidebar | Properties | "Manage your real estate properties" |
+| Sidebar | Units | "View and manage individual units" |
+| Sidebar | Assets | "Infrastructure and equipment inventory" |
+| Sidebar | Issues | "Track and resolve property issues" |
+| Sidebar | Work Orders | "Manage repair and maintenance tasks" |
+| Sidebar | Documents | "Organization-wide file library" |
+| Sidebar | Permits | "Compliance permits and requirements" |
+| Sidebar | Inbox | "Sent emails and communications" |
+| Sidebar | People | "Team member management" |
+| Sidebar | Reports | "Analytics and performance reports" |
+| Sidebar | Occupancy | "Tenant and lease management" |
+| Actions | + Add Property | "Add a new property to your portfolio" |
+| Actions | Voice Mic | "Click to record, click again to stop" |
+| Actions | Polish AI | "Use AI to improve and professionalize text" |
 
-### Permission Matrix
-
-```text
-┌──────────────────┬───────┬─────────┬─────────────────┬───────────────┬───────────┬───────┬──────────────┬────────┐
-│ Module           │ Admin │ Manager │ Project Manager │ Superintendent│ Inspector │ Owner │ Subcontractor│ Viewer │
-├──────────────────┼───────┼─────────┼─────────────────┼───────────────┼───────────┼───────┼──────────────┼────────┤
-│ Properties       │ CRUD  │ CRUD    │ R               │ R             │ R         │ R     │ -            │ R      │
-│ People           │ CRUD  │ CRUD    │ R               │ R             │ R         │ R     │ -            │ R      │
-│ Work Orders      │ CRUD  │ CRUD    │ CRU             │ CRU           │ RU        │ R     │ R            │ R      │
-│ Inspections      │ CRUD  │ CRU     │ R               │ CRU           │ CRU       │ R     │ -            │ R      │
-│ Projects         │ CRUD  │ CRU     │ CRUD            │ RU            │ R         │ R     │ RU           │ R      │
-│ Issues           │ CRUD  │ CRU     │ CRU             │ CRU           │ CRU       │ R     │ R            │ R      │
-│ Documents        │ CRUD  │ CRUD    │ CRU             │ CRU           │ CRU       │ R     │ R            │ R      │
-│ Reports          │ CRUD  │ R       │ R               │ R             │ R         │ R     │ -            │ R      │
-│ Settings         │ CRUD  │ R       │ -               │ -             │ -         │ -     │ -            │ -      │
-│ Approve Actions  │ ✓     │ ✓       │ ✓ (projects)    │ -             │ -         │ -     │ -            │ -      │
-└──────────────────┴───────┴─────────┴─────────────────┴───────────────┴───────────┴───────┴──────────────┴────────┘
-```
-*C = Create, R = Read, U = Update, D = Delete*
+### Implementation
+- Update `AppSidebar.tsx` to wrap menu items with tooltips
+- Add tooltips to all primary action buttons
+- Use consistent tooltip positioning (right side for sidebar, bottom for buttons)
 
 ---
 
-## Part 4: People Page UI Design
+## Part 6: Search & Filter Additions
 
-### Main View
+### PropertiesPage
+```typescript
+// Add state
+const [searchQuery, setSearchQuery] = useState('');
+const [statusFilter, setStatusFilter] = useState<string>('all');
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ People                                                                               │
-│ Manage team members across all properties                                            │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐│
-│  │ Active Members   │  │ Archived         │  │ Properties       │  │ Roles        ││
-│  │       24         │  │       8          │  │      12          │  │      9       ││
-│  │                  │  │ Historical       │  │ With team        │  │ Defined      ││
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────┘│
-│                                                                                      │
-│  ┌──────────────────────────────────────────────────────────────────────────────────┤
-│  │ [🔍 Search people...]  [Status ▼]  [Property ▼]  [Role ▼]         [+ Add Person]│
-│  └──────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  Tabs: [All People] [By Property] [Archived] [Roles & Permissions]                  │
-│                                                                                      │
-│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
-│  │ User              │ Properties & Roles      │ Status    │ Since     │ Actions │  │
-│  ├───────────────────────────────────────────────────────────────────────────────┤  │
-│  │ [Avatar] Sarah    │ Oak Grove - Manager     │ ● Active  │ Jan 2024  │ [⋮]     │  │
-│  │          Johnson  │ Pine Valley - Manager   │           │           │         │  │
-│  │          sarah@.. │                         │           │           │         │  │
-│  ├───────────────────────────────────────────────────────────────────────────────┤  │
-│  │ [Avatar] Mike     │ Oak Grove - Inspector   │ ● Active  │ Mar 2024  │ [⋮]     │  │
-│  │          Davis    │                         │           │           │         │  │
-│  │          mike@..  │                         │           │           │         │  │
-│  ├───────────────────────────────────────────────────────────────────────────────┤  │
-│  │ [Avatar] John     │ Riverside - Super       │ ○ Archived│ Jun 2023- │ [⋮]     │  │
-│  │          Smith    │ (Resigned Jan 2025)     │           │ Jan 2025  │         │  │
-│  └───────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+// Add filter UI
+<div className="flex gap-4">
+  <div className="relative flex-1 max-w-sm">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
+    <Input
+      placeholder="Search properties..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="pl-10"
+    />
+  </div>
+  <Select value={statusFilter} onValueChange={setStatusFilter}>
+    <SelectTrigger className="w-[150px]">
+      <SelectValue placeholder="All Statuses" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Statuses</SelectItem>
+      <SelectItem value="active">Active</SelectItem>
+      <SelectItem value="inactive">Inactive</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
 ```
 
-### Person Detail Sheet
+### WorkOrdersPage
+- Add search input to existing filter row
+- Search across title, property name, defect description
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ Sarah Johnson                                                     [● Active ▼] [×] │
-│ Property Manager                                                                     │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  [Avatar]     sarah.johnson@company.com                                             │
-│               (555) 123-4567                                                         │
-│               Hired: January 15, 2024                                               │
-│                                                                                      │
-│  ────────────────────────────────────────────────────────────────────────────────   │
-│                                                                                      │
-│  PROPERTY ASSIGNMENTS                                           [+ Add Property]   │
-│  ─────────────────────                                                               │
-│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
-│  │ 🏢 Oak Grove Apartments                                                        │ │
-│  │    Role: [Manager ▼]  Title: Site Manager   Dept: Operations                   │ │
-│  │    Since: Jan 15, 2024                                      [Remove]          │ │
-│  ├────────────────────────────────────────────────────────────────────────────────┤ │
-│  │ 🏢 Pine Valley Estates                                                         │ │
-│  │    Role: [Manager ▼]  Title: Oversight                                         │ │
-│  │    Since: Mar 1, 2024                                       [Remove]          │ │
-│  └────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                      │
-│  GLOBAL ROLES                                                                        │
-│  ────────────                                                                        │
-│  [Manager ×] [User ×]                               [+ Add Role]                    │
-│                                                                                      │
-│  ACTIVITY HISTORY                                                                    │
-│  ────────────────                                                                    │
-│  Feb 1, 2025 • Assigned to Pine Valley as Manager (by Admin)                        │
-│  Jan 15, 2024 • Added to Oak Grove as Manager (by Admin)                            │
-│  Jan 15, 2024 • Account created                                                      │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+### PeoplePage
+- Already has filters, add search input
+
+### MailboxPage
+- Add source_module filter dropdown
+- Already has search via `searchQuery` state
+
+---
+
+## Part 7: Voice Dictation Verification
+
+### Components Using VoiceDictationTextarea (basic)
+These should be upgraded to `VoiceDictationTextareaWithAI` for consistency:
+
+1. `IssueDialog.tsx` - Description field
+2. `RFIDialog.tsx` - Question field  
+3. `PunchItemDialog.tsx` - Description field
+4. `AddendumDialog.tsx` - Content field
+5. `InspectionReviewSheet.tsx` - Reviewer Notes field
+6. `EnhancedDailyReportDialog.tsx` - Multiple fields
+
+### Verification Checklist
+All voice dictation textareas should:
+- [x] Use controlled value prop
+- [x] Have onChange handler for typing
+- [x] Have onValueChange for programmatic updates
+- [x] Not have `readOnly` or `disabled` attributes
+- [x] Return focus after AI polish
+
+The `VoiceDictationTextareaWithAI` component already has `readOnly={false}` and focus return logic. The basic `VoiceDictationTextarea` should also work for editing since it's a standard textarea.
+
+---
+
+## Part 8: Settings Page Updates
+
+### Remove "Coming Soon" Labels
+Update Settings page to:
+1. Remove "Coming Soon" badge from Occupancy (now functional)
+2. Change "Phase 2" badge on Email Inbox to "Available" (it's functional)
+3. Keep QR Scanning as "Phase 2" until fully implemented
+
+### Add Database Columns
+```sql
+-- Add to properties table for module persistence
+ALTER TABLE properties ADD COLUMN occupancy_enabled BOOLEAN DEFAULT false;
+ALTER TABLE properties ADD COLUMN qr_scanning_enabled BOOLEAN DEFAULT false;
 ```
 
-### Archive Person Dialog
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ Archive Team Member                                                                  │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  You are about to archive John Smith from Oak Grove Apartments.                      │
-│                                                                                      │
-│  This will:                                                                          │
-│  • Revoke active access to the property                                             │
-│  • Preserve all historical data for audit purposes                                   │
-│  • Allow reactivation in the future if needed                                        │
-│                                                                                      │
-│  Departure Date: [Feb 1, 2025 📅]                                                    │
-│                                                                                      │
-│  Reason: [Select reason ▼]                                                          │
-│    ○ Resignation                                                                     │
-│    ○ Termination                                                                     │
-│    ○ Transfer to another property                                                    │
-│    ○ Contract ended                                                                  │
-│    ○ Other                                                                           │
-│                                                                                      │
-│  Notes: ┌─────────────────────────────────────────────────────────────────────────┐ │
-│         │ Add any relevant details for records...                    [🎤] [✨]    │ │
-│         └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                      │
-│                                              [Cancel]  [Archive Team Member]        │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Roles & Permissions Tab
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ Roles & Permissions                                                 [+ Create Role] │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                      │
-│  System Roles                                                                        │
-│  ─────────────                                                                       │
-│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
-│  │ [Shield] Administrator                                          [🔒 System]    │ │
-│  │          Full platform access. Cannot be modified or deleted.                  │ │
-│  │          Members: 2                                                             │ │
-│  ├────────────────────────────────────────────────────────────────────────────────┤ │
-│  │ [Shield] Property Manager                                      [Edit]          │ │
-│  │          Manages assigned properties, approves work orders.                    │ │
-│  │          Members: 8                                                             │ │
-│  │          ┌─────────────────────────────────────────────────────────────────┐   │ │
-│  │          │ Properties: ✓View ✓Create ✓Edit ✓Delete                        │   │ │
-│  │          │ Work Orders: ✓View ✓Create ✓Edit □Delete ✓Approve              │   │ │
-│  │          │ Inspections: ✓View ✓Create ✓Edit □Delete                       │   │ │
-│  │          │ People: ✓View ✓Create ✓Edit □Delete                            │   │ │
-│  │          └─────────────────────────────────────────────────────────────────┘   │ │
-│  ├────────────────────────────────────────────────────────────────────────────────┤ │
-│  │ [Shield] Inspector                                             [Edit]          │ │
-│  │          Conducts inspections and reports defects.                             │ │
-│  │          Members: 12                                                            │ │
-│  └────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+### Update ModuleContext
+Map new module flags to database columns:
+```typescript
+const moduleColumnMap: Record<string, string> = {
+  nspireEnabled: 'nspire_enabled',
+  dailyGroundsEnabled: 'daily_grounds_enabled',
+  projectsEnabled: 'projects_enabled',
+  occupancyEnabled: 'occupancy_enabled',     // NEW
+  qrScanningEnabled: 'qr_scanning_enabled',  // NEW
+};
 ```
 
 ---
 
-## Part 5: Files to Create
+## Part 9: Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/pages/people/PeoplePage.tsx` | Main People management page |
-| `src/components/people/PersonDetailSheet.tsx` | View/edit person details |
-| `src/components/people/PersonDialog.tsx` | Add/invite new person |
-| `src/components/people/PropertyAssignmentDialog.tsx` | Assign person to property |
-| `src/components/people/ArchivePersonDialog.tsx` | Archive with reason |
-| `src/components/people/RolesPermissionsTab.tsx` | Role management interface |
-| `src/components/people/PersonPropertyCard.tsx` | Property assignment card |
-| `src/hooks/usePeople.ts` | CRUD for property_team_members |
-| `src/hooks/useRoleDefinitions.ts` | Role management hooks |
-| `src/hooks/useUserStatusHistory.ts` | Status change tracking |
-| `src/hooks/usePermissions.ts` | Permission checking utilities |
+| `src/pages/occupancy/OccupancyPage.tsx` | Occupancy dashboard |
+| `src/components/occupancy/TenantDialog.tsx` | Tenant add/edit form |
+| `src/components/occupancy/TenantDetailSheet.tsx` | Tenant details view |
+| `src/hooks/useTenants.ts` | Tenant CRUD hooks |
+| `src/pages/qr/QRScannerPage.tsx` | QR scanner page |
+| `src/components/qr/QRCodeGenerator.tsx` | QR code generation |
+| `src/components/qr/QRScanner.tsx` | Camera scanner component |
 
 ---
 
-## Part 6: Files to Modify
+## Part 10: Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add `/people` route pointing to new PeoplePage |
-| `src/components/layout/AppSidebar.tsx` | Already has People link (no change needed) |
-| `src/hooks/useUserManagement.ts` | Add profile status updates |
-| `src/contexts/ModuleContext.tsx` | Add permission checking methods |
+| `src/components/layout/AppSidebar.tsx` | Add tooltips, conditional nav for Occupancy & QR |
+| `src/pages/settings/SettingsPage.tsx` | Update badges, fix module status labels |
+| `src/contexts/ModuleContext.tsx` | Add new module columns to map |
+| `src/types/modules.ts` | Already has types (no change needed) |
+| `src/App.tsx` | Add routes for Occupancy and QR pages |
+| `src/pages/core/PropertiesPage.tsx` | Add search and status filter |
+| `src/pages/workorders/WorkOrdersPage.tsx` | Add search input |
+| `src/pages/inbox/MailboxPage.tsx` | Add source_module filter |
+| `src/components/inbox/MailboxFolders.tsx` | Add module category filters |
+| `src/components/issues/IssueDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
+| `src/components/projects/RFIDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
+| `src/components/projects/PunchItemDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
+| `src/components/inspections/AddendumDialog.tsx` | Upgrade to VoiceDictationTextareaWithAI |
+| `src/components/inspections/InspectionReviewSheet.tsx` | Upgrade to VoiceDictationTextareaWithAI |
+| `src/components/assets/AssetDialog.tsx` | Add QR code display |
 
 ---
 
-## Part 7: RLS Policies
+## Part 11: Implementation Order
 
-```sql
--- property_team_members policies
-CREATE POLICY "Authenticated users can view team members"
-  ON property_team_members FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+### Phase 1: Database & Core Infrastructure
+1. Database migration for tenants table and property columns
+2. Update ModuleContext with new column mappings
+3. Update Settings page badges
 
-CREATE POLICY "Admins and managers can manage team members"
-  ON property_team_members FOR ALL
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
+### Phase 2: Occupancy Module
+4. Create useTenants hook
+5. Build OccupancyPage
+6. Build TenantDialog and TenantDetailSheet
+7. Add navigation link
 
--- role_definitions policies  
-CREATE POLICY "Authenticated users can view roles"
-  ON role_definitions FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+### Phase 3: QR Scanning Module
+8. Create QR generator component
+9. Create scanner component (camera access)
+10. Build QRScannerPage
+11. Add QR to asset cards
+12. Add navigation link
 
-CREATE POLICY "Only admins can manage roles"
-  ON role_definitions FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+### Phase 4: Navigation & Tooltips
+13. Update AppSidebar with tooltips on all items
+14. Add conditional rendering for new modules
+15. Verify all links work
 
--- role_permissions policies
-CREATE POLICY "Authenticated users can view permissions"
-  ON role_permissions FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+### Phase 5: Search & Filters
+16. Add search to PropertiesPage
+17. Add search to WorkOrdersPage
+18. Add module filter to MailboxPage
 
-CREATE POLICY "Only admins can manage permissions"
-  ON role_permissions FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+### Phase 6: Voice Dictation Upgrade
+19. Upgrade basic VoiceDictationTextarea to WithAI in 6 components
+20. Test editability after transcription and polish
 
--- user_status_history policies
-CREATE POLICY "Admins and managers can view history"
-  ON user_status_history FOR SELECT
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-
-CREATE POLICY "System can insert history"
-  ON user_status_history FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
-```
-
----
-
-## Part 8: Audit Trail Integration
-
-### Automatic Logging Trigger
-
-```sql
-CREATE OR REPLACE FUNCTION log_user_status_change()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF TG_OP = 'UPDATE' AND (
-    OLD.status IS DISTINCT FROM NEW.status OR
-    OLD.role IS DISTINCT FROM NEW.role OR
-    OLD.end_date IS DISTINCT FROM NEW.end_date
-  ) THEN
-    INSERT INTO user_status_history (
-      user_id, property_id, previous_status, new_status,
-      previous_role, new_role, reason, changed_by
-    ) VALUES (
-      NEW.user_id, NEW.property_id, OLD.status, NEW.status,
-      OLD.role, NEW.role, NEW.departure_reason, auth.uid()
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER track_team_member_changes
-  AFTER UPDATE ON property_team_members
-  FOR EACH ROW EXECUTE FUNCTION log_user_status_change();
-```
-
----
-
-## Part 9: Implementation Order
-
-### Phase 1: Database Foundation
-1. Create database migration with all new tables
-2. Seed default role definitions and permissions
-3. Add trigger for automatic status tracking
-
-### Phase 2: Core Hooks & Utilities
-4. Create `usePeople.ts` hook for CRUD operations
-5. Create `useRoleDefinitions.ts` for role management
-6. Create `useUserStatusHistory.ts` for audit viewing
-7. Create `usePermissions.ts` for permission checks
-
-### Phase 3: Main UI Components
-8. Build `PeoplePage.tsx` with tabs and filtering
-9. Build `PersonDetailSheet.tsx` for viewing/editing
-10. Build `PersonDialog.tsx` for adding new people
-11. Build `PropertyAssignmentDialog.tsx`
-
-### Phase 4: Archival & Roles
-12. Build `ArchivePersonDialog.tsx` with reason capture
-13. Build `RolesPermissionsTab.tsx` for role configuration
-14. Build role permission editor component
-
-### Phase 5: Integration
-15. Update route in `App.tsx`
-16. Add permission checks to existing pages
-17. Connect to activity log system
-18. Test end-to-end workflows
-
----
-
-## Part 10: Key Features Summary
-
-| Feature | Description | Audit Trail |
-|---------|-------------|-------------|
-| **Property Assignments** | Assign users to specific properties with roles | Logged on create/update |
-| **Role Management** | View/edit permissions per role | Logged on changes |
-| **Archival Workflow** | Deactivate with reason, preserve history | Full reason capture |
-| **Status History** | Complete timeline of all changes | Automatic trigger |
-| **Reactivation** | Restore archived users when needed | Logged with reason |
-| **Permission Matrix** | Granular control per module/action | Editable by admin |
-| **Property Filtering** | View people by property | N/A |
-| **Search & Filter** | Find people by name, role, status | N/A |
-
----
-
-## Technical Considerations
-
-1. **Soft Delete Pattern**: Never hard-delete user records - always archive with status change
-2. **Separation of Concerns**: Global roles (user_roles) vs Property-specific assignments (property_team_members)
-3. **Immutable History**: Status history table is append-only for audit compliance
-4. **Permission Caching**: Consider caching role permissions in React context for performance
-5. **RLS Security**: All access controlled via security definer functions to prevent escalation
+### Phase 7: QA/QC Verification
+21. End-to-end test all module toggles
+22. Verify navigation visibility changes
+23. Test all voice dictation fields
+24. Verify all search/filter functionality
 
 ---
 
 ## Summary
 
-This implementation provides:
+This comprehensive QA/QC implementation addresses:
 
-1. **Property-Specific Team Management** - Assign users to specific properties with appropriate roles
-2. **Flexible Role System** - Predefined roles with customizable permissions
-3. **Complete Audit Trail** - Every status change, role assignment, and archival is tracked
-4. **Legal Compliance** - Archived users preserve all data for forensic purposes
-5. **Intuitive UI** - Clean, minimal design following existing patterns
-6. **Access Control Integration** - Permissions connect to all existing modules
+1. **Feature Completion** - Occupancy Tracking and QR Scanning modules fully implemented
+2. **Module Visibility** - Navigation items conditionally shown based on activation
+3. **Discoverability** - Tooltips added to all major navigation and action elements
+4. **Data Findability** - Search and filter capabilities across all data views
+5. **Voice Input UX** - All dictation fields support post-transcription editing with AI polish
+6. **Professional Polish** - Consistent UX patterns throughout the application
+
+The implementation prioritizes user experience with minimal friction, following the established Apple-inspired design language.
