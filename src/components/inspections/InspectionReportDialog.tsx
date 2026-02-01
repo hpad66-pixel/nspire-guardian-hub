@@ -42,6 +42,14 @@ export function InspectionReportDialog({
   const { data: profiles = [] } = useProfiles();
   const { data: assets = [] } = useAssets(providedInspection?.property_id || undefined);
 
+  // Calculate status summary for email - must be before any early returns
+  const statusSummary = useMemo(() => {
+    const okCount = items.filter(i => i.status === 'ok').length;
+    const attentionCount = items.filter(i => i.status === 'needs_attention').length;
+    const defectCount = items.filter(i => i.status === 'defect_found').length;
+    return { ok: okCount, attention: attentionCount, defect: defectCount };
+  }, [items]);
+
   // If no inspection provided, we need to fetch it
   const inspection = providedInspection;
 
@@ -55,14 +63,6 @@ export function InspectionReportDialog({
   const inspectorName = inspector?.full_name || inspector?.email || 'Unknown Inspector';
 
   const reportFilename = `daily-grounds-inspection-${format(parseISO(inspection.inspection_date), 'yyyy-MM-dd')}-${inspection.id.slice(0, 8)}.pdf`;
-
-  // Calculate status summary for email
-  const statusSummary = useMemo(() => {
-    const okCount = items.filter(i => i.status === 'ok').length;
-    const attentionCount = items.filter(i => i.status === 'needs_attention').length;
-    const defectCount = items.filter(i => i.status === 'defect_found').length;
-    return { ok: okCount, attention: attentionCount, defect: defectCount };
-  }, [items]);
 
   const handleDownloadPDF = async () => {
     setIsGenerating(true);
