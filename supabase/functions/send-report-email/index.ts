@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface SendReportEmailRequest {
   recipients: string[];
+  bccRecipients?: string[]; // BCC recipients (auto-BCC to user's email)
   subject: string;
   reportType: "daily_inspection" | "daily_report" | "proposal" | "work_order";
   reportId: string;
@@ -70,6 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
     const body: SendReportEmailRequest = await req.json();
     const {
       recipients,
+      bccRecipients,
       subject,
       reportType,
       reportId,
@@ -81,6 +83,25 @@ const handler = async (req: Request): Promise<Response> => {
       pdfFilename,
       statusSummary,
     } = body;
+
+    // Get user's profile for auto-BCC if not provided
+    let finalBccRecipients = bccRecipients || [];
+    
+    // Fetch user's profile to get their email for auto-BCC
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email, work_email, auto_bcc_enabled")
+      .eq("user_id", userId)
+      .single();
+
+    // Add user's email to BCC if auto_bcc is enabled and they have an email
+    if (profile?.auto_bcc_enabled !== false) {
+      const userEmail = profile?.work_email || profile?.email;
+      if (userEmail && !finalBccRecipients.includes(userEmail) && !recipients.includes(userEmail)) {
+        finalBccRecipients = [...finalBccRecipients, userEmail];
+        console.log("Auto-BCC added:", userEmail);
+      }
+    }
 
     // Validate required fields
     if (!recipients?.length || !subject || !reportId || !pdfBase64) {
@@ -193,6 +214,26 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
     `;
 
+    // Build email payload with BCC support
+    const emailPayload: Record<string, unknown> = {
+      from: "NSPIRE Reports <onboarding@resend.dev>",
+      to: recipients,
+      subject: subject,
+      html: htmlContent,
+      attachments: [
+        {
+          filename: pdfFilename,
+          content: pdfBase64,
+        },
+      ],
+    };
+
+    // Add BCC recipients if any
+    if (finalBccRecipients.length > 0) {
+      emailPayload.bcc = finalBccRecipients;
+      console.log("Sending with BCC to:", finalBccRecipients);
+    }
+
     // Send email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -200,18 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: "NSPIRE Reports <onboarding@resend.dev>",
-        to: recipients,
-        subject: subject,
-        html: htmlContent,
-        attachments: [
-          {
-            filename: pdfFilename,
-            content: pdfBase64,
-          },
-        ],
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     const emailResult = await emailResponse.json();
@@ -233,6 +263,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailRecord: Record<string, unknown> = {
       recipients,
+      bcc_recipients: finalBccRecipients,
       subject,
       report_type: reportType,
       sent_by: userId,

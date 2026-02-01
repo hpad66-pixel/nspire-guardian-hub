@@ -204,6 +204,107 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_contacts: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          company_name: string | null
+          contact_type: Database["public"]["Enums"]["contact_type"]
+          country: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          fax: string | null
+          first_name: string
+          id: string
+          insurance_expiry: string | null
+          is_active: boolean | null
+          is_favorite: boolean | null
+          job_title: string | null
+          last_name: string | null
+          license_number: string | null
+          mobile: string | null
+          notes: string | null
+          phone: string | null
+          property_id: string | null
+          state: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string | null
+          website: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_type?: Database["public"]["Enums"]["contact_type"]
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fax?: string | null
+          first_name: string
+          id?: string
+          insurance_expiry?: string | null
+          is_active?: boolean | null
+          is_favorite?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          license_number?: string | null
+          mobile?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          website?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_type?: Database["public"]["Enums"]["contact_type"]
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fax?: string | null
+          first_name?: string
+          id?: string
+          insurance_expiry?: string | null
+          is_active?: boolean | null
+          is_favorite?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          license_number?: string | null
+          mobile?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          website?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contacts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_inspection_addendums: {
         Row: {
           attachments: string[] | null
@@ -1030,6 +1131,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auto_bcc_enabled: boolean | null
           avatar_url: string | null
           created_at: string
           department: string | null
@@ -1045,8 +1147,10 @@ export type Database = {
           status: string | null
           updated_at: string
           user_id: string
+          work_email: string | null
         }
         Insert: {
+          auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
           created_at?: string
           department?: string | null
@@ -1062,8 +1166,10 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id: string
+          work_email?: string | null
         }
         Update: {
+          auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
           created_at?: string
           department?: string | null
@@ -1079,6 +1185,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string
+          work_email?: string | null
         }
         Relationships: []
       }
@@ -1795,6 +1902,7 @@ export type Database = {
         Row: {
           attachment_filename: string | null
           attachment_size: number | null
+          bcc_recipients: string[] | null
           body_html: string | null
           body_text: string | null
           daily_inspection_id: string | null
@@ -1817,6 +1925,7 @@ export type Database = {
         Insert: {
           attachment_filename?: string | null
           attachment_size?: number | null
+          bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
           daily_inspection_id?: string | null
@@ -1839,6 +1948,7 @@ export type Database = {
         Update: {
           attachment_filename?: string | null
           attachment_size?: number | null
+          bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
           daily_inspection_id?: string | null
@@ -2526,6 +2636,16 @@ export type Database = {
         | "general_grounds"
       change_order_status: "draft" | "pending" | "approved" | "rejected"
       communication_type: "call" | "email" | "meeting" | "note"
+      contact_type:
+        | "vendor"
+        | "regulator"
+        | "contractor"
+        | "tenant"
+        | "owner"
+        | "inspector"
+        | "utility"
+        | "government"
+        | "other"
       daily_inspection_review_status:
         | "pending_review"
         | "approved"
@@ -2746,6 +2866,17 @@ export const Constants = {
       ],
       change_order_status: ["draft", "pending", "approved", "rejected"],
       communication_type: ["call", "email", "meeting", "note"],
+      contact_type: [
+        "vendor",
+        "regulator",
+        "contractor",
+        "tenant",
+        "owner",
+        "inspector",
+        "utility",
+        "government",
+        "other",
+      ],
       daily_inspection_review_status: [
         "pending_review",
         "approved",

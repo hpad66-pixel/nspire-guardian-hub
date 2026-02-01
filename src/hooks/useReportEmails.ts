@@ -30,8 +30,9 @@ export interface ReportEmailFilters {
 
 export interface SendReportEmailParams {
   recipients: string[];
+  bccRecipients?: string[]; // Optional BCC recipients
   subject: string;
-  reportType: "daily_inspection" | "daily_report";
+  reportType: "daily_inspection" | "daily_report" | "proposal" | "work_order";
   reportId: string;
   propertyName: string;
   inspectorName: string;
@@ -39,6 +40,10 @@ export interface SendReportEmailParams {
   message?: string;
   pdfBase64: string;
   pdfFilename: string;
+  sourceModule?: string;
+  propertyId?: string;
+  projectId?: string;
+  workOrderId?: string;
   statusSummary?: {
     ok: number;
     attention: number;
