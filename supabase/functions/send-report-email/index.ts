@@ -12,7 +12,7 @@ const corsHeaders = {
 interface SendReportEmailRequest {
   recipients: string[];
   subject: string;
-  reportType: "daily_inspection" | "daily_report";
+  reportType: "daily_inspection" | "daily_report" | "proposal" | "work_order";
   reportId: string;
   propertyName: string;
   inspectorName: string;
@@ -20,6 +20,10 @@ interface SendReportEmailRequest {
   message?: string;
   pdfBase64: string;
   pdfFilename: string;
+  sourceModule?: string;
+  propertyId?: string;
+  projectId?: string;
+  workOrderId?: string;
   statusSummary?: {
     ok: number;
     attention: number;
@@ -237,12 +241,16 @@ const handler = async (req: Request): Promise<Response> => {
       body_text: message || "",
       attachment_filename: pdfFilename,
       attachment_size: pdfBase64.length,
-      is_read: true, // Sender has "read" their own email
+      is_read: true,
+      source_module: body.sourceModule || (reportType === "daily_inspection" ? "daily_grounds" : reportType === "daily_report" ? "projects" : "core"),
+      property_id: body.propertyId || null,
+      project_id: body.projectId || null,
+      work_order_id: body.workOrderId || null,
     };
 
     if (reportType === "daily_inspection") {
       emailRecord.daily_inspection_id = reportId;
-    } else {
+    } else if (reportType === "daily_report" || reportType === "proposal") {
       emailRecord.report_id = reportId;
     }
 

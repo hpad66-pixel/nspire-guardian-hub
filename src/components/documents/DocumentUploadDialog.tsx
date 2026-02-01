@@ -12,9 +12,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TagInput } from '@/components/ui/tag-input';
 import { Upload, File, X } from 'lucide-react';
 import { useUploadOrganizationDocument, DOCUMENT_FOLDERS } from '@/hooks/useDocuments';
 import { cn } from '@/lib/utils';
+
+// Suggested tags by folder
+const FOLDER_TAGS: Record<string, string[]> = {
+  General: ['general', 'misc', 'archive'],
+  Contracts: ['vendor', 'contractor', 'subcontractor', '2024', '2025', 'signed', 'active'],
+  Permits: ['permit', 'compliance', 'inspection', 'city', 'county', 'state', 'approved'],
+  Insurance: ['liability', 'workers-comp', 'property', 'certificate', 'coi', 'active'],
+  Legal: ['agreement', 'addendum', 'amendment', 'executed', 'pending'],
+  Policies: ['policy', 'procedure', 'guideline', 'sop'],
+  Training: ['safety', 'osha', 'certification', 'training', 'manual'],
+  Reports: ['report', 'annual', 'quarterly', 'audit', 'inspection'],
+};
 
 interface DocumentUploadDialogProps {
   open: boolean;
@@ -28,6 +41,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [folder, setFolder] = useState(defaultFolder);
+  const [tags, setTags] = useState<string[]>([]);
   const [expiryDate, setExpiryDate] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   
@@ -70,6 +84,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
         folder,
         name,
         description: description || undefined,
+        tags: tags.length > 0 ? tags : undefined,
         expiryDate: expiryDate || undefined,
       });
       
@@ -85,6 +100,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
     setName('');
     setDescription('');
     setFolder(defaultFolder);
+    setTags([]);
     setExpiryDate('');
   };
   
@@ -198,6 +214,18 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
               placeholder="Optional description..."
               rows={2}
               context="notes"
+            />
+          </div>
+          
+          {/* Tags */}
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <TagInput
+              value={tags}
+              onChange={setTags}
+              suggestions={FOLDER_TAGS[folder] || []}
+              placeholder="Add tags for search..."
+              maxTags={8}
             />
           </div>
           

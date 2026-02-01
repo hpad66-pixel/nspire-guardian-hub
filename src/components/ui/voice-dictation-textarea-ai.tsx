@@ -1,4 +1,4 @@
-import { forwardRef, useState, useCallback } from 'react';
+import { forwardRef, useState, useCallback, useRef, useImperativeHandle, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { VoiceDictation } from '@/components/ui/voice-dictation';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,10 @@ export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, Voic
   ({ className, value, onChange, onValueChange, context = 'notes', ...props }, ref) => {
     const { polish, isPolishing } = useTextPolish();
     const [previousValue, setPreviousValue] = useState<string | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Forward ref to internal textarea
+    useImperativeHandle(ref, () => textareaRef.current!);
 
     const currentValue = typeof value === 'string' ? value : '';
 
@@ -57,6 +61,11 @@ export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, Voic
           } as React.ChangeEvent<HTMLTextAreaElement>;
           onChange(syntheticEvent);
         }
+        
+        // Return focus to textarea after polish so user can continue editing
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 100);
       }
     }, [currentValue, context, polish, onChange, onValueChange]);
 
@@ -81,10 +90,11 @@ export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, Voic
       <TooltipProvider>
         <div className="relative">
           <Textarea
-            ref={ref}
+            ref={textareaRef}
             className={cn('pr-24 pb-10', className)}
             value={value}
             onChange={onChange}
+            readOnly={false}
             {...props}
           />
           <div className="absolute right-2 bottom-2 flex items-center gap-1">
