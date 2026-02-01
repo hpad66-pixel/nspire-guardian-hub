@@ -278,46 +278,66 @@ export function DailyInspectionWizard({
         )}
 
         {/* Step: Assets */}
-        {step === 'assets' && currentAsset && (
+        {step === 'assets' && (
           <div className="space-y-4">
-            <InspectionProgress
-              current={currentAssetIndex + 1}
-              total={activeAssets.length}
-              okCount={stats.okCount}
-              attentionCount={stats.attentionCount}
-              defectCount={stats.defectCount}
-            />
+            {activeAssets.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-muted-foreground mb-4">No assets found for this property.</p>
+                  <Button onClick={() => setStep('notes')}>
+                    Continue to Notes
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : currentAsset ? (
+              <>
+                <InspectionProgress
+                  current={currentAssetIndex + 1}
+                  total={activeAssets.length}
+                  okCount={stats.okCount}
+                  attentionCount={stats.attentionCount}
+                  defectCount={stats.defectCount}
+                />
 
-            {/* Navigation Arrows */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevAsset}
-                disabled={currentAssetIndex === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {currentAssetIndex + 1} / {activeAssets.length}
-              </span>
-              <div className="w-20" />
-            </div>
+                {/* Navigation Arrows */}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrevAsset}
+                    disabled={currentAssetIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {currentAssetIndex + 1} / {activeAssets.length}
+                  </span>
+                  <div className="w-20" />
+                </div>
 
-            <AssetCheckCard
-              asset={currentAsset}
-              status={currentCheck?.status}
-              photoUrls={currentCheck?.photoUrls || []}
-              notes={currentCheck?.notes || ''}
-              defectDescription={currentCheck?.defectDescription || ''}
-              onStatusChange={(status) => handleAssetCheck('status', status)}
-              onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
-              onNotesChange={(notes) => handleAssetCheck('notes', notes)}
-              onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
-              onNext={handleNextAsset}
-              isLast={currentAssetIndex === activeAssets.length - 1}
-            />
+                <AssetCheckCard
+                  asset={currentAsset}
+                  status={currentCheck?.status}
+                  photoUrls={currentCheck?.photoUrls || []}
+                  notes={currentCheck?.notes || ''}
+                  defectDescription={currentCheck?.defectDescription || ''}
+                  onStatusChange={(status) => handleAssetCheck('status', status)}
+                  onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
+                  onNotesChange={(notes) => handleAssetCheck('notes', notes)}
+                  onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
+                  onNext={handleNextAsset}
+                  isLast={currentAssetIndex === activeAssets.length - 1}
+                />
+              </>
+            ) : (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-muted-foreground">Loading assets...</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
