@@ -12,6 +12,7 @@ import { useDailyInspections, useInspectionItems, WEATHER_OPTIONS, type DailyIns
 import { useAssets } from '@/hooks/useAssets';
 import { useProfiles } from '@/hooks/useProfiles';
 import { AddendumList } from '@/components/inspections/AddendumList';
+import { InspectionReportDialog } from '@/components/inspections/InspectionReportDialog';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -25,7 +26,8 @@ import {
   Cloud,
   FileText,
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { format, parseISO, subDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
@@ -38,6 +40,7 @@ export default function InspectionHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInspection, setSelectedInspection] = useState<DailyInspection | null>(null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
   const { data: allInspections = [], isLoading: inspectionsLoading } = useDailyInspections(
@@ -252,8 +255,19 @@ export default function InspectionHistoryPage() {
       <InspectionDetailSheet 
         inspection={selectedInspection}
         onClose={() => setSelectedInspection(null)}
+        onViewReport={() => {
+          setShowReportDialog(true);
+        }}
         properties={properties}
         profiles={profiles}
+      />
+
+      {/* Report Dialog */}
+      <InspectionReportDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        inspectionId={selectedInspection?.id}
+        inspection={selectedInspection}
       />
     </div>
   );
@@ -262,12 +276,14 @@ export default function InspectionHistoryPage() {
 // Detail Sheet Component
 function InspectionDetailSheet({ 
   inspection, 
-  onClose, 
+  onClose,
+  onViewReport,
   properties,
   profiles 
 }: { 
   inspection: DailyInspection | null;
   onClose: () => void;
+  onViewReport: () => void;
   properties: any[];
   profiles: any[];
 }) {
@@ -305,10 +321,18 @@ function InspectionDetailSheet({
     <Sheet open={!!inspection} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Inspection Details</SheetTitle>
-          <SheetDescription>
-            {format(parseISO(inspection.inspection_date), 'EEEE, MMMM d, yyyy')}
-          </SheetDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <SheetTitle>Inspection Details</SheetTitle>
+              <SheetDescription>
+                {format(parseISO(inspection.inspection_date), 'EEEE, MMMM d, yyyy')}
+              </SheetDescription>
+            </div>
+            <Button size="sm" onClick={onViewReport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DailyInspectionWizard } from '@/components/inspections/DailyInspectionWizard';
 import { AddendumDialog } from '@/components/inspections/AddendumDialog';
 import { AddendumList } from '@/components/inspections/AddendumList';
+import { InspectionReportDialog } from '@/components/inspections/InspectionReportDialog';
 import { useProperties } from '@/hooks/useProperties';
 import { useDailyInspections, useTodayInspection, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
@@ -27,6 +28,7 @@ export default function DailyGroundsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [showWizard, setShowWizard] = useState(false);
   const [showAddendum, setShowAddendum] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   
   const { data: properties = [] } = useProperties();
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
@@ -127,7 +129,7 @@ export default function DailyGroundsPage() {
                       {getReviewStatusBadge((todayInspection as any).review_status)}
                     </div>
                     <div className="flex gap-2 justify-center">
-                      <Button variant="outline" onClick={() => setShowWizard(true)}>
+                      <Button variant="outline" onClick={() => setShowReportDialog(true)}>
                         <FileText className="h-4 w-4 mr-2" />
                         View Report
                       </Button>
@@ -299,6 +301,14 @@ export default function DailyGroundsPage() {
           inspectionId={todayInspection.id}
         />
       )}
+
+      {/* Report Dialog */}
+      <InspectionReportDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        inspectionId={todayInspection?.id}
+        inspection={todayInspection}
+      />
     </div>
   );
 }

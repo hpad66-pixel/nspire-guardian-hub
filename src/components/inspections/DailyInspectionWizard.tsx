@@ -28,8 +28,10 @@ import {
   Upload, 
   Send,
   Paperclip,
-  X
+  X,
+  FileText
 } from 'lucide-react';
+import { InspectionReportDialog } from './InspectionReportDialog';
 import { cn } from '@/lib/utils';
 
 type WizardStep = 'start' | 'assets' | 'notes' | 'review' | 'success';
@@ -62,6 +64,7 @@ export function DailyInspectionWizard({
   const [assetChecks, setAssetChecks] = useState<Record<string, AssetCheckData>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [inspection, setInspection] = useState<DailyInspection | null>(existingInspection || null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const { data: assets = [] } = useAssets(propertyId);
   const { data: existingItems = [] } = useInspectionItems(inspection?.id || '');
@@ -573,14 +576,23 @@ export function DailyInspectionWizard({
             <div className="space-y-3">
               <Button
                 size="lg"
-                className="w-full h-14 text-lg"
+                className="w-full h-14 text-lg gap-2"
+                onClick={() => setShowReportDialog(true)}
+              >
+                <FileText className="h-5 w-5" />
+                View Report
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
                 onClick={handleGoToDashboard}
               >
                 Go to Dashboard
               </Button>
               <Button
                 size="lg"
-                variant="outline"
+                variant="ghost"
                 className="w-full"
                 onClick={handleStartNewInspection}
               >
@@ -590,6 +602,14 @@ export function DailyInspectionWizard({
           </div>
         )}
       </div>
+
+      {/* Report Dialog */}
+      <InspectionReportDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        inspectionId={inspection?.id}
+        inspection={inspection}
+      />
     </div>
   );
 }
