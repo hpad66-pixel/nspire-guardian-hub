@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type WizardStep = 'start' | 'assets' | 'notes' | 'review';
+type WizardStep = 'start' | 'assets' | 'notes' | 'review' | 'success';
 
 interface DailyInspectionWizardProps {
   propertyId: string;
@@ -219,11 +220,23 @@ export function DailyInspectionWizard({
         submitted_at: new Date().toISOString(),
       } as any);
 
+      // Show success screen instead of navigating away
+      setStep('success');
       toast.success('Inspection submitted for review!');
-      navigate('/');
     } catch (error) {
       console.error('Submit error:', error);
+      toast.error('Failed to submit inspection');
     }
+  };
+
+  const handleGoToDashboard = () => {
+    onComplete();
+    navigate('/');
+  };
+
+  const handleStartNewInspection = () => {
+    onComplete();
+    // Stay on daily grounds page to potentially start another property
   };
 
   const checkedCount = stats.okCount + stats.attentionCount + stats.defectCount;
@@ -512,7 +525,66 @@ export function DailyInspectionWizard({
                 disabled={updateInspection.isPending}
               >
                 <Send className="h-4 w-4 mr-1" />
-                Submit Inspection
+                {updateInspection.isPending ? 'Submitting...' : 'Submit Inspection'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Success */}
+        {step === 'success' && (
+          <div className="space-y-6 text-center">
+            <div className="py-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-green-600 mb-2">
+                Inspection Submitted!
+              </h2>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                Your daily grounds inspection has been submitted and is now pending supervisor review.
+              </p>
+            </div>
+
+            {/* Summary Stats */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">{stats.okCount}</p>
+                    <p className="text-xs text-green-600">OK</p>
+                  </div>
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-600">{stats.attentionCount}</p>
+                    <p className="text-xs text-yellow-600">Attention</p>
+                  </div>
+                  <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600">{stats.defectCount}</p>
+                    <p className="text-xs text-red-600">Defects</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(), 'EEEE, MMMM d, yyyy • h:mm a')}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="space-y-3">
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg"
+                onClick={handleGoToDashboard}
+              >
+                Go to Dashboard
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={handleStartNewInspection}
+              >
+                Back to Daily Grounds
               </Button>
             </div>
           </div>
