@@ -78,6 +78,26 @@ export interface UpdateProposalData extends Partial<CreateProposalData> {
   status?: ProposalStatus;
 }
 
+// Get all proposals (for admin dashboard)
+export function useProposals() {
+  return useQuery({
+    queryKey: ["proposals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_proposals")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching all proposals:", error);
+        throw error;
+      }
+
+      return data as Proposal[];
+    },
+  });
+}
+
 export function useProposalsByProject(projectId: string | null) {
   return useQuery({
     queryKey: ["proposals", projectId],
