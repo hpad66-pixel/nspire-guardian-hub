@@ -1,477 +1,379 @@
 
-# Implementation Plan: Permit & Regulatory Compliance Tracking System
+# Implementation Plan: CSV Import for Units
 
 ## Overview
 
-Build a comprehensive permit and regulatory compliance tracking system that manages permits, their requirements, deliverables, and compliance status. This system will integrate with the existing Document Center for file storage while providing dedicated tracking, deadline management, and compliance reporting.
+Add a bulk import feature to the Units page that allows users to upload a CSV file containing unit data. The system will parse the CSV, validate the data, match property names to IDs, and insert all valid units into the database with a preview and confirmation workflow.
 
 ---
 
-## Architecture Decision: Standalone Module vs. Document Center Extension
+## Part 1: Feature Design
 
-### Recommended Approach: Hybrid Architecture
-
-The permit system should be a **standalone module** that **links to** the Document Center for file storage. This provides:
-
-1. **Dedicated data structures** for permit metadata (issue dates, expiry dates, jurisdictions, etc.)
-2. **Requirement tracking** with deadlines, deliverables, and compliance status
-3. **Integration with existing documents** - permits stored in "Permits" folder remain linked
-4. **Issues integration** - non-compliance creates issues in the unified Issues system
-
----
-
-## Part 1: Data Model Design
-
-### Core Tables
+### User Flow
 
 ```text
-+---------------------+       +------------------------+       +------------------------+
-|      permits        |       |  permit_requirements   |       | permit_deliverables    |
-+---------------------+       +------------------------+       +------------------------+
-| id                  |       | id                     |       | id                     |
-| property_id (FK)    |<------| permit_id (FK)         |<------| requirement_id (FK)    |
-| permit_type         |       | title                  |       | title                  |
-| permit_number       |       | description            |       | description            |
-| name                |       | requirement_type       |       | due_date               |
-| description         |       | frequency              |       | submitted_at           |
-| issuing_authority   |       | start_date             |       | status                 |
-| issue_date          |       | end_date               |       | document_id (FK)       |
-| expiry_date         |       | status                 |       | submitted_by           |
-| status              |       | next_due_date          |       | notes                  |
-| document_id (FK)    |       | notes                  |       | created_at             |
-| notes               |       | created_at             |       +------------------------+
-| created_by          |       +------------------------+
-| created_at          |
-+---------------------+
+1. User clicks "Import CSV" button on Units page
+2. Dialog opens with:
+   - File drop zone for CSV upload
+   - Download template link
+3. User uploads CSV file
+4. System parses and validates data
+5. Preview table shows:
+   - Valid rows (green) ready to import
+   - Invalid rows (red) with error messages
+   - Property name to ID mapping status
+6. User reviews and clicks "Import X Units"
+7. System bulk inserts valid records
+8. Success toast with count of imported units
 ```
 
-### Permit Types (Enum)
-- `building_permit` - Construction/renovation permits
-- `occupancy_certificate` - Certificate of Occupancy
-- `fire_safety` - Fire department permits/inspections
-- `elevator` - Elevator operating permits
-- `pool` - Pool/spa permits
-- `boiler` - Boiler inspection certificates
-- `environmental` - Environmental compliance permits
-- `hud_compliance` - HUD/Section 8 compliance
-- `ada` - ADA compliance certifications
-- `other` - Custom permit types
+### CSV Template Format
 
-### Requirement Types (Enum)
-- `inspection` - Periodic inspections required
-- `report` - Reports that must be submitted
-- `certification` - Certifications that must be renewed
-- `filing` - Documents to be filed with authorities
-- `payment` - Fees or payments due
-- `training` - Required training/certifications for staff
-- `other` - Custom requirements
-
-### Frequency Options (Enum)
-- `one_time` - One-time requirement
-- `monthly` - Every month
-- `quarterly` - Every 3 months
-- `semi_annual` - Every 6 months
-- `annual` - Every year
-- `biennial` - Every 2 years
-- `as_needed` - No fixed schedule
-
-### Status Values
-**Permit Status**: `draft`, `active`, `expired`, `renewed`, `revoked`
-**Requirement Status**: `pending`, `in_progress`, `compliant`, `non_compliant`, `waived`
-**Deliverable Status**: `pending`, `submitted`, `approved`, `rejected`, `overdue`
+| Column | Required | Description | Example |
+|--------|----------|-------------|---------|
+| property_name | Yes | Must match existing property name | Riverside Manor |
+| unit_number | Yes | Unit identifier | 101A |
+| bedrooms | No | Number of bedrooms (default: 1) | 2 |
+| bathrooms | No | Number of bathrooms (default: 1) | 1.5 |
+| square_feet | No | Unit size in sq ft | 850 |
+| floor | No | Floor number | 2 |
+| status | No | occupied/vacant/maintenance (default: occupied) | vacant |
 
 ---
 
-## Part 2: Database Schema
+## Part 2: New Components
 
-```sql
--- Create permit types enum
-CREATE TYPE permit_type AS ENUM (
-  'building_permit', 'occupancy_certificate', 'fire_safety', 
-  'elevator', 'pool', 'boiler', 'environmental', 
-  'hud_compliance', 'ada', 'other'
-);
+### UnitImportDialog.tsx
 
--- Create requirement types enum
-CREATE TYPE requirement_type AS ENUM (
-  'inspection', 'report', 'certification', 
-  'filing', 'payment', 'training', 'other'
-);
-
--- Create frequency enum
-CREATE TYPE requirement_frequency AS ENUM (
-  'one_time', 'monthly', 'quarterly', 'semi_annual', 
-  'annual', 'biennial', 'as_needed'
-);
-
--- Create permit status enum
-CREATE TYPE permit_status AS ENUM (
-  'draft', 'active', 'expired', 'renewed', 'revoked'
-);
-
--- Create requirement status enum
-CREATE TYPE requirement_status AS ENUM (
-  'pending', 'in_progress', 'compliant', 'non_compliant', 'waived'
-);
-
--- Create deliverable status enum
-CREATE TYPE deliverable_status AS ENUM (
-  'pending', 'submitted', 'approved', 'rejected', 'overdue'
-);
-
--- Permits table
-CREATE TABLE permits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  permit_type permit_type NOT NULL,
-  permit_number TEXT,
-  name TEXT NOT NULL,
-  description TEXT,
-  issuing_authority TEXT,
-  issue_date DATE,
-  expiry_date DATE,
-  status permit_status NOT NULL DEFAULT 'draft',
-  document_id UUID REFERENCES organization_documents(id),
-  notes TEXT,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Permit requirements table
-CREATE TABLE permit_requirements (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  permit_id UUID NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  requirement_type requirement_type NOT NULL,
-  frequency requirement_frequency NOT NULL DEFAULT 'annual',
-  start_date DATE,
-  end_date DATE,
-  status requirement_status NOT NULL DEFAULT 'pending',
-  next_due_date DATE,
-  last_completed_date DATE,
-  responsible_user_id UUID REFERENCES auth.users(id),
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Permit deliverables table (specific submissions for requirements)
-CREATE TABLE permit_deliverables (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  requirement_id UUID NOT NULL REFERENCES permit_requirements(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  due_date DATE NOT NULL,
-  submitted_at TIMESTAMPTZ,
-  status deliverable_status NOT NULL DEFAULT 'pending',
-  document_id UUID REFERENCES organization_documents(id),
-  submitted_by UUID REFERENCES auth.users(id),
-  approved_by UUID REFERENCES auth.users(id),
-  approved_at TIMESTAMPTZ,
-  rejection_reason TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Indexes for performance
-CREATE INDEX idx_permits_property ON permits(property_id);
-CREATE INDEX idx_permits_status ON permits(status);
-CREATE INDEX idx_permits_expiry ON permits(expiry_date);
-CREATE INDEX idx_requirements_permit ON permit_requirements(permit_id);
-CREATE INDEX idx_requirements_due ON permit_requirements(next_due_date);
-CREATE INDEX idx_deliverables_requirement ON permit_deliverables(requirement_id);
-CREATE INDEX idx_deliverables_due ON permit_deliverables(due_date);
-CREATE INDEX idx_deliverables_status ON permit_deliverables(status);
-
--- Enable RLS
-ALTER TABLE permits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE permit_requirements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE permit_deliverables ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies (similar to other tables)
-CREATE POLICY "Authenticated users can view permits" ON permits
-  FOR SELECT USING (true);
-
-CREATE POLICY "Admins and managers can manage permits" ON permits
-  FOR ALL USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager'));
-
--- Similar policies for requirements and deliverables...
-
--- Trigger to update updated_at
-CREATE TRIGGER update_permits_updated_at BEFORE UPDATE ON permits
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON permit_requirements
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_deliverables_updated_at BEFORE UPDATE ON permit_deliverables
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-```
-
----
-
-## Part 3: UI Architecture
-
-### New Pages
-
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/permits` | `PermitsDashboard.tsx` | Overview of all permits with stats |
-| `/permits/:id` | `PermitDetailPage.tsx` | Single permit with requirements |
-
-### Page Structure
+Main dialog component with:
 
 ```text
-PERMITS DASHBOARD
-+------------------------------------------------------------------+
-|  [Shield] Permits & Compliance            [+ Add Permit]         |
-|  Track regulatory requirements and deadlines                     |
-+------------------------------------------------------------------+
-
-STATS CARDS:
-+------------+ +------------+ +------------+ +------------+
-|   Active   | |  Expiring  | |    Due     | | Non-Compl. |
-|     12     | |   Soon 3   | |   This Mo  | |     2      |
-|  permits   | |  (30 days) | |     5      | |  critical  |
-+------------+ +------------+ +------------+ +------------+
-
-FILTERS:  [Property ▼] [Type ▼] [Status ▼] [Search...]
-
-PERMIT CARDS:
-+------------------------------------------------------------------+
-| [Fire] Fire Safety Certificate         [Active] [Exp: Mar 2026]  |
-|        Riverside Manor                                            |
-|        FDNY Certificate #12345                                    |
-|        +--------------------------------------------------+       |
-|        | Requirements: 2/3 compliant | Next Due: Feb 15  |       |
-|        +--------------------------------------------------+       |
-+------------------------------------------------------------------+
-
-| [Elevator] Elevator Operating Permit   [Expiring] [Exp: Feb 2026]|
-|        ...                                                        |
-+------------------------------------------------------------------+
++----------------------------------------------------------+
+|  Import Units from CSV                              [X]  |
++----------------------------------------------------------+
+|                                                          |
+|  [Download CSV Template]                                 |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  |                                                    |  |
+|  |     📄 Drag and drop your CSV file here           |  |
+|  |        or click to browse                         |  |
+|  |                                                    |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  PREVIEW (after file upload):                            |
+|  +----------------------------------------------------+  |
+|  | ✓ 101A | Riverside Manor | 2 bed | 1 bath | vacant |  |
+|  | ✓ 102B | Riverside Manor | 1 bed | 1 bath | occ.   |  |
+|  | ✗ 201  | Unknown Prop    | Error: Property not found |
+|  | ✗ 301A | Riverside Manor | Error: Invalid status   |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Summary: 15 valid, 2 errors                             |
+|                                                          |
+|  [Cancel]                      [Import 15 Units]         |
++----------------------------------------------------------+
 ```
 
-### Permit Detail Page
-
-```text
-PERMIT DETAIL
-+------------------------------------------------------------------+
-|  [← Back]  Fire Safety Certificate              [Edit] [Archive] |
-|                                          [Active] [Expires: Mar] |
-+------------------------------------------------------------------+
-|  Property: Riverside Manor                                       |
-|  Permit #: FDNY-2024-12345                                       |
-|  Authority: NYC Fire Department                                  |
-|  Issued: Jan 15, 2024                                            |
-|  Expires: Mar 15, 2026                                           |
-|                                                                  |
-|  [📄 View Permit Document]                                       |
-+------------------------------------------------------------------+
-
-TABS: [Requirements] [Deliverables] [History] [Documents]
-
-REQUIREMENTS TAB:
-+------------------------------------------------------------------+
-| ● Annual Fire Inspection                    [Compliant]          |
-|   Frequency: Annual | Next Due: Jan 15, 2027                     |
-|   Last Completed: Jan 10, 2026                                   |
-|   Assigned to: John Smith                                        |
-|   +---------------------------------------------------+          |
-|   | Deliverables:                                     |          |
-|   | ✓ Inspection Report (submitted)                  |          |
-|   | ✓ Corrective Action Plan (approved)              |          |
-|   | ○ Fire Drill Documentation (due Feb 28)          |          |
-|   +---------------------------------------------------+          |
-+------------------------------------------------------------------+
-| ○ Monthly Fire Extinguisher Check           [Pending]            |
-|   Frequency: Monthly | Next Due: Feb 1, 2026                     |
-|   ...                                                            |
-+------------------------------------------------------------------+
-```
+### Features
+- Drag and drop file upload
+- CSV parsing with Papa Parse (no external dependency - use native parsing)
+- Property name to ID matching
+- Row validation with detailed error messages
+- Preview table with status indicators
+- Downloadable CSV template
+- Bulk insert with progress feedback
 
 ---
 
-## Part 4: New Components
+## Part 3: CSV Parsing Logic
 
-### Components to Create
-
-| Component | Purpose |
-|-----------|---------|
-| `PermitsDashboard.tsx` | Main permits listing page |
-| `PermitDetailPage.tsx` | Single permit detail view |
-| `PermitDialog.tsx` | Create/edit permit form |
-| `PermitCard.tsx` | Permit summary card |
-| `RequirementDialog.tsx` | Create/edit requirement |
-| `RequirementCard.tsx` | Requirement with progress |
-| `DeliverableDialog.tsx` | Create/edit deliverable |
-| `DeliverableItem.tsx` | Individual deliverable row |
-| `PermitCalendar.tsx` | Calendar view of due dates |
-| `ComplianceStats.tsx` | Stats card component |
-
----
-
-## Part 5: Hooks Architecture
-
-### New Hooks
+### Native CSV Parser
 
 ```typescript
-// src/hooks/usePermits.ts
-export function usePermits(propertyId?: string)
-export function usePermit(id: string)
-export function usePermitStats()
-export function useExpiringPermits(days: number)
-export function useCreatePermit()
-export function useUpdatePermit()
-export function useArchivePermit()
-
-// src/hooks/usePermitRequirements.ts
-export function useRequirementsByPermit(permitId: string)
-export function useUpcomingRequirements(days: number)
-export function useNonCompliantRequirements()
-export function useCreateRequirement()
-export function useUpdateRequirement()
-export function useCompleteRequirement()
-
-// src/hooks/usePermitDeliverables.ts
-export function useDeliverablesByRequirement(requirementId: string)
-export function useOverdueDeliverables()
-export function useCreateDeliverable()
-export function useSubmitDeliverable()
-export function useApproveDeliverable()
-export function useRejectDeliverable()
+function parseCSV(text: string): { headers: string[], rows: string[][] } {
+  const lines = text.split('\n').filter(line => line.trim());
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const rows = lines.slice(1).map(line => {
+    // Handle quoted values with commas
+    const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+    return matches ? matches.map(v => v.replace(/^"|"$/g, '').trim()) : [];
+  });
+  return { headers, rows };
+}
 ```
 
----
+### Validation Rules
 
-## Part 6: Integration Points
+```typescript
+interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+  data?: UnitInsert;
+}
 
-### 1. Issues Integration
-When a requirement becomes non-compliant or a deliverable is overdue, automatically create an Issue:
-
-```sql
--- Trigger function to create issue on non-compliance
-CREATE OR REPLACE FUNCTION create_issue_from_permit_noncompliance()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_permit RECORD;
-  v_requirement RECORD;
-BEGIN
-  -- When deliverable becomes overdue or requirement non-compliant
-  IF NEW.status = 'overdue' AND OLD.status != 'overdue' THEN
-    -- Get requirement and permit details
-    SELECT * INTO v_requirement FROM permit_requirements WHERE id = NEW.requirement_id;
-    SELECT * INTO v_permit FROM permits WHERE id = v_requirement.permit_id;
-    
-    -- Create issue
-    INSERT INTO issues (
-      property_id, source_module, severity, deadline,
-      title, description, status
-    ) VALUES (
-      v_permit.property_id, 'permits', 'moderate',
-      NEW.due_date + INTERVAL '7 days',
-      v_permit.name || ' - ' || NEW.title || ' Overdue',
-      'Permit deliverable is overdue and requires immediate attention.',
-      'open'
-    );
-  END IF;
+function validateRow(row: Record<string, string>, properties: Property[]): ValidationResult {
+  // Required fields
+  if (!row.property_name) return { isValid: false, error: 'Property name is required' };
+  if (!row.unit_number) return { isValid: false, error: 'Unit number is required' };
   
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  // Find property by name (case-insensitive)
+  const property = properties.find(p => 
+    p.name.toLowerCase() === row.property_name.toLowerCase()
+  );
+  if (!property) return { isValid: false, error: `Property "${row.property_name}" not found` };
+  
+  // Validate status if provided
+  const validStatuses = ['occupied', 'vacant', 'maintenance'];
+  if (row.status && !validStatuses.includes(row.status.toLowerCase())) {
+    return { isValid: false, error: `Invalid status "${row.status}". Use: occupied, vacant, or maintenance` };
+  }
+  
+  // Parse numeric fields
+  const bedrooms = row.bedrooms ? parseInt(row.bedrooms) : 1;
+  const bathrooms = row.bathrooms ? parseFloat(row.bathrooms) : 1;
+  const squareFeet = row.square_feet ? parseInt(row.square_feet) : undefined;
+  const floor = row.floor ? parseInt(row.floor) : undefined;
+  
+  if (isNaN(bedrooms)) return { isValid: false, error: 'Bedrooms must be a number' };
+  if (isNaN(bathrooms)) return { isValid: false, error: 'Bathrooms must be a number' };
+  
+  return {
+    isValid: true,
+    data: {
+      property_id: property.id,
+      unit_number: row.unit_number.trim(),
+      bedrooms,
+      bathrooms,
+      square_feet: squareFeet,
+      floor,
+      status: (row.status?.toLowerCase() || 'occupied') as 'occupied' | 'vacant' | 'maintenance',
+    }
+  };
+}
 ```
-
-### 2. Document Center Integration
-- Permit documents stored in existing `organization_documents` table
-- Link via `document_id` foreign key
-- Deliverables also link to uploaded documents
-- "Permits" folder in Document Center shows linked documents
-
-### 3. Dashboard Integration
-Add permit compliance stats to main Dashboard:
-- Expiring permits count
-- Upcoming requirements due
-- Non-compliant items requiring action
-
-### 4. Notifications
-Create notifications for:
-- Permits expiring in 30/60/90 days
-- Requirements due in 7/14/30 days
-- Deliverables approaching deadline
-- Non-compliance status changes
 
 ---
 
-## Part 7: Navigation Update
+## Part 4: Hook for Bulk Import
 
-Add to `AppSidebar.tsx`:
+### useBulkCreateUnits
+
+Add to `src/hooks/useUnits.ts`:
+
+```typescript
+export function useBulkCreateUnits() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (units: UnitInsert[]) => {
+      // Insert in batches of 100 to avoid request size limits
+      const batchSize = 100;
+      const results = [];
+      
+      for (let i = 0; i < units.length; i += batchSize) {
+        const batch = units.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('units')
+          .insert(batch)
+          .select();
+        
+        if (error) throw error;
+        results.push(...(data || []));
+      }
+      
+      return results;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      toast.success(`Successfully imported ${data.length} units`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import units: ${error.message}`);
+    },
+  });
+}
+```
+
+---
+
+## Part 5: CSV Template Generation
+
+### Template Download Function
+
+```typescript
+function downloadTemplate() {
+  const headers = [
+    'property_name',
+    'unit_number', 
+    'bedrooms',
+    'bathrooms',
+    'square_feet',
+    'floor',
+    'status'
+  ];
+  
+  const exampleRow = [
+    'Riverside Manor',
+    '101A',
+    '2',
+    '1.5',
+    '850',
+    '1',
+    'occupied'
+  ];
+  
+  const csv = [
+    headers.join(','),
+    exampleRow.join(','),
+    '# Add your units below. Delete this example row.',
+  ].join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'units-import-template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+```
+
+---
+
+## Part 6: UI Updates
+
+### UnitsPage.tsx Changes
+
+Add import button next to "Add Unit":
+
+```tsx
+<div className="flex gap-2">
+  <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+    <Upload className="h-4 w-4 mr-2" />
+    Import CSV
+  </Button>
+  <Button onClick={() => setDialogOpen(true)}>
+    <Plus className="h-4 w-4 mr-2" />
+    Add Unit
+  </Button>
+</div>
+```
+
+---
+
+## Part 7: Preview Table Design
+
+### Import Preview Component
 
 ```text
-PLATFORM (in sidebar)
-├── Dashboard
-├── Properties
-├── Units
-├── Issues
-├── Documents
-├── Permits & Compliance    ← NEW
-└── Inbox
+┌────────────────────────────────────────────────────────────────┐
+│ Status │ Unit # │ Property        │ Beds │ Baths │ Sq Ft │ Fl │
+├────────────────────────────────────────────────────────────────┤
+│   ✓    │ 101A   │ Riverside Manor │  2   │  1.5  │  850  │  1 │
+│   ✓    │ 102B   │ Riverside Manor │  1   │  1    │  700  │  1 │
+│   ✓    │ 201A   │ Oak Gardens     │  3   │  2    │ 1200  │  2 │
+│   ✗    │ 301    │ Unknown Prop    │  -   │   -   │   -   │  - │
+│        │        │ ⚠ Property "Unknown Prop" not found        │
+│   ✗    │ 401A   │ Riverside Manor │  2   │  1    │  850  │  4 │
+│        │        │ ⚠ Invalid status "rented" - use occupied   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Summary Section
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│  📊 Import Summary                                       │
+├──────────────────────────────────────────────────────────┤
+│  ✓ 23 units ready to import                             │
+│  ✗ 2 units have errors (will be skipped)                │
+│                                                          │
+│  Properties detected:                                    │
+│  • Riverside Manor - 15 units                            │
+│  • Oak Gardens - 8 units                                 │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Part 8: Implementation Order
+## Part 8: File Structure
 
-### Phase 1: Database & Core
-1. Create database migration with all tables, enums, RLS
-2. Create `usePermits.ts` hook with CRUD operations
-3. Create `usePermitRequirements.ts` hook
-4. Create `usePermitDeliverables.ts` hook
+### New Files
 
-### Phase 2: UI - Permits Dashboard
-5. Create `PermitCard.tsx` component
-6. Create `PermitDialog.tsx` for create/edit
-7. Create `PermitsDashboard.tsx` page
-8. Add route and navigation
+| File | Purpose |
+|------|---------|
+| `src/components/units/UnitImportDialog.tsx` | Main import dialog with file upload and preview |
+| `src/lib/csvParser.ts` | CSV parsing and validation utilities |
 
-### Phase 3: UI - Permit Detail
-9. Create `RequirementCard.tsx` component
-10. Create `RequirementDialog.tsx` for create/edit
-11. Create `DeliverableItem.tsx` and `DeliverableDialog.tsx`
-12. Create `PermitDetailPage.tsx` with tabs
+### Modified Files
 
-### Phase 4: Integrations
-13. Add Issues integration trigger
-14. Update Dashboard with permit stats
-15. Create notification triggers
-16. Add to existing reports
+| File | Changes |
+|------|---------|
+| `src/pages/core/UnitsPage.tsx` | Add Import CSV button and dialog state |
+| `src/hooks/useUnits.ts` | Add `useBulkCreateUnits` hook |
 
 ---
 
-## Part 9: Future Enhancements (Not in Initial Scope)
+## Part 9: Error Handling
 
-- **Permit Templates**: Pre-built templates for common permit types
-- **Automated Reminders**: Email notifications for upcoming deadlines
-- **Bulk Import**: Import permits from CSV/Excel
-- **Regulatory API Integration**: Auto-check permit status with authorities
-- **Calendar Sync**: Export deadlines to calendar apps
-- **Audit Trail**: Detailed history of all changes
-- **Multi-property View**: Cross-property compliance reporting
+### Duplicate Detection
+
+```typescript
+// Check for duplicates within the CSV
+const seenUnits = new Set<string>();
+for (const row of rows) {
+  const key = `${row.property_name}:${row.unit_number}`;
+  if (seenUnits.has(key)) {
+    return { isValid: false, error: 'Duplicate unit in CSV' };
+  }
+  seenUnits.add(key);
+}
+
+// Check against existing units in database
+const existingUnits = await supabase
+  .from('units')
+  .select('unit_number, property_id');
+  
+const existingSet = new Set(existingUnits.data?.map(u => `${u.property_id}:${u.unit_number}`));
+```
+
+### Database Error Handling
+
+```typescript
+try {
+  await bulkCreate.mutateAsync(validUnits);
+} catch (error) {
+  if (error.message.includes('unique_unit_per_property')) {
+    toast.error('Some units already exist in the database');
+  } else {
+    toast.error(`Import failed: ${error.message}`);
+  }
+}
+```
 
 ---
 
-## Summary
+## Part 10: Implementation Order
 
-This implementation creates a robust permit and regulatory compliance tracking system that:
+1. Create `src/lib/csvParser.ts` with parsing and validation utilities
+2. Add `useBulkCreateUnits` hook to `src/hooks/useUnits.ts`
+3. Create `src/components/units/UnitImportDialog.tsx` with:
+   - File upload drop zone
+   - CSV parsing on file select
+   - Validation with property matching
+   - Preview table with error highlighting
+   - Import button with progress
+   - Template download
+4. Update `src/pages/core/UnitsPage.tsx` to include import button and dialog
 
-1. **Stores permit metadata** separately from documents for better querying
-2. **Tracks requirements** with flexible frequency options
-3. **Manages deliverables** with approval workflows
-4. **Integrates with Issues** for unified problem tracking
-5. **Links to Document Center** for file storage
-6. **Provides dashboards** with compliance visibility
-7. **Follows existing patterns** in the codebase for consistency
+---
 
-The system ensures properties stay compliant with all regulatory requirements through proactive deadline tracking and automated issue creation when items become non-compliant.
+## Technical Notes
+
+1. **Native CSV Parsing**: Using native JavaScript to parse CSV avoids adding external dependencies
+2. **Property Matching**: Case-insensitive matching to be user-friendly
+3. **Batch Inserts**: Insert in batches of 100 to handle large files
+4. **Validation First**: All validation happens client-side before any database calls
+5. **Skip Invalid Rows**: Only valid rows are imported; invalid rows are shown with errors
+6. **Template**: Downloadable template includes headers and one example row
