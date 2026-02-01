@@ -1,268 +1,332 @@
 
-# Implementation Plan: Daily Grounds Inspection Report Workflow Enhancement
+# Implementation Plan: Email Report Delivery & Professional Inbox
 
 ## Overview
 
-This plan addresses two key workflow gaps:
-1. **Post-submission workflow** - Adding a "View Report" action after completing an inspection
-2. **PDF Report Generation** - Creating a beautifully branded, downloadable PDF report for completed inspections
+This plan adds two major features:
+1. **Send Report via Email** - Ability to send inspection reports to multiple recipients with PDF attachment
+2. **Report Inbox** - A professional inbox interface to track all sent reports and their delivery status
 
 ---
 
-## Current Issues
+## Current State Analysis
 
-| Issue | Location | Problem |
-|-------|----------|---------|
-| "View Report" button opens wizard again | `DailyGroundsPage.tsx` line 131 | Button calls `setShowWizard(true)` instead of showing a report |
-| No PDF generation library | `package.json` | Neither `jspdf` nor `html2canvas` are installed |
-| No printable report component | N/A | Only `PrintableDailyReport` exists (for construction daily reports) |
-| Success screen lacks "View Report" | `DailyInspectionWizard.tsx` | Only has Dashboard and Back buttons |
+### What Exists
+- `report_emails` table in database with: `id`, `report_id`, `recipients[]`, `subject`, `sent_at`, `status`, `error_message`
+- `InspectionReportDialog` with Print and Download PDF buttons
+- PDF generation utility (`generatePDF`) already working
+- No email-sending edge function
+- No RESEND_API_KEY configured
 
----
-
-## Part 1: Install PDF Generation Libraries
-
-Add the required dependencies:
-
-```bash
-npm install jspdf html2canvas
-```
-
-These libraries will enable client-side PDF generation from HTML content.
+### What's Missing
+1. No edge function for sending emails with PDF attachments
+2. No "Send Email" button in report dialog
+3. No inbox/outbox page to track sent reports
+4. `report_emails.report_id` references `daily_reports`, not `daily_inspections`
 
 ---
 
-## Part 2: Create Printable Daily Grounds Report Component
+## Part 1: Database Schema Update
 
-A new component that renders a beautifully formatted, print-ready report.
+Update `report_emails` table to support both inspection reports and daily reports:
 
-**File**: `src/components/inspections/PrintableDailyInspectionReport.tsx`
+```sql
+-- Add report_type column to distinguish between report types
+ALTER TABLE report_emails 
+ADD COLUMN report_type TEXT DEFAULT 'daily_report';
 
-### Design Features
-- **Branded header** with company name and report ID
-- **Property and date information** prominently displayed
-- **Weather indicator** with icon
-- **Asset status summary** - visual cards showing OK/Attention/Defect counts
-- **Detailed asset checklist** - each asset with status, photos, and notes
-- **General notes section** with rich text support
-- **Attachments listing** 
-- **Inspector signature line** and timestamp
-- **Print-optimized CSS** for clean PDF output
+-- Add sender info
+ALTER TABLE report_emails
+ADD COLUMN sent_by UUID REFERENCES auth.users(id);
 
-### Layout Structure
-```
-+----------------------------------------+
-|  [Logo]    DAILY GROUNDS INSPECTION    |
-|            Report #ABC12345            |
-|----------------------------------------|
-|  Property: Riverside Manor             |
-|  Date: February 1, 2026                |
-|  Inspector: John Smith                 |
-|  Weather: ☀️ Sunny                     |
-+----------------------------------------+
-|  SUMMARY                               |
-|  +--------+ +--------+ +--------+      |
-|  |   4    | |   1    | |   0    |      |
-|  |   OK   | |ATTENTION|  DEFECT |      |
-|  +--------+ +--------+ +--------+      |
-+----------------------------------------+
-|  ASSET CHECKS                          |
-|  ┌─────────────────────────────────┐   |
-|  │ ✓ Cleanout #10 - OK             │   |
-|  │   Notes: Clear, no issues       │   |
-|  └─────────────────────────────────┘   |
-|  ┌─────────────────────────────────┐   |
-|  │ ⚠ Catch Basin #2 - Attention   │   |
-|  │   Notes: Minor debris buildup   │   |
-|  │   [Photo] [Photo]               │   |
-|  └─────────────────────────────────┘   |
-+----------------------------------------+
-|  GENERAL NOTES                         |
-|  Overall property in good condition... |
-+----------------------------------------+
-|  Submitted: Feb 1, 2026 3:45 PM        |
-|  ____________________________          |
-|  Inspector Signature                   |
-+----------------------------------------+
+-- Add optional reference to daily_inspection
+ALTER TABLE report_emails
+ADD COLUMN daily_inspection_id UUID REFERENCES daily_inspections(id);
+
+-- Make report_id nullable since we're adding daily_inspection_id
+ALTER TABLE report_emails
+ALTER COLUMN report_id DROP NOT NULL;
+
+-- Add check constraint to ensure at least one reference exists
+ALTER TABLE report_emails
+ADD CONSTRAINT report_reference_check 
+CHECK (report_id IS NOT NULL OR daily_inspection_id IS NOT NULL);
 ```
 
 ---
 
-## Part 3: Create PDF Generation Utility
+## Part 2: Create Email-Sending Edge Function
 
-**File**: `src/lib/generatePDF.ts`
+**File**: `supabase/functions/send-report-email/index.ts`
 
-A reusable utility function for generating PDFs from HTML elements:
+Create an edge function that:
+1. Receives report data (HTML content, recipients, subject)
+2. Uses Resend API to send formatted email with PDF attachment
+3. Returns delivery status
 
+### API Contract
 ```typescript
-interface PDFOptions {
-  filename: string;
-  elementId: string;
-  scale?: number; // Default 2 for high quality
+// Request
+{
+  recipients: string[];          // Array of email addresses
+  subject: string;               // Email subject line
+  reportType: 'daily_inspection' | 'daily_report';
+  reportId: string;              // ID of the inspection/report
+  propertyName: string;
+  inspectorName: string;
+  inspectionDate: string;
+  htmlContent: string;           // Report HTML for email body preview
+  pdfBase64?: string;            // Optional: Pre-generated PDF as base64
 }
 
-async function generatePDF(options: PDFOptions): Promise<void> {
-  // Use html2canvas to render DOM to canvas
-  // Use jsPDF to convert canvas to PDF
-  // Handle multi-page content automatically
-  // Return promise for loading state management
+// Response
+{
+  success: boolean;
+  emailId?: string;
+  error?: string;
 }
 ```
 
+### Email Template Design
+- Professional HTML email template with:
+  - Branded header
+  - Summary section (property, date, inspector)
+  - Quick status overview (OK/Attention/Defect counts)
+  - Link to view full report online (optional future)
+  - PDF attachment
+
 ---
 
-## Part 4: Create Inspection Report View Page/Dialog
+## Part 3: Add "Send Email" Button to Report Dialog
 
 **File**: `src/components/inspections/InspectionReportDialog.tsx`
 
-A full-screen dialog or sheet that:
-1. Displays the printable report in a preview
-2. Provides a "Download PDF" button
-3. Provides a "Print" button (uses browser print)
-4. Can be opened from multiple places in the app
+### Changes
+1. Add "Share" or "Email" button next to Print/Download
+2. Opens `SendReportEmailDialog` component
+
+### Updated Header Buttons
+```
+┌──────────────────────────────────────────────────────────┐
+│ Daily Grounds Inspection Report           [Print] [↓PDF] │
+│ Riverside Manor • February 1, 2026         [📧 Email]   │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 4: Create Send Report Email Dialog
+
+**File**: `src/components/inspections/SendReportEmailDialog.tsx`
+
+A modal for composing and sending the report email:
+
+### UI Design
+```
+┌─────────────────────────────────────────────────────────┐
+│  📧 Send Inspection Report                         [X]  │
+├─────────────────────────────────────────────────────────┤
+│  To:                                                    │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ john@example.com [x]  sarah@company.com [x]      │   │
+│  │ + Add recipient...                               │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  Subject:                                               │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Daily Grounds Inspection - Riverside Manor - ... │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  Message (optional):                                    │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Please find attached the daily grounds           │   │
+│  │ inspection report for today.                     │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  📎 Attachment: inspection-report-2026-02-01.pdf       │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│                               [Cancel]  [📤 Send Email] │
+└─────────────────────────────────────────────────────────┘
+```
 
 ### Features
-- **Preview mode** - Shows the formatted report in a scrollable view
-- **Download PDF button** - Generates and downloads the PDF
-- **Print button** - Opens browser print dialog
-- **Share button** (optional) - Copy link or email
-- **Loading states** - Shows spinner during PDF generation
+- Multiple recipient input with tag-style chips
+- Email validation
+- Auto-generated subject line
+- Optional custom message
+- Preview attachment filename
+- Loading state during send
+- Success/error toast notifications
 
 ---
 
-## Part 5: Update Success Screen in DailyInspectionWizard
+## Part 5: Create Report Inbox Page
 
-**File**: `src/components/inspections/DailyInspectionWizard.tsx`
+**File**: `src/pages/inbox/ReportInboxPage.tsx`
 
-Modify the success step to include "View Report" functionality:
+A professional inbox-style interface for tracking sent reports.
 
-### Changes
-1. Add state for showing report dialog
-2. Add "View Report" button after submission
-3. Integrate the new `InspectionReportDialog`
-
+### UI Design - Inbox Style
 ```
-Success Screen Layout:
-+--------------------------------+
-|       ✓ Inspection Submitted!  |
-|   Pending supervisor review    |
-|--------------------------------|
-|  +------+ +------+ +------+    |
-|  |  4   | |  1   | |  0   |    |
-|  |  OK  | | ATT  | | DEF  |    |
-|  +------+ +------+ +------+    |
-|--------------------------------|
-|  [📄 View Report]              |  <-- NEW: Opens report dialog
-|  [🏠 Go to Dashboard]          |
-|  [↩ Back to Daily Grounds]     |
-+--------------------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│  📬 Report Inbox                              [Search...]       │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ Tabs: [All] [Sent ✓] [Failed ✗] [Pending ⏳]                ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ ✓  Daily Grounds - Riverside Manor              2 min ago  ││
+│  │    To: john@example.com, sarah@company.com                  ││
+│  │    Sent by You                                              ││
+│  ├─────────────────────────────────────────────────────────────┤│
+│  │ ✓  Daily Grounds - Glorieta Gardens           Yesterday    ││
+│  │    To: admin@property.com                                   ││
+│  │    Sent by John Smith                                       ││
+│  ├─────────────────────────────────────────────────────────────┤│
+│  │ ✗  NSPIRE Report - Sunset Apartments          Jan 30       ││
+│  │    To: invalid@email                                        ││
+│  │    Error: Recipient address rejected                        ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  Showing 3 of 24 emails                      [← Prev] [Next →] │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Features
+- Filter by status (All, Sent, Failed, Pending)
+- Search by subject, recipient, or property
+- Click to view report detail
+- Resend option for failed emails
+- Pagination for large lists
+- Time-based grouping (Today, Yesterday, This Week, etc.)
+
+---
+
+## Part 6: Create Report Email Hooks
+
+**File**: `src/hooks/useReportEmails.ts`
+
+```typescript
+// Fetch sent emails with filtering
+export function useReportEmails(filters?: ReportEmailFilters)
+
+// Send a new email
+export function useSendReportEmail()
+
+// Get stats (sent, failed, pending counts)
+export function useReportEmailStats()
 ```
 
 ---
 
-## Part 6: Fix "View Report" Button on DailyGroundsPage
+## Part 7: Add Inbox to Sidebar Navigation
 
-**File**: `src/pages/inspections/DailyGroundsPage.tsx`
+**File**: `src/components/layout/AppSidebar.tsx`
 
-### Current Problem (Line 130-132)
-```tsx
-<Button variant="outline" onClick={() => setShowWizard(true)}>
-  <FileText className="h-4 w-4 mr-2" />
-  View Report
-</Button>
+Add inbox link under Platform section:
+
 ```
-
-### Solution
-Replace with logic to open the new `InspectionReportDialog`:
-
-```tsx
-const [showReportDialog, setShowReportDialog] = useState(false);
-
-// In the "completed" section:
-<Button variant="outline" onClick={() => setShowReportDialog(true)}>
-  <FileText className="h-4 w-4 mr-2" />
-  View Report
-</Button>
-
-// Add dialog at bottom of component
-<InspectionReportDialog
-  open={showReportDialog}
-  onOpenChange={setShowReportDialog}
-  inspectionId={todayInspection?.id}
-/>
+Platform
+├── Dashboard
+├── Properties
+├── Units
+├── Assets
+├── Issues
+├── Work Orders
+├── Documents
+├── 📬 Inbox     ← NEW
+├── People
+└── Reports
 ```
 
 ---
 
-## Part 7: Add PDF Export to History Page
+## Part 8: Update App Router
 
-**File**: `src/pages/inspections/InspectionHistoryPage.tsx`
+**File**: `src/App.tsx`
 
-Enhance the `InspectionDetailSheet` to include:
-1. "Download PDF" button in the header
-2. Integration with PDF generation utility
+Add route for inbox page:
+```typescript
+<Route path="/inbox" element={<ReportInboxPage />} />
+```
 
 ---
 
 ## Implementation Summary
 
+### Database Changes
+1. Add columns to `report_emails`: `report_type`, `sent_by`, `daily_inspection_id`
+2. Make `report_id` nullable
+3. Add check constraint
+
 ### New Files
 | File | Purpose |
 |------|---------|
-| `src/components/inspections/PrintableDailyInspectionReport.tsx` | Branded, print-ready report component |
-| `src/lib/generatePDF.ts` | PDF generation utility |
-| `src/components/inspections/InspectionReportDialog.tsx` | Report preview/download dialog |
+| `supabase/functions/send-report-email/index.ts` | Edge function for email delivery via Resend |
+| `src/components/inspections/SendReportEmailDialog.tsx` | Email composition modal |
+| `src/pages/inbox/ReportInboxPage.tsx` | Professional inbox interface |
+| `src/hooks/useReportEmails.ts` | React Query hooks for emails |
 
 ### Modified Files
 | File | Changes |
 |------|---------|
-| `package.json` | Add `jspdf` and `html2canvas` dependencies |
-| `src/components/inspections/DailyInspectionWizard.tsx` | Add "View Report" to success screen |
-| `src/pages/inspections/DailyGroundsPage.tsx` | Fix "View Report" button, add report dialog |
-| `src/pages/inspections/InspectionHistoryPage.tsx` | Add PDF download to detail sheet |
+| `supabase/config.toml` | Register new edge function |
+| `src/components/inspections/InspectionReportDialog.tsx` | Add "Email" button |
+| `src/components/layout/AppSidebar.tsx` | Add Inbox navigation |
+| `src/App.tsx` | Add inbox route |
 
 ---
 
-## User Workflow After Implementation
+## User Workflow
 
-### After Completing Inspection
-1. User completes all asset checks
-2. User adds notes and attachments
-3. User clicks "Submit Inspection"
-4. **Success screen appears** with stats and three actions:
-   - "View Report" - Opens beautiful PDF preview with download option
-   - "Go to Dashboard"
-   - "Back to Daily Grounds"
+### Sending a Report
+1. Complete daily grounds inspection
+2. Click "View Report" to open report dialog
+3. Click "📧 Email" button
+4. Enter recipient email(s)
+5. Customize subject (optional)
+6. Add personal message (optional)
+7. Click "Send Email"
+8. Receive confirmation toast
+9. Report logged to inbox
 
-### From Daily Grounds Page (Completed Inspection)
-1. User sees "Today's Inspection Complete!" card
-2. Clicks "View Report" button
-3. **Report dialog opens** showing formatted inspection report
-4. User can download PDF or print directly
-
-### From Inspection History
-1. User navigates to History page
-2. Clicks on a past inspection
-3. Detail sheet opens with inspection info
-4. "Download PDF" button generates and downloads the report
+### Tracking Sent Reports
+1. Click "Inbox" in sidebar
+2. View all sent reports chronologically
+3. Filter by status (Sent/Failed)
+4. Search for specific reports
+5. Click to view original report
+6. Resend failed emails if needed
 
 ---
 
 ## Technical Notes
 
-1. **Client-side PDF generation** - No server required, works offline
-2. **html2canvas scale=2** - Ensures high-quality output
-3. **Multi-page handling** - Automatically splits content across pages if needed
-4. **CORS handling** - `useCORS: true` for cross-origin images (Supabase storage)
-5. **Print styles** - CSS `@media print` for optimal output
-6. **forwardRef pattern** - Report component uses ref for PDF capture
+1. **Resend API** - Requires `RESEND_API_KEY` secret to be configured
+2. **PDF as Attachment** - Generate PDF client-side, convert to base64, send to edge function
+3. **Email Validation** - Validate emails client-side before sending
+4. **Rate Limiting** - Consider adding rate limits to prevent spam
+5. **RLS Policies** - Users can only view emails they sent or where they're admin/manager
 
 ---
 
-## Branding Customization (Future)
+## API Key Requirement
 
-The report template can be extended to support:
-- Custom company logo upload
-- Company name configuration
-- Custom color schemes
-- Additional footer text
+Before implementing the email functionality, the `RESEND_API_KEY` secret must be configured:
+1. User needs a Resend account (https://resend.com)
+2. Generate API key at https://resend.com/api-keys
+3. Verify email domain at https://resend.com/domains
+4. Add secret via Lovable secrets UI
+
+---
+
+## Future Enhancements (Not in Current Scope)
+
+- Email templates (choose from preset designs)
+- Scheduled sends (send tomorrow morning)
+- CC/BCC support
+- Email read receipts
+- Attachment history
+- Email thread replies
