@@ -1706,14 +1706,18 @@ export type Database = {
           error_message: string | null
           id: string
           is_read: boolean | null
+          project_id: string | null
+          property_id: string | null
           proposal_id: string | null
           recipients: string[]
           report_id: string | null
           report_type: string | null
           sent_at: string
           sent_by: string | null
+          source_module: string | null
           status: string | null
           subject: string
+          work_order_id: string | null
         }
         Insert: {
           attachment_filename?: string | null
@@ -1724,14 +1728,18 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_read?: boolean | null
+          project_id?: string | null
+          property_id?: string | null
           proposal_id?: string | null
           recipients: string[]
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
           sent_by?: string | null
+          source_module?: string | null
           status?: string | null
           subject: string
+          work_order_id?: string | null
         }
         Update: {
           attachment_filename?: string | null
@@ -1742,14 +1750,18 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_read?: boolean | null
+          project_id?: string | null
+          property_id?: string | null
           proposal_id?: string | null
           recipients?: string[]
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
           sent_by?: string | null
+          source_module?: string | null
           status?: string | null
           subject?: string
+          work_order_id?: string | null
         }
         Relationships: [
           {
@@ -1757,6 +1769,20 @@ export type Database = {
             columns: ["daily_inspection_id"]
             isOneToOne: false
             referencedRelation: "daily_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
           {
@@ -1771,6 +1797,13 @@ export type Database = {
             columns: ["report_id"]
             isOneToOne: false
             referencedRelation: "daily_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1843,57 +1876,169 @@ export type Database = {
         }
         Relationships: []
       }
+      work_order_activity: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          user_id: string | null
+          work_order_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string | null
+          work_order_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_activity_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_order_comments: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          work_order_id: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          work_order_id: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_comments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_orders: {
         Row: {
+          actual_cost: number | null
+          approved_at: string | null
+          approved_by: string | null
           assigned_to: string | null
+          closed_at: string | null
+          closed_by: string | null
           completed_at: string | null
           created_at: string
+          created_by: string | null
           defect_id: string | null
           description: string | null
           due_date: string
+          estimated_cost: number | null
           id: string
           issue_id: string | null
+          notes: string | null
           priority: Database["public"]["Enums"]["work_order_priority"]
           proof_photos: string[] | null
           property_id: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
           status: Database["public"]["Enums"]["work_order_status"]
+          submitted_at: string | null
           title: string
           unit_id: string | null
           updated_at: string
+          work_order_number: number
         }
         Insert: {
+          actual_cost?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           defect_id?: string | null
           description?: string | null
           due_date: string
+          estimated_cost?: number | null
           id?: string
           issue_id?: string | null
+          notes?: string | null
           priority?: Database["public"]["Enums"]["work_order_priority"]
           proof_photos?: string[] | null
           property_id: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["work_order_status"]
+          submitted_at?: string | null
           title: string
           unit_id?: string | null
           updated_at?: string
+          work_order_number?: number
         }
         Update: {
+          actual_cost?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           defect_id?: string | null
           description?: string | null
           due_date?: string
+          estimated_cost?: number | null
           id?: string
           issue_id?: string | null
+          notes?: string | null
           priority?: Database["public"]["Enums"]["work_order_priority"]
           proof_photos?: string[] | null
           property_id?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["work_order_status"]
+          submitted_at?: string | null
           title?: string
           unit_id?: string | null
           updated_at?: string
+          work_order_number?: number
         }
         Relationships: [
           {
@@ -2026,11 +2171,15 @@ export type Database = {
       submittal_status: "pending" | "approved" | "rejected" | "revise"
       work_order_priority: "emergency" | "routine"
       work_order_status:
+        | "draft"
+        | "pending_approval"
+        | "rejected"
         | "pending"
         | "assigned"
         | "in_progress"
         | "completed"
         | "verified"
+        | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2249,11 +2398,15 @@ export const Constants = {
       submittal_status: ["pending", "approved", "rejected", "revise"],
       work_order_priority: ["emergency", "routine"],
       work_order_status: [
+        "draft",
+        "pending_approval",
+        "rejected",
         "pending",
         "assigned",
         "in_progress",
         "completed",
         "verified",
+        "closed",
       ],
     },
   },
