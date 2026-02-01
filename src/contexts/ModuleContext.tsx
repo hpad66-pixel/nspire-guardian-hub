@@ -28,6 +28,8 @@ const moduleColumnMap: Record<string, string> = {
   nspireEnabled: 'nspire_enabled',
   dailyGroundsEnabled: 'daily_grounds_enabled',
   projectsEnabled: 'projects_enabled',
+  occupancyEnabled: 'occupancy_enabled',
+  qrScanningEnabled: 'qr_scanning_enabled',
 };
 
 const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
@@ -42,7 +44,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       const { data: properties, error } = await supabase
         .from('properties')
-        .select('nspire_enabled, daily_grounds_enabled, projects_enabled');
+        .select('nspire_enabled, daily_grounds_enabled, projects_enabled, occupancy_enabled, qr_scanning_enabled');
 
       if (error) throw error;
 
@@ -51,9 +53,9 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
-        occupancyEnabled: false,
-        emailInboxEnabled: false,
-        qrScanningEnabled: false,
+        occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
+        emailInboxEnabled: true, // Always enabled - inbox is functional
+        qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
       });
     } catch (error) {
       console.error('Failed to load module settings:', error);
