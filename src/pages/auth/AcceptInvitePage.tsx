@@ -119,7 +119,7 @@ export default function AcceptInvitePage() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl">NSPIRE Property OS</CardTitle>
+            <CardTitle className="text-2xl">Glorieta Gardens Apartments</CardTitle>
             <CardDescription>
               {isAccepted 
                 ? 'Welcome aboard!'

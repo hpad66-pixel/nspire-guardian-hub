@@ -17,7 +17,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
         </div>
         <div className="space-y-2">
           <CardTitle className="text-3xl font-bold">
-            Welcome to NSPIRE Property OS!
+            Welcome to Glorieta Gardens!
           </CardTitle>
           <CardDescription className="text-lg">
             Let's set up your first property in just a few steps.
