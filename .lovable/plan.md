@@ -1,457 +1,382 @@
 
-
-# Simplified Asset-Based Grounds Inspection System
+# Inspection Review Workflow & Addendum System
 
 ## Overview
 
-This plan redesigns the inspections module to create a simple, mobile-first daily inspection workflow that a 10th grader can complete. The system automatically populates assets (cleanouts, catch basins, lift stations, retention ponds) for daily inspections, with photo capture, voice dictation via ElevenLabs, and attachment support.
+This plan implements a professional inspection lifecycle with supervisor review, automatic issue creation from defects, redirect-on-completion, and an addendum system that prevents editing completed reports while allowing appended corrections.
 
 ---
 
-## Part 1: Database Design
+## Part 1: Database Schema Changes
 
-### 1.1 New `assets` Table
+### 1.1 Add Review Workflow Columns to `daily_inspections`
 
-Stores infrastructure assets that require daily inspection.
+New columns for the review lifecycle:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `review_status` | ENUM | `pending_review`, `approved`, `needs_revision`, `rejected` |
+| `reviewed_by` | UUID | Supervisor who reviewed |
+| `reviewed_at` | TIMESTAMP | When reviewed |
+| `reviewer_notes` | TEXT | Feedback from supervisor |
+| `submitted_at` | TIMESTAMP | When inspector submitted |
+
+### 1.2 New `daily_inspection_addendums` Table
+
+Stores amendments to completed inspections:
 
 ```text
-assets
+daily_inspection_addendums
 - id (uuid)
-- property_id (uuid) - links to property
-- name (text) - e.g., "Cleanout #1", "Catch Basin North"
-- asset_type (enum) - cleanout, catch_basin, lift_station, retention_pond, general_grounds
-- location_description (text) - where on property
-- latitude (decimal) - optional GPS
-- longitude (decimal) - optional GPS  
-- status (text) - active, inactive, needs_repair
-- photo_url (text) - reference photo of asset
-- qr_code (text) - optional for scanning
-- created_at, updated_at
+- daily_inspection_id (uuid) - parent inspection
+- created_by (uuid) - who created addendum
+- content (text) - addendum text
+- attachments (text[]) - additional files
+- created_at (timestamp)
 ```
 
-### 1.2 New `daily_inspections` Table
+### 1.3 Update `daily_inspection_items` Table
 
-Separate from NSPIRE inspections - this is for daily grounds checks.
+Add flag to track if item created an issue:
 
-```text
-daily_inspections
-- id (uuid)
-- property_id (uuid)
-- inspection_date (date)
-- inspector_id (uuid)
-- weather (text)
-- general_notes (text) - main notes area
-- general_notes_html (text) - rich text version
-- voice_transcript (text) - from dictation
-- status (enum) - in_progress, completed
-- attachments (text[]) - file URLs
-- created_at, completed_at
-```
-
-### 1.3 New `daily_inspection_items` Table
-
-Individual asset checks within a daily inspection.
-
-```text
-daily_inspection_items
-- id (uuid)
-- daily_inspection_id (uuid)
-- asset_id (uuid)
-- status (enum) - ok, needs_attention, defect_found
-- photo_urls (text[])
-- notes (text)
-- defect_description (text) - if defect found
-- checked_at (timestamp)
-```
-
-### 1.4 Seed Data
-
-Pre-populate assets for the property:
-- 20 Cleanouts (Cleanout #1 through #20)
-- 15 Catch Basins (Catch Basin #1 through #15)
-- 1 Lift Station
-- 1 Retention Pond
-- 1 General Grounds/Housekeeping
+| Column | Type | Purpose |
+|--------|------|---------|
+| `issue_id` | UUID | Links to created issue (if defect) |
 
 ---
 
-## Part 2: ElevenLabs Integration for Voice Dictation
+## Part 2: Review Status Workflow
 
-### 2.1 API Key Setup
-
-Using the ElevenLabs Speech-to-Text API for real transcription.
-
-- Create connector or prompt for ElevenLabs API key
-- Store as `ELEVENLABS_API_KEY` secret
-
-### 2.2 New Edge Function: `elevenlabs-transcribe`
+### 2.1 Status Flow Diagram
 
 ```text
-supabase/functions/elevenlabs-transcribe/index.ts
-
-- Accepts base64 audio from client
-- Sends to ElevenLabs API:
-  POST https://api.elevenlabs.io/v1/speech-to-text
-  model_id: "scribe_v2"
-  file: [audio data]
-- Returns transcript text
+Inspector submits
+       |
+       v
++----------------+
+| pending_review |  <-- Supervisor sees in queue
++----------------+
+       |
+  Supervisor action
+       |
+  +----+----+----+
+  |         |    |
+  v         v    v
++--------+ +--------+ +--------+
+|approved| |needs   | |rejected|
+|        | |revision|  |        |
++--------+ +--------+ +--------+
+              |
+              v
+     Inspector revises
+     (via addendum only)
 ```
 
-### 2.3 Enhanced Voice Dictation Component
+### 2.2 Review Permissions by Role
 
-Update `VoiceDictation.tsx` to:
-- Use ElevenLabs edge function
-- Show real-time recording indicator
-- Display transcribed text immediately
-- Support appending to existing notes
+| Role | Can Submit | Can Review | Can View All |
+|------|------------|------------|--------------|
+| inspector | Yes | No | Own only |
+| superintendent | Yes | Yes | Own property |
+| manager | Yes | Yes | All |
+| admin | Yes | Yes | All |
 
 ---
 
-## Part 3: Mobile-First UI Components
+## Part 3: Automatic Issue Creation
 
-### 3.1 New Page: `/inspections/daily`
+### 3.1 Trigger Logic
 
-The main entry point for daily grounds inspections.
+When an inspection is approved, automatically create Issues from items with `defect_found` status:
 
-**Features:**
-- Big, friendly "Start Today's Inspection" button
-- Show today's date prominently
-- Property selector (if multiple)
-- List of recent inspections with status
+- Source: `daily_grounds` (new enum value for issue_source)
+- Severity: Map from defect type or default to `moderate`
+- Property: From inspection
+- Title: Asset name + "Defect Found"
+- Description: Include notes, defect description
+- Photo URLs: Copied from inspection item
 
-### 3.2 New Component: `DailyInspectionWizard.tsx`
+### 3.2 Link Back to Source
 
-A step-by-step mobile wizard with large touch targets.
-
-**Step 1: Start**
-- Confirm property
-- Weather selector (icons for sun, clouds, rain, snow)
-- Big "Let's Go!" button
-
-**Step 2: Asset Checklist (Swipeable Cards)**
-- One asset per screen (like Tinder swipe)
-- Asset name and type icon at top
-- Large photo capture button (full width)
-- Three big buttons: ✓ OK | ⚠️ Attention | ✗ Defect
-- Quick notes input
-- Swipe or tap to next asset
-- Progress bar showing X of Y assets
-
-**Step 3: General Notes**
-- Large text area
-- Voice dictation button (microphone icon)
-- "Exterior Defects Observed" section
-- General housekeeping checklist
-- Attachment upload area
-
-**Step 4: Review & Submit**
-- Summary of all checks
-- Count: 38 OK, 2 Need Attention
-- Photo gallery
-- Submit button
-- Option to sign
-
-### 3.3 New Component: `AssetCard.tsx`
-
-Individual asset inspection card (mobile optimized).
-
-```text
-+----------------------------------+
-|  🔧 CLEANOUT #1                  |
-|  Location: North parking lot     |
-+----------------------------------+
-|                                  |
-|     [ TAKE PHOTO 📷 ]           |
-|     (big touch target)           |
-|                                  |
-|  +------+ +------+ +------+     |
-|  |  ✓   | |  ⚠️  | |  ✗   |     |
-|  |  OK  | | ATN  | | DEF  |     |
-|  +------+ +------+ +------+     |
-|                                  |
-|  Notes: ___________________     |
-|                                  |
-|         [NEXT →]                |
-+----------------------------------+
-```
-
-### 3.4 Enhanced Photo Capture
-
-Optimize for mobile with:
-- Full-screen camera overlay option
-- Auto-compress large images
-- Thumbnail preview immediately
-- "Capture" attribute for native camera on mobile
-- GPS location embedding (optional)
+Each created issue links back via `daily_inspection_item_id` field on issues table (new column).
 
 ---
 
-## Part 4: Asset Management Page
+## Part 4: Post-Completion Redirect
 
-### 4.1 Replace Placeholder `/assets` Page
+### 4.1 Updated Wizard Flow
 
-Full asset inventory management.
+When inspector clicks "Submit Inspection":
 
-**Features:**
-- List all assets by property
-- Filter by type (cleanouts, catch basins, etc.)
-- Add new assets
-- Edit/delete assets
-- Upload reference photos
-- Bulk import option
+1. Update inspection status to `completed`
+2. Set `review_status` to `pending_review`
+3. Set `submitted_at` timestamp
+4. Show success toast with summary
+5. **Redirect to Dashboard** using `react-router-dom` navigate
 
-### 4.2 New Components
+### 4.2 Dashboard Integration
+
+Add "Pending Reviews" section to Dashboard for supervisors/managers:
+- Count of inspections awaiting review
+- Quick action to go to review queue
+
+---
+
+## Part 5: Supervisor Review Interface
+
+### 5.1 New Page: `/inspections/review`
+
+Review queue for supervisors showing:
+- List of pending inspections
+- Filter by property, date, inspector
+- Quick approve/reject actions
+
+### 5.2 Review Detail View
+
+When viewing a pending inspection:
+- Read-only view of all asset checks
+- Photos gallery
+- General notes
+- Approve / Request Revision / Reject buttons
+- Add reviewer notes field
+
+### 5.3 New Components
 
 | Component | Purpose |
 |-----------|---------|
-| `AssetsPage.tsx` | Main asset inventory page |
-| `AssetDialog.tsx` | Create/edit asset form |
-| `AssetCard.tsx` | Asset display card |
-| `AssetTypeIcon.tsx` | Icons for each asset type |
-
-### 4.3 New Hook: `useAssets.ts`
-
-CRUD operations for assets:
-- `useAssets(propertyId)` - list assets
-- `useAssetsByType(propertyId, type)` - filtered list
-- `useCreateAsset()` - add new
-- `useUpdateAsset()` - edit
-- `useDeleteAsset()` - remove
+| `InspectionReviewPage.tsx` | Review queue page |
+| `InspectionReviewSheet.tsx` | Slide-out detail view |
+| `ReviewActionButtons.tsx` | Approve/Reject controls |
 
 ---
 
-## Part 5: Hooks and Data Layer
+## Part 6: Addendum System
 
-### 5.1 New Hooks
+### 6.1 Addendum UI
 
-| Hook | Purpose |
-|------|---------|
-| `useAssets.ts` | Asset CRUD |
-| `useDailyInspections.ts` | Daily inspection CRUD |
-| `useTodayInspection.ts` | Get/create today's inspection |
-| `useElevenLabsTranscribe.ts` | Voice-to-text hook |
+For completed inspections, show:
+- Locked icon indicating "Report Finalized"
+- "Add Addendum" button
+- List of existing addendums with timestamps
 
-### 5.2 Updated Components
+### 6.2 Addendum Dialog
 
-| File | Changes |
-|------|---------|
-| `VoiceDictation.tsx` | Use ElevenLabs API instead of placeholder |
+Simple form:
+- Rich text area for addendum content
+- Attachment upload
+- Submit button
+
+### 6.3 Display
+
+Addendums appear at bottom of inspection view:
+- Chronological order
+- Author name + timestamp
+- Full content with attachments
 
 ---
 
-## Part 6: File Structure
+## Part 7: Unified Issues Dashboard
+
+### 7.1 Issue Source Integration
+
+Add `daily_grounds` to issue source enum:
+- Issues page already shows all sources
+- New issues from daily inspections appear automatically
+- Filtered by source module
+
+### 7.2 Visibility
+
+All roles see the same Issues dashboard:
+- Filter by property (existing)
+- Filter by source (existing)
+- New source badge: "Daily Grounds"
+
+---
+
+## Part 8: Implementation Files
 
 ### New Files
 
 ```text
-src/pages/
-├── assets/
-│   └── AssetsPage.tsx           # Asset inventory management
-├── inspections/
-│   └── DailyGroundsPage.tsx     # Daily grounds inspection entry
+src/pages/inspections/
+  InspectionReviewPage.tsx     # Supervisor review queue
 
-src/components/
-├── assets/
-│   ├── AssetDialog.tsx          # Create/edit asset
-│   ├── AssetCard.tsx            # Asset display card
-│   └── AssetTypeIcon.tsx        # Type icons
-├── inspections/
-│   ├── DailyInspectionWizard.tsx    # Main wizard
-│   ├── AssetCheckCard.tsx           # Per-asset check UI
-│   ├── WeatherSelector.tsx          # Weather picker
-│   └── InspectionProgress.tsx       # Progress indicator
+src/components/inspections/
+  InspectionReviewSheet.tsx    # Review detail slide-out
+  AddendumDialog.tsx           # Add addendum form
+  AddendumList.tsx             # Display addendums
+  ReviewActionButtons.tsx      # Approve/Reject controls
 
 src/hooks/
-├── useAssets.ts
-├── useDailyInspections.ts
-└── useElevenLabsTranscribe.ts
+  useInspectionReview.ts       # Review CRUD operations
+  useInspectionAddendums.ts    # Addendum CRUD operations
+```
 
-supabase/functions/
-└── elevenlabs-transcribe/
-    └── index.ts
+### Modified Files
+
+```text
+src/components/inspections/DailyInspectionWizard.tsx
+  - Add useNavigate for redirect
+  - Update handleSubmit to redirect to dashboard
+
+src/pages/inspections/DailyGroundsPage.tsx
+  - Show lock icon for completed inspections
+  - Show "Add Addendum" for completed inspections
+  - Prevent editing completed inspections
+
+src/pages/Dashboard.tsx
+  - Add "Pending Reviews" section for supervisors
+
+src/hooks/useDailyInspections.ts
+  - Add review status fields to interface
+  - Add usePendingReviews hook
+  - Add useSubmitForReview mutation
+  - Add useReviewInspection mutation
+
+src/components/layout/AppSidebar.tsx
+  - Add "Review Queue" nav item for supervisors
 ```
 
 ---
 
-## Part 7: User Experience Flow
+## Part 9: Database Migration SQL
 
-### Happy Path
-
-1. **User opens app on phone**
-2. **Taps "Inspections" → "Daily Grounds"**
-3. **Sees big "Start Today's Inspection" button**
-4. **Selects weather with friendly icons**
-5. **Asset cards appear one-by-one:**
-   - Takes photo with one tap
-   - Taps green checkmark for "OK"
-   - Swipes to next
-6. **After all assets, enters general notes:**
-   - Taps microphone, speaks observations
-   - Text appears automatically
-   - Adds any attachments
-7. **Reviews summary, taps "Submit"**
-8. **Done! Shows confirmation with stats**
-
-### Design Principles
-
-- **Minimal taps** - most common action is biggest button
-- **Large touch targets** - minimum 44px, prefer 60px+
-- **Clear visual feedback** - color changes on selection
-- **Progress visibility** - always show how far along
-- **Forgiving** - easy to go back and correct
-- **Works offline** - queue uploads for later
-
----
-
-## Part 8: Technical Considerations
-
-### Mobile Camera Integration
-
-```tsx
-<input
-  type="file"
-  accept="image/*"
-  capture="environment"  // Use back camera
-  onChange={handleCapture}
-/>
-```
-
-### ElevenLabs Transcription
-
-Using `scribe_v2` model for high-quality transcription:
-- Supports multiple languages
-- Handles construction terminology
-- Returns clean, formatted text
-
-### Responsive Breakpoints
-
-- **Mobile (default)**: Full-width cards, stacked layout
-- **Tablet (md)**: 2-column grid, larger touch targets
-- **Desktop (lg)**: 3-column grid, sidebar navigation
-
----
-
-## Part 9: Database Migrations
-
-### Migration 1: Create Asset Types and Tables
+### Migration: Add Review Workflow
 
 ```sql
--- Asset types enum
-CREATE TYPE asset_type AS ENUM (
-  'cleanout', 
-  'catch_basin', 
-  'lift_station', 
-  'retention_pond', 
-  'general_grounds'
+-- Review status enum
+CREATE TYPE daily_inspection_review_status AS ENUM (
+  'pending_review',
+  'approved', 
+  'needs_revision',
+  'rejected'
 );
 
--- Inspection item status
-CREATE TYPE inspection_item_status AS ENUM (
-  'ok', 
-  'needs_attention', 
-  'defect_found'
-);
+-- Add review columns to daily_inspections
+ALTER TABLE daily_inspections
+ADD COLUMN review_status daily_inspection_review_status,
+ADD COLUMN reviewed_by UUID REFERENCES auth.users(id),
+ADD COLUMN reviewed_at TIMESTAMPTZ,
+ADD COLUMN reviewer_notes TEXT,
+ADD COLUMN submitted_at TIMESTAMPTZ;
 
--- Assets table
-CREATE TABLE assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id),
-  name TEXT NOT NULL,
-  asset_type asset_type NOT NULL,
-  location_description TEXT,
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
-  status TEXT DEFAULT 'active',
-  photo_url TEXT,
-  qr_code TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Daily inspections
-CREATE TABLE daily_inspections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id),
-  inspection_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  inspector_id UUID REFERENCES auth.users(id),
-  weather TEXT,
-  general_notes TEXT,
-  general_notes_html TEXT,
-  voice_transcript TEXT,
-  status TEXT DEFAULT 'in_progress',
-  attachments TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  UNIQUE(property_id, inspection_date)
-);
-
--- Inspection items (per asset)
-CREATE TABLE daily_inspection_items (
+-- Addendums table
+CREATE TABLE daily_inspection_addendums (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   daily_inspection_id UUID NOT NULL REFERENCES daily_inspections(id),
-  asset_id UUID NOT NULL REFERENCES assets(id),
-  status inspection_item_status DEFAULT 'ok',
-  photo_urls TEXT[] DEFAULT '{}',
-  notes TEXT,
-  defect_description TEXT,
-  checked_at TIMESTAMPTZ DEFAULT NOW()
+  created_by UUID REFERENCES auth.users(id),
+  content TEXT NOT NULL,
+  attachments TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Link inspection items to issues
+ALTER TABLE daily_inspection_items
+ADD COLUMN issue_id UUID REFERENCES issues(id);
+
+-- Add daily_grounds source
+-- (Depends on current enum - may need ALTER TYPE)
+
+-- RLS for addendums
+ALTER TABLE daily_inspection_addendums ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view addendums"
+ON daily_inspection_addendums FOR SELECT
+USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated users can create addendums"
+ON daily_inspection_addendums FOR INSERT
+WITH CHECK (auth.uid() = created_by);
 ```
 
-### Migration 2: RLS Policies
+---
 
-- Authenticated users can view/create assets
-- Inspectors can create/update inspections
-- Admins can manage all
+## Part 10: User Experience Flow
 
-### Migration 3: Seed Sample Assets
+### Inspector Flow
 
-Insert the 38 default assets:
-- Cleanout #1 through #20
-- Catch Basin #1 through #15
-- Lift Station #1
-- Retention Pond #1
-- General Grounds
+1. Start daily inspection
+2. Check all assets with photos
+3. Add notes, attachments
+4. Click "Submit Inspection"
+5. **Redirect to Dashboard**
+6. See status: "Pending Review"
+7. Cannot edit - only add addendum if needed
+
+### Supervisor Flow
+
+1. See notification badge: "3 Pending Reviews"
+2. Click to open Review Queue
+3. Select inspection to review
+4. View all asset checks, photos, notes
+5. Either:
+   - **Approve**: Issues created from defects
+   - **Request Revision**: Inspector notified
+   - **Reject**: With notes
+
+### After Approval
+
+1. Issues auto-created from defects
+2. Appear in unified Issues dashboard
+3. Assigned per normal workflow
+4. Work orders can be created
+5. Everyone sees same issues
 
 ---
 
-## Part 10: Implementation Steps
+## Part 11: Implementation Order
 
-### Phase 1: Database & Assets (Day 1)
-1. Run database migrations
-2. Create `useAssets.ts` hook
-3. Build `AssetsPage.tsx` with full CRUD
-4. Replace placeholder assets route
+### Phase 1: Core Database & Redirect
+1. Run database migration (review columns, addendums table)
+2. Update wizard to redirect on completion
+3. Update inspection interfaces with new fields
 
-### Phase 2: ElevenLabs Integration (Day 1)
-5. Add ElevenLabs API key secret
-6. Create `elevenlabs-transcribe` edge function
-7. Update `VoiceDictation.tsx` to use real transcription
+### Phase 2: Addendum System
+4. Create AddendumDialog component
+5. Create AddendumList component
+6. Update DailyGroundsPage to show addendums
+7. Prevent editing completed inspections
 
-### Phase 3: Daily Inspection UI (Day 2)
-8. Create `DailyGroundsPage.tsx`
-9. Build `DailyInspectionWizard.tsx` with steps
-10. Create `AssetCheckCard.tsx` for mobile
-11. Add weather selector
+### Phase 3: Supervisor Review
+8. Create InspectionReviewPage
+9. Create InspectionReviewSheet
+10. Add review hooks
+11. Update sidebar with Review Queue link
 
-### Phase 4: Polish & Navigation (Day 2)
-12. Add routes to App.tsx
-13. Update sidebar navigation
-14. Test on mobile devices
-15. Add offline support (optional)
+### Phase 4: Issue Integration
+12. Add trigger/function to create issues from approved defects
+13. Add daily_grounds source to issues
+14. Test end-to-end flow
 
 ---
 
-## Expected Outcome
+## Technical Notes
 
-After implementation:
+### Preventing Edits
 
-- Simple, intuitive daily inspection flow
-- Mobile-first design usable by anyone
-- Real voice-to-text via ElevenLabs
-- Photo capture directly from phone camera
-- All assets auto-populated for each property
-- Progress tracking through checklist
-- Attachment support for additional files
-- Professional-grade yet simple UX
+In `DailyGroundsPage.tsx`, when showing completed inspection:
+- Hide "View or Edit" button
+- Show "View Report" + "Add Addendum" instead
+- Wizard receives `readOnly` prop
 
+### Navigation
+
+Use `react-router-dom`:
+```tsx
+import { useNavigate } from 'react-router-dom';
+const navigate = useNavigate();
+// After submit:
+navigate('/');
+```
+
+### Role Checking
+
+Leverage existing `has_role` function:
+```tsx
+// Client-side (for UI only)
+const canReview = userRoles.includes('manager') || 
+                  userRoles.includes('superintendent') || 
+                  userRoles.includes('admin');
+```
+
+RLS policies enforce server-side.
