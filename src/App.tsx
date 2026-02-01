@@ -35,6 +35,7 @@ import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
 import MailboxPage from "./pages/inbox/MailboxPage";
 import PermitsDashboard from "./pages/permits/PermitsDashboard";
 import PermitDetailPage from "./pages/permits/PermitDetailPage";
+import PeoplePage from "./pages/people/PeoplePage";
 
 const queryClient = new QueryClient();
 
@@ -67,7 +68,7 @@ const App = () => (
                         <Route path="/issues" element={<IssuesPage />} />
                         <Route path="/work-orders" element={<WorkOrdersPage />} />
                         <Route path="/documents" element={<DocumentsPage />} />
-                        <Route path="/people" element={<PlaceholderPage title="People" description="User and role management" />} />
+                        <Route path="/people" element={<PeoplePage />} />
                         <Route path="/inbox" element={<MailboxPage />} />
                         <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/settings/activity-log" element={<ActivityLogPage />} />

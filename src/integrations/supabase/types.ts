@@ -1032,27 +1032,51 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          department: string | null
           email: string | null
+          emergency_contact: string | null
+          emergency_phone: string | null
           full_name: string | null
+          hire_date: string | null
           id: string
+          job_title: string | null
+          last_active_at: string | null
+          phone: string | null
+          status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_phone?: string | null
           full_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
+          last_active_at?: string | null
+          phone?: string | null
+          status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_phone?: string | null
           full_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
+          last_active_at?: string | null
+          phone?: string | null
+          status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1598,6 +1622,71 @@ export type Database = {
         }
         Relationships: []
       }
+      property_team_members: {
+        Row: {
+          added_by: string | null
+          archived_at: string | null
+          archived_by: string | null
+          created_at: string
+          department: string | null
+          departure_notes: string | null
+          departure_reason: string | null
+          end_date: string | null
+          id: string
+          property_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          start_date: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          department?: string | null
+          departure_notes?: string | null
+          departure_reason?: string | null
+          end_date?: string | null
+          id?: string
+          property_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          start_date?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          department?: string | null
+          departure_notes?: string | null
+          departure_reason?: string | null
+          end_date?: string | null
+          id?: string
+          property_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          start_date?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_team_members_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_templates: {
         Row: {
           content_template: string | null
@@ -1808,6 +1897,72 @@ export type Database = {
           },
         ]
       }
+      role_definitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_system_role: boolean | null
+          permissions: Json
+          priority: number
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_system_role?: boolean | null
+          permissions?: Json
+          priority?: number
+          role_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_system_role?: boolean | null
+          permissions?: Json
+          priority?: number
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          action: string
+          allowed: boolean | null
+          created_at: string
+          id: string
+          module: string
+          role_key: string
+        }
+        Insert: {
+          action: string
+          allowed?: boolean | null
+          created_at?: string
+          id?: string
+          module: string
+          role_key: string
+        }
+        Update: {
+          action?: string
+          allowed?: boolean | null
+          created_at?: string
+          id?: string
+          module?: string
+          role_key?: string
+        }
+        Relationships: []
+      }
       units: {
         Row: {
           bathrooms: number | null
@@ -1875,6 +2030,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_role: Database["public"]["Enums"]["app_role"] | null
+          new_status: string
+          notes: string | null
+          previous_role: Database["public"]["Enums"]["app_role"] | null
+          previous_status: string | null
+          property_id: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_role?: Database["public"]["Enums"]["app_role"] | null
+          new_status: string
+          notes?: string | null
+          previous_role?: Database["public"]["Enums"]["app_role"] | null
+          previous_status?: string | null
+          property_id?: string | null
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_role?: Database["public"]["Enums"]["app_role"] | null
+          new_status?: string
+          notes?: string | null
+          previous_role?: Database["public"]["Enums"]["app_role"] | null
+          previous_status?: string | null
+          property_id?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_status_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_order_activity: {
         Row: {
