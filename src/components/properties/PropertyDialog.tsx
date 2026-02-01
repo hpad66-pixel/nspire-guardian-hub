@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCreateProperty, useUpdateProperty, type Property } from '@/hooks/useProperties';
+import { Sun, ClipboardCheck, FolderKanban } from 'lucide-react';
 
 interface PropertyDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function PropertyDialog({ open, onOpenChange, property }: PropertyDialogP
     total_units: 0,
     year_built: undefined as number | undefined,
     nspire_enabled: false,
+    daily_grounds_enabled: false,
     projects_enabled: false,
     status: 'active',
     contact_name: '',
@@ -56,6 +58,7 @@ export function PropertyDialog({ open, onOpenChange, property }: PropertyDialogP
         total_units: property.total_units || 0,
         year_built: property.year_built || undefined,
         nspire_enabled: property.nspire_enabled || false,
+        daily_grounds_enabled: property.daily_grounds_enabled || false,
         projects_enabled: property.projects_enabled || false,
         status: property.status || 'active',
         contact_name: property.contact_name || '',
@@ -107,6 +110,7 @@ export function PropertyDialog({ open, onOpenChange, property }: PropertyDialogP
       total_units: 0,
       year_built: undefined,
       nspire_enabled: false,
+      daily_grounds_enabled: false,
       projects_enabled: false,
       status: 'active',
       contact_name: '',
@@ -340,10 +344,42 @@ export function PropertyDialog({ open, onOpenChange, property }: PropertyDialogP
 
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="text-sm font-medium">Enabled Modules</h4>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="nspire">NSPIRE Inspections</Label>
-                    <p className="text-xs text-muted-foreground">Enable NSPIRE-compliant inspection workflows</p>
+                <p className="text-xs text-muted-foreground">
+                  Select which paid add-on modules are active for this property
+                </p>
+                
+                {/* Daily Grounds */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-md bg-emerald-500 flex items-center justify-center">
+                      <Sun className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="daily_grounds">Daily Grounds Inspections</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Outside grounds and asset inspections
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="daily_grounds"
+                    checked={formData.daily_grounds_enabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, daily_grounds_enabled: checked })}
+                  />
+                </div>
+
+                {/* NSPIRE */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-md bg-blue-500 flex items-center justify-center">
+                      <ClipboardCheck className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="nspire">NSPIRE Compliance</Label>
+                      <p className="text-xs text-muted-foreground">
+                        HUD-compliant inside unit inspections
+                      </p>
+                    </div>
                   </div>
                   <Switch
                     id="nspire"
@@ -351,10 +387,19 @@ export function PropertyDialog({ open, onOpenChange, property }: PropertyDialogP
                     onCheckedChange={(checked) => setFormData({ ...formData, nspire_enabled: checked })}
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="projects">Projects</Label>
-                    <p className="text-xs text-muted-foreground">Enable capital improvement project tracking</p>
+
+                {/* Projects */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-md bg-orange-500 flex items-center justify-center">
+                      <FolderKanban className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="projects">Projects</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Capital improvement project tracking
+                      </p>
+                    </div>
                   </div>
                   <Switch
                     id="projects"

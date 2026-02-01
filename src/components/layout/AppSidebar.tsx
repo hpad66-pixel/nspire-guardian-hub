@@ -34,6 +34,7 @@ import {
   History,
   Sun,
   ClipboardList,
+  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -139,6 +140,18 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
+                    to="/work-orders"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Wrench className="h-4 w-4" />
+                    {!collapsed && <span>Work Orders</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
                     to="/documents"
                     className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
                     activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
@@ -176,66 +189,82 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* NSPIRE Inspections Module */}
+        {/* Daily Grounds Module - Separate from NSPIRE */}
+        {isModuleEnabled('dailyGroundsEnabled') && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                {!collapsed && <span>Daily Grounds</span>}
+              </div>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/inspections/daily"
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Sun className="h-4 w-4" />
+                      {!collapsed && <span>Today's Inspection</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/inspections/history"
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <History className="h-4 w-4" />
+                      {!collapsed && <span>History</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/inspections/review"
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      {!collapsed && <span>Review Queue</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* NSPIRE Compliance Module - Inside unit inspections */}
         {isModuleEnabled('nspireEnabled') && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-module-inspections" />
-                {!collapsed && <span>Inspections</span>}
+                {!collapsed && <span>NSPIRE Compliance</span>}
               </div>
             </SidebarGroupLabel>
             <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/inspections"
-                    end
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <ClipboardCheck className="h-4 w-4" />
-                    {!collapsed && <span>Dashboard</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/inspections/daily"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Sun className="h-4 w-4" />
-                    {!collapsed && <span>Daily Grounds</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/inspections/history"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <History className="h-4 w-4" />
-                    {!collapsed && <span>History</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/inspections/review"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <ClipboardList className="h-4 w-4" />
-                    {!collapsed && <span>Review Queue</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/inspections"
+                      end
+                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <ClipboardCheck className="h-4 w-4" />
+                      {!collapsed && <span>Dashboard</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink

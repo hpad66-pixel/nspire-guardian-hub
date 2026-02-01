@@ -1,4 +1,5 @@
 import { useModules } from '@/contexts/ModuleContext';
+import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -6,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Settings, 
   ClipboardCheck, 
@@ -16,13 +19,34 @@ import {
   Shield,
   CreditCard,
   Building2,
+  Sun,
+  TreePine,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { modules, toggleModule, userRole, setUserRole } = useModules();
+  const { modules, toggleModule, userRole, setUserRole, isLoading: modulesLoading, refetchModules } = useModules();
+  const { data: properties, isLoading: propertiesLoading } = useProperties();
+  const updateProperty = useUpdateProperty();
 
   const isAdmin = userRole === 'super_admin' || userRole === 'tenant_admin';
+
+  const handlePropertyModuleChange = async (
+    propertyId: string, 
+    module: 'nspire_enabled' | 'daily_grounds_enabled' | 'projects_enabled',
+    checked: boolean
+  ) => {
+    try {
+      await updateProperty.mutateAsync({
+        id: propertyId,
+        [module]: checked,
+      });
+      await refetchModules();
+    } catch (error) {
+      toast.error('Failed to update property module');
+    }
+  };
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -74,13 +98,13 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Module Toggles */}
+          {/* Module Toggles - Tenant-Wide Defaults */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Platform Modules</CardTitle>
-                  <CardDescription>Enable or disable paid add-on modules for this tenant</CardDescription>
+                  <CardTitle>Tenant-Wide Module Defaults</CardTitle>
+                  <CardDescription>Enable or disable paid add-on modules for all properties</CardDescription>
                 </div>
                 {!isAdmin && (
                   <Badge variant="secondary">View Only</Badge>
@@ -88,6 +112,32 @@ export default function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Daily Grounds */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                    <Sun className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="dailyGrounds" className="font-medium">Daily Grounds Inspections</Label>
+                      <Badge variant="outline">Paid Add-On</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Ongoing daily inspections of exterior grounds, assets, and infrastructure
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="dailyGrounds"
+                  checked={modules.dailyGroundsEnabled}
+                  onCheckedChange={() => toggleModule('dailyGroundsEnabled')}
+                  disabled={!isAdmin || modulesLoading}
+                />
+              </div>
+
+              <Separator />
+
               {/* NSPIRE Inspections */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -96,11 +146,11 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="nspire" className="font-medium">NSPIRE Inspections</Label>
+                      <Label htmlFor="nspire" className="font-medium">NSPIRE Compliance</Label>
                       <Badge variant="outline">Paid Add-On</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      100% standards-compliant inspection engine with defect tracking
+                      HUD NSPIRE-compliant inside unit inspections with mandated defect catalogs
                     </p>
                   </div>
                 </div>
@@ -108,7 +158,7 @@ export default function SettingsPage() {
                   id="nspire"
                   checked={modules.nspireEnabled}
                   onCheckedChange={() => toggleModule('nspireEnabled')}
-                  disabled={!isAdmin}
+                  disabled={!isAdmin || modulesLoading}
                 />
               </div>
 
@@ -134,7 +184,7 @@ export default function SettingsPage() {
                   id="projects"
                   checked={modules.projectsEnabled}
                   onCheckedChange={() => toggleModule('projectsEnabled')}
-                  disabled={!isAdmin}
+                  disabled={!isAdmin || modulesLoading}
                 />
               </div>
 
@@ -217,6 +267,90 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Per-Property Module Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Per-Property Module Overrides</CardTitle>
+              <CardDescription>
+                Enable or disable modules for specific properties
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {propertiesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : properties && properties.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-muted/50 rounded-lg text-sm font-medium text-muted-foreground">
+                    <div>Property</div>
+                    <div className="text-center flex items-center justify-center gap-1">
+                      <Sun className="h-3 w-3" />
+                      Daily Grounds
+                    </div>
+                    <div className="text-center flex items-center justify-center gap-1">
+                      <ClipboardCheck className="h-3 w-3" />
+                      NSPIRE
+                    </div>
+                    <div className="text-center flex items-center justify-center gap-1">
+                      <FolderKanban className="h-3 w-3" />
+                      Projects
+                    </div>
+                  </div>
+                  
+                  {/* Property rows */}
+                  {properties.map((property) => (
+                    <div 
+                      key={property.id} 
+                      className="grid grid-cols-4 gap-4 px-4 py-3 border rounded-lg items-center"
+                    >
+                      <div>
+                        <p className="font-medium">{property.name}</p>
+                        <p className="text-xs text-muted-foreground">{property.city}, {property.state}</p>
+                      </div>
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={property.daily_grounds_enabled || false}
+                          onCheckedChange={(checked) => 
+                            handlePropertyModuleChange(property.id, 'daily_grounds_enabled', checked as boolean)
+                          }
+                          disabled={!isAdmin || updateProperty.isPending}
+                        />
+                      </div>
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={property.nspire_enabled || false}
+                          onCheckedChange={(checked) => 
+                            handlePropertyModuleChange(property.id, 'nspire_enabled', checked as boolean)
+                          }
+                          disabled={!isAdmin || updateProperty.isPending}
+                        />
+                      </div>
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={property.projects_enabled || false}
+                          onCheckedChange={(checked) => 
+                            handlePropertyModuleChange(property.id, 'projects_enabled', checked as boolean)
+                          }
+                          disabled={!isAdmin || updateProperty.isPending}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No properties found</p>
+                  <p className="text-sm">Add properties to configure module access</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="users">
@@ -242,24 +376,37 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                   <div>
                     <p className="font-medium">Current Plan</p>
-                    <p className="text-sm text-muted-foreground">Enterprise • 12 properties</p>
+                    <p className="text-sm text-muted-foreground">Enterprise • {properties?.length || 0} properties</p>
                   </div>
                   <Badge>Active</Badge>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="p-4 rounded-lg border bg-card">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sun className="h-4 w-4 text-emerald-500" />
+                      <span className="font-medium">Daily Grounds</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {modules.dailyGroundsEnabled ? 'Enabled' : 'Disabled'}
+                    </p>
+                  </div>
                   <div className="p-4 rounded-lg border bg-card">
                     <div className="flex items-center gap-2 mb-2">
                       <ClipboardCheck className="h-4 w-4 text-module-inspections" />
-                      <span className="font-medium">NSPIRE Inspections</span>
+                      <span className="font-medium">NSPIRE Compliance</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Enabled since Jan 1, 2024</p>
+                    <p className="text-sm text-muted-foreground">
+                      {modules.nspireEnabled ? 'Enabled' : 'Disabled'}
+                    </p>
                   </div>
                   <div className="p-4 rounded-lg border bg-card">
                     <div className="flex items-center gap-2 mb-2">
                       <FolderKanban className="h-4 w-4 text-module-projects" />
                       <span className="font-medium">Projects</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Enabled since Jan 1, 2024</p>
+                    <p className="text-sm text-muted-foreground">
+                      {modules.projectsEnabled ? 'Enabled' : 'Disabled'}
+                    </p>
                   </div>
                 </div>
                 {!isAdmin && (
@@ -295,11 +442,13 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Properties</Label>
-                    <p className="font-medium">12 active</p>
+                    <p className="font-medium">{properties?.length || 0} active</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground text-xs">Total Units</Label>
-                    <p className="font-medium">847</p>
+                    <p className="font-medium">
+                      {properties?.reduce((sum, p) => sum + (p.total_units || 0), 0) || 0}
+                    </p>
                   </div>
                 </div>
               </div>
