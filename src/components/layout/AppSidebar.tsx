@@ -41,6 +41,7 @@ import {
   GraduationCap,
   Contact,
   MessageCircle,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -310,6 +311,23 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </TooltipTrigger>
                   <TooltipContent side="right">Training Academy - Operational skills & certifications</TooltipContent>
+                </Tooltip>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/voice-agent"
+                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                      >
+                        <Phone className="h-4 w-4" />
+                        {!collapsed && <span>Voice Agent</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">AI Voice Call Center for maintenance requests</TooltipContent>
                 </Tooltip>
               </SidebarMenuItem>
             </SidebarMenu>
