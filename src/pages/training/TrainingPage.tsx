@@ -66,7 +66,7 @@ export default function TrainingPage() {
   const { data: stats } = useTrainingStats();
   const { data: currentRole } = useCurrentUserRole();
 
-  const isAdmin = currentRole === 'admin' || currentRole === 'manager';
+  const isAdmin = currentRole === 'admin';
 
   const ebooks = resources?.filter(r => r.resource_type === 'ebook') || [];
   const courses = resources?.filter(r => r.resource_type === 'course') || [];
