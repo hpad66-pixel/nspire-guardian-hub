@@ -30,6 +30,7 @@ import IssuesPage from "./pages/core/IssuesPage";
 import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
 import ReportsPage from "./pages/reports/ReportsPage";
 import DocumentsPage from "./pages/documents/DocumentsPage";
+import PropertyArchivesPage from "./pages/documents/PropertyArchivesPage";
 import ActivityLogPage from "./pages/settings/ActivityLogPage";
 import NotFound from "./pages/NotFound";
 import AssetsPage from "./pages/assets/AssetsPage";
@@ -84,6 +85,7 @@ const App = () => (
                         <Route path="/issues" element={<IssuesPage />} />
                         <Route path="/work-orders" element={<WorkOrdersPage />} />
                         <Route path="/documents" element={<DocumentsPage />} />
+                        <Route path="/documents/archives" element={<PropertyArchivesPage />} />
                         <Route path="/people" element={<PeoplePage />} />
                         <Route path="/inbox" element={<MailboxPage />} />
                         <Route path="/messages" element={<MessagesPage />} />
