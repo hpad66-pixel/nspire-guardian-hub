@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { NavLink } from '@/components/NavLink';
+import { useLocation } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
@@ -15,6 +17,11 @@ import {
   SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Building2,
   ClipboardCheck,
@@ -42,9 +49,13 @@ import {
   Contact,
   MessageCircle,
   Phone,
+  ChevronRight,
+  Briefcase,
+  Megaphone,
+  Layers,
+  Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Tooltip,
@@ -53,13 +64,118 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+interface NavItemProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  end?: boolean;
+  badge?: number;
+  tooltip?: string;
+}
+
+function NavItem({ to, icon, label, collapsed, end, badge, tooltip }: NavItemProps) {
+  const content = (
+    <SidebarMenuButton asChild>
+      <NavLink
+        to={to}
+        end={end}
+        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+      >
+        <div className="relative">
+          {icon}
+          {badge !== undefined && badge > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
+        </div>
+        {!collapsed && <span>{label}</span>}
+      </NavLink>
+    </SidebarMenuButton>
+  );
+
+  if (tooltip && collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">{tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
+interface CollapsibleNavGroupProps {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  collapsed: boolean;
+  defaultOpen?: boolean;
+  isActive?: boolean;
+  indicator?: string;
+}
+
+function CollapsibleNavGroup({ 
+  title, 
+  icon, 
+  children, 
+  collapsed, 
+  defaultOpen = false,
+  isActive = false,
+  indicator,
+}: CollapsibleNavGroupProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen || isActive);
+
+  if (collapsed) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>{children}</SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <SidebarGroup>
+        <CollapsibleTrigger className="w-full">
+          <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider cursor-pointer hover:text-sidebar-foreground transition-colors flex items-center justify-between pr-2">
+            <div className="flex items-center gap-2">
+              {indicator && (
+                <div className={cn("h-2 w-2 rounded-full", indicator)} />
+              )}
+              {icon}
+              <span>{title}</span>
+            </div>
+            <ChevronRight 
+              className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                isOpen && "rotate-90"
+              )} 
+            />
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>{children}</SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
+}
+
 export function AppSidebar() {
+  const location = useLocation();
   const { isModuleEnabled, userRole } = useModules();
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   
-  // Unread message count with realtime updates
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   useUnreadThreadCountRealtime();
 
@@ -69,484 +185,398 @@ export function AppSidebar() {
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : user?.email?.charAt(0).toUpperCase() || 'U';
 
+  // Route matching for auto-expanding groups
+  const currentPath = location.pathname;
+  const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
+  const isOperationsActive = ['/issues', '/work-orders', '/permits'].some(p => currentPath.startsWith(p));
+  const isCommunicationsActive = ['/messages', '/inbox', '/voice-agent'].some(p => currentPath.startsWith(p));
+  const isOrganizationActive = ['/people', '/contacts', '/training', '/reports', '/documents'].some(p => currentPath.startsWith(p));
+  const isDailyGroundsActive = currentPath.startsWith('/inspections/daily') || currentPath.startsWith('/inspections/history') || currentPath.startsWith('/inspections/review');
+  const isNspireActive = currentPath.startsWith('/inspections') && !isDailyGroundsActive;
+  const isProjectsActive = currentPath.startsWith('/projects');
+
   return (
     <TooltipProvider delayDuration={300}>
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
         <SidebarHeader className="border-b border-sidebar-border p-4">
-        <NavLink to="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">NSPIRE</span>
-              <span className="text-xs text-sidebar-muted">Property OS</span>
+          <NavLink to="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
+              <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
-          )}
-        </NavLink>
-      </SidebarHeader>
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-sidebar-foreground">NSPIRE</span>
+                <span className="text-xs text-sidebar-muted">Property OS</span>
+              </div>
+            )}
+          </NavLink>
+        </SidebarHeader>
 
-      <SidebarContent>
-        {/* Core Platform */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
-            Platform
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/"
+        <SidebarContent className="overflow-y-auto">
+          {/* Dashboard - Always visible at top */}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <NavItem
+                    to="/dashboard"
+                    icon={<LayoutDashboard className="h-4 w-4" />}
+                    label="Dashboard"
+                    collapsed={collapsed}
                     end
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    {!collapsed && <span>Dashboard</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/properties"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Building className="h-4 w-4" />
-                    {!collapsed && <span>Properties</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/units"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <DoorOpen className="h-4 w-4" />
-                    {!collapsed && <span>Units</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/assets"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Box className="h-4 w-4" />
-                    {!collapsed && <span>Assets</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/issues"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <AlertTriangle className="h-4 w-4" />
-                    {!collapsed && <span>Issues</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/work-orders"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Wrench className="h-4 w-4" />
-                    {!collapsed && <span>Work Orders</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/documents"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <FileText className="h-4 w-4" />
-                    {!collapsed && <span>Documents</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/permits"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Shield className="h-4 w-4" />
-                    {!collapsed && <span>Permits</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/messages"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <div className="relative">
-                      <MessageCircle className="h-4 w-4" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-full flex items-center justify-center">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    {!collapsed && <span>Messages</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/inbox"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Mail className="h-4 w-4" />
-                    {!collapsed && <span>Email</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/people"
-                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                      >
-                        <Users className="h-4 w-4" />
-                        {!collapsed && <span>People</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Team member management</TooltipContent>
-                </Tooltip>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/contacts"
-                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                      >
-                        <Contact className="h-4 w-4" />
-                        {!collapsed && <span>Contacts</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">CRM - Vendors, regulators & contacts</TooltipContent>
-                </Tooltip>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/reports"
-                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    {!collapsed && <span>Reports</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {isModuleEnabled('occupancyEnabled') && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/occupancy"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Home className="h-4 w-4" />
-                      {!collapsed && <span>Occupancy</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isModuleEnabled('qrScanningEnabled') && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/qr-scanner"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      {!collapsed && <span>QR Scanner</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/training"
-                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                      >
-                        <GraduationCap className="h-4 w-4" />
-                        {!collapsed && <span>Training</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Training Academy - Operational skills & certifications</TooltipContent>
-                </Tooltip>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/voice-agent"
-                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                      >
-                        <Phone className="h-4 w-4" />
-                        {!collapsed && <span>Voice Agent</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">AI Voice Call Center for maintenance requests</TooltipContent>
-                </Tooltip>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Daily Grounds Module - Separate from NSPIRE */}
-        {isModuleEnabled('dailyGroundsEnabled') && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                {!collapsed && <span>Daily Grounds</span>}
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/daily"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Sun className="h-4 w-4" />
-                      {!collapsed && <span>Today's Inspection</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/history"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <History className="h-4 w-4" />
-                      {!collapsed && <span>History</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/review"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <ClipboardList className="h-4 w-4" />
-                      {!collapsed && <span>Review Queue</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
+                  />
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
 
-        {/* NSPIRE Compliance Module - Inside unit inspections */}
-        {isModuleEnabled('nspireEnabled') && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-module-inspections" />
-                {!collapsed && <span>NSPIRE Compliance</span>}
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections"
-                      end
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <ClipboardCheck className="h-4 w-4" />
-                      {!collapsed && <span>Dashboard</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/outside"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <TreePine className="h-4 w-4" />
-                      {!collapsed && <span>Outside</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/inside"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Building className="h-4 w-4" />
-                      {!collapsed && <span>Inside</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/inspections/units"
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <DoorOpen className="h-4 w-4" />
-                      {!collapsed && <span>Units</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Projects Module */}
-        {isModuleEnabled('projectsEnabled') && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-module-projects" />
-                {!collapsed && <span>Projects</span>}
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/projects"
-                      end
-                      className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <FolderKanban className="h-4 w-4" />
-                      {!collapsed && <span>All Projects</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {isAdmin && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/projects/proposals"
-                        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                      >
-                        <FileText className="h-4 w-4" />
-                        {!collapsed && <span>Proposals</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-
-      {/* Footer with user and settings */}
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <SidebarMenu>
-          {/* User info */}
-          <SidebarMenuItem>
-            <div className={cn(
-              "flex items-center gap-3 px-2 py-2",
-              collapsed && "justify-center"
-            )}>
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
-                    {user?.user_metadata?.full_name || 'User'}
-                  </p>
-                  <p className="text-xs text-sidebar-muted truncate">
-                    {user?.email}
-                  </p>
-                </div>
-              )}
-            </div>
-          </SidebarMenuItem>
-          
-          {/* Settings - Admin only */}
-          {isAdmin && (
+          {/* Portfolio - Properties, Units, Assets, Occupancy */}
+          <CollapsibleNavGroup
+            title="Portfolio"
+            icon={<Layers className="h-3 w-3" />}
+            collapsed={collapsed}
+            defaultOpen={true}
+            isActive={isPortfolioActive}
+          >
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <NavLink
-                  to="/settings"
-                  className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                >
-                  <Settings className="h-4 w-4" />
-                  {!collapsed && <span>Settings</span>}
-                </NavLink>
-              </SidebarMenuButton>
+              <NavItem
+                to="/properties"
+                icon={<Building className="h-4 w-4" />}
+                label="Properties"
+                collapsed={collapsed}
+              />
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/units"
+                icon={<DoorOpen className="h-4 w-4" />}
+                label="Units"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/assets"
+                icon={<Box className="h-4 w-4" />}
+                label="Assets"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            {isModuleEnabled('occupancyEnabled') && (
+              <SidebarMenuItem>
+                <NavItem
+                  to="/occupancy"
+                  icon={<Home className="h-4 w-4" />}
+                  label="Occupancy"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            )}
+          </CollapsibleNavGroup>
+
+          {/* Operations - Issues, Work Orders, Permits */}
+          <CollapsibleNavGroup
+            title="Operations"
+            icon={<Wrench className="h-3 w-3" />}
+            collapsed={collapsed}
+            defaultOpen={true}
+            isActive={isOperationsActive}
+          >
+            <SidebarMenuItem>
+              <NavItem
+                to="/issues"
+                icon={<AlertTriangle className="h-4 w-4" />}
+                label="Issues"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/work-orders"
+                icon={<Wrench className="h-4 w-4" />}
+                label="Work Orders"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/permits"
+                icon={<Shield className="h-4 w-4" />}
+                label="Permits"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+          </CollapsibleNavGroup>
+
+          {/* Communications - Messages, Email, Voice Agent */}
+          <CollapsibleNavGroup
+            title="Communications"
+            icon={<Megaphone className="h-3 w-3" />}
+            collapsed={collapsed}
+            isActive={isCommunicationsActive}
+          >
+            <SidebarMenuItem>
+              <NavItem
+                to="/messages"
+                icon={<MessageCircle className="h-4 w-4" />}
+                label="Messages"
+                collapsed={collapsed}
+                badge={unreadCount}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/inbox"
+                icon={<Mail className="h-4 w-4" />}
+                label="Email"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/voice-agent"
+                icon={<Phone className="h-4 w-4" />}
+                label="Voice Agent"
+                collapsed={collapsed}
+                tooltip="AI Voice Call Center"
+              />
+            </SidebarMenuItem>
+          </CollapsibleNavGroup>
+
+          {/* Organization - People, Contacts, Training, Reports, Documents */}
+          <CollapsibleNavGroup
+            title="Organization"
+            icon={<Briefcase className="h-3 w-3" />}
+            collapsed={collapsed}
+            isActive={isOrganizationActive}
+          >
+            <SidebarMenuItem>
+              <NavItem
+                to="/people"
+                icon={<Users className="h-4 w-4" />}
+                label="People"
+                collapsed={collapsed}
+                tooltip="Team member management"
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/contacts"
+                icon={<Contact className="h-4 w-4" />}
+                label="Contacts"
+                collapsed={collapsed}
+                tooltip="CRM - Vendors & contacts"
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/training"
+                icon={<GraduationCap className="h-4 w-4" />}
+                label="Training"
+                collapsed={collapsed}
+                tooltip="Training Academy"
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/documents"
+                icon={<FileText className="h-4 w-4" />}
+                label="Documents"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavItem
+                to="/reports"
+                icon={<BarChart3 className="h-4 w-4" />}
+                label="Reports"
+                collapsed={collapsed}
+              />
+            </SidebarMenuItem>
+          </CollapsibleNavGroup>
+
+          {/* Tools - QR Scanner (conditional) */}
+          {isModuleEnabled('qrScanningEnabled') && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
+                Tools
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <NavItem
+                      to="/qr-scanner"
+                      icon={<QrCode className="h-4 w-4" />}
+                      label="QR Scanner"
+                      collapsed={collapsed}
+                    />
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           )}
-          
-          {/* Logout */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={signOut}
-              className="flex items-center gap-3 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+
+          {/* Daily Grounds Module */}
+          {isModuleEnabled('dailyGroundsEnabled') && (
+            <CollapsibleNavGroup
+              title="Daily Grounds"
+              icon={<Sun className="h-3 w-3" />}
+              collapsed={collapsed}
+              isActive={isDailyGroundsActive}
+              indicator="bg-emerald-500"
             >
-              <LogOut className="h-4 w-4" />
-              {!collapsed && <span>Log out</span>}
-            </SidebarMenuButton>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/daily"
+                  icon={<Sun className="h-4 w-4" />}
+                  label="Today's Inspection"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/history"
+                  icon={<History className="h-4 w-4" />}
+                  label="History"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/review"
+                  icon={<ClipboardList className="h-4 w-4" />}
+                  label="Review Queue"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            </CollapsibleNavGroup>
+          )}
+
+          {/* NSPIRE Compliance Module */}
+          {isModuleEnabled('nspireEnabled') && (
+            <CollapsibleNavGroup
+              title="NSPIRE Compliance"
+              icon={<ClipboardCheck className="h-3 w-3" />}
+              collapsed={collapsed}
+              isActive={isNspireActive}
+              indicator="bg-[hsl(var(--module-inspections))]"
+            >
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections"
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                  label="Dashboard"
+                  collapsed={collapsed}
+                  end
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/outside"
+                  icon={<TreePine className="h-4 w-4" />}
+                  label="Outside"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/inside"
+                  icon={<Building className="h-4 w-4" />}
+                  label="Inside"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/units"
+                  icon={<DoorOpen className="h-4 w-4" />}
+                  label="Units"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            </CollapsibleNavGroup>
+          )}
+
+          {/* Projects Module */}
+          {isModuleEnabled('projectsEnabled') && (
+            <CollapsibleNavGroup
+              title="Projects"
+              icon={<FolderKanban className="h-3 w-3" />}
+              collapsed={collapsed}
+              isActive={isProjectsActive}
+              indicator="bg-[hsl(var(--module-projects))]"
+            >
+              <SidebarMenuItem>
+                <NavItem
+                  to="/projects"
+                  icon={<FolderKanban className="h-4 w-4" />}
+                  label="All Projects"
+                  collapsed={collapsed}
+                  end
+                />
+              </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <NavItem
+                    to="/projects/proposals"
+                    icon={<FileText className="h-4 w-4" />}
+                    label="Proposals"
+                    collapsed={collapsed}
+                  />
+                </SidebarMenuItem>
+              )}
+            </CollapsibleNavGroup>
+          )}
+        </SidebarContent>
+
+        {/* Footer with user and settings */}
+        <SidebarFooter className="border-t border-sidebar-border p-2">
+          <SidebarMenu>
+            {/* User info */}
+            <SidebarMenuItem>
+              <div className={cn(
+                "flex items-center gap-3 px-2 py-2",
+                collapsed && "justify-center"
+              )}>
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
+                      {user?.user_metadata?.full_name || 'User'}
+                    </p>
+                    <p className="text-xs text-sidebar-muted truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </SidebarMenuItem>
+            
+            {/* Settings - Admin only */}
+            {isAdmin && (
+              <SidebarMenuItem>
+                <NavItem
+                  to="/settings"
+                  icon={<Settings className="h-4 w-4" />}
+                  label="Settings"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            )}
+            
+            {/* Logout */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={signOut}
+                className="flex items-center gap-3 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                {!collapsed && <span>Log out</span>}
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
