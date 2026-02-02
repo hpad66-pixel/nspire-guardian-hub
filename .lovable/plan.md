@@ -1,363 +1,513 @@
 
 
-# Property Archives Implementation
-## Permanent Document Retention System for Critical Property Records
+# Articulate Course Integration System
+## Premium Training Academy with SCORM/HTML5 Course Delivery
 
 ---
 
 ## Overview
 
-Implementing a dedicated **Property Archives** section within the Document Center—a secure, immutable vault for critical property documentation including as-builts, design drawings, equipment manuals, and official permits. This system will be visually distinct with a premium vault aesthetic, admin-managed for uploads, and view/download-only for all other users.
+Implementing a beautiful, enterprise-grade Articulate course delivery system that allows admins to upload exported HTML5/SCORM courses (zip files), process and store them, and provide learners with an immersive course consumption experience with progress tracking and certification upon completion.
 
 ---
 
-## Implementation Summary
+## System Architecture
 
-| Component | Description |
-|-----------|-------------|
-| **1 Database Table** | `property_archives` with strict RLS (no delete policy) |
-| **1 Storage Bucket** | `property-archives` with admin-only upload access |
-| **1 New Hook** | `usePropertyArchives.ts` for CRUD operations |
-| **5 New Components** | Premium archive UI components |
-| **1 New Page** | `/documents/archives` route |
-| **Updated Pages** | `DocumentsPage.tsx` with dual-section layout |
-| **Features Update** | Add Property Archives to showcase |
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    ARTICULATE COURSE FLOW                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ADMIN UPLOAD                 PROCESSING                 STORAGE│
+│  ┌──────────┐    ┌───────────────────────┐    ┌───────────────┐│
+│  │ ZIP File │───▶│ Edge Function         │───▶│ training-     ││
+│  │ (HTML5)  │    │ - Unzip               │    │ courses       ││
+│  └──────────┘    │ - Validate structure  │    │ (bucket)      ││
+│                  │ - Extract metadata    │    └───────────────┘│
+│                  │ - Store files         │                     │
+│                  └───────────────────────┘                     │
+│                            │                                   │
+│                            ▼                                   │
+│                  ┌───────────────────────┐                     │
+│                  │ training_courses      │                     │
+│                  │ (database table)      │                     │
+│                  │ - Course metadata     │                     │
+│                  │ - Entry point URL     │                     │
+│                  │ - Duration, status    │                     │
+│                  └───────────────────────┘                     │
+│                                                                 │
+│  USER EXPERIENCE                                               │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ Course Player (Immersive Mode)                              ││
+│  │ - Full-screen iframe loading HTML5 content                  ││
+│  │ - Progress tracking via postMessage                         ││
+│  │ - Completion detection → Certificate                        ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Phase 1: Database & Storage
+## Database Schema
 
-### New Table: `property_archives`
+### New Table: `training_courses`
+
+Dedicated table for Articulate/SCORM courses (separate from general resources):
 
 ```sql
-CREATE TABLE property_archives (
+CREATE TABLE training_courses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  category TEXT NOT NULL DEFAULT 'as-builts',
-  subcategory TEXT,
-  name TEXT NOT NULL,
+  
+  -- Course Metadata
+  title TEXT NOT NULL,
   description TEXT,
-  document_number TEXT,
-  revision TEXT DEFAULT 'A',
-  file_url TEXT NOT NULL,
-  file_size BIGINT,
-  mime_type TEXT,
-  property_id UUID REFERENCES properties(id),
+  thumbnail_url TEXT,
+  category TEXT NOT NULL DEFAULT 'operations',
+  
+  -- Course Content
+  content_path TEXT NOT NULL, -- Path in storage bucket
+  entry_file TEXT DEFAULT 'index.html', -- Main entry point
+  
+  -- Duration & Settings
+  duration_minutes INTEGER,
+  passing_score INTEGER DEFAULT 80, -- % required to pass
+  allow_resume BOOLEAN DEFAULT true,
+  
+  -- Status & Publishing
+  is_active BOOLEAN DEFAULT false,
+  is_required BOOLEAN DEFAULT false,
+  
+  -- Role-based Access
+  target_roles app_role[] DEFAULT '{}',
+  
+  -- Ordering
+  sort_order INTEGER,
+  
+  -- Attribution
   uploaded_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  original_date DATE,
-  received_from TEXT,
-  tags TEXT[] DEFAULT '{}',
-  notes TEXT
+  
+  -- Course Version
+  version TEXT DEFAULT '1.0'
 );
 
--- Enable RLS with NO DELETE policy (permanent retention)
-ALTER TABLE property_archives ENABLE ROW LEVEL SECURITY;
+-- Enable RLS
+ALTER TABLE training_courses ENABLE ROW LEVEL SECURITY;
 
--- View: All authenticated users
-CREATE POLICY "Authenticated users can view archives"
-ON property_archives FOR SELECT
-USING (auth.uid() IS NOT NULL);
+-- All authenticated users can view active courses
+CREATE POLICY "Authenticated users can view courses"
+ON training_courses FOR SELECT
+USING (auth.uid() IS NOT NULL AND is_active = true);
 
--- Insert: Only admins
-CREATE POLICY "Only admins can create archives"
-ON property_archives FOR INSERT
-WITH CHECK (has_role(auth.uid(), 'admin'));
-
--- Update: Only admins  
-CREATE POLICY "Only admins can update archives"
-ON property_archives FOR UPDATE
+-- Admins can see all courses (including inactive)
+CREATE POLICY "Admins can view all courses"
+ON training_courses FOR SELECT
 USING (has_role(auth.uid(), 'admin'));
 
--- NO DELETE POLICY - Documents are permanent
+-- Only admins can create courses
+CREATE POLICY "Only admins can create courses"
+ON training_courses FOR INSERT
+WITH CHECK (has_role(auth.uid(), 'admin'));
+
+-- Only admins can update courses
+CREATE POLICY "Only admins can update courses"
+ON training_courses FOR UPDATE
+USING (has_role(auth.uid(), 'admin'));
+
+-- Only admins can delete courses
+CREATE POLICY "Only admins can delete courses"
+ON training_courses FOR DELETE
+USING (has_role(auth.uid(), 'admin'));
 ```
 
-### Storage Bucket: `property-archives`
+### New Table: `course_progress`
+
+Track user progress through courses with detailed state:
+
+```sql
+CREATE TABLE course_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  course_id UUID NOT NULL REFERENCES training_courses(id) ON DELETE CASCADE,
+  
+  -- Progress State
+  status TEXT NOT NULL DEFAULT 'not_started',
+  progress_percent INTEGER DEFAULT 0,
+  score INTEGER,
+  
+  -- Bookmark (for resume)
+  last_location TEXT,
+  
+  -- Timestamps
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  last_accessed_at TIMESTAMPTZ,
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  
+  -- Unique constraint
+  UNIQUE(user_id, course_id)
+);
+
+-- Enable RLS
+ALTER TABLE course_progress ENABLE ROW LEVEL SECURITY;
+
+-- Users can view own progress
+CREATE POLICY "Users can view own progress"
+ON course_progress FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Users can insert own progress
+CREATE POLICY "Users can insert own progress"
+ON course_progress FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Users can update own progress
+CREATE POLICY "Users can update own progress"
+ON course_progress FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- Admins can view all progress
+CREATE POLICY "Admins can view all progress"
+ON course_progress FOR SELECT
+USING (has_role(auth.uid(), 'admin'));
+```
+
+---
+
+## Storage Configuration
+
+### New Bucket: `training-courses`
 
 ```sql
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('property-archives', 'property-archives', false);
+VALUES ('training-courses', 'training-courses', true);
 
--- Only admins can upload
-CREATE POLICY "Admins can upload archives"
+-- Public read access for course content
+CREATE POLICY "Public read access for courses"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'training-courses');
+
+-- Only admins can upload/delete
+CREATE POLICY "Admins can upload courses"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
-  bucket_id = 'property-archives' AND
+  bucket_id = 'training-courses' AND
   has_role(auth.uid(), 'admin')
 );
 
--- All authenticated users can download
-CREATE POLICY "Authenticated can download archives"
-ON storage.objects FOR SELECT
+CREATE POLICY "Admins can delete courses"
+ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'property-archives');
+USING (
+  bucket_id = 'training-courses' AND
+  has_role(auth.uid(), 'admin')
+);
 ```
 
 ---
 
-## Phase 2: Archive Categories
+## Edge Function: `process-articulate-course`
 
-```typescript
-// src/hooks/usePropertyArchives.ts
-export const ARCHIVE_CATEGORIES = [
-  { id: 'as-builts', label: 'As-Built Drawings', icon: 'FileType', description: 'Final construction drawings reflecting actual conditions' },
-  { id: 'design-drawings', label: 'Design Drawings', icon: 'Compass', description: 'Original architectural and engineering designs' },
-  { id: 'engineering', label: 'Engineering Specifications', icon: 'FileCode', description: 'Structural, MEP, and civil engineering documents' },
-  { id: 'equipment-manuals', label: 'Equipment Manuals', icon: 'BookOpen', description: 'Operating & maintenance manuals for installed equipment' },
-  { id: 'permits-approvals', label: 'Permits & Approvals', icon: 'Stamp', description: 'Original issued permits and regulatory approvals' },
-  { id: 'surveys-reports', label: 'Surveys & Reports', icon: 'MapPin', description: 'Property surveys, environmental reports, assessments' },
-  { id: 'warranties', label: 'Warranties & Guarantees', icon: 'Shield', description: 'Equipment and construction warranties' },
-  { id: 'legal-deeds', label: 'Legal & Deeds', icon: 'Scale', description: 'Property deeds, easements, legal agreements' },
-] as const;
+Process uploaded ZIP files and extract course content:
+
+```text
+INPUT: ZIP file upload
+PROCESS:
+  1. Receive ZIP file from client
+  2. Validate file (size limits, file type)
+  3. Generate unique course folder ID
+  4. Unzip contents to memory
+  5. Identify entry point (story.html, index.html, etc.)
+  6. Upload all files to storage bucket with correct paths
+  7. Return course metadata (entry point, file count, etc.)
+OUTPUT: { coursePath, entryFile, fileCount, status }
 ```
 
 ---
 
-## Phase 3: New Hook
-
-### `src/hooks/usePropertyArchives.ts`
-
-```typescript
-// Fetch all archives with optional category filter
-export function usePropertyArchives(category?: string)
-
-// Fetch category counts for tiles
-export function useArchiveCategoryStats()
-
-// Upload archive (admin only)
-export function useUploadPropertyArchive()
-
-// Update archive metadata (admin only)
-export function useUpdatePropertyArchive()
-
-// NO DELETE MUTATION - by design
-```
-
----
-
-## Phase 4: UI Components
+## UI Components
 
 ### File Structure
 
-```
-src/components/documents/
-├── DocumentUploadDialog.tsx (existing)
-├── ArchiveHero.tsx           # Premium dark hero with vault aesthetic
-├── ArchiveCategoryCard.tsx   # Category tile with count
-├── ArchiveDocumentCard.tsx   # Individual document row
-├── ArchiveUploadDialog.tsx   # Admin-only upload dialog
-└── ArchiveViewerSheet.tsx    # Document preview/download sheet
-```
-
-### ArchiveHero.tsx - Premium Vault Header
-- Dark gradient background (slate-900 → slate-800)
-- Gold accent icon (amber-400 → amber-600)
-- "Property Archives" title with "Permanent records. Always available." tagline
-- Admin-only "Add Document" button with gold styling
-- Background grid pattern for premium feel
-
-### ArchiveCategoryCard.tsx - Category Tiles
-- Grid of 8 category cards with icons
-- Document count per category
-- Selected state with primary color
-- Hover animation with framer-motion
-- Mobile responsive (2 cols → 4 cols)
-
-### ArchiveDocumentCard.tsx - Document Rows
-- File type icon with color coding (PDF=red, Excel=green, etc.)
-- Document name with revision badge (REV A, REV B)
-- Document number, source, and original date
-- View/Download buttons on hover
-- Admin-only edit button
-
-### ArchiveUploadDialog.tsx - Admin Upload
-- File drop zone with drag-and-drop
-- Category selector with 8 options
-- Document number field (e.g., "DWG-001")
-- Revision field (A, B, C, etc.)
-- Original date and source/received from fields
-- Tags for searchability
-
----
-
-## Phase 5: New Page
-
-### `src/pages/documents/PropertyArchivesPage.tsx`
-
-```
-┌─────────────────────────────────────────────────────┐
-│  ← Back to Documents                                │
-│                                                     │
-│  ┌───────────────────────────────────────────────┐ │
-│  │  📦 Property Archives (Premium Hero)          │ │
-│  │  Permanent records. Always available.         │ │
-│  │                      [Admin: + Add Document]  │ │
-│  └───────────────────────────────────────────────┘ │
-│                                                     │
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ (Category    │
-│  │As-   │ │Design│ │Eng.  │ │Equip.│  Tiles)      │
-│  │Built │ │Draw. │ │Specs │ │Manual│              │
-│  │  12  │ │   8  │ │   4  │ │  24  │              │
-│  └──────┘ └──────┘ └──────┘ └──────┘              │
-│                                                     │
-│  ┌─────────────────────────────────────────────────┐│
-│  │ As-Built Drawings                    [Search]  ││
-│  ├─────────────────────────────────────────────────┤│
-│  │ 📐 Site Plan As-Built        REV C   [📥][👁️] ││
-│  │    DWG-001 • ABC Engineering • Mar 2024        ││
-│  │ 📐 Floor Plan Level 1        REV B   [📥][👁️] ││
-│  │    DWG-002 • XYZ Architects • Jan 2024         ││
-│  └─────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────┘
+```text
+src/
+├── pages/
+│   └── training/
+│       └── TrainingPage.tsx (update)
+│       └── CoursePlayerPage.tsx (new)
+├── components/
+│   └── training/
+│       ├── CourseCard.tsx (new - premium course display)
+│       ├── CourseUploadDialog.tsx (new - admin zip upload)
+│       ├── CoursePlayer.tsx (new - immersive player)
+│       ├── CourseProgressRing.tsx (new - circular progress)
+│       ├── CourseCertificateDialog.tsx (new - completion cert)
+│       └── CourseManagementTable.tsx (new - admin management)
+├── hooks/
+│   └── useTrainingCourses.ts (new)
+│   └── useCourseProgress.ts (new)
 ```
 
 ---
 
-## Phase 6: DocumentsPage Update
+## UI Design Specifications
 
-### Transform to Dual-Section Layout
+### 1. Courses Tab (Premium Cards)
 
-The existing DocumentsPage will be updated to show two distinct sections:
-
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  TRAINING ACADEMY                                               │
+│  ┌─────────┬─────────┬─────────────┬─────────┐                 │
+│  │ eBooks  │ Courses │ Paths       │ Manage  │                 │
+│  └─────────┴────┬────┴─────────────┴─────────┘                 │
+│                 ▼                                               │
+│  ┌────────────────────────────────────────────────────────────┐│
+│  │ 🎓 Interactive Training Courses                            ││
+│  │ Complete interactive courses to earn your certification    ││
+│  │                                              [+ Add Course] ││
+│  └────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐│
+│  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌────────────┐ ││
+│  │ │  THUMBNAIL   │ │  │ │  THUMBNAIL   │ │  │ │ THUMBNAIL  │ ││
+│  │ │              │ │  │ │              │ │  │ │            │ ││
+│  │ │   ○ 65%     │ │  │ │   ✓ 100%    │ │  │ │  Not Started│ ││
+│  │ └──────────────┘ │  │ └──────────────┘ │  │ └────────────┘ ││
+│  │ Safety Training  │  │ NSPIRE Basics    │  │ Fire Safety   ││
+│  │ 45 min • Required│  │ 30 min • ✓ Done  │  │ 20 min        ││
+│  │ [Continue Course]│  │ [View Certificate]│  │ [Start Course]││
+│  └──────────────────┘  └──────────────────┘  └────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
 ```
-┌─────────────────────────────────────────────────────┐
-│  DOCUMENTS                                          │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  🔒 PROPERTY ARCHIVES                        │   │
-│  │  Permanent vault for as-builts, drawings,    │   │
-│  │  equipment manuals, and permits.             │   │
-│  │  View and download only.                     │   │
-│  │                            [Open Archives →] │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  📁 WORKING DOCUMENTS                        │   │
-│  │  Contracts, insurance, policies, reports.    │   │
-│  │  Upload, organize, and manage.               │   │
-│  │                                              │   │
-│  │  [Existing folder sidebar + document table]  │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+
+### 2. Course Card Design
+
+Premium card with:
+- Large thumbnail area with gradient overlay
+- Circular progress indicator (ring style)
+- Course title and description
+- Duration badge
+- Required/Optional indicator
+- Action button (Start/Continue/Complete)
+- Hover animation with scale/shadow
+
+### 3. Course Upload Dialog (Admin)
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Upload Articulate Course                               [X]    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                                                         │   │
+│  │  ┌─────┐  Drag & drop your Articulate                  │   │
+│  │  │ 📦  │  HTML5 export (.zip) here                     │   │
+│  │  └─────┘                                                │   │
+│  │           or click to browse                            │   │
+│  │                                                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Course Details                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Title: [________________________________]                │   │
+│  │ Description: [_____________________________]             │   │
+│  │ Category: [Safety ▼]  Duration: [30] min                │   │
+│  │ Target Roles: ○ Inspector ● Manager ○ Superintendent    │   │
+│  │ [ ] Required  [✓] Published                             │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Processing... 45%  [████████░░░░░░░░]                   │   │
+│  │ Extracting course content...                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│                                    [Cancel]  [Upload Course]   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Property Archives Card
-- Premium dark gradient card at top of page
-- Lock icon with amber/gold accent
-- "Property Archives" heading
-- Clear description of permanent retention
-- "Open Archives" button linking to `/documents/archives`
-- Document count badge
+### 4. Immersive Course Player
+
+Full-screen immersive experience:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │                                    ○ 65%     [Mark Complete]│ │
+│ │                                              [X Close]      │ │
+│ │                                                             │ │
+│ │                                                             │ │
+│ │              ┌───────────────────────────────┐             │ │
+│ │              │                               │             │ │
+│ │              │     ARTICULATE COURSE         │             │ │
+│ │              │       (iframe content)        │             │ │
+│ │              │                               │             │ │
+│ │              │                               │             │ │
+│ │              │                               │             │ │
+│ │              └───────────────────────────────┘             │ │
+│ │                                                             │ │
+│ │                                                             │ │
+│ │                                                             │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│           [ ◀ Previous ]  ──────────────────  [ Next ▶ ]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Features:
+- Dark background for focus
+- Floating controls (close, progress, complete)
+- Full viewport iframe
+- Optional navigation controls
+- Progress persistence
+- Glassmorphism control bar
 
 ---
 
-## Phase 7: Route & Navigation
+## Implementation Phases
 
-### App.tsx Update
-```typescript
-// Add new route
-<Route path="/documents/archives" element={<PropertyArchivesPage />} />
+### Phase 1: Database & Storage
+1. Create `training_courses` table with RLS
+2. Create `course_progress` table with RLS
+3. Create `training-courses` storage bucket
+4. Add storage policies
+
+### Phase 2: Edge Function
+1. Create `process-articulate-course` edge function
+2. Handle ZIP upload and extraction
+3. Upload extracted files to storage
+4. Return course metadata
+
+### Phase 3: Hooks
+1. Create `useTrainingCourses.ts` - CRUD for courses
+2. Create `useCourseProgress.ts` - Track user progress
+3. Create `useUploadCourse.ts` - Handle ZIP upload flow
+
+### Phase 4: UI Components
+1. `CourseCard.tsx` - Premium course display card
+2. `CourseUploadDialog.tsx` - Admin upload with drag-drop
+3. `CourseProgressRing.tsx` - Circular progress indicator
+4. `CoursePlayer.tsx` - Immersive full-screen player
+5. `CourseCertificateDialog.tsx` - Completion certificate
+
+### Phase 5: Page Integration
+1. Update `TrainingPage.tsx` - Enhance Courses tab
+2. Create route for course player (or use dialog)
+3. Add management section for admins
+
+### Phase 6: Features Page Update
+1. Add Training Academy module to showcase
+2. Highlight course delivery and certification
+
+---
+
+## Technical Considerations
+
+### Articulate HTML5 Export Structure
+
+Typical Articulate export contains:
+```text
+course.zip/
+├── story.html (or index.html) ← Entry point
+├── story_content/
+│   ├── slides/
+│   ├── data/
+│   └── assets/
+├── mobile/
+└── tincan.xml (or imsmanifest.xml for SCORM)
 ```
 
-### Sidebar Update
-- Documents link remains as-is
-- Archives accessible via Documents page card
+### Entry Point Detection
+
+The edge function will look for:
+1. `story.html` (Storyline 360)
+2. `index.html` (Rise 360 / generic)
+3. `story_html5.html` (older exports)
+
+### Progress Tracking
+
+Two approaches:
+1. **Simple**: Manual "Mark Complete" button
+2. **SCORM/xAPI**: Listen for postMessage from course
+
+For initial implementation, we'll use the simple approach with the option to auto-complete when the user reaches 100% in the iframe.
+
+### File Size Limits
+
+- Edge function limit: Consider chunked upload for large courses
+- Typical Articulate course: 5-50MB zipped
+- Storage: Public bucket for easy iframe access
 
 ---
 
-## Phase 8: Features Page Update
+## Visual Design Language
 
-### Add Property Archives Module to ModuleShowcase
-
-Add a new module section highlighting the archives feature:
-
-```typescript
-{
-  title: 'Property Archives',
-  headline: 'Your Permanent Digital Vault.',
-  points: [
-    { icon: Lock, text: 'As-built drawings and design documents secured forever' },
-    { icon: BookOpen, text: 'Equipment manuals accessible to maintenance staff' },
-    { icon: Shield, text: 'Admin-controlled uploads, view-only for teams' },
-    { icon: History, text: 'Complete audit trail of property documentation' },
-  ],
-  visual: 'archives', // New visual type
-}
-```
-
-### New Visual for Archives
-A premium card showing:
-- Vault/archive icon with gold accent
-- Category folders with lock badges
-- "Permanent" label
-- Document previews
-
----
-
-## Permission Matrix
-
-| Role | View | Download | Upload | Edit | Delete |
-|------|------|----------|--------|------|--------|
-| Admin | ✅ | ✅ | ✅ | ✅ | ❌ (by design) |
-| Manager | ✅ | ✅ | ❌ | ❌ | ❌ |
-| All Others | ✅ | ✅ | ❌ | ❌ | ❌ |
-
-**Key Security Feature**: No user—not even admins—can delete property archives. This ensures permanent retention for regulatory compliance.
-
----
-
-## Visual Design Specifications
-
-### Color Palette
-- **Hero Background**: `bg-gradient-to-br from-slate-900 to-slate-800`
-- **Accent Color**: `amber-400` to `amber-600` for gold vault aesthetic
-- **Category Cards**: Standard card with primary accent on selection
-- **Document Cards**: Clean white/card background with subtle borders
-
-### Iconography
-- Archive/Vault: `Archive` from lucide-react
-- Lock: `Lock` for permanence indication
-- Categories: `FileType`, `Compass`, `BookOpen`, `Shield`, `Stamp`, `MapPin`, `Scale`
+### Color Scheme
+- Course cards: Primary gradient background
+- Progress ring: Green for complete, amber for in-progress
+- Player: Dark mode (black/dark slate)
 
 ### Animations (Framer Motion)
-- Hero fade-in on page load
-- Category cards stagger-in
-- Document cards slide-in
-- Hover states with subtle lift
+- Card hover: Scale + shadow
+- Progress ring: Animated fill
+- Player entrance: Fade + scale
+- Certificate: Celebration confetti
+
+### Typography
+- Course titles: Bold, tracking-tight
+- Descriptions: Regular, muted color
+- Duration badges: Small, rounded pills
 
 ---
 
-## Files to Create/Modify
+## Files to Create
 
 ### New Files
-1. `src/hooks/usePropertyArchives.ts`
-2. `src/components/documents/ArchiveHero.tsx`
-3. `src/components/documents/ArchiveCategoryCard.tsx`
-4. `src/components/documents/ArchiveDocumentCard.tsx`
-5. `src/components/documents/ArchiveUploadDialog.tsx`
-6. `src/components/documents/ArchiveViewerSheet.tsx`
-7. `src/pages/documents/PropertyArchivesPage.tsx`
+1. `supabase/functions/process-articulate-course/index.ts`
+2. `src/hooks/useTrainingCourses.ts`
+3. `src/hooks/useCourseProgress.ts`
+4. `src/components/training/CourseCard.tsx`
+5. `src/components/training/CourseUploadDialog.tsx`
+6. `src/components/training/CoursePlayer.tsx`
+7. `src/components/training/CourseProgressRing.tsx`
+8. `src/components/training/CourseCertificateDialog.tsx`
 
 ### Modified Files
-1. `src/pages/documents/DocumentsPage.tsx` - Add archives card section
-2. `src/App.tsx` - Add archives route
-3. `src/components/features/ModuleShowcase.tsx` - Add archives module
+1. `src/pages/training/TrainingPage.tsx` - Enhanced Courses tab
+2. `src/components/features/ModuleShowcase.tsx` - Add Training Academy
 
-### Database Migration
-1. Create `property_archives` table with RLS
-2. Create `property-archives` storage bucket with policies
+### Database Migrations
+1. Create `training_courses` table
+2. Create `course_progress` table
+3. Create `training-courses` storage bucket
 
 ---
 
 ## Value Proposition
 
-This implementation positions document management as a **first-class enterprise feature** demonstrating:
+This implementation delivers:
 
-1. **Regulatory Compliance** - Permanent retention of critical documents
-2. **Operational Efficiency** - Easy access to equipment manuals and as-builts
-3. **Security & Control** - Admin-managed uploads, view-only for teams
-4. **Professional Trust** - Premium visual design conveying importance
+1. **Professional Course Delivery** - Immersive, distraction-free learning experience
+2. **Zero External Dependencies** - All courses hosted internally
+3. **Progress Tracking** - Users can resume where they left off
+4. **Certification** - Professional certificates upon completion
+5. **Admin Control** - Easy upload and management of courses
+6. **Role-Based Access** - Target specific teams with specific training
+7. **Beautiful UX** - Apple-quality design that encourages engagement
+
+---
+
+## Summary
+
+The Articulate Course Integration transforms the Training Academy into a complete learning management system:
+
+1. **Admin uploads** a ZIP file exported from Articulate
+2. **Edge function processes** the ZIP, extracts files to storage
+3. **Course appears** in the premium Courses tab
+4. **Users launch** courses in immersive full-screen player
+5. **Progress is tracked** automatically
+6. **Certification** is awarded upon completion
+
+This creates a seamless, professional training experience that rivals enterprise LMS platforms while remaining fully integrated within the Glorieta Gardens Platform.
 
