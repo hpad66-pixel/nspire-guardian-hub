@@ -1795,6 +1795,77 @@ export type Database = {
         }
         Relationships: []
       }
+      property_archives: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          document_number: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          name: string
+          notes: string | null
+          original_date: string | null
+          property_id: string | null
+          received_from: string | null
+          revision: string | null
+          subcategory: string | null
+          tags: string[] | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          document_number?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          notes?: string | null
+          original_date?: string | null
+          property_id?: string | null
+          received_from?: string | null
+          revision?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          document_number?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          notes?: string | null
+          original_date?: string | null
+          property_id?: string | null
+          received_from?: string | null
+          revision?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_archives_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_team_members: {
         Row: {
           added_by: string | null

@@ -32,7 +32,10 @@ import {
   Download,
   MessageCircle,
   Zap,
-  AtSign
+  AtSign,
+  Archive,
+  Lock,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +44,7 @@ interface ModuleProps {
   headline: string;
   description?: string;
   points: { icon: React.ElementType; text: string }[];
-  visual: 'inspections' | 'compliance' | 'permits' | 'documents' | 'projects' | 'workorders' | 'team' | 'messaging' | 'analytics';
+  visual: 'inspections' | 'compliance' | 'permits' | 'documents' | 'archives' | 'projects' | 'workorders' | 'team' | 'messaging' | 'analytics';
   reversed?: boolean;
 }
 
@@ -154,6 +157,43 @@ function ModuleVisual({ type }: { type: ModuleProps['visual'] }) {
               <span className="text-sm text-muted-foreground">{folder.count} files</span>
             </div>
           ))}
+        </div>
+      </div>
+    ),
+    archives: (
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+            <Archive className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-white">Property Archives</h4>
+            <p className="text-xs text-slate-400">Permanent retention</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[
+            { name: 'As-Built Drawings', count: 24, icon: FileText },
+            { name: 'Equipment Manuals', count: 18, icon: BookOpen },
+            { name: 'Permits & Approvals', count: 12, icon: FileCheck },
+          ].map((cat) => (
+            <div key={cat.name} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+              <div className="flex items-center gap-3">
+                <cat.icon className="h-5 w-5 text-amber-400" />
+                <span className="text-sm text-slate-200">{cat.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-3 w-3 text-slate-500" />
+                <span className="text-sm text-slate-400">{cat.count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 pt-4 border-t border-slate-700">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Lock className="h-3 w-3" />
+            <span>Documents cannot be deleted</span>
+          </div>
         </div>
       </div>
     ),
@@ -394,6 +434,17 @@ const modules: ModuleProps[] = [
     ],
     visual: 'documents',
     reversed: true,
+  },
+  {
+    title: 'Property Archives',
+    headline: 'Your Permanent Digital Vault.',
+    points: [
+      { icon: Lock, text: 'As-built drawings and design documents secured forever' },
+      { icon: BookOpen, text: 'Equipment manuals accessible to maintenance staff' },
+      { icon: Shield, text: 'Admin-controlled uploads, view-only for teams' },
+      { icon: History, text: 'Complete audit trail of property documentation' },
+    ],
+    visual: 'archives',
   },
   {
     title: 'Project Management',
