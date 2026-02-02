@@ -1,348 +1,78 @@
 
-# Property Archives - Permanent Document Retention System
-## Enterprise-Grade As-Built & Critical Document Repository
+
+# Property Archives Implementation
+## Permanent Document Retention System for Critical Property Records
 
 ---
 
 ## Overview
 
-Create a dedicated **Property Archives** section within the Document Center that serves as an immutable, permanently retained repository for critical property documents like as-builts, design drawings, engineering specifications, equipment manuals, and official permits. This section will be visually distinct, admin-managed, and view-only for all other users.
+Implementing a dedicated **Property Archives** section within the Document Center—a secure, immutable vault for critical property documentation including as-builts, design drawings, equipment manuals, and official permits. This system will be visually distinct with a premium vault aesthetic, admin-managed for uploads, and view/download-only for all other users.
 
 ---
 
-## Core Requirements
+## Implementation Summary
 
-| Requirement | Implementation |
-|-------------|----------------|
-| **Permanent Retention** | No delete capability, no archive capability - documents stay forever |
-| **Admin-Only Upload** | Only users with `admin` role can add/manage documents |
-| **View & Download for Others** | All authenticated users can view and download, but not modify |
-| **Beautiful UX** | Premium visual design that conveys importance and permanence |
-| **Clear Separation** | Distinct from regular document folders |
+| Component | Description |
+|-----------|-------------|
+| **1 Database Table** | `property_archives` with strict RLS (no delete policy) |
+| **1 Storage Bucket** | `property-archives` with admin-only upload access |
+| **1 New Hook** | `usePropertyArchives.ts` for CRUD operations |
+| **5 New Components** | Premium archive UI components |
+| **1 New Page** | `/documents/archives` route |
+| **Updated Pages** | `DocumentsPage.tsx` with dual-section layout |
+| **Features Update** | Add Property Archives to showcase |
 
 ---
 
-## Database Schema
+## Phase 1: Database & Storage
 
 ### New Table: `property_archives`
-
-A dedicated table for permanent records, separate from `organization_documents`:
 
 ```sql
 CREATE TABLE property_archives (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Category & Organization
   category TEXT NOT NULL DEFAULT 'as-builts',
   subcategory TEXT,
-  
-  -- Document Metadata
   name TEXT NOT NULL,
   description TEXT,
-  document_number TEXT, -- e.g., "DWG-001", "MECH-HVAC-01"
-  revision TEXT DEFAULT 'A', -- A, B, C, etc.
-  
-  -- File Info
+  document_number TEXT,
+  revision TEXT DEFAULT 'A',
   file_url TEXT NOT NULL,
   file_size BIGINT,
   mime_type TEXT,
-  
-  -- Property Association (optional - for multi-property support)
   property_id UUID REFERENCES properties(id),
-  
-  -- Timestamps & Attribution
   uploaded_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  -- Source / Original Date
-  original_date DATE, -- When the original document was created
-  received_from TEXT, -- e.g., "ABC Engineering", "City of Houston"
-  
-  -- Searchability
+  original_date DATE,
+  received_from TEXT,
   tags TEXT[] DEFAULT '{}',
-  
-  -- Audit Trail
   notes TEXT
 );
 
--- Enable RLS
+-- Enable RLS with NO DELETE policy (permanent retention)
 ALTER TABLE property_archives ENABLE ROW LEVEL SECURITY;
 
--- Everyone can view
+-- View: All authenticated users
 CREATE POLICY "Authenticated users can view archives"
 ON property_archives FOR SELECT
 USING (auth.uid() IS NOT NULL);
 
--- Only admins can insert
+-- Insert: Only admins
 CREATE POLICY "Only admins can create archives"
 ON property_archives FOR INSERT
 WITH CHECK (has_role(auth.uid(), 'admin'));
 
--- Only admins can update
+-- Update: Only admins  
 CREATE POLICY "Only admins can update archives"
 ON property_archives FOR UPDATE
 USING (has_role(auth.uid(), 'admin'));
 
--- NO DELETE POLICY - Documents cannot be deleted
+-- NO DELETE POLICY - Documents are permanent
 ```
 
-### Archive Categories (Enum or constant)
-
-```typescript
-export const ARCHIVE_CATEGORIES = [
-  { id: 'as-builts', label: 'As-Built Drawings', icon: 'Blueprint', description: 'Final construction drawings reflecting actual conditions' },
-  { id: 'design-drawings', label: 'Design Drawings', icon: 'Compass', description: 'Original architectural and engineering designs' },
-  { id: 'engineering', label: 'Engineering Specifications', icon: 'FileCode', description: 'Structural, MEP, and civil engineering documents' },
-  { id: 'equipment-manuals', label: 'Equipment Manuals', icon: 'BookOpen', description: 'Operating & maintenance manuals for installed equipment' },
-  { id: 'permits-approvals', label: 'Permits & Approvals', icon: 'Stamp', description: 'Original issued permits and regulatory approvals' },
-  { id: 'surveys-reports', label: 'Surveys & Reports', icon: 'MapPin', description: 'Property surveys, environmental reports, assessments' },
-  { id: 'warranties', label: 'Warranties & Guarantees', icon: 'Shield', description: 'Equipment and construction warranties' },
-  { id: 'legal-deeds', label: 'Legal & Deeds', icon: 'Scale', description: 'Property deeds, easements, legal agreements' },
-] as const;
-```
-
----
-
-## UI Architecture
-
-### Documents Page Redesign
-
-Transform the Document Center into a two-section layout:
-
-```
-┌─────────────────────────────────────────────────────┐
-│  DOCUMENTS                                          │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  📦 PROPERTY ARCHIVES                        │   │
-│  │  Permanent records. As-builts, drawings,     │   │
-│  │  equipment manuals. View & download only.    │   │
-│  │                                [View Archives]│   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  📁 WORKING DOCUMENTS                        │   │
-│  │  Contracts, insurance, policies, reports.    │   │
-│  │                             [Browse Documents]│   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
-```
-
-### Property Archives Page
-
-A premium, dedicated page for the archives:
-
-```
-┌─────────────────────────────────────────────────────┐
-│  ← Back to Documents                                │
-│                                                     │
-│  📦 Property Archives                               │
-│  Permanent property records - never deleted         │
-│                                                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │ As-Built │ │ Design   │ │ Equip.   │ │ Permits│ │
-│  │ Drawings │ │ Drawings │ │ Manuals  │ │        │ │
-│  │    12    │ │    8     │ │    24    │ │   6    │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
-│                                                     │
-│  ┌─────────────────────────────────────────────────┐│
-│  │ Category: As-Built Drawings              [Admin]││
-│  ├─────────────────────────────────────────────────┤│
-│  │ 📐 Site Plan As-Built          REV C    [View] ││
-│  │    DWG-001 • ABC Engineering • Mar 2024        ││
-│  │ 📐 Floor Plan Level 1          REV B    [View] ││
-│  │    DWG-002 • ABC Engineering • Mar 2024        ││
-│  └─────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## Component Structure
-
-### New Files
-
-```
-src/
-├── pages/
-│   └── documents/
-│       └── PropertyArchivesPage.tsx     # Full archives view
-├── components/
-│   └── documents/
-│       ├── ArchiveHero.tsx              # Premium hero section
-│       ├── ArchiveCategoryCard.tsx      # Category tiles
-│       ├── ArchiveDocumentCard.tsx      # Individual document card
-│       ├── ArchiveDocumentTable.tsx     # List view
-│       ├── ArchiveUploadDialog.tsx      # Admin upload (admin only)
-│       ├── ArchiveDocumentViewer.tsx    # View/download sheet
-│       └── ArchiveEmptyState.tsx        # Beautiful empty state
-├── hooks/
-│   └── usePropertyArchives.ts           # CRUD operations
-```
-
----
-
-## Visual Design
-
-### Design Language
-
-The Property Archives section will use a **premium, vault-like aesthetic** to convey:
-- **Permanence** - These documents don't get deleted
-- **Importance** - Critical property records
-- **Trust** - Secure, organized, professional
-
-### Visual Elements
-
-| Element | Design |
-|---------|--------|
-| **Color Palette** | Deep navy, gold accents, subtle gradients |
-| **Icons** | Blueprint, Compass, BookOpen, Shield, Stamp |
-| **Cards** | Elevated shadows, subtle borders, premium feel |
-| **Empty States** | Illustrated, encouraging, professional |
-| **Admin Badge** | Subtle gold "Admin" indicator on upload actions |
-
-### Hero Section (ArchiveHero.tsx)
-
-```tsx
-// Premium hero with vault/archive imagery
-<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 mb-8">
-  {/* Background pattern */}
-  <div className="absolute inset-0 opacity-5">
-    <GridPattern />
-  </div>
-  
-  <div className="relative z-10">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-        <Archive className="h-7 w-7 text-white" />
-      </div>
-      <div>
-        <h1 className="text-2xl font-bold text-white">Property Archives</h1>
-        <p className="text-slate-400">Permanent records. Always available.</p>
-      </div>
-    </div>
-    
-    <p className="text-slate-300 max-w-2xl">
-      Critical property documentation including as-built drawings, engineering specifications, 
-      equipment manuals, and official permits. These records are permanently retained and 
-      cannot be deleted.
-    </p>
-    
-    {isAdmin && (
-      <Button className="mt-6 bg-amber-500 hover:bg-amber-600">
-        <Plus className="mr-2 h-4 w-4" />
-        Add Document
-      </Button>
-    )}
-  </div>
-</div>
-```
-
-### Category Cards
-
-```tsx
-// Premium category tiles with counts
-<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-  {categories.map((cat) => (
-    <motion.div
-      whileHover={{ y: -4 }}
-      className={cn(
-        "relative p-6 rounded-2xl border cursor-pointer transition-all",
-        selectedCategory === cat.id
-          ? "bg-primary text-primary-foreground border-primary shadow-lg"
-          : "bg-card hover:bg-muted/50 border-border"
-      )}
-    >
-      <cat.icon className="h-8 w-8 mb-4" />
-      <p className="font-semibold">{cat.label}</p>
-      <p className="text-3xl font-bold mt-2">{cat.count}</p>
-      <p className="text-xs opacity-75">documents</p>
-    </motion.div>
-  ))}
-</div>
-```
-
-### Document Cards (View Mode)
-
-```tsx
-// Individual archive document - premium card
-<div className="group p-4 rounded-xl border bg-card hover:shadow-md transition-all">
-  <div className="flex items-start gap-4">
-    {/* File type icon */}
-    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-      <FileType className="h-6 w-6 text-primary" />
-    </div>
-    
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2">
-        <h4 className="font-semibold truncate">{document.name}</h4>
-        <Badge variant="outline">REV {document.revision}</Badge>
-      </div>
-      <p className="text-sm text-muted-foreground">{document.document_number}</p>
-      <p className="text-xs text-muted-foreground mt-1">
-        {document.received_from} • {format(document.original_date, 'MMM yyyy')}
-      </p>
-    </div>
-    
-    {/* Actions */}
-    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-      <Button variant="ghost" size="icon" onClick={() => handleView(document)}>
-        <Eye className="h-4 w-4" />
-      </Button>
-      <Button variant="ghost" size="icon" onClick={() => handleDownload(document)}>
-        <Download className="h-4 w-4" />
-      </Button>
-    </div>
-  </div>
-</div>
-```
-
----
-
-## Permission Handling
-
-### Frontend Checks
-
-```tsx
-// In PropertyArchivesPage.tsx
-const { isAdmin } = useUserPermissions();
-
-return (
-  <div>
-    <ArchiveHero canUpload={isAdmin} onUpload={() => setUploadOpen(true)} />
-    
-    {/* Upload button only for admins */}
-    {isAdmin && (
-      <Button onClick={() => setUploadOpen(true)}>
-        Add Document
-      </Button>
-    )}
-    
-    {/* View/Download available to everyone */}
-    <ArchiveDocumentTable 
-      documents={documents} 
-      canEdit={isAdmin}  // Shows edit actions only for admin
-    />
-  </div>
-);
-```
-
-### Action Restrictions
-
-| Role | View | Download | Upload | Edit | Delete |
-|------|------|----------|--------|------|--------|
-| Admin | ✅ | ✅ | ✅ | ✅ | ❌ (by design) |
-| Manager | ✅ | ✅ | ❌ | ❌ | ❌ |
-| All Others | ✅ | ✅ | ❌ | ❌ | ❌ |
-
----
-
-## Storage Bucket
-
-Create a dedicated, private storage bucket for archives:
+### Storage Bucket: `property-archives`
 
 ```sql
 INSERT INTO storage.buckets (id, name, public)
@@ -357,7 +87,7 @@ WITH CHECK (
   has_role(auth.uid(), 'admin')
 );
 
--- All authenticated can download
+-- All authenticated users can download
 CREATE POLICY "Authenticated can download archives"
 ON storage.objects FOR SELECT
 TO authenticated
@@ -366,20 +96,185 @@ USING (bucket_id = 'property-archives');
 
 ---
 
-## Value Proposition Messaging
+## Phase 2: Archive Categories
 
-Integrate into the Documents page and Features page with clear value messaging:
+```typescript
+// src/hooks/usePropertyArchives.ts
+export const ARCHIVE_CATEGORIES = [
+  { id: 'as-builts', label: 'As-Built Drawings', icon: 'FileType', description: 'Final construction drawings reflecting actual conditions' },
+  { id: 'design-drawings', label: 'Design Drawings', icon: 'Compass', description: 'Original architectural and engineering designs' },
+  { id: 'engineering', label: 'Engineering Specifications', icon: 'FileCode', description: 'Structural, MEP, and civil engineering documents' },
+  { id: 'equipment-manuals', label: 'Equipment Manuals', icon: 'BookOpen', description: 'Operating & maintenance manuals for installed equipment' },
+  { id: 'permits-approvals', label: 'Permits & Approvals', icon: 'Stamp', description: 'Original issued permits and regulatory approvals' },
+  { id: 'surveys-reports', label: 'Surveys & Reports', icon: 'MapPin', description: 'Property surveys, environmental reports, assessments' },
+  { id: 'warranties', label: 'Warranties & Guarantees', icon: 'Shield', description: 'Equipment and construction warranties' },
+  { id: 'legal-deeds', label: 'Legal & Deeds', icon: 'Scale', description: 'Property deeds, easements, legal agreements' },
+] as const;
+```
 
-### In Documents Page Header
+---
 
-> **Property Archives**: Your permanent vault for critical property documentation. 
-> As-builts, equipment manuals, and original permits—secured and accessible forever.
+## Phase 3: New Hook
 
-### In Features Page (Update ModuleShowcase)
+### `src/hooks/usePropertyArchives.ts`
 
-Add a section highlighting the archives:
+```typescript
+// Fetch all archives with optional category filter
+export function usePropertyArchives(category?: string)
 
-```tsx
+// Fetch category counts for tiles
+export function useArchiveCategoryStats()
+
+// Upload archive (admin only)
+export function useUploadPropertyArchive()
+
+// Update archive metadata (admin only)
+export function useUpdatePropertyArchive()
+
+// NO DELETE MUTATION - by design
+```
+
+---
+
+## Phase 4: UI Components
+
+### File Structure
+
+```
+src/components/documents/
+├── DocumentUploadDialog.tsx (existing)
+├── ArchiveHero.tsx           # Premium dark hero with vault aesthetic
+├── ArchiveCategoryCard.tsx   # Category tile with count
+├── ArchiveDocumentCard.tsx   # Individual document row
+├── ArchiveUploadDialog.tsx   # Admin-only upload dialog
+└── ArchiveViewerSheet.tsx    # Document preview/download sheet
+```
+
+### ArchiveHero.tsx - Premium Vault Header
+- Dark gradient background (slate-900 → slate-800)
+- Gold accent icon (amber-400 → amber-600)
+- "Property Archives" title with "Permanent records. Always available." tagline
+- Admin-only "Add Document" button with gold styling
+- Background grid pattern for premium feel
+
+### ArchiveCategoryCard.tsx - Category Tiles
+- Grid of 8 category cards with icons
+- Document count per category
+- Selected state with primary color
+- Hover animation with framer-motion
+- Mobile responsive (2 cols → 4 cols)
+
+### ArchiveDocumentCard.tsx - Document Rows
+- File type icon with color coding (PDF=red, Excel=green, etc.)
+- Document name with revision badge (REV A, REV B)
+- Document number, source, and original date
+- View/Download buttons on hover
+- Admin-only edit button
+
+### ArchiveUploadDialog.tsx - Admin Upload
+- File drop zone with drag-and-drop
+- Category selector with 8 options
+- Document number field (e.g., "DWG-001")
+- Revision field (A, B, C, etc.)
+- Original date and source/received from fields
+- Tags for searchability
+
+---
+
+## Phase 5: New Page
+
+### `src/pages/documents/PropertyArchivesPage.tsx`
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ← Back to Documents                                │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐ │
+│  │  📦 Property Archives (Premium Hero)          │ │
+│  │  Permanent records. Always available.         │ │
+│  │                      [Admin: + Add Document]  │ │
+│  └───────────────────────────────────────────────┘ │
+│                                                     │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ (Category    │
+│  │As-   │ │Design│ │Eng.  │ │Equip.│  Tiles)      │
+│  │Built │ │Draw. │ │Specs │ │Manual│              │
+│  │  12  │ │   8  │ │   4  │ │  24  │              │
+│  └──────┘ └──────┘ └──────┘ └──────┘              │
+│                                                     │
+│  ┌─────────────────────────────────────────────────┐│
+│  │ As-Built Drawings                    [Search]  ││
+│  ├─────────────────────────────────────────────────┤│
+│  │ 📐 Site Plan As-Built        REV C   [📥][👁️] ││
+│  │    DWG-001 • ABC Engineering • Mar 2024        ││
+│  │ 📐 Floor Plan Level 1        REV B   [📥][👁️] ││
+│  │    DWG-002 • XYZ Architects • Jan 2024         ││
+│  └─────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Phase 6: DocumentsPage Update
+
+### Transform to Dual-Section Layout
+
+The existing DocumentsPage will be updated to show two distinct sections:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  DOCUMENTS                                          │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │  🔒 PROPERTY ARCHIVES                        │   │
+│  │  Permanent vault for as-builts, drawings,    │   │
+│  │  equipment manuals, and permits.             │   │
+│  │  View and download only.                     │   │
+│  │                            [Open Archives →] │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │  📁 WORKING DOCUMENTS                        │   │
+│  │  Contracts, insurance, policies, reports.    │   │
+│  │  Upload, organize, and manage.               │   │
+│  │                                              │   │
+│  │  [Existing folder sidebar + document table]  │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+### Property Archives Card
+- Premium dark gradient card at top of page
+- Lock icon with amber/gold accent
+- "Property Archives" heading
+- Clear description of permanent retention
+- "Open Archives" button linking to `/documents/archives`
+- Document count badge
+
+---
+
+## Phase 7: Route & Navigation
+
+### App.tsx Update
+```typescript
+// Add new route
+<Route path="/documents/archives" element={<PropertyArchivesPage />} />
+```
+
+### Sidebar Update
+- Documents link remains as-is
+- Archives accessible via Documents page card
+
+---
+
+## Phase 8: Features Page Update
+
+### Add Property Archives Module to ModuleShowcase
+
+Add a new module section highlighting the archives feature:
+
+```typescript
 {
   title: 'Property Archives',
   headline: 'Your Permanent Digital Vault.',
@@ -389,61 +284,80 @@ Add a section highlighting the archives:
     { icon: Shield, text: 'Admin-controlled uploads, view-only for teams' },
     { icon: History, text: 'Complete audit trail of property documentation' },
   ],
-  visual: 'archives',
+  visual: 'archives', // New visual type
 }
 ```
 
+### New Visual for Archives
+A premium card showing:
+- Vault/archive icon with gold accent
+- Category folders with lock badges
+- "Permanent" label
+- Document previews
+
 ---
 
-## Implementation Phases
+## Permission Matrix
 
-### Phase 1: Database & Hooks
+| Role | View | Download | Upload | Edit | Delete |
+|------|------|----------|--------|------|--------|
+| Admin | ✅ | ✅ | ✅ | ✅ | ❌ (by design) |
+| Manager | ✅ | ✅ | ❌ | ❌ | ❌ |
+| All Others | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+**Key Security Feature**: No user—not even admins—can delete property archives. This ensures permanent retention for regulatory compliance.
+
+---
+
+## Visual Design Specifications
+
+### Color Palette
+- **Hero Background**: `bg-gradient-to-br from-slate-900 to-slate-800`
+- **Accent Color**: `amber-400` to `amber-600` for gold vault aesthetic
+- **Category Cards**: Standard card with primary accent on selection
+- **Document Cards**: Clean white/card background with subtle borders
+
+### Iconography
+- Archive/Vault: `Archive` from lucide-react
+- Lock: `Lock` for permanence indication
+- Categories: `FileType`, `Compass`, `BookOpen`, `Shield`, `Stamp`, `MapPin`, `Scale`
+
+### Animations (Framer Motion)
+- Hero fade-in on page load
+- Category cards stagger-in
+- Document cards slide-in
+- Hover states with subtle lift
+
+---
+
+## Files to Create/Modify
+
+### New Files
+1. `src/hooks/usePropertyArchives.ts`
+2. `src/components/documents/ArchiveHero.tsx`
+3. `src/components/documents/ArchiveCategoryCard.tsx`
+4. `src/components/documents/ArchiveDocumentCard.tsx`
+5. `src/components/documents/ArchiveUploadDialog.tsx`
+6. `src/components/documents/ArchiveViewerSheet.tsx`
+7. `src/pages/documents/PropertyArchivesPage.tsx`
+
+### Modified Files
+1. `src/pages/documents/DocumentsPage.tsx` - Add archives card section
+2. `src/App.tsx` - Add archives route
+3. `src/components/features/ModuleShowcase.tsx` - Add archives module
+
+### Database Migration
 1. Create `property_archives` table with RLS
-2. Create `property-archives` storage bucket
-3. Implement `usePropertyArchives.ts` hook
-4. Add categories constant
-
-### Phase 2: UI Components
-1. Build `ArchiveHero.tsx` with premium styling
-2. Build `ArchiveCategoryCard.tsx` tiles
-3. Build `ArchiveDocumentCard.tsx` for list view
-4. Build `ArchiveUploadDialog.tsx` (admin only)
-5. Build `ArchiveDocumentViewer.tsx` sheet
-
-### Phase 3: Page Integration
-1. Create `PropertyArchivesPage.tsx`
-2. Add route in `App.tsx`
-3. Update `DocumentsPage.tsx` with dual-section layout
-4. Add navigation link in sidebar
-
-### Phase 4: Features Integration
-1. Update `ModuleShowcase.tsx` with archives section
-2. Add archives to platform overview
+2. Create `property-archives` storage bucket with policies
 
 ---
 
-## Deliverables Summary
+## Value Proposition
 
-| Component | Purpose |
-|-----------|---------|
-| **Database table** | `property_archives` with strict RLS |
-| **Storage bucket** | `property-archives` with admin-only upload |
-| **New hook** | `usePropertyArchives.ts` |
-| **6 new components** | Premium archives UI |
-| **1 new page** | `/documents/archives` |
-| **Updated Documents page** | Dual-section layout |
-| **Features page update** | Archives module showcase |
+This implementation positions document management as a **first-class enterprise feature** demonstrating:
 
----
+1. **Regulatory Compliance** - Permanent retention of critical documents
+2. **Operational Efficiency** - Easy access to equipment manuals and as-builts
+3. **Security & Control** - Admin-managed uploads, view-only for teams
+4. **Professional Trust** - Premium visual design conveying importance
 
-## Visual Mockup Summary
-
-The Property Archives will feel like:
-- A **secure vault** for important documents
-- **Premium and professional** with dark gradients and gold accents
-- **Clear hierarchy** with category tiles
-- **Easy to navigate** with filtering and search
-- **Immediately useful** with view and download always visible
-- **Trust-building** with revision tracking and source attribution
-
-This implementation positions document management as a **first-class enterprise feature** that demonstrates the platform's commitment to permanent record retention and regulatory compliance.
