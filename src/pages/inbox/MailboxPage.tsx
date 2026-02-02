@@ -33,6 +33,10 @@ export default function MailboxPage() {
     }
   };
 
+  const handleEmailDeleted = () => {
+    setSelectedEmailId(null);
+  };
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -64,7 +68,7 @@ export default function MailboxPage() {
           
           {/* Folder tabs */}
           <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
-            {(["sent", "failed", "all"] as FolderType[]).map((f) => (
+            {(["sent", "archive", "trash", "all"] as FolderType[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFolder(f)}
@@ -95,6 +99,7 @@ export default function MailboxPage() {
           emailId={selectedEmailId}
           open={mobileSheetOpen}
           onOpenChange={setMobileSheetOpen}
+          onEmailDeleted={handleEmailDeleted}
         />
         <ComposeEmailDialog open={composeOpen} onOpenChange={setComposeOpen} />
       </div>
@@ -177,7 +182,7 @@ export default function MailboxPage() {
           <ResizableHandle withHandle />
 
           <ResizablePanel defaultSize={50} minSize={30}>
-            <EmailPreview emailId={selectedEmailId} />
+            <EmailPreview emailId={selectedEmailId} onEmailDeleted={handleEmailDeleted} />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

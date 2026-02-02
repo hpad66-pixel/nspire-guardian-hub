@@ -39,11 +39,17 @@ export function EmailList({
 
     // Filter by folder
     if (folder === "sent") {
-      result = result.filter((e) => e.status === "sent");
+      result = result.filter((e) => e.status === "sent" && !(e as any).is_archived && !(e as any).is_deleted);
     } else if (folder === "failed") {
-      result = result.filter((e) => e.status === "failed");
+      result = result.filter((e) => e.status === "failed" && !(e as any).is_archived && !(e as any).is_deleted);
     } else if (folder === "inbox") {
-      result = result.filter((e) => e.status === "pending");
+      result = result.filter((e) => e.status === "pending" && !(e as any).is_archived && !(e as any).is_deleted);
+    } else if (folder === "archive") {
+      result = result.filter((e) => (e as any).is_archived && !(e as any).is_deleted);
+    } else if (folder === "trash") {
+      result = result.filter((e) => (e as any).is_deleted);
+    } else if (folder === "all") {
+      result = result.filter((e) => !(e as any).is_archived && !(e as any).is_deleted);
     }
 
     // Filter by search

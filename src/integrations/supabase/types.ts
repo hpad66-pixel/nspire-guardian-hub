@@ -1924,19 +1924,24 @@ export type Database = {
       }
       report_emails: {
         Row: {
+          archived_at: string | null
           attachment_filename: string | null
           attachment_size: number | null
           bcc_recipients: string[] | null
           body_html: string | null
           body_text: string | null
           daily_inspection_id: string | null
+          deleted_at: string | null
           error_message: string | null
           id: string
+          is_archived: boolean | null
+          is_deleted: boolean | null
           is_read: boolean | null
           project_id: string | null
           property_id: string | null
           proposal_id: string | null
           recipients: string[]
+          reply_to_id: string | null
           report_id: string | null
           report_type: string | null
           sent_at: string
@@ -1944,22 +1949,28 @@ export type Database = {
           source_module: string | null
           status: string | null
           subject: string
+          thread_id: string | null
           work_order_id: string | null
         }
         Insert: {
+          archived_at?: string | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
           daily_inspection_id?: string | null
+          deleted_at?: string | null
           error_message?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_deleted?: boolean | null
           is_read?: boolean | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
           recipients: string[]
+          reply_to_id?: string | null
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
@@ -1967,22 +1978,28 @@ export type Database = {
           source_module?: string | null
           status?: string | null
           subject: string
+          thread_id?: string | null
           work_order_id?: string | null
         }
         Update: {
+          archived_at?: string | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
           daily_inspection_id?: string | null
+          deleted_at?: string | null
           error_message?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_deleted?: boolean | null
           is_read?: boolean | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
           recipients?: string[]
+          reply_to_id?: string | null
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
@@ -1990,6 +2007,7 @@ export type Database = {
           source_module?: string | null
           status?: string | null
           subject?: string
+          thread_id?: string | null
           work_order_id?: string | null
         }
         Relationships: [
@@ -2019,6 +2037,13 @@ export type Database = {
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "project_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "report_emails"
             referencedColumns: ["id"]
           },
           {

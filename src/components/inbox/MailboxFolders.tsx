@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import { Inbox, Send, AlertCircle, Mail, Plus } from "lucide-react";
+import { Inbox, Send, AlertCircle, Mail, Plus, Archive, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export type FolderType = "all" | "sent" | "failed" | "inbox";
+export type FolderType = "all" | "sent" | "failed" | "inbox" | "archive" | "trash";
 
 interface MailboxFoldersProps {
   currentFolder: FolderType;
@@ -14,6 +14,8 @@ interface MailboxFoldersProps {
     failed: number;
     pending: number;
     unread: number;
+    archived: number;
+    deleted: number;
   } | undefined;
   onCompose?: () => void;
 }
@@ -22,6 +24,8 @@ const folders: { id: FolderType; label: string; icon: typeof Inbox }[] = [
   { id: "inbox", label: "Inbox", icon: Inbox },
   { id: "sent", label: "Sent", icon: Send },
   { id: "failed", label: "Failed", icon: AlertCircle },
+  { id: "archive", label: "Archive", icon: Archive },
+  { id: "trash", label: "Trash", icon: Trash2 },
   { id: "all", label: "All Mail", icon: Mail },
 ];
 
@@ -40,6 +44,10 @@ export function MailboxFolders({
         return folderCounts.failed;
       case "inbox":
         return folderCounts.pending;
+      case "archive":
+        return folderCounts.archived || 0;
+      case "trash":
+        return folderCounts.deleted || 0;
       case "all":
         return folderCounts.total;
       default:
