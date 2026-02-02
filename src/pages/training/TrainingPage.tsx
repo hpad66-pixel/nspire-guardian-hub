@@ -22,6 +22,7 @@ import { EBookManagementDialog } from '@/components/training/EBookManagementDial
 import { LearningPathCard } from '@/components/training/LearningPathCard';
 import { TrainingResourceCard } from '@/components/training/TrainingResourceCard';
 import { TrainingRequestDialog } from '@/components/training/TrainingRequestDialog';
+import { ProgressStatsCard } from '@/components/training/ProgressStatsCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TrainingResource } from '@/hooks/useTrainingResources';
 
@@ -68,9 +69,19 @@ export default function TrainingPage() {
 
   const isAdmin = currentRole === 'admin';
 
-  const ebooks = resources?.filter(r => r.resource_type === 'ebook') || [];
-  const courses = resources?.filter(r => r.resource_type === 'course') || [];
-  const guides = resources?.filter(r => r.resource_type === 'guide') || [];
+  // Filter ebooks by user's role - show all if admin or if no target_roles specified
+  const filterByRole = (resources: TrainingResource[]) => {
+    if (isAdmin) return resources;
+    return resources.filter(r => {
+      if (!r.target_roles || r.target_roles.length === 0) return true;
+      return currentRole && r.target_roles.includes(currentRole);
+    });
+  };
+
+  const ebooks = filterByRole(resources?.filter(r => r.resource_type === 'ebook') || []);
+  const courses = filterByRole(resources?.filter(r => r.resource_type === 'course') || []);
+  const guides = filterByRole(resources?.filter(r => r.resource_type === 'guide') || []);
+  const allEbooks = resources?.filter(r => r.resource_type === 'ebook') || []; // For admin management
 
   const filteredEbooks = ebooks.filter(r =>
     r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,6 +144,8 @@ export default function TrainingPage() {
 
         {/* eBook Library Tab */}
         <TabsContent value="library" className="space-y-6">
+          {/* Progress Stats */}
+          <ProgressStatsCard totalResources={ebooks.length} />
           <div className="flex items-center justify-between gap-4">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -286,7 +299,7 @@ export default function TrainingPage() {
                       <div>
                         <h3 className="font-semibold">eBooks</h3>
                         <p className="text-sm text-muted-foreground">
-                          {ebooks.length} eBook{ebooks.length !== 1 ? 's' : ''} in library
+                          {allEbooks.length} eBook{allEbooks.length !== 1 ? 's' : ''} in library
                         </p>
                       </div>
                     </div>
@@ -296,13 +309,13 @@ export default function TrainingPage() {
                     </Button>
                   </div>
 
-                  {ebooks.length === 0 ? (
+                  {allEbooks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>No eBooks added yet. Click "Add eBook" to get started.</p>
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {ebooks.map((ebook) => (
+                      {allEbooks.map((ebook) => (
                         <div
                           key={ebook.id}
                           className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
@@ -325,9 +338,21 @@ export default function TrainingPage() {
                             )}
                             <div>
                               <p className="font-medium">{ebook.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {ebook.category} • {ebook.is_active ? 'Published' : 'Draft'}
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-muted-foreground">
+                                  {ebook.category} • {ebook.is_active ? 'Published' : 'Draft'}
+                                </span>
+                                {ebook.target_roles && ebook.target_roles.length > 0 && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                    {ebook.target_roles.length} role{ebook.target_roles.length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                                {ebook.is_required && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
+                                    Required
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <Button

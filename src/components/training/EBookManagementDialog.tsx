@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { BookOpen, Plus, Pencil, Trash2, Link, Image, Code } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, Link, Image, Code, Users } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 import {
   Dialog,
   DialogContent,
@@ -57,6 +60,16 @@ const CATEGORIES = [
   { value: 'emergency', label: 'Emergency Response' },
 ];
 
+const TARGET_ROLES = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'project_manager', label: 'Project Manager' },
+  { value: 'superintendent', label: 'Superintendent' },
+  { value: 'inspector', label: 'Inspector' },
+  { value: 'subcontractor', label: 'Subcontractor' },
+  { value: 'user', label: 'Staff' },
+];
+
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
@@ -67,6 +80,8 @@ const formSchema = z.object({
   duration_minutes: z.coerce.number().optional(),
   is_required: z.boolean().default(false),
   is_active: z.boolean().default(true),
+  target_roles: z.array(z.string()).default([]),
+  sort_order: z.coerce.number().optional(),
 }).refine(
   (data) => data.embed_url || data.embed_code,
   { message: 'Either Embed URL or Embed Code is required', path: ['embed_code'] }
@@ -103,6 +118,8 @@ export function EBookManagementDialog({
       duration_minutes: undefined,
       is_required: false,
       is_active: true,
+      target_roles: [],
+      sort_order: undefined,
     },
   });
 
@@ -122,6 +139,8 @@ export function EBookManagementDialog({
         duration_minutes: editingEbook.duration_minutes || undefined,
         is_required: editingEbook.is_required || false,
         is_active: editingEbook.is_active !== false,
+        target_roles: editingEbook.target_roles || [],
+        sort_order: editingEbook.sort_order || undefined,
       });
     } else {
       form.reset({
@@ -134,6 +153,8 @@ export function EBookManagementDialog({
         duration_minutes: undefined,
         is_required: false,
         is_active: true,
+        target_roles: [],
+        sort_order: undefined,
       });
     }
   }, [editingEbook, form]);
@@ -151,6 +172,8 @@ export function EBookManagementDialog({
       duration_minutes: data.duration_minutes || null,
       is_required: data.is_required,
       is_active: data.is_active,
+      target_roles: data.target_roles.length > 0 ? data.target_roles as AppRole[] : null,
+      sort_order: data.sort_order || null,
       resource_type: 'ebook' as const,
     };
 
@@ -345,6 +368,72 @@ export function EBookManagementDialog({
                   )}
                 />
               </div>
+
+              {/* Target Roles */}
+              <FormField
+                control={form.control}
+                name="target_roles"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Target Audience (Optional)
+                    </FormLabel>
+                    <FormDescription>
+                      Leave empty to show to all users, or select specific roles.
+                    </FormDescription>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {TARGET_ROLES.map((role) => {
+                        const isSelected = field.value?.includes(role.value);
+                        return (
+                          <button
+                            key={role.value}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                field.onChange(field.value?.filter((r: string) => r !== role.value) || []);
+                              } else {
+                                field.onChange([...(field.value || []), role.value]);
+                              }
+                            }}
+                            className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                            }`}
+                          >
+                            {role.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Sort Order */}
+              <FormField
+                control={form.control}
+                name="sort_order"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display Order (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="1, 2, 3..."
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Lower numbers appear first. Leave empty for default ordering.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex items-center gap-6 pt-2">
                 <FormField
