@@ -193,14 +193,14 @@ export function CoursePlayer({
         </motion.div>
 
         {/* Course Content (iframe) */}
-        <div className="absolute inset-0 pt-16">
+        <div className="absolute inset-0 pt-16 bg-white">
           <iframe
             ref={iframeRef}
             src={courseUrl}
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 bg-white"
             title={course.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation"
           />
         </div>
 
