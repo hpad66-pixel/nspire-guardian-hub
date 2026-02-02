@@ -77,6 +77,7 @@ export function CourseUploadDialog({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showReupload, setShowReupload] = useState(false);
 
   const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
@@ -133,7 +134,7 @@ export function CourseUploadDialog({
       setUploadProgress(10);
 
       if (isEditing) {
-        // Just update metadata
+        // Update metadata first
         await updateCourse.mutateAsync({
           id: editingCourse.id,
           title: title.trim(),
@@ -144,7 +145,22 @@ export function CourseUploadDialog({
           is_required: isRequired,
           target_roles: targetRoles,
         });
+
+        // If a new file was provided, reprocess the course content
+        if (file) {
+          setUploadProgress(40);
+          setUploadStatus('processing');
+
+          await processZip.mutateAsync({
+            file: file,
+            courseId: editingCourse.id,
+          });
+
+          setUploadProgress(90);
+          toast.success('Course content replaced successfully!');
+        }
         
+        setUploadProgress(100);
         setUploadStatus('success');
         setTimeout(() => {
           onOpenChange(false);
@@ -214,6 +230,7 @@ export function CourseUploadDialog({
     setUploadStatus('idle');
     setUploadProgress(0);
     setErrorMessage('');
+    setShowReupload(false);
   };
 
   const handleClose = () => {
@@ -239,8 +256,8 @@ export function CourseUploadDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* File Upload Zone (only for new courses) */}
-          {!isEditing && (
+          {/* File Upload Zone (for new courses OR re-uploading existing) */}
+          {(!isEditing || showReupload) && (
             <div
               {...getRootProps()}
               className={cn(
@@ -281,13 +298,36 @@ export function CourseUploadDialog({
                   <p className="font-medium">
                     {isDragActive
                       ? 'Drop your ZIP file here'
-                      : 'Drag & drop your Articulate HTML5 export'}
+                      : showReupload 
+                        ? 'Drop a new ZIP file to replace course content'
+                        : 'Drag & drop your Articulate HTML5 export'}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     or click to browse
                   </p>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Reupload Option for Existing Courses */}
+          {isEditing && !showReupload && (
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+              <div>
+                <p className="font-medium">Course Content</p>
+                <p className="text-sm text-muted-foreground">
+                  Current entry file: {editingCourse?.entry_file || 'Unknown'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReupload(true)}
+                disabled={uploadStatus !== 'idle'}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Replace Content
+              </Button>
             </div>
           )}
 

@@ -261,29 +261,47 @@ Deno.serve(async (req) => {
 
 function getContentType(ext: string): string {
   const types: Record<string, string> = {
-    html: "text/html",
-    htm: "text/html",
-    css: "text/css",
-    js: "application/javascript",
-    json: "application/json",
-    xml: "application/xml",
+    // HTML - ensure charset is specified for proper rendering
+    html: "text/html; charset=utf-8",
+    htm: "text/html; charset=utf-8",
+    // Styles
+    css: "text/css; charset=utf-8",
+    // Scripts
+    js: "application/javascript; charset=utf-8",
+    mjs: "application/javascript; charset=utf-8",
+    // Data
+    json: "application/json; charset=utf-8",
+    xml: "application/xml; charset=utf-8",
+    // Images
     png: "image/png",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     gif: "image/gif",
     svg: "image/svg+xml",
     webp: "image/webp",
+    ico: "image/x-icon",
+    // Audio
     mp3: "audio/mpeg",
-    mp4: "video/mp4",
-    webm: "video/webm",
     ogg: "audio/ogg",
     wav: "audio/wav",
+    m4a: "audio/mp4",
+    // Video
+    mp4: "video/mp4",
+    webm: "video/webm",
+    // Fonts
     woff: "font/woff",
     woff2: "font/woff2",
     ttf: "font/ttf",
+    otf: "font/otf",
     eot: "application/vnd.ms-fontobject",
+    // Documents
     pdf: "application/pdf",
+    // Legacy
     swf: "application/x-shockwave-flash",
+    // Data files
+    txt: "text/plain; charset=utf-8",
+    vtt: "text/vtt; charset=utf-8",
+    srt: "text/plain; charset=utf-8",
   };
   return types[ext] || "application/octet-stream";
 }
