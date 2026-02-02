@@ -1,111 +1,99 @@
 
 
-# Plan: Fix eBook Fullscreen Viewer - Complete Solution
+# Plan: Auto-Generate Beautifully Branded eBook Covers
 
-## Problem Analysis
-Based on the screenshot and code review, the eBook viewer is still displaying incorrectly because:
+## Problem Summary
+When an eBook is added without a custom cover image, the current placeholder is just a generic BookOpen icon on a muted background. This looks unprofessional and doesn't create an inviting reading experience. You want every eBook to have a consistent, beautifully branded cover that displays the book title automatically.
 
-1. **CSS Grid Override**: The `DialogContent` base component has `grid` in its default className, which takes precedence over the `flex flex-col` we're adding. CSS specificity means both classes apply, but `grid` display property wins.
+## Solution Overview
+Create a new `GeneratedBookCover` component that renders a professional, CSS-based book cover design featuring:
+- The "Glorieta Gardens Apartments" branding
+- The eBook title prominently displayed
+- Category-based accent colors for visual variety
+- A consistent, elegant design language
 
-2. **Missing !important Override**: We need to ensure `flex` layout fully replaces the default grid behavior.
+## Design Approach
 
-3. **Iframe Height Issue**: The iframe wrapper needs both `flex-1` AND explicit `h-full` with proper overflow handling for the iframe to fill the available space.
-
-4. **Relative Container Missing**: The iframe parent needs `relative` positioning for proper layout containment.
-
-## Solution
-
-### File: `src/components/training/EBookCard.tsx`
-
-Replace the fullscreen Dialog section with a properly structured layout that:
-- Uses inline styles to guarantee flex layout (bypassing CSS specificity issues)
-- Uses absolute positioning for the iframe to fill its container completely
-- Removes the conflicting `min-h-0` approach in favor of explicit dimensions
-- Ensures the close button (X) is properly positioned
-
-```tsx
-{/* Fullscreen Reader Dialog */}
-<Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-  <DialogContent 
-    className="max-w-[95vw] w-full h-[95vh] p-0 overflow-hidden border-0"
-    style={{ display: 'flex', flexDirection: 'column' }}
-  >
-    {/* Compact Header */}
-    <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-primary" />
-        <span className="font-semibold text-base">{ebook.title}</span>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => window.open(embedUrl || '', '_blank')}
-        className="mr-8"
-      >
-        <ExternalLink className="h-4 w-4 mr-1" />
-        Open in New Tab
-      </Button>
-    </div>
-    
-    {/* Fullscreen Iframe Container */}
-    <div className="relative flex-1 bg-muted/20" style={{ minHeight: 0 }}>
-      <iframe
-        src={embedUrl || ''}
-        className="absolute inset-0 w-full h-full border-0"
-        allowFullScreen
-        title={ebook.title}
-      />
-    </div>
-  </DialogContent>
-</Dialog>
+### Cover Layout
+```text
++---------------------------+
+|     [Category Badge]      |
+|                           |
+|    ==================     |
+|    BOOK TITLE HERE        |
+|    (Multi-line if needed) |
+|    ==================     |
+|                           |
+|   [Decorative Element]    |
+|                           |
+|  Glorieta Gardens Logo    |
+|      TRAINING LIBRARY     |
++---------------------------+
 ```
 
-### File: `src/components/training/EBookViewer.tsx`
+### Visual Elements
+- **Background**: Gradient based on category color (blue for onboarding, orange for maintenance, etc.)
+- **Title**: Large, centered, white text with elegant typography
+- **Decorative accent**: Subtle geometric pattern or line art
+- **Footer**: "Glorieta Gardens" wordmark with "Training Library" subtitle
+- **Category badge**: Small label at top indicating the content type
 
-Apply the same pattern for consistency:
+### Category Color Mapping
+| Category | Primary Color | Gradient Direction |
+|----------|---------------|-------------------|
+| Onboarding | Blue (#3B82F6) | Top-left to bottom-right |
+| Maintenance | Orange (#F97316) | Top-right to bottom-left |
+| Safety | Red (#EF4444) | Top to bottom |
+| Compliance | Purple (#8B5CF6) | Bottom-left to top-right |
+| Operations | Green (#22C55E) | Radial from center |
+| Emergency | Rose (#F43F5E) | Top to bottom |
+
+## Technical Implementation
+
+### New Component: `GeneratedBookCover.tsx`
+Location: `src/components/training/GeneratedBookCover.tsx`
 
 ```tsx
-<Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-  <DialogContent 
-    className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden border-0"
-    style={{ display: 'flex', flexDirection: 'column' }}
-  >
-    <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-5 w-5" />
-        <span className="font-semibold">{title}</span>
-      </div>
-    </div>
-    <div className="relative flex-1" style={{ minHeight: 0 }}>
-      <iframe
-        src={embedUrl}
-        className="absolute inset-0 w-full h-full border-0"
-        allowFullScreen
-        title={title}
-      />
-    </div>
-  </DialogContent>
-</Dialog>
+interface GeneratedBookCoverProps {
+  title: string;
+  category: string;
+  className?: string;
+}
 ```
 
-## Key Changes Explained
+The component will:
+1. Accept title and category as props
+2. Apply category-specific gradient background
+3. Render the title with proper text wrapping (max 3 lines with ellipsis)
+4. Include decorative elements and Glorieta Gardens branding
+5. Be fully responsive within the card's aspect ratio
 
-| Issue | Fix |
-|-------|-----|
-| Grid vs Flex conflict | Use inline `style={{ display: 'flex' }}` to guarantee flex layout |
-| Iframe not expanding | Use `absolute inset-0` positioning instead of relying on flex |
-| Container height | Parent has `relative flex-1` with `minHeight: 0` for proper shrinking |
-| Header overlap with X button | Add `mr-8` margin to "Open in New Tab" button |
-| React ref warning | Replace `DialogHeader` with plain `div` to avoid forwardRef warning |
+### Update `EBookCard.tsx`
+Modify the thumbnail area (lines 40-54) to use the new component when no `thumbnail_url` exists:
+
+```tsx
+{ebook.thumbnail_url ? (
+  <img src={ebook.thumbnail_url} ... />
+) : (
+  <GeneratedBookCover 
+    title={ebook.title} 
+    category={ebook.category} 
+  />
+)}
+```
+
+### Update Management List Preview
+Also update the small thumbnail in `TrainingPage.tsx` (lines 310-320) to show a mini version of the generated cover instead of just an icon.
 
 ## Visual Outcome
-- The FlipHTML5 flipbook will fill approximately 90-95% of viewport height
-- The header takes minimal space (~50px)
-- Page navigation arrows will be visible on the sides
-- Content will be fully readable and interactive
-- Clean, immersive reading experience
+- Every eBook will have a professional, branded cover
+- Visual consistency across your training library
+- Category colors help users quickly identify content types
+- Clean, modern design that looks intentional rather than placeholder
+- Covers work in both light and dark mode
 
-## Files to Modify
-1. `src/components/training/EBookCard.tsx`
-2. `src/components/training/EBookViewer.tsx`
+## Files to Create/Modify
+1. **Create**: `src/components/training/GeneratedBookCover.tsx` - New cover component
+2. **Modify**: `src/components/training/EBookCard.tsx` - Use generated cover as fallback
+3. **Modify**: `src/pages/training/TrainingPage.tsx` - Update management list thumbnails
 
