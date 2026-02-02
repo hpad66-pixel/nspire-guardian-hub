@@ -36,6 +36,7 @@ import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
 import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
 import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
 import MailboxPage from "./pages/inbox/MailboxPage";
+import MessagesPage from "./pages/messages/MessagesPage";
 import PermitsDashboard from "./pages/permits/PermitsDashboard";
 import PermitDetailPage from "./pages/permits/PermitDetailPage";
 import PeoplePage from "./pages/people/PeoplePage";
@@ -83,6 +84,8 @@ const App = () => (
                         <Route path="/documents" element={<DocumentsPage />} />
                         <Route path="/people" element={<PeoplePage />} />
                         <Route path="/inbox" element={<MailboxPage />} />
+                        <Route path="/messages" element={<MessagesPage />} />
+                        <Route path="/messages/:threadId" element={<MessagesPage />} />
                         <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/occupancy" element={<OccupancyPage />} />
                         <Route path="/qr-scanner" element={<QRScannerPage />} />
