@@ -1,63 +1,57 @@
 
-# Plan: Fix eBook Viewer Fullscreen Display
 
-## Problem Summary
-The fullscreen eBook reader dialog displays the embedded flipbook at only half the page height, making it difficult to read and not visually appealing. This is a UI/UX issue caused by CSS layout conflicts between the Dialog component and the iframe container.
+# Plan: Fix eBook Fullscreen Viewer - Complete Solution
 
-## Root Cause Analysis
-1. The `DialogContent` component uses CSS `grid` layout by default
-2. The iframe wrapper uses `flex-1` expecting flex behavior, but this doesn't work properly inside a grid container
-3. The iframe has no explicit height, causing embedded content (FlipHTML5, Issuu) to render at minimal dimensions
-4. Missing `overflow-hidden` and `min-h-0` utility classes that are required for proper flex shrinking
+## Problem Analysis
+Based on the screenshot and code review, the eBook viewer is still displaying incorrectly because:
+
+1. **CSS Grid Override**: The `DialogContent` base component has `grid` in its default className, which takes precedence over the `flex flex-col` we're adding. CSS specificity means both classes apply, but `grid` display property wins.
+
+2. **Missing !important Override**: We need to ensure `flex` layout fully replaces the default grid behavior.
+
+3. **Iframe Height Issue**: The iframe wrapper needs both `flex-1` AND explicit `h-full` with proper overflow handling for the iframe to fill the available space.
+
+4. **Relative Container Missing**: The iframe parent needs `relative` positioning for proper layout containment.
 
 ## Solution
 
-### 1. Update EBookCard Fullscreen Dialog
-Restructure the fullscreen dialog to use proper flexbox layout with explicit height calculations:
-
-- Change `DialogContent` to use `flex flex-col` instead of relying on grid
-- Add `overflow-hidden` to prevent content overflow
-- Use `calc()` or explicit height percentages for the iframe container
-- Add `min-h-0` to flex children to enable proper shrinking
-- Give the iframe an explicit `style={{ height: '100%' }}` attribute
-
-### 2. Improve Header/Content Ratio
-- Make the header more compact with tighter padding
-- Use a thin bottom border to separate header from content
-- Maximize the reading area by reducing header visual weight
-
-### 3. Add Loading State
-- Show a skeleton/spinner while the iframe loads
-- Improve perceived performance for slow-loading embeds
-
-## Technical Changes
-
 ### File: `src/components/training/EBookCard.tsx`
 
-Update the fullscreen Dialog (lines 88-115):
+Replace the fullscreen Dialog section with a properly structured layout that:
+- Uses inline styles to guarantee flex layout (bypassing CSS specificity issues)
+- Uses absolute positioning for the iframe to fill its container completely
+- Removes the conflicting `min-h-0` approach in favor of explicit dimensions
+- Ensures the close button (X) is properly positioned
 
 ```tsx
+{/* Fullscreen Reader Dialog */}
 <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-  <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col p-0 gap-0 overflow-hidden">
-    <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
-      <DialogTitle className="flex items-center gap-2 text-base">
+  <DialogContent 
+    className="max-w-[95vw] w-full h-[95vh] p-0 overflow-hidden border-0"
+    style={{ display: 'flex', flexDirection: 'column' }}
+  >
+    {/* Compact Header */}
+    <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
+      <div className="flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-primary" />
-        {ebook.title}
-      </DialogTitle>
+        <span className="font-semibold text-base">{ebook.title}</span>
+      </div>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => window.open(embedUrl || '', '_blank')}
+        className="mr-8"
       >
         <ExternalLink className="h-4 w-4 mr-1" />
         Open in New Tab
       </Button>
-    </DialogHeader>
-    <div className="flex-1 min-h-0 bg-muted/20">
+    </div>
+    
+    {/* Fullscreen Iframe Container */}
+    <div className="relative flex-1 bg-muted/20" style={{ minHeight: 0 }}>
       <iframe
         src={embedUrl || ''}
-        className="w-full h-full border-0"
-        style={{ minHeight: '100%' }}
+        className="absolute inset-0 w-full h-full border-0"
         allowFullScreen
         title={ebook.title}
       />
@@ -68,21 +62,24 @@ Update the fullscreen Dialog (lines 88-115):
 
 ### File: `src/components/training/EBookViewer.tsx`
 
-Apply the same fixes to the EBookViewer component for consistency:
+Apply the same pattern for consistency:
 
 ```tsx
 <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-  <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-    <DialogHeader className="px-4 py-3 border-b shrink-0">
-      <DialogTitle className="flex items-center gap-2">
+  <DialogContent 
+    className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden border-0"
+    style={{ display: 'flex', flexDirection: 'column' }}
+  >
+    <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
+      <div className="flex items-center gap-2">
         <BookOpen className="h-5 w-5" />
-        {title}
-      </DialogTitle>
-    </DialogHeader>
-    <div className="flex-1 min-h-0">
+        <span className="font-semibold">{title}</span>
+      </div>
+    </div>
+    <div className="relative flex-1" style={{ minHeight: 0 }}>
       <iframe
         src={embedUrl}
-        className="w-full h-full border-0"
+        className="absolute inset-0 w-full h-full border-0"
         allowFullScreen
         title={title}
       />
@@ -91,13 +88,24 @@ Apply the same fixes to the EBookViewer component for consistency:
 </Dialog>
 ```
 
+## Key Changes Explained
+
+| Issue | Fix |
+|-------|-----|
+| Grid vs Flex conflict | Use inline `style={{ display: 'flex' }}` to guarantee flex layout |
+| Iframe not expanding | Use `absolute inset-0` positioning instead of relying on flex |
+| Container height | Parent has `relative flex-1` with `minHeight: 0` for proper shrinking |
+| Header overlap with X button | Add `mr-8` margin to "Open in New Tab" button |
+| React ref warning | Replace `DialogHeader` with plain `div` to avoid forwardRef warning |
+
 ## Visual Outcome
-- The eBook reader will now fill 95% of the viewport height
-- The header will be compact (approximately 50px)
-- The iframe/flipbook will occupy the remaining ~90% of the dialog
-- Works correctly with FlipHTML5, Issuu, and other embed providers
-- Clean, immersive reading experience similar to native eBook apps
+- The FlipHTML5 flipbook will fill approximately 90-95% of viewport height
+- The header takes minimal space (~50px)
+- Page navigation arrows will be visible on the sides
+- Content will be fully readable and interactive
+- Clean, immersive reading experience
 
 ## Files to Modify
-1. `src/components/training/EBookCard.tsx` - Main fullscreen reader
-2. `src/components/training/EBookViewer.tsx` - Alternative viewer component
+1. `src/components/training/EBookCard.tsx`
+2. `src/components/training/EBookViewer.tsx`
+
