@@ -1,387 +1,411 @@
-# Enterprise-Grade QA/QC Audit Report
-## Complete Application Assessment
+
+
+# In-App Threaded Messaging System
+## Enterprise-Grade Communication Hub
 
 ---
 
-## Implementation Status
+## Overview
 
-### Phase 1: Security & Core Gaps ✅ COMPLETED
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Password reset flow | ✅ Complete | ForgotPasswordPage + ResetPasswordPage with password strength validation |
-| Global error boundary | ✅ Complete | ErrorBoundary component wrapping entire app |
-| Data export (CSV) | ✅ Complete | useDataExport hook + Export buttons on WorkOrders, Issues pages |
-| Pagination UI | ✅ Complete | DataTablePagination component + usePagination hook |
-
-**Note:** Leaked password protection needs to be enabled in Cloud Dashboard > Auth Settings.
-
-### Files Created/Modified
-- `src/pages/auth/ForgotPasswordPage.tsx` - Forgot password flow
-- `src/pages/auth/ResetPasswordPage.tsx` - Password reset with strength validation
-- `src/components/ErrorBoundary.tsx` - Global error boundary
-- `src/hooks/useDataExport.ts` - CSV/JSON export utility
-- `src/hooks/usePagination.ts` - Client-side pagination hook
-- `src/components/ui/data-table-pagination.tsx` - Reusable pagination UI
-- `src/App.tsx` - Added ErrorBoundary wrapper + new routes
-- `src/pages/auth/AuthPage.tsx` - Added "Forgot password?" link
-- `src/pages/workorders/WorkOrdersPage.tsx` - Added export + pagination
-- `src/pages/core/IssuesPage.tsx` - Added export + pagination
+Transform the current mailbox from a simple email record viewer into a full-fledged **in-app messaging center** with real-time threaded conversations. This will enable team members to communicate instantly without relying on external email, while preserving the existing email functionality for external communications.
 
 ---
 
-## Executive Summary
+## Current State Analysis
 
-This audit evaluates the application against enterprise-grade standards across 12 critical dimensions. The platform is a comprehensive property management/construction management suite with significant functionality already implemented, but several gaps exist that would need to be addressed for production deployment at scale.
+### What Exists Today
+- **Internal messaging foundation**: `useInternalMessaging.ts` hook that writes to `report_emails` table
+- **Database structure**: `report_emails` table with `thread_id`, `reply_to_id`, `message_type`, `recipient_user_ids`, and `from_user_id` columns
+- **Compose dialog**: Already supports internal vs. external message tabs
+- **User picker**: Team member selection using profiles data
 
----
-
-## 1. AUTHENTICATION & AUTHORIZATION
-
-### Implemented
-- Email/password authentication with Supabase Auth
-- Google OAuth sign-in option
-- Protected routes with `<ProtectedRoute>` wrapper
-- Role-based access control (RBAC) with 9 roles: admin, manager, project_manager, superintendent, inspector, owner, subcontractor, viewer, user
-- Role hierarchy with permission checking (`usePermissions.ts`)
-- User invitation system with email tokens
-- Session management and auth state persistence
-- **Password reset flow** ✅ NEW
-
-### Missing/Gaps
-| Feature | Priority | Effort | Status |
-|---------|----------|--------|--------|
-| **Password reset flow** | HIGH | Medium | ✅ Done |
-| **Email verification enforcement** | HIGH | Low | Pending |
-| **Leaked password protection** | HIGH | Low | Enable in Cloud Dashboard |
-| Multi-factor authentication (MFA/2FA) | MEDIUM | Medium | Future |
-| Session timeout/idle logout | MEDIUM | Low | Future |
+### Limitations
+- Messages are stored flat (no thread grouping in UI)
+- No real-time updates (requires manual refresh)
+- Reply functionality uses email-style quoting instead of thread view
+- No typing indicators or presence
+- No message search within threads
 
 ---
 
-## 2. SECURITY
-
-### Implemented
-- Row-Level Security (RLS) on all tables
-- Role-based permission checking with `has_role()` function
-- Secure file storage with bucket-level permissions
-- CORS headers on edge functions
-- Input validation with Zod schemas
-- XSS protection via React's default escaping
-
----
-
-## 3. DATA VALIDATION & ERROR HANDLING
-
-### Implemented
-- Zod schema validation on auth forms
-- Toast notifications for user feedback
-- Error boundaries (implicit via React Query)
-- Form validation in dialogs
-- SQL injection protection via parameterized queries
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Global error boundary component** | HIGH | Low |
-| Comprehensive form validation across all forms | MEDIUM | Medium |
-| Server-side validation in edge functions | MEDIUM | Medium |
-| Retry logic with exponential backoff | MEDIUM | Low |
-| Offline error queuing | LOW | High |
-| Error tracking integration (Sentry/LogRocket) | LOW | Medium |
-
----
-
-## 4. USER EXPERIENCE
-
-### Implemented
-- Responsive design with mobile support
-- Loading skeletons throughout
-- Toast notifications for actions
-- Global search (Cmd+K)
-- Notification center with real-time updates
-- Dark mode support (via Tailwind/next-themes)
-- Onboarding wizard for new users
-- Voice dictation with Spanish translation
-- AI text polishing
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Keyboard shortcuts beyond global search** | MEDIUM | Low |
-| Breadcrumb navigation | MEDIUM | Low |
-| Bulk actions (select multiple items) | MEDIUM | Medium |
-| Drag-and-drop interactions | LOW | Medium |
-| User preferences/settings page | LOW | Medium |
-| Guided tours for complex features | LOW | High |
-| Accessibility audit (WCAG compliance) | MEDIUM | Medium |
-
----
-
-## 5. DATA MANAGEMENT
-
-### Implemented
-- Full CRUD operations for all entities
-- Relational data with foreign keys
-- Soft delete (archiving) for documents and people
-- Version tracking for documents
-- Timestamps on all records
-- Database triggers for automated workflows
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Data export (CSV/Excel)** | HIGH | Medium |
-| Data import with validation | MEDIUM | High |
-| Bulk operations | MEDIUM | Medium |
-| Data backup/restore UI | LOW | High |
-| Data retention policies | LOW | Medium |
-| Undo/redo for critical actions | LOW | High |
-
----
-
-## 6. REPORTING & ANALYTICS
-
-### Implemented
-- Comprehensive reports page with date range filtering
-- Organization-level reports (6 types)
-- Personal/user reports (3 types)
-- Charts with Recharts
-- Property portfolio metrics
-- Inspection summary analytics
-- Defects analysis
-- Issues overview
-- Work order performance
-- Project status reports
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **PDF export for reports** | HIGH | Medium |
-| Scheduled report delivery | MEDIUM | Medium |
-| Custom report builder | LOW | High |
-| Dashboard customization | LOW | High |
-| Trend analysis over time | LOW | Medium |
-| Comparative analysis across properties | LOW | Medium |
-
----
-
-## 7. COMMUNICATION FEATURES
-
-### Implemented
-- In-app notifications with read/unread status
-- Email sending via Resend
-- Issue mentions (@mentions)
-- Issue comments with threading
-- Proposal sending via email
-- Report email distribution
-- Invitation emails
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Push notifications (mobile/desktop)** | MEDIUM | High |
-| Real-time chat/messaging | LOW | High |
-| In-app announcements | LOW | Medium |
-| SMS notifications | LOW | Medium |
-| Email templates management | LOW | Medium |
-
----
-
-## 8. OFFLINE CAPABILITY
-
-### Implemented
-- React Query caching (limited offline support)
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Service Worker for PWA** | HIGH | High |
-| Offline data sync queue | HIGH | High |
-| Local storage for draft forms | MEDIUM | Medium |
-| Background sync | MEDIUM | High |
-| Conflict resolution strategy | LOW | High |
-
----
-
-## 9. PERFORMANCE & SCALABILITY
-
-### Implemented
-- React Query for data fetching and caching
-- Lazy loading potential (React.lazy available)
-- Efficient re-renders with React patterns
-- Pagination structure in hooks
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Pagination UI on all list views** | HIGH | Medium |
-| Image optimization/compression | MEDIUM | Medium |
-| Virtual scrolling for large lists | MEDIUM | Medium |
-| Code splitting by route | MEDIUM | Low |
-| Performance monitoring | LOW | Medium |
-| CDN configuration documentation | LOW | Low |
-
----
-
-## 10. TESTING
-
-### Implemented
-- Vitest configuration present
-- Example test file exists
-- Test setup file configured
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **Unit tests for hooks** | HIGH | High |
-| **Integration tests** | HIGH | High |
-| Component tests | MEDIUM | High |
-| E2E tests (Playwright/Cypress) | MEDIUM | High |
-| API endpoint tests | MEDIUM | Medium |
-| Test coverage reporting | LOW | Low |
-
----
-
-## 11. DOCUMENTATION
-
-### Implemented
-- README.md present
-- TypeScript types throughout
-- Component props documented via TS interfaces
-
-### Missing/Gaps
-| Feature | Priority | Effort |
-|---------|----------|--------|
-| **API documentation** | HIGH | Medium |
-| User manual/help docs | MEDIUM | High |
-| Developer onboarding guide | MEDIUM | Medium |
-| Architecture diagrams | LOW | Low |
-| Deployment runbook | LOW | Medium |
-| Changelog/release notes | LOW | Low |
-
----
-
-## 12. MODULE-SPECIFIC GAPS
-
-### Training Academy
-| Feature | Status | Notes |
-|---------|--------|-------|
-| eBook CRUD | ✅ Complete | Admin-only access |
-| Generated covers | ✅ Complete | Category-based gradients |
-| Immersive reader | ✅ Complete | Fullscreen with floating close |
-| Progress tracking | ✅ Complete | Per-user status |
-| Role filtering | ✅ Complete | Target roles support |
-| Certificates | ✅ Complete | PDF download available |
-| Sort order | ✅ Complete | Manual ordering |
-| **Quiz/assessment** | ❌ Missing | Future enhancement |
-| **Learning paths** | ❌ Missing | Course grouping |
-| **Due dates/assignments** | ❌ Missing | Manager assigns training |
-
-### Inspections Module
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Daily grounds workflow | ✅ Complete | Full wizard |
-| Voice transcription | ✅ Complete | Spanish translation |
-| Photo upload | ✅ Complete | Multiple per item |
-| Review queue | ✅ Complete | Supervisor approval |
-| Addendums | ✅ Complete | Post-completion notes |
-| Report generation | ✅ Complete | PDF with print |
-| Email reports | ✅ Complete | Via Resend |
-| **Scheduled inspections** | ❌ Missing | Recurring schedule |
-| **Inspection templates** | ❌ Missing | Custom checklists |
-
-### Projects Module
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Project CRUD | ✅ Complete | Full lifecycle |
-| Milestones | ✅ Complete | Timeline view |
-| Daily reports | ✅ Complete | Photo support |
-| Change orders | ✅ Complete | Approval workflow |
-| RFIs | ✅ Complete | Full workflow |
-| Punch lists | ✅ Complete | Item tracking |
-| Proposals | ✅ Complete | AI generation |
-| **Submittals** | ⚠️ Partial | DB ready, UI minimal |
-| **Document versioning** | ⚠️ Partial | DB ready, UI minimal |
-| **Gantt chart** | ❌ Missing | Visual scheduling |
-
-### Work Orders
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Auto-creation from defects | ✅ Complete | Trigger-based |
-| Status workflow | ✅ Complete | 5-stage pipeline |
-| Priority levels | ✅ Complete | Emergency/Routine |
-| Comments/activity log | ✅ Complete | Full audit trail |
-| **Assignee workload view** | ❌ Missing | Capacity planning |
-| **SLA tracking** | ❌ Missing | Response time metrics |
-| **Recurring work orders** | ❌ Missing | Preventive maintenance |
-
----
-
-## Priority Matrix
-
-### Critical (Must Fix Before Production)
-1. Enable leaked password protection in Supabase
-2. Implement password reset flow
-3. Add global error boundary
-4. Implement data export functionality
-5. Add pagination UI to all list views
-
-### High Priority (Phase 1)
-1. Unit and integration tests
-2. API documentation
-3. Service Worker / PWA support
-4. PDF export for reports
-5. Email verification enforcement
-
-### Medium Priority (Phase 2)
-1. Accessibility audit (WCAG)
-2. Bulk operations
-3. Push notifications
-4. Image optimization
-5. Breadcrumb navigation
-
-### Lower Priority (Future Enhancements)
-1. SSO/SAML integration
-2. Custom report builder
-3. Real-time chat
-4. Gantt charts
-5. Quiz/assessment in Training
-
----
-
-## Recommended Implementation Order
+## Proposed Architecture
 
 ```text
-Phase 1 (2-3 weeks): Security & Core Gaps
-├── Enable leaked password protection
-├── Password reset flow
-├── Global error boundary
-├── Data export (CSV)
-└── Pagination UI
-
-Phase 2 (2-3 weeks): Quality & Testing
-├── Unit tests for core hooks
-├── Integration tests for critical flows
-├── API documentation
-└── Accessibility audit
-
-Phase 3 (3-4 weeks): Enterprise Features
-├── PWA/offline support
-├── PDF report export
-├── Push notifications
-└── Bulk operations
-
-Phase 4 (Ongoing): Enhancements
-├── Advanced analytics
-├── Custom reporting
-├── Learning paths
-└── Scheduled inspections
++----------------------------------+
+|        Messaging Page            |
++----------------------------------+
+|  +--------+  +----------------+  |
+|  | Thread |  |   Thread View  |  |
+|  | List   |  |  (Conversation)|  |
+|  |        |  |                |  |
+|  | [New]  |  |  +----------+  |  |
+|  | Thread1|  |  | Message1 |  |  |
+|  | Thread2|  |  | Message2 |  |  |
+|  | Thread3|  |  | Message3 |  |  |
+|  |        |  |  +----------+  |  |
+|  |        |  |  [Reply Box]   |  |
+|  +--------+  +----------------+  |
++----------------------------------+
 ```
 
 ---
 
-## Conclusion
+## Database Changes
 
-The application has a solid foundation with comprehensive features across property management, inspections, projects, and training. The primary gaps are in the areas of security hardening (password reset, leaked password protection), testing infrastructure, offline capability, and some advanced enterprise features. Addressing the Critical and High Priority items would make this application production-ready for enterprise deployment.
+### New Table: `message_threads`
+Dedicated table to track conversation threads for better performance and organization.
+
+```sql
+CREATE TABLE message_threads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject TEXT NOT NULL,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  last_message_at TIMESTAMPTZ DEFAULT now(),
+  participant_ids UUID[] NOT NULL DEFAULT '{}',
+  is_group BOOLEAN DEFAULT false,
+  is_archived BOOLEAN DEFAULT false
+);
+
+-- Enable RLS
+ALTER TABLE message_threads ENABLE ROW LEVEL SECURITY;
+
+-- Users can view threads they participate in
+CREATE POLICY "Users can view their threads"
+ON message_threads FOR SELECT
+USING (auth.uid() = ANY(participant_ids));
+
+-- Users can create threads
+CREATE POLICY "Authenticated users can create threads"
+ON message_threads FOR INSERT
+WITH CHECK (auth.uid() = created_by);
+
+-- Participants can update thread (archive)
+CREATE POLICY "Participants can update threads"
+ON message_threads FOR UPDATE
+USING (auth.uid() = ANY(participant_ids));
+```
+
+### New Table: `thread_messages`
+Dedicated messages table for threaded conversations (separate from report_emails).
+
+```sql
+CREATE TABLE thread_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id UUID REFERENCES message_threads(id) ON DELETE CASCADE NOT NULL,
+  sender_id UUID REFERENCES auth.users(id) NOT NULL,
+  content TEXT NOT NULL,
+  content_html TEXT,
+  is_edited BOOLEAN DEFAULT false,
+  edited_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  attachments TEXT[] DEFAULT '{}'
+);
+
+-- Enable RLS
+ALTER TABLE thread_messages ENABLE ROW LEVEL SECURITY;
+
+-- Users can view messages in their threads
+CREATE POLICY "Users can view thread messages"
+ON thread_messages FOR SELECT
+USING (EXISTS (
+  SELECT 1 FROM message_threads
+  WHERE message_threads.id = thread_messages.thread_id
+  AND auth.uid() = ANY(participant_ids)
+));
+
+-- Users can send messages to their threads
+CREATE POLICY "Users can send messages"
+ON thread_messages FOR INSERT
+WITH CHECK (
+  auth.uid() = sender_id AND
+  EXISTS (
+    SELECT 1 FROM message_threads
+    WHERE message_threads.id = thread_messages.thread_id
+    AND auth.uid() = ANY(participant_ids)
+  )
+);
+```
+
+### New Table: `thread_read_status`
+Track per-user read status for each thread.
+
+```sql
+CREATE TABLE thread_read_status (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id UUID REFERENCES message_threads(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  last_read_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(thread_id, user_id)
+);
+
+-- RLS policies
+ALTER TABLE thread_read_status ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own read status"
+ON thread_read_status FOR ALL
+USING (auth.uid() = user_id);
+```
+
+### Enable Realtime
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE thread_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE message_threads;
+```
+
+---
+
+## Frontend Components
+
+### 1. New Page: `/messages`
+Dedicated messaging page (can coexist with or replace `/inbox`).
+
+**File: `src/pages/messages/MessagesPage.tsx`**
+- Three-panel layout: Thread list | Conversation | Participants
+- Mobile: Stack layout with navigation
+
+### 2. Thread List Component
+**File: `src/components/messages/ThreadList.tsx`**
+- List of all conversations the user participates in
+- Sorted by `last_message_at` descending
+- Shows unread indicator (blue dot)
+- Shows participant avatars
+- Shows preview of last message
+- New thread button at top
+
+### 3. Thread Conversation View
+**File: `src/components/messages/ThreadConversation.tsx`**
+- Header with subject and participants
+- Scrollable message list
+- Real-time message updates via Supabase Realtime
+- Auto-scroll to newest message
+- Message bubbles with sender avatar, name, timestamp
+- "You" label for own messages
+
+### 4. Message Composer
+**File: `src/components/messages/MessageComposer.tsx`**
+- Rich text input (reuse existing RichTextEditor)
+- @mention support (reuse MentionInput pattern)
+- Send button with loading state
+- Keyboard shortcut: Enter to send (Shift+Enter for newline)
+
+### 5. New Thread Dialog
+**File: `src/components/messages/NewThreadDialog.tsx`**
+- Participant picker (multi-select from profiles)
+- Subject line input
+- Initial message body
+- Create and send
+
+### 6. Participant Panel
+**File: `src/components/messages/ThreadParticipants.tsx`**
+- List of thread participants with avatars
+- Option to add participants (for group threads)
+- Leave thread option
+
+---
+
+## Hooks Architecture
+
+### `useMessageThreads.ts`
+```typescript
+// Fetch all threads user participates in
+export function useMessageThreads() { ... }
+
+// Fetch single thread details
+export function useMessageThread(threadId: string) { ... }
+
+// Create new thread
+export function useCreateThread() { ... }
+
+// Archive thread
+export function useArchiveThread() { ... }
+```
+
+### `useThreadMessages.ts`
+```typescript
+// Fetch messages for a thread
+export function useThreadMessages(threadId: string) { ... }
+
+// Send message to thread
+export function useSendThreadMessage() { ... }
+
+// Subscribe to realtime updates
+export function useThreadRealtime(threadId: string) { ... }
+```
+
+### `useThreadReadStatus.ts`
+```typescript
+// Get unread count across all threads
+export function useUnreadThreadCount() { ... }
+
+// Mark thread as read
+export function useMarkThreadRead() { ... }
+```
+
+---
+
+## Real-Time Features
+
+### Message Delivery
+Using Supabase Realtime for instant message updates:
+
+```typescript
+const channel = supabase
+  .channel(`thread:${threadId}`)
+  .on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'thread_messages',
+      filter: `thread_id=eq.${threadId}`
+    },
+    (payload) => {
+      // Add new message to UI
+      queryClient.setQueryData(['thread-messages', threadId], (old) => [...old, payload.new]);
+    }
+  )
+  .subscribe();
+```
+
+### Typing Indicators (Optional Enhancement)
+Can be added using Supabase Realtime broadcast:
+
+```typescript
+channel.send({
+  type: 'broadcast',
+  event: 'typing',
+  payload: { userId: currentUser.id }
+});
+```
+
+---
+
+## Navigation Updates
+
+### Sidebar Change
+Update `AppSidebar.tsx`:
+- Add new "Messages" nav item with icon
+- Show unread count badge
+- Keep "Inbox" for email records (or rename to "Email History")
+
+### Route Addition
+Update `App.tsx`:
+```typescript
+<Route path="/messages" element={<MessagesPage />} />
+<Route path="/messages/:threadId" element={<MessagesPage />} />
+```
+
+---
+
+## Notification Integration
+
+When a new message is received:
+1. Create notification in `notifications` table
+2. Type: `message`
+3. Link to thread via `entity_type: 'thread'` and `entity_id`
+
+```sql
+-- Trigger on thread_messages insert
+CREATE OR REPLACE FUNCTION notify_new_message()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO notifications (user_id, type, title, message, entity_type, entity_id)
+  SELECT 
+    unnest(t.participant_ids),
+    'message',
+    'New message from ' || p.full_name,
+    substring(NEW.content, 1, 100),
+    'thread',
+    NEW.thread_id
+  FROM message_threads t
+  JOIN profiles p ON p.user_id = NEW.sender_id
+  WHERE t.id = NEW.thread_id
+  AND NEW.sender_id != unnest(t.participant_ids);
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## File Structure
+
+```text
+src/
+├── pages/
+│   └── messages/
+│       └── MessagesPage.tsx           # Main messaging page
+├── components/
+│   └── messages/
+│       ├── ThreadList.tsx             # Left panel: thread list
+│       ├── ThreadListItem.tsx         # Individual thread preview
+│       ├── ThreadConversation.tsx     # Center: conversation view
+│       ├── MessageBubble.tsx          # Individual message display
+│       ├── MessageComposer.tsx        # Input area for new messages
+│       ├── NewThreadDialog.tsx        # Create new conversation
+│       ├── ThreadParticipants.tsx     # Right panel: participants
+│       └── ThreadHeader.tsx           # Conversation header
+├── hooks/
+│   ├── useMessageThreads.ts           # Thread CRUD operations
+│   ├── useThreadMessages.ts           # Message operations + realtime
+│   └── useThreadReadStatus.ts         # Read/unread tracking
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Database & Core Hooks
+1. Create database tables with RLS
+2. Enable Realtime for tables
+3. Implement `useMessageThreads.ts`
+4. Implement `useThreadMessages.ts`
+5. Implement `useThreadReadStatus.ts`
+
+### Phase 2: UI Components
+1. Create `MessagesPage.tsx` with layout
+2. Build `ThreadList.tsx` and `ThreadListItem.tsx`
+3. Build `ThreadConversation.tsx` and `MessageBubble.tsx`
+4. Build `MessageComposer.tsx` with rich text
+5. Build `NewThreadDialog.tsx`
+
+### Phase 3: Integration
+1. Add route to `App.tsx`
+2. Add sidebar navigation with unread badge
+3. Connect real-time subscriptions
+4. Add notification triggers
+
+### Phase 4: Polish
+1. Mobile-responsive layout
+2. Keyboard shortcuts
+3. Message search
+4. Thread archiving
+5. Read receipts display
+
+---
+
+## Migration Strategy
+
+The existing internal messaging in `report_emails` will continue to work. The new threading system is separate and additive. Users can:
+- Use the new Messages feature for real-time team chat
+- Continue using Inbox for email history and external communications
+
+---
+
+## Summary of Deliverables
+
+| Component | Purpose |
+|-----------|---------|
+| 3 new database tables | `message_threads`, `thread_messages`, `thread_read_status` |
+| 3 new hooks | Thread CRUD, message operations, read status |
+| 8 new UI components | Full messaging interface |
+| 1 new page | `/messages` route |
+| Sidebar update | Messages nav with badge |
+| Realtime integration | Live message updates |
+| Notification trigger | Alert users of new messages |
+
+This implementation transforms the platform into a true **enterprise collaboration hub** with instant internal messaging, while preserving all existing email functionality.
 
