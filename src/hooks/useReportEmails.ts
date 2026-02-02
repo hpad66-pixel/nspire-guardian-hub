@@ -124,19 +124,22 @@ export function useReportEmailStats() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("report_emails")
-        .select("status, is_read");
+        .select("status, is_read, is_archived, is_deleted");
 
       if (error) {
         console.error("Error fetching report email stats:", error);
         throw error;
       }
 
+      const activeEmails = data.filter((e) => !e.is_deleted);
       const stats = {
-        total: data.length,
-        sent: data.filter((e) => e.status === "sent").length,
-        failed: data.filter((e) => e.status === "failed").length,
-        pending: data.filter((e) => e.status === "pending").length,
-        unread: data.filter((e) => !e.is_read).length,
+        total: activeEmails.filter((e) => !e.is_archived).length,
+        sent: activeEmails.filter((e) => e.status === "sent" && !e.is_archived).length,
+        failed: activeEmails.filter((e) => e.status === "failed" && !e.is_archived).length,
+        pending: activeEmails.filter((e) => e.status === "pending" && !e.is_archived).length,
+        unread: activeEmails.filter((e) => !e.is_read && !e.is_archived).length,
+        archived: data.filter((e) => e.is_archived && !e.is_deleted).length,
+        deleted: data.filter((e) => e.is_deleted).length,
       };
 
       return stats;
