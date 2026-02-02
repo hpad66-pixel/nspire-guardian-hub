@@ -1,6 +1,7 @@
 import { NavLink } from '@/components/NavLink';
 import { useModules } from '@/contexts/ModuleContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
 import {
   Sidebar,
   SidebarContent,
@@ -39,6 +40,7 @@ import {
   Home,
   GraduationCap,
   Contact,
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -55,6 +57,10 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  
+  // Unread message count with realtime updates
+  const { data: unreadCount = 0 } = useUnreadThreadCount();
+  useUnreadThreadCountRealtime();
 
   const isAdmin = userRole === 'super_admin' || userRole === 'tenant_admin';
   
@@ -187,12 +193,31 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
+                    to="/messages"
+                    className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <div className="relative">
+                      <MessageCircle className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    {!collapsed && <span>Messages</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
                     to="/inbox"
                     className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
                     activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                   >
                     <Mail className="h-4 w-4" />
-                    {!collapsed && <span>Inbox</span>}
+                    {!collapsed && <span>Email</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

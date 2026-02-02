@@ -828,6 +828,42 @@ export type Database = {
           },
         ]
       }
+      message_threads: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          is_archived: boolean | null
+          is_group: boolean | null
+          last_message_at: string | null
+          participant_ids: string[]
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_archived?: boolean | null
+          is_group?: boolean | null
+          last_message_at?: string | null
+          participant_ids?: string[]
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_archived?: boolean | null
+          is_group?: boolean | null
+          last_message_at?: string | null
+          participant_ids?: string[]
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -2207,6 +2243,79 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_messages: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          content_html: string | null
+          created_at: string | null
+          edited_at: string | null
+          id: string
+          is_edited: boolean | null
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          content_html?: string | null
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          content_html?: string | null
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "message_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_read_status: {
+        Row: {
+          id: string
+          last_read_at: string | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_read_at?: string | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_read_at?: string | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_read_status_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "message_threads"
             referencedColumns: ["id"]
           },
         ]
