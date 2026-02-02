@@ -15,6 +15,8 @@ export interface Property {
   nspire_enabled: boolean | null;
   daily_grounds_enabled: boolean | null;
   projects_enabled: boolean | null;
+  occupancy_enabled: boolean | null;
+  qr_scanning_enabled: boolean | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
@@ -22,6 +24,7 @@ export interface Property {
   mailing_city: string | null;
   mailing_state: string | null;
   mailing_zip: string | null;
+  is_demo: boolean | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -63,7 +66,10 @@ export function useCreateProperty() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'is_demo' | 'occupancy_enabled' | 'qr_scanning_enabled'> & {
+      occupancy_enabled?: boolean | null;
+      qr_scanning_enabled?: boolean | null;
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
