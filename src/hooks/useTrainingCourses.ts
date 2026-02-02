@@ -259,7 +259,9 @@ export function useProcessCourseZip() {
 
 export function getCourseContentUrl(course: TrainingCourse): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/training-courses/${course.content_path}/${course.entry_file}`;
+  // Use edge function proxy with base path so relative URLs resolve correctly
+  const basePath = course.content_path;
+  return `${supabaseUrl}/functions/v1/serve-course-content?base=${encodeURIComponent(basePath)}&file=${encodeURIComponent(course.entry_file)}`;
 }
 
 export const COURSE_CATEGORIES = [
