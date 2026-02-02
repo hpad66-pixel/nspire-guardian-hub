@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.voice-agent-webhook]
 verify_jwt = false
+
+[functions.serve-course-content]
+verify_jwt = false
