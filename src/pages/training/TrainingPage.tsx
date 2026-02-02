@@ -17,6 +17,7 @@ import {
 import { useTrainingResources, useTrainingStats } from '@/hooks/useTrainingResources';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { EBookCard } from '@/components/training/EBookCard';
+import { GeneratedBookCover } from '@/components/training/GeneratedBookCover';
 import { EBookManagementDialog } from '@/components/training/EBookManagementDialog';
 import { LearningPathCard } from '@/components/training/LearningPathCard';
 import { TrainingResourceCard } from '@/components/training/TrainingResourceCard';
@@ -307,15 +308,19 @@ export default function TrainingPage() {
                           className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                         >
                           <div className="flex items-center gap-3">
-                            {ebook.thumbnail_url ? (
+                          {ebook.thumbnail_url ? (
                               <img
                                 src={ebook.thumbnail_url}
                                 alt=""
                                 className="w-10 h-14 object-cover rounded"
                               />
                             ) : (
-                              <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
-                                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                              <div className="w-10 h-14 rounded overflow-hidden relative">
+                                <GeneratedBookCover 
+                                  title={ebook.title} 
+                                  category={ebook.category}
+                                  compact
+                                />
                               </div>
                             )}
                             <div>

@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { BookOpen, Maximize2, ExternalLink } from 'lucide-react';
+import { BookOpen, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { GeneratedBookCover } from './GeneratedBookCover';
 import type { TrainingResource } from '@/hooks/useTrainingResources';
 
 interface EBookCardProps {
@@ -38,7 +37,7 @@ export function EBookCard({ ebook }: EBookCardProps) {
         )}
       >
         {/* Thumbnail/Preview Area */}
-        <div className="aspect-[3/4] relative bg-gradient-to-br from-muted to-muted/50 overflow-hidden">
+        <div className="aspect-[3/4] relative overflow-hidden">
           {ebook.thumbnail_url ? (
             <img 
               src={ebook.thumbnail_url} 
@@ -46,11 +45,10 @@ export function EBookCard({ ebook }: EBookCardProps) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="p-6 rounded-full bg-primary/10">
-                <BookOpen className="h-12 w-12 text-primary/60" />
-              </div>
-            </div>
+            <GeneratedBookCover 
+              title={ebook.title} 
+              category={ebook.category} 
+            />
           )}
           
           {/* Overlay on hover */}
@@ -84,31 +82,23 @@ export function EBookCard({ ebook }: EBookCardProps) {
         </div>
       </div>
 
-      {/* Fullscreen Reader Dialog */}
+      {/* Immersive Fullscreen Reader */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent 
-          className="max-w-[95vw] w-full h-[95vh] p-0 overflow-hidden border-0"
+          className="max-w-none w-screen h-screen p-0 m-0 rounded-none border-0 bg-black"
           style={{ display: 'flex', flexDirection: 'column' }}
         >
-          {/* Compact Header */}
-          <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-base">{ebook.title}</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open(embedUrl || '', '_blank')}
-              className="mr-8"
-            >
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Open in New Tab
-            </Button>
-          </div>
+          {/* Floating Close Button */}
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white/80 hover:text-white transition-all duration-200 backdrop-blur-sm"
+            aria-label="Close reader"
+          >
+            <X className="h-5 w-5" />
+          </button>
           
-          {/* Fullscreen Iframe Container */}
-          <div className="relative flex-1 bg-muted/20" style={{ minHeight: 0 }}>
+          {/* Full-viewport Iframe */}
+          <div className="relative flex-1" style={{ minHeight: 0 }}>
             <iframe
               src={embedUrl || ''}
               className="absolute inset-0 w-full h-full border-0"
