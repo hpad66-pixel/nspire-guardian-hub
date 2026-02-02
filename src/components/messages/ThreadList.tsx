@@ -1,8 +1,10 @@
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { MessageCircle, Sparkles } from "lucide-react";
 import type { ThreadWithLastMessage } from "@/hooks/useMessageThreads";
 
 interface ThreadListProps {
@@ -22,13 +24,14 @@ export function ThreadList({
 }: ThreadListProps) {
   if (isLoading) {
     return (
-      <div className="flex-1 p-2 space-y-2">
+      <div className="flex-1 p-3 space-y-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-start gap-3 p-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
+          <div key={i} className="flex items-start gap-3 p-3 rounded-xl">
+            <Skeleton className="h-12 w-12 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
           </div>
         ))}
@@ -38,27 +41,47 @@ export function ThreadList({
 
   if (threads.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-4 text-center text-muted-foreground">
-        <div>
-          <p className="font-medium">No conversations yet</p>
-          <p className="text-sm mt-1">Start a new conversation</p>
-        </div>
+      <div className="flex-1 flex items-center justify-center p-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-4"
+        >
+          <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+            <MessageCircle className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">No conversations yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Start a new conversation to connect with your team
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
     <ScrollArea className="flex-1">
-      <div className="divide-y">
-        {threads.map((thread) => (
-          <ThreadListItem
-            key={thread.id}
-            thread={thread}
-            isSelected={thread.id === selectedThreadId}
-            onClick={() => onSelectThread(thread.id)}
-            currentUserId={currentUserId}
-          />
-        ))}
+      <div className="p-2 space-y-1">
+        <AnimatePresence>
+          {threads.map((thread, index) => (
+            <motion.div
+              key={thread.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.03 }}
+            >
+              <ThreadListItem
+                thread={thread}
+                isSelected={thread.id === selectedThreadId}
+                onClick={() => onSelectThread(thread.id)}
+                currentUserId={currentUserId}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ScrollArea>
   );
@@ -117,8 +140,8 @@ function ThreadListItem({
 
   // Truncate last message
   const lastMessagePreview = thread.last_message?.content
-    ? thread.last_message.content.length > 50
-      ? thread.last_message.content.slice(0, 50) + "..."
+    ? thread.last_message.content.length > 45
+      ? thread.last_message.content.slice(0, 45) + "..."
       : thread.last_message.content
     : "No messages yet";
 
@@ -129,41 +152,44 @@ function ThreadListItem({
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-start gap-3 p-3 text-left hover:bg-muted/50 transition-colors",
-        isSelected && "bg-muted"
+        "w-full flex items-start gap-3 p-3 text-left rounded-xl transition-all duration-200",
+        "hover:bg-accent/50 active:scale-[0.98]",
+        isSelected && "bg-accent/80 shadow-sm"
       )}
     >
-      {/* Avatar */}
-      <div className="relative">
+      {/* Avatar with online indicator styling */}
+      <div className="relative flex-shrink-0">
         {thread.is_group ? (
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">
+          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/30 flex items-center justify-center shadow-sm border border-border/30">
+            <span className="text-sm font-bold text-primary">
               {otherParticipants?.length || 0}
             </span>
           </div>
         ) : (
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-12 w-12 ring-2 ring-background shadow-sm">
             <AvatarImage src={otherParticipants?.[0]?.avatar_url || undefined} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
               {getInitials(otherParticipants?.[0]?.full_name || null)}
             </AvatarFallback>
           </Avatar>
         )}
+        {/* Online indicator dot */}
+        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-background" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 py-0.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-medium truncate">{displayName}</span>
-          <span className="text-xs text-muted-foreground flex-shrink-0">
+          <span className="font-semibold text-foreground truncate">{displayName}</span>
+          <span className="text-[11px] font-medium text-muted-foreground flex-shrink-0">
             {formatTime(thread.last_message_at)}
           </span>
         </div>
-        <p className="text-sm font-medium text-muted-foreground truncate mt-0.5">
+        <p className="text-sm font-medium text-primary/80 truncate mt-0.5">
           {thread.subject}
         </p>
-        <p className="text-sm text-muted-foreground truncate">
-          {isOwnMessage && <span className="text-foreground">You: </span>}
+        <p className="text-sm text-muted-foreground truncate mt-0.5">
+          {isOwnMessage && <span className="font-medium text-foreground/70">You: </span>}
           {lastMessagePreview}
         </p>
       </div>
