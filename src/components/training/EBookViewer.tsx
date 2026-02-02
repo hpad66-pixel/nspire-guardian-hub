@@ -67,17 +67,20 @@ export function EBookViewer({ embedUrl, title, description }: EBookViewerProps) 
       </Card>
 
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent 
+          className="max-w-[95vw] w-full h-[90vh] p-0 overflow-hidden border-0"
+          style={{ display: 'flex', flexDirection: 'column' }}
+        >
+          <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
+            <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              {title}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0">
+              <span className="font-semibold">{title}</span>
+            </div>
+          </div>
+          <div className="relative flex-1" style={{ minHeight: 0 }}>
             <iframe
               src={embedUrl}
-              className="w-full h-full border-0"
+              className="absolute inset-0 w-full h-full border-0"
               allowFullScreen
               title={title}
             />

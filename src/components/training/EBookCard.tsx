@@ -86,26 +86,32 @@ export function EBookCard({ ebook }: EBookCardProps) {
 
       {/* Fullscreen Reader Dialog */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-base">
+        <DialogContent 
+          className="max-w-[95vw] w-full h-[95vh] p-0 overflow-hidden border-0"
+          style={{ display: 'flex', flexDirection: 'column' }}
+        >
+          {/* Compact Header */}
+          <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between bg-background">
+            <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
-              {ebook.title}
-            </DialogTitle>
+              <span className="font-semibold text-base">{ebook.title}</span>
+            </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => window.open(embedUrl || '', '_blank')}
+              className="mr-8"
             >
               <ExternalLink className="h-4 w-4 mr-1" />
               Open in New Tab
             </Button>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 bg-muted/20">
+          </div>
+          
+          {/* Fullscreen Iframe Container */}
+          <div className="relative flex-1 bg-muted/20" style={{ minHeight: 0 }}>
             <iframe
               src={embedUrl || ''}
-              className="w-full h-full border-0"
-              style={{ minHeight: '100%' }}
+              className="absolute inset-0 w-full h-full border-0"
               allowFullScreen
               title={ebook.title}
             />
