@@ -1,229 +1,422 @@
 
-
-# Articulate Course Integration System
-## Premium Training Academy with SCORM/HTML5 Course Delivery
+# Voice Agent Call Center
+## Enterprise-Grade AI-Powered Maintenance Request System
 
 ---
 
-## Overview
+## Executive Overview
 
-Implementing a beautiful, enterprise-grade Articulate course delivery system that allows admins to upload exported HTML5/SCORM courses (zip files), process and store them, and provide learners with an immersive course consumption experience with progress tracking and certification upon completion.
+This feature transforms how residents and tenants report maintenance issues by implementing an **ElevenLabs Conversational AI Voice Agent** that:
+- Answers phone calls 24/7
+- Collects detailed maintenance request information through natural conversation
+- Automatically creates tickets in the system
+- Assigns tickets to maintenance supervisors
+- Provides callers with a reference number
+- Enables full lifecycle tracking with notes and resolution
 
 ---
 
 ## System Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    ARTICULATE COURSE FLOW                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ADMIN UPLOAD                 PROCESSING                 STORAGE│
-│  ┌──────────┐    ┌───────────────────────┐    ┌───────────────┐│
-│  │ ZIP File │───▶│ Edge Function         │───▶│ training-     ││
-│  │ (HTML5)  │    │ - Unzip               │    │ courses       ││
-│  └──────────┘    │ - Validate structure  │    │ (bucket)      ││
-│                  │ - Extract metadata    │    └───────────────┘│
-│                  │ - Store files         │                     │
-│                  └───────────────────────┘                     │
-│                            │                                   │
-│                            ▼                                   │
-│                  ┌───────────────────────┐                     │
-│                  │ training_courses      │                     │
-│                  │ (database table)      │                     │
-│                  │ - Course metadata     │                     │
-│                  │ - Entry point URL     │                     │
-│                  │ - Duration, status    │                     │
-│                  └───────────────────────┘                     │
-│                                                                 │
-│  USER EXPERIENCE                                               │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ Course Player (Immersive Mode)                              ││
-│  │ - Full-screen iframe loading HTML5 content                  ││
-│  │ - Progress tracking via postMessage                         ││
-│  │ - Completion detection → Certificate                        ││
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         VOICE AGENT CALL CENTER                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  INBOUND CALL                    VOICE AGENT                   SYSTEM      │
+│  ┌──────────────┐     ┌────────────────────────────┐     ┌────────────────┐│
+│  │  Caller      │────▶│  ElevenLabs Conversational │────▶│  maintenance_  ││
+│  │  (Resident)  │◀────│  AI Agent                  │     │  requests      ││
+│  └──────────────┘     │                            │     │  (new table)   ││
+│                       │  - Knowledge Base          │     └────────────────┘│
+│                       │  - Property Lookup         │            │          │
+│                       │  - Issue Classification    │            ▼          │
+│                       │  - Urgency Detection       │     ┌────────────────┐│
+│                       │  - Ticket Creation         │     │  notifications ││
+│                       └────────────────────────────┘     │  (supervisor)  ││
+│                                                          └────────────────┘│
+│                                                                             │
+│  ADMIN DASHBOARD                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  Voice Agent Console                                                    ││
+│  │  - Live call monitoring                                                 ││
+│  │  - Call transcripts & recordings                                        ││
+│  │  - Ticket queue management                                              ││
+│  │  - Analytics & reporting                                                ││
+│  │  - Knowledge base editor                                                ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  SUPERVISOR WORKFLOW                                                        │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │  New     │──▶│  Review  │──▶│  Assign  │──▶│  Work    │──▶│  Close   │ │
+│  │  Ticket  │   │  Request │   │  Tech    │   │  Complete│   │  Ticket  │ │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘ │
+│      ▲                                                            │        │
+│      │                    OPTIONAL CALLBACK                       │        │
+│      └────────────────────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Database Schema
 
-### New Table: `training_courses`
+### New Table: `maintenance_requests`
 
-Dedicated table for Articulate/SCORM courses (separate from general resources):
+Central table for voice-initiated maintenance requests:
 
 ```sql
-CREATE TABLE training_courses (
+CREATE TABLE maintenance_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
-  -- Course Metadata
-  title TEXT NOT NULL,
-  description TEXT,
-  thumbnail_url TEXT,
-  category TEXT NOT NULL DEFAULT 'operations',
+  -- Ticket Identification
+  ticket_number SERIAL UNIQUE,  -- Auto-generated: MR-0001, MR-0002...
   
-  -- Course Content
-  content_path TEXT NOT NULL, -- Path in storage bucket
-  entry_file TEXT DEFAULT 'index.html', -- Main entry point
+  -- Caller Information
+  caller_name TEXT NOT NULL,
+  caller_phone TEXT NOT NULL,
+  caller_email TEXT,
+  caller_unit_number TEXT,
   
-  -- Duration & Settings
-  duration_minutes INTEGER,
-  passing_score INTEGER DEFAULT 80, -- % required to pass
-  allow_resume BOOLEAN DEFAULT true,
+  -- Property Mapping
+  property_id UUID REFERENCES properties(id),
+  unit_id UUID REFERENCES units(id),
   
-  -- Status & Publishing
-  is_active BOOLEAN DEFAULT false,
-  is_required BOOLEAN DEFAULT false,
+  -- Issue Details (collected by voice agent)
+  issue_category TEXT NOT NULL,  -- plumbing, electrical, hvac, appliance, etc.
+  issue_subcategory TEXT,
+  issue_description TEXT NOT NULL,
+  issue_location TEXT,  -- kitchen, bathroom, bedroom, etc.
   
-  -- Role-based Access
-  target_roles app_role[] DEFAULT '{}',
+  -- Urgency & Priority
+  urgency_level TEXT DEFAULT 'normal',  -- emergency, urgent, normal, low
+  is_emergency BOOLEAN DEFAULT false,
   
-  -- Ordering
-  sort_order INTEGER,
+  -- Availability
+  preferred_contact_time TEXT,
+  preferred_access_time TEXT,
+  has_pets BOOLEAN DEFAULT false,
+  special_access_instructions TEXT,
   
-  -- Attribution
-  uploaded_by UUID REFERENCES auth.users(id),
+  -- Voice Agent Data
+  call_id TEXT,  -- ElevenLabs conversation ID
+  call_duration_seconds INTEGER,
+  call_transcript TEXT,
+  call_recording_url TEXT,
+  call_started_at TIMESTAMPTZ,
+  call_ended_at TIMESTAMPTZ,
+  
+  -- Workflow Status
+  status TEXT DEFAULT 'new',
+  -- new → reviewed → assigned → in_progress → completed → closed
+  
+  -- Assignment
+  assigned_to UUID REFERENCES auth.users(id),
+  assigned_at TIMESTAMPTZ,
+  assigned_by UUID REFERENCES auth.users(id),
+  
+  -- Resolution
+  resolution_notes TEXT,
+  resolution_photos TEXT[],
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID REFERENCES auth.users(id),
+  
+  -- Work Order Link (optional)
+  work_order_id UUID REFERENCES work_orders(id),
+  
+  -- Audit
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
+
+-- Policies (supervisors and admins can manage)
+CREATE POLICY "Users can view requests for assigned properties"
+ON maintenance_requests FOR SELECT
+USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "System can create requests"
+ON maintenance_requests FOR INSERT
+WITH CHECK (true);  -- Edge function uses service role
+
+CREATE POLICY "Assigned users and admins can update"
+ON maintenance_requests FOR UPDATE
+USING (
+  auth.uid() = assigned_to OR
+  has_role(auth.uid(), 'admin') OR
+  has_role(auth.uid(), 'project_manager')
+);
+```
+
+### New Table: `voice_agent_config`
+
+Configuration for the voice agent:
+
+```sql
+CREATE TABLE voice_agent_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_id UUID REFERENCES properties(id),  -- NULL = global default
+  
+  -- Agent Personality
+  agent_name TEXT DEFAULT 'Alex',
+  greeting_message TEXT,
+  closing_message TEXT,
+  
+  -- Business Hours
+  business_hours_start TIME DEFAULT '08:00',
+  business_hours_end TIME DEFAULT '18:00',
+  after_hours_message TEXT,
+  
+  -- Emergency Keywords
+  emergency_keywords TEXT[] DEFAULT ARRAY['flood', 'fire', 'gas leak', 'no heat', 'no water', 'broken window', 'security'],
+  
+  -- Issue Categories
+  issue_categories JSONB DEFAULT '[
+    {"id": "plumbing", "label": "Plumbing", "subcategories": ["leak", "clog", "toilet", "faucet", "water heater"]},
+    {"id": "electrical", "label": "Electrical", "subcategories": ["outlet", "light", "breaker", "switch"]},
+    {"id": "hvac", "label": "Heating/Cooling", "subcategories": ["no heat", "no ac", "thermostat", "noise"]},
+    {"id": "appliance", "label": "Appliances", "subcategories": ["refrigerator", "stove", "dishwasher", "washer", "dryer"]},
+    {"id": "structural", "label": "Structural", "subcategories": ["door", "window", "lock", "floor", "ceiling"]},
+    {"id": "pest", "label": "Pest Control", "subcategories": ["insects", "rodents", "wildlife"]},
+    {"id": "other", "label": "Other", "subcategories": []}
+  ]',
+  
+  -- Knowledge Base
+  knowledge_base JSONB DEFAULT '[]',  -- FAQ entries
+  
+  -- Notification Settings
+  supervisor_notification_emails TEXT[],
+  emergency_notification_phone TEXT,
+  
+  -- Analytics
+  calls_handled INTEGER DEFAULT 0,
+  avg_call_duration_seconds INTEGER,
+  
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   
-  -- Course Version
-  version TEXT DEFAULT '1.0'
+  UNIQUE(property_id)
 );
-
--- Enable RLS
-ALTER TABLE training_courses ENABLE ROW LEVEL SECURITY;
-
--- All authenticated users can view active courses
-CREATE POLICY "Authenticated users can view courses"
-ON training_courses FOR SELECT
-USING (auth.uid() IS NOT NULL AND is_active = true);
-
--- Admins can see all courses (including inactive)
-CREATE POLICY "Admins can view all courses"
-ON training_courses FOR SELECT
-USING (has_role(auth.uid(), 'admin'));
-
--- Only admins can create courses
-CREATE POLICY "Only admins can create courses"
-ON training_courses FOR INSERT
-WITH CHECK (has_role(auth.uid(), 'admin'));
-
--- Only admins can update courses
-CREATE POLICY "Only admins can update courses"
-ON training_courses FOR UPDATE
-USING (has_role(auth.uid(), 'admin'));
-
--- Only admins can delete courses
-CREATE POLICY "Only admins can delete courses"
-ON training_courses FOR DELETE
-USING (has_role(auth.uid(), 'admin'));
 ```
 
-### New Table: `course_progress`
+### New Table: `maintenance_request_activity`
 
-Track user progress through courses with detailed state:
+Activity log for request lifecycle:
 
 ```sql
-CREATE TABLE course_progress (
+CREATE TABLE maintenance_request_activity (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  course_id UUID NOT NULL REFERENCES training_courses(id) ON DELETE CASCADE,
-  
-  -- Progress State
-  status TEXT NOT NULL DEFAULT 'not_started',
-  progress_percent INTEGER DEFAULT 0,
-  score INTEGER,
-  
-  -- Bookmark (for resume)
-  last_location TEXT,
-  
-  -- Timestamps
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  last_accessed_at TIMESTAMPTZ,
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  
-  -- Unique constraint
-  UNIQUE(user_id, course_id)
+  request_id UUID NOT NULL REFERENCES maintenance_requests(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id),
+  action TEXT NOT NULL,
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Enable RLS
-ALTER TABLE course_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_request_activity ENABLE ROW LEVEL SECURITY;
 
--- Users can view own progress
-CREATE POLICY "Users can view own progress"
-ON course_progress FOR SELECT
-USING (auth.uid() = user_id);
+CREATE POLICY "Users can view activity"
+ON maintenance_request_activity FOR SELECT
+USING (auth.uid() IS NOT NULL);
 
--- Users can insert own progress
-CREATE POLICY "Users can insert own progress"
-ON course_progress FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- Users can update own progress
-CREATE POLICY "Users can update own progress"
-ON course_progress FOR UPDATE
-USING (auth.uid() = user_id);
-
--- Admins can view all progress
-CREATE POLICY "Admins can view all progress"
-ON course_progress FOR SELECT
-USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "System can insert activity"
+ON maintenance_request_activity FOR INSERT
+WITH CHECK (true);
 ```
 
 ---
 
-## Storage Configuration
+## ElevenLabs Agent Configuration
 
-### New Bucket: `training-courses`
-
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('training-courses', 'training-courses', true);
-
--- Public read access for course content
-CREATE POLICY "Public read access for courses"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'training-courses');
-
--- Only admins can upload/delete
-CREATE POLICY "Admins can upload courses"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'training-courses' AND
-  has_role(auth.uid(), 'admin')
-);
-
-CREATE POLICY "Admins can delete courses"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (
-  bucket_id = 'training-courses' AND
-  has_role(auth.uid(), 'admin')
-);
-```
-
----
-
-## Edge Function: `process-articulate-course`
-
-Process uploaded ZIP files and extract course content:
+### Agent Prompt (System Instructions)
 
 ```text
-INPUT: ZIP file upload
-PROCESS:
-  1. Receive ZIP file from client
-  2. Validate file (size limits, file type)
-  3. Generate unique course folder ID
-  4. Unzip contents to memory
-  5. Identify entry point (story.html, index.html, etc.)
-  6. Upload all files to storage bucket with correct paths
-  7. Return course metadata (entry point, file count, etc.)
-OUTPUT: { coursePath, entryFile, fileCount, status }
+You are Alex, a friendly and professional maintenance request assistant for 
+Glorieta Gardens property management. Your job is to help residents report 
+maintenance issues quickly and accurately.
+
+## Your Goals:
+1. Greet the caller warmly
+2. Collect their name and unit number
+3. Understand the maintenance issue in detail
+4. Assess urgency (emergency vs. routine)
+5. Gather contact preferences
+6. Provide a ticket number and expected response time
+
+## Conversation Flow:
+
+1. GREETING:
+   "Thank you for calling Glorieta Gardens maintenance. This is Alex, your 
+   virtual assistant. I can help you report a maintenance issue 24/7. 
+   May I have your name please?"
+
+2. UNIT VERIFICATION:
+   "Thank you, [Name]. What unit number are you calling about?"
+
+3. ISSUE COLLECTION:
+   "What maintenance issue are you experiencing today?"
+   
+   Follow-up questions based on category:
+   - "Where in the unit is this happening?"
+   - "When did you first notice this issue?"
+   - "Is water/gas/electricity involved?"
+   - "Is this affecting other units?"
+
+4. URGENCY ASSESSMENT:
+   For emergencies (flooding, gas smell, fire, no heat in winter, security breach):
+   "This sounds like an emergency. I'm flagging this as urgent and our 
+   on-call technician will be notified immediately."
+   
+   For routine:
+   "Thank you for the details. This will be reviewed by our maintenance 
+   team within 24 hours."
+
+5. CONTACT PREFERENCES:
+   "What's the best phone number to reach you?"
+   "What times work best for a technician to access your unit?"
+   "Do you have any pets we should know about?"
+
+6. CONFIRMATION:
+   "I've created maintenance ticket [NUMBER] for your [ISSUE TYPE] issue 
+   in unit [UNIT]. You'll receive a text confirmation shortly, and our 
+   team will contact you within [TIMEFRAME]. Is there anything else I 
+   can help you with?"
+
+## Emergency Keywords:
+ALWAYS flag as emergency if caller mentions:
+- Flood, flooding, water everywhere
+- Fire, smoke, burning smell
+- Gas leak, gas smell
+- No heat (in cold weather)
+- No water
+- Broken lock, security concern
+- Broken window
+
+## Personality:
+- Professional but warm
+- Patient and understanding
+- Clear and concise
+- Empathetic to frustration
+- Always provide next steps
+```
+
+### Client Tools Configuration
+
+The voice agent will have access to these tools to interact with our system:
+
+```typescript
+const agentTools = [
+  {
+    type: "function",
+    name: "lookup_property",
+    description: "Look up property information by name or address",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Property name or address" }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    type: "function", 
+    name: "verify_unit",
+    description: "Verify if a unit exists at a property",
+    parameters: {
+      type: "object",
+      properties: {
+        property_id: { type: "string" },
+        unit_number: { type: "string" }
+      },
+      required: ["property_id", "unit_number"]
+    }
+  },
+  {
+    type: "function",
+    name: "create_maintenance_request",
+    description: "Create a new maintenance request ticket",
+    parameters: {
+      type: "object",
+      properties: {
+        caller_name: { type: "string" },
+        caller_phone: { type: "string" },
+        unit_number: { type: "string" },
+        property_id: { type: "string" },
+        issue_category: { type: "string" },
+        issue_description: { type: "string" },
+        issue_location: { type: "string" },
+        urgency_level: { type: "string", enum: ["emergency", "urgent", "normal", "low"] },
+        preferred_contact_time: { type: "string" },
+        has_pets: { type: "boolean" },
+        special_instructions: { type: "string" }
+      },
+      required: ["caller_name", "caller_phone", "issue_category", "issue_description", "urgency_level"]
+    }
+  },
+  {
+    type: "function",
+    name: "get_ticket_number",
+    description: "Get the ticket number for the created request",
+    parameters: {
+      type: "object",
+      properties: {
+        request_id: { type: "string" }
+      },
+      required: ["request_id"]
+    }
+  }
+];
+```
+
+---
+
+## Edge Functions
+
+### 1. `voice-agent-token` - Generate Conversation Token
+
+Generates a WebRTC token for establishing voice connection:
+
+```typescript
+// supabase/functions/voice-agent-token/index.ts
+
+// Returns a conversation token for the ElevenLabs agent
+// Called when a user initiates a voice call from the web interface
+```
+
+### 2. `voice-agent-webhook` - Handle Agent Events
+
+Receives webhooks from ElevenLabs when calls complete:
+
+```typescript
+// supabase/functions/voice-agent-webhook/index.ts
+
+// Receives:
+// - Call started/ended events
+// - Transcripts
+// - Tool call results (ticket creation)
+// - Recording URLs
+
+// Actions:
+// - Updates maintenance_requests with call data
+// - Sends notifications to supervisors
+// - Logs activity
+```
+
+### 3. `voice-agent-tools` - Handle Tool Calls
+
+Processes tool calls from the voice agent:
+
+```typescript
+// supabase/functions/voice-agent-tools/index.ts
+
+// Handles:
+// - lookup_property: Search properties by name/address
+// - verify_unit: Check if unit exists
+// - create_maintenance_request: Insert new request
+// - get_ticket_number: Return formatted ticket number
 ```
 
 ---
@@ -235,279 +428,317 @@ OUTPUT: { coursePath, entryFile, fileCount, status }
 ```text
 src/
 ├── pages/
-│   └── training/
-│       └── TrainingPage.tsx (update)
-│       └── CoursePlayerPage.tsx (new)
+│   └── voice-agent/
+│       └── VoiceAgentDashboard.tsx    # Main console page
 ├── components/
-│   └── training/
-│       ├── CourseCard.tsx (new - premium course display)
-│       ├── CourseUploadDialog.tsx (new - admin zip upload)
-│       ├── CoursePlayer.tsx (new - immersive player)
-│       ├── CourseProgressRing.tsx (new - circular progress)
-│       ├── CourseCertificateDialog.tsx (new - completion cert)
-│       └── CourseManagementTable.tsx (new - admin management)
+│   └── voice-agent/
+│       ├── VoiceAgentWidget.tsx       # Embeddable call widget
+│       ├── CallInterface.tsx          # Active call UI
+│       ├── RequestQueue.tsx           # Pending requests list
+│       ├── RequestDetailSheet.tsx     # Full request details
+│       ├── CallTranscript.tsx         # View transcript
+│       ├── AgentConfigDialog.tsx      # Admin configuration
+│       ├── KnowledgeBaseEditor.tsx    # FAQ management
+│       ├── VoiceAgentStats.tsx        # Analytics cards
+│       └── EmergencyAlertBanner.tsx   # Emergency request alert
 ├── hooks/
-│   └── useTrainingCourses.ts (new)
-│   └── useCourseProgress.ts (new)
+│   └── useMaintenanceRequests.ts      # CRUD operations
+│   └── useVoiceAgentConfig.ts         # Config management
+│   └── useVoiceAgent.ts               # ElevenLabs integration
 ```
 
 ---
 
 ## UI Design Specifications
 
-### 1. Courses Tab (Premium Cards)
+### 1. Voice Agent Dashboard
+
+Premium enterprise console for managing voice-initiated requests:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  TRAINING ACADEMY                                               │
-│  ┌─────────┬─────────┬─────────────┬─────────┐                 │
-│  │ eBooks  │ Courses │ Paths       │ Manage  │                 │
-│  └─────────┴────┬────┴─────────────┴─────────┘                 │
-│                 ▼                                               │
-│  ┌────────────────────────────────────────────────────────────┐│
-│  │ 🎓 Interactive Training Courses                            ││
-│  │ Complete interactive courses to earn your certification    ││
-│  │                                              [+ Add Course] ││
-│  └────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐│
-│  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌────────────┐ ││
-│  │ │  THUMBNAIL   │ │  │ │  THUMBNAIL   │ │  │ │ THUMBNAIL  │ ││
-│  │ │              │ │  │ │              │ │  │ │            │ ││
-│  │ │   ○ 65%     │ │  │ │   ✓ 100%    │ │  │ │  Not Started│ ││
-│  │ └──────────────┘ │  │ └──────────────┘ │  │ └────────────┘ ││
-│  │ Safety Training  │  │ NSPIRE Basics    │  │ Fire Safety   ││
-│  │ 45 min • Required│  │ 30 min • ✓ Done  │  │ 20 min        ││
-│  │ [Continue Course]│  │ [View Certificate]│  │ [Start Course]││
-│  └──────────────────┘  └──────────────────┘  └────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🎧 Voice Agent Console                                    [Configure Agent]│
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌────────────┐│
+│  │  📞 Total Calls │ │  🔴 Emergency   │ │  ⏳ Pending     │ │ ✅ Resolved││
+│  │      247       │ │       3        │ │      12        │ │     156    ││
+│  │  This Month    │ │  Need Action   │ │  Awaiting      │ │  This Week ││
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘ └────────────┘│
+│                                                                             │
+│  🚨 EMERGENCY REQUESTS                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  MR-0247  Unit 412  Water leak flooding kitchen    [ASSIGN NOW]         ││
+│  │  Caller: Maria Garcia • 5 min ago • No assignment yet                   ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  Recent Requests                                          [View All] [Filter]│
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  MR-0246  Unit 205  HVAC not working         Normal   New       2h ago ││
+│  │  MR-0245  Unit 118  Clogged sink             Normal   Assigned  4h ago ││
+│  │  MR-0244  Unit 301  Light fixture broken     Low      Completed 1d ago ││
+│  │  MR-0243  Unit 210  Dishwasher not draining  Normal   Closed    1d ago ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  ┌────────────────────────────┐  ┌────────────────────────────────────────┐│
+│  │  📊 Call Analytics         │  │  🎤 Test Voice Agent                   ││
+│  │                            │  │                                        ││
+│  │  [Chart: Calls by day]     │  │  ┌────────────────────────────────┐   ││
+│  │                            │  │  │  🎧 Start Test Call           │   ││
+│  │  Avg Duration: 3m 24s      │  │  │  Try the voice agent yourself │   ││
+│  │  Resolution Rate: 94%      │  │  └────────────────────────────────┘   ││
+│  └────────────────────────────┘  └────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Course Card Design
+### 2. Request Detail Sheet
 
-Premium card with:
-- Large thumbnail area with gradient overlay
-- Circular progress indicator (ring style)
-- Course title and description
-- Duration badge
-- Required/Optional indicator
-- Action button (Start/Continue/Complete)
-- Hover animation with scale/shadow
-
-### 3. Course Upload Dialog (Admin)
+Full lifecycle management for each request:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Upload Articulate Course                               [X]    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                                                         │   │
-│  │  ┌─────┐  Drag & drop your Articulate                  │   │
-│  │  │ 📦  │  HTML5 export (.zip) here                     │   │
-│  │  └─────┘                                                │   │
-│  │           or click to browse                            │   │
-│  │                                                         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Course Details                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Title: [________________________________]                │   │
-│  │ Description: [_____________________________]             │   │
-│  │ Category: [Safety ▼]  Duration: [30] min                │   │
-│  │ Target Roles: ○ Inspector ● Manager ○ Superintendent    │   │
-│  │ [ ] Required  [✓] Published                             │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Processing... 45%  [████████░░░░░░░░]                   │   │
-│  │ Extracting course content...                            │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│                                    [Cancel]  [Upload Course]   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ← Back                                                                     │
+│                                                                             │
+│  MR-0247                                              🔴 EMERGENCY          │
+│  Water leak flooding kitchen                                                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │ STATUS: New → Reviewed → Assigned → In Progress → Completed → Closed   ││
+│  │              ●                                                          ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  ┌───────────────────────────────┐  ┌─────────────────────────────────────┐│
+│  │  CALLER INFORMATION          │  │  ISSUE DETAILS                      ││
+│  │  Name: Maria Garcia          │  │  Category: Plumbing                 ││
+│  │  Phone: (555) 123-4567       │  │  Location: Kitchen                  ││
+│  │  Unit: 412                   │  │  Description: Water is coming from  ││
+│  │  Property: Glorieta Gardens  │  │  under the sink and flooding the    ││
+│  │                              │  │  kitchen floor. Already turned off  ││
+│  │  AVAILABILITY                │  │  the water valve under sink.        ││
+│  │  Best time: Anytime (urgent) │  │                                     ││
+│  │  Has pets: Yes (dog)         │  │  Urgency: Emergency                 ││
+│  └───────────────────────────────┘  └─────────────────────────────────────┘│
+│                                                                             │
+│  CALL TRANSCRIPT                                          [Play Recording] │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  Alex: Thank you for calling Glorieta Gardens maintenance...           ││
+│  │  Caller: Hi, I have water flooding my kitchen!                         ││
+│  │  Alex: I understand this is urgent. Can you tell me...                 ││
+│  │  [Full transcript...]                                                   ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  ASSIGNMENT                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  Assign to: [Select Technician ▼]                                       ││
+│  │                                                                         ││
+│  │  [Convert to Work Order]  [Add Notes]  [Mark Resolved]                  ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  ACTIVITY LOG                                                               │
+│  • 5 min ago - Request created via voice agent                             │
+│  • 5 min ago - Emergency flag triggered (keyword: flooding)                │
+│  • 5 min ago - Supervisor notification sent                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Immersive Course Player
+### 3. Embeddable Call Widget
 
-Full-screen immersive experience:
+For resident portal or property website:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │                                    ○ 65%     [Mark Complete]│ │
-│ │                                              [X Close]      │ │
-│ │                                                             │ │
-│ │                                                             │ │
-│ │              ┌───────────────────────────────┐             │ │
-│ │              │                               │             │ │
-│ │              │     ARTICULATE COURSE         │             │ │
-│ │              │       (iframe content)        │             │ │
-│ │              │                               │             │ │
-│ │              │                               │             │ │
-│ │              │                               │             │ │
-│ │              └───────────────────────────────┘             │ │
-│ │                                                             │ │
-│ │                                                             │ │
-│ │                                                             │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│           [ ◀ Previous ]  ──────────────────  [ Next ▶ ]       │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────┐
+│                                    │
+│  🎧 Report Maintenance Issue       │
+│                                    │
+│  ┌────────────────────────────────┐│
+│  │                                ││
+│  │  ╭────────────────────────╮   ││
+│  │  │   🎤 SPEAK NOW         │   ││
+│  │  │                        │   ││
+│  │  │   "Describe your       │   ││
+│  │  │    maintenance issue"  │   ││
+│  │  │                        │   ││
+│  │  ╰────────────────────────╯   ││
+│  │                                ││
+│  │  [End Call]  ○○○ Active        ││
+│  └────────────────────────────────┘│
+│                                    │
+│  Powered by Glorieta Gardens       │
+└────────────────────────────────────┘
 ```
 
-Features:
-- Dark background for focus
-- Floating controls (close, progress, complete)
-- Full viewport iframe
-- Optional navigation controls
-- Progress persistence
-- Glassmorphism control bar
+---
+
+## Notification Flow
+
+### Immediate Notifications
+
+1. **Emergency Requests**:
+   - Push notification to all supervisors
+   - Email to emergency contact list
+   - SMS to on-call technician (if configured)
+   - Banner alert on dashboard
+
+2. **Standard Requests**:
+   - Email notification to designated supervisor
+   - Dashboard queue update
+   - Daily summary digest
+
+### Caller Notifications
+
+1. **Confirmation SMS** (via Resend or Twilio):
+   ```
+   Glorieta Gardens: Your maintenance request MR-0247 has been received.
+   Issue: Water leak in kitchen
+   Expected response: Within 24 hours for emergencies, 48 hours for routine.
+   Questions? Call (555) 000-0000
+   ```
+
+2. **Status Updates**:
+   - When technician assigned
+   - When work completed
+   - Request for confirmation of resolution
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: Database & Storage
-1. Create `training_courses` table with RLS
-2. Create `course_progress` table with RLS
-3. Create `training-courses` storage bucket
-4. Add storage policies
+### Phase 1: Database & Core Infrastructure
+1. Create `maintenance_requests` table with RLS
+2. Create `voice_agent_config` table
+3. Create `maintenance_request_activity` table
+4. Create hooks: `useMaintenanceRequests`, `useVoiceAgentConfig`
 
-### Phase 2: Edge Function
-1. Create `process-articulate-course` edge function
-2. Handle ZIP upload and extraction
-3. Upload extracted files to storage
-4. Return course metadata
+### Phase 2: ElevenLabs Agent Setup
+1. Create `voice-agent-token` edge function
+2. Create `voice-agent-tools` edge function for tool handling
+3. Create `voice-agent-webhook` edge function for post-call processing
+4. Configure agent in ElevenLabs dashboard with custom tools
 
-### Phase 3: Hooks
-1. Create `useTrainingCourses.ts` - CRUD for courses
-2. Create `useCourseProgress.ts` - Track user progress
-3. Create `useUploadCourse.ts` - Handle ZIP upload flow
+### Phase 3: Admin UI
+1. Create `VoiceAgentDashboard.tsx` page
+2. Create `RequestQueue.tsx` component
+3. Create `RequestDetailSheet.tsx` with lifecycle management
+4. Create `VoiceAgentStats.tsx` analytics cards
+5. Create `AgentConfigDialog.tsx` for settings
 
-### Phase 4: UI Components
-1. `CourseCard.tsx` - Premium course display card
-2. `CourseUploadDialog.tsx` - Admin upload with drag-drop
-3. `CourseProgressRing.tsx` - Circular progress indicator
-4. `CoursePlayer.tsx` - Immersive full-screen player
-5. `CourseCertificateDialog.tsx` - Completion certificate
+### Phase 4: Call Interface
+1. Create `VoiceAgentWidget.tsx` using ElevenLabs React SDK
+2. Create `CallInterface.tsx` for active call display
+3. Create `CallTranscript.tsx` for viewing call history
+4. Implement `useVoiceAgent.ts` hook
 
-### Phase 5: Page Integration
-1. Update `TrainingPage.tsx` - Enhance Courses tab
-2. Create route for course player (or use dialog)
-3. Add management section for admins
+### Phase 5: Notifications & Integration
+1. Implement supervisor notifications (email + in-app)
+2. Add "Convert to Work Order" functionality
+3. Add SMS confirmations for callers
+4. Create emergency alert system
 
-### Phase 6: Features Page Update
-1. Add Training Academy module to showcase
-2. Highlight course delivery and certification
-
----
-
-## Technical Considerations
-
-### Articulate HTML5 Export Structure
-
-Typical Articulate export contains:
-```text
-course.zip/
-├── story.html (or index.html) ← Entry point
-├── story_content/
-│   ├── slides/
-│   ├── data/
-│   └── assets/
-├── mobile/
-└── tincan.xml (or imsmanifest.xml for SCORM)
-```
-
-### Entry Point Detection
-
-The edge function will look for:
-1. `story.html` (Storyline 360)
-2. `index.html` (Rise 360 / generic)
-3. `story_html5.html` (older exports)
-
-### Progress Tracking
-
-Two approaches:
-1. **Simple**: Manual "Mark Complete" button
-2. **SCORM/xAPI**: Listen for postMessage from course
-
-For initial implementation, we'll use the simple approach with the option to auto-complete when the user reaches 100% in the iframe.
-
-### File Size Limits
-
-- Edge function limit: Consider chunked upload for large courses
-- Typical Articulate course: 5-50MB zipped
-- Storage: Public bucket for easy iframe access
+### Phase 6: Analytics & Reporting
+1. Call volume analytics
+2. Resolution time tracking
+3. Issue category breakdown
+4. Agent performance metrics
 
 ---
 
-## Visual Design Language
+## Technical Requirements
 
-### Color Scheme
-- Course cards: Primary gradient background
-- Progress ring: Green for complete, amber for in-progress
-- Player: Dark mode (black/dark slate)
+### ElevenLabs Configuration
 
-### Animations (Framer Motion)
-- Card hover: Scale + shadow
-- Progress ring: Animated fill
-- Player entrance: Fade + scale
-- Certificate: Celebration confetti
+The project already has `ELEVENLABS_API_KEY` configured via connector. Additional setup needed:
 
-### Typography
-- Course titles: Bold, tracking-tight
-- Descriptions: Regular, muted color
-- Duration badges: Small, rounded pills
+1. **Create Agent in ElevenLabs Dashboard**:
+   - Name: "Glorieta Gardens Maintenance"
+   - Voice: Professional, friendly (e.g., "Sarah" or "Roger")
+   - Model: Latest turbo model for low latency
+   - Enable tool calling
+
+2. **Configure Client Tools**:
+   - Register the 4 tools defined above
+   - Set up webhook URL for post-call events
+
+3. **Store Agent ID**:
+   - Add `ELEVENLABS_AGENT_ID` to secrets once agent is created
+
+### Integration Points
+
+| Existing System | Integration |
+|-----------------|-------------|
+| Properties | Lookup for unit verification |
+| Units | Validate caller's unit |
+| Work Orders | Convert request to work order |
+| Notifications | Supervisor alerts |
+| Activity Log | Audit trail for requests |
+| Email (Resend) | Confirmation emails |
+
+---
+
+## Security Considerations
+
+1. **Rate Limiting**: Prevent abuse of voice agent endpoint
+2. **Caller Verification**: Basic unit/property verification
+3. **PII Protection**: Encrypt phone numbers at rest
+4. **Recording Consent**: Inform callers recordings are made
+5. **RLS Policies**: Proper access control on request data
+6. **Webhook Verification**: Validate ElevenLabs webhook signatures
 
 ---
 
 ## Files to Create
 
 ### New Files
-1. `supabase/functions/process-articulate-course/index.ts`
-2. `src/hooks/useTrainingCourses.ts`
-3. `src/hooks/useCourseProgress.ts`
-4. `src/components/training/CourseCard.tsx`
-5. `src/components/training/CourseUploadDialog.tsx`
-6. `src/components/training/CoursePlayer.tsx`
-7. `src/components/training/CourseProgressRing.tsx`
-8. `src/components/training/CourseCertificateDialog.tsx`
+1. `supabase/functions/voice-agent-token/index.ts`
+2. `supabase/functions/voice-agent-tools/index.ts`
+3. `supabase/functions/voice-agent-webhook/index.ts`
+4. `src/hooks/useMaintenanceRequests.ts`
+5. `src/hooks/useVoiceAgentConfig.ts`
+6. `src/hooks/useVoiceAgent.ts`
+7. `src/components/voice-agent/VoiceAgentWidget.tsx`
+8. `src/components/voice-agent/CallInterface.tsx`
+9. `src/components/voice-agent/RequestQueue.tsx`
+10. `src/components/voice-agent/RequestDetailSheet.tsx`
+11. `src/components/voice-agent/VoiceAgentStats.tsx`
+12. `src/components/voice-agent/AgentConfigDialog.tsx`
+13. `src/components/voice-agent/CallTranscript.tsx`
+14. `src/components/voice-agent/EmergencyAlertBanner.tsx`
+15. `src/pages/voice-agent/VoiceAgentDashboard.tsx`
 
 ### Modified Files
-1. `src/pages/training/TrainingPage.tsx` - Enhanced Courses tab
-2. `src/components/features/ModuleShowcase.tsx` - Add Training Academy
+1. `src/App.tsx` - Add voice agent route
+2. `src/components/layout/AppSidebar.tsx` - Add navigation item
+3. `supabase/config.toml` - Register new edge functions
 
-### Database Migrations
-1. Create `training_courses` table
-2. Create `course_progress` table
-3. Create `training-courses` storage bucket
+### Dependencies
+1. `@elevenlabs/react` - ElevenLabs React SDK for voice agent
 
 ---
 
 ## Value Proposition
 
-This implementation delivers:
+This Voice Agent Call Center delivers:
 
-1. **Professional Course Delivery** - Immersive, distraction-free learning experience
-2. **Zero External Dependencies** - All courses hosted internally
-3. **Progress Tracking** - Users can resume where they left off
-4. **Certification** - Professional certificates upon completion
-5. **Admin Control** - Easy upload and management of courses
-6. **Role-Based Access** - Target specific teams with specific training
-7. **Beautiful UX** - Apple-quality design that encourages engagement
+1. **24/7 Availability** - Residents can report issues anytime
+2. **Consistent Experience** - Every caller gets the same professional service
+3. **Instant Ticket Creation** - No manual data entry required
+4. **Emergency Detection** - Critical issues flagged immediately
+5. **Full Audit Trail** - Call recordings and transcripts preserved
+6. **Scalable Architecture** - Works for one property or hundreds
+7. **Cost Reduction** - Reduces need for live after-hours staff
+8. **Improved Satisfaction** - Fast, professional, reliable service
 
 ---
 
 ## Summary
 
-The Articulate Course Integration transforms the Training Academy into a complete learning management system:
+The Voice Agent Call Center transforms maintenance request handling from a manual, error-prone process into an AI-powered, automated system that:
 
-1. **Admin uploads** a ZIP file exported from Articulate
-2. **Edge function processes** the ZIP, extracts files to storage
-3. **Course appears** in the premium Courses tab
-4. **Users launch** courses in immersive full-screen player
-5. **Progress is tracked** automatically
-6. **Certification** is awarded upon completion
+1. **Answers calls** with a professional, consistent voice agent
+2. **Collects information** through natural conversation
+3. **Creates tickets** automatically with all relevant details
+4. **Detects emergencies** and escalates immediately
+5. **Notifies supervisors** for prompt action
+6. **Tracks lifecycle** from request to resolution
+7. **Provides analytics** for continuous improvement
 
-This creates a seamless, professional training experience that rivals enterprise LMS platforms while remaining fully integrated within the Glorieta Gardens Platform.
-
+This positions Glorieta Gardens as a leader in property management technology, offering a feature that can be licensed or deployed across multiple properties.
