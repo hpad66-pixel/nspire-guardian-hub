@@ -7,11 +7,14 @@ import { ModuleProvider } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/auth/AuthPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import InspectionsDashboard from "./pages/inspections/InspectionsDashboard";
 import OutsideInspections from "./pages/inspections/OutsideInspections";
 import InsideInspections from "./pages/inspections/InsideInspections";
@@ -45,20 +48,23 @@ import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <ModuleProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-              
-              {/* Protected Routes */}
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <ModuleProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                
+                {/* Protected Routes */}
               <Route
                 path="/*"
                 element={
@@ -112,12 +118,13 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-            </Routes>
-          </BrowserRouter>
-        </ModuleProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+              </Routes>
+            </BrowserRouter>
+          </ModuleProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
