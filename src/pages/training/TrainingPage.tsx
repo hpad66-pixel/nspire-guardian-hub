@@ -13,9 +13,13 @@ import {
   Settings,
   BookMarked,
   Pencil,
+  PlayCircle,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useTrainingResources, useTrainingStats } from '@/hooks/useTrainingResources';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useActiveCourses, useTrainingCourses, type TrainingCourse } from '@/hooks/useTrainingCourses';
+import { useUserCourseProgress, useStartCourse, type CourseProgress } from '@/hooks/useCourseProgress';
 import { EBookCard } from '@/components/training/EBookCard';
 import { GeneratedBookCover } from '@/components/training/GeneratedBookCover';
 import { EBookManagementDialog } from '@/components/training/EBookManagementDialog';
@@ -23,6 +27,10 @@ import { LearningPathCard } from '@/components/training/LearningPathCard';
 import { TrainingResourceCard } from '@/components/training/TrainingResourceCard';
 import { TrainingRequestDialog } from '@/components/training/TrainingRequestDialog';
 import { ProgressStatsCard } from '@/components/training/ProgressStatsCard';
+import { CourseCard } from '@/components/training/CourseCard';
+import { CourseUploadDialog } from '@/components/training/CourseUploadDialog';
+import { CoursePlayer } from '@/components/training/CoursePlayer';
+import { CourseCertificateDialog } from '@/components/training/CourseCertificateDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TrainingResource } from '@/hooks/useTrainingResources';
 
@@ -59,17 +67,28 @@ const LEARNING_PATHS = [
 
 export default function TrainingPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showEbookDialog, setShowEbookDialog] = useState(false);
+  const [showCourseDialog, setShowCourseDialog] = useState(false);
   const [editingEbook, setEditingEbook] = useState<TrainingResource | null>(null);
+  const [editingCourse, setEditingCourse] = useState<TrainingCourse | null>(null);
+  const [activeCourse, setActiveCourse] = useState<TrainingCourse | null>(null);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [certificateCourse, setCertificateCourse] = useState<TrainingCourse | null>(null);
+  const [certificateProgress, setCertificateProgress] = useState<CourseProgress | null>(null);
 
-  const { data: resources, isLoading } = useTrainingResources();
+  const { data: resources, isLoading: resourcesLoading } = useTrainingResources();
   const { data: stats } = useTrainingStats();
   const { data: currentRole } = useCurrentUserRole();
+  const { data: courses, isLoading: coursesLoading } = useActiveCourses();
+  const { data: allCourses } = useTrainingCourses();
+  const { data: courseProgress } = useUserCourseProgress();
+  const startCourse = useStartCourse();
 
   const isAdmin = currentRole === 'admin';
 
-  // Filter ebooks by user's role - show all if admin or if no target_roles specified
+  // Filter ebooks by user's role
   const filterByRole = (resources: TrainingResource[]) => {
     if (isAdmin) return resources;
     return resources.filter(r => {
@@ -78,15 +97,32 @@ export default function TrainingPage() {
     });
   };
 
+  // Filter courses by user's role
+  const filterCoursesByRole = (courses: TrainingCourse[]) => {
+    if (isAdmin) return courses;
+    return courses.filter(c => {
+      if (!c.target_roles || c.target_roles.length === 0) return true;
+      return currentRole && c.target_roles.includes(currentRole);
+    });
+  };
+
   const ebooks = filterByRole(resources?.filter(r => r.resource_type === 'ebook') || []);
-  const courses = filterByRole(resources?.filter(r => r.resource_type === 'course') || []);
-  const guides = filterByRole(resources?.filter(r => r.resource_type === 'guide') || []);
-  const allEbooks = resources?.filter(r => r.resource_type === 'ebook') || []; // For admin management
+  const allEbooks = resources?.filter(r => r.resource_type === 'ebook') || [];
 
   const filteredEbooks = ebooks.filter(r =>
     r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredCourses = filterCoursesByRole(courses || []).filter(c =>
+    c.title.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
+    c.description?.toLowerCase().includes(courseSearchQuery.toLowerCase())
+  );
+
+  // Get progress for a specific course
+  const getCourseProgress = (courseId: string): CourseProgress | null => {
+    return courseProgress?.find(p => p.course_id === courseId) || null;
+  };
 
   const handleEditEbook = (ebook: TrainingResource) => {
     setEditingEbook(ebook);
@@ -96,6 +132,44 @@ export default function TrainingPage() {
   const handleAddEbook = () => {
     setEditingEbook(null);
     setShowEbookDialog(true);
+  };
+
+  const handleAddCourse = () => {
+    setEditingCourse(null);
+    setShowCourseDialog(true);
+  };
+
+  const handleEditCourse = (course: TrainingCourse) => {
+    setEditingCourse(course);
+    setShowCourseDialog(true);
+  };
+
+  const handleStartCourse = async (course: TrainingCourse) => {
+    await startCourse.mutateAsync(course.id);
+    setActiveCourse(course);
+    setShowPlayer(true);
+  };
+
+  const handleContinueCourse = (course: TrainingCourse) => {
+    setActiveCourse(course);
+    setShowPlayer(true);
+  };
+
+  const handleCourseComplete = () => {
+    if (activeCourse) {
+      const progress = getCourseProgress(activeCourse.id);
+      if (progress) {
+        setCertificateCourse(activeCourse);
+        setCertificateProgress(progress);
+      }
+    }
+    setShowPlayer(false);
+    setActiveCourse(null);
+  };
+
+  const handleViewCertificate = (course: TrainingCourse, progress: CourseProgress) => {
+    setCertificateCourse(course);
+    setCertificateProgress(progress);
   };
 
   return (
@@ -164,7 +238,7 @@ export default function TrainingPage() {
             )}
           </div>
 
-          {isLoading ? (
+          {resourcesLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
@@ -211,15 +285,55 @@ export default function TrainingPage() {
           )}
         </TabsContent>
 
-        {/* Courses Tab */}
+        {/* Courses Tab - New Premium Design */}
         <TabsContent value="courses" className="space-y-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Hero Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-8"
+          >
+            <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+            <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <PlayCircle className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Interactive Training Courses</h2>
+                  <p className="text-muted-foreground mt-1">
+                    Complete interactive courses to earn your certifications
+                  </p>
+                </div>
+              </div>
+              {isAdmin && (
+                <Button onClick={handleAddCourse} size="lg">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Course
+                </Button>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Search */}
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              value={courseSearchQuery}
+              onChange={(e) => setCourseSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Courses Grid */}
+          {coursesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-48" />
+                <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
               ))}
             </div>
-          ) : courses.length === 0 ? (
+          ) : filteredCourses.length === 0 ? (
             <Card className="py-16">
               <CardContent className="flex flex-col items-center justify-center text-center">
                 <div className="p-4 rounded-full bg-muted mb-4">
@@ -227,28 +341,63 @@ export default function TrainingPage() {
                 </div>
                 <h3 className="font-semibold text-xl mb-2">No courses available</h3>
                 <p className="text-muted-foreground max-w-md mb-6">
-                  Interactive courses will be added soon. Access LearnWorld for external training.
+                  {isAdmin
+                    ? 'Upload your first Articulate course to start training your team.'
+                    : 'Interactive courses will appear here once they are added by an administrator.'}
                 </p>
-                <Button onClick={() => window.open('https://learnworld.com', '_blank')}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open LearnWorld
-                </Button>
+                {isAdmin && (
+                  <Button onClick={handleAddCourse}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Upload First Course
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courses.map((resource) => (
-                <TrainingResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  onStart={() => {
-                    if (resource.external_url) {
-                      window.open(resource.external_url, '_blank');
-                    }
-                  }}
-                />
-              ))}
-            </div>
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.1 },
+                },
+              }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredCourses.map((course) => {
+                const progress = getCourseProgress(course.id);
+                return (
+                  <div key={course.id} className="relative group">
+                    <CourseCard
+                      course={course}
+                      progress={progress}
+                      onStart={() => handleStartCourse(course)}
+                      onContinue={() => handleContinueCourse(course)}
+                      onViewCertificate={
+                        progress?.status === 'completed'
+                          ? () => handleViewCertificate(course, progress)
+                          : undefined
+                      }
+                    />
+                    {isAdmin && (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 z-20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCourse(course);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </motion.div>
           )}
         </TabsContent>
 
@@ -288,6 +437,76 @@ export default function TrainingPage() {
             </div>
 
             <div className="grid gap-6">
+              {/* Courses Section */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <GraduationCap className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Interactive Courses</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {allCourses?.length || 0} course{allCourses?.length !== 1 ? 's' : ''} uploaded
+                        </p>
+                      </div>
+                    </div>
+                    <Button onClick={handleAddCourse}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Course
+                    </Button>
+                  </div>
+
+                  {!allCourses || allCourses.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No courses uploaded yet. Click "Add Course" to upload an Articulate export.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {allCourses.map((course) => (
+                        <div
+                          key={course.id}
+                          className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <PlayCircle className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{course.title}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-muted-foreground">
+                                  {course.category} • {course.is_active ? 'Published' : 'Draft'}
+                                </span>
+                                {course.duration_minutes && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                                    {course.duration_minutes} min
+                                  </span>
+                                )}
+                                {course.is_required && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
+                                    Required
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCourse(course)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* eBooks Section */}
               <Card>
                 <CardContent className="p-6">
@@ -380,7 +599,7 @@ export default function TrainingPage() {
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-3xl font-bold">{stats?.totalCourses || 0}</p>
+                    <p className="text-3xl font-bold">{allCourses?.length || 0}</p>
                     <p className="text-sm text-muted-foreground">Courses</p>
                   </CardContent>
                 </Card>
@@ -407,6 +626,41 @@ export default function TrainingPage() {
         onOpenChange={setShowEbookDialog}
         editingEbook={editingEbook}
       />
+
+      <CourseUploadDialog
+        open={showCourseDialog}
+        onOpenChange={setShowCourseDialog}
+        editingCourse={editingCourse}
+      />
+
+      {/* Course Player */}
+      {activeCourse && (
+        <CoursePlayer
+          course={activeCourse}
+          progress={getCourseProgress(activeCourse.id)}
+          open={showPlayer}
+          onClose={() => {
+            setShowPlayer(false);
+            setActiveCourse(null);
+          }}
+          onComplete={handleCourseComplete}
+        />
+      )}
+
+      {/* Certificate Dialog */}
+      {certificateCourse && certificateProgress && (
+        <CourseCertificateDialog
+          open={!!certificateCourse}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCertificateCourse(null);
+              setCertificateProgress(null);
+            }
+          }}
+          course={certificateCourse}
+          progress={certificateProgress}
+        />
+      )}
     </div>
   );
 }
