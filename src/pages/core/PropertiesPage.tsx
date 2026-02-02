@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical, FlaskConical } from 'lucide-react';
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
+import { isDemoProperty } from '@/hooks/useDemoProperty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PropertyDialog } from '@/components/properties/PropertyDialog';
 import {
@@ -109,6 +110,12 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {property.is_demo && (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        <FlaskConical className="h-3 w-3 mr-1" />
+                        DEMO
+                      </Badge>
+                    )}
                     <Badge variant={property.status === 'active' ? 'secondary' : 'outline'}>
                       {property.status === 'active' ? 'Active' : property.status}
                     </Badge>

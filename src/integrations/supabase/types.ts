@@ -1946,6 +1946,7 @@ export type Database = {
           created_by: string | null
           daily_grounds_enabled: boolean | null
           id: string
+          is_demo: boolean | null
           mailing_address: string | null
           mailing_city: string | null
           mailing_state: string | null
@@ -1972,6 +1973,7 @@ export type Database = {
           created_by?: string | null
           daily_grounds_enabled?: boolean | null
           id?: string
+          is_demo?: boolean | null
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -1998,6 +2000,7 @@ export type Database = {
           created_by?: string | null
           daily_grounds_enabled?: boolean | null
           id?: string
+          is_demo?: boolean | null
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -3249,6 +3252,7 @@ export type Database = {
         Args: { p_severity: Database["public"]["Enums"]["severity_level"] }
         Returns: string
       }
+      can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
