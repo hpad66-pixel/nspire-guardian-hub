@@ -58,7 +58,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     defaultValues: {
       email: '',
       role: 'user',
-      property_id: '',
+      property_id: 'all',
     },
   });
 
@@ -69,7 +69,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
       const invitation = await createInvitation.mutateAsync({
         email: data.email,
         role: data.role,
-        property_id: data.property_id || undefined,
+        property_id: data.property_id === 'all' ? undefined : data.property_id || undefined,
       });
 
       // Send the email
@@ -184,7 +184,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All properties</SelectItem>
+                        <SelectItem value="all">All properties</SelectItem>
                         {properties.map((property) => (
                           <SelectItem key={property.id} value={property.id}>
                             {property.name}
