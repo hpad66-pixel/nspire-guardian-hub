@@ -49,15 +49,24 @@ export function MailboxFolders({
 
   return (
     <div className="flex flex-col h-full bg-muted/30">
-      <div className="p-4 border-b">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Mail className="h-4 w-4" />
-          Mailbox
+      {onCompose && (
+        <div className="p-4 border-b">
+          <Button onClick={onCompose} className="w-full gap-2" size="lg">
+            <Plus className="h-5 w-5" />
+            Compose
+          </Button>
+        </div>
+      )}
+
+      <div className="px-4 py-3">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Mail className="h-3.5 w-3.5" />
+          Folders
         </h2>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="px-2 pb-2 space-y-1">
           {folders.map((folder) => {
             const Icon = folder.icon;
             const count = getCount(folder.id);
@@ -95,15 +104,6 @@ export function MailboxFolders({
           })}
         </div>
       </ScrollArea>
-
-      {onCompose && (
-        <div className="p-4 border-t">
-          <Button onClick={onCompose} className="w-full gap-2">
-            <Plus className="h-4 w-4" />
-            Compose
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
