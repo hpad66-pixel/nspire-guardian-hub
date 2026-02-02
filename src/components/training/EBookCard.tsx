@@ -17,7 +17,16 @@ interface EBookCardProps {
 export function EBookCard({ ebook }: EBookCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const embedUrl = ebook.embed_code || '';
+  const embedValue = ebook.embed_code || '';
+  const isHtmlEmbed = embedValue.includes('<iframe') || embedValue.includes('<embed');
+  
+  // Extract src from iframe if it's HTML embed code
+  const getIframeSrc = (html: string): string | null => {
+    const match = html.match(/src=["']([^"']+)["']/);
+    return match ? match[1] : null;
+  };
+
+  const embedUrl = isHtmlEmbed ? getIframeSrc(embedValue) : embedValue;
   
   return (
     <>

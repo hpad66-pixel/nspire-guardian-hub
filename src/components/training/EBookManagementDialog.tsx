@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { BookOpen, Plus, Pencil, Trash2, Link, Image } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, Link, Image, Code } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -60,13 +60,17 @@ const CATEGORIES = [
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  embed_code: z.string().url('Must be a valid URL').min(1, 'Embed URL is required'),
+  embed_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  embed_code: z.string().optional(),
   thumbnail_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   category: z.string().min(1, 'Category is required'),
   duration_minutes: z.coerce.number().optional(),
   is_required: z.boolean().default(false),
   is_active: z.boolean().default(true),
-});
+}).refine(
+  (data) => data.embed_url || data.embed_code,
+  { message: 'Either Embed URL or Embed Code is required', path: ['embed_code'] }
+);
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -92,6 +96,7 @@ export function EBookManagementDialog({
     defaultValues: {
       title: '',
       description: '',
+      embed_url: '',
       embed_code: '',
       thumbnail_url: '',
       category: 'operations',
@@ -103,10 +108,15 @@ export function EBookManagementDialog({
 
   useEffect(() => {
     if (editingEbook) {
+      // Detect if embed_code contains HTML (iframe) or is a URL
+      const storedValue = editingEbook.embed_code || '';
+      const isHtmlEmbed = storedValue.includes('<iframe') || storedValue.includes('<embed');
+      
       form.reset({
         title: editingEbook.title,
         description: editingEbook.description || '',
-        embed_code: editingEbook.embed_code || '',
+        embed_url: isHtmlEmbed ? '' : storedValue,
+        embed_code: isHtmlEmbed ? storedValue : '',
         thumbnail_url: editingEbook.thumbnail_url || '',
         category: editingEbook.category,
         duration_minutes: editingEbook.duration_minutes || undefined,
@@ -117,6 +127,7 @@ export function EBookManagementDialog({
       form.reset({
         title: '',
         description: '',
+        embed_url: '',
         embed_code: '',
         thumbnail_url: '',
         category: 'operations',
@@ -128,10 +139,13 @@ export function EBookManagementDialog({
   }, [editingEbook, form]);
 
   const onSubmit = async (data: FormValues) => {
+    // Use embed_code (HTML) if provided, otherwise use embed_url
+    const finalEmbedCode = data.embed_code?.trim() || data.embed_url?.trim() || '';
+    
     const payload = {
       title: data.title,
       description: data.description || null,
-      embed_code: data.embed_code,
+      embed_code: finalEmbedCode,
       thumbnail_url: data.thumbnail_url || null,
       category: data.category,
       duration_minutes: data.duration_minutes || null,
@@ -220,7 +234,7 @@ export function EBookManagementDialog({
 
               <FormField
                 control={form.control}
-                name="embed_code"
+                name="embed_url"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
@@ -235,6 +249,31 @@ export function EBookManagementDialog({
                     </FormControl>
                     <FormDescription>
                       Paste the embed URL from FlipHTML5, Issuu, or similar flipbook services.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="embed_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      Embed Code (HTML)
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder='<iframe src="..." width="100%" height="600" ...></iframe>'
+                        className="font-mono text-sm resize-none"
+                        rows={4}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Or paste the full HTML embed code (iframe). This takes priority over the URL above.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
