@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BookOpen, Maximize2, X, Check, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { Maximize2, X, Check, CheckCircle2, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import { GeneratedBookCover } from './GeneratedBookCover';
 import { EBookProgressBadge } from './EBookProgressBadge';
+import { CertificateDialog } from './CertificateDialog';
 import { useResourceProgress, useUpdateProgress } from '@/hooks/useTrainingProgress';
 import type { TrainingResource } from '@/hooks/useTrainingResources';
 
@@ -17,7 +18,8 @@ interface EBookCardProps {
 
 export function EBookCard({ ebook }: EBookCardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const { data: progress, isLoading: progressLoading } = useResourceProgress(ebook.id);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const { data: progress } = useResourceProgress(ebook.id);
   const updateProgress = useUpdateProgress();
 
   const embedValue = ebook.embed_code || '';
@@ -100,11 +102,15 @@ export function EBookCard({ ebook }: EBookCardProps) {
             )}
           </div>
 
-          {/* Completed checkmark */}
+          {/* Completed badge with certificate access */}
           {isCompleted && (
-            <div className="absolute bottom-2 right-2 p-1.5 rounded-full bg-green-500 text-white">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
+            <button
+              onClick={() => setShowCertificate(true)}
+              className="absolute bottom-2 right-2 p-1.5 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+              title="View Certificate"
+            >
+              <Award className="h-4 w-4" />
+            </button>
           )}
         </div>
 
@@ -153,6 +159,18 @@ export function EBookCard({ ebook }: EBookCardProps) {
                 Mark Complete
               </button>
             )}
+            {currentStatus === 'completed' && (
+              <button
+                onClick={() => {
+                  setIsFullscreen(false);
+                  setShowCertificate(true);
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-full bg-amber-600/80 hover:bg-amber-600 text-white text-sm font-medium transition-all duration-200 backdrop-blur-sm"
+              >
+                <Award className="h-4 w-4" />
+                View Certificate
+              </button>
+            )}
             <button
               onClick={() => setIsFullscreen(false)}
               className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white/80 hover:text-white transition-all duration-200 backdrop-blur-sm"
@@ -173,6 +191,15 @@ export function EBookCard({ ebook }: EBookCardProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Certificate Dialog */}
+      <CertificateDialog
+        open={showCertificate}
+        onOpenChange={setShowCertificate}
+        resourceTitle={ebook.title}
+        category={ebook.category}
+        completedAt={progress?.completed_at ? new Date(progress.completed_at) : new Date()}
+      />
     </>
   );
 }
