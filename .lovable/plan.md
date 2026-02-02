@@ -1,330 +1,449 @@
 
-
-# Premium Features Showcase Page
-## Apple-Quality Landing Experience for Glorieta Gardens
-
----
-
-## Vision
-
-Create a world-class, emotionally compelling showcase page that positions Glorieta Gardens Platform as the **single source of truth** for property operations. The page will speak directly to property owners who have experienced the pain of regulatory failures, maintenance backlogs, and operational chaos—and show them exactly how this platform eliminates those risks.
-
-The design will follow Apple's principle: **"Show, don't tell."** Every section will use dramatic visuals, smooth animations, and outcome-focused messaging.
+# Property Archives - Permanent Document Retention System
+## Enterprise-Grade As-Built & Critical Document Repository
 
 ---
 
-## Page Structure
+## Overview
 
-### URL: `/features`
-Accessible via "Learn More" button on the main landing page.
-
----
-
-## Section-by-Section Design
-
-### 1. HERO - "Never Again"
-A bold, emotionally resonant opening that acknowledges the pain without naming specific incidents.
-
-```
-Visual: Dark gradient with subtle grid pattern, floating UI elements
-Headline: "One Platform. Complete Control."
-Subhead: "When regulatory deadlines slip, when maintenance requests pile up, when you're searching through filing cabinets for permits—the cost isn't just time. It's millions."
-CTA: "See How It Works" (scroll trigger)
-```
-
-**Animation**: Staggered fade-in with subtle parallax on floating UI mockups
+Create a dedicated **Property Archives** section within the Document Center that serves as an immutable, permanently retained repository for critical property documents like as-builts, design drawings, engineering specifications, equipment manuals, and official permits. This section will be visually distinct, admin-managed, and view-only for all other users.
 
 ---
 
-### 2. THE PROBLEM - Pain Points Grid
-Three cards addressing core owner concerns without being alarmist:
+## Core Requirements
 
-| Card | Title | Description |
-|------|-------|-------------|
-| 1 | Compliance Risk | "HUD inspections. Fire safety. Stormwater permits. One missed deadline can trigger enforcement actions that cost far more than prevention." |
-| 2 | Operational Chaos | "Spreadsheets, emails, paper forms. When information lives in silos, critical issues fall through the cracks." |
-| 3 | Invisible Maintenance | "Your team is working hard. But without visibility into daily operations, you can't catch problems before they become emergencies." |
-
----
-
-### 3. THE SOLUTION - Platform Overview
-A premium 3D-style isometric or layered visualization showing the platform as an integrated system:
-
-```
-Visual: Animated layers showing data flowing between modules
-Headline: "Everything. Connected. Accountable."
-Body: "A unified property operations platform where every inspection, every work order, every permit, and every message lives in one place—with complete audit trails."
-```
+| Requirement | Implementation |
+|-------------|----------------|
+| **Permanent Retention** | No delete capability, no archive capability - documents stay forever |
+| **Admin-Only Upload** | Only users with `admin` role can add/manage documents |
+| **View & Download for Others** | All authenticated users can view and download, but not modify |
+| **Beautiful UX** | Premium visual design that conveys importance and permanence |
+| **Clear Separation** | Distinct from regular document folders |
 
 ---
 
-### 4. MODULE SHOWCASE - Feature Carousels
-Each major module gets a dedicated section with:
-- Icon + Module name
-- Compelling headline focused on **outcome** (not feature)
-- 2-3 bullet points of capabilities
-- Visual mockup or animation
+## Database Schema
 
-#### 4A. Daily Grounds Inspections
-```
-Headline: "Every Corner. Every Day. Documented."
-Points:
-- Voice-powered inspections with automatic Spanish translation
-- Photo evidence with timestamps and GPS
-- Automatic issue creation when defects are found
-- Supervisor review queue with one-tap approval
-Visual: iPhone mockup of inspection checklist
-```
+### New Table: `property_archives`
 
-#### 4B. NSPIRE Compliance
-```
-Headline: "HUD-Ready. Always."
-Points:
-- Complete NSPIRE defect catalog built-in
-- Severity-based repair deadlines (24h / 30d / 60d)
-- Automatic work order generation
-- Three-year audit trail retention
-Visual: Compliance dashboard with green checkmarks
-```
+A dedicated table for permanent records, separate from `organization_documents`:
 
-#### 4C. Permit & Regulatory Center
-```
-Headline: "Never Miss a Deadline Again."
-Points:
-- Track every permit, certificate, and filing
-- Automated deliverable reminders
-- Document storage with expiration tracking
-- Overdue items trigger issues automatically
-Visual: Permit calendar with color-coded statuses
-```
+```sql
+CREATE TABLE property_archives (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Category & Organization
+  category TEXT NOT NULL DEFAULT 'as-builts',
+  subcategory TEXT,
+  
+  -- Document Metadata
+  name TEXT NOT NULL,
+  description TEXT,
+  document_number TEXT, -- e.g., "DWG-001", "MECH-HVAC-01"
+  revision TEXT DEFAULT 'A', -- A, B, C, etc.
+  
+  -- File Info
+  file_url TEXT NOT NULL,
+  file_size BIGINT,
+  mime_type TEXT,
+  
+  -- Property Association (optional - for multi-property support)
+  property_id UUID REFERENCES properties(id),
+  
+  -- Timestamps & Attribution
+  uploaded_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  
+  -- Source / Original Date
+  original_date DATE, -- When the original document was created
+  received_from TEXT, -- e.g., "ABC Engineering", "City of Houston"
+  
+  -- Searchability
+  tags TEXT[] DEFAULT '{}',
+  
+  -- Audit Trail
+  notes TEXT
+);
 
-#### 4D. Document Management
-```
-Headline: "Your Digital Filing Cabinet."
-Points:
-- Organized by category: Contracts, Insurance, Legal, Policies
-- Version history on every document
-- Expiration date tracking for contracts & insurance
-- Instant search across all files
-Visual: Folder structure with file icons
-```
+-- Enable RLS
+ALTER TABLE property_archives ENABLE ROW LEVEL SECURITY;
 
-#### 4E. Project Management
-```
-Headline: "Capital Projects. Complete Visibility."
-Points:
-- Milestone tracking with timeline view
-- Daily reports with photo documentation
-- Change order approval workflows
-- RFI tracking and punch lists
-- AI-powered proposal generation
-Visual: Project timeline with progress indicators
-```
+-- Everyone can view
+CREATE POLICY "Authenticated users can view archives"
+ON property_archives FOR SELECT
+USING (auth.uid() IS NOT NULL);
 
-#### 4F. Work Order System
-```
-Headline: "From Issue to Resolution. Tracked."
-Points:
-- Automatic creation from inspections
-- Five-stage status pipeline
-- Priority levels with SLA awareness
-- Full activity log and comment threads
-Visual: Kanban-style work order board
+-- Only admins can insert
+CREATE POLICY "Only admins can create archives"
+ON property_archives FOR INSERT
+WITH CHECK (has_role(auth.uid(), 'admin'));
+
+-- Only admins can update
+CREATE POLICY "Only admins can update archives"
+ON property_archives FOR UPDATE
+USING (has_role(auth.uid(), 'admin'));
+
+-- NO DELETE POLICY - Documents cannot be deleted
 ```
 
-#### 4G. Team & Role Management
-```
-Headline: "The Right Access. For Every Role."
-Points:
-- Nine role levels from Admin to Viewer
-- Property-specific assignments
-- Training tracking with certificates
-- Invitation system for contractors
-Visual: Org chart with role badges
-```
+### Archive Categories (Enum or constant)
 
-#### 4H. Real-Time Messaging
-```
-Headline: "Your Team. In Sync."
-Points:
-- iMessage-style threaded conversations
-- Real-time message delivery
-- @mentions and notifications
-- Full message history
-Visual: Premium chat interface mockup
-```
-
-#### 4I. Analytics & Reporting
-```
-Headline: "Decisions Backed by Data."
-Points:
-- Property portfolio analytics
-- Inspection summary reports
-- Work order performance metrics
-- CSV export for all data
-Visual: Dashboard with charts
+```typescript
+export const ARCHIVE_CATEGORIES = [
+  { id: 'as-builts', label: 'As-Built Drawings', icon: 'Blueprint', description: 'Final construction drawings reflecting actual conditions' },
+  { id: 'design-drawings', label: 'Design Drawings', icon: 'Compass', description: 'Original architectural and engineering designs' },
+  { id: 'engineering', label: 'Engineering Specifications', icon: 'FileCode', description: 'Structural, MEP, and civil engineering documents' },
+  { id: 'equipment-manuals', label: 'Equipment Manuals', icon: 'BookOpen', description: 'Operating & maintenance manuals for installed equipment' },
+  { id: 'permits-approvals', label: 'Permits & Approvals', icon: 'Stamp', description: 'Original issued permits and regulatory approvals' },
+  { id: 'surveys-reports', label: 'Surveys & Reports', icon: 'MapPin', description: 'Property surveys, environmental reports, assessments' },
+  { id: 'warranties', label: 'Warranties & Guarantees', icon: 'Shield', description: 'Equipment and construction warranties' },
+  { id: 'legal-deeds', label: 'Legal & Deeds', icon: 'Scale', description: 'Property deeds, easements, legal agreements' },
+] as const;
 ```
 
 ---
 
-### 5. ROLE-BASED VALUE - Who Benefits
-A section showing how different stakeholders use the platform:
+## UI Architecture
 
-| Role | Value Statement |
-|------|-----------------|
-| **Property Owner** | "Complete visibility into operations without micromanaging. Know your property is protected." |
-| **Property Manager** | "One dashboard for everything. Stop juggling spreadsheets, emails, and paper forms." |
-| **Superintendent** | "Assign, track, and verify work orders. Always know what's pending." |
-| **Inspector** | "Mobile-first inspections with voice dictation. No more clipboard paperwork." |
-| **Subcontractor** | "Clear assignments, easy communication, training resources in one place." |
+### Documents Page Redesign
 
----
-
-### 6. ENTERPRISE FEATURES - Trust Builders
-A clean grid of security and compliance features:
-
-- Row-Level Security (data isolation per user)
-- Complete Audit Trails
-- Role-Based Access Control
-- Password-Protected Accounts
-- Secure Document Storage
-- Real-Time Notifications
-- CSV Data Export
-- Three-Year Data Retention
-
----
-
-### 7. CTA SECTION - Call to Action
-Premium card with gradient background:
+Transform the Document Center into a two-section layout:
 
 ```
-Headline: "Ready to Take Control?"
-Subhead: "Schedule a walkthrough and see how Glorieta Gardens Platform transforms property operations."
-Buttons: 
-  - "Sign In to Dashboard" (primary)
-  - "Contact Us" (secondary/outline)
+┌─────────────────────────────────────────────────────┐
+│  DOCUMENTS                                          │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │  📦 PROPERTY ARCHIVES                        │   │
+│  │  Permanent records. As-builts, drawings,     │   │
+│  │  equipment manuals. View & download only.    │   │
+│  │                                [View Archives]│   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │  📁 WORKING DOCUMENTS                        │   │
+│  │  Contracts, insurance, policies, reports.    │   │
+│  │                             [Browse Documents]│   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+### Property Archives Page
+
+A premium, dedicated page for the archives:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ← Back to Documents                                │
+│                                                     │
+│  📦 Property Archives                               │
+│  Permanent property records - never deleted         │
+│                                                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ As-Built │ │ Design   │ │ Equip.   │ │ Permits│ │
+│  │ Drawings │ │ Drawings │ │ Manuals  │ │        │ │
+│  │    12    │ │    8     │ │    24    │ │   6    │ │
+│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+│                                                     │
+│  ┌─────────────────────────────────────────────────┐│
+│  │ Category: As-Built Drawings              [Admin]││
+│  ├─────────────────────────────────────────────────┤│
+│  │ 📐 Site Plan As-Built          REV C    [View] ││
+│  │    DWG-001 • ABC Engineering • Mar 2024        ││
+│  │ 📐 Floor Plan Level 1          REV B    [View] ││
+│  │    DWG-002 • ABC Engineering • Mar 2024        ││
+│  └─────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Design Language
-
-### Colors
-- Primary gradient: Deep navy to professional blue
-- Accent: Emerald for success, Amber for warnings
-- Backgrounds: Subtle gradients with glassmorphism
-
-### Typography
-- Headlines: Bold, tight tracking, 4xl-6xl
-- Body: Regular weight, generous line height
-- Accents: Medium weight, muted colors
-
-### Animations (Framer Motion)
-- Staggered fade-in for sections
-- Subtle parallax on scroll
-- Hover states with scale/shadow
-- Number counters for stats
-
-### Visual Elements
-- Floating UI mockups
-- Gradient cards with blur
-- Icon badges with colored backgrounds
-- Subtle grid/dot patterns
-
----
-
-## Technical Implementation
+## Component Structure
 
 ### New Files
+
 ```
-src/pages/FeaturesPage.tsx           # Main showcase page
-src/components/features/
-  ├── FeatureHero.tsx                # Hero section
-  ├── PainPointsGrid.tsx             # Problem statement cards
-  ├── PlatformOverview.tsx           # Solution visualization
-  ├── ModuleShowcase.tsx             # Individual module sections
-  ├── RoleValueSection.tsx           # Role-based benefits
-  ├── EnterpriseFeatures.tsx         # Security/compliance grid
-  └── FeaturesCTA.tsx                # Call to action
+src/
+├── pages/
+│   └── documents/
+│       └── PropertyArchivesPage.tsx     # Full archives view
+├── components/
+│   └── documents/
+│       ├── ArchiveHero.tsx              # Premium hero section
+│       ├── ArchiveCategoryCard.tsx      # Category tiles
+│       ├── ArchiveDocumentCard.tsx      # Individual document card
+│       ├── ArchiveDocumentTable.tsx     # List view
+│       ├── ArchiveUploadDialog.tsx      # Admin upload (admin only)
+│       ├── ArchiveDocumentViewer.tsx    # View/download sheet
+│       └── ArchiveEmptyState.tsx        # Beautiful empty state
+├── hooks/
+│   └── usePropertyArchives.ts           # CRUD operations
 ```
 
-### Route Addition
+---
+
+## Visual Design
+
+### Design Language
+
+The Property Archives section will use a **premium, vault-like aesthetic** to convey:
+- **Permanence** - These documents don't get deleted
+- **Importance** - Critical property records
+- **Trust** - Secure, organized, professional
+
+### Visual Elements
+
+| Element | Design |
+|---------|--------|
+| **Color Palette** | Deep navy, gold accents, subtle gradients |
+| **Icons** | Blueprint, Compass, BookOpen, Shield, Stamp |
+| **Cards** | Elevated shadows, subtle borders, premium feel |
+| **Empty States** | Illustrated, encouraging, professional |
+| **Admin Badge** | Subtle gold "Admin" indicator on upload actions |
+
+### Hero Section (ArchiveHero.tsx)
+
 ```tsx
-// In App.tsx (public route)
-<Route path="/features" element={<FeaturesPage />} />
+// Premium hero with vault/archive imagery
+<div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 mb-8">
+  {/* Background pattern */}
+  <div className="absolute inset-0 opacity-5">
+    <GridPattern />
+  </div>
+  
+  <div className="relative z-10">
+    <div className="flex items-center gap-3 mb-4">
+      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+        <Archive className="h-7 w-7 text-white" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold text-white">Property Archives</h1>
+        <p className="text-slate-400">Permanent records. Always available.</p>
+      </div>
+    </div>
+    
+    <p className="text-slate-300 max-w-2xl">
+      Critical property documentation including as-built drawings, engineering specifications, 
+      equipment manuals, and official permits. These records are permanently retained and 
+      cannot be deleted.
+    </p>
+    
+    {isAdmin && (
+      <Button className="mt-6 bg-amber-500 hover:bg-amber-600">
+        <Plus className="mr-2 h-4 w-4" />
+        Add Document
+      </Button>
+    )}
+  </div>
+</div>
 ```
 
-### Landing Page Update
-Add "Learn More" button below "Get Started":
+### Category Cards
+
 ```tsx
-<Link to="/features">
-  <Button variant="outline" size="lg">
-    Learn More
-    <ArrowRight className="ml-2 h-5 w-5" />
-  </Button>
-</Link>
+// Premium category tiles with counts
+<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  {categories.map((cat) => (
+    <motion.div
+      whileHover={{ y: -4 }}
+      className={cn(
+        "relative p-6 rounded-2xl border cursor-pointer transition-all",
+        selectedCategory === cat.id
+          ? "bg-primary text-primary-foreground border-primary shadow-lg"
+          : "bg-card hover:bg-muted/50 border-border"
+      )}
+    >
+      <cat.icon className="h-8 w-8 mb-4" />
+      <p className="font-semibold">{cat.label}</p>
+      <p className="text-3xl font-bold mt-2">{cat.count}</p>
+      <p className="text-xs opacity-75">documents</p>
+    </motion.div>
+  ))}
+</div>
+```
+
+### Document Cards (View Mode)
+
+```tsx
+// Individual archive document - premium card
+<div className="group p-4 rounded-xl border bg-card hover:shadow-md transition-all">
+  <div className="flex items-start gap-4">
+    {/* File type icon */}
+    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+      <FileType className="h-6 w-6 text-primary" />
+    </div>
+    
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2">
+        <h4 className="font-semibold truncate">{document.name}</h4>
+        <Badge variant="outline">REV {document.revision}</Badge>
+      </div>
+      <p className="text-sm text-muted-foreground">{document.document_number}</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        {document.received_from} • {format(document.original_date, 'MMM yyyy')}
+      </p>
+    </div>
+    
+    {/* Actions */}
+    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <Button variant="ghost" size="icon" onClick={() => handleView(document)}>
+        <Eye className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={() => handleDownload(document)}>
+        <Download className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+</div>
 ```
 
 ---
 
-## Complete Module List for Showcase
+## Permission Handling
 
-1. **Daily Grounds Inspections** - Voice-powered exterior inspections
-2. **NSPIRE Compliance** - HUD inspection standards
-3. **Permit Center** - Regulatory tracking
-4. **Document Center** - Enterprise file management
-5. **Project Management** - Capital improvements
-6. **Work Orders** - Maintenance tracking
-7. **Issues Engine** - Cross-module issue spine
-8. **Asset Management** - Equipment tracking
-9. **Unit Registry** - Unit inventory
-10. **Occupancy Tracking** - Tenant management
-11. **Team Management** - People & roles
-12. **Training Academy** - eBooks & certifications
-13. **Contact CRM** - Vendors & regulators
-14. **Real-Time Messaging** - Internal chat
-15. **Email Integration** - External communications
-16. **Reports & Analytics** - Data insights
-17. **Settings & Configuration** - Admin controls
+### Frontend Checks
 
----
+```tsx
+// In PropertyArchivesPage.tsx
+const { isAdmin } = useUserPermissions();
 
-## Key Messaging Principles
+return (
+  <div>
+    <ArchiveHero canUpload={isAdmin} onUpload={() => setUploadOpen(true)} />
+    
+    {/* Upload button only for admins */}
+    {isAdmin && (
+      <Button onClick={() => setUploadOpen(true)}>
+        Add Document
+      </Button>
+    )}
+    
+    {/* View/Download available to everyone */}
+    <ArchiveDocumentTable 
+      documents={documents} 
+      canEdit={isAdmin}  // Shows edit actions only for admin
+    />
+  </div>
+);
+```
 
-1. **Lead with outcomes, not features**
-   - NOT: "Create inspections with photo upload"
-   - YES: "Never wonder if today's walkthrough happened"
+### Action Restrictions
 
-2. **Acknowledge pain without dwelling**
-   - Mention compliance and cost risks briefly
-   - Quickly pivot to solution
-
-3. **Visual proof over text claims**
-   - Show UI mockups that look premium
-   - Animate transitions to feel modern
-
-4. **Role-specific relevance**
-   - Owners care about risk and visibility
-   - Managers care about efficiency
-   - Staff cares about ease of use
-
-5. **Build trust through specifics**
-   - "9 role levels"
-   - "24h/30d/60d repair deadlines"
-   - "Three-year audit trails"
+| Role | View | Download | Upload | Edit | Delete |
+|------|------|----------|--------|------|--------|
+| Admin | ✅ | ✅ | ✅ | ✅ | ❌ (by design) |
+| Manager | ✅ | ✅ | ❌ | ❌ | ❌ |
+| All Others | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
-## Summary
+## Storage Bucket
 
-This showcase page will be a **conversion-focused, emotionally compelling** presentation that:
+Create a dedicated, private storage bucket for archives:
 
-1. Opens with acknowledgment of operational pain
-2. Presents the platform as an integrated solution
-3. Walks through each module with outcome-focused messaging
-4. Addresses different stakeholder perspectives
-5. Builds trust with enterprise security features
-6. Closes with a clear call to action
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('property-archives', 'property-archives', false);
 
-The design will match the premium quality of the messaging interface we just built—smooth animations, glassmorphism, gradient accents, and Apple-level polish.
+-- Only admins can upload
+CREATE POLICY "Admins can upload archives"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'property-archives' AND
+  has_role(auth.uid(), 'admin')
+);
 
+-- All authenticated can download
+CREATE POLICY "Authenticated can download archives"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (bucket_id = 'property-archives');
+```
+
+---
+
+## Value Proposition Messaging
+
+Integrate into the Documents page and Features page with clear value messaging:
+
+### In Documents Page Header
+
+> **Property Archives**: Your permanent vault for critical property documentation. 
+> As-builts, equipment manuals, and original permits—secured and accessible forever.
+
+### In Features Page (Update ModuleShowcase)
+
+Add a section highlighting the archives:
+
+```tsx
+{
+  title: 'Property Archives',
+  headline: 'Your Permanent Digital Vault.',
+  points: [
+    { icon: Lock, text: 'As-built drawings and design documents secured forever' },
+    { icon: BookOpen, text: 'Equipment manuals accessible to maintenance staff' },
+    { icon: Shield, text: 'Admin-controlled uploads, view-only for teams' },
+    { icon: History, text: 'Complete audit trail of property documentation' },
+  ],
+  visual: 'archives',
+}
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Database & Hooks
+1. Create `property_archives` table with RLS
+2. Create `property-archives` storage bucket
+3. Implement `usePropertyArchives.ts` hook
+4. Add categories constant
+
+### Phase 2: UI Components
+1. Build `ArchiveHero.tsx` with premium styling
+2. Build `ArchiveCategoryCard.tsx` tiles
+3. Build `ArchiveDocumentCard.tsx` for list view
+4. Build `ArchiveUploadDialog.tsx` (admin only)
+5. Build `ArchiveDocumentViewer.tsx` sheet
+
+### Phase 3: Page Integration
+1. Create `PropertyArchivesPage.tsx`
+2. Add route in `App.tsx`
+3. Update `DocumentsPage.tsx` with dual-section layout
+4. Add navigation link in sidebar
+
+### Phase 4: Features Integration
+1. Update `ModuleShowcase.tsx` with archives section
+2. Add archives to platform overview
+
+---
+
+## Deliverables Summary
+
+| Component | Purpose |
+|-----------|---------|
+| **Database table** | `property_archives` with strict RLS |
+| **Storage bucket** | `property-archives` with admin-only upload |
+| **New hook** | `usePropertyArchives.ts` |
+| **6 new components** | Premium archives UI |
+| **1 new page** | `/documents/archives` |
+| **Updated Documents page** | Dual-section layout |
+| **Features page update** | Archives module showcase |
+
+---
+
+## Visual Mockup Summary
+
+The Property Archives will feel like:
+- A **secure vault** for important documents
+- **Premium and professional** with dark gradients and gold accents
+- **Clear hierarchy** with category tiles
+- **Easy to navigate** with filtering and search
+- **Immediately useful** with view and download always visible
+- **Trust-building** with revision tracking and source attribution
+
+This implementation positions document management as a **first-class enterprise feature** that demonstrates the platform's commitment to permanent record retention and regulatory compliance.
