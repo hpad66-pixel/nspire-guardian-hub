@@ -1930,16 +1930,21 @@ export type Database = {
           bcc_recipients: string[] | null
           body_html: string | null
           body_text: string | null
+          cc_recipients: string[] | null
           daily_inspection_id: string | null
           deleted_at: string | null
           error_message: string | null
+          from_user_id: string | null
+          from_user_name: string | null
           id: string
           is_archived: boolean | null
           is_deleted: boolean | null
           is_read: boolean | null
+          message_type: Database["public"]["Enums"]["message_type"] | null
           project_id: string | null
           property_id: string | null
           proposal_id: string | null
+          recipient_user_ids: string[] | null
           recipients: string[]
           reply_to_id: string | null
           report_id: string | null
@@ -1959,16 +1964,21 @@ export type Database = {
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
+          cc_recipients?: string[] | null
           daily_inspection_id?: string | null
           deleted_at?: string | null
           error_message?: string | null
+          from_user_id?: string | null
+          from_user_name?: string | null
           id?: string
           is_archived?: boolean | null
           is_deleted?: boolean | null
           is_read?: boolean | null
+          message_type?: Database["public"]["Enums"]["message_type"] | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
+          recipient_user_ids?: string[] | null
           recipients: string[]
           reply_to_id?: string | null
           report_id?: string | null
@@ -1988,16 +1998,21 @@ export type Database = {
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
+          cc_recipients?: string[] | null
           daily_inspection_id?: string | null
           deleted_at?: string | null
           error_message?: string | null
+          from_user_id?: string | null
+          from_user_name?: string | null
           id?: string
           is_archived?: boolean | null
           is_deleted?: boolean | null
           is_read?: boolean | null
+          message_type?: Database["public"]["Enums"]["message_type"] | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
+          recipient_user_ids?: string[] | null
           recipients?: string[]
           reply_to_id?: string | null
           report_id?: string | null
@@ -2753,6 +2768,7 @@ export type Database = {
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
       issue_source: "core" | "nspire" | "projects" | "daily_grounds" | "permits"
+      message_type: "external" | "internal"
       permit_status: "draft" | "active" | "expired" | "renewed" | "revoked"
       permit_type:
         | "building_permit"
@@ -2986,6 +3002,7 @@ export const Constants = {
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
       issue_source: ["core", "nspire", "projects", "daily_grounds", "permits"],
+      message_type: ["external", "internal"],
       permit_status: ["draft", "active", "expired", "renewed", "revoked"],
       permit_type: [
         "building_permit",
