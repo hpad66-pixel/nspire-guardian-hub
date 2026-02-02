@@ -1,42 +1,28 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  GraduationCap,
   BookOpen,
-  Shield,
-  Wrench,
-  ClipboardCheck,
-  Building2,
-  AlertTriangle,
+  GraduationCap,
   Search,
   ExternalLink,
   MessageSquarePlus,
-  Users,
+  Plus,
+  Settings,
   BookMarked,
+  Pencil,
 } from 'lucide-react';
-import { StatCard } from '@/components/ui/stat-card';
 import { useTrainingResources, useTrainingStats } from '@/hooks/useTrainingResources';
-import { useUserTrainingProgress } from '@/hooks/useTrainingProgress';
-import { useRequestsCount } from '@/hooks/useTrainingRequests';
-import { QuickAccessCard } from '@/components/training/QuickAccessCard';
-import { EBookViewer } from '@/components/training/EBookViewer';
+import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { EBookCard } from '@/components/training/EBookCard';
+import { EBookManagementDialog } from '@/components/training/EBookManagementDialog';
 import { LearningPathCard } from '@/components/training/LearningPathCard';
 import { TrainingResourceCard } from '@/components/training/TrainingResourceCard';
 import { TrainingRequestDialog } from '@/components/training/TrainingRequestDialog';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const CATEGORIES = [
-  { key: 'onboarding', label: 'New Hire Onboarding', icon: GraduationCap, color: 'bg-blue-500', description: 'Essential orientation' },
-  { key: 'maintenance', label: 'Maintenance Essentials', icon: Wrench, color: 'bg-orange-500', description: 'Core repair procedures' },
-  { key: 'safety', label: 'Safety Protocols', icon: Shield, color: 'bg-red-500', description: 'OSHA compliance' },
-  { key: 'compliance', label: 'NSPIRE Compliance', icon: ClipboardCheck, color: 'bg-purple-500', description: 'HUD inspection standards' },
-  { key: 'operations', label: 'Property Operations', icon: Building2, color: 'bg-green-500', description: 'Day-to-day management' },
-  { key: 'emergency', label: 'Emergency Response', icon: AlertTriangle, color: 'bg-rose-500', description: 'Emergency procedures' },
-];
+import type { TrainingResource } from '@/hooks/useTrainingResources';
 
 const LEARNING_PATHS = [
   { 
@@ -71,37 +57,43 @@ const LEARNING_PATHS = [
 
 export default function TrainingPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [showEbookDialog, setShowEbookDialog] = useState(false);
+  const [editingEbook, setEditingEbook] = useState<TrainingResource | null>(null);
 
-  const { data: resources, isLoading: resourcesLoading } = useTrainingResources(
-    selectedCategory !== 'all' ? selectedCategory : undefined
-  );
+  const { data: resources, isLoading } = useTrainingResources();
   const { data: stats } = useTrainingStats();
-  const { data: progress } = useUserTrainingProgress();
-  const { data: pendingRequests } = useRequestsCount();
+  const { data: currentRole } = useCurrentUserRole();
 
-  const filteredResources = resources?.filter(r => 
+  const isAdmin = currentRole === 'admin' || currentRole === 'manager';
+
+  const ebooks = resources?.filter(r => r.resource_type === 'ebook') || [];
+  const courses = resources?.filter(r => r.resource_type === 'course') || [];
+  const guides = resources?.filter(r => r.resource_type === 'guide') || [];
+
+  const filteredEbooks = ebooks.filter(r =>
     r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const ebooks = resources?.filter(r => r.resource_type === 'ebook') || [];
-
-  const getProgressForResource = (resourceId: string) => {
-    return progress?.find(p => p.resource_id === resourceId);
+  const handleEditEbook = (ebook: TrainingResource) => {
+    setEditingEbook(ebook);
+    setShowEbookDialog(true);
   };
 
-  const completedCount = progress?.filter(p => p.status === 'completed').length || 0;
+  const handleAddEbook = () => {
+    setEditingEbook(null);
+    setShowEbookDialog(true);
+  };
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-8 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Training Academy</h1>
-          <p className="text-muted-foreground">
-            Operational training resources for your team
+          <h1 className="text-3xl font-bold tracking-tight">Training Academy</h1>
+          <p className="text-muted-foreground mt-1">
+            Resources and guides to help you succeed
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -111,157 +103,157 @@ export default function TrainingPage() {
           </Button>
           <Button onClick={() => window.open('https://learnworld.com', '_blank')}>
             <ExternalLink className="h-4 w-4 mr-2" />
-            Open LearnWorld
+            LearnWorld
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Resources"
-          value={stats?.totalResources || 0}
-          icon={BookOpen}
-          subtitle="Available training materials"
-        />
-        <StatCard
-          title="Courses"
-          value={stats?.totalCourses || 0}
-          icon={GraduationCap}
-          subtitle="Interactive courses"
-        />
-        <StatCard
-          title="Completed"
-          value={completedCount}
-          icon={ClipboardCheck}
-          subtitle="Your completed trainings"
-        />
-        <StatCard
-          title="Feedback Requests"
-          value={pendingRequests || 0}
-          icon={MessageSquarePlus}
-          subtitle="Pending requests"
-        />
-      </div>
-
-      {/* Main Content with Tabs */}
-      <Tabs defaultValue="all" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="all">All Training</TabsTrigger>
-          <TabsTrigger value="paths">By Role</TabsTrigger>
-          <TabsTrigger value="guides">Quick Guides</TabsTrigger>
-          <TabsTrigger value="ebooks">eBooks</TabsTrigger>
-          <TabsTrigger value="requests">My Requests</TabsTrigger>
+      {/* Main Tabs */}
+      <Tabs defaultValue="library" className="space-y-6">
+        <TabsList className="bg-muted/50 p-1">
+          <TabsTrigger value="library" className="data-[state=active]:bg-background">
+            <BookOpen className="h-4 w-4 mr-2" />
+            eBook Library
+          </TabsTrigger>
+          <TabsTrigger value="courses" className="data-[state=active]:bg-background">
+            <GraduationCap className="h-4 w-4 mr-2" />
+            Courses
+          </TabsTrigger>
+          <TabsTrigger value="paths" className="data-[state=active]:bg-background">
+            Learning Paths
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="manage" className="data-[state=active]:bg-background">
+              <Settings className="h-4 w-4 mr-2" />
+              Manage
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        {/* All Training Tab */}
-        <TabsContent value="all" className="space-y-6">
-          {/* Quick Access Categories */}
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Quick Access</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {CATEGORIES.map((cat) => (
-                <QuickAccessCard
-                  key={cat.key}
-                  icon={cat.icon}
-                  title={cat.label}
-                  subtitle={cat.description}
-                  count={stats?.byCategory?.[cat.key] || 0}
-                  color={cat.color}
-                  isActive={selectedCategory === cat.key}
-                  onClick={() => setSelectedCategory(
-                    selectedCategory === cat.key ? 'all' : cat.key
+        {/* eBook Library Tab */}
+        <TabsContent value="library" className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search eBooks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {isAdmin && (
+              <Button onClick={handleAddEbook}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add eBook
+              </Button>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+              ))}
+            </div>
+          ) : filteredEbooks.length === 0 ? (
+            <Card className="py-16">
+              <CardContent className="flex flex-col items-center justify-center text-center">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <BookMarked className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="font-semibold text-xl mb-2">No eBooks yet</h3>
+                <p className="text-muted-foreground max-w-md mb-6">
+                  {isAdmin
+                    ? 'Add your first eBook to start building your training library.'
+                    : 'eBooks will appear here once they are added by an administrator.'}
+                </p>
+                {isAdmin && (
+                  <Button onClick={handleAddEbook}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First eBook
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {filteredEbooks.map((ebook) => (
+                <div key={ebook.id} className="relative group">
+                  <EBookCard ebook={ebook} />
+                  {isAdmin && (
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                      onClick={() => handleEditEbook(ebook)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Courses Tab */}
+        <TabsContent value="courses" className="space-y-6">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-48" />
+              ))}
+            </div>
+          ) : courses.length === 0 ? (
+            <Card className="py-16">
+              <CardContent className="flex flex-col items-center justify-center text-center">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <GraduationCap className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="font-semibold text-xl mb-2">No courses available</h3>
+                <p className="text-muted-foreground max-w-md mb-6">
+                  Interactive courses will be added soon. Access LearnWorld for external training.
+                </p>
+                <Button onClick={() => window.open('https://learnworld.com', '_blank')}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open LearnWorld
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {courses.map((resource) => (
+                <TrainingResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onStart={() => {
+                    if (resource.external_url) {
+                      window.open(resource.external_url, '_blank');
+                    }
+                  }}
                 />
               ))}
             </div>
-          </div>
-
-          {/* Search and Resources Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold">
-                {selectedCategory !== 'all' 
-                  ? CATEGORIES.find(c => c.key === selectedCategory)?.label 
-                  : 'All Resources'}
-                {selectedCategory !== 'all' && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="ml-2"
-                    onClick={() => setSelectedCategory('all')}
-                  >
-                    Clear filter
-                  </Button>
-                )}
-              </h2>
-              <div className="relative w-full max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search resources..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            {resourcesLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Skeleton key={i} className="h-48" />
-                ))}
-              </div>
-            ) : filteredResources?.length === 0 ? (
-              <Card className="py-12">
-                <CardContent className="flex flex-col items-center justify-center text-center">
-                  <BookMarked className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold text-lg mb-1">No resources found</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    {searchQuery 
-                      ? 'Try adjusting your search terms'
-                      : 'No training resources available in this category yet.'}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {filteredResources?.map((resource) => (
-                  <TrainingResourceCard
-                    key={resource.id}
-                    resource={resource}
-                    progress={getProgressForResource(resource.id)}
-                    onStart={() => {
-                      if (resource.external_url) {
-                        window.open(resource.external_url, '_blank');
-                      }
-                    }}
-                    onView={() => {
-                      // Scroll to ebook viewer or open modal
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </TabsContent>
 
         {/* Learning Paths Tab */}
         <TabsContent value="paths" className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold mb-1">Role-Based Learning Paths</h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Curated training tracks for each job function. Complete required paths to ensure readiness.
+          <div className="mb-2">
+            <h2 className="text-xl font-semibold">Role-Based Learning Paths</h2>
+            <p className="text-muted-foreground">
+              Structured training tracks tailored to your role
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {LEARNING_PATHS.map((path, index) => (
               <LearningPathCard
                 key={index}
                 title={path.title}
                 description={path.description}
                 totalModules={path.totalModules}
-                completedModules={Math.floor(Math.random() * path.totalModules)} // TODO: Real progress
+                completedModules={0}
                 estimatedHours={path.estimatedHours}
                 isRequired={path.isRequired}
               />
@@ -269,107 +261,121 @@ export default function TrainingPage() {
           </div>
         </TabsContent>
 
-        {/* Quick Guides Tab */}
-        <TabsContent value="guides" className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold mb-1">Quick Start Guides</h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Short, actionable how-to guides for common tasks. Get up to speed fast.
-            </p>
-          </div>
-          {resourcesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
+        {/* Admin Management Tab */}
+        {isAdmin && (
+          <TabsContent value="manage" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Manage Training Content</h2>
+                <p className="text-muted-foreground">
+                  Add, edit, or remove training resources
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {resources?.filter(r => r.resource_type === 'guide').map((resource) => (
-                <TrainingResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  progress={getProgressForResource(resource.id)}
-                />
-              ))}
-              {resources?.filter(r => r.resource_type === 'guide').length === 0 && (
-                <Card className="col-span-full py-12">
-                  <CardContent className="flex flex-col items-center justify-center text-center">
-                    <BookMarked className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="font-semibold text-lg mb-1">No quick guides yet</h3>
-                    <p className="text-muted-foreground">Quick guides will be added soon.</p>
+
+            <div className="grid gap-6">
+              {/* eBooks Section */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">eBooks</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {ebooks.length} eBook{ebooks.length !== 1 ? 's' : ''} in library
+                        </p>
+                      </div>
+                    </div>
+                    <Button onClick={handleAddEbook}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add eBook
+                    </Button>
+                  </div>
+
+                  {ebooks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No eBooks added yet. Click "Add eBook" to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {ebooks.map((ebook) => (
+                        <div
+                          key={ebook.id}
+                          className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            {ebook.thumbnail_url ? (
+                              <img
+                                src={ebook.thumbnail_url}
+                                alt=""
+                                className="w-10 h-14 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+                                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium">{ebook.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {ebook.category} • {ebook.is_active ? 'Published' : 'Draft'}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditEbook(ebook)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-3xl font-bold">{stats?.totalEbooks || 0}</p>
+                    <p className="text-sm text-muted-foreground">eBooks</p>
                   </CardContent>
                 </Card>
-              )}
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-3xl font-bold">{stats?.totalCourses || 0}</p>
+                    <p className="text-sm text-muted-foreground">Courses</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-3xl font-bold">{stats?.totalGuides || 0}</p>
+                    <p className="text-sm text-muted-foreground">Guides</p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          )}
-        </TabsContent>
-
-        {/* eBooks Tab */}
-        <TabsContent value="ebooks" className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold mb-1">eBook Library</h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Interactive flipbooks and digital manuals. Read online or download for offline use.
-            </p>
-          </div>
-          
-          {ebooks.length > 0 ? (
-            <div className="space-y-6">
-              {ebooks.map((ebook) => (
-                <EBookViewer
-                  key={ebook.id}
-                  embedUrl={ebook.embed_code || ''}
-                  title={ebook.title}
-                  description={ebook.description || undefined}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card className="py-12">
-              <CardContent className="flex flex-col items-center justify-center text-center">
-                <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-semibold text-lg mb-1">No eBooks available</h3>
-                <p className="text-muted-foreground">eBooks will be added to your library soon.</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* My Requests Tab */}
-        <TabsContent value="requests" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">My Training Requests</h2>
-              <p className="text-muted-foreground text-sm">
-                Track your submitted training requests and their status.
-              </p>
-            </div>
-            <Button onClick={() => setShowRequestDialog(true)}>
-              <MessageSquarePlus className="h-4 w-4 mr-2" />
-              New Request
-            </Button>
-          </div>
-          
-          <Card className="py-12">
-            <CardContent className="flex flex-col items-center justify-center text-center">
-              <MessageSquarePlus className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-1">No requests yet</h3>
-              <p className="text-muted-foreground max-w-md mb-4">
-                Have a training need? Submit a request and we'll work on adding it.
-              </p>
-              <Button onClick={() => setShowRequestDialog(true)}>
-                Submit Your First Request
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
 
-      {/* Request Dialog */}
+      {/* Dialogs */}
       <TrainingRequestDialog
         open={showRequestDialog}
         onOpenChange={setShowRequestDialog}
+      />
+      
+      <EBookManagementDialog
+        open={showEbookDialog}
+        onOpenChange={setShowEbookDialog}
+        editingEbook={editingEbook}
       />
     </div>
   );
