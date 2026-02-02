@@ -878,6 +878,177 @@ export type Database = {
           },
         ]
       }
+      maintenance_request_activity: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          request_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          request_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          request_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_request_activity_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_requests: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          call_duration_seconds: number | null
+          call_ended_at: string | null
+          call_id: string | null
+          call_recording_url: string | null
+          call_started_at: string | null
+          call_transcript: string | null
+          caller_email: string | null
+          caller_name: string
+          caller_phone: string
+          caller_unit_number: string | null
+          created_at: string | null
+          has_pets: boolean | null
+          id: string
+          is_emergency: boolean | null
+          issue_category: string
+          issue_description: string
+          issue_location: string | null
+          issue_subcategory: string | null
+          preferred_access_time: string | null
+          preferred_contact_time: string | null
+          property_id: string | null
+          resolution_notes: string | null
+          resolution_photos: string[] | null
+          resolved_at: string | null
+          resolved_by: string | null
+          special_access_instructions: string | null
+          status: string | null
+          ticket_number: number
+          unit_id: string | null
+          updated_at: string | null
+          urgency_level: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_id?: string | null
+          call_recording_url?: string | null
+          call_started_at?: string | null
+          call_transcript?: string | null
+          caller_email?: string | null
+          caller_name: string
+          caller_phone: string
+          caller_unit_number?: string | null
+          created_at?: string | null
+          has_pets?: boolean | null
+          id?: string
+          is_emergency?: boolean | null
+          issue_category: string
+          issue_description: string
+          issue_location?: string | null
+          issue_subcategory?: string | null
+          preferred_access_time?: string | null
+          preferred_contact_time?: string | null
+          property_id?: string | null
+          resolution_notes?: string | null
+          resolution_photos?: string[] | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          special_access_instructions?: string | null
+          status?: string | null
+          ticket_number?: number
+          unit_id?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_id?: string | null
+          call_recording_url?: string | null
+          call_started_at?: string | null
+          call_transcript?: string | null
+          caller_email?: string | null
+          caller_name?: string
+          caller_phone?: string
+          caller_unit_number?: string | null
+          created_at?: string | null
+          has_pets?: boolean | null
+          id?: string
+          is_emergency?: boolean | null
+          issue_category?: string
+          issue_description?: string
+          issue_location?: string | null
+          issue_subcategory?: string | null
+          preferred_access_time?: string | null
+          preferred_contact_time?: string | null
+          property_id?: string | null
+          resolution_notes?: string | null
+          resolution_photos?: string[] | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          special_access_instructions?: string | null
+          status?: string | null
+          ticket_number?: number
+          unit_id?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_threads: {
         Row: {
           created_at: string | null
@@ -2801,6 +2972,74 @@ export type Database = {
             foreignKeyName: "user_status_history_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_agent_config: {
+        Row: {
+          after_hours_message: string | null
+          agent_name: string | null
+          avg_call_duration_seconds: number | null
+          business_hours_end: string | null
+          business_hours_start: string | null
+          calls_handled: number | null
+          closing_message: string | null
+          created_at: string | null
+          emergency_keywords: string[] | null
+          emergency_notification_phone: string | null
+          greeting_message: string | null
+          id: string
+          issue_categories: Json | null
+          knowledge_base: Json | null
+          property_id: string | null
+          supervisor_notification_emails: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          after_hours_message?: string | null
+          agent_name?: string | null
+          avg_call_duration_seconds?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          calls_handled?: number | null
+          closing_message?: string | null
+          created_at?: string | null
+          emergency_keywords?: string[] | null
+          emergency_notification_phone?: string | null
+          greeting_message?: string | null
+          id?: string
+          issue_categories?: Json | null
+          knowledge_base?: Json | null
+          property_id?: string | null
+          supervisor_notification_emails?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          after_hours_message?: string | null
+          agent_name?: string | null
+          avg_call_duration_seconds?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          calls_handled?: number | null
+          closing_message?: string | null
+          created_at?: string | null
+          emergency_keywords?: string[] | null
+          emergency_notification_phone?: string | null
+          greeting_message?: string | null
+          id?: string
+          issue_categories?: Json | null
+          knowledge_base?: Json | null
+          property_id?: string | null
+          supervisor_notification_emails?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_agent_config_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
