@@ -204,6 +204,56 @@ export type Database = {
         }
         Relationships: []
       }
+      course_progress: {
+        Row: {
+          completed_at: string | null
+          course_id: string
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          last_location: string | null
+          progress_percent: number | null
+          score: number | null
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          last_location?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          last_location?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_contacts: {
         Row: {
           address_line1: string | null
@@ -2390,6 +2440,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      training_courses: {
+        Row: {
+          allow_resume: boolean | null
+          category: string
+          content_path: string
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          entry_file: string | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          passing_score: number | null
+          sort_order: number | null
+          target_roles: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          uploaded_by: string | null
+          version: string | null
+        }
+        Insert: {
+          allow_resume?: boolean | null
+          category?: string
+          content_path: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_file?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          passing_score?: number | null
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Update: {
+          allow_resume?: boolean | null
+          category?: string
+          content_path?: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_file?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          passing_score?: number | null
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Relationships: []
       }
       training_progress: {
         Row: {
