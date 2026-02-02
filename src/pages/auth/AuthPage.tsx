@@ -258,6 +258,15 @@ export default function AuthPage() {
                     'Sign In'
                   )}
                 </Button>
+                
+                <div className="text-center">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
               </form>
 
               <p className="text-xs text-center text-muted-foreground">

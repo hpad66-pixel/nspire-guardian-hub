@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus, AtSign } from 'lucide-react';
+import { AlertTriangle, Plus, AtSign, Download } from 'lucide-react';
 import { useIssues, Issue } from '@/hooks/useIssues';
 import { useMyMentionedIssueIds } from '@/hooks/useIssueMentions';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { IssueDetailSheet } from '@/components/issues/IssueDetailSheet';
 import { IssueDialog } from '@/components/issues/IssueDialog';
 import { IssueFilterPopover, type IssueFilters } from '@/components/issues/IssueFilterPopover';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { usePagination } from '@/hooks/usePagination';
+import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 
 export default function IssuesPage() {
@@ -84,7 +87,38 @@ export default function IssuesPage() {
     }
     
     return true;
-  });
+  }) || [];
+
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    paginatedData,
+    setPage,
+    setPageSize,
+  } = usePagination(displayedIssues, { initialPageSize: 10 });
+
+  const { exportToCSV } = useDataExport();
+
+  const handleExport = () => {
+    const exportData = displayedIssues.map(issue => ({
+      title: issue.title,
+      description: issue.description,
+      severity: issue.severity,
+      status: issue.status,
+      source_module: issue.source_module,
+      property: issue.property?.name || '',
+      unit: issue.unit?.unit_number || '',
+      deadline: issue.deadline,
+      created_at: issue.created_at,
+    }));
+
+    exportToCSV(exportData, {
+      filename: 'issues',
+      headers: ['title', 'description', 'severity', 'status', 'source_module', 'property', 'unit', 'deadline', 'created_at'],
+      dateFields: ['deadline', 'created_at'],
+    });
+  };
 
   const handleIssueClick = (issue: Issue) => {
     setSelectedIssue(issue);
@@ -128,6 +162,10 @@ export default function IssuesPage() {
             </Button>
           )}
           <IssueFilterPopover filters={filters} onFiltersChange={setFilters} />
+          <Button variant="outline" onClick={handleExport} disabled={displayedIssues.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Issue
@@ -194,9 +232,9 @@ export default function IssuesPage() {
                 </div>
               ))}
             </div>
-          ) : displayedIssues && displayedIssues.length > 0 ? (
+          ) : paginatedData && paginatedData.length > 0 ? (
             <div className="space-y-3">
-              {displayedIssues.map((issue) => {
+              {paginatedData.map((issue) => {
                 const isAssigned = issue.assigned_to === user?.id && issue.status !== 'resolved';
                 const isMentioned = mentionedIssueIds.includes(issue.id) && issue.status !== 'resolved';
                 const needsAttention = isAssigned || isMentioned;
@@ -261,6 +299,17 @@ export default function IssuesPage() {
                 </div>
               </div>
             </div>
+          )}
+          
+          {displayedIssues.length > 0 && (
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={displayedIssues.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           )}
         </CardContent>
       </Card>
