@@ -47,6 +47,7 @@ import QRScannerPage from "./pages/qr/QRScannerPage";
 import TrainingPage from "./pages/training/TrainingPage";
 import ContactsPage from "./pages/crm/ContactsPage";
 import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
+import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
                         <Route path="/qr-scanner" element={<QRScannerPage />} />
                         <Route path="/training" element={<TrainingPage />} />
                         <Route path="/contacts" element={<ContactsPage />} />
+                        <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
                         <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                         
                         {/* NSPIRE Inspections Module */}
