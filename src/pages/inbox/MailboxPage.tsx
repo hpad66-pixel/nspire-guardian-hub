@@ -16,7 +16,7 @@ import { Plus, Mail, Sparkles, Send, Inbox } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function MailboxPage() {
-  const [folder, setFolder] = useState<FolderType>("sent");
+  const [folder, setFolder] = useState<FolderType>("inbox");
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
@@ -68,7 +68,7 @@ export default function MailboxPage() {
           
           {/* Folder tabs */}
           <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
-            {(["sent", "archive", "trash", "all"] as FolderType[]).map((f) => (
+            {(["inbox", "sent", "archive", "trash", "all"] as FolderType[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFolder(f)}

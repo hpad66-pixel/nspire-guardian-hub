@@ -10,10 +10,12 @@ import {
   Clock,
   Paperclip,
   Mail,
+  Users,
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday, isThisWeek } from "date-fns";
 import { ReportEmail } from "@/hooks/useReportEmails";
 import { FolderType } from "./MailboxFolders";
+import { useAuth } from "@/hooks/useAuth";
 
 interface EmailListProps {
   emails: ReportEmail[];
@@ -34,16 +36,29 @@ export function EmailList({
   searchQuery,
   onSearchChange,
 }: EmailListProps) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   const filteredEmails = useMemo(() => {
     let result = emails;
 
     // Filter by folder
     if (folder === "sent") {
-      result = result.filter((e) => e.status === "sent" && !(e as any).is_archived && !(e as any).is_deleted);
+      // Show emails sent by current user
+      result = result.filter(
+        (e) => e.sent_by === userId && e.status === "sent" && !(e as any).is_archived && !(e as any).is_deleted
+      );
     } else if (folder === "failed") {
       result = result.filter((e) => e.status === "failed" && !(e as any).is_archived && !(e as any).is_deleted);
     } else if (folder === "inbox") {
-      result = result.filter((e) => e.status === "pending" && !(e as any).is_archived && !(e as any).is_deleted);
+      // Show emails received by current user (where they are in recipient_user_ids)
+      result = result.filter(
+        (e) => 
+          userId && 
+          e.recipient_user_ids?.includes(userId) && 
+          !(e as any).is_archived && 
+          !(e as any).is_deleted
+      );
     } else if (folder === "archive") {
       result = result.filter((e) => (e as any).is_archived && !(e as any).is_deleted);
     } else if (folder === "trash") {
@@ -58,12 +73,13 @@ export function EmailList({
       result = result.filter(
         (e) =>
           e.subject.toLowerCase().includes(query) ||
-          e.recipients.some((r) => r.toLowerCase().includes(query))
+          e.recipients.some((r) => r.toLowerCase().includes(query)) ||
+          (e.from_user_name && e.from_user_name.toLowerCase().includes(query))
       );
     }
 
     return result;
-  }, [emails, folder, searchQuery]);
+  }, [emails, folder, searchQuery, userId]);
 
   const groupedEmails = useMemo(() => {
     const groups: { label: string; emails: ReportEmail[] }[] = [];
@@ -174,53 +190,73 @@ export function EmailList({
                     {group.label}
                   </span>
                 </div>
-                {group.emails.map((email) => (
-                  <button
-                    key={email.id}
-                    onClick={() => onSelect(email.id)}
-                    className={cn(
-                      "w-full text-left px-4 py-3 border-b transition-colors",
-                      selectedId === email.id
-                        ? "bg-primary/10 border-l-2 border-l-primary"
-                        : "hover:bg-muted/50",
-                      !(email as any).is_read && "bg-accent/30"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 pt-0.5">
-                        {!(email as any).is_read && (
-                          <div className="h-2 w-2 rounded-full bg-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {getStatusIcon(email.status)}
-                            <span
-                              className={cn(
-                                "truncate text-sm",
-                                !(email as any).is_read && "font-semibold"
-                              )}
-                            >
-                              {email.subject}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            {formatTime(email.sent_at)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground truncate">
-                            To: {email.recipients.join(", ")}
-                          </span>
-                          {(email as any).attachment_filename && (
-                            <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                {group.emails.map((email) => {
+                  const isInternal = email.message_type === "internal";
+                  const isReceived = userId && email.recipient_user_ids?.includes(userId);
+                  const displayFrom = isReceived && email.from_user_name 
+                    ? email.from_user_name 
+                    : null;
+
+                  return (
+                    <button
+                      key={email.id}
+                      onClick={() => onSelect(email.id)}
+                      className={cn(
+                        "w-full text-left px-4 py-3 border-b transition-colors",
+                        selectedId === email.id
+                          ? "bg-primary/10 border-l-2 border-l-primary"
+                          : "hover:bg-muted/50",
+                        !(email as any).is_read && "bg-accent/30"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 pt-0.5">
+                          {!(email as any).is_read && (
+                            <div className="h-2 w-2 rounded-full bg-primary" />
                           )}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {isInternal ? (
+                                <Users className="h-3.5 w-3.5 text-blue-500" />
+                              ) : (
+                                getStatusIcon(email.status)
+                              )}
+                              <span
+                                className={cn(
+                                  "truncate text-sm",
+                                  !(email as any).is_read && "font-semibold"
+                                )}
+                              >
+                                {email.subject}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              {formatTime(email.sent_at)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-muted-foreground truncate">
+                              {displayFrom 
+                                ? `From: ${displayFrom}`
+                                : `To: ${email.recipients.join(", ")}`
+                              }
+                            </span>
+                            {(email as any).attachment_filename && (
+                              <Paperclip className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            )}
+                            {isInternal && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                Internal
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             ))}
           </div>

@@ -16,6 +16,7 @@ interface MailboxFoldersProps {
     unread: number;
     archived: number;
     deleted: number;
+    inbox: number;
   } | undefined;
   onCompose?: () => void;
 }
@@ -43,7 +44,7 @@ export function MailboxFolders({
       case "failed":
         return folderCounts.failed;
       case "inbox":
-        return folderCounts.pending;
+        return folderCounts.inbox || 0;
       case "archive":
         return folderCounts.archived || 0;
       case "trash":
