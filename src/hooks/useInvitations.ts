@@ -37,15 +37,12 @@ export function useInvitationByToken(token: string | undefined) {
     queryKey: ['invitation', token],
     queryFn: async () => {
       if (!token) return null;
-      
+
       const { data, error } = await supabase
-        .from('user_invitations')
-        .select('*')
-        .eq('token', token)
-        .maybeSingle();
+        .rpc('get_invitation_by_token', { p_token: token });
 
       if (error) throw error;
-      return data as Invitation | null;
+      return (Array.isArray(data) ? data[0] : data) as Invitation | null;
     },
     enabled: !!token,
   });
