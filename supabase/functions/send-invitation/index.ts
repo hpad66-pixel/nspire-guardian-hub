@@ -50,9 +50,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const inviterName = inviterProfile?.full_name || "A team member";
 
-    // Generate the accept URL - this will need to be the preview/production URL
-    const baseUrl = Deno.env.get("SITE_URL") || "https://cm.apaslabs.org";
-    const acceptUrl = `${baseUrl}/accept-invite/${invitation.token}`;
+    // Generate the accept URL - force production domain
+    const acceptUrl = `https://cm.apaslabs.org/accept-invite/${invitation.token}`;
 
     const roleLabels: Record<string, string> = {
       admin: "Administrator",
