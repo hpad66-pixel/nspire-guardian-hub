@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, UserCheck, Archive, Building2, Shield, Plus, Search, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,9 @@ export default function PeoplePage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
-  const { canCreate } = useUserPermissions();
+  const { canCreate, isAdmin, isManager } = useUserPermissions();
   const { userRole } = useAuth();
+  const canManageRoles = isAdmin || isManager;
 
   const { data: stats } = usePeopleStats();
   const { data: roles } = useRoleDefinitions();
@@ -48,6 +49,12 @@ export default function PeoplePage() {
   const handlePersonClick = (person: PersonWithAssignments) => {
     setSelectedPerson(person);
   };
+
+  useEffect(() => {
+    if (!canManageRoles && activeTab === 'roles') {
+      setActiveTab('all');
+    }
+  }, [canManageRoles, activeTab]);
 
   return (
     <div className="space-y-6 p-6">
@@ -113,18 +120,20 @@ export default function PeoplePage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Roles</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.rolesCount || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Defined in system
-            </p>
-          </CardContent>
-        </Card>
+        {canManageRoles && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Roles</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.rolesCount || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Defined in system
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Tabs */}
@@ -143,10 +152,12 @@ export default function PeoplePage() {
               <Archive className="h-4 w-4" />
               Archived
             </TabsTrigger>
-            <TabsTrigger value="roles" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Roles & Permissions
-            </TabsTrigger>
+            {canManageRoles && (
+              <TabsTrigger value="roles" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Roles & Permissions
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -175,19 +186,21 @@ export default function PeoplePage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                {roles?.map(role => (
-                  <SelectItem key={role.role_key} value={role.role_key}>
-                    {role.display_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {canManageRoles && (
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {roles?.map(role => (
+                    <SelectItem key={role.role_key} value={role.role_key}>
+                      {role.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {activeTab !== 'archived' && (
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger className="w-[150px]">
@@ -229,9 +242,11 @@ export default function PeoplePage() {
           />
         </TabsContent>
 
-        <TabsContent value="roles" className="space-y-4">
-          <RolesPermissionsTab />
-        </TabsContent>
+        {canManageRoles && (
+          <TabsContent value="roles" className="space-y-4">
+            <RolesPermissionsTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Person Detail Sheet */}

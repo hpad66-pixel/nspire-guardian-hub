@@ -128,8 +128,16 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
       {/* Header */}
       <div className="p-6 border-b space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-xl font-semibold">{email.subject}</h2>
-          {getStatusBadge(email.status)}
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold truncate">{email.subject}</h2>
+            <div className="mt-2 flex items-center gap-2">
+              {getStatusBadge(email.status)}
+              {(email as any).is_read === false && (
+                <Badge variant="secondary">Unread</Badge>
+              )}
+            </div>
+          </div>
+          <EmailActions email={email} onActionComplete={onEmailDeleted} variant="dropdown" />
         </div>
 
         <div className="space-y-2 text-sm">

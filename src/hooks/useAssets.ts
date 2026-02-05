@@ -2,7 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type AssetType = 'cleanout' | 'catch_basin' | 'lift_station' | 'retention_pond' | 'general_grounds';
+export type AssetType = string;
+
+export interface AssetTypeDefinition {
+  id: string;
+  key: string;
+  label: string;
+  is_system: boolean;
+  created_at: string;
+}
 
 export interface Asset {
   id: string;
@@ -48,6 +56,49 @@ export function useAssets(propertyId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       return data as Asset[];
+    },
+  });
+}
+
+export function useAssetTypes() {
+  return useQuery({
+    queryKey: ['asset-types'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('asset_type_definitions')
+        .select('*')
+        .order('label', { ascending: true });
+
+      if (error) throw error;
+      return data as AssetTypeDefinition[];
+    },
+  });
+}
+
+export function useCreateAssetType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { key: string; label: string }) => {
+      const { data, error } = await supabase
+        .from('asset_type_definitions')
+        .insert({
+          key: input.key,
+          label: input.label,
+          is_system: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as AssetTypeDefinition;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset-types'] });
+      toast.success('Asset type created');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create asset type: ${error.message}`);
     },
   });
 }

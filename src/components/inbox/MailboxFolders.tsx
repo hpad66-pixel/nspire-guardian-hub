@@ -80,6 +80,7 @@ export function MailboxFolders({
             const Icon = folder.icon;
             const count = getCount(folder.id);
             const isActive = currentFolder === folder.id;
+            const showUnreadDot = folder.id === "inbox" && (folderCounts?.unread || 0) > 0;
 
             return (
               <button
@@ -95,6 +96,9 @@ export function MailboxFolders({
                 <span className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
                   {folder.label}
+                  {showUnreadDot && (
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                  )}
                 </span>
                 {count > 0 && (
                   <span

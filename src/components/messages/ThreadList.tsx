@@ -1,10 +1,12 @@
+import { useMemo } from "react";
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { MessageCircle, Sparkles } from "lucide-react";
+import { MessageCircle, Search } from "lucide-react";
 import type { ThreadWithLastMessage } from "@/hooks/useMessageThreads";
 
 interface ThreadListProps {
@@ -13,6 +15,8 @@ interface ThreadListProps {
   onSelectThread: (threadId: string) => void;
   isLoading: boolean;
   currentUserId?: string;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
 }
 
 export function ThreadList({
@@ -21,7 +25,24 @@ export function ThreadList({
   onSelectThread,
   isLoading,
   currentUserId,
+  searchQuery,
+  onSearchChange,
 }: ThreadListProps) {
+  const filteredThreads = useMemo(() => {
+    if (!searchQuery.trim()) return threads;
+    const query = searchQuery.toLowerCase();
+    return threads.filter((thread) => {
+      const subjectMatch = thread.subject?.toLowerCase().includes(query);
+      const participantMatch = thread.participants?.some((p) =>
+        (p.full_name || "").toLowerCase().includes(query)
+      );
+      const lastMessageMatch = thread.last_message?.content
+        ?.toLowerCase()
+        .includes(query);
+      return subjectMatch || participantMatch || lastMessageMatch;
+    });
+  }, [threads, searchQuery]);
+
   if (isLoading) {
     return (
       <div className="flex-1 p-3 space-y-2">
@@ -39,7 +60,7 @@ export function ThreadList({
     );
   }
 
-  if (threads.length === 0) {
+  if (filteredThreads.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-6 text-center">
         <motion.div
@@ -52,9 +73,13 @@ export function ThreadList({
             <MessageCircle className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <p className="font-semibold text-foreground">No conversations yet</p>
+            <p className="font-semibold text-foreground">
+              {threads.length === 0 ? "No conversations yet" : "No results"}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Start a new conversation to connect with your team
+              {threads.length === 0
+                ? "Start a new conversation to connect with your team"
+                : "Try a different search query"}
             </p>
           </div>
         </motion.div>
@@ -63,10 +88,22 @@ export function ThreadList({
   }
 
   return (
-    <ScrollArea className="flex-1">
-      <div className="p-2 space-y-1">
-        <AnimatePresence>
-          {threads.map((thread, index) => (
+    <div className="flex flex-col h-full">
+      <div className="p-3 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search messages..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          <AnimatePresence>
+          {filteredThreads.map((thread, index) => (
             <motion.div
               key={thread.id}
               initial={{ opacity: 0, x: -20 }}
@@ -81,9 +118,10 @@ export function ThreadList({
               />
             </motion.div>
           ))}
-        </AnimatePresence>
-      </div>
-    </ScrollArea>
+          </AnimatePresence>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 

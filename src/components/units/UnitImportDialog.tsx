@@ -9,6 +9,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { useUnits, useBulkCreateUnits } from '@/hooks/useUnits';
 import { parseCSV, validateRows, downloadCSVTemplate, type ValidationResult } from '@/lib/csvParser';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 interface UnitImportDialogProps {
   open: boolean;
@@ -28,11 +29,29 @@ export function UnitImportDialog({ open, onOpenChange }: UnitImportDialogProps) 
   const validRows = validationResults.filter(r => r.isValid);
   const invalidRows = validationResults.filter(r => !r.isValid);
 
+  const getFileExtension = (name: string) => name.split('.').pop()?.toLowerCase() || '';
+  const isSupportedFile = (f: File) => {
+    const ext = getFileExtension(f.name);
+    return ext === 'csv' || ext === 'xlsx' || ext === 'xls';
+  };
+
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     try {
-      const text = await file.text();
-      const { rows } = parseCSV(text);
+      let csvText = '';
+      const ext = getFileExtension(file.name);
+
+      if (ext === 'csv') {
+        csvText = await file.text();
+      } else {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheet];
+        csvText = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+      }
+
+      const { rows } = parseCSV(csvText);
       
       const existingUnitsList = existingUnits.map(u => ({
         unit_number: u.unit_number,
@@ -50,7 +69,7 @@ export function UnitImportDialog({ open, onOpenChange }: UnitImportDialogProps) 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
+    if (selectedFile && isSupportedFile(selectedFile)) {
       setFile(selectedFile);
       processFile(selectedFile);
     }
@@ -70,7 +89,7 @@ export function UnitImportDialog({ open, onOpenChange }: UnitImportDialogProps) 
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile && droppedFile.type === 'text/csv') {
+    if (droppedFile && isSupportedFile(droppedFile)) {
       setFile(droppedFile);
       processFile(droppedFile);
     }
@@ -137,13 +156,13 @@ export function UnitImportDialog({ open, onOpenChange }: UnitImportDialogProps) 
               <input
                 id="csv-file-input"
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
                 className="hidden"
               />
               <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
               <p className="text-sm font-medium">Drag and drop your CSV file here</p>
-              <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</p>
             </div>
           )}
 

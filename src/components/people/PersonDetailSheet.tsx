@@ -65,6 +65,7 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
   const { data: statusHistory } = useUserStatusHistory(person?.user_id || null);
   const { data: roles } = useRoleDefinitions();
   const { canUpdate, canDelete, isAdmin, isManager } = useUserPermissions();
+  const canManageRoles = isAdmin || isManager;
 
   const updateProfile = useUpdateProfile();
   const archiveTeamMember = useArchiveTeamMember();
@@ -187,15 +188,17 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
           <Separator className="my-6" />
 
           <Tabs defaultValue="assignments" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className={`grid w-full ${canManageRoles ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <TabsTrigger value="assignments" className="gap-1">
                 <Building2 className="h-4 w-4" />
                 Properties
               </TabsTrigger>
-              <TabsTrigger value="roles" className="gap-1">
-                <Shield className="h-4 w-4" />
-                Roles
-              </TabsTrigger>
+              {canManageRoles && (
+                <TabsTrigger value="roles" className="gap-1">
+                  <Shield className="h-4 w-4" />
+                  Roles
+                </TabsTrigger>
+              )}
               <TabsTrigger value="history" className="gap-1">
                 <History className="h-4 w-4" />
                 History
@@ -318,48 +321,50 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
               )}
             </TabsContent>
 
-            <TabsContent value="roles" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Global Roles</h3>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {person.global_roles.map(role => (
-                  <Badge key={role} variant={getRoleBadgeVariant(role)} className="gap-1">
-                    {role}
-                    {isAdmin && (
-                      <button 
-                        onClick={() => handleRemoveRole(role)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </Badge>
-                ))}
-                {person.global_roles.length === 0 && (
-                  <span className="text-sm text-muted-foreground">No global roles assigned</span>
-                )}
-              </div>
-
-              {isAdmin && (
-                <div className="pt-4">
-                  <Label>Add Role</Label>
-                  <Select onValueChange={(value) => handleAddRole(value as AppRole)}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select a role to add" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles?.filter(r => !person.global_roles.includes(r.role_key as AppRole)).map(role => (
-                        <SelectItem key={role.role_key} value={role.role_key}>
-                          {role.display_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {canManageRoles && (
+              <TabsContent value="roles" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Global Roles</h3>
                 </div>
-              )}
-            </TabsContent>
+
+                <div className="flex flex-wrap gap-2">
+                  {person.global_roles.map(role => (
+                    <Badge key={role} variant={getRoleBadgeVariant(role)} className="gap-1">
+                      {role}
+                      {isAdmin && (
+                        <button 
+                          onClick={() => handleRemoveRole(role)}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </Badge>
+                  ))}
+                  {person.global_roles.length === 0 && (
+                    <span className="text-sm text-muted-foreground">No global roles assigned</span>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <div className="pt-4">
+                    <Label>Add Role</Label>
+                    <Select onValueChange={(value) => handleAddRole(value as AppRole)}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select a role to add" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles?.filter(r => !person.global_roles.includes(r.role_key as AppRole)).map(role => (
+                          <SelectItem key={role.role_key} value={role.role_key}>
+                            {role.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="history" className="space-y-4">
               <h3 className="font-semibold">Activity History</h3>

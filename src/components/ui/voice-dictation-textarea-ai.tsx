@@ -143,6 +143,7 @@ export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, Voic
             value={value}
             onChange={(e) => {
               onChange?.(e);
+              onValueChange?.(e.target.value);
               // Clear hints when user manually types
               setShowEditHint(false);
             }}

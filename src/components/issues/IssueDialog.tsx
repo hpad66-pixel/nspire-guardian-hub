@@ -139,15 +139,17 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <div className="grid gap-2">
                 <Label>Unit (Optional)</Label>
                 <Select
-                  value={formData.unit_id}
-                  onValueChange={(value) => setFormData({ ...formData, unit_id: value })}
+                  value={formData.unit_id || '__none__'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, unit_id: value === '__none__' ? '' : value })
+                  }
                   disabled={!formData.property_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {units?.map((unit) => (
                       <SelectItem key={unit.id} value={unit.id}>
                         Unit {unit.unit_number}
@@ -179,14 +181,16 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <div className="grid gap-2">
                 <Label>Area</Label>
                 <Select
-                  value={formData.area || ''}
-                  onValueChange={(value) => setFormData({ ...formData, area: value as InspectionArea || null })}
+                  value={formData.area || '__none__'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, area: value === '__none__' ? null : (value as InspectionArea) })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select area" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     <SelectItem value="outside">Outside</SelectItem>
                     <SelectItem value="inside">Inside (Common)</SelectItem>
                     <SelectItem value="unit">Unit</SelectItem>

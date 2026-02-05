@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Search,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   Paperclip,
   Mail,
   Users,
+  Filter,
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday, isThisWeek } from "date-fns";
 import { ReportEmail } from "@/hooks/useReportEmails";
@@ -38,6 +40,8 @@ export function EmailList({
 }: EmailListProps) {
   const { user } = useAuth();
   const userId = user?.id;
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [showInternalOnly, setShowInternalOnly] = useState(false);
 
   const filteredEmails = useMemo(() => {
     let result = emails;
@@ -78,8 +82,16 @@ export function EmailList({
       );
     }
 
+    if (showUnreadOnly) {
+      result = result.filter((e) => !(e as any).is_read);
+    }
+
+    if (showInternalOnly) {
+      result = result.filter((e) => e.message_type === "internal");
+    }
+
     return result;
-  }, [emails, folder, searchQuery, userId]);
+  }, [emails, folder, searchQuery, userId, showUnreadOnly, showInternalOnly]);
 
   const groupedEmails = useMemo(() => {
     const groups: { label: string; emails: ReportEmail[] }[] = [];
@@ -156,7 +168,7 @@ export function EmailList({
 
   return (
     <div className="flex flex-col h-full border-x">
-      <div className="p-3 border-b">
+      <div className="p-3 border-b space-y-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -165,6 +177,42 @@ export function EmailList({
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={showUnreadOnly ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setShowUnreadOnly((prev) => !prev)}
+          >
+            <Filter className="h-3 w-3 mr-1" />
+            Unread
+          </Button>
+          <Button
+            type="button"
+            variant={showInternalOnly ? "default" : "outline"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setShowInternalOnly((prev) => !prev)}
+          >
+            <Users className="h-3 w-3 mr-1" />
+            Internal
+          </Button>
+          {(showUnreadOnly || showInternalOnly) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                setShowUnreadOnly(false);
+                setShowInternalOnly(false);
+              }}
+            >
+              Clear
+            </Button>
+          )}
         </div>
       </div>
 

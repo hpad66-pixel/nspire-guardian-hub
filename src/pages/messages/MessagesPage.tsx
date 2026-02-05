@@ -23,6 +23,7 @@ export default function MessagesPage() {
   const [showNewThread, setShowNewThread] = useState(false);
   const [showParticipants, setShowParticipants] = useState(!isMobile);
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: threads, isLoading: threadsLoading } = useThreadsWithDetails();
   const { data: messages, isLoading: messagesLoading } = useThreadMessages(threadId ?? null);
@@ -102,6 +103,8 @@ export default function MessagesPage() {
                 onSelectThread={handleSelectThread}
                 isLoading={threadsLoading}
                 currentUserId={user?.id}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
               />
             </motion.div>
           ) : (
@@ -162,6 +165,8 @@ export default function MessagesPage() {
           onSelectThread={handleSelectThread}
           isLoading={threadsLoading}
           currentUserId={user?.id}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
       </div>
 
