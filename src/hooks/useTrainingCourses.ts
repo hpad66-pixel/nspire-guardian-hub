@@ -23,7 +23,7 @@ export interface TrainingCourse {
   version: string;
 }
 
-type AppRole = 'admin' | 'inspector' | 'manager' | 'owner' | 'project_manager' | 'subcontractor' | 'superintendent' | 'user' | 'viewer';
+type AppRole = 'admin' | 'owner' | 'manager' | 'inspector' | 'administrator' | 'superintendent' | 'clerk' | 'project_manager' | 'subcontractor' | 'user' | 'viewer';
 
 export interface CreateCourseInput {
   title: string;

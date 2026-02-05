@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,6 +31,7 @@ import {
 import { useProperties } from '@/hooks/useProperties';
 import { useRoleDefinitions } from '@/hooks/useRoleDefinitions';
 import { useAddPropertyAssignment } from '@/hooks/usePeople';
+import { useUserPermissions, getAssignableRoles } from '@/hooks/usePermissions';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -48,6 +50,8 @@ interface PropertyAssignmentDialogProps {
   onOpenChange: (open: boolean) => void;
   userId: string;
   existingPropertyIds: string[];
+  defaultRole?: AppRole | null;
+  lockRole?: boolean;
 }
 
 export function PropertyAssignmentDialog({ 
@@ -55,9 +59,13 @@ export function PropertyAssignmentDialog({
   onOpenChange, 
   userId,
   existingPropertyIds,
+  defaultRole = null,
+  lockRole = false,
 }: PropertyAssignmentDialogProps) {
   const { data: properties } = useProperties();
   const { data: roles } = useRoleDefinitions();
+  const { currentRole } = useUserPermissions();
+  const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
   const addAssignment = useAddPropertyAssignment();
 
   // Filter out properties where user is already assigned
@@ -69,11 +77,21 @@ export function PropertyAssignmentDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       property_id: '',
-      role: 'user',
+      role: defaultRole || 'user',
       title: '',
       department: '',
     },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset({
+      property_id: '',
+      role: defaultRole || 'user',
+      title: '',
+      department: '',
+    });
+  }, [open, defaultRole, form]);
 
   const onSubmit = async (data: FormValues) => {
     await addAssignment.mutateAsync({
@@ -141,12 +159,14 @@ export function PropertyAssignmentDialog({
                   <FormLabel>Role</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger disabled={lockRole}>
                         <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {roles?.map(role => (
+                      {roles
+                        ?.filter(role => assignableRoles.includes(role.role_key as AppRole))
+                        .map(role => (
                         <SelectItem key={role.role_key} value={role.role_key}>
                           {role.display_name}
                         </SelectItem>

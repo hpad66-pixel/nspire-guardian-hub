@@ -23,7 +23,9 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
   const { data: properties = [] } = useProperties();
   const { data: assetTypes = [] } = useAssetTypes();
   const createAssetType = useCreateAssetType();
-  const { isAdmin, isManager } = useUserPermissions();
+  const { canCreate, canUpdate } = useUserPermissions();
+  const canCreateAssets = canCreate('properties');
+  const canUpdateAssets = canUpdate('properties');
   const createAsset = useCreateAsset();
   const updateAsset = useUpdateAsset();
 
@@ -172,7 +174,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                     </div>
                   )}
                 </div>
-                {!asset && formData.photo_url && (
+                {!asset && formData.photo_url && canCreateAssets && (
                   <Button
                     type="button"
                     variant="destructive"
@@ -200,7 +202,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                   onChange={handlePhotoUpload}
                   className="hidden"
                   id="asset-photo-upload"
-                  disabled={isUploading}
+                  disabled={isUploading || !canCreateAssets}
                 />
                 <label
                   htmlFor="asset-photo-upload"
@@ -227,6 +229,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             <Select
               value={formData.property_id}
               onValueChange={(value) => setFormData({ ...formData, property_id: value })}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select property" />
@@ -252,6 +255,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                 }
                 setFormData({ ...formData, asset_type: value as AssetType });
               }}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -277,7 +281,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                       {formData.asset_type}
                     </SelectItem>
                   )}
-                {(isAdmin || isManager) && (
+                {canCreateAssets && (
                   <SelectItem value="__add_new_type__">
                     + Add new type
                   </SelectItem>
@@ -293,6 +297,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Cleanout #1"
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
               required
             />
           </div>
@@ -306,6 +311,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
               placeholder="e.g., North parking lot near building A"
               rows={2}
               context="description"
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             />
           </div>
 
@@ -314,6 +320,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             <Select
               value={formData.status}
               onValueChange={(value) => setFormData({ ...formData, status: value })}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -335,7 +342,11 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting || isUploading}>
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={isSubmitting || isUploading || (asset ? !canUpdateAssets : !canCreateAssets)}
+            >
               {isSubmitting ? 'Saving...' : asset ? 'Update' : 'Create'}
             </Button>
           </div>

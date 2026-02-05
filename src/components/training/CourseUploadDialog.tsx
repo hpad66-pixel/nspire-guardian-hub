@@ -39,6 +39,7 @@ import {
   type TrainingCourse,
 } from '@/hooks/useTrainingCourses';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
 
 interface CourseUploadDialogProps {
   open: boolean;
@@ -48,14 +49,19 @@ interface CourseUploadDialogProps {
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error';
 
-type AppRole = 'admin' | 'inspector' | 'manager' | 'owner' | 'project_manager' | 'subcontractor' | 'superintendent' | 'user' | 'viewer';
+type AppRole = Database['public']['Enums']['app_role'];
 
 const AVAILABLE_ROLES: { id: AppRole; label: string }[] = [
   { id: 'admin', label: 'Admin' },
-  { id: 'manager', label: 'Manager' },
+  { id: 'owner', label: 'Owner' },
+  { id: 'manager', label: 'Property Manager' },
   { id: 'inspector', label: 'Inspector' },
+  { id: 'administrator', label: 'Administrator' },
+  { id: 'project_manager', label: 'Project Manager' },
   { id: 'superintendent', label: 'Superintendent' },
+  { id: 'clerk', label: 'Clerk' },
   { id: 'subcontractor', label: 'Subcontractor' },
+  { id: 'viewer', label: 'Viewer' },
   { id: 'user', label: 'User' },
 ];
 

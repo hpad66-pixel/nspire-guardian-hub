@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserPermissions } from './usePermissions';
 
 export interface Property {
   id: string;
@@ -24,23 +25,42 @@ export interface Property {
   mailing_city: string | null;
   mailing_state: string | null;
   mailing_zip: string | null;
-  is_demo: boolean | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export function useProperties() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['properties'],
+    queryKey: ['properties', isAdmin, isOwner],
     queryFn: async () => {
+      if (isAdmin || isOwner) {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        return data as Property[];
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
       const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('name');
-      
+        .from('property_team_members')
+        .select('property:properties(*)')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
       if (error) throw error;
-      return data as Property[];
+
+      const properties = (data || [])
+        .map((row: any) => row.property)
+        .filter(Boolean) as Property[];
+
+      return properties.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
@@ -66,7 +86,7 @@ export function useCreateProperty() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'is_demo' | 'occupancy_enabled' | 'qr_scanning_enabled'> & {
+    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'occupancy_enabled' | 'qr_scanning_enabled'> & {
       occupancy_enabled?: boolean | null;
       qr_scanning_enabled?: boolean | null;
     }) => {

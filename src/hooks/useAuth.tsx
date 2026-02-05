@@ -1,8 +1,9 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-type AppRole = 'admin' | 'manager' | 'inspector' | 'user';
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface AuthContextType {
   user: User | null;
@@ -40,7 +41,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // If user has multiple roles, pick the highest privilege one
-      const roleHierarchy: AppRole[] = ['admin', 'manager', 'inspector', 'user'];
+      const roleHierarchy: AppRole[] = [
+        'admin',
+        'owner',
+        'manager',
+        'inspector',
+        'administrator',
+        'superintendent',
+        'clerk',
+        'project_manager',
+        'subcontractor',
+        'viewer',
+        'user',
+      ];
       const userRoles = data.map(r => r.role as AppRole);
       
       for (const role of roleHierarchy) {

@@ -240,6 +240,14 @@ export function useAddPropertyAssignment() {
         .single();
 
       if (error) throw error;
+
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: data.user_id, role: data.role });
+
+      if (roleError && !roleError.message.toLowerCase().includes('duplicate')) {
+        throw roleError;
+      }
       return result;
     },
     onSuccess: () => {

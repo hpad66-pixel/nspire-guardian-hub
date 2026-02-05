@@ -38,7 +38,10 @@ export default function AssetsPage() {
 
   const { data: properties = [] } = useProperties();
   const { data: assetTypes = [] } = useAssetTypes();
-  const { isAdmin, isManager } = useUserPermissions();
+  const { canCreate, canUpdate, canDelete } = useUserPermissions();
+  const canCreateAssets = canCreate('properties');
+  const canUpdateAssets = canUpdate('properties');
+  const canDeleteAssets = canDelete('properties');
   const { data: assets = [], isLoading } = useAssets(
     selectedPropertyId === 'all' ? undefined : selectedPropertyId
   );
@@ -90,7 +93,7 @@ export default function AssetsPage() {
             Manage infrastructure assets for daily inspections
           </p>
         </div>
-        {(isAdmin || isManager) && (
+        {canCreateAssets && (
           <Button onClick={() => setDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             Add Asset
@@ -170,7 +173,7 @@ export default function AssetsPage() {
         <Card className="border-dashed">
           <CardContent className="pt-8 pb-8 text-center">
             <p className="text-muted-foreground mb-4">No assets found</p>
-            {(isAdmin || isManager) && (
+            {canCreateAssets && (
               <Button variant="outline" onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Asset
@@ -206,26 +209,30 @@ export default function AssetsPage() {
                     )}
                   </div>
                 </div>
-                {(isAdmin || isManager) && (
+                {(canUpdateAssets || canDeleteAssets) && (
                   <div className="flex gap-2 mt-3 pt-3 border-t">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleEdit(asset)}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteAsset(asset)}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Delete
-                    </Button>
+                    {canUpdateAssets && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(asset)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {canDeleteAssets && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteAsset(asset)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -235,7 +242,7 @@ export default function AssetsPage() {
       )}
 
       {/* Asset Dialog */}
-      {(isAdmin || isManager) && (
+      {(canCreateAssets || canUpdateAssets) && (
         <AssetDialog
           open={dialogOpen}
           onOpenChange={handleDialogClose}

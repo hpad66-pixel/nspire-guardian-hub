@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,14 @@ import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailShe
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { useDataExport } from '@/hooks/useDataExport';
+import { useSearchParams } from 'react-router-dom';
 
 export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [searchParams] = useSearchParams();
 
   const { data: workOrders, isLoading } = useWorkOrders();
   const { data: stats } = useWorkOrderStats();
@@ -91,6 +93,17 @@ export default function WorkOrdersPage() {
     setSelectedWorkOrder(wo);
     setDetailSheetOpen(true);
   };
+
+  useEffect(() => {
+    const workOrderId = searchParams.get('workOrderId');
+    if (!workOrderId || !workOrders || workOrders.length === 0) return;
+
+    const match = workOrders.find((w) => w.id === workOrderId);
+    if (match) {
+      setSelectedWorkOrder(match);
+      setDetailSheetOpen(true);
+    }
+  }, [workOrders, searchParams]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">

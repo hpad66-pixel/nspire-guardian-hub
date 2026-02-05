@@ -33,13 +33,19 @@ const getRoleBadgeVariant = (role: string) => {
   switch (role) {
     case 'admin':
       return 'destructive';
+    case 'owner':
+      return 'default';
     case 'manager':
       return 'default';
+    case 'administrator':
+      return 'secondary';
     case 'project_manager':
       return 'default';
     case 'superintendent':
       return 'secondary';
     case 'inspector':
+      return 'outline';
+    case 'clerk':
       return 'outline';
     default:
       return 'outline';

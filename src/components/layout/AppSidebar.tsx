@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
 import {
@@ -175,11 +176,12 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { canView, currentRole } = useUserPermissions();
   
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   useUnreadThreadCountRealtime();
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'tenant_admin';
+  const isAdmin = currentRole === 'admin';
   
   const userInitials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
@@ -231,82 +233,92 @@ export function AppSidebar() {
           </SidebarGroup>
 
           {/* Portfolio - Properties, Units, Assets, Occupancy */}
-          <CollapsibleNavGroup
+          {canView('properties') && (
+            <CollapsibleNavGroup
             title="Portfolio"
             icon={<Layers className="h-3 w-3" />}
             collapsed={collapsed}
             defaultOpen={true}
             isActive={isPortfolioActive}
-          >
-            <SidebarMenuItem>
-              <NavItem
-                to="/properties"
-                icon={<Building className="h-4 w-4" />}
-                label="Properties"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/units"
-                icon={<DoorOpen className="h-4 w-4" />}
-                label="Units"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/assets"
-                icon={<Box className="h-4 w-4" />}
-                label="Assets"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            {isModuleEnabled('occupancyEnabled') && (
+            >
               <SidebarMenuItem>
                 <NavItem
-                  to="/occupancy"
-                  icon={<Home className="h-4 w-4" />}
-                  label="Occupancy"
+                  to="/properties"
+                  icon={<Building className="h-4 w-4" />}
+                  label="Properties"
                   collapsed={collapsed}
                 />
               </SidebarMenuItem>
-            )}
-          </CollapsibleNavGroup>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/units"
+                  icon={<DoorOpen className="h-4 w-4" />}
+                  label="Units"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/assets"
+                  icon={<Box className="h-4 w-4" />}
+                  label="Assets"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              {isModuleEnabled('occupancyEnabled') && (
+                <SidebarMenuItem>
+                  <NavItem
+                    to="/occupancy"
+                    icon={<Home className="h-4 w-4" />}
+                    label="Occupancy"
+                    collapsed={collapsed}
+                  />
+                </SidebarMenuItem>
+              )}
+            </CollapsibleNavGroup>
+          )}
 
           {/* Operations - Issues, Work Orders, Permits */}
-          <CollapsibleNavGroup
+          {(canView('issues') || canView('work_orders')) && (
+            <CollapsibleNavGroup
             title="Operations"
             icon={<Wrench className="h-3 w-3" />}
             collapsed={collapsed}
             defaultOpen={true}
             isActive={isOperationsActive}
-          >
-            <SidebarMenuItem>
-              <NavItem
-                to="/issues"
-                icon={<AlertTriangle className="h-4 w-4" />}
-                label="Issues"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/work-orders"
-                icon={<Wrench className="h-4 w-4" />}
-                label="Work Orders"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/permits"
-                icon={<Shield className="h-4 w-4" />}
-                label="Permits"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-          </CollapsibleNavGroup>
+            >
+              {canView('issues') && (
+                <SidebarMenuItem>
+                  <NavItem
+                    to="/issues"
+                    icon={<AlertTriangle className="h-4 w-4" />}
+                    label="Issues"
+                    collapsed={collapsed}
+                  />
+                </SidebarMenuItem>
+              )}
+              {canView('work_orders') && (
+                <>
+                  <SidebarMenuItem>
+                    <NavItem
+                      to="/work-orders"
+                      icon={<Wrench className="h-4 w-4" />}
+                      label="Work Orders"
+                      collapsed={collapsed}
+                    />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <NavItem
+                      to="/permits"
+                      icon={<Shield className="h-4 w-4" />}
+                      label="Permits"
+                      collapsed={collapsed}
+                    />
+                  </SidebarMenuItem>
+                </>
+              )}
+            </CollapsibleNavGroup>
+          )}
 
           {/* Communications - Messages, Email, Voice Agent */}
           <CollapsibleNavGroup
@@ -350,15 +362,17 @@ export function AppSidebar() {
             collapsed={collapsed}
             isActive={isOrganizationActive}
           >
-            <SidebarMenuItem>
-              <NavItem
-                to="/people"
-                icon={<Users className="h-4 w-4" />}
-                label="People"
-                collapsed={collapsed}
-                tooltip="Team member management"
-              />
-            </SidebarMenuItem>
+            {canView('people') && (
+              <SidebarMenuItem>
+                <NavItem
+                  to="/people"
+                  icon={<Users className="h-4 w-4" />}
+                  label="People"
+                  collapsed={collapsed}
+                  tooltip="Team member management"
+                />
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <NavItem
                 to="/contacts"
@@ -377,22 +391,26 @@ export function AppSidebar() {
                 tooltip="Training Academy"
               />
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/documents"
-                icon={<FileText className="h-4 w-4" />}
-                label="Documents"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/reports"
-                icon={<BarChart3 className="h-4 w-4" />}
-                label="Reports"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
+            {canView('documents') && (
+              <SidebarMenuItem>
+                <NavItem
+                  to="/documents"
+                  icon={<FileText className="h-4 w-4" />}
+                  label="Documents"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            )}
+            {canView('reports') && (
+              <SidebarMenuItem>
+                <NavItem
+                  to="/reports"
+                  icon={<BarChart3 className="h-4 w-4" />}
+                  label="Reports"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            )}
           </CollapsibleNavGroup>
 
           {/* Tools - QR Scanner (conditional) */}
@@ -417,7 +435,7 @@ export function AppSidebar() {
           )}
 
           {/* Daily Grounds Module */}
-          {isModuleEnabled('dailyGroundsEnabled') && (
+          {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
             <CollapsibleNavGroup
               title="Daily Grounds"
               icon={<Sun className="h-3 w-3" />}
@@ -453,7 +471,7 @@ export function AppSidebar() {
           )}
 
           {/* NSPIRE Compliance Module */}
-          {isModuleEnabled('nspireEnabled') && (
+          {isModuleEnabled('nspireEnabled') && canView('inspections') && (
             <CollapsibleNavGroup
               title="NSPIRE Compliance"
               icon={<ClipboardCheck className="h-3 w-3" />}
@@ -498,7 +516,7 @@ export function AppSidebar() {
           )}
 
           {/* Projects Module */}
-          {isModuleEnabled('projectsEnabled') && (
+          {isModuleEnabled('projectsEnabled') && canView('projects') && (
             <CollapsibleNavGroup
               title="Projects"
               icon={<FolderKanban className="h-3 w-3" />}
@@ -557,7 +575,7 @@ export function AppSidebar() {
             </SidebarMenuItem>
             
             {/* Settings - Admin only */}
-            {isAdmin && (
+            {canView('settings') && (
               <SidebarMenuItem>
                 <NavItem
                   to="/settings"

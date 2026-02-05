@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
@@ -16,11 +16,15 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { useSearchParams } from 'react-router-dom';
 
 export default function IssuesPage() {
   const { data: issues, isLoading, error } = useIssues();
   const { data: mentionedIssueIds = [] } = useMyMentionedIssueIds();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { canCreate } = useUserPermissions();
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
@@ -125,6 +129,17 @@ export default function IssuesPage() {
     setSheetOpen(true);
   };
 
+  useEffect(() => {
+    const issueId = searchParams.get('issueId');
+    if (!issueId || !issues || issues.length === 0) return;
+
+    const match = issues.find((i) => i.id === issueId);
+    if (match) {
+      setSelectedIssue(match);
+      setSheetOpen(true);
+    }
+  }, [issues, searchParams]);
+
   if (error) {
     return (
       <div className="p-6">
@@ -166,10 +181,12 @@ export default function IssuesPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Issue
-          </Button>
+          {canCreate('issues') && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Issue
+            </Button>
+          )}
         </div>
       </div>
 

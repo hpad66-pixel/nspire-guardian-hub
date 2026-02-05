@@ -51,6 +51,7 @@ import {
 import { useTotalArchiveCount } from '@/hooks/usePropertyArchives';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { cn } from '@/lib/utils';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 const folderIcons: Record<string, React.ReactNode> = {
   General: <FolderOpen className="h-4 w-4" />,
@@ -94,6 +95,7 @@ export default function DocumentsPage() {
   const { data: folderStats } = useDocumentFolderStats();
   const { data: archiveCount } = useTotalArchiveCount();
   const archiveDocument = useArchiveOrganizationDocument();
+  const { isAdmin } = useUserPermissions();
   
   const filteredDocuments = documents?.filter(doc =>
     doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -380,13 +382,15 @@ export default function DocumentsPage() {
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleArchive(doc.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => handleArchive(doc.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Archive
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

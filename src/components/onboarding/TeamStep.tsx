@@ -12,13 +12,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { OnboardingData } from './OnboardingWizard';
+import type { Database } from '@/integrations/supabase/types';
 import { z } from 'zod';
 
 const emailSchema = z.string().email();
 
+type AppRole = Database['public']['Enums']['app_role'];
+
 interface TeamMember {
   email: string;
-  role: 'admin' | 'manager' | 'inspector' | 'user';
+  role: AppRole;
 }
 
 interface TeamStepProps {
@@ -65,17 +68,27 @@ export function TeamStep({ onNext, onBack, propertyName }: TeamStepProps) {
     onNext({ invitations: [] });
   };
 
-  const roleLabels: Record<TeamMember['role'], string> = {
+  const roleLabels: Record<AppRole, string> = {
     admin: 'Administrator',
-    manager: 'Manager',
+    owner: 'Owner',
+    manager: 'Property Manager',
     inspector: 'Inspector',
+    project_manager: 'Project Manager',
+    superintendent: 'Superintendent',
+    subcontractor: 'Subcontractor',
+    viewer: 'Viewer',
     user: 'Team Member',
   };
 
-  const roleColors: Record<TeamMember['role'], string> = {
+  const roleColors: Record<AppRole, string> = {
     admin: 'bg-destructive/10 text-destructive',
-    manager: 'bg-warning/10 text-warning',
-    inspector: 'bg-success/10 text-success',
+    owner: 'bg-amber-500/10 text-amber-600',
+    manager: 'bg-blue-500/10 text-blue-600',
+    inspector: 'bg-green-500/10 text-green-600',
+    project_manager: 'bg-purple-500/10 text-purple-600',
+    superintendent: 'bg-indigo-500/10 text-indigo-600',
+    subcontractor: 'bg-orange-500/10 text-orange-600',
+    viewer: 'bg-gray-500/10 text-gray-600',
     user: 'bg-muted text-muted-foreground',
   };
 
@@ -118,13 +131,20 @@ export function TeamStep({ onNext, onBack, propertyName }: TeamStepProps) {
               />
             </div>
             <Select value={role} onValueChange={(v) => setRole(v as TeamMember['role'])}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="manager">Property Manager</SelectItem>
                 <SelectItem value="inspector">Inspector</SelectItem>
+                <SelectItem value="administrator">Administrator</SelectItem>
+                <SelectItem value="project_manager">Project Manager</SelectItem>
+                <SelectItem value="superintendent">Superintendent</SelectItem>
+                <SelectItem value="clerk">Clerk</SelectItem>
+                <SelectItem value="subcontractor">Subcontractor</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>

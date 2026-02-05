@@ -22,6 +22,7 @@ interface AssetCheckCardProps {
   onDefectDescriptionChange: (description: string) => void;
   onNext: () => void;
   isLast: boolean;
+  nextLabel?: string;
 }
 
 export function AssetCheckCard({
@@ -36,6 +37,7 @@ export function AssetCheckCard({
   onDefectDescriptionChange,
   onNext,
   isLast,
+  nextLabel,
 }: AssetCheckCardProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,7 +225,7 @@ export function AssetCheckCard({
           onClick={onNext}
           disabled={!status}
         >
-          {isLast ? 'Continue to Notes' : 'Next Asset'}
+          {nextLabel || (isLast ? 'Continue to Notes' : 'Next Asset')}
           <ChevronRight className="h-5 w-5" />
         </Button>
       </CardContent>

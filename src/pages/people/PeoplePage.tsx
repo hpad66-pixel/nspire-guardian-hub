@@ -29,9 +29,9 @@ export default function PeoplePage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
-  const { canCreate, isAdmin, isManager } = useUserPermissions();
+  const { canCreate, isAdmin, isOwner, isPropertyManager } = useUserPermissions();
   const { userRole } = useAuth();
-  const canManageRoles = isAdmin || isManager;
+  const canManageRoles = isAdmin || isOwner || isPropertyManager;
 
   const { data: stats } = usePeopleStats();
   const { data: roles } = useRoleDefinitions();
@@ -67,7 +67,7 @@ export default function PeoplePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {(userRole === 'admin' || userRole === 'manager') && (
+          {(userRole === 'admin' || userRole === 'owner' || userRole === 'manager') && (
             <Button variant="outline" onClick={() => setShowInviteDialog(true)}>
               <Mail className="mr-2 h-4 w-4" />
               Invite User

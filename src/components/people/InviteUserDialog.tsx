@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/select';
 import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import { useProperties } from '@/hooks/useProperties';
+import { getAssignableRoles } from '@/hooks/usePermissions';
+import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -36,7 +38,7 @@ type AppRole = Database['public']['Enums']['app_role'];
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['admin', 'manager', 'inspector', 'user'] as const),
+  role: z.enum(['admin', 'owner', 'manager', 'inspector', 'administrator', 'superintendent', 'clerk', 'project_manager', 'subcontractor', 'viewer', 'user'] as const),
   property_id: z.string().optional(),
 });
 
@@ -50,8 +52,10 @@ interface InviteUserDialogProps {
 export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) {
   const [isSending, setIsSending] = useState(false);
   const { data: properties } = useProperties();
+  const { data: currentUserRole } = useCurrentUserRole();
   const createInvitation = useCreateInvitation();
   const sendInvitation = useSendInvitation();
+  const assignableRoles = currentUserRole ? getAssignableRoles(currentUserRole) : [];
 
   const form = useForm<InviteFormData>({
     resolver: zodResolver(inviteSchema),
@@ -87,14 +91,29 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
 
   const roleDescriptions: Record<string, string> = {
     admin: 'Full system access, can manage users and settings',
+    owner: 'Owner-level oversight with elevated authority',
     manager: 'Property management, team oversight, approvals',
     inspector: 'Conduct inspections, create issues',
+    administrator: 'Administrative staff access',
+    superintendent: 'Field operations and onsite coordination',
+    clerk: 'Clerical and support access',
     user: 'Basic access, view and limited actions',
-    owner: 'Property owner access',
     project_manager: 'Project management access',
     subcontractor: 'Subcontractor access',
-    superintendent: 'Site supervisor access',
     viewer: 'View-only access',
+  };
+  const roleLabels: Record<AppRole, string> = {
+    admin: 'Admin',
+    owner: 'Owner',
+    manager: 'Property Manager',
+    inspector: 'Inspector',
+    administrator: 'Administrator',
+    superintendent: 'Superintendent',
+    clerk: 'Clerk',
+    project_manager: 'Project Manager',
+    subcontractor: 'Subcontractor',
+    viewer: 'Viewer',
+    user: 'User',
   };
 
   return (
@@ -152,10 +171,11 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="inspector">Inspector</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
+                      {assignableRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {roleLabels[role]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">

@@ -30,7 +30,8 @@ export default function SettingsPage() {
   const { data: currentUserRole } = useCurrentUserRole();
   const updateProperty = useUpdateProperty();
 
-  const isAdmin = currentUserRole === 'admin';
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
+  const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
 
   const handlePropertyModuleChange = async (
     propertyId: string, 
@@ -66,7 +67,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="modules" className="space-y-6">
         <TabsList>
           <TabsTrigger value="modules">Modules</TabsTrigger>
-          {isAdmin && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
+          {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
         </TabsList>
@@ -76,7 +77,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Module Management</CardTitle>
-                <CardDescription>Only administrators can manage module access.</CardDescription>
+                <CardDescription>Only admins and owners can manage module access.</CardDescription>
               </CardHeader>
             </Card>
           )}
@@ -336,7 +337,7 @@ export default function SettingsPage() {
           )}
         </TabsContent>
 
-        {isAdmin && (
+        {canManageUsers && (
           <TabsContent value="users">
             <UserManagement />
           </TabsContent>

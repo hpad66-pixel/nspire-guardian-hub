@@ -62,11 +62,15 @@ const CATEGORIES = [
 
 const TARGET_ROLES = [
   { value: 'admin', label: 'Admin' },
-  { value: 'manager', label: 'Manager' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'manager', label: 'Property Manager' },
   { value: 'project_manager', label: 'Project Manager' },
   { value: 'superintendent', label: 'Superintendent' },
   { value: 'inspector', label: 'Inspector' },
+  { value: 'administrator', label: 'Administrator' },
+  { value: 'clerk', label: 'Clerk' },
   { value: 'subcontractor', label: 'Subcontractor' },
+  { value: 'viewer', label: 'Viewer' },
   { value: 'user', label: 'Staff' },
 ];
 

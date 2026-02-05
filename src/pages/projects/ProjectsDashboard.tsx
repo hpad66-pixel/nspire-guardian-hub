@@ -21,6 +21,7 @@ import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOr
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function ProjectsDashboard() {
   const navigate = useNavigate();
@@ -31,6 +32,8 @@ export default function ProjectsDashboard() {
   const { data: pendingChangeOrders } = usePendingChangeOrders();
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
+  const { canCreate } = useUserPermissions();
+  const canCreateProjects = canCreate('projects');
 
   const activeProjects = projects?.filter(p => p.status === 'active' || p.status === 'planning');
 
@@ -58,10 +61,12 @@ export default function ProjectsDashboard() {
             Capital improvements, renovations, and construction project management
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
+        {canCreateProjects && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        )}
       </div>
 
       {/* Stats Overview */}
@@ -230,7 +235,9 @@ export default function ProjectsDashboard() {
         </Card>
       </div>
 
-      <ProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {canCreateProjects && (
+        <ProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      )}
     </div>
   );
 }

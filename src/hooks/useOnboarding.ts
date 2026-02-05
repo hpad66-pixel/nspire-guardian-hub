@@ -34,14 +34,14 @@ export function useOnboarding() {
 
   // Show onboarding wizard if:
   // 1. User is logged in
-  // 2. User is admin or manager
+  // 2. User is admin, owner, or property manager
   // 3. No properties exist
   // 4. Onboarding not already completed
   const shouldShowOnboarding = 
     !!user && 
     !statusLoading && 
     !propertiesLoading &&
-    (userRole === 'admin' || userRole === 'manager') &&
+    (userRole === 'admin' || userRole === 'owner' || userRole === 'manager') &&
     (!properties || properties.length === 0) &&
     !onboardingStatus?.completed_at;
 

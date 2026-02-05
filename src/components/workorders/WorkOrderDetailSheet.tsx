@@ -33,6 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { WorkOrder, useUpdateWorkOrder, useCompleteWorkOrder, useVerifyWorkOrder } from '@/hooks/useWorkOrders';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { WorkOrderComments } from './WorkOrderComments';
@@ -63,6 +64,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   const updateWorkOrder = useUpdateWorkOrder();
   const completeWorkOrder = useCompleteWorkOrder();
   const verifyWorkOrder = useVerifyWorkOrder();
+  const { canUpdate, canAssign, canApprove } = useUserPermissions();
   
   const [notes, setNotes] = useState(workOrder?.notes || '');
   const [estimatedCost, setEstimatedCost] = useState(workOrder?.estimated_cost?.toString() || '');
@@ -72,6 +74,9 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   
   const dueDate = new Date(workOrder.due_date);
   const isOverdue = dueDate < new Date() && workOrder.status !== 'verified' && workOrder.status !== 'completed';
+  const canEditWorkOrder = canUpdate('work_orders');
+  const canAssignWorkOrder = canAssign('work_orders');
+  const canApproveWorkOrder = canApprove('work_orders');
   
   const handleStatusChange = async (newStatus: string) => {
     await updateWorkOrder.mutateAsync({
@@ -293,6 +298,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                       onChange={(e) => setEstimatedCost(e.target.value)}
                       placeholder="0.00"
                       className="h-8 w-32"
+                      disabled={!canEditWorkOrder}
                     />
                   </div>
                 </div>
@@ -300,22 +306,32 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                 {/* Assignee */}
                 <div className="space-y-1">
                   <Label className="text-muted-foreground text-xs uppercase tracking-wider">Assigned To</Label>
-                  <Select
-                    value={workOrder.assigned_to || ''}
-                    onValueChange={handleAssign}
-                    disabled={updateWorkOrder.isPending}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles?.map((profile) => (
-                        <SelectItem key={profile.user_id} value={profile.user_id}>
-                          {profile.full_name || profile.email || 'Unknown'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {canAssignWorkOrder ? (
+                    <Select
+                      value={workOrder.assigned_to || ''}
+                      onValueChange={handleAssign}
+                      disabled={updateWorkOrder.isPending}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles?.map((profile) => (
+                          <SelectItem key={profile.user_id} value={profile.user_id}>
+                            {profile.full_name || profile.email || 'Unknown'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      {workOrder.assigned_to
+                        ? profiles?.find((p) => p.user_id === workOrder.assigned_to)?.full_name ||
+                          profiles?.find((p) => p.user_id === workOrder.assigned_to)?.email ||
+                          'Assigned'
+                        : 'Unassigned'}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Defect Info */}
@@ -346,12 +362,15 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                 placeholder="Add notes about this work order..."
                 rows={3}
                 context="notes"
+                disabled={!canEditWorkOrder}
               />
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={handleSaveNotes}>
-                  Save Notes
-                </Button>
-              </div>
+              {canEditWorkOrder && (
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={handleSaveNotes}>
+                    Save Notes
+                  </Button>
+                </div>
+              )}
             </div>
             
             {/* Proof Photos */}
@@ -387,7 +406,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
             {/* Action Buttons */}
             <div className="space-y-3">
               {/* Draft - Submit for Approval */}
-              {(workOrder.status === 'draft' || workOrder.status === 'rejected') && (
+              {(workOrder.status === 'draft' || workOrder.status === 'rejected') && canEditWorkOrder && (
                 <Button 
                   className="w-full" 
                   onClick={handleSubmitForApproval}
@@ -399,7 +418,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               )}
               
               {/* Pending Approval - Approve/Reject */}
-              {workOrder.status === 'pending_approval' && (
+              {workOrder.status === 'pending_approval' && canApproveWorkOrder && (
                 <div className="flex gap-2">
                   <Button 
                     className="flex-1" 
@@ -442,7 +461,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               )}
               
               {/* In Progress - Mark Complete */}
-              {workOrder.status === 'in_progress' && (
+              {workOrder.status === 'in_progress' && canEditWorkOrder && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button className="w-full" variant="default">
@@ -468,7 +487,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               )}
               
               {/* Completed - Verify */}
-              {workOrder.status === 'completed' && (
+              {workOrder.status === 'completed' && canApproveWorkOrder && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button className="w-full" variant="default">

@@ -36,7 +36,10 @@ export default function UnitsPage() {
   const { data: stats } = useUnitStats();
   const { data: properties } = useProperties();
   const deleteUnit = useDeleteUnit();
-  const { isAdmin } = useUserPermissions();
+  const { canCreate, canUpdate, canDelete } = useUserPermissions();
+  const canCreateUnits = canCreate('properties');
+  const canUpdateUnits = canUpdate('properties');
+  const canDeleteUnits = canDelete('properties');
 
   useEffect(() => {
     const param = searchParams.get('propertyId');
@@ -60,7 +63,7 @@ export default function UnitsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Units</h1>
           <p className="text-muted-foreground">Manage units across your properties</p>
         </div>
-        {isAdmin && (
+        {canCreateUnits && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
@@ -185,41 +188,45 @@ export default function UnitsPage() {
                     {unit.status}
                   </Badge>
                 </div>
-                {isAdmin && (
+                {(canUpdateUnits || canDeleteUnits) && (
                   <div className="flex items-center gap-2 mb-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUnit(unit);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Unit</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete Unit {unit.unit_number}. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteUnit.mutate(unit.id)}>
+                    {canUpdateUnits && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUnit(unit);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {canDeleteUnits && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-3 w-3 mr-1" />
                             Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Unit</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete Unit {unit.unit_number}. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteUnit.mutate(unit.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -259,7 +266,7 @@ export default function UnitsPage() {
                   : 'Add your first unit to get started'}
               </p>
             </div>
-            {isAdmin && !searchQuery && propertyFilter === 'all' && (
+            {canCreateUnits && !searchQuery && propertyFilter === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Unit
@@ -277,7 +284,7 @@ export default function UnitsPage() {
         }}
         unit={selectedUnit || undefined}
       />
-      {isAdmin && (
+      {canCreateUnits && (
         <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       )}
     </div>

@@ -30,7 +30,9 @@ export default function PropertyArchivesPage() {
   const { data: archives, isLoading } = usePropertyArchives(selectedCategory || undefined);
   const { data: categoryStats } = useArchiveCategoryStats();
   const { data: totalCount } = useTotalArchiveCount();
-  const { isAdmin } = useUserPermissions();
+  const { canCreate, canUpdate } = useUserPermissions();
+  const canUpload = canCreate('documents');
+  const canEdit = canUpdate('documents');
 
   const filteredArchives = archives?.filter(
     (doc) =>
@@ -71,7 +73,7 @@ export default function PropertyArchivesPage() {
 
       {/* Hero */}
       <ArchiveHero
-        canUpload={isAdmin}
+        canUpload={canUpload}
         onUpload={() => setUploadDialogOpen(true)}
         totalCount={totalCount || 0}
       />
@@ -134,7 +136,7 @@ export default function PropertyArchivesPage() {
                 <ArchiveDocumentCard
                   key={doc.id}
                   document={doc}
-                  canEdit={isAdmin}
+                  canEdit={canEdit}
                   onView={handleView}
                   onDownload={handleDownload}
                   index={index}
@@ -158,7 +160,7 @@ export default function PropertyArchivesPage() {
                   ? 'No documents in this category yet'
                   : 'Start by adding your first permanent record'}
               </p>
-              {isAdmin && !searchQuery && (
+              {canUpload && !searchQuery && (
                 <Button
                   onClick={() => setUploadDialogOpen(true)}
                   className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
@@ -172,11 +174,13 @@ export default function PropertyArchivesPage() {
       </Card>
 
       {/* Upload Dialog */}
-      <ArchiveUploadDialog
-        open={uploadDialogOpen}
-        onOpenChange={setUploadDialogOpen}
-        defaultCategory={selectedCategory || 'as-builts'}
-      />
+      {canUpload && (
+        <ArchiveUploadDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          defaultCategory={selectedCategory || 'as-builts'}
+        />
+      )}
 
       {/* Viewer Sheet */}
       <ArchiveViewerSheet

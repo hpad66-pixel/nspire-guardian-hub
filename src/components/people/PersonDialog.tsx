@@ -33,6 +33,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { useRoleDefinitions } from '@/hooks/useRoleDefinitions';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAddPropertyAssignment } from '@/hooks/usePeople';
+import { useUserPermissions, getAssignableRoles } from '@/hooks/usePermissions';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -56,6 +57,8 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
   const { data: properties } = useProperties();
   const { data: roles } = useRoleDefinitions();
   const { data: profiles } = useProfiles();
+  const { currentRole } = useUserPermissions();
+  const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
   const addAssignment = useAddPropertyAssignment();
 
   const form = useForm<FormValues>({
@@ -162,7 +165,9 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {roles?.map(role => (
+                      {roles
+                        ?.filter(role => assignableRoles.includes(role.role_key as AppRole))
+                        .map(role => (
                         <SelectItem key={role.role_key} value={role.role_key}>
                           <div className="flex flex-col">
                             <span>{role.display_name}</span>

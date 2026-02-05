@@ -2930,6 +2930,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_module_access: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          module_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_status_history: {
         Row: {
           changed_by: string | null
@@ -3493,12 +3523,14 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
+        "owner",
         "manager",
         "inspector",
-        "user",
-        "owner",
-        "project_manager",
+        "administrator",
         "superintendent",
+        "clerk",
+        "user",
+        "project_manager",
         "subcontractor",
         "viewer",
       ],

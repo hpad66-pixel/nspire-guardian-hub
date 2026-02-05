@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-export type UserRole = 'admin' | 'manager' | 'superintendent' | 'inspector' | 'user' | 'viewer';
+export type UserRole = 'admin' | 'owner' | 'manager' | 'inspector' | 'administrator' | 'superintendent' | 'clerk' | 'project_manager' | 'subcontractor' | 'viewer' | 'user';
 
 export interface DashboardMetrics {
   properties: number;
@@ -122,7 +122,7 @@ export function useDashboardData() {
       // Build action items based on role
       const actionItems: ActionItem[] = [];
       
-      if (role === 'admin' || role === 'manager') {
+      if (role === 'admin' || role === 'owner' || role === 'manager') {
         if (pendingApprovals.length > 0) {
           actionItems.push({
             id: 'pending-approvals',

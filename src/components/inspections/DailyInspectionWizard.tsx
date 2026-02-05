@@ -9,6 +9,7 @@ import { InspectionProgress } from './InspectionProgress';
 import { AssetCheckCard } from './AssetCheckCard';
 import { VoiceDictation } from '@/components/ui/voice-dictation';
 import { useAssets, Asset } from '@/hooks/useAssets';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { 
   useCreateDailyInspection, 
   useUpdateDailyInspection, 
@@ -22,7 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   ChevronLeft, 
-  ChevronRight, 
+  ChevronRight,
   Play, 
   CheckCircle2, 
   Upload, 
@@ -58,7 +59,8 @@ export function DailyInspectionWizard({
 }: DailyInspectionWizardProps) {
   const [step, setStep] = useState<WizardStep>('start');
   const [weather, setWeather] = useState(existingInspection?.weather || '');
-  const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [generalNotes, setGeneralNotes] = useState(existingInspection?.general_notes || '');
   const [attachments, setAttachments] = useState<string[]>(existingInspection?.attachments || []);
   const [assetChecks, setAssetChecks] = useState<Record<string, AssetCheckData>>({});
@@ -93,8 +95,10 @@ export function DailyInspectionWizard({
     [assets]
   );
 
-  const currentAsset = activeAssets[currentAssetIndex];
-  const currentCheck = currentAsset ? assetChecks[currentAsset.id] : undefined;
+  const selectedAsset = selectedAssetId
+    ? activeAssets.find((a) => a.id === selectedAssetId)
+    : undefined;
+  const selectedCheck = selectedAsset ? assetChecks[selectedAsset.id] : undefined;
 
   const stats = useMemo(() => {
     let okCount = 0, attentionCount = 0, defectCount = 0;
@@ -128,43 +132,37 @@ export function DailyInspectionWizard({
   };
 
   const handleAssetCheck = (field: keyof AssetCheckData, value: any) => {
-    if (!currentAsset) return;
+    if (!selectedAsset) return;
     
     setAssetChecks(prev => ({
       ...prev,
-      [currentAsset.id]: {
-        ...prev[currentAsset.id] || { photoUrls: [], notes: '', defectDescription: '' },
+      [selectedAsset.id]: {
+        ...prev[selectedAsset.id] || { photoUrls: [], notes: '', defectDescription: '' },
         [field]: value,
       },
     }));
   };
 
-  const handleNextAsset = async () => {
-    if (!currentAsset || !inspection) return;
+  const handleSaveAssetCheck = async () => {
+    if (!selectedAsset || !inspection) return;
     
-    const check = assetChecks[currentAsset.id];
+    const check = assetChecks[selectedAsset.id];
     if (check?.status) {
       await upsertItem.mutateAsync({
         daily_inspection_id: inspection.id,
-        asset_id: currentAsset.id,
+        asset_id: selectedAsset.id,
         status: check.status,
         photo_urls: check.photoUrls,
         notes: check.notes || undefined,
         defect_description: check.defectDescription || undefined,
       });
     }
-
-    if (currentAssetIndex < activeAssets.length - 1) {
-      setCurrentAssetIndex(prev => prev + 1);
-    } else {
-      setStep('notes');
-    }
+    setAssetDialogOpen(false);
   };
 
-  const handlePrevAsset = () => {
-    if (currentAssetIndex > 0) {
-      setCurrentAssetIndex(prev => prev - 1);
-    }
+  const handleOpenAsset = (assetId: string) => {
+    setSelectedAssetId(assetId);
+    setAssetDialogOpen(true);
   };
 
   const handleVoiceTranscript = (text: string) => {
@@ -213,6 +211,71 @@ export function DailyInspectionWizard({
     if (!inspection) return;
 
     try {
+      // Persist all checked assets before submitting
+      const itemsToSave = Object.entries(assetChecks)
+        .filter(([, check]) => !!check.status)
+        .map(([assetId, check]) =>
+          upsertItem.mutateAsync({
+            daily_inspection_id: inspection.id,
+            asset_id: assetId,
+            status: check.status as InspectionItemStatus,
+            photo_urls: check.photoUrls,
+            notes: check.notes || undefined,
+            defect_description: check.defectDescription || undefined,
+          })
+        );
+
+      if (itemsToSave.length > 0) {
+        await Promise.all(itemsToSave);
+      }
+
+      // Find a property manager to assign issues
+      const { data: pm } = await supabase
+        .from('property_team_members')
+        .select('user_id')
+        .eq('property_id', propertyId)
+        .eq('role', 'manager')
+        .eq('status', 'active')
+        .maybeSingle();
+
+      const assignedTo = pm?.user_id || null;
+
+      // Create issues for assets needing attention or with defects
+      const issueCreates = activeAssets.flatMap((asset) => {
+        const check = assetChecks[asset.id];
+        if (!check?.status || check.status === 'ok') return [];
+
+        const severity = check.status === 'defect_found' ? 'severe' : 'moderate';
+        const title =
+          check.status === 'defect_found'
+            ? `Defect found: ${asset.name}`
+            : `Needs attention: ${asset.name}`;
+
+        const descriptionParts = [
+          `Daily Grounds Inspection: ${inspection.id}`,
+          asset.location_description ? `Location: ${asset.location_description}` : null,
+          check.notes ? `Notes: ${check.notes}` : null,
+          check.defectDescription ? `Defect: ${check.defectDescription}` : null,
+        ].filter(Boolean);
+
+        return [
+          {
+            property_id: propertyId,
+            title,
+            description: descriptionParts.join('\n'),
+            source_module: 'core',
+            area: 'outside',
+            severity,
+            status: 'open',
+            assigned_to: assignedTo,
+          },
+        ];
+      });
+
+      if (issueCreates.length > 0) {
+        await supabase.from('issues').insert(issueCreates);
+      }
+
       await updateInspection.mutateAsync({
         id: inspection.id,
         general_notes: generalNotes,
@@ -311,53 +374,84 @@ export function DailyInspectionWizard({
                   </Button>
                 </CardContent>
               </Card>
-            ) : currentAsset ? (
+            ) : (
               <>
                 <InspectionProgress
-                  current={currentAssetIndex + 1}
+                  current={checkedCount}
                   total={activeAssets.length}
                   okCount={stats.okCount}
                   attentionCount={stats.attentionCount}
                   defectCount={stats.defectCount}
                 />
 
-                {/* Navigation Arrows */}
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrevAsset}
-                    disabled={currentAssetIndex === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {currentAssetIndex + 1} / {activeAssets.length}
-                  </span>
-                  <div className="w-20" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {activeAssets.map((asset) => {
+                    const check = assetChecks[asset.id];
+                    const status = check?.status;
+                    const statusLabel =
+                      status === 'ok'
+                        ? 'OK'
+                        : status === 'needs_attention'
+                        ? 'Needs attention'
+                        : status === 'defect_found'
+                        ? 'Defect found'
+                        : 'Not checked';
+                    const statusClass =
+                      status === 'ok'
+                        ? 'bg-green-100 text-green-700'
+                        : status === 'needs_attention'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : status === 'defect_found'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-muted text-muted-foreground';
+                    const noteText =
+                      status === 'needs_attention'
+                        ? check?.notes
+                        : status === 'defect_found'
+                        ? check?.defectDescription || check?.notes
+                        : check?.notes;
+
+                    return (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        onClick={() => handleOpenAsset(asset.id)}
+                        className={cn(
+                          'text-left w-full rounded-lg border p-3 transition-colors hover:bg-muted/40',
+                          status === 'defect_found' && 'border-red-200'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium">{asset.name}</p>
+                            {asset.location_description && (
+                              <p className="text-xs text-muted-foreground">
+                                {asset.location_description}
+                              </p>
+                            )}
+                          </div>
+                          <span className={cn('text-xs font-medium px-2 py-1 rounded-full', statusClass)}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        {noteText && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                            {noteText}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <AssetCheckCard
-                  asset={currentAsset}
-                  status={currentCheck?.status}
-                  photoUrls={currentCheck?.photoUrls || []}
-                  notes={currentCheck?.notes || ''}
-                  defectDescription={currentCheck?.defectDescription || ''}
-                  onStatusChange={(status) => handleAssetCheck('status', status)}
-                  onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
-                  onNotesChange={(notes) => handleAssetCheck('notes', notes)}
-                  onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
-                  onNext={handleNextAsset}
-                  isLast={currentAssetIndex === activeAssets.length - 1}
-                />
+                <Button
+                  className="w-full h-12"
+                  onClick={() => setStep('notes')}
+                >
+                  Continue to Notes
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </>
-            ) : (
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <p className="text-muted-foreground">Loading assets...</p>
-                </CardContent>
-              </Card>
             )}
           </div>
         )}
@@ -610,6 +704,33 @@ export function DailyInspectionWizard({
         inspectionId={inspection?.id}
         inspection={inspection}
       />
+
+      <Dialog
+        open={assetDialogOpen && !!selectedAsset}
+        onOpenChange={(open) => {
+          setAssetDialogOpen(open);
+          if (!open) setSelectedAssetId(null);
+        }}
+      >
+        <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none">
+          {selectedAsset && (
+            <AssetCheckCard
+              asset={selectedAsset}
+              status={selectedCheck?.status}
+              photoUrls={selectedCheck?.photoUrls || []}
+              notes={selectedCheck?.notes || ''}
+              defectDescription={selectedCheck?.defectDescription || ''}
+              onStatusChange={(status) => handleAssetCheck('status', status)}
+              onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
+              onNotesChange={(notes) => handleAssetCheck('notes', notes)}
+              onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
+              onNext={handleSaveAssetCheck}
+              isLast
+              nextLabel="Save & Close"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

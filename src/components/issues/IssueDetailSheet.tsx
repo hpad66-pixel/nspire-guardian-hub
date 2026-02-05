@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { IssueConversation } from './IssueConversation';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateIssue, Issue } from '@/hooks/useIssues';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUserManagement';
 import { AlertTriangle, Calendar, MapPin, User, CheckCircle2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -33,10 +34,12 @@ export function IssueDetailSheet({ issue, open, onOpenChange }: IssueDetailSheet
   const { user } = useAuth();
   const updateIssue = useUpdateIssue();
   const { data: users } = useUsers();
+  const { canUpdate } = useUserPermissions();
   
   if (!issue) return null;
   
   const isAssignedToMe = issue.assigned_to === user?.id;
+  const canEditIssue = canUpdate('issues');
   const assignedUser = users?.find(u => u.user_id === issue.assigned_to);
   const creatorUser = users?.find(u => u.user_id === issue.created_by);
   
@@ -81,7 +84,7 @@ export function IssueDetailSheet({ issue, open, onOpenChange }: IssueDetailSheet
         
         <div className="flex-1 overflow-y-auto space-y-4 mt-4">
           {/* Action Required Banner */}
-          {isAssignedToMe && issue.status !== 'resolved' && (
+          {isAssignedToMe && issue.status !== 'resolved' && canEditIssue && (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-primary" />
@@ -134,49 +137,51 @@ export function IssueDetailSheet({ issue, open, onOpenChange }: IssueDetailSheet
           <Separator />
           
           {/* Status & Assignment */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Status</label>
-              <Select value={issue.status || 'open'} onValueChange={handleStatusChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                </SelectContent>
-              </Select>
+          {canEditIssue && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase">Status</label>
+                <Select value={issue.status || 'open'} onValueChange={handleStatusChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase">Assigned To</label>
+                <Select 
+                  value={issue.assigned_to || 'unassigned'} 
+                  onValueChange={handleAssigneeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {users?.map((u) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={u.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {getInitials(u.full_name, u.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {u.full_name || u.email}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Assigned To</label>
-              <Select 
-                value={issue.assigned_to || 'unassigned'} 
-                onValueChange={handleAssigneeChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Unassigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {users?.map((u) => (
-                    <SelectItem key={u.user_id} value={u.user_id}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={u.avatar_url || undefined} />
-                          <AvatarFallback className="text-xs">
-                            {getInitials(u.full_name, u.email)}
-                          </AvatarFallback>
-                        </Avatar>
-                        {u.full_name || u.email}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
           
           {/* Current Assignee Display */}
           {assignedUser && (

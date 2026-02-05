@@ -4,8 +4,11 @@ import { WelcomeStep } from './WelcomeStep';
 import { PropertyStep } from './PropertyStep';
 import { TeamStep } from './TeamStep';
 import { CompleteStep } from './CompleteStep';
+import type { Database } from '@/integrations/supabase/types';
 
 export type OnboardingStep = 'welcome' | 'property' | 'team' | 'complete';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 export interface OnboardingData {
   property?: {
@@ -23,7 +26,7 @@ export interface OnboardingData {
   };
   invitations?: {
     email: string;
-    role: 'admin' | 'manager' | 'inspector' | 'user';
+    role: AppRole;
   }[];
 }
 

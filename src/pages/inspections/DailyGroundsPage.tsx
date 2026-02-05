@@ -11,6 +11,7 @@ import { InspectionReportDialog } from '@/components/inspections/InspectionRepor
 import { useProperties } from '@/hooks/useProperties';
 import { useDailyInspections, useTodayInspection, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { 
   ClipboardCheck, 
   Calendar, 
@@ -94,6 +95,8 @@ export default function DailyGroundsPage() {
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
   const { data: inspections = [] } = useDailyInspections(selectedPropertyId || undefined);
   const { data: todayInspection } = useTodayInspection(selectedPropertyId);
+  const { canCreate } = useUserPermissions();
+  const canCreateInspections = canCreate('inspections');
 
   // Auto-select first property if only one
   useEffect(() => {
@@ -125,7 +128,7 @@ export default function DailyGroundsPage() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  if (showWizard && selectedPropertyId) {
+  if (showWizard && selectedPropertyId && canCreateInspections) {
     return (
       <DailyInspectionWizard
         propertyId={selectedPropertyId}
@@ -198,10 +201,12 @@ export default function DailyGroundsPage() {
                         <FileText className="h-4 w-4 mr-2" />
                         View Report
                       </Button>
-                      <Button variant="outline" onClick={() => setShowAddendum(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Addendum
-                      </Button>
+                      {canCreateInspections && (
+                        <Button variant="outline" onClick={() => setShowAddendum(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Addendum
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : todayInspection?.status === 'in_progress' ? (
@@ -215,10 +220,12 @@ export default function DailyGroundsPage() {
                         Started earlier today
                       </p>
                     </div>
-                    <Button size="lg" onClick={handleStartInspection} className="gap-2">
-                      <Play className="h-4 w-4" />
-                      Continue Inspection
-                    </Button>
+                    {canCreateInspections && (
+                      <Button size="lg" onClick={handleStartInspection} className="gap-2">
+                        <Play className="h-4 w-4" />
+                        Continue Inspection
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center space-y-4">
@@ -228,14 +235,16 @@ export default function DailyGroundsPage() {
                         {activeAssets.length} assets to check
                       </p>
                     </div>
-                    <Button 
-                      size="lg" 
-                      className="w-full h-14 text-lg gap-3"
-                      onClick={handleStartInspection}
-                    >
-                      <Play className="h-5 w-5" />
-                      Start Today's Inspection
-                    </Button>
+                    {canCreateInspections && (
+                      <Button 
+                        size="lg" 
+                        className="w-full h-14 text-lg gap-3"
+                        onClick={handleStartInspection}
+                      >
+                        <Play className="h-5 w-5" />
+                        Start Today's Inspection
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -359,7 +368,7 @@ export default function DailyGroundsPage() {
       </div>
 
       {/* Addendum Dialog */}
-      {todayInspection && (
+      {todayInspection && canCreateInspections && (
         <AddendumDialog
           open={showAddendum}
           onOpenChange={setShowAddendum}
