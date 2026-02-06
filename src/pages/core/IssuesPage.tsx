@@ -5,7 +5,7 @@ import { SeverityBadge } from '@/components/ui/severity-badge';
 import { AreaBadge } from '@/components/ui/area-badge';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Plus, AtSign, Download } from 'lucide-react';
-import { useIssues, Issue } from '@/hooks/useIssues';
+import { useIssuesByProperty, Issue } from '@/hooks/useIssues';
 import { useMyMentionedIssueIds } from '@/hooks/useIssueMentions';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,13 +18,14 @@ import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useSearchParams } from 'react-router-dom';
+import { useProperties } from '@/hooks/useProperties';
 
 export default function IssuesPage() {
-  const { data: issues, isLoading, error } = useIssues();
   const { data: mentionedIssueIds = [] } = useMyMentionedIssueIds();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const { canCreate } = useUserPermissions();
+  const { data: properties = [] } = useProperties();
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);
@@ -35,6 +36,14 @@ export default function IssuesPage() {
     sources: [],
     propertyId: null,
   });
+
+  const { data: issues, isLoading, error } = useIssuesByProperty(filters.propertyId);
+
+  useEffect(() => {
+    if (!filters.propertyId && properties.length > 0) {
+      setFilters((prev) => ({ ...prev, propertyId: properties[0].id }));
+    }
+  }, [properties, filters.propertyId]);
 
   const sourceLabels: Record<string, string> = {
     core: 'Core',

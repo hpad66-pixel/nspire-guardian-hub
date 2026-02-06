@@ -182,14 +182,13 @@ export function IssueFilterPopover({ filters, onFiltersChange }: IssueFilterPopo
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground uppercase tracking-wider">Property</Label>
             <Select
-              value={filters.propertyId || 'all'}
-              onValueChange={(value) => onFiltersChange({ ...filters, propertyId: value === 'all' ? null : value })}
+              value={filters.propertyId || ''}
+              onValueChange={(value) => onFiltersChange({ ...filters, propertyId: value || null })}
             >
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="All properties" />
+                <SelectValue placeholder="Select property" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All properties</SelectItem>
                 {properties?.map((property) => (
                   <SelectItem key={property.id} value={property.id}>
                     {property.name}

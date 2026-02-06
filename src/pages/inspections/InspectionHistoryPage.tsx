@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ type DateFilter = 'all' | '7days' | '30days' | '90days';
 type StatusFilter = 'all' | 'completed' | 'in_progress';
 
 export default function InspectionHistoryPage() {
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [dateFilter, setDateFilter] = useState<DateFilter>('30days');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,9 +44,15 @@ export default function InspectionHistoryPage() {
 
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
   const { data: allInspections = [], isLoading: inspectionsLoading } = useDailyInspections(
-    selectedPropertyId === 'all' ? undefined : selectedPropertyId
+    selectedPropertyId || undefined
   );
   const { data: profiles = [] } = useProfiles();
+
+  useEffect(() => {
+    if (!selectedPropertyId && properties.length > 0) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
 
   // Filter inspections
   const filteredInspections = allInspections.filter((inspection) => {
@@ -126,10 +132,9 @@ export default function InspectionHistoryPage() {
               <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
                 <SelectTrigger>
                   <Building className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Properties" />
+                  <SelectValue placeholder="Select property" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Properties</SelectItem>
                   {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}

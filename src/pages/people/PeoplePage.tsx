@@ -21,7 +21,7 @@ type AppRole = Database['public']['Enums']['app_role'];
 
 export default function PeoplePage() {
   const [search, setSearch] = useState('');
-  const [selectedProperty, setSelectedProperty] = useState<string>('all');
+  const [selectedProperty, setSelectedProperty] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [selectedPerson, setSelectedPerson] = useState<PersonWithAssignments | null>(null);
@@ -35,11 +35,11 @@ export default function PeoplePage() {
 
   const { data: stats } = usePeopleStats();
   const { data: roles } = useRoleDefinitions();
-  const { data: properties } = useProperties();
+  const { data: properties = [] } = useProperties();
 
   const filters = {
     search,
-    propertyId: selectedProperty !== 'all' ? selectedProperty : undefined,
+    propertyId: selectedProperty || undefined,
     role: selectedRole !== 'all' ? selectedRole as AppRole : undefined,
     status: activeTab === 'archived' ? 'archived' : selectedStatus !== 'all' ? selectedStatus : undefined,
   };
@@ -55,6 +55,12 @@ export default function PeoplePage() {
       setActiveTab('all');
     }
   }, [canManageRoles, activeTab]);
+
+  useEffect(() => {
+    if (!selectedProperty && properties.length > 0) {
+      setSelectedProperty(properties[0].id);
+    }
+  }, [properties, selectedProperty]);
 
   return (
     <div className="space-y-6 p-6">
@@ -175,11 +181,10 @@ export default function PeoplePage() {
             </div>
             <Select value={selectedProperty} onValueChange={setSelectedProperty}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Properties" />
+                <SelectValue placeholder="Select property" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Properties</SelectItem>
-                {properties?.map(property => (
+                {properties.map(property => (
                   <SelectItem key={property.id} value={property.id}>
                     {property.name}
                   </SelectItem>

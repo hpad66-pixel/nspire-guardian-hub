@@ -34,10 +34,11 @@ export function useIssues() {
   });
 }
 
-export function useIssuesByProperty(propertyId: string) {
+export function useIssuesByProperty(propertyId: string | null) {
   return useQuery({
     queryKey: ['issues', 'property', propertyId],
     queryFn: async () => {
+      if (!propertyId) return [];
       const { data, error } = await supabase
         .from('issues')
         .select(`

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,7 @@ type OwnershipTab = "all" | "personal" | "property";
 export default function ContactsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "all">("all");
-  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [propertyFilter, setPropertyFilter] = useState<string>("");
   const [ownershipTab, setOwnershipTab] = useState<OwnershipTab>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
@@ -59,12 +59,12 @@ export default function ContactsPage() {
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
     contactType: typeFilter,
-    propertyId: propertyFilter !== "all" ? propertyFilter : undefined,
+    propertyId: ownershipTab === "personal" ? undefined : (propertyFilter || undefined),
     showPersonal: ownershipTab === "all" || ownershipTab === "personal",
     showProperty: ownershipTab === "all" || ownershipTab === "property",
   });
 
-  const { data: properties } = useProperties();
+  const { data: properties = [] } = useProperties();
   const deleteContact = useDeleteCRMContact();
   const toggleFavorite = useToggleFavorite();
 
@@ -121,10 +121,15 @@ export default function ContactsPage() {
     setDetailSheetOpen(true);
   };
 
+  useEffect(() => {
+    if (!propertyFilter && properties.length > 0) {
+      setPropertyFilter(properties[0].id);
+    }
+  }, [properties, propertyFilter]);
+
   const clearFilters = () => {
     setSearch("");
     setTypeFilter("all");
-    setPropertyFilter("all");
     setOwnershipTab("all");
     setActiveLetter(null);
   };
@@ -132,7 +137,6 @@ export default function ContactsPage() {
   const hasActiveFilters =
     !!search ||
     typeFilter !== "all" ||
-    propertyFilter !== "all" ||
     ownershipTab !== "all" ||
     activeLetter !== null;
 
@@ -280,8 +284,7 @@ export default function ContactsPage() {
                   <SelectValue placeholder="Property" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Properties</SelectItem>
-                  {properties?.map((property) => (
+                  {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}
                     </SelectItem>

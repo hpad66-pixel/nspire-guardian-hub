@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
-import { useUnits, useUnitStats, useDeleteUnit, type Unit } from '@/hooks/useUnits';
+import { useUnitsByProperty, useDeleteUnit, type Unit } from '@/hooks/useUnits';
 import { useProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
@@ -29,11 +29,10 @@ export default function UnitsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [propertyFilter, setPropertyFilter] = useState<string>('all');
+  const [propertyFilter, setPropertyFilter] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: units, isLoading } = useUnits();
-  const { data: stats } = useUnitStats();
+  const { data: units = [], isLoading } = useUnitsByProperty(propertyFilter || null);
   const { data: properties } = useProperties();
   const deleteUnit = useDeleteUnit();
   const { canCreate, canUpdate, canDelete } = useUserPermissions();
@@ -43,18 +42,39 @@ export default function UnitsPage() {
 
   useEffect(() => {
     const param = searchParams.get('propertyId');
-    if (param) {
+    if (param && param !== 'all') {
       setPropertyFilter(param);
     }
   }, [searchParams]);
 
-  const filteredUnits = units?.filter(unit => {
+  useEffect(() => {
+    if (!propertyFilter && properties && properties.length > 0) {
+      setPropertyFilter(properties[0].id);
+      setSearchParams({ propertyId: properties[0].id });
+    }
+  }, [properties, propertyFilter, setSearchParams]);
+
+  const filteredUnits = units.filter(unit => {
     const matchesSearch = 
       unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       unit.property?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesProperty = propertyFilter === 'all' || unit.property_id === propertyFilter;
+    const matchesProperty = !propertyFilter || unit.property_id === propertyFilter;
     return matchesSearch && matchesProperty;
   });
+
+  const stats = useMemo(() => {
+    const total = filteredUnits.length;
+    const occupied = filteredUnits.filter(u => u.status === 'occupied').length;
+    const vacant = filteredUnits.filter(u => u.status === 'vacant').length;
+    const maintenance = filteredUnits.filter(u => u.status === 'maintenance').length;
+    return {
+      total,
+      occupied,
+      vacant,
+      maintenance,
+      occupancyRate: total > 0 ? Math.round((occupied / total) * 100) : 0,
+    };
+  }, [filteredUnits]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -125,19 +145,13 @@ export default function UnitsPage() {
           value={propertyFilter}
           onValueChange={(value) => {
             setPropertyFilter(value);
-            if (value === 'all') {
-              searchParams.delete('propertyId');
-              setSearchParams(searchParams);
-            } else {
-              setSearchParams({ propertyId: value });
-            }
+            setSearchParams({ propertyId: value });
           }}
         >
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All Properties" />
+            <SelectValue placeholder="Select property" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Properties</SelectItem>
             {properties?.map((property) => (
               <SelectItem key={property.id} value={property.id}>
                 {property.name}
@@ -261,12 +275,12 @@ export default function UnitsPage() {
             <div>
               <h3 className="text-lg font-semibold">No units found</h3>
               <p className="text-muted-foreground">
-                {searchQuery || propertyFilter !== 'all' 
+                {searchQuery || propertyFilter !== '' 
                   ? 'Try adjusting your filters'
                   : 'Add your first unit to get started'}
               </p>
             </div>
-            {canCreateUnits && !searchQuery && propertyFilter === 'all' && (
+            {canCreateUnits && !searchQuery && propertyFilter === '' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Unit

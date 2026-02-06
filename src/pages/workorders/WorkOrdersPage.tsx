@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import {
   User,
   Download,
 } from 'lucide-react';
-import { useWorkOrders, useWorkOrderStats, type WorkOrder } from '@/hooks/useWorkOrders';
+import { useWorkOrdersByProperty, type WorkOrder } from '@/hooks/useWorkOrders';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailSheet';
@@ -21,23 +21,47 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { useDataExport } from '@/hooks/useDataExport';
 import { useSearchParams } from 'react-router-dom';
+import { useProperties } from '@/hooks/useProperties';
 
 export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
-  const { data: workOrders, isLoading } = useWorkOrders();
-  const { data: stats } = useWorkOrderStats();
+  const { data: properties = [] } = useProperties();
+  const { data: workOrders = [], isLoading } = useWorkOrdersByProperty(selectedPropertyId || null);
   const { exportToCSV } = useDataExport();
+
+  useEffect(() => {
+    if (!selectedPropertyId && properties.length > 0) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
 
   const filteredWorkOrders = workOrders?.filter(wo => {
     const matchesStatus = statusFilter === 'all' || wo.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || wo.priority === priorityFilter;
     return matchesStatus && matchesPriority;
   }) || [];
+
+  const stats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const pending = workOrders.filter(wo => wo.status === 'pending').length;
+    const inProgress = workOrders.filter(wo => wo.status === 'in_progress').length;
+    const completed = workOrders.filter(wo => wo.status === 'completed').length;
+    const verified = workOrders.filter(wo => wo.status === 'verified').length;
+    const emergency = workOrders.filter(wo => wo.priority === 'emergency' && wo.status !== 'verified').length;
+    const overdue = workOrders.filter(wo => {
+      const dueDate = new Date(wo.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today && wo.status !== 'verified' && wo.status !== 'completed';
+    }).length;
+    return { pending, inProgress, completed, verified, emergency, overdue };
+  }, [workOrders]);
 
   const {
     currentPage,
@@ -154,6 +178,18 @@ export default function WorkOrdersPage() {
 
       {/* Filters */}
       <div className="flex gap-4">
+        <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Select property" />
+          </SelectTrigger>
+          <SelectContent>
+            {properties.map((property) => (
+              <SelectItem key={property.id} value={property.id}>
+                {property.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
