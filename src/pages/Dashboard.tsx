@@ -1,7 +1,9 @@
+import { useMemo, useEffect, useState } from 'react';
 import { useModules } from '@/contexts/ModuleContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building, 
   DoorOpen, 
@@ -18,10 +20,10 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
-import { useUnitStats } from '@/hooks/useUnits';
-import { useIssues } from '@/hooks/useIssues';
-import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
-import { useProjectStats } from '@/hooks/useProjects';
+import { useUnitsByProperty } from '@/hooks/useUnits';
+import { useIssuesByProperty } from '@/hooks/useIssues';
+import { useDefects, useOpenDefects } from '@/hooks/useDefects';
+import { useProjectsByProperty } from '@/hooks/useProjects';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -188,19 +190,69 @@ export default function Dashboard() {
   const { shouldShowOnboarding } = useOnboarding();
   
   const { data: properties, isLoading: loadingProperties } = useProperties();
-  const { data: unitStats } = useUnitStats();
-  const { data: issues, isLoading: loadingIssues } = useIssues();
-  const { data: defectStats } = useDefectStats();
-  const { data: openDefects } = useOpenDefects();
-  const { data: projectStats } = useProjectStats();
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const { data: units = [] } = useUnitsByProperty(selectedPropertyId || null);
+  const { data: issues = [], isLoading: loadingIssues } = useIssuesByProperty(selectedPropertyId || null);
+  const { data: defects = [] } = useDefects();
+  const { data: openDefects = [] } = useOpenDefects();
+  const { data: projects = [] } = useProjectsByProperty(selectedPropertyId || null);
+
+  useEffect(() => {
+    if (!selectedPropertyId && properties && properties.length > 0) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
 
   const handleOnboardingComplete = () => {
     // Force reload to refresh data after onboarding
     window.location.reload();
   };
 
-  const openIssues = issues?.filter(i => i.status !== 'resolved' && i.status !== 'verified');
-  const urgentDefects = openDefects?.filter(d => d.severity === 'severe').slice(0, 3);
+  const scopedDefects = useMemo(
+    () => defects.filter(d => d.inspection?.property_id === selectedPropertyId),
+    [defects, selectedPropertyId]
+  );
+  const scopedOpenDefects = useMemo(
+    () => openDefects.filter(d => d.inspection?.property_id === selectedPropertyId),
+    [openDefects, selectedPropertyId]
+  );
+
+  const openIssues = issues.filter(i => i.status !== 'resolved' && i.status !== 'verified');
+  const urgentDefects = scopedOpenDefects.filter(d => d.severity === 'severe').slice(0, 3);
+
+  const unitStats = useMemo(() => {
+    const total = units.length;
+    const occupied = units.filter(u => u.status === 'occupied').length;
+    const vacant = units.filter(u => u.status === 'vacant').length;
+    const maintenance = units.filter(u => u.status === 'maintenance').length;
+    return {
+      total,
+      occupied,
+      vacant,
+      maintenance,
+      occupancyRate: total > 0 ? Math.round((occupied / total) * 100) : 0,
+    };
+  }, [units]);
+
+  const defectStats = useMemo(() => {
+    const open = scopedDefects.filter(d => !d.repaired_at);
+    const severe = open.filter(d => d.severity === 'severe').length;
+    const moderate = open.filter(d => d.severity === 'moderate').length;
+    const low = open.filter(d => d.severity === 'low').length;
+    const resolved = scopedDefects.filter(d => d.repaired_at).length;
+    const verified = scopedDefects.filter(d => d.repair_verified).length;
+    return { severe, moderate, low, resolved, verified, total: scopedDefects.length };
+  }, [scopedDefects]);
+
+  const projectStats = useMemo(() => {
+    const active = projects.filter(p => p.status === 'active').length;
+    const planning = projects.filter(p => p.status === 'planning').length;
+    const onHold = projects.filter(p => p.status === 'on_hold').length;
+    const completed = projects.filter(p => p.status === 'completed' || p.status === 'closed').length;
+    const totalBudget = projects.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
+    const totalSpent = projects.reduce((sum, p) => sum + (Number(p.spent) || 0), 0);
+    return { active, planning, onHold, completed, totalBudget, totalSpent, total: projects.length };
+  }, [projects]);
 
   const complianceRate = issues && issues.length > 0 
     ? Math.round((issues.filter(i => i.status === 'resolved' || i.status === 'verified').length / issues.length) * 100)
@@ -236,11 +288,27 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10 animate-fade-in">
         {/* Hero Header */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">{greeting}</h1>
-          <p className="text-lg text-muted-foreground">
-            Here's what's happening across your property portfolio today.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight">{greeting}</h1>
+            <p className="text-lg text-muted-foreground">
+              Here's what's happening across your property portfolio today.
+            </p>
+          </div>
+          <div className="w-full sm:w-[260px]">
+            <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select property" />
+              </SelectTrigger>
+              <SelectContent>
+                {properties?.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Core Metrics */}
