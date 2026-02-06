@@ -49,28 +49,42 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useUsers, useAddUserRole, useRemoveUserRole, type UserWithRole } from '@/hooks/useUserManagement';
-import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useUserPermissions, getAssignableRoles, canRoleManage } from '@/hooks/usePermissions';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
 const roleConfig: Record<AppRole, { label: string; icon: typeof Shield; color: string }> = {
   admin: { label: 'Admin', icon: ShieldAlert, color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  manager: { label: 'Manager', icon: ShieldCheck, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  owner: { label: 'Owner', icon: ShieldAlert, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  manager: { label: 'Property Manager', icon: ShieldCheck, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  administrator: { label: 'Administrator', icon: Shield, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
   project_manager: { label: 'Project Manager', icon: ShieldCheck, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
   superintendent: { label: 'Superintendent', icon: Shield, color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
   inspector: { label: 'Inspector', icon: Shield, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
+  clerk: { label: 'Clerk', icon: User, color: 'bg-teal-500/10 text-teal-500 border-teal-500/20' },
   subcontractor: { label: 'Subcontractor', icon: User, color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-  owner: { label: 'Owner', icon: User, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
   viewer: { label: 'Viewer', icon: User, color: 'bg-gray-500/10 text-gray-500 border-gray-500/20' },
   user: { label: 'User', icon: User, color: 'bg-muted text-muted-foreground border-muted' },
 };
 
-const allRoles: AppRole[] = ['admin', 'manager', 'project_manager', 'superintendent', 'inspector', 'subcontractor', 'owner', 'viewer', 'user'];
+const allRoles: AppRole[] = [
+  'admin',
+  'owner',
+  'manager',
+  'inspector',
+  'administrator',
+  'superintendent',
+  'clerk',
+  'project_manager',
+  'subcontractor',
+  'viewer',
+  'user',
+];
 
 export function UserManagement() {
   const { data: users, isLoading } = useUsers();
-  const { data: currentUserRole } = useCurrentUserRole();
+  const { currentRole, isAdmin, isOwner, isPropertyManager } = useUserPermissions();
   const addRoleMutation = useAddUserRole();
   const removeRoleMutation = useRemoveUserRole();
 
@@ -79,7 +93,8 @@ export function UserManagement() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<AppRole>('user');
 
-  const isAdmin = currentUserRole === 'admin';
+  const canManageRoles = isAdmin || isOwner || isPropertyManager;
+  const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
 
   const filteredUsers = users?.filter(user => {
     const search = searchQuery.toLowerCase();
@@ -117,8 +132,17 @@ export function UserManagement() {
 
   const getHighestRole = (roles: { role: AppRole }[]): AppRole => {
     const rolePriority: Record<AppRole, number> = { 
-      admin: 5, manager: 4, project_manager: 4, superintendent: 3, 
-      inspector: 3, subcontractor: 2, owner: 2, viewer: 1, user: 1 
+      admin: 9,
+      owner: 8,
+      manager: 7,
+      inspector: 6,
+      administrator: 5,
+      superintendent: 4,
+      clerk: 3,
+      project_manager: 2,
+      subcontractor: 2,
+      viewer: 1,
+      user: 1,
     };
     const sorted = [...roles].sort((a, b) => (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0));
     return sorted[0]?.role || 'user';
@@ -221,12 +245,12 @@ export function UserManagement() {
                                 className={`${config?.color} gap-1`}
                               >
                                 {config?.label || r.role}
-                                {isAdmin && user.roles.length > 1 && (
-                                  <button
-                                    onClick={() => handleRemoveRole(user, r.role)}
-                                    className="ml-1 hover:text-destructive"
-                                    title="Remove role"
-                                  >
+                        {canManageRoles && user.roles.length > 1 && currentRole && canRoleManage(currentRole, r.role) && (
+                          <button
+                            onClick={() => handleRemoveRole(user, r.role)}
+                            className="ml-1 hover:text-destructive"
+                            title="Remove role"
+                          >
                                     ×
                                   </button>
                                 )}
@@ -239,7 +263,7 @@ export function UserManagement() {
                         {format(new Date(user.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell>
-                        {isAdmin && (
+                        {canManageRoles && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -252,7 +276,7 @@ export function UserManagement() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setSelectedUser(user);
-                                  setNewRole('user');
+                                  setNewRole((assignableRoles[0] || 'user') as AppRole);
                                   setRoleDialogOpen(true);
                                 }}
                               >
@@ -287,7 +311,11 @@ export function UserManagement() {
                     <p className="font-medium text-sm">{config.label}</p>
                     <p className="text-xs text-muted-foreground">
                       {role === 'admin' && 'Full system access'}
-                      {role === 'manager' && 'Manage projects & users'}
+                      {role === 'owner' && 'Organization owner access'}
+                      {role === 'manager' && 'Property oversight & team management'}
+                      {role === 'administrator' && 'Administrative staff access'}
+                      {role === 'superintendent' && 'Field operations and inspections'}
+                      {role === 'clerk' && 'Clerical and support access'}
                       {role === 'inspector' && 'Inspections & reports'}
                       {role === 'user' && 'Basic access'}
                     </p>
@@ -314,7 +342,7 @@ export function UserManagement() {
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                {allRoles
+                {assignableRoles
                   .filter(r => !selectedUser?.roles.some(ur => ur.role === r))
                   .map((role) => {
                     const config = roleConfig[role];

@@ -1,8 +1,9 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-type AppRole = 'admin' | 'manager' | 'inspector' | 'user';
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface AuthContextType {
   user: User | null;
@@ -22,21 +23,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
 
-  // Fetch user role from the database
+  // Fetch user role from the database (picks highest privilege if multiple roles exist)
   const fetchUserRole = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Error fetching user role:', error);
         return null;
       }
 
-      return data?.role as AppRole | null;
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      // If user has multiple roles, pick the highest privilege one
+      const roleHierarchy: AppRole[] = [
+        'admin',
+        'owner',
+        'manager',
+        'inspector',
+        'administrator',
+        'superintendent',
+        'clerk',
+        'project_manager',
+        'subcontractor',
+        'viewer',
+        'user',
+      ];
+      const userRoles = data.map(r => r.role as AppRole);
+      
+      for (const role of roleHierarchy) {
+        if (userRoles.includes(role)) {
+          return role;
+        }
+      }
+
+      return userRoles[0] as AppRole;
     } catch (err) {
       console.error('Error fetching user role:', err);
       return null;

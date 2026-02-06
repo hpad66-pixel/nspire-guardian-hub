@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetDialog } from '@/components/assets/AssetDialog';
 import { AssetTypeIcon } from '@/components/assets/AssetTypeIcon';
-import { useAssets, useDeleteAsset, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
+import { useAssets, useDeleteAsset, useAssetTypes, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
 import { useProperties } from '@/hooks/useProperties';
 import { 
   Plus, 
@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function AssetsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
@@ -36,6 +37,11 @@ export default function AssetsPage() {
   const [deleteAsset, setDeleteAsset] = useState<Asset | null>(null);
 
   const { data: properties = [] } = useProperties();
+  const { data: assetTypes = [] } = useAssetTypes();
+  const { canCreate, canUpdate, canDelete } = useUserPermissions();
+  const canCreateAssets = canCreate('properties');
+  const canUpdateAssets = canUpdate('properties');
+  const canDeleteAssets = canDelete('properties');
   const { data: assets = [], isLoading } = useAssets(
     selectedPropertyId === 'all' ? undefined : selectedPropertyId
   );
@@ -51,6 +57,14 @@ export default function AssetsPage() {
     acc[asset.asset_type] = (acc[asset.asset_type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const typeLabels = assetTypes.length > 0
+    ? Object.fromEntries(assetTypes.map((t) => [t.key, t.label]))
+    : ASSET_TYPE_LABELS;
+
+  const typeList = assetTypes.length > 0
+    ? assetTypes.map((t) => ({ key: t.key, label: t.label }))
+    : Object.entries(ASSET_TYPE_LABELS).map(([key, label]) => ({ key, label }));
 
   const handleEdit = (asset: Asset) => {
     setEditingAsset(asset);
@@ -79,10 +93,12 @@ export default function AssetsPage() {
             Manage infrastructure assets for daily inspections
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Asset
-        </Button>
+        {canCreateAssets && (
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Asset
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -118,9 +134,9 @@ export default function AssetsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            {Object.entries(ASSET_TYPE_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label} ({assetCounts[value] || 0})
+            {typeList.map(({ key, label }) => (
+              <SelectItem key={key} value={key}>
+                {label} ({assetCounts[key] || 0})
               </SelectItem>
             ))}
           </SelectContent>
@@ -129,7 +145,7 @@ export default function AssetsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {Object.entries(ASSET_TYPE_LABELS).map(([type, label]) => (
+        {typeList.map(({ key: type, label }) => (
           <Card 
             key={type} 
             className={`cursor-pointer transition-colors ${
@@ -157,10 +173,12 @@ export default function AssetsPage() {
         <Card className="border-dashed">
           <CardContent className="pt-8 pb-8 text-center">
             <p className="text-muted-foreground mb-4">No assets found</p>
-            <Button variant="outline" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Asset
-            </Button>
+            {canCreateAssets && (
+              <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Asset
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -181,7 +199,7 @@ export default function AssetsPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {ASSET_TYPE_LABELS[asset.asset_type]}
+                      {typeLabels[asset.asset_type] || asset.asset_type}
                     </p>
                     {asset.location_description && (
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
@@ -191,26 +209,32 @@ export default function AssetsPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3 pt-3 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(asset)}
-                  >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-1 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteAsset(asset)}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
-                  </Button>
-                </div>
+                {(canUpdateAssets || canDeleteAssets) && (
+                  <div className="flex gap-2 mt-3 pt-3 border-t">
+                    {canUpdateAssets && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(asset)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {canDeleteAssets && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteAsset(asset)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -218,12 +242,14 @@ export default function AssetsPage() {
       )}
 
       {/* Asset Dialog */}
-      <AssetDialog
-        open={dialogOpen}
-        onOpenChange={handleDialogClose}
-        asset={editingAsset}
-        defaultPropertyId={selectedPropertyId === 'all' ? properties[0]?.id : selectedPropertyId}
-      />
+      {(canCreateAssets || canUpdateAssets) && (
+        <AssetDialog
+          open={dialogOpen}
+          onOpenChange={handleDialogClose}
+          asset={editingAsset}
+          defaultPropertyId={selectedPropertyId === 'all' ? properties[0]?.id : selectedPropertyId}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteAsset} onOpenChange={() => setDeleteAsset(null)}>

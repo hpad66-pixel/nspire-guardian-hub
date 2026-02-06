@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useModules } from '@/contexts/ModuleContext';
@@ -7,14 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
+import type { ModuleConfig } from '@/types/modules';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { userRole } = useModules();
+  const { userRole, isModuleEnabled, isLoading: modulesLoading } = useModules();
   const [searchOpen, setSearchOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Keyboard shortcut for search
   useEffect(() => {
@@ -27,6 +31,37 @@ export function AppLayout({ children }: AppLayoutProps) {
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
+
+  useEffect(() => {
+    if (modulesLoading) return;
+
+    const path = location.pathname;
+    const moduleForPath = (() => {
+      if (path.startsWith('/inspections/daily') || path.startsWith('/inspections/history') || path.startsWith('/inspections/review')) {
+        return 'dailyGroundsEnabled';
+      }
+      if (path.startsWith('/inspections')) {
+        return 'nspireEnabled';
+      }
+      if (path.startsWith('/projects')) {
+        return 'projectsEnabled';
+      }
+      if (path.startsWith('/occupancy')) {
+        return 'occupancyEnabled';
+      }
+      if (path.startsWith('/qr-scanner')) {
+        return 'qrScanningEnabled';
+      }
+      if (path.startsWith('/inbox')) {
+        return 'emailInboxEnabled';
+      }
+      return null;
+    })() as keyof ModuleConfig | null;
+
+    if (moduleForPath && !isModuleEnabled(moduleForPath)) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 
   return (
     <SidebarProvider>

@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProperties } from '@/hooks/useProperties';
-import { useCreateAsset, useUpdateAsset, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
+import { useCreateAsset, useUpdateAsset, useAssetTypes, useCreateAssetType, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Camera, Upload, X, Lock } from 'lucide-react';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 interface AssetDialogProps {
   open: boolean;
@@ -20,6 +21,11 @@ interface AssetDialogProps {
 
 export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: AssetDialogProps) {
   const { data: properties = [] } = useProperties();
+  const { data: assetTypes = [] } = useAssetTypes();
+  const createAssetType = useCreateAssetType();
+  const { canCreate, canUpdate } = useUserPermissions();
+  const canCreateAssets = canCreate('properties');
+  const canUpdateAssets = canUpdate('properties');
   const createAsset = useCreateAsset();
   const updateAsset = useUpdateAsset();
 
@@ -32,6 +38,8 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
     photo_url: '',
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [newTypeOpen, setNewTypeOpen] = useState(false);
+  const [newTypeLabel, setNewTypeLabel] = useState('');
 
   useEffect(() => {
     if (asset) {
@@ -92,6 +100,27 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
     }
   };
 
+  const normalizeKey = (label: string) =>
+    label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+  const handleCreateType = async () => {
+    const label = newTypeLabel.trim();
+    if (!label) return;
+    const key = normalizeKey(label);
+    try {
+      const created = await createAssetType.mutateAsync({ key, label });
+      setFormData(prev => ({ ...prev, asset_type: created.key }));
+      setNewTypeLabel('');
+      setNewTypeOpen(false);
+    } catch (error) {
+      // handled in mutation
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -145,7 +174,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                     </div>
                   )}
                 </div>
-                {!asset && formData.photo_url && (
+                {!asset && formData.photo_url && canCreateAssets && (
                   <Button
                     type="button"
                     variant="destructive"
@@ -173,7 +202,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
                   onChange={handlePhotoUpload}
                   className="hidden"
                   id="asset-photo-upload"
-                  disabled={isUploading}
+                  disabled={isUploading || !canCreateAssets}
                 />
                 <label
                   htmlFor="asset-photo-upload"
@@ -200,6 +229,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             <Select
               value={formData.property_id}
               onValueChange={(value) => setFormData({ ...formData, property_id: value })}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select property" />
@@ -218,17 +248,44 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             <Label htmlFor="asset_type">Asset Type</Label>
             <Select
               value={formData.asset_type}
-              onValueChange={(value) => setFormData({ ...formData, asset_type: value as AssetType })}
+              onValueChange={(value) => {
+                if (value === '__add_new_type__') {
+                  setNewTypeOpen(true);
+                  return;
+                }
+                setFormData({ ...formData, asset_type: value as AssetType });
+              }}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(ASSET_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
+                {assetTypes.length > 0 ? (
+                  assetTypes.map((type) => (
+                    <SelectItem key={type.key} value={type.key}>
+                      {type.label}
+                    </SelectItem>
+                  ))
+                ) : (
+                  Object.entries(ASSET_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))
+                )}
+                {assetTypes.length > 0 &&
+                  !assetTypes.some((t) => t.key === formData.asset_type) &&
+                  !!formData.asset_type && (
+                    <SelectItem value={formData.asset_type}>
+                      {formData.asset_type}
+                    </SelectItem>
+                  )}
+                {canCreateAssets && (
+                  <SelectItem value="__add_new_type__">
+                    + Add new type
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -240,6 +297,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Cleanout #1"
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
               required
             />
           </div>
@@ -253,6 +311,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
               placeholder="e.g., North parking lot near building A"
               rows={2}
               context="description"
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             />
           </div>
 
@@ -261,6 +320,7 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             <Select
               value={formData.status}
               onValueChange={(value) => setFormData({ ...formData, status: value })}
+              disabled={asset ? !canUpdateAssets : !canCreateAssets}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -282,12 +342,47 @@ export function AssetDialog({ open, onOpenChange, asset, defaultPropertyId }: As
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting || isUploading}>
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={isSubmitting || isUploading || (asset ? !canUpdateAssets : !canCreateAssets)}
+            >
               {isSubmitting ? 'Saving...' : asset ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>
       </DialogContent>
+
+      <Dialog open={newTypeOpen} onOpenChange={setNewTypeOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Add Asset Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="new-asset-type">Type name</Label>
+              <Input
+                id="new-asset-type"
+                value={newTypeLabel}
+                onChange={(e) => setNewTypeLabel(e.target.value)}
+                placeholder="e.g., Fire Hydrant"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setNewTypeOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleCreateType}
+              disabled={!newTypeLabel.trim() || createAssetType.isPending}
+            >
+              {createAssetType.isPending ? 'Saving...' : 'Add Type'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

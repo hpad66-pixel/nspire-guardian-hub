@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { AssetTypeIcon } from '@/components/assets/AssetTypeIcon';
-import { Asset, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
+import { Asset, ASSET_TYPE_LABELS, useAssetTypes } from '@/hooks/useAssets';
 import { InspectionItemStatus } from '@/hooks/useDailyInspections';
 import { Camera, CheckCircle2, AlertTriangle, XCircle, ChevronRight, X, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ interface AssetCheckCardProps {
   onDefectDescriptionChange: (description: string) => void;
   onNext: () => void;
   isLast: boolean;
+  nextLabel?: string;
 }
 
 export function AssetCheckCard({
@@ -36,9 +37,14 @@ export function AssetCheckCard({
   onDefectDescriptionChange,
   onNext,
   isLast,
+  nextLabel,
 }: AssetCheckCardProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: assetTypes = [] } = useAssetTypes();
+  const typeLabels = assetTypes.length > 0
+    ? Object.fromEntries(assetTypes.map((t) => [t.key, t.label]))
+    : ASSET_TYPE_LABELS;
 
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -93,7 +99,7 @@ export function AssetCheckCard({
           <div className="flex-1">
             <h2 className="text-xl font-bold">{asset.name}</h2>
             <p className="text-sm text-muted-foreground">
-              {ASSET_TYPE_LABELS[asset.asset_type]}
+              {typeLabels[asset.asset_type] || asset.asset_type}
             </p>
           </div>
         </div>
@@ -219,7 +225,7 @@ export function AssetCheckCard({
           onClick={onNext}
           disabled={!status}
         >
-          {isLast ? 'Continue to Notes' : 'Next Asset'}
+          {nextLabel || (isLast ? 'Continue to Notes' : 'Next Asset')}
           <ChevronRight className="h-5 w-5" />
         </Button>
       </CardContent>

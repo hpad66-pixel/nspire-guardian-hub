@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,26 +11,61 @@ import {
   Building,
   Calendar,
   User,
+  Download,
 } from 'lucide-react';
 import { useWorkOrders, useWorkOrderStats, type WorkOrder } from '@/hooks/useWorkOrders';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailSheet';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { usePagination } from '@/hooks/usePagination';
+import { useDataExport } from '@/hooks/useDataExport';
+import { useSearchParams } from 'react-router-dom';
 
 export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [searchParams] = useSearchParams();
 
   const { data: workOrders, isLoading } = useWorkOrders();
   const { data: stats } = useWorkOrderStats();
+  const { exportToCSV } = useDataExport();
 
   const filteredWorkOrders = workOrders?.filter(wo => {
     const matchesStatus = statusFilter === 'all' || wo.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || wo.priority === priorityFilter;
     return matchesStatus && matchesPriority;
-  });
+  }) || [];
+
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    paginatedData,
+    setPage,
+    setPageSize,
+  } = usePagination(filteredWorkOrders, { initialPageSize: 10 });
+
+  const handleExport = () => {
+    const exportData = filteredWorkOrders.map(wo => ({
+      title: wo.title,
+      description: wo.description,
+      status: wo.status,
+      priority: wo.priority,
+      property: wo.property?.name || '',
+      unit: wo.unit?.unit_number || '',
+      due_date: wo.due_date,
+      created_at: wo.created_at,
+    }));
+
+    exportToCSV(exportData, {
+      filename: 'work_orders',
+      headers: ['title', 'description', 'status', 'priority', 'property', 'unit', 'due_date', 'created_at'],
+      dateFields: ['due_date', 'created_at'],
+    });
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -58,6 +93,17 @@ export default function WorkOrdersPage() {
     setSelectedWorkOrder(wo);
     setDetailSheetOpen(true);
   };
+
+  useEffect(() => {
+    const workOrderId = searchParams.get('workOrderId');
+    if (!workOrderId || !workOrders || workOrders.length === 0) return;
+
+    const match = workOrders.find((w) => w.id === workOrderId);
+    if (match) {
+      setSelectedWorkOrder(match);
+      setDetailSheetOpen(true);
+    }
+  }, [workOrders, searchParams]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -131,6 +177,13 @@ export default function WorkOrdersPage() {
             <SelectItem value="routine">Routine</SelectItem>
           </SelectContent>
         </Select>
+        
+        <div className="flex-1" />
+        
+        <Button variant="outline" onClick={handleExport} disabled={filteredWorkOrders.length === 0}>
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
 
       {/* Work Orders List */}
@@ -138,7 +191,7 @@ export default function WorkOrdersPage() {
         <CardHeader>
           <CardTitle>Work Orders</CardTitle>
           <CardDescription>
-            {filteredWorkOrders?.length || 0} work orders
+            {filteredWorkOrders.length} work orders
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -148,9 +201,9 @@ export default function WorkOrdersPage() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : filteredWorkOrders && filteredWorkOrders.length > 0 ? (
+          ) : paginatedData && paginatedData.length > 0 ? (
             <div className="space-y-3">
-              {filteredWorkOrders.map((wo) => {
+              {paginatedData.map((wo) => {
                 const dueDate = new Date(wo.due_date);
                 const now = new Date();
                 const isOverdue = dueDate < now && wo.status !== 'verified' && wo.status !== 'completed';
@@ -209,6 +262,17 @@ export default function WorkOrdersPage() {
                   : 'Work orders are automatically created from inspection defects'}
               </p>
             </div>
+          )}
+          
+          {filteredWorkOrders.length > 0 && (
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredWorkOrders.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           )}
         </CardContent>
       </Card>

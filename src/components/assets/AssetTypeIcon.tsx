@@ -37,12 +37,12 @@ const iconSizeMap = {
 };
 
 export function AssetTypeIcon({ type, className, size = 'md' }: AssetTypeIconProps) {
-  const Icon = iconMap[type];
+  const Icon = iconMap[type] || Circle;
   
   return (
     <div className={cn(
       'rounded-full flex items-center justify-center',
-      colorMap[type],
+      colorMap[type] || 'text-slate-600 bg-slate-100',
       sizeMap[size],
       className
     )}>

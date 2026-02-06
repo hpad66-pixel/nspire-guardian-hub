@@ -6,6 +6,7 @@ import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertica
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PropertyDialog } from '@/components/properties/PropertyDialog';
+import { useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ export default function PropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [deletingProperty, setDeletingProperty] = useState<Property | null>(null);
+  const navigate = useNavigate();
   
   const { data: properties, isLoading, error } = useProperties();
   const deleteProperty = useDeleteProperty();
@@ -34,6 +36,10 @@ export default function PropertiesPage() {
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
     setDialogOpen(true);
+  };
+
+  const handleOpenProperty = (propertyId: string) => {
+    navigate(`/units?propertyId=${propertyId}`);
   };
 
   const handleDelete = async () => {
@@ -93,7 +99,19 @@ export default function PropertiesPage() {
       ) : properties && properties.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {properties.map((property) => (
-            <Card key={property.id} className="card-interactive">
+            <Card
+              key={property.id}
+              className="card-interactive cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleOpenProperty(property.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleOpenProperty(property.id);
+                }
+              }}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -114,17 +132,30 @@ export default function PropertiesPage() {
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(property)}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(property);
+                          }}
+                        >
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          onClick={() => setDeletingProperty(property)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingProperty(property);
+                          }}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserPermissions } from './usePermissions';
 
 export interface Property {
   id: string;
@@ -15,6 +16,8 @@ export interface Property {
   nspire_enabled: boolean | null;
   daily_grounds_enabled: boolean | null;
   projects_enabled: boolean | null;
+  occupancy_enabled: boolean | null;
+  qr_scanning_enabled: boolean | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
@@ -28,16 +31,36 @@ export interface Property {
 }
 
 export function useProperties() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['properties'],
+    queryKey: ['properties', isAdmin, isOwner],
     queryFn: async () => {
+      if (isAdmin || isOwner) {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        return data as Property[];
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
       const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('name');
-      
+        .from('property_team_members')
+        .select('property:properties(*)')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
       if (error) throw error;
-      return data as Property[];
+
+      const properties = (data || [])
+        .map((row: any) => row.property)
+        .filter(Boolean) as Property[];
+
+      return properties.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
@@ -63,7 +86,10 @@ export function useCreateProperty() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'occupancy_enabled' | 'qr_scanning_enabled'> & {
+      occupancy_enabled?: boolean | null;
+      qr_scanning_enabled?: boolean | null;
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase

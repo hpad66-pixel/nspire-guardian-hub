@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +37,9 @@ import {
   Upload,
   Calendar,
   AlertTriangle,
+  Archive,
+  Lock,
+  ChevronRight,
 } from 'lucide-react';
 import {
   useOrganizationDocuments,
@@ -43,8 +48,10 @@ import {
   DOCUMENT_FOLDERS,
   type OrganizationDocument,
 } from '@/hooks/useDocuments';
+import { useTotalArchiveCount } from '@/hooks/usePropertyArchives';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { cn } from '@/lib/utils';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 const folderIcons: Record<string, React.ReactNode> = {
   General: <FolderOpen className="h-4 w-4" />,
@@ -86,7 +93,9 @@ export default function DocumentsPage() {
   
   const { data: documents, isLoading } = useOrganizationDocuments(selectedFolder || undefined);
   const { data: folderStats } = useDocumentFolderStats();
+  const { data: archiveCount } = useTotalArchiveCount();
   const archiveDocument = useArchiveOrganizationDocument();
+  const { isAdmin } = useUserPermissions();
   
   const filteredDocuments = documents?.filter(doc =>
     doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,6 +142,67 @@ export default function DocumentsPage() {
           <Upload className="h-4 w-4 mr-2" />
           Upload Document
         </Button>
+      </div>
+
+      {/* Property Archives Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Link to="/documents/archives">
+          <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 text-white hover:shadow-xl transition-all duration-300 group cursor-pointer overflow-hidden relative">
+            {/* Background decoration */}
+            <div className="absolute top-4 right-4 opacity-10">
+              <Lock className="h-24 w-24 text-amber-400" />
+            </div>
+            
+            <CardContent className="p-6 relative z-10">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+                    <Archive className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      Property Archives
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
+                        Permanent
+                      </Badge>
+                    </h3>
+                    <p className="text-slate-400 text-sm mt-1 max-w-lg">
+                      As-built drawings, equipment manuals, permits, and design documents. 
+                      Permanently retained. View and download only.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  {archiveCount !== undefined && archiveCount > 0 && (
+                    <div className="text-center px-4 py-2 rounded-lg bg-white/5">
+                      <p className="text-2xl font-bold">{archiveCount}</p>
+                      <p className="text-xs text-slate-400">documents</p>
+                    </div>
+                  )}
+                  <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                    <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-amber-400 transition-colors" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 mt-4 text-xs text-slate-500">
+                <Lock className="h-3 w-3" />
+                <span>Admin-managed • No deletion</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </motion.div>
+
+      {/* Working Documents Section Header */}
+      <div className="flex items-center gap-3">
+        <FolderOpen className="h-5 w-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">Working Documents</h2>
       </div>
       
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -312,13 +382,15 @@ export default function DocumentsPage() {
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleArchive(doc.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => handleArchive(doc.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Archive
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -7,10 +7,15 @@ import { ModuleProvider } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
+import LandingPage from "./pages/LandingPage";
+import FeaturesPage from "./pages/FeaturesPage";
 import AuthPage from "./pages/auth/AuthPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import InspectionsDashboard from "./pages/inspections/InspectionsDashboard";
 import OutsideInspections from "./pages/inspections/OutsideInspections";
 import InsideInspections from "./pages/inspections/InsideInspections";
@@ -25,14 +30,15 @@ import IssuesPage from "./pages/core/IssuesPage";
 import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
 import ReportsPage from "./pages/reports/ReportsPage";
 import DocumentsPage from "./pages/documents/DocumentsPage";
+import PropertyArchivesPage from "./pages/documents/PropertyArchivesPage";
 import ActivityLogPage from "./pages/settings/ActivityLogPage";
-import PlaceholderPage from "./pages/core/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import AssetsPage from "./pages/assets/AssetsPage";
 import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
 import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
 import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
 import MailboxPage from "./pages/inbox/MailboxPage";
+import MessagesPage from "./pages/messages/MessagesPage";
 import PermitsDashboard from "./pages/permits/PermitsDashboard";
 import PermitDetailPage from "./pages/permits/PermitDetailPage";
 import PeoplePage from "./pages/people/PeoplePage";
@@ -40,21 +46,30 @@ import OccupancyPage from "./pages/occupancy/OccupancyPage";
 import QRScannerPage from "./pages/qr/QRScannerPage";
 import TrainingPage from "./pages/training/TrainingPage";
 import ContactsPage from "./pages/crm/ContactsPage";
+import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
+import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
+
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <ModuleProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Auth */}
-              <Route path="/auth" element={<AuthPage />} />
-              
-              {/* Protected Routes */}
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <ModuleProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                
+                {/* Protected Routes */}
               <Route
                 path="/*"
                 element={
@@ -62,7 +77,7 @@ const App = () => (
                     <AppLayout>
                       <Routes>
                         {/* Dashboard */}
-                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         
                         {/* Core Platform */}
                         <Route path="/properties" element={<PropertiesPage />} />
@@ -71,13 +86,17 @@ const App = () => (
                         <Route path="/issues" element={<IssuesPage />} />
                         <Route path="/work-orders" element={<WorkOrdersPage />} />
                         <Route path="/documents" element={<DocumentsPage />} />
+                        <Route path="/documents/archives" element={<PropertyArchivesPage />} />
                         <Route path="/people" element={<PeoplePage />} />
                         <Route path="/inbox" element={<MailboxPage />} />
+                        <Route path="/messages" element={<MessagesPage />} />
+                        <Route path="/messages/:threadId" element={<MessagesPage />} />
                         <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/occupancy" element={<OccupancyPage />} />
                         <Route path="/qr-scanner" element={<QRScannerPage />} />
                         <Route path="/training" element={<TrainingPage />} />
                         <Route path="/contacts" element={<ContactsPage />} />
+                        <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
                         <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                         
                         {/* NSPIRE Inspections Module */}
@@ -108,12 +127,13 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-            </Routes>
-          </BrowserRouter>
-        </ModuleProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+              </Routes>
+            </BrowserRouter>
+          </ModuleProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

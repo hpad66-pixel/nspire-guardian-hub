@@ -204,6 +204,56 @@ export type Database = {
         }
         Relationships: []
       }
+      course_progress: {
+        Row: {
+          completed_at: string | null
+          course_id: string
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          last_location: string | null
+          progress_percent: number | null
+          score: number | null
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          last_location?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          last_location?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_contacts: {
         Row: {
           address_line1: string | null
@@ -828,6 +878,213 @@ export type Database = {
           },
         ]
       }
+      maintenance_request_activity: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          request_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          request_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          request_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_request_activity_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_requests: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          call_duration_seconds: number | null
+          call_ended_at: string | null
+          call_id: string | null
+          call_recording_url: string | null
+          call_started_at: string | null
+          call_transcript: string | null
+          caller_email: string | null
+          caller_name: string
+          caller_phone: string
+          caller_unit_number: string | null
+          created_at: string | null
+          has_pets: boolean | null
+          id: string
+          is_emergency: boolean | null
+          issue_category: string
+          issue_description: string
+          issue_location: string | null
+          issue_subcategory: string | null
+          preferred_access_time: string | null
+          preferred_contact_time: string | null
+          property_id: string | null
+          resolution_notes: string | null
+          resolution_photos: string[] | null
+          resolved_at: string | null
+          resolved_by: string | null
+          special_access_instructions: string | null
+          status: string | null
+          ticket_number: number
+          unit_id: string | null
+          updated_at: string | null
+          urgency_level: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_id?: string | null
+          call_recording_url?: string | null
+          call_started_at?: string | null
+          call_transcript?: string | null
+          caller_email?: string | null
+          caller_name: string
+          caller_phone: string
+          caller_unit_number?: string | null
+          created_at?: string | null
+          has_pets?: boolean | null
+          id?: string
+          is_emergency?: boolean | null
+          issue_category: string
+          issue_description: string
+          issue_location?: string | null
+          issue_subcategory?: string | null
+          preferred_access_time?: string | null
+          preferred_contact_time?: string | null
+          property_id?: string | null
+          resolution_notes?: string | null
+          resolution_photos?: string[] | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          special_access_instructions?: string | null
+          status?: string | null
+          ticket_number?: number
+          unit_id?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_id?: string | null
+          call_recording_url?: string | null
+          call_started_at?: string | null
+          call_transcript?: string | null
+          caller_email?: string | null
+          caller_name?: string
+          caller_phone?: string
+          caller_unit_number?: string | null
+          created_at?: string | null
+          has_pets?: boolean | null
+          id?: string
+          is_emergency?: boolean | null
+          issue_category?: string
+          issue_description?: string
+          issue_location?: string | null
+          issue_subcategory?: string | null
+          preferred_access_time?: string | null
+          preferred_contact_time?: string | null
+          property_id?: string | null
+          resolution_notes?: string | null
+          resolution_photos?: string[] | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          special_access_instructions?: string | null
+          status?: string | null
+          ticket_number?: number
+          unit_id?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_requests_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_threads: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          is_archived: boolean | null
+          is_group: boolean | null
+          last_message_at: string | null
+          participant_ids: string[]
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_archived?: boolean | null
+          is_group?: boolean | null
+          last_message_at?: string | null
+          participant_ids?: string[]
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_archived?: boolean | null
+          is_group?: boolean | null
+          last_message_at?: string | null
+          participant_ids?: string[]
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -860,6 +1117,30 @@ export type Database = {
           message?: string | null
           title?: string
           type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      onboarding_status: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          steps_completed: Json | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          steps_completed?: Json | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          steps_completed?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -1665,6 +1946,7 @@ export type Database = {
           created_by: string | null
           daily_grounds_enabled: boolean | null
           id: string
+          is_demo: boolean | null
           mailing_address: string | null
           mailing_city: string | null
           mailing_state: string | null
@@ -1691,6 +1973,7 @@ export type Database = {
           created_by?: string | null
           daily_grounds_enabled?: boolean | null
           id?: string
+          is_demo?: boolean | null
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -1717,6 +2000,7 @@ export type Database = {
           created_by?: string | null
           daily_grounds_enabled?: boolean | null
           id?: string
+          is_demo?: boolean | null
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -1734,6 +2018,77 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: []
+      }
+      property_archives: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          document_number: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          name: string
+          notes: string | null
+          original_date: string | null
+          property_id: string | null
+          received_from: string | null
+          revision: string | null
+          subcategory: string | null
+          tags: string[] | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          document_number?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          notes?: string | null
+          original_date?: string | null
+          property_id?: string | null
+          received_from?: string | null
+          revision?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          document_number?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          notes?: string | null
+          original_date?: string | null
+          property_id?: string | null
+          received_from?: string | null
+          revision?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_archives_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       property_team_members: {
         Row: {
@@ -1900,19 +2255,29 @@ export type Database = {
       }
       report_emails: {
         Row: {
+          archived_at: string | null
           attachment_filename: string | null
           attachment_size: number | null
           bcc_recipients: string[] | null
           body_html: string | null
           body_text: string | null
+          cc_recipients: string[] | null
           daily_inspection_id: string | null
+          deleted_at: string | null
           error_message: string | null
+          from_user_id: string | null
+          from_user_name: string | null
           id: string
+          is_archived: boolean | null
+          is_deleted: boolean | null
           is_read: boolean | null
+          message_type: Database["public"]["Enums"]["message_type"] | null
           project_id: string | null
           property_id: string | null
           proposal_id: string | null
+          recipient_user_ids: string[] | null
           recipients: string[]
+          reply_to_id: string | null
           report_id: string | null
           report_type: string | null
           sent_at: string
@@ -1920,22 +2285,33 @@ export type Database = {
           source_module: string | null
           status: string | null
           subject: string
+          thread_id: string | null
           work_order_id: string | null
         }
         Insert: {
+          archived_at?: string | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
+          cc_recipients?: string[] | null
           daily_inspection_id?: string | null
+          deleted_at?: string | null
           error_message?: string | null
+          from_user_id?: string | null
+          from_user_name?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_deleted?: boolean | null
           is_read?: boolean | null
+          message_type?: Database["public"]["Enums"]["message_type"] | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
+          recipient_user_ids?: string[] | null
           recipients: string[]
+          reply_to_id?: string | null
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
@@ -1943,22 +2319,33 @@ export type Database = {
           source_module?: string | null
           status?: string | null
           subject: string
+          thread_id?: string | null
           work_order_id?: string | null
         }
         Update: {
+          archived_at?: string | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
           body_html?: string | null
           body_text?: string | null
+          cc_recipients?: string[] | null
           daily_inspection_id?: string | null
+          deleted_at?: string | null
           error_message?: string | null
+          from_user_id?: string | null
+          from_user_name?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_deleted?: boolean | null
           is_read?: boolean | null
+          message_type?: Database["public"]["Enums"]["message_type"] | null
           project_id?: string | null
           property_id?: string | null
           proposal_id?: string | null
+          recipient_user_ids?: string[] | null
           recipients?: string[]
+          reply_to_id?: string | null
           report_id?: string | null
           report_type?: string | null
           sent_at?: string
@@ -1966,6 +2353,7 @@ export type Database = {
           source_module?: string | null
           status?: string | null
           subject?: string
+          thread_id?: string | null
           work_order_id?: string | null
         }
         Relationships: [
@@ -1995,6 +2383,13 @@ export type Database = {
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "project_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_emails_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "report_emails"
             referencedColumns: ["id"]
           },
           {
@@ -2146,6 +2541,142 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      thread_messages: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          content_html: string | null
+          created_at: string | null
+          edited_at: string | null
+          id: string
+          is_edited: boolean | null
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          content_html?: string | null
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          content_html?: string | null
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "message_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_read_status: {
+        Row: {
+          id: string
+          last_read_at: string | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_read_at?: string | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_read_at?: string | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_read_status_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "message_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_courses: {
+        Row: {
+          allow_resume: boolean | null
+          category: string
+          content_path: string
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          entry_file: string | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          passing_score: number | null
+          sort_order: number | null
+          target_roles: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          uploaded_by: string | null
+          version: string | null
+        }
+        Insert: {
+          allow_resume?: boolean | null
+          category?: string
+          content_path: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_file?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          passing_score?: number | null
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Update: {
+          allow_resume?: boolean | null
+          category?: string
+          content_path?: string
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          entry_file?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          passing_score?: number | null
+          sort_order?: number | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Relationships: []
       }
       training_progress: {
         Row: {
@@ -2337,6 +2868,50 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          property_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          property_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          property_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -2351,6 +2926,36 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_module_access: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          module_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key?: string
+          updated_at?: string
+          updated_by?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2400,6 +3005,74 @@ export type Database = {
             foreignKeyName: "user_status_history_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_agent_config: {
+        Row: {
+          after_hours_message: string | null
+          agent_name: string | null
+          avg_call_duration_seconds: number | null
+          business_hours_end: string | null
+          business_hours_start: string | null
+          calls_handled: number | null
+          closing_message: string | null
+          created_at: string | null
+          emergency_keywords: string[] | null
+          emergency_notification_phone: string | null
+          greeting_message: string | null
+          id: string
+          issue_categories: Json | null
+          knowledge_base: Json | null
+          property_id: string | null
+          supervisor_notification_emails: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          after_hours_message?: string | null
+          agent_name?: string | null
+          avg_call_duration_seconds?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          calls_handled?: number | null
+          closing_message?: string | null
+          created_at?: string | null
+          emergency_keywords?: string[] | null
+          emergency_notification_phone?: string | null
+          greeting_message?: string | null
+          id?: string
+          issue_categories?: Json | null
+          knowledge_base?: Json | null
+          property_id?: string | null
+          supervisor_notification_emails?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          after_hours_message?: string | null
+          agent_name?: string | null
+          avg_call_duration_seconds?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          calls_handled?: number | null
+          closing_message?: string | null
+          created_at?: string | null
+          emergency_keywords?: string[] | null
+          emergency_notification_phone?: string | null
+          greeting_message?: string | null
+          id?: string
+          issue_categories?: Json | null
+          knowledge_base?: Json | null
+          property_id?: string | null
+          supervisor_notification_emails?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_agent_config_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -2609,6 +3282,7 @@ export type Database = {
         Args: { p_severity: Database["public"]["Enums"]["severity_level"] }
         Returns: string
       }
+      can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2660,6 +3334,7 @@ export type Database = {
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
       issue_source: "core" | "nspire" | "projects" | "daily_grounds" | "permits"
+      message_type: "external" | "internal"
       permit_status: "draft" | "active" | "expired" | "renewed" | "revoked"
       permit_type:
         | "building_permit"
@@ -2848,12 +3523,14 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
+        "owner",
         "manager",
         "inspector",
-        "user",
-        "owner",
-        "project_manager",
+        "administrator",
         "superintendent",
+        "clerk",
+        "user",
+        "project_manager",
         "subcontractor",
         "viewer",
       ],
@@ -2893,6 +3570,7 @@ export const Constants = {
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
       issue_source: ["core", "nspire", "projects", "daily_grounds", "permits"],
+      message_type: ["external", "internal"],
       permit_status: ["draft", "active", "expired", "renewed", "revoked"],
       permit_type: [
         "building_permit",

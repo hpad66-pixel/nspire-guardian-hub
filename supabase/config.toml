@@ -14,3 +14,24 @@ verify_jwt = false
 
 [functions.polish-text]
 verify_jwt = false
+
+[functions.send-invitation]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.process-articulate-course]
+verify_jwt = false
+
+[functions.voice-agent-token]
+verify_jwt = false
+
+[functions.voice-agent-tools]
+verify_jwt = false
+
+[functions.voice-agent-webhook]
+verify_jwt = false
+
+[functions.serve-course-content]
+verify_jwt = false

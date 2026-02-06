@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { DailyInspection, DailyInspectionItem, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
-import { Asset } from '@/hooks/useAssets';
+import { Asset, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
 import { cn } from '@/lib/utils';
 
 interface PrintableDailyInspectionReportProps {
@@ -31,14 +31,7 @@ export const PrintableDailyInspectionReport = forwardRef<
   const getAssetType = (assetId: string) => {
     const asset = assets.find(a => a.id === assetId);
     if (!asset) return '';
-    const typeLabels: Record<string, string> = {
-      cleanout: 'Cleanout',
-      catch_basin: 'Catch Basin',
-      lift_station: 'Lift Station',
-      retention_pond: 'Retention Pond',
-      general_grounds: 'General Grounds',
-    };
-    return typeLabels[asset.asset_type] || asset.asset_type;
+    return ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type;
   };
 
   const getStatusConfig = (status: string) => {

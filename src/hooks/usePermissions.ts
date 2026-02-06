@@ -72,13 +72,15 @@ export function useUserPermissions() {
     canApprove,
     canAssign,
     isAdmin: currentRole === 'admin',
-    isManager: currentRole === 'manager' || currentRole === 'admin',
+    isOwner: currentRole === 'owner',
+    isPropertyManager: currentRole === 'manager',
+    isManager: currentRole === 'manager' || currentRole === 'admin' || currentRole === 'owner',
   };
 }
 
 // Hook to check if user can manage a specific property's team
 export function useCanManagePropertyTeam(propertyId: string | null) {
-  const { isAdmin, isManager } = useUserPermissions();
+  const { isAdmin, isManager, isOwner } = useUserPermissions();
 
   const { data: isPropertyManager } = useQuery({
     queryKey: ['can-manage-property-team', propertyId],
@@ -101,24 +103,26 @@ export function useCanManagePropertyTeam(propertyId: string | null) {
       if (error) return false;
       return !!data;
     },
-    enabled: !!propertyId && !isAdmin && !isManager,
+    enabled: !!propertyId && !isAdmin && !isManager && !isOwner,
   });
 
-  return isAdmin || isManager || isPropertyManager;
+  return isAdmin || isOwner || isManager || isPropertyManager;
 }
 
 // Utility function to check role hierarchy
 export function getRoleHierarchyLevel(role: AppRole): number {
   const hierarchy: Record<AppRole, number> = {
     admin: 100,
+    owner: 90,
     manager: 80,
-    project_manager: 70,
+    inspector: 70,
+    administrator: 65,
     superintendent: 60,
-    inspector: 50,
-    owner: 40,
-    subcontractor: 30,
-    viewer: 10,
-    user: 1,
+    clerk: 55,
+    project_manager: 50,
+    subcontractor: 40,
+    viewer: 20,
+    user: 10,
   };
 
   return hierarchy[role] || 0;
@@ -126,14 +130,26 @@ export function getRoleHierarchyLevel(role: AppRole): number {
 
 // Check if one role can manage another
 export function canRoleManage(managerRole: AppRole, targetRole: AppRole): boolean {
+  if (managerRole === 'admin') return true;
+  if (targetRole === 'manager') return managerRole === 'owner';
+
   return getRoleHierarchyLevel(managerRole) > getRoleHierarchyLevel(targetRole);
 }
 
 // Get all roles that a user can assign based on their role
 export function getAssignableRoles(userRole: AppRole): AppRole[] {
   const allRoles: AppRole[] = [
-    'admin', 'manager', 'project_manager', 'superintendent',
-    'inspector', 'owner', 'subcontractor', 'viewer', 'user'
+    'admin',
+    'owner',
+    'manager',
+    'inspector',
+    'administrator',
+    'superintendent',
+    'clerk',
+    'project_manager',
+    'subcontractor',
+    'viewer',
+    'user',
   ];
 
   if (userRole === 'admin') return allRoles;

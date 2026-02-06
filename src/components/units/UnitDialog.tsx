@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,31 @@ export function UnitDialog({ open, onOpenChange, unit, propertyId }: UnitDialogP
 
   const createUnit = useCreateUnit();
   const updateUnit = useUpdateUnit();
+
+  useEffect(() => {
+    if (!open) return;
+    if (unit) {
+      setFormData({
+        property_id: unit.property_id || propertyId || '',
+        unit_number: unit.unit_number || '',
+        bedrooms: unit.bedrooms || 1,
+        bathrooms: unit.bathrooms || 1,
+        square_feet: unit.square_feet || undefined,
+        floor: unit.floor || undefined,
+        status: unit.status || 'occupied',
+      });
+    } else {
+      setFormData({
+        property_id: propertyId || '',
+        unit_number: '',
+        bedrooms: 1,
+        bathrooms: 1,
+        square_feet: undefined,
+        floor: undefined,
+        status: 'occupied',
+      });
+    }
+  }, [open, unit, propertyId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

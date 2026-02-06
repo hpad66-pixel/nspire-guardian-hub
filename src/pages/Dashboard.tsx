@@ -24,6 +24,8 @@ import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
 import { useProjectStats } from '@/hooks/useProjects';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 
 // Apple-inspired metric card
 function MetricCard({ 
@@ -32,7 +34,8 @@ function MetricCard({
   subtitle, 
   icon: Icon, 
   trend,
-  className 
+  className,
+  to,
 }: { 
   title: string; 
   value: string | number; 
@@ -40,8 +43,9 @@ function MetricCard({
   icon: React.ElementType;
   trend?: 'up' | 'down' | 'neutral';
   className?: string;
+  to?: string;
 }) {
-  return (
+  const content = (
     <div className={cn(
       "group relative overflow-hidden rounded-2xl bg-card p-6 transition-all duration-300",
       "hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5",
@@ -65,6 +69,16 @@ function MetricCard({
       </div>
     </div>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className="block focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }
 
 // Module action card with gradient
@@ -90,7 +104,7 @@ function ModuleCard({
   return (
     <Card className="group overflow-hidden border-0 shadow-sm hover:shadow-xl transition-all duration-500 bg-card">
       {/* Gradient header */}
-      <div className={cn("p-6 pb-4", gradient)}>
+      <Link to={to} className={cn("block p-6 pb-4", gradient)}>
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
             <Icon className="h-7 w-7 text-white" />
@@ -100,7 +114,7 @@ function ModuleCard({
             <p className="text-sm text-white/80">{description}</p>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* Content */}
       <CardContent className="p-6 space-y-5">
@@ -171,6 +185,7 @@ function UrgentItem({
 
 export default function Dashboard() {
   const { isModuleEnabled } = useModules();
+  const { shouldShowOnboarding } = useOnboarding();
   
   const { data: properties, isLoading: loadingProperties } = useProperties();
   const { data: unitStats } = useUnitStats();
@@ -178,6 +193,11 @@ export default function Dashboard() {
   const { data: defectStats } = useDefectStats();
   const { data: openDefects } = useOpenDefects();
   const { data: projectStats } = useProjectStats();
+
+  const handleOnboardingComplete = () => {
+    // Force reload to refresh data after onboarding
+    window.location.reload();
+  };
 
   const openIssues = issues?.filter(i => i.status !== 'resolved' && i.status !== 'verified');
   const urgentDefects = openDefects?.filter(d => d.severity === 'severe').slice(0, 3);
@@ -207,8 +227,14 @@ export default function Dashboard() {
   const hasAnyModule = hasNspire || hasDailyGrounds || hasProjects;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10 animate-fade-in">
+    <>
+      {/* Onboarding Wizard Modal */}
+      {shouldShowOnboarding && (
+        <OnboardingWizard onComplete={handleOnboardingComplete} />
+      )}
+      
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10 animate-fade-in">
         {/* Hero Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">{greeting}</h1>
@@ -237,6 +263,7 @@ export default function Dashboard() {
                 subtitle={`${properties?.filter(p => p.status === 'active').length || 0} active`}
                 icon={Building}
                 trend="neutral"
+                to="/properties"
               />
               <MetricCard
                 title="Total Units"
@@ -244,12 +271,14 @@ export default function Dashboard() {
                 subtitle={`${unitStats?.occupancyRate || 0}% occupancy`}
                 icon={DoorOpen}
                 trend="up"
+                to="/units"
               />
               <MetricCard
                 title="Open Issues"
                 value={openIssues?.length || 0}
                 subtitle={`${openIssues?.filter(i => i.severity === 'severe').length || 0} need attention`}
                 icon={AlertTriangle}
+                to="/issues"
               />
               <MetricCard
                 title="Compliance"
@@ -257,6 +286,7 @@ export default function Dashboard() {
                 subtitle="Resolution rate"
                 icon={CheckCircle2}
                 trend={complianceRate >= 90 ? 'up' : 'neutral'}
+                to="/inspections/history"
               />
             </>
           )}
@@ -450,5 +480,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }

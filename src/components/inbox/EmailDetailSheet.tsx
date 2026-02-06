@@ -10,20 +10,31 @@ interface EmailDetailSheetProps {
   emailId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEmailDeleted?: () => void;
 }
 
 export function EmailDetailSheet({
   emailId,
   open,
   onOpenChange,
+  onEmailDeleted,
 }: EmailDetailSheetProps) {
+  const handleEmailDeleted = () => {
+    onEmailDeleted?.();
+    onOpenChange(false);
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-xl p-0">
         <SheetHeader className="sr-only">
           <SheetTitle>Email Details</SheetTitle>
         </SheetHeader>
-        <EmailPreview emailId={emailId} onClose={() => onOpenChange(false)} />
+        <EmailPreview
+          emailId={emailId}
+          onClose={() => onOpenChange(false)}
+          onEmailDeleted={handleEmailDeleted}
+        />
       </SheetContent>
     </Sheet>
   );

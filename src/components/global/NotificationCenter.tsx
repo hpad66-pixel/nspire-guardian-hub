@@ -58,13 +58,13 @@ export function NotificationCenter() {
     if (notification.entity_type && notification.entity_id) {
       switch (notification.entity_type) {
         case 'issue':
-          navigate('/issues');
+          navigate(`/issues?issueId=${notification.entity_id}`);
           break;
         case 'project':
           navigate(`/projects/${notification.entity_id}`);
           break;
         case 'work_order':
-          navigate('/work-orders');
+          navigate(`/work-orders?workOrderId=${notification.entity_id}`);
           break;
         default:
           break;

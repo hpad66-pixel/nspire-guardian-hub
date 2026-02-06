@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { ModuleConfig } from '@/types/modules';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 interface ModuleContextType {
   modules: ModuleConfig;
@@ -35,9 +36,18 @@ const moduleColumnMap: Record<string, string> = {
 const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
 
 export function ModuleProvider({ children }: { children: ReactNode }) {
-  const [modules, setModules] = useState<ModuleConfig>(defaultModules);
+  const [tenantModules, setTenantModules] = useState<ModuleConfig>(defaultModules);
+  const [userModuleOverrides, setUserModuleOverrides] = useState<Record<keyof ModuleConfig, boolean | null>>({
+    nspireEnabled: null,
+    dailyGroundsEnabled: null,
+    projectsEnabled: null,
+    occupancyEnabled: null,
+    emailInboxEnabled: null,
+    qrScanningEnabled: null,
+  });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
+  const { isAdmin, isOwner } = useUserPermissions();
 
   // Load module settings from properties on app start
   const loadModulesFromProperties = async () => {
@@ -49,14 +59,54 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       // Module is enabled if ANY property has it enabled
-      setModules({
+      const tenant = {
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
         occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
         emailInboxEnabled: true, // Always enabled - inbox is functional
         qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
+      };
+
+      setTenantModules(tenant);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUserModuleOverrides({
+          nspireEnabled: null,
+          dailyGroundsEnabled: null,
+          projectsEnabled: null,
+          occupancyEnabled: null,
+          emailInboxEnabled: null,
+          qrScanningEnabled: null,
+        });
+        return;
+      }
+
+      const { data: overrides, error: overridesError } = await supabase
+        .from('user_module_access')
+        .select('module_key, enabled')
+        .eq('user_id', user.id);
+
+      if (overridesError) throw overridesError;
+
+      const overrideMap: Record<keyof ModuleConfig, boolean | null> = {
+        nspireEnabled: null,
+        dailyGroundsEnabled: null,
+        projectsEnabled: null,
+        occupancyEnabled: null,
+        emailInboxEnabled: null,
+        qrScanningEnabled: null,
+      };
+
+      (overrides || []).forEach((row) => {
+        const key = row.module_key as keyof ModuleConfig;
+        if (key in overrideMap) {
+          overrideMap[key] = row.enabled;
+        }
       });
+
+      setUserModuleOverrides(overrideMap);
     } catch (error) {
       console.error('Failed to load module settings:', error);
       // Fall back to defaults on error
@@ -67,7 +117,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadModulesFromProperties();
-  }, []);
+  }, [isAdmin, isOwner]);
 
   // Toggle module tenant-wide (updates all properties)
   const toggleModule = async (module: keyof ModuleConfig) => {
@@ -79,7 +129,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const newValue = !modules[module];
+    const newValue = !tenantModules[module];
 
     try {
       const { error } = await supabase
@@ -89,7 +139,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      setModules(prev => ({ ...prev, [module]: newValue }));
+      setTenantModules(prev => ({ ...prev, [module]: newValue }));
       toast.success(`${module.replace('Enabled', '')} module ${newValue ? 'enabled' : 'disabled'} for all properties`);
     } catch (error) {
       console.error('Failed to toggle module:', error);
@@ -123,14 +173,24 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const effectiveModules = useMemo(() => {
+    if (isAdmin || isOwner) return tenantModules;
+
+    return (Object.keys(tenantModules) as (keyof ModuleConfig)[]).reduce((acc, key) => {
+      const override = userModuleOverrides[key];
+      acc[key] = tenantModules[key] && (override ?? true);
+      return acc;
+    }, {} as ModuleConfig);
+  }, [tenantModules, userModuleOverrides, isAdmin, isOwner]);
+
   const isModuleEnabled = (module: keyof ModuleConfig) => {
-    return modules[module];
+    return effectiveModules[module];
   };
 
   return (
     <ModuleContext.Provider 
       value={{ 
-        modules, 
+        modules: effectiveModules, 
         toggleModule, 
         isModuleEnabled, 
         updatePropertyModule,

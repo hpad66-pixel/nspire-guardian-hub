@@ -21,6 +21,7 @@ import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
 import { useInspectionStats, useAnnualInspectionProgress } from '@/hooks/useInspectionStats';
 import { InspectionWizard } from '@/components/inspections/InspectionWizard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function InspectionsDashboard() {
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -29,6 +30,8 @@ export default function InspectionsDashboard() {
   const { data: openDefects } = useOpenDefects();
   const { data: inspectionStats } = useInspectionStats();
   const { data: annualProgress } = useAnnualInspectionProgress();
+  const { canCreate } = useUserPermissions();
+  const canCreateInspections = canCreate('inspections');
 
   // Get urgent defects (first 5 sorted by deadline)
   const urgentDefects = openDefects?.slice(0, 5) || [];
@@ -48,10 +51,12 @@ export default function InspectionsDashboard() {
             100% annual unit inspections • NSPIRE compliant defect tracking
           </p>
         </div>
-        <Button onClick={() => setWizardOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Inspection
-        </Button>
+        {canCreateInspections && (
+          <Button onClick={() => setWizardOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Inspection
+          </Button>
+        )}
       </div>
 
       {/* Stats Overview */}
@@ -317,7 +322,9 @@ export default function InspectionsDashboard() {
         </CardContent>
       </Card>
 
-      <InspectionWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      {canCreateInspections && (
+        <InspectionWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      )}
     </div>
   );
 }

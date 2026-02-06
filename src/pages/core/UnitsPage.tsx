@@ -1,25 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Loader2, Upload } from 'lucide-react';
-import { useUnits, useUnitStats } from '@/hooks/useUnits';
+import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
+import { useUnits, useUnitStats, useDeleteUnit, type Unit } from '@/hooks/useUnits';
 import { useProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { useSearchParams } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function UnitsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [propertyFilter, setPropertyFilter] = useState<string>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: units, isLoading } = useUnits();
   const { data: stats } = useUnitStats();
   const { data: properties } = useProperties();
+  const deleteUnit = useDeleteUnit();
+  const { canCreate, canUpdate, canDelete } = useUserPermissions();
+  const canCreateUnits = canCreate('properties');
+  const canUpdateUnits = canUpdate('properties');
+  const canDeleteUnits = canDelete('properties');
+
+  useEffect(() => {
+    const param = searchParams.get('propertyId');
+    if (param) {
+      setPropertyFilter(param);
+    }
+  }, [searchParams]);
 
   const filteredUnits = units?.filter(unit => {
     const matchesSearch = 
@@ -36,16 +63,21 @@ export default function UnitsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Units</h1>
           <p className="text-muted-foreground">Manage units across your properties</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Unit
-          </Button>
-        </div>
+        {canCreateUnits && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+            <Button onClick={() => {
+              setSelectedUnit(null);
+              setDialogOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Unit
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -89,7 +121,18 @@ export default function UnitsPage() {
             className="pl-10"
           />
         </div>
-        <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+        <Select
+          value={propertyFilter}
+          onValueChange={(value) => {
+            setPropertyFilter(value);
+            if (value === 'all') {
+              searchParams.delete('propertyId');
+              setSearchParams(searchParams);
+            } else {
+              setSearchParams({ propertyId: value });
+            }
+          }}
+        >
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All Properties" />
           </SelectTrigger>
@@ -145,6 +188,47 @@ export default function UnitsPage() {
                     {unit.status}
                   </Badge>
                 </div>
+                {(canUpdateUnits || canDeleteUnits) && (
+                  <div className="flex items-center gap-2 mb-3">
+                    {canUpdateUnits && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUnit(unit);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {canDeleteUnits && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Unit</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete Unit {unit.unit_number}. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteUnit.mutate(unit.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Bed className="h-4 w-4" />
@@ -182,7 +266,7 @@ export default function UnitsPage() {
                   : 'Add your first unit to get started'}
               </p>
             </div>
-            {!searchQuery && propertyFilter === 'all' && (
+            {canCreateUnits && !searchQuery && propertyFilter === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Unit
@@ -192,8 +276,17 @@ export default function UnitsPage() {
         </Card>
       )}
 
-      <UnitDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-      <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      <UnitDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedUnit(null);
+        }}
+        unit={selectedUnit || undefined}
+      />
+      {canCreateUnits && (
+        <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      )}
     </div>
   );
 }

@@ -5,6 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { useProperties } from '@/hooks/useProperties';
 import { useUnitsByProperty } from '@/hooks/useUnits';
 import { useCreateIssue, useUpdateIssue } from '@/hooks/useIssues';
@@ -110,6 +115,7 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <VoiceDictationTextarea
                 id="description"
                 value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 onValueChange={(value) => setFormData({ ...formData, description: value })}
                 placeholder="Detailed description of the issue..."
                 className="min-h-[80px]"
@@ -139,15 +145,17 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <div className="grid gap-2">
                 <Label>Unit (Optional)</Label>
                 <Select
-                  value={formData.unit_id}
-                  onValueChange={(value) => setFormData({ ...formData, unit_id: value })}
+                  value={formData.unit_id || '__none__'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, unit_id: value === '__none__' ? '' : value })
+                  }
                   disabled={!formData.property_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {units?.map((unit) => (
                       <SelectItem key={unit.id} value={unit.id}>
                         Unit {unit.unit_number}
@@ -179,14 +187,16 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <div className="grid gap-2">
                 <Label>Area</Label>
                 <Select
-                  value={formData.area || ''}
-                  onValueChange={(value) => setFormData({ ...formData, area: value as InspectionArea || null })}
+                  value={formData.area || '__none__'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, area: value === '__none__' ? null : (value as InspectionArea) })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select area" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     <SelectItem value="outside">Outside</SelectItem>
                     <SelectItem value="inside">Inside (Common)</SelectItem>
                     <SelectItem value="unit">Unit</SelectItem>
@@ -197,11 +207,37 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
 
             <div className="grid gap-2">
               <Label>Deadline</Label>
-              <Input
-                type="date"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !formData.deadline && 'text-muted-foreground'
+                    )}
+                  >
+                    {formData.deadline
+                      ? format(new Date(formData.deadline), 'PPP')
+                      : 'Pick a date'}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.deadline ? new Date(formData.deadline) : undefined}
+                    onSelect={(date) =>
+                      setFormData({
+                        ...formData,
+                        deadline: date ? format(date, 'yyyy-MM-dd') : '',
+                      })
+                    }
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

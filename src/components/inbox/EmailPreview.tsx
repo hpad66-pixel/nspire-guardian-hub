@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,15 +14,17 @@ import {
   Paperclip,
   FileText,
 } from "lucide-react";
-import { useReportEmail, useMarkEmailRead, ReportEmailFull } from "@/hooks/useReportEmails";
+import { useReportEmail, useMarkEmailRead } from "@/hooks/useReportEmails";
 import { useProfiles } from "@/hooks/useProfiles";
+import { EmailActions } from "./EmailActions";
 
 interface EmailPreviewProps {
   emailId: string | null;
   onClose?: () => void;
+  onEmailDeleted?: () => void;
 }
 
-export function EmailPreview({ emailId, onClose }: EmailPreviewProps) {
+export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewProps) {
   const { data: email, isLoading } = useReportEmail(emailId);
   const { data: profiles = [] } = useProfiles();
   const markRead = useMarkEmailRead();
@@ -127,8 +128,16 @@ export function EmailPreview({ emailId, onClose }: EmailPreviewProps) {
       {/* Header */}
       <div className="p-6 border-b space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-xl font-semibold">{email.subject}</h2>
-          {getStatusBadge(email.status)}
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold truncate">{email.subject}</h2>
+            <div className="mt-2 flex items-center gap-2">
+              {getStatusBadge(email.status)}
+              {(email as any).is_read === false && (
+                <Badge variant="secondary">Unread</Badge>
+              )}
+            </div>
+          </div>
+          <EmailActions email={email} onActionComplete={onEmailDeleted} variant="dropdown" />
         </div>
 
         <div className="space-y-2 text-sm">
@@ -202,7 +211,8 @@ export function EmailPreview({ emailId, onClose }: EmailPreviewProps) {
       )}
 
       {/* Actions */}
-      <div className="p-4 border-t flex items-center gap-2">
+      <div className="p-4 border-t flex items-center justify-between gap-2">
+        <EmailActions email={email} onActionComplete={onEmailDeleted} />
         {email.status === "failed" && (
           <Button variant="outline" size="sm" className="gap-2">
             <RefreshCw className="h-4 w-4" />

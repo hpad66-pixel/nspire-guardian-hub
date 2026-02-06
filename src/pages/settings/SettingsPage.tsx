@@ -1,10 +1,10 @@
 import { useModules } from '@/contexts/ModuleContext';
 import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
+import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,7 +16,6 @@ import {
   Users, 
   Mail, 
   QrCode,
-  Shield,
   CreditCard,
   Building2,
   Sun,
@@ -26,11 +25,13 @@ import { UserManagement } from '@/components/settings/UserManagement';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { modules, toggleModule, userRole, setUserRole, isLoading: modulesLoading, refetchModules } = useModules();
+  const { modules, toggleModule, isLoading: modulesLoading, refetchModules } = useModules();
   const { data: properties, isLoading: propertiesLoading } = useProperties();
+  const { data: currentUserRole } = useCurrentUserRole();
   const updateProperty = useUpdateProperty();
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'tenant_admin';
+  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
+  const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
 
   const handlePropertyModuleChange = async (
     propertyId: string, 
@@ -66,52 +67,32 @@ export default function SettingsPage() {
       <Tabs defaultValue="modules" className="space-y-6">
         <TabsList>
           <TabsTrigger value="modules">Modules</TabsTrigger>
-          <TabsTrigger value="users">Users & Roles</TabsTrigger>
+          {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
         </TabsList>
 
         <TabsContent value="modules" className="space-y-6">
-          {/* Demo Role Switcher */}
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Demo: Role Switcher
-              </CardTitle>
-              <CardDescription>Switch roles to see different permission levels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {(['super_admin', 'tenant_admin', 'property_manager', 'inspector', 'viewer'] as const).map((role) => (
-                  <Button
-                    key={role}
-                    variant={userRole === role ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setUserRole(role)}
-                    className="capitalize"
-                  >
-                    {role.replace('_', ' ')}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {!isAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Module Management</CardTitle>
+                <CardDescription>Only admins and owners can manage module access.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
 
-          {/* Module Toggles - Tenant-Wide Defaults */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Tenant-Wide Module Defaults</CardTitle>
-                  <CardDescription>Enable or disable paid add-on modules for all properties</CardDescription>
+          {isAdmin && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Tenant-Wide Module Defaults</CardTitle>
+                    <CardDescription>Enable or disable paid add-on modules for all properties</CardDescription>
+                  </div>
                 </div>
-                {!isAdmin && (
-                  <Badge variant="secondary">View Only</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
+              </CardHeader>
+              <CardContent className="space-y-6">
               {/* Daily Grounds */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -265,18 +246,20 @@ export default function SettingsPage() {
                   disabled={!isAdmin}
                 />
               </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Per-Property Module Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Per-Property Module Overrides</CardTitle>
-              <CardDescription>
-                Enable or disable modules for specific properties
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          {isAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Per-Property Module Overrides</CardTitle>
+                <CardDescription>
+                  Enable or disable modules for specific properties
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
               {propertiesLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
@@ -349,13 +332,16 @@ export default function SettingsPage() {
                   <p className="text-sm">Add properties to configure module access</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
+        {canManageUsers && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
 
         <TabsContent value="billing">
           {/* Billing Info */}
@@ -409,11 +395,6 @@ export default function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                {!isAdmin && (
-                  <Button variant="outline" className="w-full">
-                    Request Module Upgrade
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>

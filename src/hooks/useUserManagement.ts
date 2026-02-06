@@ -74,13 +74,15 @@ export function useCurrentUserRole() {
       
       // Return the highest priority role
       const rolePriority: Record<AppRole, number> = {
-        admin: 5,
-        manager: 4,
-        project_manager: 4,
-        superintendent: 3,
-        inspector: 3,
+        admin: 9,
+        owner: 8,
+        manager: 7,
+        inspector: 6,
+        administrator: 5,
+        superintendent: 4,
+        clerk: 3,
+        project_manager: 2,
         subcontractor: 2,
-        owner: 2,
         viewer: 1,
         user: 1,
       };
