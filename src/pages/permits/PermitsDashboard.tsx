@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,14 +43,20 @@ const permitStatuses = [
 export default function PermitsDashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [propertyFilter, setPropertyFilter] = useState('all');
+  const [propertyFilter, setPropertyFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: permits, isLoading: permitsLoading } = usePermits();
   const { data: stats, isLoading: statsLoading } = usePermitStats();
-  const { data: properties } = useProperties();
+  const { data: properties = [] } = useProperties();
+
+  useEffect(() => {
+    if (!propertyFilter && properties.length > 0) {
+      setPropertyFilter(properties[0].id);
+    }
+  }, [properties, propertyFilter]);
 
   // Filter permits
   const filteredPermits = permits?.filter((permit) => {
@@ -59,7 +65,7 @@ export default function PermitsDashboard() {
       permit.permit_number?.toLowerCase().includes(search.toLowerCase()) ||
       permit.issuing_authority?.toLowerCase().includes(search.toLowerCase());
     
-    const matchesProperty = propertyFilter === 'all' || permit.property_id === propertyFilter;
+    const matchesProperty = !propertyFilter || permit.property_id === propertyFilter;
     const matchesType = typeFilter === 'all' || permit.permit_type === typeFilter;
     const matchesStatus = statusFilter === 'all' || permit.status === statusFilter;
 
@@ -105,8 +111,7 @@ export default function PermitsDashboard() {
             <SelectValue placeholder="Property" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Properties</SelectItem>
-            {properties?.map((property) => (
+            {properties.map((property) => (
               <SelectItem key={property.id} value={property.id}>
                 {property.name}
               </SelectItem>
@@ -153,11 +158,11 @@ export default function PermitsDashboard() {
           <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium">No permits found</h3>
           <p className="text-muted-foreground mt-1">
-            {search || propertyFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all'
+            {search || propertyFilter !== '' || typeFilter !== 'all' || statusFilter !== 'all'
               ? 'Try adjusting your filters'
               : 'Add your first permit to get started'}
           </p>
-          {!search && propertyFilter === 'all' && typeFilter === 'all' && statusFilter === 'all' && (
+          {!search && propertyFilter === '' && typeFilter === 'all' && statusFilter === 'all' && (
             <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Permit

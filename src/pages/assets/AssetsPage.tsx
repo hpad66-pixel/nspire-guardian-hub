@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import {
 import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function AssetsPage() {
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -42,8 +42,14 @@ export default function AssetsPage() {
   const canCreateAssets = canCreate('properties');
   const canUpdateAssets = canUpdate('properties');
   const canDeleteAssets = canDelete('properties');
+  useEffect(() => {
+    if (!selectedPropertyId && properties.length > 0) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
+
   const { data: assets = [], isLoading } = useAssets(
-    selectedPropertyId === 'all' ? undefined : selectedPropertyId
+    selectedPropertyId || undefined
   );
   const deleteAssetMutation = useDeleteAsset();
 
@@ -115,10 +121,9 @@ export default function AssetsPage() {
         
         <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
           <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="All Properties" />
+            <SelectValue placeholder="Select property" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Properties</SelectItem>
             {properties.map((property) => (
               <SelectItem key={property.id} value={property.id}>
                 {property.name}
@@ -247,7 +252,7 @@ export default function AssetsPage() {
           open={dialogOpen}
           onOpenChange={handleDialogClose}
           asset={editingAsset}
-          defaultPropertyId={selectedPropertyId === 'all' ? properties[0]?.id : selectedPropertyId}
+          defaultPropertyId={selectedPropertyId || properties[0]?.id}
         />
       )}
 

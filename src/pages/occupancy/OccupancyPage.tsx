@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
   Building,
 } from 'lucide-react';
 import { useTenants, useTenantStats, type Tenant } from '@/hooks/useTenants';
+import { useProperties } from '@/hooks/useProperties';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TenantDialog } from '@/components/occupancy/TenantDialog';
@@ -36,14 +37,23 @@ export default function OccupancyPage() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
 
   const { data: tenants, isLoading } = useTenants();
   const { data: stats } = useTenantStats();
+  const { data: properties = [] } = useProperties();
+
+  useEffect(() => {
+    if (!selectedPropertyId && properties.length > 0) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
 
   const filteredTenants = useMemo(() => {
     if (!tenants) return [];
     
     return tenants.filter(tenant => {
+      const matchesProperty = !selectedPropertyId || tenant.unit?.property?.id === selectedPropertyId;
       const matchesSearch = searchQuery === '' || 
         `${tenant.first_name} ${tenant.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tenant.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,9 +62,17 @@ export default function OccupancyPage() {
       
       const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
       
-      return matchesSearch && matchesStatus;
+      return matchesProperty && matchesSearch && matchesStatus;
     });
-  }, [tenants, searchQuery, statusFilter]);
+  }, [tenants, searchQuery, statusFilter, selectedPropertyId]);
+
+  const filteredStats = useMemo(() => {
+    const total = filteredTenants.length;
+    const active = filteredTenants.filter(t => t.status === 'active').length;
+    const noticeGiven = filteredTenants.filter(t => t.status === 'notice_given').length;
+    const movedOut = filteredTenants.filter(t => t.status === 'moved_out').length;
+    return { total, active, noticeGiven, movedOut };
+  }, [filteredTenants]);
 
   const handleTenantClick = (tenant: Tenant) => {
     setSelectedTenant(tenant);
@@ -127,27 +145,27 @@ export default function OccupancyPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Tenants"
-            value={stats?.total || 0}
+            value={selectedPropertyId ? filteredStats.total : (stats?.total || 0)}
             subtitle="All tenants"
             icon={Users}
           />
           <StatCard
             title="Active"
-            value={stats?.active || 0}
+            value={selectedPropertyId ? filteredStats.active : (stats?.active || 0)}
             subtitle="Currently residing"
             icon={UserCheck}
             variant="success"
           />
           <StatCard
             title="Notice Given"
-            value={stats?.noticeGiven || 0}
+            value={selectedPropertyId ? filteredStats.noticeGiven : (stats?.noticeGiven || 0)}
             subtitle="Moving soon"
             icon={AlertCircle}
             variant="moderate"
           />
           <StatCard
             title="Moved Out"
-            value={stats?.movedOut || 0}
+            value={selectedPropertyId ? filteredStats.movedOut : (stats?.movedOut || 0)}
             subtitle="Historical records"
             icon={UserMinus}
           />
@@ -164,6 +182,18 @@ export default function OccupancyPage() {
               className="pl-10"
             />
           </div>
+          <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Select property" />
+            </SelectTrigger>
+            <SelectContent>
+              {properties.map((property) => (
+                <SelectItem key={property.id} value={property.id}>
+                  {property.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
