@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserPermissions } from './usePermissions';
+import { getAssignedPropertyIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
@@ -19,10 +21,11 @@ export interface Project extends ProjectRow {
 }
 
 export function useProjects() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', isAdmin, isOwner],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('projects')
         .select(`
           *,
@@ -30,6 +33,14 @@ export function useProjects() {
           milestones:project_milestones(id, name, due_date, status)
         `)
         .order('created_at', { ascending: false });
+
+      if (!isAdmin && !isOwner) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (propertyIds.length === 0) return [] as Project[];
+        query = query.in('property_id', propertyIds);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Project[];
@@ -38,10 +49,11 @@ export function useProjects() {
 }
 
 export function useActiveProjects() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'active'],
+    queryKey: ['projects', 'active', isAdmin, isOwner],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('projects')
         .select(`
           *,
@@ -50,6 +62,14 @@ export function useActiveProjects() {
         `)
         .in('status', ['planning', 'active'])
         .order('created_at', { ascending: false });
+
+      if (!isAdmin && !isOwner) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (propertyIds.length === 0) return [] as Project[];
+        query = query.in('property_id', propertyIds);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Project[];
@@ -58,19 +78,28 @@ export function useActiveProjects() {
 }
 
 export function useProject(projectId: string | null) {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', projectId],
+    queryKey: ['projects', projectId, isAdmin, isOwner],
     queryFn: async () => {
       if (!projectId) return null;
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('projects')
         .select(`
           *,
           property:properties(name),
           milestones:project_milestones(id, name, due_date, status, notes, completed_at)
         `)
-        .eq('id', projectId)
-        .single();
+        .eq('id', projectId);
+
+      if (!isAdmin && !isOwner) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (propertyIds.length === 0) return null;
+        query = query.in('property_id', propertyIds);
+      }
+
+      const { data, error } = await query.single();
       
       if (error) throw error;
       return data as Project;
@@ -80,10 +109,16 @@ export function useProject(projectId: string | null) {
 }
 
 export function useProjectsByProperty(propertyId: string | null) {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'property', propertyId],
+    queryKey: ['projects', 'property', propertyId, isAdmin, isOwner],
     queryFn: async () => {
       if (!propertyId) return [];
+      if (!isAdmin && !isOwner) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (!propertyIds.includes(propertyId)) return [] as Project[];
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -102,12 +137,23 @@ export function useProjectsByProperty(propertyId: string | null) {
 }
 
 export function useProjectStats() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'stats'],
+    queryKey: ['projects', 'stats', isAdmin, isOwner],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('projects')
-        .select('status, budget, spent');
+        .select('status, budget, spent, property_id');
+
+      if (!isAdmin && !isOwner) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (propertyIds.length === 0) {
+          return { active: 0, planning: 0, onHold: 0, completed: 0, totalBudget: 0, totalSpent: 0, total: 0 };
+        }
+        query = query.in('property_id', propertyIds);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       
