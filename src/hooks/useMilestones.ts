@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserPermissions } from './usePermissions';
+import { getAssignedProjectIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
 
 type MilestoneRow = Database['public']['Tables']['project_milestones']['Row'];
@@ -16,16 +18,25 @@ export interface Milestone extends MilestoneRow {
 }
 
 export function useMilestones() {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['milestones'],
+    queryKey: ['milestones', isAdmin, isOwner],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('project_milestones')
         .select(`
           *,
           project:projects(name, property:properties(name))
         `)
         .order('due_date', { ascending: true });
+
+      if (!isAdmin && !isOwner) {
+        const projectIds = await getAssignedProjectIds();
+        if (projectIds.length === 0) return [] as Milestone[];
+        query = query.in('project_id', projectIds);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Milestone[];
@@ -52,14 +63,15 @@ export function useMilestonesByProject(projectId: string | null) {
 }
 
 export function useUpcomingMilestones(daysAhead: number = 7) {
+  const { isAdmin, isOwner } = useUserPermissions();
   return useQuery({
-    queryKey: ['milestones', 'upcoming', daysAhead],
+    queryKey: ['milestones', 'upcoming', daysAhead, isAdmin, isOwner],
     queryFn: async () => {
       const today = new Date();
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + daysAhead);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('project_milestones')
         .select(`
           *,
@@ -69,6 +81,14 @@ export function useUpcomingMilestones(daysAhead: number = 7) {
         .lte('due_date', futureDate.toISOString().split('T')[0])
         .neq('status', 'completed')
         .order('due_date', { ascending: true });
+
+      if (!isAdmin && !isOwner) {
+        const projectIds = await getAssignedProjectIds();
+        if (projectIds.length === 0) return [] as Milestone[];
+        query = query.in('project_id', projectIds);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Milestone[];
