@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
 interface VoiceAgentState {
@@ -120,7 +121,25 @@ export function useVoiceAgent(context?: VoiceAgentContext) {
       const { data, error } = await supabase.functions.invoke('voice-agent-token');
       
       if (error) {
-        throw new Error(error.message || 'Failed to get voice agent token');
+        let message = error.message || 'Failed to get voice agent token';
+
+        if (error instanceof FunctionsHttpError && error.context) {
+          try {
+            const text = await error.context.text();
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed?.error) message = parsed.error;
+              else if (parsed?.message) message = parsed.message;
+              else if (text) message = text;
+            } catch {
+              if (text) message = text;
+            }
+          } catch {
+            // ignore parsing errors, fall back to default message
+          }
+        }
+
+        throw new Error(message);
       }
 
       if (!data?.signed_url) {

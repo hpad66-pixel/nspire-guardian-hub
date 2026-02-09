@@ -36,6 +36,16 @@ npm i
 npm run dev
 ```
 
+## ElevenLabs Voice Agent (Edge Function Secrets)
+
+The voice agent uses a Supabase Edge Function to obtain a signed ElevenLabs conversation URL.  
+Set these secrets in Supabase (do not hard-code in the repo):
+
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_AGENT_ID`
+
+These are read by `supabase/functions/voice-agent-token/index.ts`.
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
