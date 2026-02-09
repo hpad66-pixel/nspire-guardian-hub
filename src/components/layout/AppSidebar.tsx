@@ -207,7 +207,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">NSPIRE</span>
+                <span className="text-sm font-semibold text-sidebar-foreground">PM APAS</span>
                 <span className="text-xs text-sidebar-muted">Property OS</span>
               </div>
             )}
