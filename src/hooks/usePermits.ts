@@ -3,15 +3,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { useProperties } from '@/hooks/useProperties';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 export type Permit = Tables<'permits'>;
 export type PermitInsert = TablesInsert<'permits'>;
 export type PermitUpdate = TablesUpdate<'permits'>;
 
 export function usePermits(propertyId?: string) {
+  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const isPrivileged = isAdmin || isOwner;
+  const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
+
   return useQuery({
-    queryKey: ['permits', propertyId],
+    queryKey: ['permits', propertyId, allowedPropertyIds.join(',')],
+    enabled: !permissionsLoading && (isPrivileged || !propertiesLoading),
     queryFn: async () => {
+      if (!isPrivileged) {
+        if (propertyId && !allowedPropertyIds.includes(propertyId)) return [];
+        if (!propertyId && allowedPropertyIds.length === 0) return [];
+      }
+
       let query = supabase
         .from('permits')
         .select(`
@@ -23,6 +36,8 @@ export function usePermits(propertyId?: string) {
 
       if (propertyId) {
         query = query.eq('property_id', propertyId);
+      } else if (!isPrivileged) {
+        query = query.in('property_id', allowedPropertyIds);
       }
 
       const { data, error } = await query;
@@ -54,23 +69,46 @@ export function usePermit(id: string | null) {
 }
 
 export function usePermitStats() {
+  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const isPrivileged = isAdmin || isOwner;
+  const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
+
   return useQuery({
-    queryKey: ['permit-stats'],
+    queryKey: ['permit-stats', allowedPropertyIds.join(',')],
+    enabled: !permissionsLoading && (isPrivileged || !propertiesLoading),
     queryFn: async () => {
+      if (!isPrivileged && allowedPropertyIds.length === 0) {
+        return { active: 0, expiringSoon: 0, dueThisMonth: 0, nonCompliant: 0, total: 0 };
+      }
+
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-      const { data: permits, error } = await supabase
+      let permitsQuery = supabase
         .from('permits')
-        .select('id, status, expiry_date');
+        .select('id, status, expiry_date, property_id');
+
+      if (!isPrivileged) {
+        permitsQuery = permitsQuery.in('property_id', allowedPropertyIds);
+      }
+
+      const { data: permits, error } = await permitsQuery;
 
       if (error) throw error;
 
-      const { data: requirements, error: reqError } = await supabase
-        .from('permit_requirements')
-        .select('id, status, next_due_date');
+      const permitIds = (permits || []).map(p => p.id);
+      let requirements: { id: string; status: string | null; next_due_date: string | null }[] = [];
 
-      if (reqError) throw reqError;
+      if (permitIds.length > 0) {
+        const { data: reqs, error: reqError } = await supabase
+          .from('permit_requirements')
+          .select('id, status, next_due_date, permit_id')
+          .in('permit_id', permitIds);
+
+        if (reqError) throw reqError;
+        requirements = reqs || [];
+      }
 
       const active = permits?.filter(p => p.status === 'active').length || 0;
       const expiringSoon = permits?.filter(p => {
@@ -99,13 +137,21 @@ export function usePermitStats() {
 }
 
 export function useExpiringPermits(days: number = 30) {
+  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const isPrivileged = isAdmin || isOwner;
+  const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
+
   return useQuery({
-    queryKey: ['expiring-permits', days],
+    queryKey: ['expiring-permits', days, allowedPropertyIds.join(',')],
+    enabled: !permissionsLoading && (isPrivileged || !propertiesLoading),
     queryFn: async () => {
+      if (!isPrivileged && allowedPropertyIds.length === 0) return [];
+
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + days);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('permits')
         .select(`
           *,
@@ -115,6 +161,12 @@ export function useExpiringPermits(days: number = 30) {
         .lte('expiry_date', futureDate.toISOString().split('T')[0])
         .gte('expiry_date', new Date().toISOString().split('T')[0])
         .order('expiry_date', { ascending: true });
+
+      if (!isPrivileged) {
+        query = query.in('property_id', allowedPropertyIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
