@@ -1,26 +1,36 @@
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Phone, PhoneOff, Volume2 } from 'lucide-react';
+import { Mic, Phone, PhoneOff, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useVoiceAgent } from '@/hooks/useVoiceAgent';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface VoiceAgentWidgetProps {
   className?: string;
   onClose?: () => void;
+  propertyId?: string | null;
+  propertyName?: string | null;
 }
 
-export function VoiceAgentWidget({ className, onClose }: VoiceAgentWidgetProps) {
+export function VoiceAgentWidget({ className, onClose, propertyId, propertyName }: VoiceAgentWidgetProps) {
+  const { user } = useAuth();
   const {
     isConnecting,
     error,
     status,
     isSpeaking,
     transcript,
+    ticketNumber,
     startConversation,
     endConversation,
-  } = useVoiceAgent();
+  } = useVoiceAgent({
+    propertyId,
+    propertyName,
+    callerName: user?.user_metadata?.full_name || user?.email || null,
+    callerEmail: user?.email || null,
+    callerPhone: user?.user_metadata?.phone || null,
+  });
 
   const isConnected = status === 'connected';
 
@@ -33,6 +43,11 @@ export function VoiceAgentWidget({ className, onClose }: VoiceAgentWidgetProps) 
           <p className="text-sm text-muted-foreground">
             {isConnected ? 'Speak with our AI assistant' : 'Click to start a voice call'}
           </p>
+          {propertyName && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Property: <span className="font-medium text-foreground">{propertyName}</span>
+            </p>
+          )}
         </div>
 
         {/* Voice Visualization */}
@@ -101,6 +116,14 @@ export function VoiceAgentWidget({ className, onClose }: VoiceAgentWidgetProps) 
                 {line}
               </p>
             ))}
+          </div>
+        )}
+
+        {ticketNumber && (
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">
+              Request created: <span className="font-medium text-foreground">{ticketNumber}</span>
+            </p>
           </div>
         )}
 

@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { Phone, Settings, Filter, RefreshCw, Mic } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Phone, Filter, RefreshCw, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VoiceAgentStats } from '@/components/voice-agent/VoiceAgentStats';
 import { VoiceAgentWidget } from '@/components/voice-agent/VoiceAgentWidget';
@@ -11,20 +10,54 @@ import { RequestQueue } from '@/components/voice-agent/RequestQueue';
 import { RequestDetailSheet } from '@/components/voice-agent/RequestDetailSheet';
 import { EmergencyAlertBanner } from '@/components/voice-agent/EmergencyAlertBanner';
 import { useMaintenanceRequests, MaintenanceRequest } from '@/hooks/useMaintenanceRequests';
+import { useProperties } from '@/hooks/useProperties';
+import { toast } from 'sonner';
 
 export default function VoiceAgentDashboard() {
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [testCallOpen, setTestCallOpen] = useState(false);
+  const [callDialogOpen, setCallDialogOpen] = useState(false);
+  const [propertySelectOpen, setPropertySelectOpen] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: requests, isLoading, refetch } = useMaintenanceRequests(
     statusFilter !== 'all' ? { status: statusFilter } : undefined
   );
+  const { data: properties = [] } = useProperties();
+
+  const selectedProperty = useMemo(
+    () => properties.find(p => p.id === selectedPropertyId) || null,
+    [properties, selectedPropertyId]
+  );
 
   const handleSelectRequest = (request: MaintenanceRequest) => {
     setSelectedRequest(request);
     setDetailOpen(true);
+  };
+
+  const handleStartCall = () => {
+    if (properties.length === 0) {
+      toast.error('No affiliated properties found');
+      return;
+    }
+
+    if (properties.length === 1) {
+      setSelectedPropertyId(properties[0].id);
+      setCallDialogOpen(true);
+      return;
+    }
+
+    setPropertySelectOpen(true);
+  };
+
+  const handleContinueFromPropertySelect = () => {
+    if (!selectedPropertyId) {
+      toast.error('Select a property to continue');
+      return;
+    }
+    setPropertySelectOpen(false);
+    setCallDialogOpen(true);
   };
 
   return (
@@ -45,20 +78,10 @@ export default function VoiceAgentDashboard() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Dialog open={testCallOpen} onOpenChange={setTestCallOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Mic className="w-4 h-4 mr-2" />
-                Test Voice Agent
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Test Voice Agent</DialogTitle>
-              </DialogHeader>
-              <VoiceAgentWidget onClose={() => setTestCallOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={handleStartCall}>
+            <Mic className="w-4 h-4 mr-2" />
+            Start Call
+          </Button>
         </div>
       </div>
 
@@ -120,22 +143,12 @@ export default function VoiceAgentDashboard() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Dialog open={testCallOpen} onOpenChange={setTestCallOpen}>
-                <DialogTrigger asChild>
-                  <Button className="w-full gap-2">
-                    <Mic className="w-4 h-4" />
-                    Start Test Call
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Test Voice Agent</DialogTitle>
-                  </DialogHeader>
-                  <VoiceAgentWidget onClose={() => setTestCallOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              <Button className="w-full gap-2" onClick={handleStartCall}>
+                <Mic className="w-4 h-4" />
+                Start Call
+              </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Try the voice agent to see how it handles calls
+                Start a call to capture a maintenance request
               </p>
             </CardContent>
           </Card>
@@ -174,7 +187,7 @@ export default function VoiceAgentDashboard() {
           {/* Tips */}
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-4">
-              <h4 className="font-medium mb-2">💡 Pro Tip</h4>
+              <h4 className="font-medium mb-2">Pro Tip</h4>
               <p className="text-sm text-muted-foreground">
                 Emergency requests are automatically flagged when callers mention keywords like 
                 "flood", "fire", "gas leak", or "no heat". These appear at the top of the queue.
@@ -183,6 +196,49 @@ export default function VoiceAgentDashboard() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={propertySelectOpen} onOpenChange={setPropertySelectOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Property</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a property" />
+              </SelectTrigger>
+              <SelectContent>
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPropertySelectOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleContinueFromPropertySelect}>
+                Continue
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={callDialogOpen} onOpenChange={setCallDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Voice Agent Call</DialogTitle>
+          </DialogHeader>
+          <VoiceAgentWidget
+            propertyId={selectedProperty?.id || null}
+            propertyName={selectedProperty?.name || null}
+            onClose={() => setCallDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Request Detail Sheet */}
       <RequestDetailSheet

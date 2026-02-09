@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
 interface VoiceAgentState {
@@ -8,15 +9,41 @@ interface VoiceAgentState {
   error: string | null;
   callId: string | null;
   transcript: string[];
+  requestId: string | null;
+  ticketNumber: string | null;
 }
 
-export function useVoiceAgent() {
+interface VoiceAgentContext {
+  propertyId?: string | null;
+  propertyName?: string | null;
+  callerName?: string | null;
+  callerEmail?: string | null;
+  callerPhone?: string | null;
+}
+
+export function useVoiceAgent(context?: VoiceAgentContext) {
   const [state, setState] = useState<VoiceAgentState>({
     isConnecting: false,
     error: null,
     callId: null,
     transcript: [],
+    requestId: null,
+    ticketNumber: null,
   });
+
+  const buildContextMessage = (callId?: string | null) => {
+    const parts = [
+      callId ? `call_id=${callId}` : null,
+      context?.propertyId ? `property_id=${context.propertyId}` : null,
+      context?.propertyName ? `property_name=${context.propertyName}` : null,
+      context?.callerName ? `caller_name=${context.callerName}` : null,
+      context?.callerEmail ? `caller_email=${context.callerEmail}` : null,
+      context?.callerPhone ? `caller_phone=${context.callerPhone}` : null,
+    ].filter(Boolean);
+
+    if (parts.length === 0) return null;
+    return `Context for this call: ${parts.join(', ')}. Use this context when creating the maintenance request.`;
+  };
 
   const conversation = useConversation({
     onConnect: () => {
@@ -54,10 +81,37 @@ export function useVoiceAgent() {
       setState(prev => ({ ...prev, error: String(error) }));
       toast.error('Voice agent error occurred');
     },
+    onAgentToolResponse: (response) => {
+      const payload = response as unknown as {
+        toolName?: string;
+        response?: { request_id?: string; formatted_ticket?: string };
+      };
+
+      if (payload?.response?.request_id) {
+        setState(prev => ({
+          ...prev,
+          requestId: payload.response?.request_id || null,
+          ticketNumber: payload.response?.formatted_ticket || null,
+        }));
+
+        if (payload.response?.formatted_ticket) {
+          toast.success(`Request created: ${payload.response.formatted_ticket}`);
+        } else {
+          toast.success('Maintenance request created');
+        }
+      }
+    },
   });
 
   const startConversation = useCallback(async () => {
-    setState(prev => ({ ...prev, isConnecting: true, error: null, transcript: [] }));
+    setState(prev => ({
+      ...prev,
+      isConnecting: true,
+      error: null,
+      transcript: [],
+      requestId: null,
+      ticketNumber: null,
+    }));
 
     try {
       // Request microphone permission
@@ -67,7 +121,25 @@ export function useVoiceAgent() {
       const { data, error } = await supabase.functions.invoke('voice-agent-token');
       
       if (error) {
-        throw new Error(error.message || 'Failed to get voice agent token');
+        let message = error.message || 'Failed to get voice agent token';
+
+        if (error instanceof FunctionsHttpError && error.context) {
+          try {
+            const text = await error.context.text();
+            try {
+              const parsed = JSON.parse(text);
+              if (parsed?.error) message = parsed.error;
+              else if (parsed?.message) message = parsed.message;
+              else if (text) message = text;
+            } catch {
+              if (text) message = text;
+            }
+          } catch {
+            // ignore parsing errors, fall back to default message
+          }
+        }
+
+        throw new Error(message);
       }
 
       if (!data?.signed_url) {
@@ -77,15 +149,22 @@ export function useVoiceAgent() {
       console.log('Starting conversation with signed URL');
 
       // Start the conversation with WebSocket (signed URL)
-      await conversation.startSession({
+      const conversationId = await conversation.startSession({
         signedUrl: data.signed_url,
       });
+
+      const callId = typeof conversationId === 'string' ? conversationId : data.agent_id || 'active';
 
       setState(prev => ({ 
         ...prev, 
         isConnecting: false,
-        callId: data.agent_id || 'active',
+        callId,
       }));
+
+      const contextMessage = buildContextMessage(callId);
+      if (contextMessage) {
+        conversation.sendContextualUpdate(contextMessage);
+      }
     } catch (error) {
       console.error('Failed to start conversation:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start voice agent';
