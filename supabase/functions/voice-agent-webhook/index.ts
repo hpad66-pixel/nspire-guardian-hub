@@ -23,8 +23,42 @@ serve(async (req) => {
     console.log('Webhook received:', JSON.stringify(payload, null, 2));
 
     const { event_type, conversation_id, data } = payload;
+    const eventType = event_type || payload?.type;
 
-    switch (event_type) {
+    const normalizeString = (value: unknown, fallback: string | null = null) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.length > 0) return trimmed;
+      }
+      return fallback;
+    };
+
+    const parseBoolean = (value: unknown) => {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', 'yes', '1'].includes(normalized)) return true;
+        if (['false', 'no', '0'].includes(normalized)) return false;
+      }
+      if (typeof value === 'number') return value === 1;
+      return null;
+    };
+
+    const buildTranscriptText = (transcript: unknown) => {
+      if (!Array.isArray(transcript)) return null;
+      const lines = transcript
+        .map((entry) => {
+          const role = normalizeString((entry as Record<string, unknown>)?.role);
+          const message = normalizeString((entry as Record<string, unknown>)?.message);
+          if (!message) return null;
+          const label = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Speaker';
+          return `${label}: ${message}`;
+        })
+        .filter(Boolean);
+      return lines.length ? lines.join('\n') : null;
+    };
+
+    switch (eventType) {
       case 'conversation.started': {
         console.log('Conversation started:', conversation_id);
         break;
@@ -34,7 +68,7 @@ serve(async (req) => {
         console.log('Conversation ended:', conversation_id);
         
         // Update the maintenance request with call data
-        if (data?.request_id) {
+        if (data?.request_id || conversation_id) {
           const { error } = await supabase
             .from('maintenance_requests')
             .update({
@@ -43,7 +77,7 @@ serve(async (req) => {
               call_transcript: data.transcript,
               call_recording_url: data.recording_url,
             })
-            .eq('call_id', conversation_id);
+            .eq(data?.request_id ? 'id' : 'call_id', data?.request_id || conversation_id);
 
           if (error) {
             console.error('Error updating request:', error);
@@ -121,8 +155,232 @@ serve(async (req) => {
         break;
       }
 
+      case 'post_call_transcription': {
+        const postCallData = data || payload?.data || {};
+        const conversationId = normalizeString(
+          postCallData?.conversation_id || conversation_id || payload?.conversation_id
+        );
+
+        const transcriptText = buildTranscriptText(postCallData?.transcript);
+        const userOnlyTranscript = Array.isArray(postCallData?.transcript)
+          ? postCallData.transcript
+              .filter((entry: Record<string, unknown>) => normalizeString(entry?.role) === 'user')
+              .map((entry: Record<string, unknown>) => normalizeString(entry?.message))
+              .filter(Boolean)
+              .join('\n')
+          : null;
+
+        const dynamicVars =
+          postCallData?.conversation_initiation_client_data?.dynamic_variables ||
+          postCallData?.conversation_initiation_client_data?.dynamicVariables ||
+          {};
+
+        const callerName =
+          normalizeString(dynamicVars?.caller_name) ||
+          normalizeString(dynamicVars?.callerName) ||
+          normalizeString(dynamicVars?.user_name) ||
+          'Unknown';
+
+        const callerPhone =
+          normalizeString(dynamicVars?.caller_phone) ||
+          normalizeString(dynamicVars?.callerPhone) ||
+          normalizeString(dynamicVars?.phone) ||
+          'Unknown';
+
+        const callerEmail =
+          normalizeString(dynamicVars?.caller_email) ||
+          normalizeString(dynamicVars?.callerEmail) ||
+          normalizeString(dynamicVars?.email);
+
+        const propertyId = normalizeString(dynamicVars?.property_id) || null;
+        const unitId = normalizeString(dynamicVars?.unit_id) || null;
+        const unitNumber = normalizeString(dynamicVars?.unit_number) || null;
+
+        const dataCollection = postCallData?.analysis?.data_collection_results || {};
+
+        const issueCategory =
+          normalizeString(dynamicVars?.issue_category) ||
+          normalizeString(dataCollection?.issue_category?.value) ||
+          normalizeString(dataCollection?.category?.value) ||
+          'other';
+
+        const issueSubcategory =
+          normalizeString(dynamicVars?.issue_subcategory) ||
+          normalizeString(dataCollection?.issue_subcategory?.value) ||
+          normalizeString(dataCollection?.subcategory?.value);
+
+        const issueLocation =
+          normalizeString(dynamicVars?.issue_location) ||
+          normalizeString(dataCollection?.issue_location?.value) ||
+          normalizeString(dataCollection?.location?.value);
+
+        const issueDescription =
+          normalizeString(dataCollection?.issue_description?.value) ||
+          normalizeString(postCallData?.analysis?.transcript_summary) ||
+          normalizeString(postCallData?.analysis?.summary) ||
+          normalizeString(userOnlyTranscript) ||
+          normalizeString(transcriptText) ||
+          'No description provided';
+
+        let urgencyLevel =
+          normalizeString(dynamicVars?.urgency_level) ||
+          normalizeString(dataCollection?.urgency_level?.value) ||
+          'normal';
+
+        const specialInstructions =
+          normalizeString(dynamicVars?.special_instructions) ||
+          normalizeString(dataCollection?.special_instructions?.value);
+
+        const preferredContactTime =
+          normalizeString(dynamicVars?.preferred_contact_time) ||
+          normalizeString(dataCollection?.preferred_contact_time?.value);
+
+        const preferredAccessTime =
+          normalizeString(dynamicVars?.preferred_access_time) ||
+          normalizeString(dataCollection?.preferred_access_time?.value);
+
+        const hasPets =
+          parseBoolean(dynamicVars?.has_pets) ??
+          parseBoolean(dataCollection?.has_pets?.value) ??
+          false;
+
+        const isEmergency =
+          parseBoolean(dynamicVars?.is_emergency) ??
+          parseBoolean(dataCollection?.is_emergency?.value);
+
+        const callDurationSeconds =
+          postCallData?.metadata?.call_duration_seconds ||
+          postCallData?.metadata?.call_duration_secs ||
+          postCallData?.call_duration_seconds ||
+          postCallData?.duration_seconds;
+
+        const callRecordingUrl =
+          normalizeString(postCallData?.recording_url) ||
+          normalizeString(postCallData?.metadata?.recording_url);
+
+        const callStartedAt =
+          normalizeString(postCallData?.metadata?.call_started_at) ||
+          normalizeString(postCallData?.metadata?.call_start_time);
+
+        const callEndedAt =
+          normalizeString(postCallData?.metadata?.call_ended_at) ||
+          normalizeString(postCallData?.metadata?.call_end_time);
+
+        let emergencyDetected = isEmergency ?? false;
+
+        try {
+          const configQuery = supabase
+            .from('voice_agent_config')
+            .select('emergency_keywords');
+
+          const { data: config } = await (propertyId
+            ? configQuery.eq('property_id', propertyId)
+            : configQuery.is('property_id', null)
+          ).maybeSingle();
+
+          const keywords = config?.emergency_keywords || [
+            'flood',
+            'fire',
+            'gas leak',
+            'no heat',
+            'no water',
+            'broken window',
+            'security',
+          ];
+
+          const transcriptForScan = `${issueDescription} ${userOnlyTranscript || ''}`.toLowerCase();
+          if (!emergencyDetected) {
+            emergencyDetected = keywords.some((keyword: string) =>
+              transcriptForScan.includes(keyword.toLowerCase())
+            );
+          }
+        } catch (configError) {
+          console.error('Error fetching emergency keywords:', configError);
+        }
+
+        if (emergencyDetected) {
+          urgencyLevel = 'emergency';
+        }
+
+        if (!conversationId) {
+          console.error('Missing conversation_id in post_call_transcription payload');
+          break;
+        }
+
+        const { data: existingRequest, error: existingError } = await supabase
+          .from('maintenance_requests')
+          .select('id')
+          .eq('call_id', conversationId)
+          .maybeSingle();
+
+        if (existingError) {
+          console.error('Error checking for existing request:', existingError);
+        }
+
+        if (existingRequest?.id) {
+          const { error: updateError } = await supabase
+            .from('maintenance_requests')
+            .update({
+              call_transcript: transcriptText || userOnlyTranscript || issueDescription,
+              call_duration_seconds: callDurationSeconds,
+              call_recording_url: callRecordingUrl,
+              call_ended_at: callEndedAt || new Date().toISOString(),
+              issue_description: issueDescription,
+              issue_category: issueCategory,
+              issue_subcategory: issueSubcategory,
+              issue_location: issueLocation,
+              urgency_level: urgencyLevel,
+              is_emergency: emergencyDetected,
+              preferred_contact_time: preferredContactTime,
+              preferred_access_time: preferredAccessTime,
+              has_pets: hasPets,
+              special_access_instructions: specialInstructions,
+            })
+            .eq('id', existingRequest.id);
+
+          if (updateError) {
+            console.error('Error updating request from post_call_transcription:', updateError);
+          }
+          break;
+        }
+
+        const { error: insertError } = await supabase
+          .from('maintenance_requests')
+          .insert({
+            caller_name: callerName,
+            caller_phone: callerPhone,
+            caller_email: callerEmail,
+            caller_unit_number: unitNumber,
+            property_id: propertyId,
+            unit_id: unitId,
+            issue_category: issueCategory,
+            issue_subcategory: issueSubcategory,
+            issue_description: issueDescription,
+            issue_location: issueLocation,
+            urgency_level: urgencyLevel,
+            is_emergency: emergencyDetected,
+            preferred_contact_time: preferredContactTime,
+            preferred_access_time: preferredAccessTime,
+            has_pets: hasPets,
+            special_access_instructions: specialInstructions,
+            call_id: conversationId,
+            call_started_at: callStartedAt || new Date().toISOString(),
+            call_ended_at: callEndedAt || new Date().toISOString(),
+            call_duration_seconds: callDurationSeconds,
+            call_transcript: transcriptText || userOnlyTranscript || issueDescription,
+            call_recording_url: callRecordingUrl,
+            status: 'new',
+          });
+
+        if (insertError) {
+          console.error('Error creating request from post_call_transcription:', insertError);
+        }
+
+        break;
+      }
+
       default:
-        console.log('Unknown event type:', event_type);
+        console.log('Unknown event type:', eventType);
     }
 
     return new Response(
