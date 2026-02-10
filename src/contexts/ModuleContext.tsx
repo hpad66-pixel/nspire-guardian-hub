@@ -125,7 +125,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     
     if (!columnName) {
       // For future modules not in DB, just toggle locally
-      setModules(prev => ({ ...prev, [module]: !prev[module] }));
+      setTenantModules(prev => ({ ...prev, [module]: !prev[module] }));
       return;
     }
 

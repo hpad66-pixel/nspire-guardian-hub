@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.serve-course-content]
 verify_jwt = false
+
+[functions.extract-transcript-issues]
+verify_jwt = false

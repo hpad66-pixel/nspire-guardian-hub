@@ -245,7 +245,7 @@ export function DailyInspectionWizard({
         const check = assetChecks[asset.id];
         if (!check?.status || check.status === 'ok') return [];
 
-        const severity = check.status === 'defect_found' ? 'severe' : 'moderate';
+        const severity: 'severe' | 'moderate' = check.status === 'defect_found' ? 'severe' : 'moderate';
         const title =
           check.status === 'defect_found'
             ? `Defect found: ${asset.name}`
@@ -263,8 +263,8 @@ export function DailyInspectionWizard({
             property_id: propertyId,
             title,
             description: descriptionParts.join('\n'),
-            source_module: 'core',
-            area: 'outside',
+            source_module: 'core' as const,
+            area: 'outside' as const,
             severity,
             status: 'open',
             assigned_to: assignedTo,
