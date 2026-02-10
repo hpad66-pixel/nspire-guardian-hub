@@ -106,3 +106,43 @@ export function useUpdateIssue() {
     },
   });
 }
+
+export function useCreateIssuesFromTranscript() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      issues: {
+        property_id: string;
+        title: string;
+        description: string;
+        severity: 'severe' | 'moderate' | 'low';
+        area: 'unit' | 'inside' | 'outside';
+        source_module: 'voice_agent';
+        maintenance_request_id: string;
+        status: string;
+      }[]
+    ) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const inserts = issues.map((issue) => ({
+        ...issue,
+        created_by: user?.id,
+      }));
+
+      const { data, error } = await supabase
+        .from('issues')
+        .insert(inserts as any)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issues'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create issues: ${error.message}`);
+    },
+  });
+}
