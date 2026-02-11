@@ -13,6 +13,7 @@ import {
   PawPrint,
   Wrench
 } from 'lucide-react';
+import { TranscriptIssueReview } from './TranscriptIssueReview';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -250,6 +251,20 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
                 </div>
               </div>
               <Separator />
+
+              {/* Extract Issues from Transcript */}
+              {request.property_id && (
+                <>
+                  <TranscriptIssueReview
+                    transcript={request.call_transcript}
+                    propertyId={request.property_id}
+                    callerName={request.caller_name}
+                    issueCategory={request.issue_category}
+                    maintenanceRequestId={request.id}
+                  />
+                  <Separator />
+                </>
+              )}
             </>
           )}
 

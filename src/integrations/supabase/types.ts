@@ -50,6 +50,30 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_type_definitions: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       assets: {
         Row: {
           asset_type: Database["public"]["Enums"]["asset_type"]
@@ -797,6 +821,7 @@ export type Database = {
           defect_id: string | null
           description: string | null
           id: string
+          maintenance_request_id: string | null
           proof_required: boolean | null
           property_id: string
           resolved_at: string | null
@@ -817,6 +842,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id: string
           resolved_at?: string | null
@@ -837,6 +863,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id?: string
           resolved_at?: string | null
@@ -860,6 +887,13 @@ export type Database = {
             columns: ["defect_id"]
             isOneToOne: false
             referencedRelation: "defects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issues_maintenance_request_id_fkey"
+            columns: ["maintenance_request_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_requests"
             referencedColumns: ["id"]
           },
           {
@@ -2912,24 +2946,6 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_module_access: {
         Row: {
           created_at: string
@@ -2956,6 +2972,24 @@ export type Database = {
           module_key?: string
           updated_at?: string
           updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -3283,6 +3317,26 @@ export type Database = {
         Returns: string
       }
       can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          property_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "user_invitations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3302,6 +3356,8 @@ export type Database = {
         | "superintendent"
         | "subcontractor"
         | "viewer"
+        | "administrator"
+        | "clerk"
       asset_type:
         | "cleanout"
         | "catch_basin"
@@ -3333,7 +3389,13 @@ export type Database = {
         | "overdue"
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
-      issue_source: "core" | "nspire" | "projects" | "daily_grounds" | "permits"
+      issue_source:
+        | "core"
+        | "nspire"
+        | "projects"
+        | "daily_grounds"
+        | "permits"
+        | "voice_agent"
       message_type: "external" | "internal"
       permit_status: "draft" | "active" | "expired" | "renewed" | "revoked"
       permit_type:
@@ -3523,16 +3585,16 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
-        "owner",
         "manager",
         "inspector",
-        "administrator",
-        "superintendent",
-        "clerk",
         "user",
+        "owner",
         "project_manager",
+        "superintendent",
         "subcontractor",
         "viewer",
+        "administrator",
+        "clerk",
       ],
       asset_type: [
         "cleanout",
@@ -3569,7 +3631,14 @@ export const Constants = {
       ],
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
-      issue_source: ["core", "nspire", "projects", "daily_grounds", "permits"],
+      issue_source: [
+        "core",
+        "nspire",
+        "projects",
+        "daily_grounds",
+        "permits",
+        "voice_agent",
+      ],
       message_type: ["external", "internal"],
       permit_status: ["draft", "active", "expired", "renewed", "revoked"],
       permit_type: [
