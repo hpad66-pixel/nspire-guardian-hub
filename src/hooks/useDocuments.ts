@@ -7,6 +7,7 @@ export interface OrganizationDocument {
   id: string;
   folder: string;
   subfolder: string | null;
+  folder_id: string | null;
   name: string;
   description: string | null;
   file_url: string;
@@ -33,9 +34,9 @@ export const DOCUMENT_FOLDERS = [
   'Reports',
 ] as const;
 
-export function useOrganizationDocuments(folder?: string) {
+export function useOrganizationDocuments(folderId?: string | null) {
   return useQuery({
-    queryKey: ['organization-documents', folder],
+    queryKey: ['organization-documents', folderId],
     queryFn: async () => {
       let query = supabase
         .from('organization_documents')
@@ -43,8 +44,8 @@ export function useOrganizationDocuments(folder?: string) {
         .eq('is_archived', false)
         .order('created_at', { ascending: false });
       
-      if (folder) {
-        query = query.eq('folder', folder);
+      if (folderId) {
+        query = query.eq('folder_id', folderId);
       }
       
       const { data, error } = await query;
@@ -60,25 +61,38 @@ export function useDocumentFolderStats() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('organization_documents')
-        .select('folder')
+        .select('folder, subfolder')
         .eq('is_archived', false);
       
       if (error) throw error;
       
       const stats: Record<string, number> = {};
+      const subfoldersByFolder: Record<string, Set<string>> = {};
       DOCUMENT_FOLDERS.forEach(folder => {
         stats[folder] = 0;
       });
       
-      data.forEach((doc: { folder: string }) => {
+      data.forEach((doc: { folder: string; subfolder: string | null }) => {
         if (stats[doc.folder] !== undefined) {
           stats[doc.folder]++;
         } else {
           stats[doc.folder] = 1;
         }
+        
+        if (doc.subfolder) {
+          if (!subfoldersByFolder[doc.folder]) {
+            subfoldersByFolder[doc.folder] = new Set();
+          }
+          subfoldersByFolder[doc.folder].add(doc.subfolder);
+        }
       });
       
-      return stats;
+      const subfolders: Record<string, string[]> = {};
+      Object.entries(subfoldersByFolder).forEach(([folder, set]) => {
+        subfolders[folder] = Array.from(set).sort((a, b) => a.localeCompare(b));
+      });
+      
+      return { stats, subfoldersByFolder: subfolders };
     },
   });
 }
@@ -87,10 +101,22 @@ export function useUploadOrganizationDocument() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
+  const toStoragePathSegment = (value: string) => {
+    const cleaned = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return cleaned || 'general';
+  };
+  
   return useMutation({
     mutationFn: async ({
       file,
       folder,
+      folderId,
+      folderPathSegments,
+      subfolder,
       name,
       description,
       tags,
@@ -98,6 +124,9 @@ export function useUploadOrganizationDocument() {
     }: {
       file: File;
       folder: string;
+      folderId?: string | null;
+      folderPathSegments?: string[];
+      subfolder?: string;
       name: string;
       description?: string;
       tags?: string[];
@@ -105,10 +134,19 @@ export function useUploadOrganizationDocument() {
     }) => {
       if (!user) throw new Error('Not authenticated');
       
+      const normalizedFolder = folder.trim() || 'General';
+      const normalizedSubfolder = subfolder?.trim() || null;
+      const normalizedPathSegments = (folderPathSegments && folderPathSegments.length > 0)
+        ? folderPathSegments
+        : [normalizedFolder];
+      
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${folder.toLowerCase()}/${fileName}`;
+      const storagePath = normalizedPathSegments
+        .map((segment) => toStoragePathSegment(segment))
+        .join('/');
+      const filePath = `${storagePath}/${fileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('organization-documents')
@@ -125,7 +163,9 @@ export function useUploadOrganizationDocument() {
       const { data, error } = await supabase
         .from('organization_documents')
         .insert({
-          folder,
+          folder: normalizedFolder,
+          subfolder: normalizedSubfolder,
+          folder_id: folderId || null,
           name,
           description: description || null,
           file_url: urlData.publicUrl,
@@ -160,6 +200,7 @@ export function useUpdateOrganizationDocument() {
       name,
       description,
       folder,
+      subfolder,
       tags,
       expiryDate,
     }: {
@@ -167,6 +208,7 @@ export function useUpdateOrganizationDocument() {
       name?: string;
       description?: string;
       folder?: string;
+      subfolder?: string | null;
       tags?: string[];
       expiryDate?: string | null;
     }) => {
@@ -174,6 +216,7 @@ export function useUpdateOrganizationDocument() {
       if (name !== undefined) updates.name = name;
       if (description !== undefined) updates.description = description;
       if (folder !== undefined) updates.folder = folder;
+      if (subfolder !== undefined) updates.subfolder = subfolder;
       if (tags !== undefined) updates.tags = tags;
       if (expiryDate !== undefined) updates.expiry_date = expiryDate;
       
