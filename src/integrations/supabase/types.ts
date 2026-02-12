@@ -682,6 +682,38 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspections: {
         Row: {
           area: Database["public"]["Enums"]["inspection_area"]
@@ -1187,6 +1219,7 @@ export type Database = {
           file_size: number | null
           file_url: string
           folder: string
+          folder_id: string | null
           id: string
           is_archived: boolean | null
           mime_type: string | null
@@ -1205,6 +1238,7 @@ export type Database = {
           file_size?: number | null
           file_url: string
           folder?: string
+          folder_id?: string | null
           id?: string
           is_archived?: boolean | null
           mime_type?: string | null
@@ -1223,6 +1257,7 @@ export type Database = {
           file_size?: number | null
           file_url?: string
           folder?: string
+          folder_id?: string | null
           id?: string
           is_archived?: boolean | null
           mime_type?: string | null
@@ -1235,6 +1270,13 @@ export type Database = {
           version?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "organization_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organization_documents_previous_version_id_fkey"
             columns: ["previous_version_id"]
