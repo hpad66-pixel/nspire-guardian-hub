@@ -151,6 +151,7 @@ export function useCreateDiscussion() {
       contentHtml?: string;
       linkedEntityType?: string;
       linkedEntityId?: string;
+      attachments?: string[];
     }) => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) throw new Error("Not authenticated");
@@ -165,6 +166,7 @@ export function useCreateDiscussion() {
           created_by: session.session.user.id,
           linked_entity_type: params.linkedEntityType || null,
           linked_entity_id: params.linkedEntityId || null,
+          attachments: params.attachments || [],
         })
         .select()
         .single();
@@ -191,6 +193,7 @@ export function useCreateReply() {
       projectId: string;
       content: string;
       contentHtml?: string;
+      attachments?: string[];
     }) => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) throw new Error("Not authenticated");
@@ -202,6 +205,7 @@ export function useCreateReply() {
           content: params.content,
           content_html: params.contentHtml || null,
           created_by: session.session.user.id,
+          attachments: params.attachments || [],
         })
         .select()
         .single();

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { format, isToday, isYesterday, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,6 +12,8 @@ import {
   LinkIcon,
   MessageCircle,
   Sparkles,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   useProjectDiscussions,
   useDiscussionReplies,
@@ -39,6 +43,19 @@ interface DiscussionPanelProps {
 
 type View = "list" | "calendar" | "thread" | "new";
 
+async function uploadAttachment(file: File, projectId: string): Promise<string> {
+  const ext = file.name.split(".").pop();
+  const path = `${projectId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("discussion-attachments")
+    .upload(path, file);
+  if (error) throw error;
+  const { data } = supabase.storage
+    .from("discussion-attachments")
+    .getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelProps) {
   const [view, setView] = useState<View>("list");
   const [selectedDiscussion, setSelectedDiscussion] = useState<DiscussionWithDetails | null>(null);
@@ -47,6 +64,10 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
+  const [newAttachments, setNewAttachments] = useState<string[]>([]);
+  const [replyAttachments, setReplyAttachments] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingReply, setIsUploadingReply] = useState(false);
 
   const { user } = useAuth();
   const { data: discussions = [], isLoading } = useProjectDiscussions(projectId);
@@ -56,6 +77,8 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   useDiscussionRealtime(projectId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const newFileRef = useRef<HTMLInputElement>(null);
+  const replyFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (bottomRef.current && view === "thread") {
@@ -73,7 +96,6 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   const getInitials = (name: string | null) =>
     name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 
-  // Group discussions by date for calendar dots
   const discussionsByDate = new Map<string, DiscussionWithDetails[]>();
   discussions.forEach((d) => {
     const key = format(new Date(d.created_at), "yyyy-MM-dd");
@@ -81,10 +103,31 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
     discussionsByDate.get(key)!.push(d);
   });
 
-  // Filter discussions for selected date
   const filteredDiscussions = selectedDate
     ? discussions.filter((d) => isSameDay(new Date(d.created_at), selectedDate))
     : discussions;
+
+  const handleFileUpload = useCallback(async (
+    files: FileList | null,
+    target: "new" | "reply"
+  ) => {
+    if (!files || files.length === 0) return;
+    const setter = target === "new" ? setNewAttachments : setReplyAttachments;
+    const setLoading = target === "new" ? setIsUploading : setIsUploadingReply;
+    setLoading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const url = await uploadAttachment(file, projectId);
+        urls.push(url);
+      }
+      setter((prev) => [...prev, ...urls]);
+    } catch (err) {
+      toast.error("Failed to upload file");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   const handleCreateDiscussion = async () => {
     if (!newTitle.trim() || !newContent.trim()) return;
@@ -92,20 +135,24 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       projectId,
       title: newTitle.trim(),
       content: newContent.trim(),
+      attachments: newAttachments.length > 0 ? newAttachments : undefined,
     });
     setNewTitle("");
     setNewContent("");
+    setNewAttachments([]);
     setView("list");
   };
 
   const handleReply = async () => {
-    if (!replyContent.trim() || !selectedDiscussion) return;
+    if ((!replyContent.trim() && replyAttachments.length === 0) || !selectedDiscussion) return;
     await createReply.mutateAsync({
       discussionId: selectedDiscussion.id,
       projectId,
-      content: replyContent.trim(),
+      content: replyContent.trim() || "(photo)",
+      attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
     });
     setReplyContent("");
+    setReplyAttachments([]);
   };
 
   const openThread = (discussion: DiscussionWithDetails) => {
@@ -113,7 +160,6 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
     setView("thread");
   };
 
-  // Calendar rendering
   const calendarDays = eachDayOfInterval({
     start: startOfMonth(calendarMonth),
     end: endOfMonth(calendarMonth),
@@ -214,6 +260,50 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                   className="text-sm resize-none"
                 />
               </div>
+
+              {/* Attachment previews */}
+              {newAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {newAttachments.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url} alt="" className="h-16 w-16 object-cover rounded-lg border border-border" />
+                      <button
+                        type="button"
+                        onClick={() => setNewAttachments((a) => a.filter((_, j) => j !== i))}
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  ref={newFileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e.target.files, "new")}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => newFileRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-4 w-4 mr-1.5" />
+                  )}
+                  Add Photo
+                </Button>
+              </div>
+
               <Button
                 onClick={handleCreateDiscussion}
                 disabled={!newTitle.trim() || !newContent.trim() || createDiscussion.isPending}
@@ -234,7 +324,6 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
               exit={{ opacity: 0 }}
               className="p-4 space-y-4"
             >
-              {/* Month nav */}
               <div className="flex items-center justify-between">
                 <Button
                   variant="ghost"
@@ -257,20 +346,15 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                 </Button>
               </div>
 
-              {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 text-center">
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
                   <div key={d} className="text-[10px] font-medium text-muted-foreground py-1">
                     {d}
                   </div>
                 ))}
-
-                {/* Empty cells for offset */}
                 {Array.from({ length: startDayOfWeek }).map((_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
-
-                {/* Calendar days */}
                 {calendarDays.map((day) => {
                   const key = format(day, "yyyy-MM-dd");
                   const count = discussionsByDate.get(key)?.length || 0;
@@ -280,9 +364,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                   return (
                     <button
                       key={key}
-                      onClick={() => {
-                        setSelectedDate(isSelected ? null : day);
-                      }}
+                      onClick={() => setSelectedDate(isSelected ? null : day)}
                       className={cn(
                         "relative h-9 w-full rounded-md text-xs transition-all",
                         "hover:bg-accent/50",
@@ -307,7 +389,6 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
 
               <Separator />
 
-              {/* Filtered list below calendar */}
               {selectedDate && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground mb-2">
@@ -408,6 +489,8 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                     <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
                       {selectedDiscussion.content}
                     </p>
+                    {/* Original post attachments */}
+                    <AttachmentGallery attachments={(selectedDiscussion as any).attachments} />
                     {selectedDiscussion.linked_entity_type && (
                       <Badge variant="outline" className="mt-2 text-[10px] gap-1">
                         <LinkIcon className="h-2.5 w-2.5" />
@@ -429,7 +512,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                     <div key={reply.id} className="flex items-start gap-3">
                       <Avatar className="h-7 w-7 mt-0.5">
                         <AvatarImage src={reply.author?.avatar_url || undefined} />
-                        <AvatarFallback className="text-[10px] bg-accent">
+                        <AvatarFallback className="text-[10px] bg-accent text-accent-foreground">
                           {getInitials(reply.author?.full_name ?? null)}
                         </AvatarFallback>
                       </Avatar>
@@ -446,7 +529,10 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                             <span className="text-[10px] text-muted-foreground italic">(edited)</span>
                           )}
                         </div>
-                        <p className="text-sm mt-0.5 whitespace-pre-wrap">{reply.content}</p>
+                        {reply.content && reply.content !== "(photo)" && (
+                          <p className="text-sm mt-0.5 whitespace-pre-wrap">{reply.content}</p>
+                        )}
+                        <AttachmentGallery attachments={(reply as any).attachments} />
                       </div>
                     </div>
                   ))
@@ -458,16 +544,55 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
         </AnimatePresence>
       </ScrollArea>
 
-      {/* Reply composer (thread view) */}
+      {/* Reply composer (thread view) — prominent and always visible */}
       {view === "thread" && selectedDiscussion && (
-        <div className="border-t p-3 bg-background">
-          <div className="flex gap-2">
+        <div className="border-t bg-card p-3 space-y-2 shadow-[0_-2px_10px_-3px_hsl(var(--foreground)/0.06)]">
+          {/* Reply attachment previews */}
+          {replyAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-1">
+              {replyAttachments.map((url, i) => (
+                <div key={i} className="relative group">
+                  <img src={url} alt="" className="h-14 w-14 object-cover rounded-lg border border-border" />
+                  <button
+                    type="button"
+                    onClick={() => setReplyAttachments((a) => a.filter((_, j) => j !== i))}
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <input
+              ref={replyFileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files, "reply")}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={() => replyFileRef.current?.click()}
+              disabled={isUploadingReply}
+            >
+              {isUploadingReply ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+            </Button>
             <Textarea
-              placeholder="Write a reply..."
+              placeholder="Add a reply, note, or update..."
               value={replyContent}
               onChange={(e) => setReplyContent(e.target.value)}
               rows={2}
-              className="text-sm resize-none flex-1"
+              className="text-sm resize-none flex-1 min-h-[44px]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   handleReply();
@@ -476,17 +601,37 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
             />
             <Button
               size="icon"
-              className="h-auto self-end"
-              disabled={!replyContent.trim() || createReply.isPending}
+              className="h-9 w-9 shrink-0"
+              disabled={(!replyContent.trim() && replyAttachments.length === 0) || createReply.isPending}
               onClick={handleReply}
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">⌘+Enter to send</p>
+          <p className="text-[10px] text-muted-foreground">⌘+Enter to send · Click 📷 to attach photos</p>
         </div>
       )}
     </motion.div>
+  );
+}
+
+// Attachment gallery
+function AttachmentGallery({ attachments }: { attachments?: string[] | null }) {
+  if (!attachments || attachments.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {attachments.map((url, i) => (
+        <a
+          key={i}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
+        >
+          <img src={url} alt="" className="h-24 w-24 object-cover" />
+        </a>
+      ))}
+    </div>
   );
 }
 
@@ -518,6 +663,13 @@ function DiscussionItem({
             <span className="text-sm font-semibold text-foreground truncate">{discussion.title}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-relaxed">{discussion.content}</p>
+          {/* Show attachment indicator */}
+          {(discussion as any).attachments?.length > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              <ImagePlus className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">{(discussion as any).attachments.length} photo(s)</span>
+            </div>
+          )}
           <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border/40">
             <span className="text-[10px] text-muted-foreground font-medium">
               {discussion.author?.full_name || "Unknown"}

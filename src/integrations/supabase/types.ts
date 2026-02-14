@@ -1592,6 +1592,7 @@ export type Database = {
       }
       project_discussion_replies: {
         Row: {
+          attachments: string[] | null
           content: string
           content_html: string | null
           created_at: string
@@ -1602,6 +1603,7 @@ export type Database = {
           is_edited: boolean
         }
         Insert: {
+          attachments?: string[] | null
           content: string
           content_html?: string | null
           created_at?: string
@@ -1612,6 +1614,7 @@ export type Database = {
           is_edited?: boolean
         }
         Update: {
+          attachments?: string[] | null
           content?: string
           content_html?: string | null
           created_at?: string
@@ -1633,6 +1636,7 @@ export type Database = {
       }
       project_discussions: {
         Row: {
+          attachments: string[] | null
           content: string
           content_html: string | null
           created_at: string
@@ -1646,6 +1650,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachments?: string[] | null
           content: string
           content_html?: string | null
           created_at?: string
@@ -1659,6 +1664,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachments?: string[] | null
           content?: string
           content_html?: string | null
           created_at?: string
