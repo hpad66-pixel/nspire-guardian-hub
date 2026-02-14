@@ -142,12 +142,20 @@
     @apply bg-[hsl(var(--severity-severe))] text-[hsl(var(--severity-severe-foreground))];
   }
 
+  .severity-severe-lt {
+    @apply bg-[hsl(var(--severity-severe))] text-[hsl(var(--severity-severe-foreground))] ring-2 ring-[hsl(var(--severity-severe))]/30 font-bold;
+  }
+
   .severity-moderate {
     @apply bg-[hsl(var(--severity-moderate))] text-[hsl(var(--severity-moderate-foreground))];
   }
 
   .severity-low {
     @apply bg-[hsl(var(--severity-low))] text-[hsl(var(--severity-low-foreground))];
+  }
+
+  .severity-unscored {
+    @apply bg-[hsl(var(--module-inspections))]/15 text-[hsl(var(--module-inspections))] border border-[hsl(var(--module-inspections))]/30;
   }
 
   /* Module indicators */
