@@ -7,6 +7,9 @@ type InspectionRow = Database['public']['Tables']['inspections']['Row'];
 type InspectionInsert = Database['public']['Tables']['inspections']['Insert'];
 
 export interface Inspection extends InspectionRow {
+  nspire_score: number | null;
+  unit_performance_score: number | null;
+  data_retention_until: string | null;
   property?: {
     name: string;
   };
@@ -17,6 +20,7 @@ export interface Inspection extends InspectionRow {
     id: string;
     severity: string;
     item_name: string;
+    life_threatening: boolean;
   }>;
 }
 
@@ -30,7 +34,7 @@ export function useInspections() {
           *,
           property:properties(name),
           unit:units(unit_number),
-          defects(id, severity, item_name)
+          defects(id, severity, item_name, life_threatening)
         `)
         .order('inspection_date', { ascending: false });
       
@@ -50,7 +54,7 @@ export function useInspectionsByProperty(propertyId: string) {
           *,
           property:properties(name),
           unit:units(unit_number),
-          defects(id, severity, item_name)
+          defects(id, severity, item_name, life_threatening)
         `)
         .eq('property_id', propertyId)
         .order('inspection_date', { ascending: false });
@@ -72,7 +76,7 @@ export function useInspectionsByArea(area: 'outside' | 'inside' | 'unit') {
           *,
           property:properties(name),
           unit:units(unit_number),
-          defects(id, severity, item_name)
+          defects(id, severity, item_name, life_threatening)
         `)
         .eq('area', area)
         .order('inspection_date', { ascending: false });

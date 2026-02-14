@@ -628,9 +628,11 @@ export type Database = {
           id: string
           inspection_id: string
           item_name: string
+          life_threatening: boolean
           notes: string | null
           nspire_item_id: string
           photo_urls: string[] | null
+          point_value: number | null
           proof_required: boolean | null
           repair_deadline: string
           repair_verified: boolean | null
@@ -645,9 +647,11 @@ export type Database = {
           id?: string
           inspection_id: string
           item_name: string
+          life_threatening?: boolean
           notes?: string | null
           nspire_item_id: string
           photo_urls?: string[] | null
+          point_value?: number | null
           proof_required?: boolean | null
           repair_deadline: string
           repair_verified?: boolean | null
@@ -662,9 +666,11 @@ export type Database = {
           id?: string
           inspection_id?: string
           item_name?: string
+          life_threatening?: boolean
           notes?: string | null
           nspire_item_id?: string
           photo_urls?: string[] | null
+          point_value?: number | null
           proof_required?: boolean | null
           repair_deadline?: string
           repair_verified?: boolean | null
@@ -714,44 +720,77 @@ export type Database = {
           },
         ]
       }
+      hud_sample_sizes: {
+        Row: {
+          created_at: string
+          id: string
+          max_units: number
+          min_units: number
+          sample_size: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_units: number
+          min_units: number
+          sample_size: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_units?: number
+          min_units?: number
+          sample_size?: number
+        }
+        Relationships: []
+      }
       inspections: {
         Row: {
           area: Database["public"]["Enums"]["inspection_area"]
           completed_at: string | null
           created_at: string
+          data_retention_until: string | null
           id: string
           inspection_date: string
           inspector_id: string | null
           notes: string | null
+          nspire_score: number | null
           property_id: string
           status: string | null
           unit_id: string | null
+          unit_performance_score: number | null
           updated_at: string
         }
         Insert: {
           area: Database["public"]["Enums"]["inspection_area"]
           completed_at?: string | null
           created_at?: string
+          data_retention_until?: string | null
           id?: string
           inspection_date?: string
           inspector_id?: string | null
           notes?: string | null
+          nspire_score?: number | null
           property_id: string
           status?: string | null
           unit_id?: string | null
+          unit_performance_score?: number | null
           updated_at?: string
         }
         Update: {
           area?: Database["public"]["Enums"]["inspection_area"]
           completed_at?: string | null
           created_at?: string
+          data_retention_until?: string | null
           id?: string
           inspection_date?: string
           inspector_id?: string | null
           notes?: string | null
+          nspire_score?: number | null
           property_id?: string
           status?: string | null
           unit_id?: string | null
+          unit_performance_score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1184,6 +1223,33 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      nspire_scoring_weights: {
+        Row: {
+          area: string
+          category: string
+          created_at: string
+          display_order: number
+          id: string
+          weight: number
+        }
+        Insert: {
+          area: string
+          category: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          weight: number
+        }
+        Update: {
+          area?: string
+          category?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          weight?: number
         }
         Relationships: []
       }

@@ -24,7 +24,13 @@ export const SEVERITY_DEADLINES: Record<SeverityLevel, number> = {
 // Issue source tracking
 export type IssueSource = 'core' | 'nspire' | 'projects';
 
-// NSPIRE Defect Item
+// Conditional rule types for regulatory logic
+export interface ConditionalRule {
+  type: 'seasonal' | 'proximity' | 'structural' | 'pre1978' | 'placement' | 'count';
+  description: string;
+}
+
+// NSPIRE Defect Item (enhanced with book data)
 export interface DefectItem {
   id: string;
   area: InspectionArea;
@@ -34,6 +40,16 @@ export interface DefectItem {
   defaultSeverity: SeverityLevel;
   proofRequired: boolean;
   notes?: string;
+  // New fields from the book
+  pointValue: {
+    outside: number | null;
+    inside: number | null;
+    unit: number | null;
+  };
+  isLifeThreatening: boolean;
+  isUnscored: boolean; // Smoke/CO detectors - generate work orders but don't affect REAC score
+  regulatoryHint: string;
+  conditionalRules?: ConditionalRule[];
 }
 
 // Inspection Record
@@ -47,6 +63,9 @@ export interface Inspection {
   completedDate?: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'failed';
   defects: InspectionDefect[];
+  nspireScore?: number;
+  unitPerformanceScore?: number;
+  dataRetentionUntil?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,6 +77,8 @@ export interface InspectionDefect {
   defectItemId: string;
   condition: string;
   severity: SeverityLevel;
+  lifeThreatening: boolean;
+  pointValue?: number;
   location: string;
   photos: string[];
   notes: string;
@@ -74,7 +95,7 @@ export interface Issue {
   title: string;
   description: string;
   sourceModule: IssueSource;
-  sourceId?: string; // ID of inspection or project that created this
+  sourceId?: string;
   propertyId: string;
   unitId?: string;
   assetId?: string;
@@ -140,3 +161,19 @@ export interface Unit {
   lastInspectionDate?: string;
   nextInspectionDue?: string;
 }
+
+// Priority Pyramid tiers (highest to lowest impact)
+export const PRIORITY_PYRAMID_TIERS = [
+  { area: 'unit' as InspectionArea, severity: 'severe' as SeverityLevel, lt: true, label: 'Unit | Severe-LT', rank: 1 },
+  { area: 'inside' as InspectionArea, severity: 'severe' as SeverityLevel, lt: true, label: 'Inside | Severe-LT', rank: 2 },
+  { area: 'outside' as InspectionArea, severity: 'severe' as SeverityLevel, lt: true, label: 'Outside | Severe-LT', rank: 3 },
+  { area: 'unit' as InspectionArea, severity: 'severe' as SeverityLevel, lt: false, label: 'Unit | Severe', rank: 4 },
+  { area: 'inside' as InspectionArea, severity: 'severe' as SeverityLevel, lt: false, label: 'Inside | Severe', rank: 5 },
+  { area: 'outside' as InspectionArea, severity: 'severe' as SeverityLevel, lt: false, label: 'Outside | Severe', rank: 6 },
+  { area: 'unit' as InspectionArea, severity: 'moderate' as SeverityLevel, lt: false, label: 'Unit | Moderate', rank: 7 },
+  { area: 'inside' as InspectionArea, severity: 'moderate' as SeverityLevel, lt: false, label: 'Inside | Moderate', rank: 8 },
+  { area: 'outside' as InspectionArea, severity: 'moderate' as SeverityLevel, lt: false, label: 'Outside | Moderate', rank: 9 },
+  { area: 'unit' as InspectionArea, severity: 'low' as SeverityLevel, lt: false, label: 'Unit | Low', rank: 10 },
+  { area: 'inside' as InspectionArea, severity: 'low' as SeverityLevel, lt: false, label: 'Inside | Low', rank: 11 },
+  { area: 'outside' as InspectionArea, severity: 'low' as SeverityLevel, lt: false, label: 'Outside | Low', rank: 12 },
+] as const;
