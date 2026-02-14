@@ -202,10 +202,16 @@ export default function Dashboard() {
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkNotificationRead();
 
-  const actionNotifications = useMemo(() => 
-    notifications.filter((n) => !n.is_read && (n.type === 'mention' || n.type === 'assignment')),
-    [notifications]
-  );
+  const actionNotifications = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return notifications.filter((n) => 
+      (n.type === 'mention' || n.type === 'assignment') &&
+      new Date(n.created_at) > sevenDaysAgo
+    );
+  }, [notifications]);
+
+  const unreadActionCount = actionNotifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
     if (!selectedPropertyId && properties && properties.length > 0) {
@@ -501,13 +507,20 @@ export default function Dashboard() {
         {/* Action Items — Discussion Mentions & Assignments */}
         {actionNotifications.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <AtSign className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">Action Required</h2>
-                <p className="text-xs text-muted-foreground">{actionNotifications.length} item{actionNotifications.length !== 1 ? 's' : ''} need your attention</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <AtSign className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Action Required</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {unreadActionCount > 0 
+                      ? `${unreadActionCount} new · ${actionNotifications.length} total this week`
+                      : `${actionNotifications.length} item${actionNotifications.length !== 1 ? 's' : ''} this week`
+                    }
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -516,20 +529,27 @@ export default function Dashboard() {
                 <Link
                   key={n.id}
                   to={n.entity_type === 'project' && n.entity_id ? `/projects/${n.entity_id}` : '#'}
-                  onClick={() => markRead.mutate(n.id)}
-                  className="flex items-center gap-3 p-4 rounded-xl bg-card border border-primary/20 hover:border-primary/40 hover:shadow-md transition-all group"
+                  onClick={() => { if (!n.is_read) markRead.mutate(n.id); }}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl bg-card border hover:shadow-md transition-all group",
+                    !n.is_read ? "border-primary/30 bg-primary/5" : "border-border/50"
+                  )}
                 >
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className={cn(
+                    "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
+                    !n.is_read ? "bg-primary/15" : "bg-muted/50"
+                  )}>
                     {n.type === 'mention' ? (
-                      <AtSign className="h-4 w-4 text-primary" />
+                      <AtSign className={cn("h-4 w-4", !n.is_read ? "text-primary" : "text-muted-foreground")} />
                     ) : (
-                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <MessageSquare className={cn("h-4 w-4", !n.is_read ? "text-primary" : "text-muted-foreground")} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{n.title}</p>
+                    <p className={cn("text-sm truncate", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>{n.title}</p>
                     {n.message && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.message}</p>}
                   </div>
+                  {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary shrink-0" />}
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                 </Link>
               ))}
