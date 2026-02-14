@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
+import { AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,7 +17,9 @@ import {
   FolderKanban,
   TrendingUp,
   Clock,
+  MessageSquareText,
 } from 'lucide-react';
+import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
 import { useProject } from '@/hooks/useProjects';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
@@ -53,6 +56,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
   const { data: milestones } = useMilestonesByProject(id ?? null);
@@ -118,7 +122,8 @@ export default function ProjectDetailPage() {
     .reduce((sum, co) => sum + (Number(co.amount) || 0), 0) || 0;
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="flex h-full">
+    <div className="flex-1 p-6 space-y-6 animate-fade-in overflow-auto">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -142,10 +147,19 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Project
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={discussionsPanelOpen ? "secondary" : "outline"}
+            onClick={() => setDiscussionsPanelOpen(!discussionsPanelOpen)}
+          >
+            <MessageSquareText className="h-4 w-4 mr-2" />
+            Discussions
+          </Button>
+          <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Project
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics */}
@@ -369,6 +383,17 @@ export default function ProjectDetailPage() {
         onOpenChange={setEditDialogOpen}
         project={project}
       />
+    </div>
+
+    <AnimatePresence>
+      {discussionsPanelOpen && id && (
+        <DiscussionPanel
+          projectId={id}
+          open={discussionsPanelOpen}
+          onClose={() => setDiscussionsPanelOpen(false)}
+        />
+      )}
+    </AnimatePresence>
     </div>
   );
 }

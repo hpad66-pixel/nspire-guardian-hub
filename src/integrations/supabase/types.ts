@@ -1590,6 +1590,97 @@ export type Database = {
           },
         ]
       }
+      project_discussion_replies: {
+        Row: {
+          content: string
+          content_html: string | null
+          created_at: string
+          created_by: string
+          discussion_id: string
+          edited_at: string | null
+          id: string
+          is_edited: boolean
+        }
+        Insert: {
+          content: string
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          discussion_id: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+        }
+        Update: {
+          content?: string
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          discussion_id?: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
+            isOneToOne: false
+            referencedRelation: "project_discussions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_discussions: {
+        Row: {
+          content: string
+          content_html: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_pinned: boolean
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_pinned?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_pinned?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_discussions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_documents: {
         Row: {
           created_at: string
