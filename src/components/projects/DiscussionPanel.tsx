@@ -503,33 +503,36 @@ function DiscussionItem({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-3 rounded-lg hover:bg-accent/50 transition-colors group"
+      className="w-full text-left p-3.5 rounded-xl border border-border/60 hover:border-accent/40 hover:shadow-sm bg-card transition-all group mb-1"
     >
       <div className="flex items-start gap-3">
-        <Avatar className="h-7 w-7 mt-0.5">
+        <Avatar className="h-8 w-8 mt-0.5 ring-2 ring-background shadow-sm">
           <AvatarImage src={discussion.author?.avatar_url || undefined} />
-          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
             {getInitials(discussion.author?.full_name ?? null)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {discussion.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
-            <span className="text-sm font-medium truncate">{discussion.title}</span>
+            <span className="text-sm font-semibold text-foreground truncate">{discussion.title}</span>
           </div>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{discussion.content}</p>
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="text-[10px] text-muted-foreground">
-              {discussion.author?.full_name || "Unknown"} · {format(new Date(discussion.created_at), "MMM d")}
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-relaxed">{discussion.content}</p>
+          <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border/40">
+            <span className="text-[10px] text-muted-foreground font-medium">
+              {discussion.author?.full_name || "Unknown"}
+            </span>
+            <span className="text-[10px] text-muted-foreground/60">
+              {format(new Date(discussion.created_at), "MMM d, h:mm a")}
             </span>
             {discussion.reply_count > 0 && (
-              <span className="text-[10px] text-primary flex items-center gap-0.5">
+              <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 ml-auto">
                 <MessageCircle className="h-3 w-3" />
-                {discussion.reply_count}
+                {discussion.reply_count} {discussion.reply_count === 1 ? 'reply' : 'replies'}
               </span>
             )}
             {discussion.linked_entity_type && (
-              <Badge variant="outline" className="text-[9px] h-4 px-1">
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-muted/50">
                 <LinkIcon className="h-2 w-2 mr-0.5" />
                 {discussion.linked_entity_type}
               </Badge>
