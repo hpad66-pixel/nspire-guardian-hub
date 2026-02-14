@@ -75,10 +75,16 @@ export default function InsideInspections() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <p className="font-medium">{defect.item}</p>
-                            <SeverityBadge severity={defect.defaultSeverity} showDeadline />
+                            <SeverityBadge severity={defect.defaultSeverity} lifeThreatening={defect.isLifeThreatening} showDeadline />
+                            {defect.isUnscored && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">H&S</Badge>
+                            )}
                             {defect.proofRequired && (
-                              <Badge variant="outline" className="text-xs">
-                                Proof Required
+                              <Badge variant="outline" className="text-xs">Proof</Badge>
+                            )}
+                            {defect.pointValue.inside != null && (
+                              <Badge variant="secondary" className="text-xs font-mono">
+                                {defect.pointValue.inside} pts
                               </Badge>
                             )}
                           </div>
@@ -89,8 +95,13 @@ export default function InsideInspections() {
                               </span>
                             ))}
                           </div>
+                          {defect.regulatoryHint && (
+                            <p className="text-xs text-primary/80 bg-accent/50 p-2 rounded mt-1">
+                              💡 {defect.regulatoryHint}
+                            </p>
+                          )}
                           {defect.notes && (
-                            <p className="text-xs text-muted-foreground italic">{defect.notes}</p>
+                            <p className="text-xs text-muted-foreground italic mt-1">{defect.notes}</p>
                           )}
                         </div>
                       </div>
