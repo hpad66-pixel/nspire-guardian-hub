@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { MentionTextarea } from "./MentionTextarea";
+import { useCreateNotification } from "@/hooks/useNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -68,12 +70,15 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   const [replyAttachments, setReplyAttachments] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingReply, setIsUploadingReply] = useState(false);
+  const [newMentionIds, setNewMentionIds] = useState<string[]>([]);
+  const [replyMentionIds, setReplyMentionIds] = useState<string[]>([]);
 
   const { user } = useAuth();
   const { data: discussions = [], isLoading } = useProjectDiscussions(projectId);
   const { data: replies = [] } = useDiscussionReplies(selectedDiscussion?.id ?? null);
   const createDiscussion = useCreateDiscussion();
   const createReply = useCreateReply();
+  const createNotification = useCreateNotification();
   useDiscussionRealtime(projectId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -137,9 +142,23 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       content: newContent.trim(),
       attachments: newAttachments.length > 0 ? newAttachments : undefined,
     });
+    // Notify mentioned users
+    for (const userId of newMentionIds) {
+      if (userId !== user?.id) {
+        createNotification.mutate({
+          userId,
+          type: "mention",
+          title: `You were tagged in a discussion`,
+          message: `"${newTitle.trim()}" — respond in the project discussions.`,
+          entityType: "project",
+          entityId: projectId,
+        });
+      }
+    }
     setNewTitle("");
     setNewContent("");
     setNewAttachments([]);
+    setNewMentionIds([]);
     setView("list");
   };
 
@@ -151,8 +170,22 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       content: replyContent.trim() || "(photo)",
       attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
     });
+    // Notify mentioned users
+    for (const userId of replyMentionIds) {
+      if (userId !== user?.id) {
+        createNotification.mutate({
+          userId,
+          type: "mention",
+          title: `You were tagged in "${selectedDiscussion.title}"`,
+          message: `${replyContent.trim().slice(0, 100)}${replyContent.trim().length > 100 ? "..." : ""}`,
+          entityType: "project",
+          entityId: projectId,
+        });
+      }
+    }
     setReplyContent("");
     setReplyAttachments([]);
+    setReplyMentionIds([]);
   };
 
   const openThread = (discussion: DiscussionWithDetails) => {
@@ -251,13 +284,14 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Message</label>
-                <Textarea
-                  placeholder="Start the conversation..."
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Message <span className="text-muted-foreground/60 font-normal">· Type @ to tag someone</span></label>
+                <MentionTextarea
+                  placeholder="Start the conversation... Type @ to tag a team member"
                   value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
+                  onChange={setNewContent}
+                  onMentionsChange={setNewMentionIds}
                   rows={5}
-                  className="text-sm resize-none"
+                  className="min-h-[100px]"
                 />
               </div>
 
@@ -587,12 +621,13 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
                 <ImagePlus className="h-4 w-4" />
               )}
             </Button>
-            <Textarea
-              placeholder="Add a reply, note, or update..."
+            <MentionTextarea
+              placeholder="Reply... Type @ to tag someone"
               value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
+              onChange={setReplyContent}
+              onMentionsChange={setReplyMentionIds}
               rows={2}
-              className="text-sm resize-none flex-1 min-h-[44px]"
+              className="min-h-[44px]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   handleReply();
@@ -608,7 +643,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
               <Send className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground">⌘+Enter to send · Click 📷 to attach photos</p>
+          <p className="text-[10px] text-muted-foreground">⌘+Enter to send · 📷 attach photos · @ tag team members</p>
         </div>
       )}
     </motion.div>
