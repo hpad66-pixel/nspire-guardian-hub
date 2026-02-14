@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
     .reduce((sum, co) => sum + (Number(co.amount) || 0), 0) || 0;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
     <div className="flex-1 p-6 space-y-6 animate-fade-in overflow-auto">
       {/* Header */}
       <div className="flex items-start justify-between">
