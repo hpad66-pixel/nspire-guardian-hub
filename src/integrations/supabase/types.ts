@@ -1612,6 +1612,62 @@ export type Database = {
         }
         Relationships: []
       }
+      project_closeout_items: {
+        Row: {
+          category: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          document_url: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean | null
+          project_id: string
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id: string
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id?: string
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_closeout_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_communications: {
         Row: {
           content: string | null
@@ -1803,43 +1859,168 @@ export type Database = {
           },
         ]
       }
+      project_lessons_learned: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          impact: string | null
+          lesson: string | null
+          project_id: string
+          recommendation: string | null
+          submitted_by: string | null
+          title: string
+          updated_at: string
+          what_happened: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          impact?: string | null
+          lesson?: string | null
+          project_id: string
+          recommendation?: string | null
+          submitted_by?: string | null
+          title: string
+          updated_at?: string
+          what_happened?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          impact?: string | null
+          lesson?: string | null
+          project_id?: string
+          recommendation?: string | null
+          submitted_by?: string | null
+          title?: string
+          updated_at?: string
+          what_happened?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_lessons_learned_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_milestones: {
         Row: {
+          assigned_to: string | null
+          color: string | null
           completed_at: string | null
           created_at: string
+          depends_on: string | null
           due_date: string
           id: string
           name: string
           notes: string | null
+          progress_percent: number | null
           project_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
+          color?: string | null
           completed_at?: string | null
           created_at?: string
+          depends_on?: string | null
           due_date: string
           id?: string
           name: string
           notes?: string | null
+          progress_percent?: number | null
           project_id: string
           status?: string
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
+          color?: string | null
           completed_at?: string | null
           created_at?: string
+          depends_on?: string | null
           due_date?: string
           id?: string
           name?: string
           notes?: string | null
+          progress_percent?: number | null
           project_id?: string
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "project_milestones_depends_on_fkey"
+            columns: ["depends_on"]
+            isOneToOne: false
+            referencedRelation: "project_milestones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_progress_entries: {
+        Row: {
+          actual_cost: number | null
+          created_at: string
+          earned_value: number | null
+          entry_date: string
+          id: string
+          notes: string | null
+          percent_complete: number | null
+          planned_value: number | null
+          project_id: string
+          scope_description: string | null
+          trade: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          actual_cost?: number | null
+          created_at?: string
+          earned_value?: number | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          percent_complete?: number | null
+          planned_value?: number | null
+          project_id: string
+          scope_description?: string | null
+          trade: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          actual_cost?: number | null
+          created_at?: string
+          earned_value?: number | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          percent_complete?: number | null
+          planned_value?: number | null
+          project_id?: string
+          scope_description?: string | null
+          trade?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_entries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1959,6 +2140,77 @@ export type Database = {
           },
         ]
       }
+      project_purchase_orders: {
+        Row: {
+          actual_delivery: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expected_delivery: string | null
+          id: string
+          line_items: Json | null
+          notes: string | null
+          order_date: string | null
+          po_number: number
+          project_id: string
+          status: string
+          subtotal: number | null
+          tax: number | null
+          total: number | null
+          updated_at: string
+          vendor_contact: string | null
+          vendor_name: string
+        }
+        Insert: {
+          actual_delivery?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_delivery?: string | null
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          order_date?: string | null
+          po_number?: number
+          project_id: string
+          status?: string
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name: string
+        }
+        Update: {
+          actual_delivery?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_delivery?: string | null
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          order_date?: string | null
+          po_number?: number
+          project_id?: string
+          status?: string
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_purchase_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_rfis: {
         Row: {
           assigned_to: string | null
@@ -2011,6 +2263,74 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_rfis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_safety_incidents: {
+        Row: {
+          corrective_action: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          incident_date: string
+          incident_type: string
+          injured_party: string | null
+          location: string | null
+          osha_recordable: boolean | null
+          project_id: string
+          reported_by: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          witnesses: string | null
+        }
+        Insert: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string
+          incident_type?: string
+          injured_party?: string | null
+          location?: string | null
+          osha_recordable?: boolean | null
+          project_id: string
+          reported_by?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+          witnesses?: string | null
+        }
+        Update: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string
+          incident_type?: string
+          injured_party?: string | null
+          location?: string | null
+          osha_recordable?: boolean | null
+          project_id?: string
+          reported_by?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          witnesses?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_safety_incidents_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2108,6 +2428,124 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_team_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_toolbox_talks: {
+        Row: {
+          attendees: string[] | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          presenter: string | null
+          project_id: string
+          talk_date: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          presenter?: string | null
+          project_id: string
+          talk_date?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          presenter?: string | null
+          project_id?: string
+          talk_date?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_toolbox_talks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_warranties: {
+        Row: {
+          contact_info: string | null
+          coverage_details: string | null
+          created_at: string
+          created_by: string | null
+          document_url: string | null
+          duration_months: number | null
+          end_date: string | null
+          id: string
+          item_name: string
+          notes: string | null
+          project_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          vendor: string | null
+          warranty_type: string | null
+        }
+        Insert: {
+          contact_info?: string | null
+          coverage_details?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_url?: string | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          item_name: string
+          notes?: string | null
+          project_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+          warranty_type?: string | null
+        }
+        Update: {
+          contact_info?: string | null
+          coverage_details?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_url?: string | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          item_name?: string
+          notes?: string | null
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+          warranty_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_warranties_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
