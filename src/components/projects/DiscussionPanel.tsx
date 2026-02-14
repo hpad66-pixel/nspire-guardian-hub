@@ -142,18 +142,16 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       content: newContent.trim(),
       attachments: newAttachments.length > 0 ? newAttachments : undefined,
     });
-    // Notify mentioned users
+    // Notify mentioned users (including self for reminders)
     for (const userId of newMentionIds) {
-      if (userId !== user?.id) {
-        createNotification.mutate({
-          userId,
-          type: "mention",
-          title: `You were tagged in a discussion`,
-          message: `"${newTitle.trim()}" — respond in the project discussions.`,
-          entityType: "project",
-          entityId: projectId,
-        });
-      }
+      await createNotification.mutateAsync({
+        userId,
+        type: "mention",
+        title: userId === user?.id ? `Reminder: "${newTitle.trim()}"` : `You were tagged in a discussion`,
+        message: `"${newTitle.trim()}" — respond in the project discussions.`,
+        entityType: "project",
+        entityId: projectId,
+      });
     }
     setNewTitle("");
     setNewContent("");
@@ -170,18 +168,16 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       content: replyContent.trim() || "(photo)",
       attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
     });
-    // Notify mentioned users
+    // Notify mentioned users (including self for reminders)
     for (const userId of replyMentionIds) {
-      if (userId !== user?.id) {
-        createNotification.mutate({
-          userId,
-          type: "mention",
-          title: `You were tagged in "${selectedDiscussion.title}"`,
-          message: `${replyContent.trim().slice(0, 100)}${replyContent.trim().length > 100 ? "..." : ""}`,
-          entityType: "project",
-          entityId: projectId,
-        });
-      }
+      await createNotification.mutateAsync({
+        userId,
+        type: "mention",
+        title: userId === user?.id ? `Reminder in "${selectedDiscussion.title}"` : `You were tagged in "${selectedDiscussion.title}"`,
+        message: `${replyContent.trim().slice(0, 100)}${replyContent.trim().length > 100 ? "..." : ""}`,
+        entityType: "project",
+        entityId: projectId,
+      });
     }
     setReplyContent("");
     setReplyAttachments([]);
