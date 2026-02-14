@@ -232,14 +232,128 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
+          {/* Daily Grounds Module */}
+          {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
+            <CollapsibleNavGroup
+              title="Daily Grounds"
+              icon={<Sun className="h-3 w-3" />}
+              collapsed={collapsed}
+              defaultOpen={true}
+              isActive={isDailyGroundsActive}
+              indicator="bg-emerald-500"
+            >
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/daily"
+                  icon={<Sun className="h-4 w-4" />}
+                  label="Today's Inspection"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/history"
+                  icon={<History className="h-4 w-4" />}
+                  label="History"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/review"
+                  icon={<ClipboardList className="h-4 w-4" />}
+                  label="Review Queue"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            </CollapsibleNavGroup>
+          )}
+
+          {/* Projects Module */}
+          {isModuleEnabled('projectsEnabled') && canView('projects') && (
+            <CollapsibleNavGroup
+              title="Projects"
+              icon={<FolderKanban className="h-3 w-3" />}
+              collapsed={collapsed}
+              defaultOpen={true}
+              isActive={isProjectsActive}
+              indicator="bg-[hsl(var(--module-projects))]"
+            >
+              <SidebarMenuItem>
+                <NavItem
+                  to="/projects"
+                  icon={<FolderKanban className="h-4 w-4" />}
+                  label="All Projects"
+                  collapsed={collapsed}
+                  end
+                />
+              </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <NavItem
+                    to="/projects/proposals"
+                    icon={<FileText className="h-4 w-4" />}
+                    label="Proposals"
+                    collapsed={collapsed}
+                  />
+                </SidebarMenuItem>
+              )}
+            </CollapsibleNavGroup>
+          )}
+
+          {/* NSPIRE Compliance Module */}
+          {isModuleEnabled('nspireEnabled') && canView('inspections') && (
+            <CollapsibleNavGroup
+              title="NSPIRE Compliance"
+              icon={<ClipboardCheck className="h-3 w-3" />}
+              collapsed={collapsed}
+              defaultOpen={true}
+              isActive={isNspireActive}
+              indicator="bg-[hsl(var(--module-inspections))]"
+            >
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections"
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                  label="Dashboard"
+                  collapsed={collapsed}
+                  end
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/outside"
+                  icon={<TreePine className="h-4 w-4" />}
+                  label="Outside"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/inside"
+                  icon={<Building className="h-4 w-4" />}
+                  label="Inside"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <NavItem
+                  to="/inspections/units"
+                  icon={<DoorOpen className="h-4 w-4" />}
+                  label="Units"
+                  collapsed={collapsed}
+                />
+              </SidebarMenuItem>
+            </CollapsibleNavGroup>
+          )}
+
           {/* Portfolio - Properties, Units, Assets, Occupancy */}
           {canView('properties') && (
             <CollapsibleNavGroup
-            title="Portfolio"
-            icon={<Layers className="h-3 w-3" />}
-            collapsed={collapsed}
-            defaultOpen={true}
-            isActive={isPortfolioActive}
+              title="Portfolio"
+              icon={<Layers className="h-3 w-3" />}
+              collapsed={collapsed}
+              isActive={isPortfolioActive}
             >
               <SidebarMenuItem>
                 <NavItem
@@ -281,11 +395,10 @@ export function AppSidebar() {
           {/* Operations - Issues, Work Orders, Permits */}
           {(canView('issues') || canView('work_orders')) && (
             <CollapsibleNavGroup
-            title="Operations"
-            icon={<Wrench className="h-3 w-3" />}
-            collapsed={collapsed}
-            defaultOpen={true}
-            isActive={isOperationsActive}
+              title="Operations"
+              icon={<Wrench className="h-3 w-3" />}
+              collapsed={collapsed}
+              isActive={isOperationsActive}
             >
               {canView('issues') && (
                 <SidebarMenuItem>
@@ -432,118 +545,6 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          )}
-
-          {/* Daily Grounds Module */}
-          {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-            <CollapsibleNavGroup
-              title="Daily Grounds"
-              icon={<Sun className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isDailyGroundsActive}
-              indicator="bg-emerald-500"
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/daily"
-                  icon={<Sun className="h-4 w-4" />}
-                  label="Today's Inspection"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/history"
-                  icon={<History className="h-4 w-4" />}
-                  label="History"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/review"
-                  icon={<ClipboardList className="h-4 w-4" />}
-                  label="Review Queue"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-            </CollapsibleNavGroup>
-          )}
-
-          {/* NSPIRE Compliance Module */}
-          {isModuleEnabled('nspireEnabled') && canView('inspections') && (
-            <CollapsibleNavGroup
-              title="NSPIRE Compliance"
-              icon={<ClipboardCheck className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isNspireActive}
-              indicator="bg-[hsl(var(--module-inspections))]"
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections"
-                  icon={<ClipboardCheck className="h-4 w-4" />}
-                  label="Dashboard"
-                  collapsed={collapsed}
-                  end
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/outside"
-                  icon={<TreePine className="h-4 w-4" />}
-                  label="Outside"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/inside"
-                  icon={<Building className="h-4 w-4" />}
-                  label="Inside"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/units"
-                  icon={<DoorOpen className="h-4 w-4" />}
-                  label="Units"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-            </CollapsibleNavGroup>
-          )}
-
-          {/* Projects Module */}
-          {isModuleEnabled('projectsEnabled') && canView('projects') && (
-            <CollapsibleNavGroup
-              title="Projects"
-              icon={<FolderKanban className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isProjectsActive}
-              indicator="bg-[hsl(var(--module-projects))]"
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/projects"
-                  icon={<FolderKanban className="h-4 w-4" />}
-                  label="All Projects"
-                  collapsed={collapsed}
-                  end
-                />
-              </SidebarMenuItem>
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <NavItem
-                    to="/projects/proposals"
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Proposals"
-                    collapsed={collapsed}
-                  />
-                </SidebarMenuItem>
-              )}
-            </CollapsibleNavGroup>
           )}
         </SidebarContent>
 
