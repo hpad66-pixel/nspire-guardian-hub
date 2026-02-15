@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import { useCreateInspection, useUpdateInspection } from '@/hooks/useInspections
 import { useCreateDefect } from '@/hooks/useDefects';
 import { getDefectCatalog, calculateDeadline, SEVERITY_CONFIG, AREA_CONFIG } from '@/data/nspire-catalog';
 import type { InspectionArea, DefectItem, SeverityLevel } from '@/types/modules';
-import { ArrowLeft, ArrowRight, Check, Plus, X, AlertTriangle, TreePine, Building, DoorOpen } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Plus, X, AlertTriangle, TreePine, Building, DoorOpen, Info, Flame, Snowflake, ShieldAlert, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InspectionWizardProps {
@@ -32,12 +32,27 @@ interface CapturedDefect {
   catalogItem: DefectItem;
   condition: string;
   severity: SeverityLevel;
+  lifeThreatening: boolean;
   location: string;
   photos: string[];
   notes: string;
 }
 
 type WizardStep = 'select' | 'inspect' | 'review';
+
+// Seasonal HVAC helpers
+function isHeatingSeason(): boolean {
+  const month = new Date().getMonth() + 1;
+  return month >= 10 || month <= 3;
+}
+
+function isCoolingSeason(): boolean {
+  return !isHeatingSeason();
+}
+
+function getSeasonLabel(): string {
+  return isHeatingSeason() ? 'Heating Season (Oct–Mar)' : 'Cooling Season (Apr–Sep)';
+}
 
 export function InspectionWizard({ 
   open, 
@@ -54,6 +69,7 @@ export function InspectionWizard({
   const [defects, setDefects] = useState<CapturedDefect[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [currentDefect, setCurrentDefect] = useState<Partial<CapturedDefect>>({});
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const { data: properties } = useProperties();
   const { data: units } = useUnitsByProperty(propertyId);
@@ -64,13 +80,20 @@ export function InspectionWizard({
   const catalog = getDefectCatalog(area);
 
   // Group catalog by category
-  const catalogByCategory = catalog.reduce((acc, item) => {
+  const catalogByCategory = useMemo(() => catalog.reduce((acc, item) => {
     if (!acc[item.category]) {
       acc[item.category] = [];
     }
     acc[item.category].push(item);
     return acc;
-  }, {} as Record<string, DefectItem[]>);
+  }, {} as Record<string, DefectItem[]>), [catalog]);
+
+  const categories = useMemo(() => ['all', ...Object.keys(catalogByCategory)], [catalogByCategory]);
+
+  const filteredCatalog = useMemo(() => {
+    if (categoryFilter === 'all') return catalogByCategory;
+    return { [categoryFilter]: catalogByCategory[categoryFilter] || [] };
+  }, [catalogByCategory, categoryFilter]);
 
   useEffect(() => {
     if (defaultArea) setArea(defaultArea);
@@ -109,11 +132,21 @@ export function InspectionWizard({
         toast.error('Please select a condition');
         return;
       }
+
+      const severity = currentDefect.severity || catalogItem.defaultSeverity;
+      const isLT = currentDefect.lifeThreatening || false;
+
+      // Enforce photo proof for severe/LT defects
+      if ((severity === 'severe' || isLT) && (!currentDefect.photos || currentDefect.photos.length === 0)) {
+        toast.error('Photo proof is required for Severe and Life-Threatening defects');
+        return;
+      }
       
       const newDefect: CapturedDefect = {
         catalogItem,
         condition: currentDefect.condition,
-        severity: currentDefect.severity || catalogItem.defaultSeverity,
+        severity,
+        lifeThreatening: isLT,
         location: currentDefect.location || '',
         photos: currentDefect.photos || [],
         notes: currentDefect.notes || '',
@@ -127,6 +160,7 @@ export function InspectionWizard({
       setExpandedItem(catalogItem.id);
       setCurrentDefect({
         severity: catalogItem.defaultSeverity,
+        lifeThreatening: catalogItem.isLifeThreatening,
         photos: [],
       });
     }
@@ -138,7 +172,6 @@ export function InspectionWizard({
 
   const handleSubmit = async () => {
     try {
-      // Create the inspection record
       const inspection = await createInspection.mutateAsync({
         property_id: propertyId,
         unit_id: area === 'unit' ? unitId : null,
@@ -148,7 +181,6 @@ export function InspectionWizard({
         completed_at: new Date().toISOString(),
       });
 
-      // Create defect records (which will auto-create issues and work orders via trigger)
       for (const defect of defects) {
         await createDefect.mutateAsync({
           inspection_id: inspection.id,
@@ -157,7 +189,8 @@ export function InspectionWizard({
           item_name: defect.catalogItem.item,
           defect_condition: defect.condition,
           severity: defect.severity,
-          proof_required: defect.catalogItem.proofRequired,
+          life_threatening: defect.lifeThreatening,
+          proof_required: defect.catalogItem.proofRequired || defect.severity === 'severe' || defect.lifeThreatening,
           photo_urls: defect.photos,
           notes: defect.notes + (defect.location ? ` Location: ${defect.location}` : ''),
         });
@@ -181,6 +214,7 @@ export function InspectionWizard({
     setDefects([]);
     setExpandedItem(null);
     setCurrentDefect({});
+    setCategoryFilter('all');
   };
 
   const isPending = createInspection.isPending || createDefect.isPending;
@@ -195,7 +229,7 @@ export function InspectionWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {getAreaIcon(area)}
@@ -207,6 +241,19 @@ export function InspectionWizard({
             {step === 'review' && 'Step 3: Review and submit'}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Seasonal HVAC Banner */}
+        {step === 'inspect' && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/50 border border-accent text-sm">
+            {isHeatingSeason() ? <Flame className="h-4 w-4 text-orange-500 shrink-0" /> : <Snowflake className="h-4 w-4 text-blue-500 shrink-0" />}
+            <span className="font-medium">{getSeasonLabel()}</span>
+            <span className="text-muted-foreground">
+              {isHeatingSeason() 
+                ? '— Heating must maintain 68°F. Below 64°F = Life-Threatening.' 
+                : '— Cooling system must be inspected if present.'}
+            </span>
+          </div>
+        )}
 
         {/* Step 1: Select Property/Unit */}
         {step === 'select' && (
@@ -279,8 +326,22 @@ export function InspectionWizard({
               )}
             </div>
 
+            {/* Category Filter */}
+            <div className="flex gap-2 flex-wrap">
+              {categories.map((cat) => (
+                <Badge
+                  key={cat}
+                  variant={categoryFilter === cat ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  {cat === 'all' ? 'All Categories' : cat}
+                </Badge>
+              ))}
+            </div>
+
             <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
-              {Object.entries(catalogByCategory).map(([category, items]) => (
+              {Object.entries(filteredCatalog).map(([category, items]) => (
                 <div key={category}>
                   <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">
                     {category}
@@ -304,6 +365,12 @@ export function InspectionWizard({
                                   <Check className="h-4 w-4 text-muted-foreground" />
                                 )}
                                 <span className="font-medium text-sm">{item.item}</span>
+                                {item.isUnscored && (
+                                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">H&S</Badge>
+                                )}
+                                {item.isLifeThreatening && (
+                                  <Badge variant="destructive" className="text-xs">LT</Badge>
+                                )}
                                 {item.proofRequired && (
                                   <Badge variant="outline" className="text-xs">Proof</Badge>
                                 )}
@@ -315,6 +382,26 @@ export function InspectionWizard({
                                 )}
                               </div>
                             </div>
+
+                            {/* Regulatory Hint */}
+                            {(isExpanded || hasDefect) && item.regulatoryHint && (
+                              <div className="mt-2 p-2 rounded bg-accent/50 border border-accent flex items-start gap-2">
+                                <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                                <p className="text-xs text-muted-foreground">{item.regulatoryHint}</p>
+                              </div>
+                            )}
+
+                            {/* Conditional Rules */}
+                            {isExpanded && item.conditionalRules && item.conditionalRules.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {item.conditionalRules.map((rule, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 p-2 rounded">
+                                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                                    <span>{rule.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             {isExpanded && (
                               <div className="mt-4 pt-4 border-t space-y-4">
@@ -346,7 +433,7 @@ export function InspectionWizard({
                                         type="button"
                                         size="sm"
                                         variant={currentDefect.severity === sev ? 'default' : 'outline'}
-                                        onClick={() => setCurrentDefect({ ...currentDefect, severity: sev })}
+                                        onClick={() => setCurrentDefect({ ...currentDefect, severity: sev, lifeThreatening: sev !== 'severe' ? false : currentDefect.lifeThreatening })}
                                         className="flex-1"
                                       >
                                         {SEVERITY_CONFIG[sev].label}
@@ -358,6 +445,27 @@ export function InspectionWizard({
                                   </p>
                                 </div>
 
+                                {/* Life-Threatening Toggle */}
+                                {currentDefect.severity === 'severe' && (
+                                  <div className="flex items-center justify-between p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                                    <div className="flex items-center gap-2">
+                                      <ShieldAlert className="h-4 w-4 text-destructive" />
+                                      <div>
+                                        <Label className="text-sm font-medium">Life-Threatening (LT)</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                          {item.isLifeThreatening 
+                                            ? 'This item is typically Life-Threatening per NSPIRE' 
+                                            : 'Mark if this poses an immediate danger to life'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Switch
+                                      checked={currentDefect.lifeThreatening || false}
+                                      onCheckedChange={(checked) => setCurrentDefect({ ...currentDefect, lifeThreatening: checked })}
+                                    />
+                                  </div>
+                                )}
+
                                 <div className="grid gap-2">
                                   <Label>Location</Label>
                                   <Input
@@ -368,7 +476,14 @@ export function InspectionWizard({
                                 </div>
 
                                 <div className="grid gap-2">
-                                  <Label>Photos {item.proofRequired && '*'}</Label>
+                                  <Label className="flex items-center gap-2">
+                                    Photos
+                                    {(currentDefect.severity === 'severe' || currentDefect.lifeThreatening) && (
+                                      <span className="flex items-center gap-1 text-xs text-destructive font-normal">
+                                        <Camera className="h-3 w-3" /> Required for Severe/LT
+                                      </span>
+                                    )}
+                                  </Label>
                                   <PhotoUpload
                                     photos={currentDefect.photos || []}
                                     onPhotosChange={(photos) => setCurrentDefect({ ...currentDefect, photos })}
@@ -458,6 +573,10 @@ export function InspectionWizard({
                     <span className="text-muted-foreground">Defects:</span>
                     <span className="ml-2 font-medium">{defects.length}</span>
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">Season:</span>
+                    <span className="ml-2 font-medium">{getSeasonLabel()}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -473,7 +592,14 @@ export function InspectionWizard({
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{defect.catalogItem.item}</span>
-                              <SeverityBadge severity={defect.severity} showDeadline />
+                              <SeverityBadge 
+                                severity={defect.severity} 
+                                showDeadline 
+                                lifeThreatening={defect.lifeThreatening}
+                              />
+                              {defect.catalogItem.isUnscored && (
+                                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">Unscored H&S</Badge>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">{defect.condition}</p>
                             {defect.location && (
@@ -503,6 +629,11 @@ export function InspectionWizard({
                       {defects.filter(d => d.severity === 'severe').length}
                     </p>
                     <p className="text-xs text-muted-foreground">Severe (24h)</p>
+                    {defects.some(d => d.lifeThreatening) && (
+                      <p className="text-xs text-destructive font-medium mt-1">
+                        {defects.filter(d => d.lifeThreatening).length} Life-Threatening
+                      </p>
+                    )}
                   </Card>
                   <Card className="flex-1 p-3 text-center bg-severity-moderate/10">
                     <p className="text-2xl font-bold text-warning">

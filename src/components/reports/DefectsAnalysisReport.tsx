@@ -1,9 +1,17 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { SeverityBadge } from '@/components/ui/severity-badge';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { AlertTriangle, CheckCircle2, Clock, XCircle, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import { useDefectsAnalysisReport, type DateRange } from '@/hooks/useReports';
 import { format } from 'date-fns';
 
@@ -11,8 +19,38 @@ interface DefectsAnalysisReportProps {
   dateRange?: DateRange;
 }
 
+const SEVERITY_COLORS = {
+  severe: 'hsl(var(--destructive))',
+  moderate: 'hsl(45 93% 47%)',
+  low: 'hsl(220 70% 55%)',
+};
+
 export function DefectsAnalysisReport({ dateRange }: DefectsAnalysisReportProps) {
   const { data, isLoading } = useDefectsAnalysisReport(dateRange);
+
+  const severityPieData = useMemo(() => {
+    if (!data) return [];
+    return [
+      { name: 'Severe', value: data.bySeverity.severe, fill: SEVERITY_COLORS.severe },
+      { name: 'Moderate', value: data.bySeverity.moderate, fill: SEVERITY_COLORS.moderate },
+      { name: 'Low', value: data.bySeverity.low, fill: SEVERITY_COLORS.low },
+    ].filter(d => d.value > 0);
+  }, [data]);
+
+  const categoryBarData = useMemo(() => {
+    if (!data) return [];
+    return Object.entries(data.byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([category, count]) => ({ category, count }));
+  }, [data]);
+
+  const chartConfig = {
+    count: { label: 'Defects', color: 'hsl(var(--destructive))' },
+  };
+
+  // Identify LT defects
+  const ltDefects = data?.defects.filter((d: any) => d.life_threatening) || [];
 
   if (isLoading) {
     return <ReportSkeleton />;
@@ -29,13 +67,13 @@ export function DefectsAnalysisReport({ dateRange }: DefectsAnalysisReportProps)
           </div>
           <div>
             <CardTitle>Defects Analysis</CardTitle>
-            <CardDescription>Defect trends by severity and category</CardDescription>
+            <CardDescription>NSPIRE defect trends with scoring impact analysis</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Summary Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <div className="rounded-lg border bg-card p-4 text-center">
             <p className="text-3xl font-bold">{data.total}</p>
             <p className="text-sm text-muted-foreground">Total Defects</p>
@@ -58,70 +96,60 @@ export function DefectsAnalysisReport({ dateRange }: DefectsAnalysisReportProps)
             <p className="text-3xl font-bold">{data.resolutionRate}%</p>
             <p className="text-sm text-muted-foreground">Resolution Rate</p>
           </div>
-        </div>
-
-        {/* Severity Breakdown */}
-        <div>
-          <h4 className="font-medium mb-3">By Severity</h4>
-          <div className="grid gap-4 md:grid-cols-3">
-            <SeverityCard 
-              label="Severe" 
-              count={data.bySeverity.severe} 
-              total={data.total}
-              color="bg-destructive"
-              icon={XCircle}
-            />
-            <SeverityCard 
-              label="Moderate" 
-              count={data.bySeverity.moderate} 
-              total={data.total}
-              color="bg-amber-500"
-              icon={AlertTriangle}
-            />
-            <SeverityCard 
-              label="Low" 
-              count={data.bySeverity.low} 
-              total={data.total}
-              color="bg-blue-500"
-              icon={Clock}
-            />
+          <div className="rounded-lg border bg-card p-4 text-center border-destructive/30">
+            <p className="text-3xl font-bold text-destructive">{ltDefects.length}</p>
+            <p className="text-sm text-muted-foreground">Life-Threatening</p>
           </div>
         </div>
 
-        {/* Category Breakdown */}
-        <div>
-          <h4 className="font-medium mb-3">By Category</h4>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">Percentage</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(data.byCategory)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 10)
-                  .map(([category, count]) => (
-                    <TableRow key={category}>
-                      <TableCell className="font-medium">{category}</TableCell>
-                      <TableCell className="text-right">{count}</TableCell>
-                      <TableCell className="text-right">
-                        {data.total > 0 ? Math.round((count / data.total) * 100) : 0}%
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                {Object.keys(data.byCategory).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      No defects found in this date range
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+        {/* Charts Row */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Severity Pie */}
+          <div>
+            <h4 className="font-medium mb-3">By Severity</h4>
+            {severityPieData.length > 0 ? (
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={severityPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {severityPieData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number, name: string) => [`${value} defects`, name]} />
+                    <Legend verticalAlign="bottom" height={36} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[220px] text-muted-foreground text-sm">No data</div>
+            )}
+          </div>
+
+          {/* Category Bar */}
+          <div>
+            <h4 className="font-medium mb-3">By Category (Top 10)</h4>
+            {categoryBarData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[220px]">
+                <BarChart data={categoryBarData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" />
+                  <YAxis dataKey="category" type="category" width={90} tick={{ fontSize: 11 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[220px] text-muted-foreground text-sm">No data</div>
+            )}
           </div>
         </div>
 
@@ -147,12 +175,19 @@ export function DefectsAnalysisReport({ dateRange }: DefectsAnalysisReportProps)
                     <TableCell className="font-medium">
                       {(defect as any).inspection?.property?.name || '—'}
                     </TableCell>
-                    <TableCell>{defect.item_name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {defect.item_name}
+                        {(defect as any).life_threatening && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">LT</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">
                       {defect.defect_condition}
                     </TableCell>
                     <TableCell>
-                      <SeverityBadge severity={defect.severity} />
+                      <SeverityBadge severity={defect.severity} lifeThreatening={(defect as any).life_threatening} />
                     </TableCell>
                     <TableCell>
                       {defect.repaired_at ? (
@@ -172,47 +207,6 @@ export function DefectsAnalysisReport({ dateRange }: DefectsAnalysisReportProps)
   );
 }
 
-function SeverityCard({ 
-  label, 
-  count, 
-  total, 
-  color, 
-  icon: Icon 
-}: { 
-  label: string; 
-  count: number; 
-  total: number; 
-  color: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="rounded-lg border bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`p-1.5 rounded ${color}`}>
-            <Icon className="h-4 w-4 text-white" />
-          </div>
-          <span className="font-medium">{label}</span>
-        </div>
-        <span className="text-2xl font-bold">{count}</span>
-      </div>
-      <Progress value={percentage} className={`h-2 [&>div]:${color}`} />
-      <p className="text-xs text-muted-foreground">{percentage}% of total defects</p>
-    </div>
-  );
-}
-
-function SeverityBadge({ severity }: { severity: string }) {
-  const config: Record<string, { label: string; className: string }> = {
-    severe: { label: 'Severe', className: 'bg-destructive text-destructive-foreground' },
-    moderate: { label: 'Moderate', className: 'bg-amber-500 text-white' },
-    low: { label: 'Low', className: 'bg-blue-500 text-white' },
-  };
-  const { label, className } = config[severity] || { label: severity, className: '' };
-  return <Badge className={className}>{label}</Badge>;
-}
-
 function ReportSkeleton() {
   return (
     <Card>
@@ -221,8 +215,8 @@ function ReportSkeleton() {
         <Skeleton className="h-4 w-72" />
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-5">
+          {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>

@@ -111,7 +111,7 @@ export function useAssetsByType(propertyId: string, assetType: AssetType) {
         .from('assets')
         .select('*')
         .eq('property_id', propertyId)
-        .eq('asset_type', assetType)
+        .eq('asset_type', assetType as any)
         .eq('status', 'active')
         .order('name', { ascending: true });
       
@@ -129,7 +129,7 @@ export function useCreateAsset() {
     mutationFn: async (input: CreateAssetInput) => {
       const { data, error } = await supabase
         .from('assets')
-        .insert(input)
+        .insert(input as any)
         .select()
         .single();
       
@@ -153,7 +153,7 @@ export function useUpdateAsset() {
     mutationFn: async ({ id, ...updates }: Partial<Asset> & { id: string }) => {
       const { data, error } = await supabase
         .from('assets')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

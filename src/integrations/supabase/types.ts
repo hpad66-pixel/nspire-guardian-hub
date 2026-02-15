@@ -50,6 +50,30 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_type_definitions: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       assets: {
         Row: {
           asset_type: Database["public"]["Enums"]["asset_type"]
@@ -604,9 +628,11 @@ export type Database = {
           id: string
           inspection_id: string
           item_name: string
+          life_threatening: boolean
           notes: string | null
           nspire_item_id: string
           photo_urls: string[] | null
+          point_value: number | null
           proof_required: boolean | null
           repair_deadline: string
           repair_verified: boolean | null
@@ -621,9 +647,11 @@ export type Database = {
           id?: string
           inspection_id: string
           item_name: string
+          life_threatening?: boolean
           notes?: string | null
           nspire_item_id: string
           photo_urls?: string[] | null
+          point_value?: number | null
           proof_required?: boolean | null
           repair_deadline: string
           repair_verified?: boolean | null
@@ -638,9 +666,11 @@ export type Database = {
           id?: string
           inspection_id?: string
           item_name?: string
+          life_threatening?: boolean
           notes?: string | null
           nspire_item_id?: string
           photo_urls?: string[] | null
+          point_value?: number | null
           proof_required?: boolean | null
           repair_deadline?: string
           repair_verified?: boolean | null
@@ -658,44 +688,109 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hud_sample_sizes: {
+        Row: {
+          created_at: string
+          id: string
+          max_units: number
+          min_units: number
+          sample_size: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_units: number
+          min_units: number
+          sample_size: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_units?: number
+          min_units?: number
+          sample_size?: number
+        }
+        Relationships: []
+      }
       inspections: {
         Row: {
           area: Database["public"]["Enums"]["inspection_area"]
           completed_at: string | null
           created_at: string
+          data_retention_until: string | null
           id: string
           inspection_date: string
           inspector_id: string | null
           notes: string | null
+          nspire_score: number | null
           property_id: string
           status: string | null
           unit_id: string | null
+          unit_performance_score: number | null
           updated_at: string
         }
         Insert: {
           area: Database["public"]["Enums"]["inspection_area"]
           completed_at?: string | null
           created_at?: string
+          data_retention_until?: string | null
           id?: string
           inspection_date?: string
           inspector_id?: string | null
           notes?: string | null
+          nspire_score?: number | null
           property_id: string
           status?: string | null
           unit_id?: string | null
+          unit_performance_score?: number | null
           updated_at?: string
         }
         Update: {
           area?: Database["public"]["Enums"]["inspection_area"]
           completed_at?: string | null
           created_at?: string
+          data_retention_until?: string | null
           id?: string
           inspection_date?: string
           inspector_id?: string | null
           notes?: string | null
+          nspire_score?: number | null
           property_id?: string
           status?: string | null
           unit_id?: string | null
+          unit_performance_score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -797,6 +892,7 @@ export type Database = {
           defect_id: string | null
           description: string | null
           id: string
+          maintenance_request_id: string | null
           proof_required: boolean | null
           property_id: string
           resolved_at: string | null
@@ -817,6 +913,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id: string
           resolved_at?: string | null
@@ -837,6 +934,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id?: string
           resolved_at?: string | null
@@ -860,6 +958,13 @@ export type Database = {
             columns: ["defect_id"]
             isOneToOne: false
             referencedRelation: "defects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issues_maintenance_request_id_fkey"
+            columns: ["maintenance_request_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_requests"
             referencedColumns: ["id"]
           },
           {
@@ -1121,6 +1226,33 @@ export type Database = {
         }
         Relationships: []
       }
+      nspire_scoring_weights: {
+        Row: {
+          area: string
+          category: string
+          created_at: string
+          display_order: number
+          id: string
+          weight: number
+        }
+        Insert: {
+          area: string
+          category: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          weight: number
+        }
+        Update: {
+          area?: string
+          category?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       onboarding_status: {
         Row: {
           completed_at: string | null
@@ -1153,6 +1285,7 @@ export type Database = {
           file_size: number | null
           file_url: string
           folder: string
+          folder_id: string | null
           id: string
           is_archived: boolean | null
           mime_type: string | null
@@ -1171,6 +1304,7 @@ export type Database = {
           file_size?: number | null
           file_url: string
           folder?: string
+          folder_id?: string | null
           id?: string
           is_archived?: boolean | null
           mime_type?: string | null
@@ -1189,6 +1323,7 @@ export type Database = {
           file_size?: number | null
           file_url?: string
           folder?: string
+          folder_id?: string | null
           id?: string
           is_archived?: boolean | null
           mime_type?: string | null
@@ -1201,6 +1336,13 @@ export type Database = {
           version?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "organization_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organization_documents_previous_version_id_fkey"
             columns: ["previous_version_id"]
@@ -1470,6 +1612,62 @@ export type Database = {
         }
         Relationships: []
       }
+      project_closeout_items: {
+        Row: {
+          category: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          document_url: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean | null
+          project_id: string
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id: string
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean | null
+          project_id?: string
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_closeout_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_communications: {
         Row: {
           content: string | null
@@ -1507,6 +1705,103 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_communications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_discussion_replies: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          content_html: string | null
+          created_at: string
+          created_by: string
+          discussion_id: string
+          edited_at: string | null
+          id: string
+          is_edited: boolean
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          discussion_id: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          discussion_id?: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
+            isOneToOne: false
+            referencedRelation: "project_discussions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_discussions: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          content_html: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_pinned: boolean
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_pinned?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_pinned?: boolean
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_discussions_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1564,43 +1859,168 @@ export type Database = {
           },
         ]
       }
+      project_lessons_learned: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          impact: string | null
+          lesson: string | null
+          project_id: string
+          recommendation: string | null
+          submitted_by: string | null
+          title: string
+          updated_at: string
+          what_happened: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          impact?: string | null
+          lesson?: string | null
+          project_id: string
+          recommendation?: string | null
+          submitted_by?: string | null
+          title: string
+          updated_at?: string
+          what_happened?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          impact?: string | null
+          lesson?: string | null
+          project_id?: string
+          recommendation?: string | null
+          submitted_by?: string | null
+          title?: string
+          updated_at?: string
+          what_happened?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_lessons_learned_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_milestones: {
         Row: {
+          assigned_to: string | null
+          color: string | null
           completed_at: string | null
           created_at: string
+          depends_on: string | null
           due_date: string
           id: string
           name: string
           notes: string | null
+          progress_percent: number | null
           project_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
+          color?: string | null
           completed_at?: string | null
           created_at?: string
+          depends_on?: string | null
           due_date: string
           id?: string
           name: string
           notes?: string | null
+          progress_percent?: number | null
           project_id: string
           status?: string
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
+          color?: string | null
           completed_at?: string | null
           created_at?: string
+          depends_on?: string | null
           due_date?: string
           id?: string
           name?: string
           notes?: string | null
+          progress_percent?: number | null
           project_id?: string
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "project_milestones_depends_on_fkey"
+            columns: ["depends_on"]
+            isOneToOne: false
+            referencedRelation: "project_milestones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_progress_entries: {
+        Row: {
+          actual_cost: number | null
+          created_at: string
+          earned_value: number | null
+          entry_date: string
+          id: string
+          notes: string | null
+          percent_complete: number | null
+          planned_value: number | null
+          project_id: string
+          scope_description: string | null
+          trade: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          actual_cost?: number | null
+          created_at?: string
+          earned_value?: number | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          percent_complete?: number | null
+          planned_value?: number | null
+          project_id: string
+          scope_description?: string | null
+          trade: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          actual_cost?: number | null
+          created_at?: string
+          earned_value?: number | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          percent_complete?: number | null
+          planned_value?: number | null
+          project_id?: string
+          scope_description?: string | null
+          trade?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_entries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1720,6 +2140,77 @@ export type Database = {
           },
         ]
       }
+      project_purchase_orders: {
+        Row: {
+          actual_delivery: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expected_delivery: string | null
+          id: string
+          line_items: Json | null
+          notes: string | null
+          order_date: string | null
+          po_number: number
+          project_id: string
+          status: string
+          subtotal: number | null
+          tax: number | null
+          total: number | null
+          updated_at: string
+          vendor_contact: string | null
+          vendor_name: string
+        }
+        Insert: {
+          actual_delivery?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_delivery?: string | null
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          order_date?: string | null
+          po_number?: number
+          project_id: string
+          status?: string
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name: string
+        }
+        Update: {
+          actual_delivery?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_delivery?: string | null
+          id?: string
+          line_items?: Json | null
+          notes?: string | null
+          order_date?: string | null
+          po_number?: number
+          project_id?: string
+          status?: string
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor_contact?: string | null
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_purchase_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_rfis: {
         Row: {
           assigned_to: string | null
@@ -1772,6 +2263,74 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_rfis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_safety_incidents: {
+        Row: {
+          corrective_action: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          incident_date: string
+          incident_type: string
+          injured_party: string | null
+          location: string | null
+          osha_recordable: boolean | null
+          project_id: string
+          reported_by: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          witnesses: string | null
+        }
+        Insert: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string
+          incident_type?: string
+          injured_party?: string | null
+          location?: string | null
+          osha_recordable?: boolean | null
+          project_id: string
+          reported_by?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+          witnesses?: string | null
+        }
+        Update: {
+          corrective_action?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string
+          incident_type?: string
+          injured_party?: string | null
+          location?: string | null
+          osha_recordable?: boolean | null
+          project_id?: string
+          reported_by?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          witnesses?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_safety_incidents_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1869,6 +2428,124 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_team_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_toolbox_talks: {
+        Row: {
+          attendees: string[] | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          presenter: string | null
+          project_id: string
+          talk_date: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          presenter?: string | null
+          project_id: string
+          talk_date?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          presenter?: string | null
+          project_id?: string
+          talk_date?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_toolbox_talks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_warranties: {
+        Row: {
+          contact_info: string | null
+          coverage_details: string | null
+          created_at: string
+          created_by: string | null
+          document_url: string | null
+          duration_months: number | null
+          end_date: string | null
+          id: string
+          item_name: string
+          notes: string | null
+          project_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          vendor: string | null
+          warranty_type: string | null
+        }
+        Insert: {
+          contact_info?: string | null
+          coverage_details?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_url?: string | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          item_name: string
+          notes?: string | null
+          project_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+          warranty_type?: string | null
+        }
+        Update: {
+          contact_info?: string | null
+          coverage_details?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_url?: string | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          item_name?: string
+          notes?: string | null
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+          warranty_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_warranties_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2912,24 +3589,6 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_module_access: {
         Row: {
           created_at: string
@@ -2956,6 +3615,24 @@ export type Database = {
           module_key?: string
           updated_at?: string
           updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -3283,6 +3960,26 @@ export type Database = {
         Returns: string
       }
       can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          property_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "user_invitations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3302,6 +3999,8 @@ export type Database = {
         | "superintendent"
         | "subcontractor"
         | "viewer"
+        | "administrator"
+        | "clerk"
       asset_type:
         | "cleanout"
         | "catch_basin"
@@ -3333,7 +4032,13 @@ export type Database = {
         | "overdue"
       inspection_area: "outside" | "inside" | "unit"
       inspection_item_status: "ok" | "needs_attention" | "defect_found"
-      issue_source: "core" | "nspire" | "projects" | "daily_grounds" | "permits"
+      issue_source:
+        | "core"
+        | "nspire"
+        | "projects"
+        | "daily_grounds"
+        | "permits"
+        | "voice_agent"
       message_type: "external" | "internal"
       permit_status: "draft" | "active" | "expired" | "renewed" | "revoked"
       permit_type:
@@ -3523,16 +4228,16 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
-        "owner",
         "manager",
         "inspector",
-        "administrator",
-        "superintendent",
-        "clerk",
         "user",
+        "owner",
         "project_manager",
+        "superintendent",
         "subcontractor",
         "viewer",
+        "administrator",
+        "clerk",
       ],
       asset_type: [
         "cleanout",
@@ -3569,7 +4274,14 @@ export const Constants = {
       ],
       inspection_area: ["outside", "inside", "unit"],
       inspection_item_status: ["ok", "needs_attention", "defect_found"],
-      issue_source: ["core", "nspire", "projects", "daily_grounds", "permits"],
+      issue_source: [
+        "core",
+        "nspire",
+        "projects",
+        "daily_grounds",
+        "permits",
+        "voice_agent",
+      ],
       message_type: ["external", "internal"],
       permit_status: ["draft", "active", "expired", "renewed", "revoked"],
       permit_type: [

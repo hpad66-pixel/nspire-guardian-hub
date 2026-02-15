@@ -9,6 +9,8 @@ type DefectInsert = Database['public']['Tables']['defects']['Insert'];
 type SeverityLevel = Database['public']['Enums']['severity_level'];
 
 export interface Defect extends DefectRow {
+  life_threatening: boolean;
+  point_value: number | null;
   inspection?: {
     property_id: string;
     unit_id: string | null;

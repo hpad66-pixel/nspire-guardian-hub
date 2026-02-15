@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TagInput } from '@/components/ui/tag-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, File, X } from 'lucide-react';
-import { useUploadOrganizationDocument, DOCUMENT_FOLDERS } from '@/hooks/useDocuments';
+import { useUploadOrganizationDocument } from '@/hooks/useDocuments';
 import { cn } from '@/lib/utils';
 
 // Suggested tags by folder
@@ -32,20 +32,41 @@ const FOLDER_TAGS: Record<string, string[]> = {
 interface DocumentUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultFolder?: string;
+  defaultFolderId?: string | null;
+  folderOptions: { id: string; label: string; path: string[] }[];
+  folderPathById: Record<string, string[]>;
 }
 
-export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'General' }: DocumentUploadDialogProps) {
+export function DocumentUploadDialog({
+  open,
+  onOpenChange,
+  defaultFolderId = null,
+  folderOptions,
+  folderPathById,
+}: DocumentUploadDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [folder, setFolder] = useState(defaultFolder);
+  const [folderId, setFolderId] = useState<string | null>(defaultFolderId);
   const [tags, setTags] = useState<string[]>([]);
   const [expiryDate, setExpiryDate] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   
   const uploadDocument = useUploadOrganizationDocument();
+  
+  useEffect(() => {
+    if (open) {
+      setFolderId(defaultFolderId);
+    }
+  }, [defaultFolderId, open]);
+  
+  const folderPath = useMemo(() => {
+    if (!folderId) return [];
+    return folderPathById[folderId] || [];
+  }, [folderId, folderPathById]);
+  
+  const primaryFolder = folderPath[0] || 'General';
   
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -81,7 +102,10 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
     try {
       await uploadDocument.mutateAsync({
         file,
-        folder,
+        folder: primaryFolder,
+        folderId,
+        folderPathSegments: folderPath,
+        subfolder: folderPath.length > 1 ? folderPath.slice(1).join(' / ') : undefined,
         name,
         description: description || undefined,
         tags: tags.length > 0 ? tags : undefined,
@@ -99,7 +123,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
     setFile(null);
     setName('');
     setDescription('');
-    setFolder(defaultFolder);
+    setFolderId(defaultFolderId);
     setTags([]);
     setExpiryDate('');
   };
@@ -190,14 +214,17 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
           {/* Folder */}
           <div className="space-y-2">
             <Label>Folder *</Label>
-            <Select value={folder} onValueChange={setFolder}>
+            <Select
+              value={folderId || undefined}
+              onValueChange={(value) => setFolderId(value)}
+            >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select a folder" />
               </SelectTrigger>
               <SelectContent>
-                {DOCUMENT_FOLDERS.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f}
+                {folderOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -223,7 +250,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
             <TagInput
               value={tags}
               onChange={setTags}
-              suggestions={FOLDER_TAGS[folder] || []}
+              suggestions={FOLDER_TAGS[primaryFolder] || []}
               placeholder="Add tags for search..."
               maxTags={8}
             />
@@ -249,7 +276,7 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultFolder = 'Gene
             </Button>
             <Button
               type="submit"
-              disabled={!file || !name || uploadDocument.isPending}
+              disabled={!file || !name || !folderId || uploadDocument.isPending}
             >
               {uploadDocument.isPending ? 'Uploading...' : 'Upload Document'}
             </Button>

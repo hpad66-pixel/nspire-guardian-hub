@@ -17,6 +17,8 @@ import {
   FileText,
   TrendingUp,
   Calendar,
+  AtSign,
+  MessageSquare,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
@@ -24,6 +26,7 @@ import { useUnitsByProperty } from '@/hooks/useUnits';
 import { useIssuesByProperty } from '@/hooks/useIssues';
 import { useDefects, useOpenDefects } from '@/hooks/useDefects';
 import { useProjectsByProperty } from '@/hooks/useProjects';
+import { useNotifications, useMarkNotificationRead, type Notification } from '@/hooks/useNotifications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -196,6 +199,19 @@ export default function Dashboard() {
   const { data: defects = [] } = useDefects();
   const { data: openDefects = [] } = useOpenDefects();
   const { data: projects = [] } = useProjectsByProperty(selectedPropertyId || null);
+  const { data: notifications = [] } = useNotifications();
+  const markRead = useMarkNotificationRead();
+
+  const actionNotifications = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return notifications.filter((n) => 
+      (n.type === 'mention' || n.type === 'assignment') &&
+      new Date(n.created_at) > sevenDaysAgo
+    );
+  }, [notifications]);
+
+  const unreadActionCount = actionNotifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
     if (!selectedPropertyId && properties && properties.length > 0) {
@@ -486,6 +502,59 @@ export default function Dashboard() {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Action Items — Discussion Mentions & Assignments */}
+        {actionNotifications.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <AtSign className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Action Required</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {unreadActionCount > 0 
+                      ? `${unreadActionCount} new · ${actionNotifications.length} total this week`
+                      : `${actionNotifications.length} item${actionNotifications.length !== 1 ? 's' : ''} this week`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              {actionNotifications.slice(0, 5).map((n) => (
+                <Link
+                  key={n.id}
+                  to={n.entity_type === 'project' && n.entity_id ? `/projects/${n.entity_id}` : '#'}
+                  onClick={() => { if (!n.is_read) markRead.mutate(n.id); }}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-xl bg-card border hover:shadow-md transition-all group",
+                    !n.is_read ? "border-primary/30 bg-primary/5" : "border-border/50"
+                  )}
+                >
+                  <div className={cn(
+                    "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
+                    !n.is_read ? "bg-primary/15" : "bg-muted/50"
+                  )}>
+                    {n.type === 'mention' ? (
+                      <AtSign className={cn("h-4 w-4", !n.is_read ? "text-primary" : "text-muted-foreground")} />
+                    ) : (
+                      <MessageSquare className={cn("h-4 w-4", !n.is_read ? "text-primary" : "text-muted-foreground")} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm truncate", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>{n.title}</p>
+                    {n.message && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.message}</p>}
+                  </div>
+                  {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Recent Activity */}

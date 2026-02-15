@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -22,9 +22,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import {
   FileText,
   FolderOpen,
-  Plus,
   Search,
   Download,
   Eye,
@@ -35,34 +42,42 @@ import {
   FileSpreadsheet,
   FileType,
   Upload,
-  Calendar,
   AlertTriangle,
   Archive,
   Lock,
   ChevronRight,
+  ChevronDown,
+  FolderPlus,
+  Edit3,
+  Move,
+  Trash,
 } from 'lucide-react';
 import {
   useOrganizationDocuments,
-  useDocumentFolderStats,
   useArchiveOrganizationDocument,
-  DOCUMENT_FOLDERS,
   type OrganizationDocument,
 } from '@/hooks/useDocuments';
 import { useTotalArchiveCount } from '@/hooks/usePropertyArchives';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/usePermissions';
-
-const folderIcons: Record<string, React.ReactNode> = {
-  General: <FolderOpen className="h-4 w-4" />,
-  Contracts: <FileText className="h-4 w-4" />,
-  Permits: <FileType className="h-4 w-4" />,
-  Insurance: <FileSpreadsheet className="h-4 w-4" />,
-  Legal: <FileText className="h-4 w-4" />,
-  Policies: <FileText className="h-4 w-4" />,
-  Training: <FileText className="h-4 w-4" />,
-  Reports: <FileSpreadsheet className="h-4 w-4" />,
-};
+import {
+  buildFolderTree,
+  useCreateDocumentFolder,
+  useDeleteDocumentFolder,
+  useDocumentFolders,
+  useUpdateDocumentFolder,
+  type DocumentFolder,
+  type DocumentFolderNode,
+} from '@/hooks/useDocumentFolders';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 function getFileIcon(mimeType: string | null) {
   if (!mimeType) return <File className="h-5 w-5 text-muted-foreground" />;
@@ -86,21 +101,241 @@ function formatFileSize(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function FolderTreeItem({
+  node,
+  depth,
+  selectedFolderId,
+  expandedFolderIds,
+  onSelect,
+  onToggle,
+  canManageFolders,
+  onCreateSubfolder,
+  onRename,
+  onMove,
+  onDelete,
+}: {
+  node: DocumentFolderNode;
+  depth: number;
+  selectedFolderId: string | null;
+  expandedFolderIds: Set<string>;
+  onSelect: (folderId: string) => void;
+  onToggle: (folderId: string) => void;
+  canManageFolders: boolean;
+  onCreateSubfolder: (parentId: string) => void;
+  onRename: (folderId: string) => void;
+  onMove: (folderId: string) => void;
+  onDelete: (folderId: string) => void;
+}) {
+  const isExpanded = expandedFolderIds.has(node.id);
+  const hasChildren = node.children.length > 0;
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors",
+          selectedFolderId === node.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+        )}
+        style={{ paddingLeft: 8 + depth * 16 }}
+      >
+        {hasChildren ? (
+          <button
+            type="button"
+            className={cn(
+              "h-6 w-6 flex items-center justify-center rounded-sm",
+              selectedFolderId === node.id ? "text-primary-foreground/80" : "text-muted-foreground"
+            )}
+            onClick={() => onToggle(node.id)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        ) : (
+          <span className="h-6 w-6" />
+        )}
+        <button type="button" className="flex-1 text-left" onClick={() => onSelect(node.id)}>
+          {node.name}
+        </button>
+        {canManageFolders && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onCreateSubfolder(node.id)}>
+                <FolderPlus className="h-4 w-4 mr-2" />
+                New Subfolder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onRename(node.id)}>
+                <Edit3 className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMove(node.id)}>
+                <Move className="h-4 w-4 mr-2" />
+                Move
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDelete(node.id)} className="text-destructive">
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      {hasChildren && isExpanded && (
+        <div className="space-y-1">
+          {node.children.map((child) => (
+            <FolderTreeItem
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selectedFolderId={selectedFolderId}
+              expandedFolderIds={expandedFolderIds}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              canManageFolders={canManageFolders}
+              onCreateSubfolder={onCreateSubfolder}
+              onRename={onRename}
+              onMove={onMove}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentsPage() {
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [folderModal, setFolderModal] = useState<{
+    mode: 'create' | 'rename' | 'move' | 'delete' | null;
+    folderId?: string;
+    parentId?: string | null;
+  }>({ mode: null });
+  const [folderNameInput, setFolderNameInput] = useState('');
+  const [moveParentId, setMoveParentId] = useState<string | null>(null);
   
-  const { data: documents, isLoading } = useOrganizationDocuments(selectedFolder || undefined);
-  const { data: folderStats } = useDocumentFolderStats();
+  const { data: folders } = useDocumentFolders();
+  const { data: documents, isLoading } = useOrganizationDocuments(selectedFolderId);
   const { data: archiveCount } = useTotalArchiveCount();
   const archiveDocument = useArchiveOrganizationDocument();
-  const { isAdmin } = useUserPermissions();
+  const createFolder = useCreateDocumentFolder();
+  const updateFolder = useUpdateDocumentFolder();
+  const deleteFolder = useDeleteDocumentFolder();
+  const { isAdmin, isOwner } = useUserPermissions();
+  const canManageFolders = isAdmin || isOwner;
   
-  const filteredDocuments = documents?.filter(doc =>
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const folderTree = useMemo(
+    () => buildFolderTree(folders || []),
+    [folders]
   );
+  
+  const folderById = useMemo(() => {
+    const map: Record<string, DocumentFolder> = {};
+    (folders || []).forEach((folder) => {
+      map[folder.id] = folder;
+    });
+    return map;
+  }, [folders]);
+  
+  const folderPathById = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    const buildPath = (folderId: string): string[] => {
+      if (map[folderId]) return map[folderId];
+      const folder = folderById[folderId];
+      if (!folder) return [];
+      const parentPath = folder.parent_id ? buildPath(folder.parent_id) : [];
+      const path = [...parentPath, folder.name];
+      map[folderId] = path;
+      return path;
+    };
+    Object.keys(folderById).forEach((id) => buildPath(id));
+    return map;
+  }, [folderById]);
+  
+  const folderOptions = useMemo(() => {
+    const options: { id: string; label: string; path: string[] }[] = [];
+    const walk = (nodes: DocumentFolderNode[], depth: number) => {
+      nodes.forEach((node) => {
+        options.push({
+          id: node.id,
+          label: `${depth > 0 ? `${'— '.repeat(depth)}` : ''}${node.name}`,
+          path: folderPathById[node.id] || [node.name],
+        });
+        if (node.children.length > 0) {
+          walk(node.children, depth + 1);
+        }
+      });
+    };
+    walk(folderTree, 0);
+    return options;
+  }, [folderTree, folderPathById]);
+  
+  const filteredDocuments = documents?.filter((doc) => {
+    const matchesSearch =
+      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+  
+  const toggleFolderExpanded = (folderId: string) => {
+    setExpandedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+  
+  const getFolderPathLabel = (folderId: string | null) => {
+    if (!folderId) return 'All Documents';
+    const path = folderPathById[folderId];
+    return path ? path.join(' / ') : 'All Documents';
+  };
+  
+  const getDocumentPath = (doc: OrganizationDocument) => {
+    if (doc.folder_id && folderPathById[doc.folder_id]) {
+      return folderPathById[doc.folder_id].join(' / ');
+    }
+    if (doc.subfolder) {
+      return `${doc.folder} / ${doc.subfolder}`;
+    }
+    return doc.folder || 'Unfiled';
+  };
+  
+  const getDescendantIds = (rootId: string): Set<string> => {
+    const descendants = new Set<string>();
+    const walk = (nodeId: string) => {
+      (folders || []).forEach((folder) => {
+        if (folder.parent_id === nodeId) {
+          descendants.add(folder.id);
+          walk(folder.id);
+        }
+      });
+    };
+    walk(rootId);
+    return descendants;
+  };
+  
+  const activeFolder = folderModal.folderId ? folderById[folderModal.folderId] : null;
+  const moveOptions = useMemo(() => {
+    if (folderModal.mode !== 'move' || !folderModal.folderId) return [];
+    const invalidIds = getDescendantIds(folderModal.folderId);
+    invalidIds.add(folderModal.folderId);
+    return folderOptions.filter((option) => !invalidIds.has(option.id));
+  }, [folderModal, folderOptions, folders]);
   
   const handleDownload = (doc: OrganizationDocument) => {
     window.open(doc.file_url, '_blank');
@@ -138,10 +373,26 @@ export default function DocumentsPage() {
             Organization-wide document library and file management
           </p>
         </div>
-        <Button onClick={() => setUploadDialogOpen(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Document
-        </Button>
+        <div className="flex items-center gap-2">
+          {canManageFolders && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFolderModal({ mode: 'create', parentId: selectedFolderId });
+                setFolderNameInput('');
+              }}
+            >
+              <FolderPlus className="h-4 w-4 mr-2" />
+              New Folder
+            </Button>
+          )}
+          {isAdmin && (
+            <Button onClick={() => setUploadDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Document
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Property Archives Card */}
@@ -212,12 +463,12 @@ export default function DocumentsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Folders</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
               <button
-                onClick={() => setSelectedFolder(null)}
+                onClick={() => setSelectedFolderId(null)}
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
-                  selectedFolder === null
+                  selectedFolderId === null
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-muted"
                 )}
@@ -226,31 +477,43 @@ export default function DocumentsPage() {
                   <FolderOpen className="h-4 w-4" />
                   All Documents
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {documents?.length || 0}
-                </Badge>
               </button>
               
-              {DOCUMENT_FOLDERS.map((folder) => (
-                <button
-                  key={folder}
-                  onClick={() => setSelectedFolder(folder)}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
-                    selectedFolder === folder
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    {folderIcons[folder] || <FolderOpen className="h-4 w-4" />}
-                    {folder}
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {folderStats?.[folder] || 0}
-                  </Badge>
-                </button>
-              ))}
+              {folderTree.length === 0 ? (
+                <div className="text-xs text-muted-foreground px-3 py-2">
+                  No folders yet
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {folderTree.map((node) => (
+                    <FolderTreeItem
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      selectedFolderId={selectedFolderId}
+                      expandedFolderIds={expandedFolderIds}
+                      onSelect={setSelectedFolderId}
+                      onToggle={toggleFolderExpanded}
+                      canManageFolders={canManageFolders}
+                      onCreateSubfolder={(parentId) => {
+                        setFolderModal({ mode: 'create', parentId });
+                        setFolderNameInput('');
+                      }}
+                      onRename={(folderId) => {
+                        setFolderModal({ mode: 'rename', folderId });
+                        setFolderNameInput(folderById[folderId]?.name || '');
+                      }}
+                      onMove={(folderId) => {
+                        setFolderModal({ mode: 'move', folderId });
+                        setMoveParentId(folderById[folderId]?.parent_id || null);
+                      }}
+                      onDelete={(folderId) => {
+                        setFolderModal({ mode: 'delete', folderId });
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -261,8 +524,8 @@ export default function DocumentsPage() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Documents</span>
-                <span className="font-medium">{documents?.length || 0}</span>
+                <span className="text-muted-foreground">Documents</span>
+                <span className="font-medium">{filteredDocuments?.length || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Expiring Soon</span>
@@ -285,7 +548,7 @@ export default function DocumentsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{selectedFolder || 'All Documents'}</CardTitle>
+                <CardTitle>{getFolderPathLabel(selectedFolderId)}</CardTitle>
                 <CardDescription>
                   {filteredDocuments?.length || 0} documents
                 </CardDescription>
@@ -337,7 +600,7 @@ export default function DocumentsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{doc.folder}</Badge>
+                        <Badge variant="outline">{getDocumentPath(doc)}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatFileSize(doc.file_size)}
@@ -405,7 +668,7 @@ export default function DocumentsPage() {
                 <p className="text-muted-foreground mb-4">
                   {searchQuery ? 'Try adjusting your search' : 'Upload your first document to get started'}
                 </p>
-                {!searchQuery && (
+                {!searchQuery && isAdmin && (
                   <Button onClick={() => setUploadDialogOpen(true)}>
                     <Upload className="h-4 w-4 mr-2" />
                     Upload Document
@@ -417,10 +680,178 @@ export default function DocumentsPage() {
         </Card>
       </div>
       
+      {/* Folder Modals */}
+      <Dialog
+        open={folderModal.mode === 'create' || folderModal.mode === 'rename'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFolderModal({ mode: null });
+            setFolderNameInput('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>
+              {folderModal.mode === 'create' ? 'Create Folder' : 'Rename Folder'}
+            </DialogTitle>
+            <DialogDescription>
+              {folderModal.mode === 'create'
+                ? 'Folders can be empty and organized in a tree.'
+                : 'Rename the selected folder.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="folder-name">Folder Name</Label>
+            <Input
+              id="folder-name"
+              value={folderNameInput}
+              onChange={(e) => setFolderNameInput(e.target.value)}
+              placeholder="Enter folder name"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFolderModal({ mode: null });
+                setFolderNameInput('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!folderNameInput.trim()) return;
+                if (folderModal.mode === 'create') {
+                  await createFolder.mutateAsync({
+                    name: folderNameInput,
+                    parentId: folderModal.parentId ?? null,
+                  });
+                } else if (folderModal.mode === 'rename' && folderModal.folderId) {
+                  await updateFolder.mutateAsync({
+                    id: folderModal.folderId,
+                    name: folderNameInput,
+                  });
+                }
+                setFolderModal({ mode: null });
+                setFolderNameInput('');
+              }}
+              disabled={!folderNameInput.trim()}
+            >
+              {folderModal.mode === 'create' ? 'Create' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog
+        open={folderModal.mode === 'move'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFolderModal({ mode: null });
+            setMoveParentId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Move Folder</DialogTitle>
+            <DialogDescription>
+              Choose a new parent for {activeFolder?.name || 'this folder'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>New Parent</Label>
+            <Select
+              value={moveParentId || 'root'}
+              onValueChange={(value) => {
+                setMoveParentId(value === 'root' ? null : value);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="root">Root</SelectItem>
+                {moveOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFolderModal({ mode: null });
+                setMoveParentId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!folderModal.folderId) return;
+                await updateFolder.mutateAsync({
+                  id: folderModal.folderId,
+                  parentId: moveParentId ?? null,
+                });
+                setFolderModal({ mode: null });
+                setMoveParentId(null);
+              }}
+            >
+              Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog
+        open={folderModal.mode === 'delete'}
+        onOpenChange={(open) => {
+          if (!open) setFolderModal({ mode: null });
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete Folder</DialogTitle>
+            <DialogDescription>
+              This folder must be empty (no subfolders or documents) to be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFolderModal({ mode: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!folderModal.folderId) return;
+                await deleteFolder.mutateAsync(folderModal.folderId);
+                if (selectedFolderId === folderModal.folderId) {
+                  setSelectedFolderId(null);
+                }
+                setFolderModal({ mode: null });
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <DocumentUploadDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
-        defaultFolder={selectedFolder || 'General'}
+        defaultFolderId={selectedFolderId}
+        folderOptions={folderOptions}
+        folderPathById={folderPathById}
       />
     </div>
   );

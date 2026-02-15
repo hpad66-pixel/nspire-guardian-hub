@@ -145,15 +145,21 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
 
             <div className="grid gap-2">
               <Label htmlFor="budget">Budget</Label>
-              <Input
-                id="budget"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.budget || ''}
-                onChange={(e) => setFormData({ ...formData, budget: parseFloat(e.target.value) || undefined })}
-                placeholder="e.g. 450000"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <Input
+                  id="budget"
+                  type="text"
+                  inputMode="decimal"
+                  className="pl-7"
+                  value={formData.budget ? new Intl.NumberFormat('en-US').format(formData.budget) : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, '');
+                    setFormData({ ...formData, budget: raw ? parseFloat(raw) : undefined });
+                  }}
+                  placeholder="e.g. 450,000"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
