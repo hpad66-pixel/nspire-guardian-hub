@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { useUserPermissions } from './usePermissions';
+import { useProperties } from './useProperties';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -92,14 +94,6 @@ export function usePeople(filters?: {
         accessiblePropertyIds = (accessibleProperties || []).map((p) => p.id);
       }
 
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name', { ascending: true });
-
-      if (profilesError) throw profilesError;
-
       // Get all property team members with property info
       let teamQuery = supabase
         .from('property_team_members')
@@ -126,6 +120,21 @@ export function usePeople(filters?: {
 
       const { data: teamMembers, error: teamError } = await teamQuery;
       if (teamError) throw teamError;
+
+      const relatedUserIds = [...new Set((teamMembers || []).map((tm) => tm.user_id).filter(Boolean))];
+
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('*')
+        .order('full_name', { ascending: true });
+
+      if (!isAdmin) {
+        if (relatedUserIds.length === 0) return [];
+        profilesQuery = profilesQuery.in('user_id', relatedUserIds);
+      }
+
+      const { data: profiles, error: profilesError } = await profilesQuery;
+      if (profilesError) throw profilesError;
 
       // Get all user roles
       const { data: userRoles, error: rolesError } = await supabase
@@ -466,26 +475,34 @@ export function useUpdateProfile() {
 
 // Get people stats
 export function usePeopleStats() {
-  return useQuery({
-    queryKey: ['people-stats'],
-    queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, status');
-      
-      if (profilesError) throw profilesError;
+  const { isAdmin } = useUserPermissions();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const allowedPropertyIds = properties.map((p) => p.id);
 
-      const { data: teamMembers, error: teamError } = await supabase
+  return useQuery({
+    queryKey: ['people-stats', isAdmin, allowedPropertyIds.join(',')],
+    enabled: isAdmin || !propertiesLoading,
+    queryFn: async () => {
+      let teamQuery = supabase
         .from('property_team_members')
-        .select('id, status');
+        .select('id, status, user_id, property_id');
+
+      if (!isAdmin) {
+        if (allowedPropertyIds.length === 0) {
+          return {
+            totalPeople: 0,
+            activeMembers: 0,
+            archivedMembers: 0,
+            propertiesWithTeam: 0,
+            rolesCount: 0,
+          };
+        }
+        teamQuery = teamQuery.in('property_id', allowedPropertyIds);
+      }
+
+      const { data: teamMembers, error: teamError } = await teamQuery;
 
       if (teamError) throw teamError;
-
-      const { data: properties, error: propsError } = await supabase
-        .from('properties')
-        .select('id');
-
-      if (propsError) throw propsError;
 
       const { data: roles, error: rolesError } = await supabase
         .from('role_definitions')
@@ -495,12 +512,14 @@ export function usePeopleStats() {
 
       const activeMembers = (teamMembers || []).filter(tm => tm.status === 'active').length;
       const archivedMembers = (teamMembers || []).filter(tm => tm.status === 'archived').length;
+      const uniqueUsers = new Set((teamMembers || []).map((tm) => tm.user_id).filter(Boolean));
+      const propertiesWithTeam = new Set((teamMembers || []).map((tm) => tm.property_id).filter(Boolean));
 
       return {
-        totalPeople: profiles?.length || 0,
+        totalPeople: uniqueUsers.size,
         activeMembers,
         archivedMembers,
-        propertiesWithTeam: properties?.length || 0,
+        propertiesWithTeam: isAdmin ? properties.length : propertiesWithTeam.size,
         rolesCount: roles?.length || 0,
       };
     },

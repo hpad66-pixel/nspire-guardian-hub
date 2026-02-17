@@ -21,9 +21,9 @@ export interface Project extends ProjectRow {
 }
 
 export function useProjects() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', isAdmin, isOwner],
+    queryKey: ['projects', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -34,7 +34,7 @@ export function useProjects() {
         `)
         .order('created_at', { ascending: false });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const propertyIds = await getAssignedPropertyIds();
         if (propertyIds.length === 0) return [] as Project[];
         query = query.in('property_id', propertyIds);
@@ -49,9 +49,9 @@ export function useProjects() {
 }
 
 export function useActiveProjects() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'active', isAdmin, isOwner],
+    queryKey: ['projects', 'active', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -63,7 +63,7 @@ export function useActiveProjects() {
         .in('status', ['planning', 'active'])
         .order('created_at', { ascending: false });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const propertyIds = await getAssignedPropertyIds();
         if (propertyIds.length === 0) return [] as Project[];
         query = query.in('property_id', propertyIds);
@@ -78,9 +78,9 @@ export function useActiveProjects() {
 }
 
 export function useProject(projectId: string | null) {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', projectId, isAdmin, isOwner],
+    queryKey: ['projects', projectId, isAdmin],
     queryFn: async () => {
       if (!projectId) return null;
 
@@ -93,7 +93,7 @@ export function useProject(projectId: string | null) {
         `)
         .eq('id', projectId);
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const propertyIds = await getAssignedPropertyIds();
         if (propertyIds.length === 0) return null;
         query = query.in('property_id', propertyIds);
@@ -109,12 +109,12 @@ export function useProject(projectId: string | null) {
 }
 
 export function useProjectsByProperty(propertyId: string | null) {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'property', propertyId, isAdmin, isOwner],
+    queryKey: ['projects', 'property', propertyId, isAdmin],
     queryFn: async () => {
       if (!propertyId) return [];
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const propertyIds = await getAssignedPropertyIds();
         if (!propertyIds.includes(propertyId)) return [] as Project[];
       }
@@ -137,15 +137,15 @@ export function useProjectsByProperty(propertyId: string | null) {
 }
 
 export function useProjectStats() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['projects', 'stats', isAdmin, isOwner],
+    queryKey: ['projects', 'stats', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('projects')
         .select('status, budget, spent, property_id');
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const propertyIds = await getAssignedPropertyIds();
         if (propertyIds.length === 0) {
           return { active: 0, planning: 0, onHold: 0, completed: 0, totalBudget: 0, totalSpent: 0, total: 0 };

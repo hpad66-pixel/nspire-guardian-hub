@@ -18,9 +18,9 @@ export interface Milestone extends MilestoneRow {
 }
 
 export function useMilestones() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['milestones', isAdmin, isOwner],
+    queryKey: ['milestones', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('project_milestones')
@@ -30,7 +30,7 @@ export function useMilestones() {
         `)
         .order('due_date', { ascending: true });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const projectIds = await getAssignedProjectIds();
         if (projectIds.length === 0) return [] as Milestone[];
         query = query.in('project_id', projectIds);
@@ -45,10 +45,17 @@ export function useMilestones() {
 }
 
 export function useMilestonesByProject(projectId: string | null) {
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['milestones', 'project', projectId],
+    queryKey: ['milestones', 'project', projectId, isAdmin],
     queryFn: async () => {
       if (!projectId) return [];
+
+      if (!isAdmin) {
+        const projectIds = await getAssignedProjectIds();
+        if (!projectIds.includes(projectId)) return [];
+      }
+
       const { data, error } = await supabase
         .from('project_milestones')
         .select('*')
@@ -63,9 +70,9 @@ export function useMilestonesByProject(projectId: string | null) {
 }
 
 export function useUpcomingMilestones(daysAhead: number = 7) {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['milestones', 'upcoming', daysAhead, isAdmin, isOwner],
+    queryKey: ['milestones', 'upcoming', daysAhead, isAdmin],
     queryFn: async () => {
       const today = new Date();
       const futureDate = new Date();
@@ -82,7 +89,7 @@ export function useUpcomingMilestones(daysAhead: number = 7) {
         .neq('status', 'completed')
         .order('due_date', { ascending: true });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const projectIds = await getAssignedProjectIds();
         if (projectIds.length === 0) return [] as Milestone[];
         query = query.in('project_id', projectIds);
