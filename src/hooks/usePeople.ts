@@ -70,6 +70,28 @@ export function usePeople(filters?: {
   return useQuery({
     queryKey: ['people', filters],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data: currentUserRoles, error: currentUserRolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (currentUserRolesError) throw currentUserRolesError;
+
+      const isAdmin = (currentUserRoles || []).some((r) => r.role === 'admin');
+
+      let accessiblePropertyIds: string[] = [];
+      if (!isAdmin) {
+        const { data: accessibleProperties, error: accessiblePropertiesError } = await supabase
+          .from('properties')
+          .select('id');
+
+        if (accessiblePropertiesError) throw accessiblePropertiesError;
+        accessiblePropertyIds = (accessibleProperties || []).map((p) => p.id);
+      }
+
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -94,6 +116,12 @@ export function usePeople(filters?: {
       }
       if (filters?.role) {
         teamQuery = teamQuery.eq('role', filters.role);
+      }
+      if (!isAdmin) {
+        if (accessiblePropertyIds.length === 0) {
+          return [];
+        }
+        teamQuery = teamQuery.in('property_id', accessiblePropertyIds);
       }
 
       const { data: teamMembers, error: teamError } = await teamQuery;
@@ -151,6 +179,10 @@ export function usePeople(filters?: {
         filtered = filtered.filter(p => 
           p.assignments.some(a => a.property_id === filters.propertyId)
         );
+      }
+
+      if (!isAdmin) {
+        filtered = filtered.filter(p => p.assignments.length > 0);
       }
 
       return filtered;
