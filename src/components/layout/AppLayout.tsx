@@ -9,16 +9,67 @@ import { Search } from 'lucide-react';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import type { ModuleConfig } from '@/types/modules';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRoles } from '@/hooks/useUserManagement';
+import type { Database } from '@/integrations/supabase/types';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { userRole, isModuleEnabled, isLoading: modulesLoading } = useModules();
+  const { isModuleEnabled, isLoading: modulesLoading } = useModules();
+  const { user } = useAuth();
+  const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  type AppRole = Database['public']['Enums']['app_role'];
+
+  const roleLabels: Record<AppRole, string> = {
+    admin: 'Admin',
+    owner: 'Owner',
+    manager: 'Property Manager',
+    inspector: 'Inspector',
+    administrator: 'Administrator',
+    superintendent: 'Superintendent',
+    clerk: 'Clerk',
+    project_manager: 'Project Manager',
+    subcontractor: 'Subcontractor',
+    viewer: 'Viewer',
+    user: 'User',
+  };
+
+  const rolePriority: Record<AppRole, number> = {
+    admin: 9,
+    owner: 8,
+    manager: 7,
+    inspector: 6,
+    administrator: 5,
+    superintendent: 4,
+    clerk: 3,
+    project_manager: 2,
+    subcontractor: 2,
+    viewer: 1,
+    user: 1,
+  };
+
+  const displayRoles = assignedRoles
+    .map((role) => role.role as AppRole)
+    .sort((a, b) => (rolePriority[b] || 0) - (rolePriority[a] || 0))
+    .map((role) => roleLabels[role] || role);
+
+  const fullName = (user?.user_metadata?.full_name as string | undefined)?.trim();
+  const initials = (() => {
+    if (fullName) {
+      const parts = fullName.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return user?.email?.slice(0, 2).toUpperCase() || 'U';
+  })();
 
   // Keyboard shortcut for search
   useEffect(() => {
@@ -85,11 +136,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="flex-1" />
             <div className="flex items-center gap-3">
               <NotificationCenter />
-              <Badge variant="outline" className="text-xs capitalize">
-                {userRole.replace('_', ' ')}
+              <Badge variant="outline" className="text-xs">
+                {displayRoles.length > 0 ? displayRoles.join(', ') : 'User'}
               </Badge>
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-xs font-medium text-primary-foreground">JD</span>
+                <span className="text-xs font-medium text-primary-foreground">{initials}</span>
               </div>
             </div>
           </header>
