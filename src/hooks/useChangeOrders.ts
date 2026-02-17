@@ -18,9 +18,9 @@ export interface ChangeOrder extends ChangeOrderRow {
 }
 
 export function useChangeOrders() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['change-orders', isAdmin, isOwner],
+    queryKey: ['change-orders', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('change_orders')
@@ -30,7 +30,7 @@ export function useChangeOrders() {
         `)
         .order('created_at', { ascending: false });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const projectIds = await getAssignedProjectIds();
         if (projectIds.length === 0) return [] as ChangeOrder[];
         query = query.in('project_id', projectIds);
@@ -45,10 +45,17 @@ export function useChangeOrders() {
 }
 
 export function useChangeOrdersByProject(projectId: string | null) {
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['change-orders', 'project', projectId],
+    queryKey: ['change-orders', 'project', projectId, isAdmin],
     queryFn: async () => {
       if (!projectId) return [];
+
+      if (!isAdmin) {
+        const projectIds = await getAssignedProjectIds();
+        if (!projectIds.includes(projectId)) return [];
+      }
+
       const { data, error } = await supabase
         .from('change_orders')
         .select('*')
@@ -63,9 +70,9 @@ export function useChangeOrdersByProject(projectId: string | null) {
 }
 
 export function usePendingChangeOrders() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['change-orders', 'pending', isAdmin, isOwner],
+    queryKey: ['change-orders', 'pending', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('change_orders')
@@ -76,7 +83,7 @@ export function usePendingChangeOrders() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const projectIds = await getAssignedProjectIds();
         if (projectIds.length === 0) return [] as ChangeOrder[];
         query = query.in('project_id', projectIds);
@@ -91,15 +98,15 @@ export function usePendingChangeOrders() {
 }
 
 export function useChangeOrderStats() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['change-orders', 'stats', isAdmin, isOwner],
+    queryKey: ['change-orders', 'stats', isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('change_orders')
         .select('status, amount, project_id');
 
-      if (!isAdmin && !isOwner) {
+      if (!isAdmin) {
         const projectIds = await getAssignedProjectIds();
         if (projectIds.length === 0) {
           return { pendingCount: 0, approvedCount: 0, rejectedCount: 0, pendingAmount: 0, approvedAmount: 0, total: 0 };

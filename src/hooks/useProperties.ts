@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
+import { getAssignedPropertyIds } from './propertyAccess';
 
 export interface Property {
   id: string;
@@ -31,11 +32,11 @@ export interface Property {
 }
 
 export function useProperties() {
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['properties', isAdmin, isOwner],
+    queryKey: ['properties', isAdmin],
     queryFn: async () => {
-      if (isAdmin || isOwner) {
+      if (isAdmin) {
         const { data, error } = await supabase
           .from('properties')
           .select('*')
@@ -66,9 +67,19 @@ export function useProperties() {
 }
 
 export function useProperty(id: string) {
+  const { isAdmin } = useUserPermissions();
   return useQuery({
-    queryKey: ['properties', id],
+    queryKey: ['properties', id, isAdmin],
     queryFn: async () => {
+      if (!id) return null;
+
+      if (!isAdmin) {
+        const propertyIds = await getAssignedPropertyIds();
+        if (!propertyIds.includes(id)) {
+          return null;
+        }
+      }
+
       const { data, error } = await supabase
         .from('properties')
         .select('*')

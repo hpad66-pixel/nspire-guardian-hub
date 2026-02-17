@@ -11,9 +11,9 @@ export type PermitInsert = TablesInsert<'permits'>;
 export type PermitUpdate = TablesUpdate<'permits'>;
 
 export function usePermits(propertyId?: string) {
-  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
-  const isPrivileged = isAdmin || isOwner;
+  const isPrivileged = isAdmin;
   const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
 
   return useQuery({
@@ -48,9 +48,13 @@ export function usePermits(propertyId?: string) {
 }
 
 export function usePermit(id: string | null) {
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const allowedPropertyIds = properties.map(p => p.id);
+
   return useQuery({
-    queryKey: ['permit', id],
-    enabled: !!id,
+    queryKey: ['permit', id, isAdmin, allowedPropertyIds.join(',')],
+    enabled: !!id && !permissionsLoading && (isAdmin || !propertiesLoading),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('permits')
@@ -63,15 +67,16 @@ export function usePermit(id: string | null) {
         .single();
 
       if (error) throw error;
+      if (!isAdmin && !allowedPropertyIds.includes(data.property_id)) return null;
       return data;
     },
   });
 }
 
 export function usePermitStats() {
-  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
-  const isPrivileged = isAdmin || isOwner;
+  const isPrivileged = isAdmin;
   const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
 
   return useQuery({
@@ -137,9 +142,9 @@ export function usePermitStats() {
 }
 
 export function useExpiringPermits(days: number = 30) {
-  const { isAdmin, isOwner, isLoading: permissionsLoading } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
-  const isPrivileged = isAdmin || isOwner;
+  const isPrivileged = isAdmin;
   const allowedPropertyIds = isPrivileged ? [] : properties.map(p => p.id);
 
   return useQuery({

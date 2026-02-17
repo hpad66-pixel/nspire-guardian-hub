@@ -47,6 +47,11 @@ export function useUserPermissions() {
   const hasPermission = (module: ModuleType, action: ActionType): boolean => {
     // Admin has all permissions
     if (currentRole === 'admin') return true;
+    // Owners can always access and create project records
+    // (data visibility remains property-scoped in project hooks).
+    if (currentRole === 'owner' && module === 'projects' && (action === 'view' || action === 'create')) {
+      return true;
+    }
 
     return (permissions || []).some(
       p => p.module === module && p.action === action && p.allowed
@@ -74,13 +79,13 @@ export function useUserPermissions() {
     isAdmin: currentRole === 'admin',
     isOwner: currentRole === 'owner',
     isPropertyManager: currentRole === 'manager',
-    isManager: currentRole === 'manager' || currentRole === 'admin' || currentRole === 'owner',
+    isManager: currentRole === 'manager' || currentRole === 'admin',
   };
 }
 
 // Hook to check if user can manage a specific property's team
 export function useCanManagePropertyTeam(propertyId: string | null) {
-  const { isAdmin, isManager, isOwner } = useUserPermissions();
+  const { isAdmin, isManager } = useUserPermissions();
 
   const { data: isPropertyManager } = useQuery({
     queryKey: ['can-manage-property-team', propertyId],
@@ -103,10 +108,10 @@ export function useCanManagePropertyTeam(propertyId: string | null) {
       if (error) return false;
       return !!data;
     },
-    enabled: !!propertyId && !isAdmin && !isManager && !isOwner,
+    enabled: !!propertyId && !isAdmin && !isManager,
   });
 
-  return isAdmin || isOwner || isManager || isPropertyManager;
+  return isAdmin || isManager || isPropertyManager;
 }
 
 // Utility function to check role hierarchy

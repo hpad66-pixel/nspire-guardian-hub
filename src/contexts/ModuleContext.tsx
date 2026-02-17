@@ -47,7 +47,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
-  const { isAdmin, isOwner } = useUserPermissions();
+  const { isAdmin } = useUserPermissions();
 
   // Load module settings from properties on app start
   const loadModulesFromProperties = async () => {
@@ -117,7 +117,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadModulesFromProperties();
-  }, [isAdmin, isOwner]);
+  }, [isAdmin]);
 
   // Toggle module tenant-wide (updates all properties)
   const toggleModule = async (module: keyof ModuleConfig) => {
@@ -174,14 +174,14 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   };
 
   const effectiveModules = useMemo(() => {
-    if (isAdmin || isOwner) return tenantModules;
+    if (isAdmin) return tenantModules;
 
     return (Object.keys(tenantModules) as (keyof ModuleConfig)[]).reduce((acc, key) => {
       const override = userModuleOverrides[key];
       acc[key] = tenantModules[key] && (override ?? true);
       return acc;
     }, {} as ModuleConfig);
-  }, [tenantModules, userModuleOverrides, isAdmin, isOwner]);
+  }, [tenantModules, userModuleOverrides, isAdmin]);
 
   const isModuleEnabled = (module: keyof ModuleConfig) => {
     return effectiveModules[module];
