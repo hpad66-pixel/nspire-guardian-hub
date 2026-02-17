@@ -35,6 +35,8 @@ import { RequirementCard } from '@/components/permits/RequirementCard';
 import { RequirementDialog } from '@/components/permits/RequirementDialog';
 import { DeliverableDialog } from '@/components/permits/DeliverableDialog';
 import { cn } from '@/lib/utils';
+import { getSignedUrlForBucket } from '@/lib/storage';
+import { toast } from 'sonner';
 import type { PermitDeliverable } from '@/hooks/usePermitDeliverables';
 
 const statusColors: Record<string, string> = {
@@ -204,16 +206,24 @@ export default function PermitDetailPage() {
 
           {(permit as any).document && (
             <div className="mt-4 pt-4 border-t">
-              <Button variant="outline" size="sm" asChild>
-                <a 
-                  href={(permit as any).document.file_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Permit Document
-                  <ExternalLink className="h-3 w-3 ml-2" />
-                </a>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const signedUrl = await getSignedUrlForBucket(
+                      'organization-documents',
+                      (permit as any).document.file_url
+                    );
+                    window.open(signedUrl, '_blank');
+                  } catch {
+                    toast.error('Failed to open document');
+                  }
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Permit Document
+                <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
             </div>
           )}

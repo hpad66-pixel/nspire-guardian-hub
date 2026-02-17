@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -25,6 +26,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { PropertyArchive, ARCHIVE_CATEGORIES } from '@/hooks/usePropertyArchives';
+import { getSignedUrlForBucket } from '@/lib/storage';
 
 interface ArchiveViewerSheetProps {
   document: PropertyArchive | null;
@@ -59,16 +61,40 @@ export function ArchiveViewerSheet({
   open,
   onOpenChange,
 }: ArchiveViewerSheetProps) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    let isActive = true;
+    if (!document || !open) {
+      setSignedUrl(null);
+      return () => {};
+    }
+    
+    const loadSignedUrl = async () => {
+      try {
+        const url = await getSignedUrlForBucket('property-archives', document.file_url);
+        if (isActive) setSignedUrl(url);
+      } catch {
+        if (isActive) setSignedUrl(null);
+      }
+    };
+    
+    loadSignedUrl();
+    return () => {
+      isActive = false;
+    };
+  }, [document, open]);
+  
   if (!document) return null;
 
   const category = ARCHIVE_CATEGORIES.find((c) => c.id === document.category);
 
   const handleDownload = () => {
-    window.open(document.file_url, '_blank');
+    if (signedUrl) window.open(signedUrl, '_blank');
   };
 
   const handleOpenInNewTab = () => {
-    window.open(document.file_url, '_blank');
+    if (signedUrl) window.open(signedUrl, '_blank');
   };
 
   const isImage = document.mime_type?.startsWith('image/');
@@ -105,7 +131,7 @@ export function ArchiveViewerSheet({
           {isImage && (
             <div className="rounded-lg border overflow-hidden bg-muted">
               <img
-                src={document.file_url}
+                src={signedUrl || ''}
                 alt={document.name}
                 className="w-full h-auto max-h-64 object-contain"
               />
@@ -116,7 +142,7 @@ export function ArchiveViewerSheet({
           {isPdf && (
             <div className="rounded-lg border overflow-hidden bg-muted h-64">
               <iframe
-                src={`${document.file_url}#view=FitH`}
+                src={signedUrl ? `${signedUrl}#view=FitH` : ''}
                 className="w-full h-full"
                 title={document.name}
               />
@@ -125,11 +151,11 @@ export function ArchiveViewerSheet({
 
           {/* Actions */}
           <div className="flex gap-2">
-            <Button onClick={handleDownload} className="flex-1">
+            <Button onClick={handleDownload} className="flex-1" disabled={!signedUrl}>
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>
-            <Button variant="outline" onClick={handleOpenInNewTab}>
+            <Button variant="outline" onClick={handleOpenInNewTab} disabled={!signedUrl}>
               <ExternalLink className="mr-2 h-4 w-4" />
               Open
             </Button>

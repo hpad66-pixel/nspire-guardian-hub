@@ -61,6 +61,8 @@ import { useTotalArchiveCount } from '@/hooks/usePropertyArchives';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { getSignedUrlForBucket } from '@/lib/storage';
+import { toast } from 'sonner';
 import {
   buildFolderTree,
   useCreateDocumentFolder,
@@ -337,8 +339,13 @@ export default function DocumentsPage() {
     return folderOptions.filter((option) => !invalidIds.has(option.id));
   }, [folderModal, folderOptions, folders]);
   
-  const handleDownload = (doc: OrganizationDocument) => {
-    window.open(doc.file_url, '_blank');
+  const openDocumentUrl = async (doc: OrganizationDocument) => {
+    try {
+      const signedUrl = await getSignedUrlForBucket('organization-documents', doc.file_url);
+      window.open(signedUrl, '_blank');
+    } catch (error) {
+      toast.error('Failed to open document');
+    }
   };
   
   const handleArchive = async (id: string) => {
@@ -637,11 +644,11 @@ export default function DocumentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.open(doc.file_url, '_blank')}>
+                            <DropdownMenuItem onClick={() => openDocumentUrl(doc)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                            <DropdownMenuItem onClick={() => openDocumentUrl(doc)}>
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </DropdownMenuItem>

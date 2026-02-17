@@ -19,6 +19,8 @@ import {
   PropertyArchive,
 } from '@/hooks/usePropertyArchives';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { getSignedUrlForBucket } from '@/lib/storage';
+import { toast } from 'sonner';
 
 export default function PropertyArchivesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -47,8 +49,13 @@ export default function PropertyArchivesPage() {
     setViewerOpen(true);
   };
 
-  const handleDownload = (doc: PropertyArchive) => {
-    window.open(doc.file_url, '_blank');
+  const handleDownload = async (doc: PropertyArchive) => {
+    try {
+      const signedUrl = await getSignedUrlForBucket('property-archives', doc.file_url);
+      window.open(signedUrl, '_blank');
+    } catch {
+      toast.error('Failed to open document');
+    }
   };
 
   const selectedCategoryData = ARCHIVE_CATEGORIES.find(
