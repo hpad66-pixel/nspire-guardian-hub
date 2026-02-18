@@ -4,15 +4,25 @@ import { toast } from 'sonner';
 
 export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence' | 'meeting_minutes';
 
+interface PolishOptions {
+  context?: PolishContext;
+  /** Override the AI model used. Falls back to context-based routing if omitted. */
+  model?: string;
+}
+
 interface UseTextPolishResult {
-  polish: (text: string, context?: PolishContext) => Promise<string | null>;
+  polish: (text: string, options?: PolishContext | PolishOptions) => Promise<string | null>;
   isPolishing: boolean;
 }
 
 export function useTextPolish(): UseTextPolishResult {
   const [isPolishing, setIsPolishing] = useState(false);
 
-  const polish = useCallback(async (text: string, context: PolishContext = 'notes'): Promise<string | null> => {
+  const polish = useCallback(async (text: string, options?: PolishContext | PolishOptions): Promise<string | null> => {
+    // Accept either a plain context string (legacy) or an options object
+    const context: PolishContext = typeof options === 'string' ? options : (options?.context ?? 'notes');
+    const preferredModel: string | undefined = typeof options === 'object' ? options?.model : undefined;
+
     if (!text.trim()) {
       toast.error('Please enter some text first');
       return null;
@@ -22,7 +32,7 @@ export function useTextPolish(): UseTextPolishResult {
 
     try {
       const { data, error } = await supabase.functions.invoke('polish-text', {
-        body: { text, context },
+        body: { text, context, preferredModel },
       });
 
       if (error) {

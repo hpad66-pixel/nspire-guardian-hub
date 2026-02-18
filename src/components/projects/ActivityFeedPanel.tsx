@@ -109,7 +109,11 @@ export function ActivityFeedPanel({ projectId, open, onClose }: ActivityFeedPane
 
   const handlePolish = async () => {
     const fullText = `Subject: ${subject}\n\n${content}`;
-    const polished = await polish(fullText, "notes");
+    // Activity feed uses Gemini 3 Flash Preview — fast and efficient for quick updates
+    const polished = await polish(fullText, {
+      context: 'notes',
+      model: 'google/gemini-3-flash-preview',
+    });
     if (polished) {
       // Try to split back into subject/content
       const lines = polished.split("\n");
