@@ -9,7 +9,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { useUnits, useBulkCreateUnits } from '@/hooks/useUnits';
 import { parseCSV, validateRows, downloadCSVTemplate, type ValidationResult } from '@/lib/csvParser';
 import { cn } from '@/lib/utils';
-import * as XLSX from 'xlsx';
+
 
 interface UnitImportDialogProps {
   open: boolean;
@@ -45,6 +45,7 @@ export function UnitImportDialog({ open, onOpenChange }: UnitImportDialogProps) 
         csvText = await file.text();
       } else {
         const buffer = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(buffer, { type: 'array' });
         const firstSheet = workbook.SheetNames[0];
         const sheet = workbook.Sheets[firstSheet];
