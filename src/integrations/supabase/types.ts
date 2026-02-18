@@ -2031,6 +2031,50 @@ export type Database = {
           },
         ]
       }
+      project_client_updates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          photo_url: string | null
+          project_id: string
+          title: string
+          update_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string | null
+          project_id: string
+          title: string
+          update_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string | null
+          project_id?: string
+          title?: string
+          update_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_client_updates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_closeout_items: {
         Row: {
           category: string
