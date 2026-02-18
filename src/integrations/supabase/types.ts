@@ -3372,6 +3372,7 @@ export type Database = {
           status: string | null
           total_units: number | null
           updated_at: string
+          workspace_id: string | null
           year_built: number | null
           zip_code: string | null
         }
@@ -3399,6 +3400,7 @@ export type Database = {
           status?: string | null
           total_units?: number | null
           updated_at?: string
+          workspace_id?: string | null
           year_built?: number | null
           zip_code?: string | null
         }
@@ -3426,10 +3428,19 @@ export type Database = {
           status?: string | null
           total_units?: number | null
           updated_at?: string
+          workspace_id?: string | null
           year_built?: number | null
           zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "properties_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       property_archives: {
         Row: {
@@ -4933,6 +4944,10 @@ export type Database = {
       calculate_nspire_deadline: {
         Args: { p_severity: Database["public"]["Enums"]["severity_level"] }
         Returns: string
+      }
+      can_access_property: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: boolean
       }
       can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
       get_invitation_by_token: {
