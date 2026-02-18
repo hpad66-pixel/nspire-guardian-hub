@@ -6,7 +6,9 @@ import { LandingNav } from '@/components/landing/LandingNav';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { ValueProposition } from '@/components/landing/ValueProposition';
 import { PlatformOverview } from '@/components/features/PlatformOverview';
+import { ProjectsModuleSection } from '@/components/landing/ProjectsModuleSection';
 import { ModuleShowcase } from '@/components/features/ModuleShowcase';
+import { NspireShowcase } from '@/components/landing/NspireShowcase';
 import { FeatureGrid } from '@/components/landing/FeatureGrid';
 import { RoleValueSection } from '@/components/features/RoleValueSection';
 import { MobilePWASection } from '@/components/landing/MobilePWASection';
@@ -40,7 +42,9 @@ export default function LandingPage() {
         <LandingHero />
         <ValueProposition />
         <PlatformOverview />
+        <ProjectsModuleSection />
         <ModuleShowcase />
+        <NspireShowcase />
         <FeatureGrid />
         <RoleValueSection />
         <MobilePWASection />
