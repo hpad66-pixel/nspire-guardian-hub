@@ -22,7 +22,7 @@ import {
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
   MoreHorizontal, Archive, Trash2,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
-  FileSpreadsheet, ChevronDown, ChevronRight,
+  FileSpreadsheet, ChevronDown, ChevronRight, Users,
 } from 'lucide-react';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -54,6 +54,7 @@ import { ProcurementTab } from '@/components/projects/ProcurementTab';
 import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
+import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -173,6 +174,7 @@ export default function ProjectDetailPage() {
     { value: 'meetings',     label: 'Meetings',     shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
+    { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
   ];
 
   const activeTabDef = PROJECT_TABS.find(t => t.value === activeTab) ?? PROJECT_TABS[0];
@@ -716,6 +718,9 @@ export default function ProjectDetailPage() {
             <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
             <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
             <TabsContent value="proposals"><ProposalList projectId={id!} /></TabsContent>
+            <TabsContent value="client-portal" className="pb-6">
+              <ClientPortalTab projectId={id!} />
+            </TabsContent>
           </Tabs>
         </div>
 
