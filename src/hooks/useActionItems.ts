@@ -46,6 +46,7 @@ export interface ActionItemComment {
 
 const ITEMS_QUERY_KEY = (projectId: string) => ['action-items', projectId];
 const MY_ITEMS_QUERY_KEY = ['my-action-items'];
+const ASSIGNED_BY_ME_KEY = ['assigned-by-me'];
 const COMMENTS_QUERY_KEY = (itemId: string) => ['action-item-comments', itemId];
 
 // ── fetch helpers ──────────────────────────────────────────────────────────
@@ -134,6 +135,43 @@ async function fetchMyItems(): Promise<ActionItem[]> {
   }));
 }
 
+async function fetchAssignedByMe(): Promise<ActionItem[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('project_action_items')
+    .select('*, project:projects(id, name)')
+    .eq('created_by', user.id)
+    .not('assigned_to', 'is', null)
+    .neq('assigned_to', user.id) // exclude self-assigned
+    .order('due_date', { ascending: true, nullsFirst: false });
+
+  if (error) throw error;
+  const items = data || [];
+
+  // Collect unique user IDs (assignees)
+  const userIds = [...new Set(items.map(i => i.assigned_to).filter(Boolean))] as string[];
+  let profileMap: Record<string, ActionItemProfile> = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, email, avatar_url')
+      .in('user_id', userIds);
+    (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+  }
+
+  return items.map(item => ({
+    ...item,
+    tags: item.tags || [],
+    status: item.status as ActionItem['status'],
+    priority: item.priority as ActionItem['priority'],
+    assignee: item.assigned_to ? profileMap[item.assigned_to] ?? null : null,
+    creator: null,
+    project: Array.isArray(item.project) ? item.project[0] ?? null : item.project ?? null,
+  }));
+}
+
 // ── hooks ──────────────────────────────────────────────────────────────────
 
 export function useActionItemsByProject(projectId: string | null) {
@@ -187,6 +225,36 @@ export function useMyActionItems() {
         filter: `assigned_to=eq.${user.id}`,
       }, () => {
         qc.invalidateQueries({ queryKey: MY_ITEMS_QUERY_KEY });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
+
+  return query;
+}
+
+export function useAssignedByMe() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  const query = useQuery({
+    queryKey: ASSIGNED_BY_ME_KEY,
+    queryFn: fetchAssignedByMe,
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('assigned-by-me')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'project_action_items',
+        filter: `created_by=eq.${user.id}`,
+      }, () => {
+        qc.invalidateQueries({ queryKey: ASSIGNED_BY_ME_KEY });
       })
       .subscribe();
 

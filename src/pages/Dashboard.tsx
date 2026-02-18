@@ -20,8 +20,7 @@ import {
   AtSign,
   MessageSquare,
   CheckSquare,
-  Circle,
-  Check,
+  Users,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -31,7 +30,7 @@ import { useIssuesByProperty } from '@/hooks/useIssues';
 import { useDefects, useOpenDefects } from '@/hooks/useDefects';
 import { useProjectsByProperty } from '@/hooks/useProjects';
 import { useNotifications, useMarkNotificationRead, type Notification } from '@/hooks/useNotifications';
-import { useMyActionItems, useUpdateActionItem, type ActionItem } from '@/hooks/useActionItems';
+import { useMyActionItems, useAssignedByMe, useUpdateActionItem, type ActionItem } from '@/hooks/useActionItems';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -337,6 +336,173 @@ function MyTasksSection({
   );
 }
 
+// ── Status color map for "assigned by me" live tracking ───────────────────
+const STATUS_RING = {
+  todo:        { ring: 'border-l-muted-foreground/30', dot: 'bg-muted-foreground/40', label: 'To Do' },
+  in_progress: { ring: 'border-l-blue-500',            dot: 'bg-blue-500',             label: 'In Progress' },
+  in_review:   { ring: 'border-l-amber-500',           dot: 'bg-amber-500',            label: 'In Review' },
+  done:        { ring: 'border-l-emerald-500',         dot: 'bg-emerald-500',          label: 'Done' },
+  cancelled:   { ring: 'border-l-muted-foreground/40', dot: 'bg-muted-foreground/30',  label: 'Cancelled' },
+} as const;
+
+function AssignedByMeSection({
+  tasks,
+  isLoading,
+  onNavigateToProject,
+}: {
+  tasks: ActionItem[];
+  isLoading: boolean;
+  onNavigateToProject: (id: string) => void;
+}) {
+  const PREVIEW_COUNT = 6;
+
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      // Active tasks first (not done/cancelled)
+      const aActive = a.status !== 'done' && a.status !== 'cancelled';
+      const bActive = b.status !== 'done' && b.status !== 'cancelled';
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      // Overdue first
+      const aOverdue = a.due_date && isPast(new Date(a.due_date + 'T00:00:00')) && !isToday(new Date(a.due_date + 'T00:00:00'));
+      const bOverdue = b.due_date && isPast(new Date(b.due_date + 'T00:00:00')) && !isToday(new Date(b.due_date + 'T00:00:00'));
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      // Priority
+      const pOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      return pOrder[a.priority] - pOrder[b.priority];
+    });
+  }, [tasks]);
+
+  const shownTasks = sortedTasks.slice(0, PREVIEW_COUNT);
+  const remaining = sortedTasks.length - PREVIEW_COUNT;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-52" />
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (tasks.length === 0) return null;
+
+  const doneCount = tasks.filter(t => t.status === 'done').length;
+  const activeCount = tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Tasks I've Assigned</h2>
+            <p className="text-xs text-muted-foreground">
+              {activeCount} active · {doneCount} completed across all projects
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Card className="border-border/50 overflow-hidden">
+        <div className="divide-y divide-border/50">
+          {shownTasks.map(task => {
+            const pCfg = DASH_PRIORITY[task.priority];
+            const sCfg = STATUS_RING[task.status];
+            const due = getDueBadge(task.due_date);
+            const isDone = task.status === 'done' || task.status === 'cancelled';
+            const assigneeName = task.assignee?.full_name || task.assignee?.email || 'Unassigned';
+            const assigneeInitial = assigneeName.charAt(0).toUpperCase();
+
+            return (
+              <div
+                key={task.id}
+                className={cn(
+                  'flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors group',
+                  // Left border color by status — live indicator
+                  'border-l-4',
+                  sCfg.ring,
+                  isDone && 'opacity-55'
+                )}
+              >
+                {/* Priority dot */}
+                <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', pCfg.dot)} title={pCfg.label} />
+
+                {/* Main content */}
+                <div className="flex-1 min-w-0">
+                  <p className={cn('text-sm font-medium truncate', isDone && 'line-through text-muted-foreground')}>
+                    {task.title}
+                  </p>
+                  {task.project && (
+                    <button
+                      onClick={() => onNavigateToProject(task.project!.id)}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors truncate max-w-full text-left"
+                    >
+                      {task.project.name}
+                    </button>
+                  )}
+                </div>
+
+                {/* Assignee chip */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Avatar className="h-5 w-5">
+                    {task.assignee?.avatar_url && <AvatarImage src={task.assignee.avatar_url} />}
+                    <AvatarFallback className="text-[9px] bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
+                      {assigneeInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground hidden sm:inline max-w-[80px] truncate">
+                    {assigneeName.split(' ')[0]}
+                  </span>
+                </div>
+
+                {/* Due date */}
+                {due && (
+                  <span className={cn('text-xs shrink-0 flex items-center gap-1', due.cls)}>
+                    <Clock className="h-3 w-3" />
+                    {due.label}
+                  </span>
+                )}
+
+                {/* Live status pill — color-coded */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className={cn('h-1.5 w-1.5 rounded-full animate-pulse', sCfg.dot, isDone && 'animate-none')} />
+                  <span className={cn(
+                    'text-[10px] px-2 py-0.5 rounded-full font-semibold',
+                    DASH_STATUS[task.status].cls
+                  )}>
+                    {sCfg.label}
+                  </span>
+                </div>
+
+                {/* Arrow to project */}
+                {task.project && (
+                  <button
+                    onClick={() => onNavigateToProject(task.project!.id)}
+                    className="text-muted-foreground group-hover:text-primary transition-colors shrink-0"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {remaining > 0 && (
+          <div className="px-5 py-3 border-t bg-muted/20">
+            <span className="text-xs text-muted-foreground">+{remaining} more task{remaining !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
 
 function UrgentItem({ 
   title, 
@@ -383,6 +549,7 @@ export default function Dashboard() {
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkNotificationRead();
   const { data: myTasks = [], isLoading: tasksLoading } = useMyActionItems();
+  const { data: assignedByMeTasks = [], isLoading: assignedLoading } = useAssignedByMe();
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const actionNotifications = useMemo(() => {
@@ -559,14 +726,21 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── My Tasks Section ── */}
-        <MyTasksSection
-          tasks={myTasks}
-          isLoading={tasksLoading}
-          showCompleted={showCompletedTasks}
-          onToggleCompleted={() => setShowCompletedTasks(v => !v)}
-          onNavigateToProject={(projectId) => navigate(`/projects/${projectId}`)}
-        />
+        {/* ── Task Workspace: My Tasks + Assigned by Me ── */}
+        <div className="grid gap-8 lg:grid-cols-2">
+          <MyTasksSection
+            tasks={myTasks}
+            isLoading={tasksLoading}
+            showCompleted={showCompletedTasks}
+            onToggleCompleted={() => setShowCompletedTasks(v => !v)}
+            onNavigateToProject={(projectId) => navigate(`/projects/${projectId}`)}
+          />
+          <AssignedByMeSection
+            tasks={assignedByMeTasks}
+            isLoading={assignedLoading}
+            onNavigateToProject={(projectId) => navigate(`/projects/${projectId}`)}
+          />
+        </div>
 
         {/* Active Modules Section */}
         {hasAnyModule && (
