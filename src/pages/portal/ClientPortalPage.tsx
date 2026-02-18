@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -65,12 +65,28 @@ export default function ClientPortalPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<PortalTab>('home');
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const { data: branding } = useCompanyBranding();
   const { data: project, isLoading: projectLoading, error: projectError } = usePortalProject(projectId ?? '');
   const { data: updates = [] } = usePortalUpdates(projectId ?? '');
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
+
+  // First-visit welcome modal (lifted from PortalShell)
+  useEffect(() => {
+    if (!projectId) return;
+    const storageKey = `portal_welcomed_${projectId}`;
+    if (!localStorage.getItem(storageKey)) {
+      const timer = setTimeout(() => setShowWelcome(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [projectId]);
+
+  function handleWelcomeDismiss() {
+    localStorage.setItem(`portal_welcomed_${projectId!}`, '1');
+    setShowWelcome(false);
+  }
 
   // ── Auth guard ───────────────────────────────────────────
   if (authLoading) {
@@ -154,8 +170,10 @@ export default function ClientPortalPage() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       projectId={projectId}
-      projectName={project?.name}
+      projectName={project?.name ?? ''}
       branding={branding ?? null}
+      showWelcome={showWelcome}
+      onWelcomeDismiss={handleWelcomeDismiss}
     >
       {renderTab()}
     </PortalShell>
