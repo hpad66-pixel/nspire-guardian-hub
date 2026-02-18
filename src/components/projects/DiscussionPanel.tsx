@@ -199,13 +199,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   if (!open) return null;
 
   return (
-    <motion.div
-      initial={{ x: 400, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 400, opacity: 0 }}
-      transition={{ type: "spring", damping: 26, stiffness: 300 }}
-      className="w-[400px] border-l bg-background flex flex-col h-full overflow-hidden"
-    >
+    <div className="w-full bg-background flex flex-col h-full overflow-hidden border-l">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
@@ -642,7 +636,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
           <p className="text-[10px] text-muted-foreground">⌘+Enter to send · 📷 attach photos · @ tag team members</p>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 

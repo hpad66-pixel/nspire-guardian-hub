@@ -165,13 +165,7 @@ export function ActivityFeedPanel({ projectId, open, onClose }: ActivityFeedPane
   if (!open) return null;
 
   return (
-    <motion.div
-      initial={{ x: 400, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 400, opacity: 0 }}
-      transition={{ type: "spring", damping: 26, stiffness: 300 }}
-      className="w-[380px] border-l bg-background flex flex-col h-full overflow-hidden shrink-0"
-    >
+    <div className="w-full bg-background flex flex-col h-full overflow-hidden border-l">
       {/* ── Header ── */}
       <div className="shrink-0 px-4 pt-4 pb-3 border-b bg-gradient-to-br from-module-projects/5 to-background">
         <div className="flex items-center justify-between mb-3">
@@ -399,7 +393,7 @@ export function ActivityFeedPanel({ projectId, open, onClose }: ActivityFeedPane
           )}
         </div>
       </ScrollArea>
-    </motion.div>
+    </div>
   );
 }
 

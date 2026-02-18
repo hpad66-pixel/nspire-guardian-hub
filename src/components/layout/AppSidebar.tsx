@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
@@ -82,9 +83,9 @@ function NavItem({ to, icon, label, collapsed, end, badge, tooltip }: NavItemPro
         to={to}
         end={end}
         className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
       >
-        <div className="relative">
+        <div className="relative shrink-0">
           {icon}
           {badge !== undefined && badge > 0 && (
             <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-full flex items-center justify-center">
@@ -92,16 +93,17 @@ function NavItem({ to, icon, label, collapsed, end, badge, tooltip }: NavItemPro
             </span>
           )}
         </div>
-        {!collapsed && <span>{label}</span>}
+        {!collapsed && <span className="truncate">{label}</span>}
       </NavLink>
     </SidebarMenuButton>
   );
 
-  if (tooltip && collapsed) {
+  // Always show tooltip in collapsed mode; optionally show if tooltip prop set
+  if (collapsed) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{tooltip}</TooltipContent>
+        <TooltipContent side="right">{tooltip || label}</TooltipContent>
       </Tooltip>
     );
   }
@@ -202,13 +204,12 @@ export function AppSidebar() {
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
         <SidebarHeader className="border-b border-sidebar-border p-4">
           <NavLink to="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary shrink-0">
               <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
             {!collapsed && (
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">PM APAS</span>
-                <span className="text-xs text-sidebar-muted">Property OS</span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold tracking-tight text-sidebar-foreground truncate">APAS Consulting</span>
               </div>
             )}
           </NavLink>
@@ -238,7 +239,6 @@ export function AppSidebar() {
               title="Daily Grounds"
               icon={<Sun className="h-3 w-3" />}
               collapsed={collapsed}
-              defaultOpen={true}
               isActive={isDailyGroundsActive}
               indicator="bg-emerald-500"
             >
@@ -275,7 +275,6 @@ export function AppSidebar() {
               title="Projects"
               icon={<FolderKanban className="h-3 w-3" />}
               collapsed={collapsed}
-              defaultOpen={true}
               isActive={isProjectsActive}
               indicator="bg-[hsl(var(--module-projects))]"
             >
@@ -307,7 +306,6 @@ export function AppSidebar() {
               title="NSPIRE Compliance"
               icon={<ClipboardCheck className="h-3 w-3" />}
               collapsed={collapsed}
-              defaultOpen={true}
               isActive={isNspireActive}
               indicator="bg-[hsl(var(--module-inspections))]"
             >
@@ -547,6 +545,9 @@ export function AppSidebar() {
             </SidebarGroup>
           )}
         </SidebarContent>
+
+        {/* Rail — thin clickable strip on the sidebar edge for collapse/expand */}
+        <SidebarRail />
 
         {/* Footer with user and settings */}
         <SidebarFooter className="border-t border-sidebar-border p-2">
