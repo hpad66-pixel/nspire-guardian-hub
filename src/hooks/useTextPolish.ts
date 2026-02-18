@@ -26,11 +26,23 @@ export function useTextPolish(): UseTextPolishResult {
       });
 
       if (error) {
-        throw error;
+        // Try to extract the human-readable message from the edge function response
+        let message = 'Failed to polish text';
+        if (error.message) {
+          try {
+            const parsed = JSON.parse(error.message);
+            message = parsed.error || error.message;
+          } catch {
+            message = error.message;
+          }
+        }
+        toast.error(message);
+        return null;
       }
 
       if (data?.error) {
-        throw new Error(data.error);
+        toast.error(data.error);
+        return null;
       }
 
       if (data?.polished) {

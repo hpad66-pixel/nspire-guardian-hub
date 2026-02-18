@@ -69,48 +69,62 @@ serve(async (req) => {
 
     const systemPrompt = contextPrompts[context] || contextPrompts.notes;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text },
-        ],
-        stream: false,
-      }),
-    });
+    // Try models in order — fall back if credits exhausted on one
+    const modelsToTry = ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash-lite', 'google/gemini-2.5-flash'];
+    let lastStatus = 0;
 
-    if (!response.ok) {
+    for (const model of modelsToTry) {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text },
+          ],
+          stream: false,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const polished = result.choices?.[0]?.message?.content || text;
+        console.log(`Successfully polished text with model: ${model}`);
+        return new Response(
+          JSON.stringify({ polished }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      lastStatus = response.status;
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.warn(`Model ${model} returned 402, trying next model...`);
+        // Try next model in the list
+        continue;
       }
+
+      // Other non-OK status — log and fail fast
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
       throw new Error('AI service error');
     }
 
-    const result = await response.json();
-    const polished = result.choices?.[0]?.message?.content || text;
-
-    console.log('Successfully polished text');
-
+    // All models exhausted credits
     return new Response(
-      JSON.stringify({ polished }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'AI credits exhausted. Please add credits to your Lovable workspace to continue.' }),
+      { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
     console.error('Polish text error:', error);
