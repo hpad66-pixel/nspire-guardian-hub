@@ -31,8 +31,9 @@ import { format } from 'date-fns';
 const MODELS = [
   { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast, Default)' },
   { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (Best Quality)' },
-  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Requires API key)' },
-  { value: 'claude-opus-4', label: 'Claude Opus 4 (Requires API key)' },
+  { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast, Requires API key)' },
+  { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Balanced, Requires API key)' },
+  { value: 'claude-opus-4-5', label: 'Claude Opus 4.5 (Best Quality, Requires API key)' },
 ];
 
 // Default prompts — used for "Reset to Default" per skill_key
@@ -162,7 +163,7 @@ function EditPromptDialog({
               </SelectContent>
             </Select>
             {model.startsWith('claude') && (
-              <Badge variant="outline" className="text-amber-600 border-amber-300">
+              <Badge variant="outline" className="text-warning border-warning/40">
                 Requires ANTHROPIC_API_KEY secret
               </Badge>
             )}
