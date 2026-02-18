@@ -1193,6 +1193,56 @@ export type Database = {
           },
         ]
       }
+      meeting_unlock_requests: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          reason: string | null
+          requested_at: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          reason?: string | null
+          requested_at?: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          reason?: string | null
+          requested_at?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_unlock_requests_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "project_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_threads: {
         Row: {
           created_at: string | null
@@ -1968,6 +2018,10 @@ export type Database = {
           reviewed_by: string | null
           status: string
           title: string
+          unlock_request_reason: string | null
+          unlock_requested: boolean | null
+          unlock_requested_at: string | null
+          unlock_requested_by: string | null
           updated_at: string
         }
         Insert: {
@@ -1989,6 +2043,10 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           title: string
+          unlock_request_reason?: string | null
+          unlock_requested?: boolean | null
+          unlock_requested_at?: string | null
+          unlock_requested_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -2010,6 +2068,10 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           title?: string
+          unlock_request_reason?: string | null
+          unlock_requested?: boolean | null
+          unlock_requested_at?: string | null
+          unlock_requested_by?: string | null
           updated_at?: string
         }
         Relationships: []
