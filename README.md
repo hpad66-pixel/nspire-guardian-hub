@@ -72,7 +72,27 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Cloudflare Pages
+
+Use these settings in Cloudflare Pages:
+
+- Framework preset: `Vite`
+- Build command: `npm run build:cloudflare`
+- Build output directory: `dist`
+- Root directory: `/` (repo root)
+- Node.js version: `20`
+
+Environment variables required in Cloudflare Pages:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
+- `VITE_VAPID_PUBLIC_KEY` (if push notifications are enabled)
+
+Notes:
+
+- SPA fallback is already handled by `public/_redirects`.
+- `wrangler.toml` is included for `wrangler pages deploy` workflows.
 
 ## Can I connect a custom domain to my Lovable project?
 
