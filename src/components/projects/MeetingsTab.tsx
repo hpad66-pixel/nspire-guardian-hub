@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,12 +18,15 @@ import {
   Sparkles, Loader2, CheckCircle, FileText, Download,
   Users, MapPin, Clock, Trash2, Lock, Pencil, Undo2,
   Mail, Building2, Send, Maximize2, Minimize2, Eye, Edit3,
+  UnlockKeyhole, ShieldCheck, ShieldX, AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectMeetings, type ProjectMeeting, type MeetingAttendee } from '@/hooks/useProjectMeetings';
+import { useMeetingUnlockRequests } from '@/hooks/useMeetingUnlockRequests';
 import { useTextPolish } from '@/hooks/useTextPolish';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 
 // ---------- helpers ----------
@@ -437,6 +440,123 @@ function MinutesViewer({ meeting, polishedHtml }: { meeting: ProjectMeeting; pol
   );
 }
 
+// ─── Unlock Request Dialog ────────────────────────────────────────────────────
+function UnlockRequestDialog({
+  open, onClose, onSubmit, isPending,
+}: {
+  open: boolean; onClose: () => void; onSubmit: (reason: string) => void; isPending: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UnlockKeyhole className="h-5 w-5 text-primary" /> Request Edit Access
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            These minutes are finalized and locked. To make edits, you must request approval from a supervisor
+            (Admin, Owner, or Manager). They will receive a notification to review your request.
+          </p>
+          <div>
+            <Label className="text-xs font-semibold">Reason for requesting edit access *</Label>
+            <Textarea
+              className="mt-1"
+              rows={3}
+              placeholder="e.g. Correction needed in section 3 — wrong date listed for concrete pour…"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => { if (reason.trim()) { onSubmit(reason.trim()); onClose(); } }}
+            disabled={!reason.trim() || isPending}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+            Submit Request
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Supervisor approval banner ───────────────────────────────────────────────
+function UnlockApprovalBanner({
+  meetingId, pendingRequestId, requestReason, onReviewed,
+}: {
+  meetingId: string; pendingRequestId: string; requestReason: string | null; onReviewed: () => void;
+}) {
+  const { reviewRequest } = useMeetingUnlockRequests(meetingId);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'approved' | 'rejected' | null>(null);
+
+  const handleReview = async (status: 'approved' | 'rejected') => {
+    setPendingAction(status);
+    await reviewRequest.mutateAsync({ requestId: pendingRequestId, status, reviewer_notes: reviewNotes, meetingId });
+    setPendingAction(null);
+    onReviewed();
+  };
+
+  return (
+    <div className="mx-5 mt-4 rounded-xl border border-border bg-muted/60 p-4">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Edit Access Request Pending</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            A team member has requested to edit these finalized minutes.
+          </p>
+          {requestReason && (
+            <p className="text-xs text-muted-foreground mt-1.5 italic border-l-2 border-primary/40 pl-2">
+              &ldquo;{requestReason}&rdquo;
+            </p>
+          )}
+          {showNotes && (
+            <Textarea
+              className="mt-2 text-xs"
+              rows={2}
+              placeholder="Optional reviewer notes…"
+              value={reviewNotes}
+              onChange={e => setReviewNotes(e.target.value)}
+            />
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => handleReview('approved')}
+              disabled={reviewRequest.isPending}
+            >
+              {pendingAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ShieldCheck className="h-3 w-3 mr-1" />}
+              Approve Unlock
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+              onClick={() => handleReview('rejected')}
+              disabled={reviewRequest.isPending}
+            >
+              {pendingAction === 'rejected' ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ShieldX className="h-3 w-3 mr-1" />}
+              Reject
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowNotes(v => !v)}>
+              {showNotes ? 'Hide Notes' : 'Add Notes'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Inner editor content (shared by Sheet & full-screen Dialog) ──────────────
 function MeetingEditorInner({
   meeting,
@@ -459,6 +579,7 @@ function MeetingEditorInner({
   handlePolish,
   handleSave,
   handleFinalize,
+  handleSupervisorUnlock,
   handleAiContinue,
 }: {
   meeting: ProjectMeeting | null;
@@ -481,10 +602,20 @@ function MeetingEditorInner({
   handlePolish: () => void;
   handleSave: () => void;
   handleFinalize: () => void;
+  handleSupervisorUnlock: () => void;
   handleAiContinue: (context: string) => Promise<string>;
 }) {
   const [newAttendee, setNewAttendee] = useState({ name: '', role: '', company: '' });
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const hasMinutes = polishedHtml && polishedHtml.trim().length > 0;
+
+  // Unlock request state — only load when meeting exists and is finalized
+  const { pendingRequest, requestUnlock } = useMeetingUnlockRequests(meeting?.id || '');
+  const { isAdmin, isOwner, isPropertyManager } = useUserPermissions();
+  const isSupervisor = isAdmin || isOwner || isPropertyManager;
+
+  // Has this user already submitted a pending request?
+  const hasPendingRequest = !!pendingRequest;
 
   const liveMeeting: ProjectMeeting = {
     ...(meeting || {} as ProjectMeeting),
@@ -744,16 +875,80 @@ function MeetingEditorInner({
             </Tabs>
 
             {/* Finalize */}
+            {/* Finalize CTA */}
             {!isFinalized && hasMinutes && meeting && (
               <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
                 <div>
                   <p className="text-sm font-semibold">Ready to finalize?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Locks the minutes as official. You can still download and email them.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Locks the minutes as official. Edits require supervisor approval after locking.</p>
                 </div>
                 <Button size="sm" onClick={handleFinalize}>
-                  <Lock className="h-3.5 w-3.5 mr-1" /> Finalize
+                  <Lock className="h-3.5 w-3.5 mr-1" /> Finalize & Lock
                 </Button>
               </div>
+            )}
+
+            {/* Finalized — locked banner */}
+            {isFinalized && meeting && (
+              <>
+                {/* Supervisor sees pending approval request */}
+                {isSupervisor && pendingRequest && (
+                  <UnlockApprovalBanner
+                    meetingId={meeting.id}
+                    pendingRequestId={pendingRequest.id}
+                    requestReason={pendingRequest.reason}
+                    onReviewed={() => {}}
+                  />
+                )}
+
+                {/* Non-supervisor sees locked notice + request-unlock button */}
+                {!isSupervisor && (
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 border border-border">
+                    <div className="flex items-center gap-3">
+                      <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Minutes Locked</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {hasPendingRequest
+                            ? 'Your edit request is awaiting supervisor approval.'
+                            : 'Request supervisor approval to edit these finalized minutes.'}
+                        </p>
+                      </div>
+                    </div>
+                    {!hasPendingRequest && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs shrink-0"
+                        onClick={() => setUnlockDialogOpen(true)}
+                      >
+                        <UnlockKeyhole className="h-3.5 w-3.5 mr-1" /> Request Edit
+                      </Button>
+                    )}
+                    {hasPendingRequest && (
+                      <Badge variant="secondary" className="text-xs">
+                        Pending Approval
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Supervisor — no pending request — show info */}
+                {isSupervisor && !pendingRequest && (
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/40 border border-border">
+                    <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Minutes Finalized</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        As a supervisor you can re-open these minutes directly from the header Save button if needed.
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs ml-auto shrink-0" onClick={handleSupervisorUnlock}>
+                      <UnlockKeyhole className="h-3.5 w-3.5 mr-1" /> Unlock Minutes
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -766,6 +961,16 @@ function MeetingEditorInner({
           onClose={() => setEmailOpen(false)}
           meeting={liveMeeting}
           minutesHtml={polishedHtml}
+        />
+      )}
+
+      {/* Unlock request dialog */}
+      {meeting && (
+        <UnlockRequestDialog
+          open={unlockDialogOpen}
+          onClose={() => setUnlockDialogOpen(false)}
+          onSubmit={reason => requestUnlock.mutate(reason)}
+          isPending={requestUnlock.isPending}
         />
       )}
     </div>
@@ -784,6 +989,7 @@ function MeetingEditorSheet({
   onFinalize: (id: string) => void;
 }) {
   const { polish, isPolishing } = useTextPolish();
+  const { updateMeeting } = useProjectMeetings(projectId);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [title, setTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -858,13 +1064,20 @@ function MeetingEditorSheet({
 
   const isFinalized = meeting?.status === 'finalized';
 
+  // Supervisor direct unlock — sets status back to 'reviewed' without requiring approval
+  const handleSupervisorUnlock = useCallback(async () => {
+    if (!meeting) return;
+    await updateMeeting.mutateAsync({ id: meeting.id, status: 'reviewed' });
+    toast.success('Minutes unlocked — you can now edit them');
+  }, [meeting, updateMeeting]);
+
   const innerProps = {
     meeting, isFinalized, isFullScreen, onToggleFullScreen: () => setIsFullScreen(v => !v),
     title, setTitle, meetingDate, setMeetingDate, meetingTime, setMeetingTime,
     meetingType, setMeetingType, location, setLocation, attendees, setAttendees,
     rawNotes, setRawNotes, polishedHtml, setPolishedHtml, previousHtml, setPreviousHtml,
     activeTab, setActiveTab, isEditing, setIsEditing, emailOpen, setEmailOpen,
-    isPolishing, handlePolish, handleSave, handleFinalize, handleAiContinue,
+    isPolishing, handlePolish, handleSave, handleFinalize, handleSupervisorUnlock, handleAiContinue,
   };
 
   if (isFullScreen) {
