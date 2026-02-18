@@ -79,20 +79,21 @@
     --radius: 0.5rem;
 
     /* Sidebar - Dark professional */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 215 20% 85%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 215 25% 92%;
+    --sidebar-primary: 217 91% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent: 217 91% 62%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 30% 20%;
-    --sidebar-ring: 217 91% 60%;
-    --sidebar-muted: 215 16% 47%;
+    --sidebar-border: 222 30% 17%;
+    --sidebar-ring: 217 91% 62%;
+    --sidebar-muted: 215 15% 58%;
+    --sidebar-label: 215 12% 48%;
 
     /* Sidebar nav utility tokens */
-    --sidebar-nav-active-bg: 217 91% 60%;
+    --sidebar-nav-active-bg: 217 91% 62%;
     --sidebar-nav-hover-bg: 222 47% 18%;
-    --sidebar-zone-label: 215 16% 40%;
+    --sidebar-zone-label: 215 12% 48%;
   }
 
   .dark {
