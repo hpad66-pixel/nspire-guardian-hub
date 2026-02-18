@@ -212,6 +212,207 @@ export type Database = {
           },
         ]
       }
+      client_action_items: {
+        Row: {
+          action_type: string
+          amount: number | null
+          attachment_urls: string[] | null
+          client_response: string | null
+          client_selection: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_change_order_id: string | null
+          linked_document_id: string | null
+          linked_rfi_id: string | null
+          options: Json | null
+          pm_notes: string | null
+          priority: string
+          project_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          responded_at: string | null
+          sent_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          action_type?: string
+          amount?: number | null
+          attachment_urls?: string[] | null
+          client_response?: string | null
+          client_selection?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_change_order_id?: string | null
+          linked_document_id?: string | null
+          linked_rfi_id?: string | null
+          options?: Json | null
+          pm_notes?: string | null
+          priority?: string
+          project_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          attachment_urls?: string[] | null
+          client_response?: string | null
+          client_selection?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_change_order_id?: string | null
+          linked_document_id?: string | null
+          linked_rfi_id?: string | null
+          options?: Json | null
+          pm_notes?: string | null
+          priority?: string
+          project_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_action_items_linked_change_order_id_fkey"
+            columns: ["linked_change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_linked_document_id_fkey"
+            columns: ["linked_document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_linked_rfi_id_fkey"
+            columns: ["linked_rfi_id"]
+            isOneToOne: false
+            referencedRelation: "project_rfis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          id: string
+          parent_id: string | null
+          photo_urls: string[] | null
+          project_id: string
+          read_by_client: boolean
+          read_by_client_at: string | null
+          read_by_pm: boolean
+          read_by_pm_at: string | null
+          read_by_pm_user: string | null
+          requires_response: boolean
+          resolves_action_item_id: string | null
+          responded_at: string | null
+          sent_by: string | null
+          subject: string | null
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          direction: string
+          id?: string
+          parent_id?: string | null
+          photo_urls?: string[] | null
+          project_id: string
+          read_by_client?: boolean
+          read_by_client_at?: string | null
+          read_by_pm?: boolean
+          read_by_pm_at?: string | null
+          read_by_pm_user?: string | null
+          requires_response?: boolean
+          resolves_action_item_id?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          parent_id?: string | null
+          photo_urls?: string[] | null
+          project_id?: string
+          read_by_client?: boolean
+          read_by_client_at?: string | null
+          read_by_pm?: boolean
+          read_by_pm_at?: string | null
+          read_by_pm_user?: string | null
+          requires_response?: boolean
+          resolves_action_item_id?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "client_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_messages_resolves_action_item_fkey"
+            columns: ["resolves_action_item_id"]
+            isOneToOne: false
+            referencedRelation: "client_action_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
