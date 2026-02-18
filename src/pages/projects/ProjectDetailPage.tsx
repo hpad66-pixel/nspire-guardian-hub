@@ -132,8 +132,8 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      <div className="flex-1 overflow-auto">
+    <div className="relative flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex-1 overflow-auto min-w-0">
         {/* ── Hero Header ── */}
         <div className="relative border-b bg-gradient-to-br from-background via-background to-module-projects/5 px-6 pt-4 pb-6">
           {/* Purple accent glow */}
@@ -431,12 +431,31 @@ export default function ProjectDetailPage() {
         />
       </div>
 
+      {/* Overlay panels — slide in from right, sit OVER content (no pushing) */}
       <AnimatePresence>
         {activityFeedOpen && id && (
-          <ActivityFeedPanel key="activity" projectId={id} open={activityFeedOpen} onClose={() => setActivityFeedOpen(false)} />
+          <motion.div
+            key="activity"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="absolute right-0 top-0 h-full w-[390px] z-20 shadow-2xl"
+          >
+            <ActivityFeedPanel projectId={id} open={activityFeedOpen} onClose={() => setActivityFeedOpen(false)} />
+          </motion.div>
         )}
         {discussionsPanelOpen && id && (
-          <DiscussionPanel key="discussion" projectId={id} open={discussionsPanelOpen} onClose={() => setDiscussionsPanelOpen(false)} />
+          <motion.div
+            key="discussion"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="absolute right-0 top-0 h-full w-[420px] z-20 shadow-2xl"
+          >
+            <DiscussionPanel projectId={id} open={discussionsPanelOpen} onClose={() => setDiscussionsPanelOpen(false)} />
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
