@@ -28,13 +28,21 @@ export const VoiceDictationTextarea = forwardRef<HTMLTextAreaElement, VoiceDicta
       }
     };
 
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (onChange) {
+        onChange(e);
+      } else if (onValueChange) {
+        onValueChange(e.target.value);
+      }
+    };
+
     return (
       <div className="relative">
         <Textarea
           ref={ref}
           className={cn('pr-12', className)}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           {...props}
         />
         <div className="absolute right-2 top-2">
