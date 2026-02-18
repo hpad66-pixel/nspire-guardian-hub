@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
-import { getAssignedPropertyIds } from './propertyAccess';
+import { getAssignedPropertyIds, getDirectProjectIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
 
@@ -39,35 +39,28 @@ const PROJECT_SELECT_DETAIL = `
  *  standalone/client projects (no property_id),
  *  AND any project where the user is a direct project_team_member. */
 async function buildNonAdminFilter(query: any) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const [propertyIds, directProjectIds] = await Promise.all([
+    getAssignedPropertyIds(),
+    getDirectProjectIds(),
+  ]);
 
-  // Get property IDs the user is assigned to
-  const propertyIds = await getAssignedPropertyIds();
+  const orConditions: string[] = [];
 
-  // Get project IDs where the user is a direct project team member
-  const { data: projectMemberships } = await supabase
-    .from('project_team_members')
-    .select('project_id')
-    .eq('user_id', user?.id ?? '');
-  const directProjectIds = (projectMemberships ?? []).map(m => m.project_id);
-
-  // Build combined filter
-  const orParts: string[] = [];
-
-  // Always include standalone/client projects (no property)
-  orParts.push('property_id.is.null');
-
-  // Include property-linked projects for assigned properties
+  // Property-linked projects they're assigned to
   if (propertyIds.length > 0) {
-    orParts.push(`property_id.in.(${propertyIds.join(',')})`);
+    orConditions.push(`property_id.in.(${propertyIds.join(',')})`);
   }
 
-  // Include projects where user is a direct team member
+  // Non-property projects (client/standalone)
+  orConditions.push('property_id.is.null');
+
+  // Direct team member projects (cross-workspace invitations)
   if (directProjectIds.length > 0) {
-    orParts.push(`id.in.(${directProjectIds.join(',')})`);
+    orConditions.push(`id.in.(${directProjectIds.join(',')})`);
   }
 
-  return query.or(orParts.join(','));
+  if (orConditions.length === 0) return query.eq('id', 'no-match');
+  return query.or(orConditions.join(','));
 }
 
 export function useProjects() {
