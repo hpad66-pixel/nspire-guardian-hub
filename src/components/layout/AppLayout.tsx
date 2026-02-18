@@ -6,8 +6,9 @@ import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Search, Menu, Download } from 'lucide-react';
+import { Search, Menu, Download, WifiOff } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
@@ -25,6 +26,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
   const { isInstallable, install } = usePWAInstall();
+  const isOnline = useOnlineStatus();
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -210,6 +212,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">
+              {!isOnline && (
+                <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-sm font-medium text-yellow-950">
+                  <WifiOff className="h-4 w-4 shrink-0" />
+                  <span>You are offline — your changes will sync when connection is restored</span>
+                </div>
+              )}
               {children}
             </main>
           </div>
