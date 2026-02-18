@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
 import { ActivityFeedPanel } from '@/components/projects/ActivityFeedPanel';
+import { ActionItemsPanel } from '@/components/projects/ActionItemsPanel';
 import { ReportGeneratorDialog } from '@/components/projects/ReportGeneratorDialog';
 
 import { useProject } from '@/hooks/useProjects';
@@ -23,6 +24,7 @@ import { useDailyReportsByProject } from '@/hooks/useDailyReports';
 import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
 import { useRFIStats } from '@/hooks/useRFIs';
 import { usePunchItemStats } from '@/hooks/usePunchItems';
+import { useActionItemsByProject } from '@/hooks/useActionItems';
 import { MilestoneTimeline } from '@/components/projects/MilestoneTimeline';
 import { GanttChart } from '@/components/projects/GanttChart';
 import { DailyReportsList } from '@/components/projects/DailyReportsList';
@@ -71,6 +73,7 @@ export default function ProjectDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [actionItemsOpen, setActionItemsOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -80,6 +83,8 @@ export default function ProjectDetailPage() {
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
   const { data: rfiStats } = useRFIStats(id ?? null);
   const { data: punchStats } = usePunchItemStats(id ?? null);
+  const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
+  const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
@@ -179,7 +184,11 @@ export default function ProjectDetailPage() {
                 variant={activityFeedOpen ? 'secondary' : 'outline'}
                 size="sm"
                 className="gap-1.5"
-                onClick={() => { setActivityFeedOpen(!activityFeedOpen); if (discussionsPanelOpen) setDiscussionsPanelOpen(false); }}
+                onClick={() => {
+                  setActivityFeedOpen(!activityFeedOpen);
+                  if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
+                  if (actionItemsOpen) setActionItemsOpen(false);
+                }}
               >
                 <Activity className="h-4 w-4" />
                 <span className="hidden sm:inline">Activity</span>
@@ -188,10 +197,32 @@ export default function ProjectDetailPage() {
                 variant={discussionsPanelOpen ? 'secondary' : 'outline'}
                 size="sm"
                 className="gap-1.5"
-                onClick={() => { setDiscussionsPanelOpen(!discussionsPanelOpen); if (activityFeedOpen) setActivityFeedOpen(false); }}
+                onClick={() => {
+                  setDiscussionsPanelOpen(!discussionsPanelOpen);
+                  if (activityFeedOpen) setActivityFeedOpen(false);
+                  if (actionItemsOpen) setActionItemsOpen(false);
+                }}
               >
                 <MessageSquareText className="h-4 w-4" />
                 <span className="hidden sm:inline">Discuss</span>
+              </Button>
+              <Button
+                variant={actionItemsOpen ? 'secondary' : 'outline'}
+                size="sm"
+                className="gap-1.5 relative"
+                onClick={() => {
+                  setActionItemsOpen(!actionItemsOpen);
+                  if (activityFeedOpen) setActivityFeedOpen(false);
+                  if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
+                }}
+              >
+                <CheckSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Tasks</span>
+                {openTaskCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold shadow-sm">
+                    {openTaskCount > 9 ? '9+' : openTaskCount}
+                  </span>
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -455,6 +486,18 @@ export default function ProjectDetailPage() {
             className="absolute right-0 top-0 h-full w-[420px] z-20 shadow-2xl"
           >
             <DiscussionPanel projectId={id} open={discussionsPanelOpen} onClose={() => setDiscussionsPanelOpen(false)} />
+          </motion.div>
+        )}
+        {actionItemsOpen && id && (
+          <motion.div
+            key="action-items"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="absolute right-0 top-0 h-full w-[420px] z-20 shadow-2xl"
+          >
+            <ActionItemsPanel projectId={id} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>

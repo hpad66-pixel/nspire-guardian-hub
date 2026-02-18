@@ -19,18 +19,24 @@ import {
   Calendar,
   AtSign,
   MessageSquare,
+  CheckSquare,
+  Circle,
+  Check,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { useProperties } from '@/hooks/useProperties';
 import { useUnitsByProperty } from '@/hooks/useUnits';
 import { useIssuesByProperty } from '@/hooks/useIssues';
 import { useDefects, useOpenDefects } from '@/hooks/useDefects';
 import { useProjectsByProperty } from '@/hooks/useProjects';
 import { useNotifications, useMarkNotificationRead, type Notification } from '@/hooks/useNotifications';
+import { useMyActionItems, useUpdateActionItem, type ActionItem } from '@/hooks/useActionItems';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Apple-inspired metric card
 function MetricCard({ 
@@ -157,7 +163,181 @@ function ModuleCard({
   );
 }
 
-// Urgent item row
+// ── Priority config for dashboard ─────────────────────────────────────────
+const DASH_PRIORITY = {
+  urgent: { dot: 'bg-red-500', label: 'Urgent' },
+  high:   { dot: 'bg-orange-500', label: 'High' },
+  medium: { dot: 'bg-blue-500', label: 'Medium' },
+  low:    { dot: 'bg-slate-400', label: 'Low' },
+} as const;
+
+const DASH_STATUS = {
+  todo:        { label: 'To Do',       cls: 'bg-muted text-muted-foreground' },
+  in_progress: { label: 'In Progress', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+  in_review:   { label: 'In Review',   cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' },
+  done:        { label: 'Done',        cls: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' },
+  cancelled:   { label: 'Cancelled',   cls: 'bg-muted text-muted-foreground' },
+} as const;
+
+function getDueBadge(dueDate: string | null) {
+  if (!dueDate) return null;
+  const d = new Date(dueDate + 'T00:00:00');
+  if (isPast(d) && !isToday(d)) return { label: 'Overdue', cls: 'text-destructive font-bold' };
+  if (isToday(d)) return { label: 'Today', cls: 'text-orange-600 dark:text-orange-400 font-semibold' };
+  if (isTomorrow(d)) return { label: 'Tomorrow', cls: 'text-amber-600 dark:text-amber-400' };
+  const diff = differenceInDays(d, new Date());
+  return {
+    label: `${format(d, 'MMM d')}`,
+    cls: diff <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+  };
+}
+
+function MyTasksSection({
+  tasks,
+  isLoading,
+  showCompleted,
+  onToggleCompleted,
+  onNavigateToProject,
+}: {
+  tasks: ActionItem[];
+  isLoading: boolean;
+  showCompleted: boolean;
+  onToggleCompleted: () => void;
+  onNavigateToProject: (id: string) => void;
+}) {
+  // Separate active from done
+  const activeTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      // Overdue first
+      const aOverdue = a.due_date && isPast(new Date(a.due_date + 'T00:00:00')) && !isToday(new Date(a.due_date + 'T00:00:00'));
+      const bOverdue = b.due_date && isPast(new Date(b.due_date + 'T00:00:00')) && !isToday(new Date(b.due_date + 'T00:00:00'));
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      // Then by due date
+      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if (a.due_date && !b.due_date) return -1;
+      if (!a.due_date && b.due_date) return 1;
+      // Then priority
+      const pOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      return pOrder[a.priority] - pOrder[b.priority];
+    });
+  }, [tasks]);
+
+  const PREVIEW_COUNT = 5;
+  const shownTasks = activeTasks.slice(0, PREVIEW_COUNT);
+  const remaining = activeTasks.length - PREVIEW_COUNT;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-7 w-40" />
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <CheckSquare className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">My Tasks</h2>
+            <p className="text-xs text-muted-foreground">
+              {activeTasks.length === 0
+                ? 'All caught up!'
+                : `${activeTasks.length} task${activeTasks.length !== 1 ? 's' : ''} assigned to you`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {activeTasks.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-card/50 py-10 flex flex-col items-center gap-2">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-1">
+            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+          </div>
+          <p className="font-medium text-sm">No tasks assigned to you</p>
+          <p className="text-xs text-muted-foreground">Tasks assigned to you from projects will appear here</p>
+        </div>
+      ) : (
+        <Card className="border-border/50 overflow-hidden">
+          <div className="divide-y divide-border/50">
+            {shownTasks.map(task => {
+              const pCfg = DASH_PRIORITY[task.priority];
+              const sCfg = DASH_STATUS[task.status];
+              const due = getDueBadge(task.due_date);
+              const isDone = task.status === 'done';
+
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors group',
+                    isDone && 'opacity-60'
+                  )}
+                >
+                  {/* Priority dot */}
+                  <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', pCfg.dot)} title={pCfg.label} />
+
+                  {/* Main content */}
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('text-sm font-medium truncate', isDone && 'line-through text-muted-foreground')}>
+                      {task.title}
+                    </p>
+                    {task.project && (
+                      <button
+                        onClick={() => onNavigateToProject(task.project!.id)}
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors truncate max-w-full text-left"
+                      >
+                        {task.project.name}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Due date */}
+                  {due && (
+                    <span className={cn('text-xs shrink-0 flex items-center gap-1', due.cls)}>
+                      <Clock className="h-3 w-3" />
+                      {due.label}
+                    </span>
+                  )}
+
+                  {/* Status pill */}
+                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0', sCfg.cls)}>
+                    {sCfg.label}
+                  </span>
+
+                  {/* Arrow to project */}
+                  {task.project && (
+                    <button
+                      onClick={() => onNavigateToProject(task.project!.id)}
+                      className="text-muted-foreground group-hover:text-primary transition-colors shrink-0"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {remaining > 0 && (
+            <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">+{remaining} more task{remaining !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+
 function UrgentItem({ 
   title, 
   subtitle, 
@@ -191,6 +371,7 @@ function UrgentItem({
 export default function Dashboard() {
   const { isModuleEnabled } = useModules();
   const { shouldShowOnboarding } = useOnboarding();
+  const navigate = useNavigate();
   
   const { data: properties, isLoading: loadingProperties } = useProperties();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
@@ -201,6 +382,8 @@ export default function Dashboard() {
   const { data: projects = [] } = useProjectsByProperty(selectedPropertyId || null);
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkNotificationRead();
+  const { data: myTasks = [], isLoading: tasksLoading } = useMyActionItems();
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const actionNotifications = useMemo(() => {
     const sevenDaysAgo = new Date();
@@ -375,6 +558,15 @@ export default function Dashboard() {
             </>
           )}
         </div>
+
+        {/* ── My Tasks Section ── */}
+        <MyTasksSection
+          tasks={myTasks}
+          isLoading={tasksLoading}
+          showCompleted={showCompletedTasks}
+          onToggleCompleted={() => setShowCompletedTasks(v => !v)}
+          onNavigateToProject={(projectId) => navigate(`/projects/${projectId}`)}
+        />
 
         {/* Active Modules Section */}
         {hasAnyModule && (
