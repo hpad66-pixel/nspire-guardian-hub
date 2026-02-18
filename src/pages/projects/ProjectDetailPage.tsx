@@ -11,10 +11,12 @@ import {
   ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
-  CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare,
+  CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
 } from 'lucide-react';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
 import { ActivityFeedPanel } from '@/components/projects/ActivityFeedPanel';
+import { ReportGeneratorDialog } from '@/components/projects/ReportGeneratorDialog';
+
 import { useProject } from '@/hooks/useProjects';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
@@ -69,6 +71,7 @@ export default function ProjectDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
@@ -189,6 +192,15 @@ export default function ProjectDetailPage() {
               >
                 <MessageSquareText className="h-4 w-4" />
                 <span className="hidden sm:inline">Discuss</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setReportDialogOpen(true)}
+              >
+                <FileBarChart2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Reports</span>
               </Button>
               <Button size="sm" className="gap-1.5 bg-module-projects hover:bg-module-projects/90 text-white shadow-sm" onClick={() => setEditDialogOpen(true)}>
                 <Edit className="h-4 w-4" />
@@ -411,6 +423,12 @@ export default function ProjectDetailPage() {
         </div>
 
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
+        <ReportGeneratorDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          projectId={id!}
+          projectName={project.name}
+        />
       </div>
 
       <AnimatePresence>
