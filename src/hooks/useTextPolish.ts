@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence' | 'meeting_minutes';
+export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence' | 'meeting_minutes' | 'ai_continue';
 
 export interface PolishOptions {
   context?: PolishContext;

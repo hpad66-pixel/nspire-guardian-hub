@@ -10,37 +10,46 @@ const contextPrompts: Record<string, string> = {
   scope: "Structure this as a professional scope of work. Use numbered or bulleted lists for deliverables if there are multiple items. Be specific about what is included. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
-  meeting_minutes: `Transform these raw meeting notes into formal, structured meeting minutes. Use the following format:
+  ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a seamless professional continuation. Write in a formal, authoritative, and precise tone — the quality of a McKinsey or Bain engagement report. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text — one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
+  meeting_minutes: `You are a senior partner at a top-tier management consulting firm (McKinsey, BCG, or Bain caliber) who specializes in project management and governance documentation. Your task is to transform raw meeting notes into formal, publication-quality meeting minutes that would be appropriate for board-level review or client submission.
 
-**MEETING MINUTES**
+CRITICAL FORMATTING RULES:
+- Output ONLY valid HTML — no markdown, no asterisks, no hash symbols, no special characters for formatting
+- Use proper HTML tags: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>, <em>, <hr>
+- Every section heading must be an <h2> tag
+- Every sub-heading must be an <h3> tag  
+- All body text must be in <p> tags with full, complete sentences
+- Action items MUST be rendered as a proper HTML <table> with columns: Action Item | Responsible Party | Due Date | Priority
+- Lists must use <ul><li> or <ol><li> tags — never dashes or bullet characters
+- Do not use any markdown syntax whatsoever
 
-**Date & Time:** [extract from notes or leave as provided]
-**Location:** [extract or leave blank]
-**Attendees:** [list all mentioned attendees]
+CONTENT REQUIREMENTS — Write with precision, authority, and depth:
 
----
+<h2>1. EXECUTIVE SUMMARY</h2>
+Write 2-3 substantive paragraphs summarizing the meeting's purpose, key outcomes, and overall project status. Be expansive — this should read like a consulting partner's summary memo. Describe the meeting context, what was reviewed, what was decided, and the implications for the project.
 
-**1. CALL TO ORDER / OPENING**
-[Brief opening summary]
+<h2>2. AGENDA ITEMS DISCUSSED</h2>
+For each topic raised in the notes, write a numbered <h3> section (e.g., "2.1 Schedule Review", "2.2 Budget Status") with a full paragraph of narrative — not bullet points. Describe what was discussed, what concerns were raised, what context was provided, and how the discussion evolved. Be thorough, not cryptic.
 
-**2. AGENDA ITEMS DISCUSSED**
-[Numbered list of topics discussed with brief summaries]
+<h2>3. KEY DECISIONS MADE</h2>
+List each decision as a complete, formal sentence in <ul><li> format. Each item should state the decision clearly and include any conditions or qualifications. Example: "The team resolved to extend the mechanical rough-in deadline by fourteen (14) calendar days, contingent upon receipt of revised shop drawings from the MEP subcontractor by Friday, February 21, 2026."
 
-**3. KEY DECISIONS MADE**
-[Bullet list of all decisions reached]
+<h2>4. RISKS AND ISSUES IDENTIFIED</h2>
+Identify any risks, concerns, or issues mentioned in the notes. For each, provide: the risk/issue description, potential impact on schedule or budget, assigned owner (if mentioned), and recommended mitigation. Present as structured <p> paragraphs or a <ul> list.
 
-**4. ACTION ITEMS**
-| Action Item | Responsible Party | Due Date |
-|---|---|---|
-[Table of action items extracted from notes]
+<h2>5. ACTION ITEMS</h2>
+Extract ALL action items and render as an HTML table:
+<table><thead><tr><th>Action Item</th><th>Responsible Party</th><th>Due Date</th><th>Priority</th></tr></thead><tbody>...</tbody></table>
+If no due date is mentioned, write "To be confirmed." If priority is not stated, infer it from context (High / Medium / Low).
 
-**5. NEXT STEPS / UPCOMING MEETINGS**
-[Summary of follow-ups and next meeting details if mentioned]
+<h2>6. NEXT STEPS AND UPCOMING MEETINGS</h2>
+Summarize follow-up activities, next scheduled meetings, and any preparation required by participants. Write in full sentences.
 
----
-*Minutes prepared by [leave blank for signature]*
+<h2>7. DISTRIBUTION AND APPROVAL</h2>
+<p>These minutes are circulated to all meeting attendees for review and approval. Any corrections or amendments must be submitted within five (5) business days of receipt. Upon expiration of the review period, these minutes shall be deemed approved as presented.</p>
+<p><em>Minutes prepared by: _____________________________ &nbsp;&nbsp;&nbsp; Date: _____________________________</em></p>
 
-Maintain all factual content. Fix grammar and improve clarity. Output only the formatted minutes, no explanations.`,
+Maintain ALL factual information from the raw notes. Do not invent names, dates, or amounts not present in the notes — but do infer reasonable context where the notes are ambiguous. Output ONLY the HTML content described above — no explanations, no preamble, no markdown.`,
 };
 
 // Google Gemini API endpoint
