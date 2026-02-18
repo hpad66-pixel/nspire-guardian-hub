@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import { useProperties } from '@/hooks/useProperties';
+import { useActiveClients } from '@/hooks/useClients';
 import { getAssignableRoles } from '@/hooks/usePermissions';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { toast } from 'sonner';
@@ -40,6 +41,7 @@ const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   role: z.enum(['admin', 'owner', 'manager', 'inspector', 'administrator', 'superintendent', 'clerk', 'project_manager', 'subcontractor', 'viewer', 'user'] as const),
   property_id: z.string().optional(),
+  client_id: z.string().optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -52,6 +54,7 @@ interface InviteUserDialogProps {
 export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) {
   const [isSending, setIsSending] = useState(false);
   const { data: properties } = useProperties();
+  const { data: clients } = useActiveClients();
   const { data: currentUserRole } = useCurrentUserRole();
   const createInvitation = useCreateInvitation();
   const sendInvitation = useSendInvitation();
@@ -63,6 +66,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
       email: '',
       role: 'user',
       property_id: 'all',
+      client_id: 'none',
     },
   });
 
@@ -70,10 +74,11 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     setIsSending(true);
     try {
       // Create the invitation
-      const invitation = await createInvitation.mutateAsync({
+    const invitation = await createInvitation.mutateAsync({
         email: data.email,
         role: data.role,
         property_id: data.property_id === 'all' ? undefined : data.property_id || undefined,
+        client_id: data.client_id === 'none' ? undefined : data.client_id || undefined,
       });
 
       // Send the email
@@ -217,6 +222,36 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                 )}
               />
             )}
+
+            <FormField
+              control={form.control}
+              name="client_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assign to Organization (Optional)</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="No organization" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No organization</SelectItem>
+                      {clients?.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button

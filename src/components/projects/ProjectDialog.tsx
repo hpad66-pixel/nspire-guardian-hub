@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Briefcase, Plus, Loader2 } from 'lucide-react';
+import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2 } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
-import { useClients, useCreateClient } from '@/hooks/useClients';
+import { useActiveClients, useCreateClient } from '@/hooks/useClients';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
@@ -30,7 +30,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
     project && (project as any).project_type === 'client' ? 'client' : 'property';
 
   const { data: properties } = useProperties();
-  const { data: clients } = useClients();
+  const { data: clients } = useActiveClients();
 
   const [projectType, setProjectType] = useState<ProjectType>(initialType);
   const [showAddClient, setShowAddClient] = useState(false);
@@ -54,7 +54,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
   const handleAddClient = async () => {
     if (!newClientName.trim()) return;
     try {
-      const created = await createClient.mutateAsync({ name: newClientName.trim(), contact_name: null, contact_email: null, contact_phone: null, industry: null, notes: null });
+      const created = await createClient.mutateAsync({ name: newClientName.trim(), client_type: 'business_client', contact_name: null, contact_email: null, contact_phone: null, website: null, address: null, city: null, state: null, industry: null, notes: null, is_active: true });
       setFormData(prev => ({ ...prev, client_id: created.id }));
       setNewClientName('');
       setShowAddClient(false);
@@ -164,7 +164,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
             </div>
           ) : (
             <div className="grid gap-2">
-              <Label>Client</Label>
+              <Label>Client *</Label>
               {showAddClient ? (
                 <div className="flex gap-2">
                   <Input
@@ -192,11 +192,20 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
                     onValueChange={(value) => setFormData({ ...formData, client_id: value })}
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select client (optional)" />
+                      <SelectValue placeholder="Select client (required)" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients?.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="flex items-center gap-2">
+                            {c.client_type === 'internal_org' && <Building2 className="h-3 w-3 text-muted-foreground" />}
+                            {c.client_type === 'business_client' && <Briefcase className="h-3 w-3 text-muted-foreground" />}
+                            {c.client_type === 'property_management' && <Home className="h-3 w-3 text-muted-foreground" />}
+                            {c.client_type === 'government' && <Shield className="h-3 w-3 text-muted-foreground" />}
+                            {c.client_type === 'other' && <Globe className="h-3 w-3 text-muted-foreground" />}
+                            {c.name}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

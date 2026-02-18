@@ -221,7 +221,7 @@ export function AppSidebar() {
   const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
   const isOperationsActive = ['/issues', '/work-orders', '/permits'].some(p => currentPath.startsWith(p));
   const isCommunicationsActive = ['/messages', '/inbox', '/voice-agent'].some(p => currentPath.startsWith(p));
-  const isOrganizationActive = ['/people', '/contacts', '/training', '/reports', '/documents'].some(p => currentPath.startsWith(p));
+  const isOrganizationActive = ['/people', '/contacts', '/training', '/reports', '/documents', '/organizations'].some(p => currentPath.startsWith(p));
   const isDailyGroundsActive = currentPath.startsWith('/inspections/daily') || currentPath.startsWith('/inspections/history') || currentPath.startsWith('/inspections/review');
   const isNspireActive = currentPath.startsWith('/inspections') && !isDailyGroundsActive;
   const isProjectsActive = currentPath.startsWith('/projects');
@@ -542,6 +542,15 @@ export function AppSidebar() {
                 />
               </SidebarMenuItem>
             )}
+            <SidebarMenuItem>
+              <NavItem
+                to="/organizations"
+                icon={<Building2 className="h-4 w-4" />}
+                label="Organizations"
+                collapsed={collapsed}
+                tooltip="Companies & Clients"
+              />
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <NavItem
                 to="/contacts"

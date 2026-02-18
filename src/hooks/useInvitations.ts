@@ -10,6 +10,7 @@ export interface Invitation {
   email: string;
   role: AppRole;
   property_id: string | null;
+  client_id: string | null;
   invited_by: string;
   token: string;
   expires_at: string;
@@ -56,6 +57,7 @@ export function useCreateInvitation() {
       email: string;
       role: AppRole;
       property_id?: string;
+      client_id?: string;
     }) => {
       // Generate a secure token
       const token = crypto.randomUUID() + '-' + crypto.randomUUID();
@@ -74,6 +76,7 @@ export function useCreateInvitation() {
           email: invitation.email,
           role: invitation.role,
           property_id: invitation.property_id || null,
+          client_id: invitation.client_id || null,
           invited_by: user.id,
           token,
           expires_at: expires_at.toISOString(),

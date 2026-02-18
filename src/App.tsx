@@ -48,6 +48,7 @@ import TrainingPage from "./pages/training/TrainingPage";
 import ContactsPage from "./pages/crm/ContactsPage";
 import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
+import OrganizationsPage from "./pages/organizations/OrganizationsPage";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
                         <Route path="/documents" element={<DocumentsPage />} />
                         <Route path="/documents/archives" element={<PropertyArchivesPage />} />
                         <Route path="/people" element={<PeoplePage />} />
+                        <Route path="/organizations" element={<OrganizationsPage />} />
                         <Route path="/inbox" element={<MailboxPage />} />
                         <Route path="/messages" element={<MessagesPage />} />
                         <Route path="/messages/:threadId" element={<MessagesPage />} />

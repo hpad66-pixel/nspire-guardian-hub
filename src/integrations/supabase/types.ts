@@ -214,6 +214,9 @@ export type Database = {
       }
       clients: {
         Row: {
+          address: string | null
+          city: string | null
+          client_type: string
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -221,11 +224,17 @@ export type Database = {
           created_by: string | null
           id: string
           industry: string | null
+          is_active: boolean
           name: string
           notes: string | null
+          state: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
+          client_type?: string
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -233,11 +242,17 @@ export type Database = {
           created_by?: string | null
           id?: string
           industry?: string | null
+          is_active?: boolean
           name: string
           notes?: string | null
+          state?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
+          client_type?: string
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -245,9 +260,12 @@ export type Database = {
           created_by?: string | null
           id?: string
           industry?: string | null
+          is_active?: boolean
           name?: string
           notes?: string | null
+          state?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -1680,6 +1698,7 @@ export type Database = {
         Row: {
           auto_bcc_enabled: boolean | null
           avatar_url: string | null
+          client_id: string | null
           created_at: string
           department: string | null
           email: string | null
@@ -1699,6 +1718,7 @@ export type Database = {
         Insert: {
           auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1718,6 +1738,7 @@ export type Database = {
         Update: {
           auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1734,7 +1755,15 @@ export type Database = {
           user_id?: string
           work_email?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_action_items: {
         Row: {
@@ -3878,6 +3907,7 @@ export type Database = {
       user_invitations: {
         Row: {
           accepted_at: string | null
+          client_id: string | null
           created_at: string
           email: string
           expires_at: string
@@ -3889,6 +3919,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          client_id?: string | null
           created_at?: string
           email: string
           expires_at: string
@@ -3900,6 +3931,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          client_id?: string | null
           created_at?: string
           email?: string
           expires_at?: string
@@ -3910,6 +3942,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_invitations_property_id_fkey"
             columns: ["property_id"]
@@ -4294,6 +4333,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           accepted_at: string | null
+          client_id: string | null
           created_at: string
           email: string
           expires_at: string
