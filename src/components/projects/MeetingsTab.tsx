@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -171,17 +171,36 @@ function MeetingEditorSheet({
   onSave: (data: Partial<ProjectMeeting>) => void;
 }) {
   const { polish, isPolishing } = useTextPolish();
-  const [title, setTitle] = useState(meeting?.title || '');
-  const [meetingDate, setMeetingDate] = useState(meeting?.meeting_date || format(new Date(), 'yyyy-MM-dd'));
-  const [meetingTime, setMeetingTime] = useState(meeting?.meeting_time || '');
-  const [meetingType, setMeetingType] = useState(meeting?.meeting_type || 'progress');
-  const [location, setLocation] = useState(meeting?.location || '');
-  const [attendees, setAttendees] = useState<MeetingAttendee[]>(meeting?.attendees || []);
-  const [rawNotes, setRawNotes] = useState(meeting?.raw_notes || '');
-  const [polishedNotes, setPolishedNotes] = useState(meeting?.polished_notes || '');
+  const [title, setTitle] = useState('');
+  const [meetingDate, setMeetingDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [meetingTime, setMeetingTime] = useState('');
+  const [meetingType, setMeetingType] = useState('progress');
+  const [location, setLocation] = useState('');
+  const [attendees, setAttendees] = useState<MeetingAttendee[]>([]);
+  const [rawNotes, setRawNotes] = useState('');
+  const [polishedNotes, setPolishedNotes] = useState('');
   const [previousNotes, setPreviousNotes] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('notes');
   const [newAttendee, setNewAttendee] = useState({ name: '', role: '', company: '' });
+
+
+  // Re-initialize all form state whenever the sheet opens or the meeting changes
+  useEffect(() => {
+    if (!open) return;
+    setTitle(meeting?.title || '');
+    setMeetingDate(meeting?.meeting_date || format(new Date(), 'yyyy-MM-dd'));
+    setMeetingTime(meeting?.meeting_time || '');
+    setMeetingType(meeting?.meeting_type || 'progress');
+    setLocation(meeting?.location || '');
+    setAttendees(meeting?.attendees || []);
+    setRawNotes(meeting?.raw_notes || '');
+    setPolishedNotes(meeting?.polished_notes || '');
+    setPreviousNotes(null);
+    setActiveTab('notes');
+    setNewAttendee({ name: '', role: '', company: '' });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, meeting?.id]);
+
 
   const handlePolish = useCallback(async () => {
     if (!rawNotes.trim()) { toast.error('Enter some notes first'); return; }
@@ -216,7 +235,7 @@ function MeetingEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full max-w-3xl overflow-y-auto">
+      <SheetContent className="w-full max-w-4xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -230,6 +249,7 @@ function MeetingEditorSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
+
           {/* Meta fields */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -333,7 +353,7 @@ function MeetingEditorSheet({
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Enter your raw meeting notes — bullet points, shorthand, stream of consciousness. The AI will structure them into formal minutes.</p>
                 <textarea
-                  className="flex min-h-[280px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
                   placeholder="e.g. Discussed roofing delay — weather related, 2 weeks. John to revise schedule by Friday. Budget concern on MEP — Sarah to get revised quote. Next meeting Feb 25 at 9am..."
                   value={rawNotes}
                   onChange={(e) => setRawNotes(e.target.value)}
@@ -346,18 +366,19 @@ function MeetingEditorSheet({
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">AI-formatted meeting minutes. You can edit before finalizing.</p>
                 {isFinalized ? (
-                  <div className="border rounded-md p-4 min-h-[280px] bg-muted/20">
+                  <div className="border rounded-md p-4 min-h-[400px] bg-muted/20">
                     <RichTextViewer content={polishedNotes.replace(/\n/g, '<br/>')} />
                   </div>
                 ) : (
                   <textarea
-                    className="flex min-h-[280px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
                     value={polishedNotes}
                     onChange={(e) => setPolishedNotes(e.target.value)}
                   />
                 )}
               </div>
             </TabsContent>
+
           </Tabs>
 
           {/* Actions */}
