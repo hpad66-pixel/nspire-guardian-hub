@@ -2036,6 +2036,7 @@ export type Database = {
           updated_at: string
           user_id: string
           work_email: string | null
+          workspace_id: string | null
         }
         Insert: {
           auto_bcc_enabled?: boolean | null
@@ -2056,6 +2057,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           work_email?: string | null
+          workspace_id?: string | null
         }
         Update: {
           auto_bcc_enabled?: boolean | null
@@ -2076,6 +2078,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           work_email?: string | null
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -2083,6 +2086,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -4460,6 +4470,7 @@ export type Database = {
           property_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
+          workspace_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -4472,6 +4483,7 @@ export type Database = {
           property_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token: string
+          workspace_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -4484,6 +4496,7 @@ export type Database = {
           property_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -4498,6 +4511,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -4928,6 +4948,7 @@ export type Database = {
           property_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
+          workspace_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -4936,6 +4957,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_my_workspace_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
