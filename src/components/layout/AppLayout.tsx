@@ -255,7 +255,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               </button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <AppSidebar />
+              <SidebarProvider>
+                <AppSidebar />
+              </SidebarProvider>
             </SheetContent>
           </Sheet>
         </nav>
