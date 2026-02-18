@@ -154,7 +154,15 @@ serve(async (req) => {
 
         if (claudeResp.ok) {
           const result = await claudeResp.json();
-          const polished = result.content?.[0]?.text || text;
+          let polished: string = result.content?.[0]?.text || text;
+
+          // Strip markdown code fences if Claude wraps HTML
+          const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
+          if (fenceMatch) {
+            polished = fenceMatch[1].trim();
+            console.log('Stripped markdown code fence from Claude HTML response');
+          }
+
           console.log(`Successfully polished text with Claude model: ${resolvedModel}`);
           return new Response(
             JSON.stringify({ polished, model: resolvedModel }),
@@ -186,7 +194,16 @@ serve(async (req) => {
 
       if (response.ok) {
         const result = await response.json();
-        const polished = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
+        let polished: string = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
+
+        // Strip markdown code fences that Gemini wraps around HTML output
+        // e.g. ```html ... ``` or ``` ... ```
+        const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
+        if (fenceMatch) {
+          polished = fenceMatch[1].trim();
+          console.log('Stripped markdown code fence from Gemini HTML response');
+        }
+
         console.log(`Successfully polished text with Gemini model: ${model}`);
         return new Response(
           JSON.stringify({ polished, model }),
