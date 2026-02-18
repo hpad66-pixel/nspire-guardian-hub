@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -59,16 +60,18 @@ export function useUserRoles(userId: string | null) {
 }
 
 export function useCurrentUserRole() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['current-user-role'],
+    queryKey: ['current-user-role', user?.id],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      if (!freshUser) return null;
 
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id);
+        .eq('user_id', freshUser.id);
 
       if (error) throw error;
       
@@ -92,6 +95,7 @@ export function useCurrentUserRole() {
       
       return sortedRoles[0] || 'user';
     },
+    enabled: !!user,
     staleTime: 30 * 1000,
   });
 }
