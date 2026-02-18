@@ -242,9 +242,8 @@ export function PortalShell({
         open={showWelcome}
         onClose={handleWelcomeClose}
         projectName={projectName}
-        companyName={companyName}
+        branding={branding}
         accentColor={accentColor}
-        logoUrl={branding?.logo_url}
       />
     </div>
   );
