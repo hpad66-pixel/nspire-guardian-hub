@@ -65,10 +65,10 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 {/* Public Routes */}
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/" element={<LandingPageAlt />} />
                 <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/install" element={<InstallPage />} />
-                <Route path="/home-alt" element={<LandingPageAlt />} />
+                <Route path="/home-alt" element={<LandingPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
