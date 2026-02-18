@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
+import { useProjects } from '@/hooks/useProjects';
+import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import {
   Sidebar,
   SidebarContent,
@@ -174,6 +176,7 @@ function CollapsibleNavGroup({
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isModuleEnabled, userRole } = useModules();
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
@@ -185,12 +188,36 @@ export function AppSidebar() {
 
   const isAdmin = currentRole === 'admin';
   
+  // Recent projects (tracked in localStorage)
+  const { data: allProjects } = useProjects();
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recent_projects') || '[]');
+    } catch { return []; }
+  });
+
+  // Track current project visits
+  const currentPath = location.pathname;
+  useEffect(() => {
+    const match = currentPath.match(/^\/projects\/([^/]+)$/);
+    if (!match) return;
+    const pid = match[1];
+    setRecentIds(prev => {
+      const next = [pid, ...prev.filter(id => id !== pid)].slice(0, 3);
+      try { localStorage.setItem('recent_projects', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [currentPath]);
+
+  const recentProjects = recentIds
+    .map(id => allProjects?.find(p => p.id === id))
+    .filter(Boolean) as NonNullable<typeof allProjects>[number][];
+  
   const userInitials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
     : user?.email?.charAt(0).toUpperCase() || 'U';
 
   // Route matching for auto-expanding groups
-  const currentPath = location.pathname;
   const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
   const isOperationsActive = ['/issues', '/work-orders', '/permits'].some(p => currentPath.startsWith(p));
   const isCommunicationsActive = ['/messages', '/inbox', '/voice-agent'].some(p => currentPath.startsWith(p));
@@ -297,8 +324,39 @@ export function AppSidebar() {
                   />
                 </SidebarMenuItem>
               )}
+              {/* Recent projects (non-collapsed mode only) */}
+              {!collapsed && recentProjects.length > 0 && (
+                <>
+                  <div className="px-2 pt-2 pb-0.5">
+                    <span className="text-[10px] uppercase tracking-widest text-sidebar-muted font-semibold">Recent</span>
+                  </div>
+                  {recentProjects.map(p => {
+                    const health = computeHealth(p);
+                    const hc = HEALTH_CONFIG[health];
+                    const isCurrentProject = currentPath === `/projects/${p.id}`;
+                    return (
+                      <SidebarMenuItem key={p.id}>
+                        <SidebarMenuButton asChild>
+                          <button
+                            onClick={() => navigate(`/projects/${p.id}`)}
+                            className={cn(
+                              'flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors',
+                              'text-sidebar-foreground hover:bg-sidebar-accent',
+                              isCurrentProject && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                            )}
+                          >
+                            <div className={cn('h-2 w-2 rounded-full shrink-0', hc.dot)} />
+                            <span className="truncate text-xs">{p.name}</span>
+                          </button>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </>
+              )}
             </CollapsibleNavGroup>
           )}
+
 
           {/* NSPIRE Compliance Module */}
           {isModuleEnabled('nspireEnabled') && canView('inspections') && (
