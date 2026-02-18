@@ -5,8 +5,18 @@ import { AppSidebar } from './AppSidebar';
 import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Search, Menu, Download, WifiOff, LayoutDashboard, ClipboardCheck, AlertTriangle, Wrench, MessageCircle } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Search,
+  Download,
+  WifiOff,
+  LayoutDashboard,
+  ClipboardCheck,
+  AlertTriangle,
+  Wrench,
+  MessageCircle,
+  Menu,
+} from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -130,7 +140,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 
-  const bottomNavItems = [
+  const primaryNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Inspections', icon: ClipboardCheck, path: '/inspections' },
     { label: 'Issues', icon: AlertTriangle, path: '/issues' },
@@ -148,37 +158,35 @@ export function AppLayout({ children }: AppLayoutProps) {
             <AppSidebar />
           </div>
 
-          {/* Mobile nav drawer */}
-          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <SheetContent
-              side="left"
-              className="w-72 p-0 border-r border-border"
-            >
-              {/* AppSidebar renders inside the drawer on mobile */}
-              <AppSidebar />
-            </SheetContent>
-          </Sheet>
-
           <div className="flex flex-1 flex-col min-w-0">
-            {/* Top Header Bar */}
+            {/* Header */}
             <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
-              {/* Mobile hamburger */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-                onClick={() => setMobileNavOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
 
-              {/* Desktop sidebar trigger */}
+              {/* Desktop: sidebar trigger */}
               <div className="hidden lg:block">
                 <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               </div>
 
-              {/* Search bar */}
+              {/* Mobile: hamburger that opens full sidebar as a sheet */}
+              {isMobile && (
+                <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label="Open navigation"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-72 p-0 border-r border-border">
+                    <AppSidebar />
+                  </SheetContent>
+                </Sheet>
+              )}
+
+              {/* Search — full width on desktop, condensed on mobile */}
               <Button
                 variant="outline"
                 className="relative h-9 flex-1 max-w-xs justify-start text-sm text-muted-foreground"
@@ -207,7 +215,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 )}
                 <NotificationCenter />
-                {/* Role badge — hide on small mobile */}
+                {/* Role badge — hidden on mobile to save space */}
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                   {displayRoles.length > 0 ? displayRoles[0] : 'User'}
                 </Badge>
@@ -220,7 +228,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Push notification permission banner */}
             <NotificationPermissionBanner />
 
-            {/* Main Content */}
+            {/* Main Content — add bottom padding on mobile for nav bar */}
             <main className="flex-1 overflow-auto pb-16 md:pb-0">
               {!isOnline && (
                 <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-sm font-medium text-yellow-950">
@@ -235,20 +243,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       </SidebarProvider>
 
-      {/* Mobile bottom navigation */}
+      {/* Mobile Bottom Navigation — only on mobile */}
       {isMobile && (
         <nav className="fixed bottom-0 left-0 right-0 z-[100] flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md px-2">
-          {bottomNavItems.map((item) => {
+          {primaryNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-lg px-3 transition-colors ${
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
+                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 transition-colors ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
