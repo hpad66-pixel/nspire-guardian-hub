@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Hardcoded fallback prompts — used when no DB row exists for the context key
 const contextPrompts: Record<string, string> = {
   description: "Transform this into a clear, professional project description. Maintain all factual content. Use complete sentences and proper grammar. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
   scope: "Structure this as a professional scope of work. Use numbered or bulleted lists for deliverables if there are multiple items. Be specific about what is included. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
@@ -56,7 +58,6 @@ Maintain ALL factual information from the raw notes. Do not invent names, dates,
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 async function callGemini(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
-  // Map internal model names to stable Gemini model IDs
   const modelMap: Record<string, string> = {
     "google/gemini-2.5-pro": "gemini-2.0-flash",
     "google/gemini-3-flash-preview": "gemini-2.0-flash",
@@ -71,6 +72,23 @@ async function callGemini(apiKey: string, model: string, systemPrompt: string, u
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts: [{ text: userText }] }],
+    }),
+  });
+}
+
+async function callClaude(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
+  return await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userText }],
     }),
   });
 }
@@ -98,10 +116,76 @@ serve(async (req) => {
 
     console.log(`Polishing text with context: ${context}, preferredModel: ${preferredModel ?? 'default'}, length: ${text.length}`);
 
-    const systemPrompt = contextPrompts[context] || contextPrompts.notes;
+    // --- Step 1: Check database for a configurable skill prompt ---
+    let systemPrompt = contextPrompts[context] || contextPrompts.notes;
+    let dbModel: string | null = null;
 
-    // Model routing: meeting_minutes → Pro, others → Flash
-    // Use stable model names — all map to gemini-2.0-flash or gemini-2.0-flash-lite
+    try {
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const { data: skillRow } = await supabaseAdmin
+        .from('ai_skill_prompts')
+        .select('system_prompt, model, is_active')
+        .eq('skill_key', context)
+        .eq('is_active', true)
+        .single();
+
+      if (skillRow) {
+        console.log(`Found DB skill prompt for context: ${context}, model: ${skillRow.model}`);
+        systemPrompt = skillRow.system_prompt;
+        dbModel = skillRow.model;
+      }
+    } catch (dbErr) {
+      // Non-fatal: fall back to hardcoded prompt
+      console.warn('Could not fetch skill prompt from DB, using hardcoded fallback:', dbErr);
+    }
+
+    // --- Step 2: Route to Claude if the DB row specifies a claude model ---
+    const resolvedModel = dbModel ?? preferredModel ?? 'google/gemini-2.5-flash';
+
+    if (resolvedModel.startsWith('claude')) {
+      const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+      if (ANTHROPIC_API_KEY) {
+        console.log(`Routing to Claude: ${resolvedModel}`);
+        const claudeResp = await callClaude(ANTHROPIC_API_KEY, resolvedModel, systemPrompt, text);
+
+        if (claudeResp.ok) {
+          const result = await claudeResp.json();
+          let polished: string = result.content?.[0]?.text || text;
+
+          // Strip markdown code fences if Claude wraps HTML
+          const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
+          if (fenceMatch) {
+            polished = fenceMatch[1].trim();
+            console.log('Stripped markdown code fence from Claude HTML response');
+          }
+
+          console.log(`Successfully polished text with Claude model: ${resolvedModel}`);
+          return new Response(
+            JSON.stringify({ polished, model: resolvedModel }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (claudeResp.status === 429) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const claudeErr = await claudeResp.text();
+        console.warn(`Claude ${resolvedModel} returned ${claudeResp.status}, falling through to Gemini:`, claudeErr);
+        // Fall through to Gemini below
+      } else {
+        console.warn('ANTHROPIC_API_KEY not configured — falling through to Gemini');
+      }
+    }
+
+    // --- Step 3: Gemini path (default + Claude fallback) ---
     const defaultModel = 'google/gemini-2.5-flash';
     const modelsToTry = [defaultModel, 'google/gemini-2.5-flash-lite'];
 
@@ -110,8 +194,17 @@ serve(async (req) => {
 
       if (response.ok) {
         const result = await response.json();
-        const polished = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
-        console.log(`Successfully polished text with model: ${model}`);
+        let polished: string = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
+
+        // Strip markdown code fences that Gemini wraps around HTML output
+        // e.g. ```html ... ``` or ``` ... ```
+        const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
+        if (fenceMatch) {
+          polished = fenceMatch[1].trim();
+          console.log('Stripped markdown code fence from Gemini HTML response');
+        }
+
+        console.log(`Successfully polished text with Gemini model: ${model}`);
         return new Response(
           JSON.stringify({ polished, model }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -131,7 +224,6 @@ serve(async (req) => {
         throw new Error('Invalid Gemini API key or quota exceeded');
       }
 
-      // Other errors — try next model
       const errorText = await response.text();
       console.warn(`Model ${model} returned ${response.status}, trying next...`, errorText);
     }

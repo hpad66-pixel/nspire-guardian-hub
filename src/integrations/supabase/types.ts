@@ -85,6 +85,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_skill_prompts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          model: string
+          skill_key: string
+          system_prompt: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          skill_key: string
+          system_prompt: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          skill_key?: string
+          system_prompt?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       asset_type_definitions: {
         Row: {
           created_at: string
@@ -208,6 +250,207 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_action_items: {
+        Row: {
+          action_type: string
+          amount: number | null
+          attachment_urls: string[] | null
+          client_response: string | null
+          client_selection: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_change_order_id: string | null
+          linked_document_id: string | null
+          linked_rfi_id: string | null
+          options: Json | null
+          pm_notes: string | null
+          priority: string
+          project_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          responded_at: string | null
+          sent_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          action_type?: string
+          amount?: number | null
+          attachment_urls?: string[] | null
+          client_response?: string | null
+          client_selection?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_change_order_id?: string | null
+          linked_document_id?: string | null
+          linked_rfi_id?: string | null
+          options?: Json | null
+          pm_notes?: string | null
+          priority?: string
+          project_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          attachment_urls?: string[] | null
+          client_response?: string | null
+          client_selection?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_change_order_id?: string | null
+          linked_document_id?: string | null
+          linked_rfi_id?: string | null
+          options?: Json | null
+          pm_notes?: string | null
+          priority?: string
+          project_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_action_items_linked_change_order_id_fkey"
+            columns: ["linked_change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_linked_document_id_fkey"
+            columns: ["linked_document_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_linked_rfi_id_fkey"
+            columns: ["linked_rfi_id"]
+            isOneToOne: false
+            referencedRelation: "project_rfis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_action_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          id: string
+          parent_id: string | null
+          photo_urls: string[] | null
+          project_id: string
+          read_by_client: boolean
+          read_by_client_at: string | null
+          read_by_pm: boolean
+          read_by_pm_at: string | null
+          read_by_pm_user: string | null
+          requires_response: boolean
+          resolves_action_item_id: string | null
+          responded_at: string | null
+          sent_by: string | null
+          subject: string | null
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          direction: string
+          id?: string
+          parent_id?: string | null
+          photo_urls?: string[] | null
+          project_id: string
+          read_by_client?: boolean
+          read_by_client_at?: string | null
+          read_by_pm?: boolean
+          read_by_pm_at?: string | null
+          read_by_pm_user?: string | null
+          requires_response?: boolean
+          resolves_action_item_id?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          parent_id?: string | null
+          photo_urls?: string[] | null
+          project_id?: string
+          read_by_client?: boolean
+          read_by_client_at?: string | null
+          read_by_pm?: boolean
+          read_by_pm_at?: string | null
+          read_by_pm_user?: string | null
+          requires_response?: boolean
+          resolves_action_item_id?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "client_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_messages_resolves_action_item_fkey"
+            columns: ["resolves_action_item_id"]
+            isOneToOne: false
+            referencedRelation: "client_action_items"
             referencedColumns: ["id"]
           },
         ]
@@ -898,6 +1141,85 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          linked_project_id: string | null
+          linked_work_order_id: string | null
+          notes: string | null
+          property_id: string
+          quantity: number
+          quantity_after: number | null
+          reference_number: string | null
+          total_cost: number | null
+          transaction_date: string
+          transaction_type: string
+          unit_cost: number | null
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          linked_project_id?: string | null
+          linked_work_order_id?: string | null
+          notes?: string | null
+          property_id: string
+          quantity: number
+          quantity_after?: number | null
+          reference_number?: string | null
+          total_cost?: number | null
+          transaction_date?: string
+          transaction_type: string
+          unit_cost?: number | null
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          linked_project_id?: string | null
+          linked_work_order_id?: string | null
+          notes?: string | null
+          property_id?: string
+          quantity?: number
+          quantity_after?: number | null
+          reference_number?: string | null
+          total_cost?: number | null
+          transaction_date?: string
+          transaction_type?: string
+          unit_cost?: number | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "property_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_linked_project_id_fkey"
+            columns: ["linked_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -1823,6 +2145,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_action_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_client_updates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          photo_url: string | null
+          project_id: string
+          title: string
+          update_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string | null
+          project_id: string
+          title: string
+          update_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string | null
+          project_id?: string
+          title?: string
+          update_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_client_updates_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -3126,6 +3492,74 @@ export type Database = {
           },
         ]
       }
+      property_inventory_items: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          current_quantity: number
+          description: string | null
+          id: string
+          is_active: boolean
+          minimum_quantity: number | null
+          name: string
+          photo_url: string | null
+          preferred_vendor: string | null
+          property_id: string
+          sku: string | null
+          storage_location: string | null
+          unit_cost: number | null
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_quantity?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_quantity?: number | null
+          name: string
+          photo_url?: string | null
+          preferred_vendor?: string | null
+          property_id: string
+          sku?: string | null
+          storage_location?: string | null
+          unit_cost?: number | null
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_quantity?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_quantity?: number | null
+          name?: string
+          photo_url?: string | null
+          preferred_vendor?: string | null
+          property_id?: string
+          sku?: string | null
+          storage_location?: string | null
+          unit_cost?: number | null
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_team_members: {
         Row: {
           added_by: string | null
@@ -3184,6 +3618,89 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "property_team_members_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_utility_bills: {
+        Row: {
+          account_number: string | null
+          amount: number
+          amount_paid: number | null
+          bill_date: string | null
+          bill_period_end: string
+          bill_period_start: string
+          consumption_unit: string | null
+          consumption_value: number | null
+          created_at: string
+          created_by: string | null
+          document_name: string | null
+          document_url: string | null
+          due_date: string | null
+          id: string
+          is_estimated: boolean
+          notes: string | null
+          paid_at: string | null
+          property_id: string
+          provider_name: string | null
+          status: string
+          updated_at: string
+          utility_type: string
+        }
+        Insert: {
+          account_number?: string | null
+          amount: number
+          amount_paid?: number | null
+          bill_date?: string | null
+          bill_period_end: string
+          bill_period_start: string
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_name?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_estimated?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          property_id: string
+          provider_name?: string | null
+          status?: string
+          updated_at?: string
+          utility_type: string
+        }
+        Update: {
+          account_number?: string | null
+          amount?: number
+          amount_paid?: number | null
+          bill_date?: string | null
+          bill_period_end?: string
+          bill_period_start?: string
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_name?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_estimated?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          property_id?: string
+          provider_name?: string | null
+          status?: string
+          updated_at?: string
+          utility_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_utility_bills_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"

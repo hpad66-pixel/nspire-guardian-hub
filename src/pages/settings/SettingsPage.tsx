@@ -29,6 +29,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
+import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -77,6 +78,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="modules">Modules</TabsTrigger>
           {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
         </TabsList>
@@ -349,6 +351,12 @@ export default function SettingsPage() {
         {canManageUsers && (
           <TabsContent value="users">
             <UserManagement />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="ai-skills">
+            <AISkillsSettings />
           </TabsContent>
         )}
 
