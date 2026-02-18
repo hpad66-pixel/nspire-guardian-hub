@@ -27,22 +27,35 @@ import {
   QrCode,
   Settings,
   MoreHorizontal,
+  FolderKanban,
   X,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ActiveSection = 'dashboard' | 'inspections' | 'issues' | 'workorders' | 'more';
+type ActiveSection = 'dashboard' | 'daily' | 'compliance' | 'projects' | 'more';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getActiveSection(pathname: string): ActiveSection {
   if (pathname === '/dashboard' || pathname === '/') return 'dashboard';
-  if (pathname.startsWith('/inspections')) return 'inspections';
-  if (pathname.startsWith('/issues')) return 'issues';
-  if (pathname.startsWith('/work-orders') || pathname.startsWith('/permits')) return 'workorders';
+  if (
+    pathname.startsWith('/inspections/daily') ||
+    pathname.startsWith('/inspections/history') ||
+    pathname.startsWith('/inspections/review')
+  )
+    return 'daily';
+  if (pathname.startsWith('/inspections')) return 'compliance';
+  if (pathname.startsWith('/projects')) return 'projects';
   return 'more';
 }
+
+// Module accent colors
+const MODULE_COLORS: Record<string, string> = {
+  daily: '#10B981',             // emerald
+  compliance: '#1D6FE8',        // sapphire
+  projects: 'hsl(262 83% 58%)', // violet
+};
 
 // ─── Primary bar item ─────────────────────────────────────────────────────────
 
@@ -52,9 +65,15 @@ interface PrimaryItemProps {
   isActive: boolean;
   onClick: () => void;
   badge?: boolean;
+  accentColor?: string;
 }
 
-function PrimaryItem({ icon, label, isActive, onClick, badge }: PrimaryItemProps) {
+function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: PrimaryItemProps) {
+  const pillColor = isActive && accentColor ? accentColor : 'hsl(217 91% 62%)';
+  const textColor = isActive
+    ? accentColor ?? 'hsl(217 91% 62%)'
+    : 'hsl(215 20% 50%)';
+
   return (
     <button
       onClick={onClick}
@@ -63,17 +82,16 @@ function PrimaryItem({ icon, label, isActive, onClick, badge }: PrimaryItemProps
       {/* Active pill indicator */}
       <div
         className={cn(
-          'h-[3px] w-4 rounded-full mb-1 transition-opacity duration-150',
-          isActive ? 'bg-[hsl(217,91%,62%)] opacity-100' : 'opacity-0'
+          'h-[3px] w-4 rounded-full mb-1 transition-all duration-150',
+          isActive ? 'opacity-100' : 'opacity-0'
         )}
+        style={{ background: pillColor }}
       />
       {/* Icon + optional badge dot */}
       <div className="relative">
         <span
-          className={cn(
-            'transition-colors duration-150',
-            isActive ? 'text-[hsl(217,91%,62%)]' : 'text-[hsl(215,20%,50%)]'
-          )}
+          className="transition-colors duration-150"
+          style={{ color: textColor }}
         >
           {icon}
         </span>
@@ -83,10 +101,8 @@ function PrimaryItem({ icon, label, isActive, onClick, badge }: PrimaryItemProps
       </div>
       {/* Label */}
       <span
-        className={cn(
-          'text-[10px] font-medium leading-none tracking-wide transition-colors duration-150',
-          isActive ? 'text-[hsl(217,91%,62%)]' : 'text-[hsl(215,20%,50%)]'
-        )}
+        className="text-[10px] font-medium leading-none tracking-wide transition-colors duration-150"
+        style={{ color: textColor }}
       >
         {label}
       </span>
@@ -96,25 +112,19 @@ function PrimaryItem({ icon, label, isActive, onClick, badge }: PrimaryItemProps
 
 // ─── iPad secondary bar ───────────────────────────────────────────────────────
 
-interface SecondaryBarProps {
-  activeSection: ActiveSection;
-  isDailyGrounds: boolean;
-  isNspire: boolean;
-}
-
 function SecondaryBarItem({
   to,
   label,
   currentPath,
-  exact = false,
+  accentColor,
 }: {
   to: string;
   label: string;
   currentPath: string;
-  exact?: boolean;
+  accentColor: string;
 }) {
   const navigate = useNavigate();
-  const isActive = exact ? currentPath === to : currentPath === to;
+  const isActive = currentPath === to || (to !== '/inspections' && currentPath.startsWith(to));
 
   return (
     <button
@@ -122,43 +132,48 @@ function SecondaryBarItem({
       className={cn(
         'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150',
         isActive
-          ? 'bg-[hsl(217,91%,62%)]/12 text-[hsl(217,91%,62%)]'
+          ? 'bg-white/10'
           : 'bg-transparent text-[hsl(215,20%,55%)] hover:bg-white/5'
       )}
+      style={isActive ? { color: accentColor } : undefined}
     >
       {label}
     </button>
   );
 }
 
-function SecondaryBar({ activeSection, isDailyGrounds, isNspire }: SecondaryBarProps) {
+function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
   const { pathname } = useLocation();
 
   if (activeSection === 'dashboard' || activeSection === 'more') return null;
 
   let items: { to: string; label: string }[] = [];
+  let accentColor = MODULE_COLORS.daily;
+  let borderColor = MODULE_COLORS.daily;
 
-  if (activeSection === 'inspections') {
-    if (isDailyGrounds) {
-      items = [
-        { to: '/inspections/daily', label: 'Today' },
-        { to: '/inspections/history', label: 'History' },
-        { to: '/inspections/review', label: 'Review Queue' },
-      ];
-    } else if (isNspire) {
-      items = [
-        { to: '/inspections', label: 'Overview' },
-        { to: '/inspections/outside', label: 'Outside' },
-        { to: '/inspections/inside', label: 'Inside' },
-        { to: '/inspections/units', label: 'Units' },
-      ];
-    }
-  } else if (activeSection === 'issues') {
-    items = [{ to: '/issues', label: 'All Issues' }];
-  } else if (activeSection === 'workorders') {
+  if (activeSection === 'daily') {
+    accentColor = MODULE_COLORS.daily;
+    borderColor = MODULE_COLORS.daily;
     items = [
-      { to: '/work-orders', label: 'Work Orders' },
-      { to: '/permits', label: 'Permits' },
+      { to: '/inspections/daily', label: 'Today' },
+      { to: '/inspections/history', label: 'History' },
+      { to: '/inspections/review', label: 'Review Queue' },
+    ];
+  } else if (activeSection === 'compliance') {
+    accentColor = MODULE_COLORS.compliance;
+    borderColor = MODULE_COLORS.compliance;
+    items = [
+      { to: '/inspections', label: 'Overview' },
+      { to: '/inspections/outside', label: 'Outside' },
+      { to: '/inspections/inside', label: 'Inside' },
+      { to: '/inspections/units', label: 'Units' },
+    ];
+  } else if (activeSection === 'projects') {
+    accentColor = MODULE_COLORS.projects;
+    borderColor = MODULE_COLORS.projects;
+    items = [
+      { to: '/projects', label: 'All Projects' },
+      { to: '/projects/proposals', label: 'Proposals' },
     ];
   }
 
@@ -167,14 +182,20 @@ function SecondaryBar({ activeSection, isDailyGrounds, isNspire }: SecondaryBarP
   return (
     <div
       className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto px-3 border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,7%)] scrollbar-hide"
-      style={{ bottom: 64 }}
+      style={{ bottom: 64, borderLeft: `3px solid ${borderColor}` }}
     >
+      {/* Colored context dot */}
+      <span
+        className="shrink-0 h-2 w-2 rounded-full mr-1"
+        style={{ background: accentColor }}
+      />
       {items.map((item) => (
         <SecondaryBarItem
           key={item.to}
           to={item.to}
           label={item.label}
           currentPath={pathname}
+          accentColor={accentColor}
         />
       ))}
     </div>
@@ -247,11 +268,12 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   const orgIconBg = 'bg-[hsl(262,83%,58%)]/15';
   const toolsIconBg = 'bg-[hsl(215,20%,20%)]';
   const greenIconBg = 'bg-[hsl(142,76%,36%)]/15';
+  const operationsRedBg = 'bg-[hsl(0,84%,60%)]/15';
+  const operationsAmberBg = 'bg-[hsl(30,100%,50%)]/15';
 
   const iconClass = 'h-5 w-5 text-[hsl(215,25%,75%)]';
 
-  const showToolsSection =
-    isModuleEnabled('qrScanningEnabled') || canView('settings');
+  const showToolsSection = isModuleEnabled('qrScanningEnabled') || canView('settings');
 
   return (
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
@@ -274,6 +296,30 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
 
         {/* Tile grid */}
         <div className="grid grid-cols-2 gap-2 overflow-y-auto px-4 pb-8 pt-0">
+
+          {/* OPERATIONS — moved here from bottom bar */}
+          <DrawerSectionLabel label="Operations" />
+          <DrawerTile
+            icon={<AlertTriangle className={iconClass} />}
+            iconBg={operationsRedBg}
+            title="Issues"
+            subtitle="Active defects & issues"
+            onClick={() => go('/issues')}
+          />
+          <DrawerTile
+            icon={<Wrench className={iconClass} />}
+            iconBg={operationsAmberBg}
+            title="Work Orders"
+            subtitle="Maintenance pipeline"
+            onClick={() => go('/work-orders')}
+          />
+          <DrawerTile
+            icon={<Shield className={iconClass} />}
+            iconBg={portfolioIconBg}
+            title="Permits"
+            subtitle="Permit tracking"
+            onClick={() => go('/permits')}
+          />
 
           {/* PORTFOLIO */}
           <DrawerSectionLabel label="Portfolio" />
@@ -420,28 +466,15 @@ export function MobileNav() {
 
   const isDailyGrounds = isModuleEnabled('dailyGroundsEnabled');
   const isNspire = isModuleEnabled('nspireEnabled');
+  const isProjects = isModuleEnabled('projectsEnabled');
 
   const activeSection = getActiveSection(location.pathname);
-
-  // Slot 2 — inspection destination
-  const inspectionPath = isDailyGrounds ? '/inspections/daily' : '/inspections';
-  const inspectionLabel = isDailyGrounds ? 'Grounds' : isNspire ? 'NSPIRE' : 'Inspections';
-  const InspectionIcon = isDailyGrounds ? Sun : ClipboardCheck;
-
-  const isIpad =
-    typeof window !== 'undefined' &&
-    window.innerWidth >= 768 &&
-    window.innerWidth < 1024;
 
   return (
     <>
       {/* iPad secondary bar — only on md viewports */}
       <div className="hidden md:block lg:hidden">
-        <SecondaryBar
-          activeSection={activeSection}
-          isDailyGrounds={isDailyGrounds}
-          isNspire={isNspire}
-        />
+        <SecondaryBar activeSection={activeSection} />
       </div>
 
       {/* Primary bar */}
@@ -452,7 +485,7 @@ export function MobileNav() {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Dashboard */}
+        {/* Dashboard — always visible */}
         <PrimaryItem
           icon={<LayoutDashboard className="h-5 w-5" />}
           label="Dashboard"
@@ -460,31 +493,40 @@ export function MobileNav() {
           onClick={() => navigate('/dashboard')}
         />
 
-        {/* Inspections (module-aware slot) */}
-        <PrimaryItem
-          icon={<InspectionIcon className="h-5 w-5" />}
-          label={inspectionLabel}
-          isActive={activeSection === 'inspections'}
-          onClick={() => navigate(inspectionPath)}
-        />
+        {/* Daily Grounds — module gated */}
+        {isDailyGrounds && (
+          <PrimaryItem
+            icon={<Sun className="h-5 w-5" />}
+            label="Grounds"
+            isActive={activeSection === 'daily'}
+            accentColor={MODULE_COLORS.daily}
+            onClick={() => navigate('/inspections/daily')}
+          />
+        )}
 
-        {/* Issues */}
-        <PrimaryItem
-          icon={<AlertTriangle className="h-5 w-5" />}
-          label="Issues"
-          isActive={activeSection === 'issues'}
-          onClick={() => navigate('/issues')}
-        />
+        {/* NSPIRE Compliance — module gated */}
+        {isNspire && (
+          <PrimaryItem
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            label="Compliance"
+            isActive={activeSection === 'compliance'}
+            accentColor={MODULE_COLORS.compliance}
+            onClick={() => navigate('/inspections')}
+          />
+        )}
 
-        {/* Work Orders */}
-        <PrimaryItem
-          icon={<Wrench className="h-5 w-5" />}
-          label="Work Orders"
-          isActive={activeSection === 'workorders'}
-          onClick={() => navigate('/work-orders')}
-        />
+        {/* Projects — module gated */}
+        {isProjects && (
+          <PrimaryItem
+            icon={<FolderKanban className="h-5 w-5" />}
+            label="Projects"
+            isActive={activeSection === 'projects'}
+            accentColor={MODULE_COLORS.projects}
+            onClick={() => navigate('/projects')}
+          />
+        )}
 
-        {/* More */}
+        {/* More — always visible */}
         <PrimaryItem
           icon={<MoreHorizontal className="h-5 w-5" />}
           label="More"
