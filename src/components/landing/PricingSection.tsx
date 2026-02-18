@@ -1,97 +1,134 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check, ArrowRight, ChevronDown } from 'lucide-react';
+import { Check, ArrowRight, ChevronDown, Shield, Phone } from 'lucide-react';
 
 const faqs = [
   {
-    q: 'Do I need different plans for different properties?',
-    a: "No. Each plan covers multiple properties up to the stated limit. You have one account, one dashboard, one subscription — all your properties inside.",
+    q: "Do I need the NSPIRE add-on if I'm not a HUD property?",
+    a: "Not necessarily. NSPIRE Compliance is specifically for operators subject to HUD's inspection protocol (Section 8, public housing, HCV programs). If you manage market-rate properties or private construction projects only, you likely don't need it — Starter or Professional covers your operations completely.",
   },
   {
-    q: 'What happens if I exceed my property or user limits?',
-    a: "We'll reach out before anything breaks. You can upgrade mid-cycle at a prorated cost. We don't lock you out of your data.",
+    q: "What's the difference between Daily Grounds and NSPIRE Compliance?",
+    a: "Daily Grounds is your everyday property walkthrough — documenting conditions, logging issues, maintaining a visible operations record. NSPIRE Compliance is the formal HUD inspection suite — it follows the exact NSPIRE defect catalog, scoring methodology, and regulatory documentation requirements. Both are available; most HUD operators use both.",
   },
   {
-    q: 'Is the AI Voice Agent really included — no per-minute charges?',
-    a: 'The Voice Agent is included in Professional and Enterprise plans. Unlimited calls, no per-minute fees for standard usage. High-volume call centers (10,000+ calls/month) are covered under Enterprise.',
+    q: 'Is the AI Voice Agent truly unlimited calls?',
+    a: "Yes. The Voice Agent add-on and Enterprise plan include unlimited standard call volume. Enterprise customers with over 50,000 calls/month have a dedicated capacity conversation — but there are no per-minute charges at any volume.",
   },
   {
-    q: 'Can my inspectors use it offline at remote sites?',
-    a: 'Yes. APAS OS is a Progressive Web App. Install it from your browser on any phone. Inspections, photos, and voice notes work offline and sync automatically when you\'re back online.',
+    q: 'Can my field team use this offline at job sites?',
+    a: "Yes. APAS OS is a Progressive Web App — install it from any browser on iPhone or Android. Inspections, photos, voice notes, and work orders all work offline. Data syncs automatically when you're back online. No app store required.",
   },
   {
-    q: 'How do I migrate from my existing system?',
-    a: 'CSV imports for units, tenants, and contacts. Document bulk upload for existing files. Our onboarding team assists Professional and Enterprise customers. Most firms are operational within 48 hours.',
+    q: 'How fast can we get operational?',
+    a: "Most solo operators are live within 2 hours. Firms migrating from existing systems typically go live in 48 hours using our CSV import tools. Professional and Enterprise customers get white-glove onboarding.",
   },
 ];
 
 const tiers = [
   {
     name: 'Starter',
-    priceMonthly: 99,
-    priceAnnual: 79,
-    tagline: 'For solo operators and small property managers',
+    priceMonthly: 65,
+    priceAnnual: 49,
+    priceLabel: null,
+    priceSub: null,
+    tagline: 'For solo operators getting their operations off spreadsheets',
     highlight: false,
+    badge: null,
+    cta: 'Start Free 14-Day Trial',
     features: [
-      'Up to 3 properties / 50 units',
-      'Up to 10 team members',
+      'Up to 2 properties / 30 units',
+      'Up to 5 team members',
       'Daily grounds inspections + photo documentation',
-      'NSPIRE compliance engine (full defect catalog)',
       'Work order pipeline',
-      'Permit tracking (up to 20 active permits)',
-      'Document center (50 GB storage)',
+      'Permit tracking (up to 10 active permits)',
+      'Document center (25 GB storage)',
       'Team messaging',
       'Standard reports + CSV export',
-      'Progressive Web App (mobile install)',
+      'Progressive Web App (offline capable)',
       '3-year data retention',
-      'Email support',
+      'Email support (48-hr response)',
+      '✦ NSPIRE Compliance Suite available as add-on (+$49/mo)',
     ],
   },
   {
     name: 'Professional',
-    priceMonthly: 249,
-    priceAnnual: 199,
-    tagline: 'For growing firms managing multiple properties',
+    priceMonthly: 299,
+    priceAnnual: 249,
+    priceLabel: null,
+    priceSub: null,
+    tagline: 'For growing firms managing multiple properties and projects',
     highlight: true,
-    badge: 'Most Popular',
+    badge: 'Best Value',
+    cta: 'Start Free 14-Day Trial',
     features: [
       'Everything in Starter, plus:',
-      'Up to 15 properties / 500 units',
-      'Up to 40 team members',
-      'AI Voice Agent (24/7, unlimited calls)',
-      'Full project management (Gantt, RFIs, submittals, change orders)',
+      'Up to 20 properties / 1,000 units',
+      'Up to 50 team members',
+      'NSPIRE Compliance Suite included',
+      'Full construction project management (Gantt, RFIs, submittals, change orders, procurement)',
       'AI proposal generation',
       'Training & certification module',
       'CRM / contacts management',
       'Email integration (inbox, compose, reply)',
-      'QR code scanning for asset management',
+      'QR code asset management',
       'Advanced analytics (all 9 report types)',
       'Unlimited document storage',
       'Property Archives vault (permanent)',
       'Priority support (4-hour response)',
+      '✦ AI Voice Agent available as add-on (+$99/mo)',
     ],
   },
   {
     name: 'Enterprise',
     priceMonthly: null,
     priceAnnual: null,
-    tagline: 'For multi-portfolio firms with custom requirements',
+    priceLabel: 'from $599/mo',
+    priceSub: 'billed annually',
+    tagline: 'For multi-portfolio firms and compliance-heavy operations',
     highlight: false,
+    badge: null,
+    cta: 'Talk to Sales',
     features: [
       'Everything in Professional, plus:',
       'Unlimited properties and units',
       'Unlimited users + custom role definitions',
-      'Custom NSPIRE scoring configurations',
+      'AI Voice Agent included (unlimited call volume)',
       'White-label / custom domain',
+      'Custom NSPIRE scoring configurations',
       'Dedicated Customer Success Manager',
-      'Custom training & onboarding',
       'SSO / SAML authentication',
       'Custom data retention policies',
       'API access for integrations',
       'SLA: 1-hour critical response',
       'On-site implementation support',
     ],
+  },
+];
+
+const addOns = [
+  {
+    icon: Shield,
+    iconColor: '#10B981',
+    iconBg: 'rgba(16,185,129,0.12)',
+    iconBorder: 'rgba(16,185,129,0.25)',
+    accentColor: '#10B981',
+    name: 'NSPIRE Compliance Suite',
+    price: '+$49/mo',
+    description: 'Full HUD NSPIRE inspection engine. 80+ defect categories, life-threatening violation alerts, GPS-tagged photo evidence, NSPIRE score tracking. For any operator subject to HUD oversight.',
+    includedIn: 'Professional, Enterprise',
+  },
+  {
+    icon: Phone,
+    iconColor: 'hsl(262 83% 58%)',
+    iconBg: 'rgba(139,92,246,0.12)',
+    iconBorder: 'rgba(139,92,246,0.25)',
+    accentColor: 'hsl(262 83% 58%)',
+    name: 'AI Voice Agent',
+    price: '+$99/mo',
+    description: '24/7 AI-powered call center. Handles tenant inquiries, work order intake, and appointment scheduling — without a human operator. Unlimited calls included.',
+    includedIn: 'Enterprise',
   },
 ];
 
@@ -111,11 +148,11 @@ export function PricingSection() {
           className="text-center mb-12"
         >
           <h2 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(28px, 4vw, 52px)', color: 'var(--apas-white)', lineHeight: 1.15, marginBottom: '16px' }}>
-            Straightforward Pricing.{' '}
-            <em>No Per-Unit Fees. No Per-Seat Surprises.</em>
+            Priced for Field Operators.{' '}
+            <em>Not Enterprise Procurement Committees.</em>
           </h2>
           <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '620px', margin: '0 auto 28px' }}>
-            We built this for operators who've been overcharged by legacy software. One monthly subscription. All modules included.
+            Procore starts at $375/mo. AppFolio at $280. Yardi won't even quote you without a sales call. We think field operators deserve better.
           </p>
 
           {/* Annual / Monthly Toggle */}
@@ -145,7 +182,7 @@ export function PricingSection() {
         </motion.div>
 
         {/* Tier Cards */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-16">
+        <div className="grid lg:grid-cols-3 gap-6 mb-12">
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.name}
@@ -163,27 +200,32 @@ export function PricingSection() {
               }}
             >
               {tier.badge && (
-                <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: 'var(--apas-amber)', color: 'white', fontFamily: 'JetBrains Mono', fontSize: '11px', fontWeight: 600, padding: '4px 14px', borderRadius: '999px', whiteSpace: 'nowrap' }}>
+                <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: 'var(--apas-sapphire)', color: 'white', fontFamily: 'JetBrains Mono', fontSize: '11px', fontWeight: 600, padding: '4px 14px', borderRadius: '999px', whiteSpace: 'nowrap' }}>
                   {tier.badge}
                 </div>
               )}
 
               <div style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>{tier.name}</div>
               <div style={{ marginBottom: '8px' }}>
-                {tier.priceMonthly ? (
-                  <div className="flex items-end gap-1">
-                    <span style={{ fontFamily: 'Instrument Serif', fontSize: '52px', color: 'var(--apas-white)', lineHeight: 1 }}>
-                      ${annual ? tier.priceAnnual : tier.priceMonthly}
-                    </span>
-                    <span style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', paddingBottom: '10px' }}>/mo</span>
+                {tier.priceLabel ? (
+                  <div>
+                    <span style={{ fontFamily: 'Instrument Serif', fontSize: '40px', color: 'var(--apas-white)', lineHeight: 1.2 }}>{tier.priceLabel}</span>
+                    {tier.priceSub && <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginTop: '4px' }}>{tier.priceSub}</p>}
                   </div>
                 ) : (
-                  <span style={{ fontFamily: 'Instrument Serif', fontSize: '40px', color: 'var(--apas-white)', lineHeight: 1.2 }}>Custom Pricing</span>
-                )}
-                {tier.priceMonthly && annual && (
-                  <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginTop: '4px' }}>
-                    Billed ${(tier.priceAnnual! * 12).toLocaleString()}/year
-                  </p>
+                  <div>
+                    <div className="flex items-end gap-1">
+                      <span style={{ fontFamily: 'Instrument Serif', fontSize: '52px', color: 'var(--apas-white)', lineHeight: 1 }}>
+                        ${annual ? tier.priceAnnual : tier.priceMonthly}
+                      </span>
+                      <span style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', paddingBottom: '10px' }}>/mo</span>
+                    </div>
+                    {annual && (
+                      <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginTop: '4px' }}>
+                        Billed ${(tier.priceAnnual! * 12).toLocaleString()}/year
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)', marginBottom: '24px', lineHeight: 1.6 }}>{tier.tagline}</p>
@@ -202,7 +244,7 @@ export function PricingSection() {
                   textDecoration: 'none',
                 }}
               >
-                {tier.priceMonthly ? 'Start Free 14-Day Trial' : 'Contact Sales'}
+                {tier.cta}
                 <ArrowRight size={15} />
               </Link>
 
@@ -211,6 +253,8 @@ export function PricingSection() {
                   <li key={fi} className="flex items-start gap-2.5">
                     {f.startsWith('Everything') ? (
                       <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)', fontStyle: 'italic' }}>{f}</span>
+                    ) : f.startsWith('✦') ? (
+                      <span style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', lineHeight: 1.5, opacity: 0.7, fontStyle: 'italic' }}>{f}</span>
                     ) : (
                       <>
                         <Check size={14} style={{ color: tier.highlight ? 'var(--apas-sapphire)' : '#10B981', marginTop: '2px', flexShrink: 0 }} />
@@ -224,9 +268,58 @@ export function PricingSection() {
           ))}
         </div>
 
+        {/* Add-ons section */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true, margin: '-60px' }}
+          className="mb-16"
+        >
+          <div className="text-center mb-8">
+            <h3 style={{ fontFamily: 'Instrument Serif', fontSize: '28px', color: 'var(--apas-white)', marginBottom: '8px' }}>Power-Up Any Plan</h3>
+            <p style={{ fontFamily: 'DM Sans', fontSize: '15px', color: 'var(--apas-muted)' }}>Add specialized capabilities when your work demands it.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {addOns.map((addon) => (
+              <div
+                key={addon.name}
+                style={{
+                  background: 'var(--apas-surface)',
+                  border: '1px solid var(--apas-border)',
+                  borderLeft: `3px solid ${addon.accentColor}`,
+                  borderRadius: '16px',
+                  padding: '24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div style={{ height: '40px', width: '40px', borderRadius: '10px', background: addon.iconBg, border: `1px solid ${addon.iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <addon.icon size={18} color={addon.iconColor} />
+                    </div>
+                    <div>
+                      <p style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '15px', color: 'var(--apas-white)' }}>{addon.name}</p>
+                      <p style={{ fontFamily: 'JetBrains Mono', fontSize: '13px', color: addon.accentColor, fontWeight: 700 }}>{addon.price}</p>
+                    </div>
+                  </div>
+                </div>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)', lineHeight: 1.7 }}>{addon.description}</p>
+                <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--apas-border)', color: 'var(--apas-muted)', padding: '3px 10px', borderRadius: '999px' }}>
+                    Included free in: {addon.includedIn}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Trust strip */}
         <div className="flex flex-wrap items-center justify-center gap-8 mb-16">
-          {['🔒  14-day free trial', 'No credit card required', 'Cancel anytime', 'All plans include NSPIRE compliance engine', '3-year retention', 'Row-level security'].map((item, i) => (
+          {['🔒  14-day free trial', 'No credit card required', 'Cancel anytime', 'Offline-capable PWA', '3-year retention', 'Row-level security'].map((item, i) => (
             <span key={i} style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)' }}>{item}</span>
           ))}
         </div>

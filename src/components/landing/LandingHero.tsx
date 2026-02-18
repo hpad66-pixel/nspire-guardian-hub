@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Shield, Clock, FileCheck, Phone } from 'lucide-react';
+import { ArrowRight, Shield, Sun, FolderKanban, Mic } from 'lucide-react';
 
-const words1 = ['One', 'Platform.'];
-const words2 = ['Zero', 'Excuses.'];
+const words1 = ['Run', 'the', 'Job.'];
+const words2 = ['Pass', 'the', 'Audit.'];
 
 export function LandingHero() {
   return (
@@ -19,7 +19,7 @@ export function LandingHero() {
           backgroundSize: '60px 60px',
         }}
       />
-      {/* Radial glow behind hero */}
+      {/* Radial glow */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -34,6 +34,7 @@ export function LandingHero() {
 
       {/* Floating status cards */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Card 1 — top-left: Project */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -42,17 +43,18 @@ export function LandingHero() {
         >
           <div style={{ background: 'var(--apas-surface)', border: '1px solid var(--apas-border)', borderRadius: '16px', padding: '14px 18px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <div className="flex items-center gap-3">
-              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={18} color="#10B981" />
+              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FolderKanban size={18} color="#8B5CF6" />
               </div>
               <div>
-                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>NSPIRE Compliance</p>
-                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: '#10B981' }}>100% Audit-Ready</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>Project: Roof Replacement</p>
+                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>On schedule · 3 RFIs open</p>
               </div>
             </div>
           </div>
         </motion.div>
 
+        {/* Card 2 — top-right: NSPIRE Score */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -61,17 +63,18 @@ export function LandingHero() {
         >
           <div style={{ background: 'var(--apas-surface)', border: '1px solid var(--apas-border)', borderRadius: '16px', padding: '14px 18px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <div className="flex items-center gap-3">
-              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Phone size={18} color="#8B5CF6" />
+              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield size={18} color="#10B981" />
               </div>
               <div>
-                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>AI Voice Agent</p>
-                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>24/7 Call Center</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>NSPIRE Score</p>
+                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: '#10B981' }}>94.2 — Audit Ready</p>
               </div>
             </div>
           </div>
         </motion.div>
 
+        {/* Card 3 — bottom-left: Daily Grounds */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -81,16 +84,17 @@ export function LandingHero() {
           <div style={{ background: 'var(--apas-surface)', border: '1px solid var(--apas-border)', borderRadius: '16px', padding: '14px 18px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <div className="flex items-center gap-3">
               <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={18} color="#F59E0B" />
+                <Sun size={18} color="#F59E0B" />
               </div>
               <div>
-                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>Daily Inspection</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>Daily Grounds</p>
                 <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>Completed 8:42 AM</p>
               </div>
             </div>
           </div>
         </motion.div>
 
+        {/* Card 4 — bottom-right: AI Voice Agent */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -99,12 +103,12 @@ export function LandingHero() {
         >
           <div style={{ background: 'var(--apas-surface)', border: '1px solid var(--apas-border)', borderRadius: '16px', padding: '14px 18px', backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <div className="flex items-center gap-3">
-              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(29,111,232,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileCheck size={18} color="var(--apas-sapphire)" />
+              <div style={{ height: '38px', width: '38px', borderRadius: '10px', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Mic size={18} color="#8B5CF6" />
               </div>
               <div>
-                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>Permit Renewal</p>
-                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>Auto-tracked</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 600, color: 'var(--apas-white)' }}>AI Voice Agent</p>
+                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>12 calls handled today</p>
               </div>
             </div>
           </div>
@@ -127,11 +131,12 @@ export function LandingHero() {
           }}
         >
           <span style={{ width: '7px', height: '7px', background: 'var(--apas-sapphire)', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px var(--apas-sapphire)', animation: 'pulse 2s infinite' }} />
-          <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--apas-sapphire)', letterSpacing: '0.04em' }}>Built for Property &amp; Infrastructure Professionals</span>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--apas-sapphire)', letterSpacing: '0.04em' }}>For Construction PMs · Property Operators · Compliance Officers</span>
         </motion.div>
 
         {/* H1 — word-by-word */}
         <h1 style={{ fontFamily: 'Instrument Serif', lineHeight: 0.95, marginBottom: '28px', letterSpacing: '-0.02em' }}>
+          {/* Line 1: "Run the Job." — all white */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 16px', fontSize: 'clamp(56px, 10vw, 96px)', marginBottom: '4px' }}>
             {words1.map((word, i) => (
               <motion.span
@@ -145,6 +150,7 @@ export function LandingHero() {
               </motion.span>
             ))}
           </div>
+          {/* Line 2: "Pass" white, "the Audit." sapphire */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 16px', fontSize: 'clamp(56px, 10vw, 96px)' }}>
             {words2.map((word, i) => (
               <motion.span
@@ -152,7 +158,7 @@ export function LandingHero() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.46 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                style={{ color: i === 0 ? 'var(--apas-sapphire)' : 'var(--apas-white)', display: 'inline-block' }}
+                style={{ color: i === 0 ? 'var(--apas-white)' : 'var(--apas-sapphire)', display: 'inline-block' }}
               >
                 {word}
               </motion.span>
@@ -167,9 +173,8 @@ export function LandingHero() {
           transition={{ duration: 0.7, delay: 0.7 }}
           style={{ fontFamily: 'DM Sans', fontSize: 'clamp(16px, 2.2vw, 21px)', color: 'var(--apas-muted)', maxWidth: '680px', margin: '0 auto 40px', lineHeight: 1.8 }}
         >
-          Missed inspections. Expired permits. Untracked work orders.{' '}
-          Every gap is a liability.{' '}
-          <span style={{ color: 'var(--apas-white)', fontWeight: 500 }}>One platform eliminates all of it.</span>
+          You're managing projects, running inspections, chasing permits, and tracking work orders — on the same day.{' '}
+          <span style={{ color: 'var(--apas-white)', fontWeight: 600 }}>APAS OS connects every piece so nothing slips through the cracks.</span>
         </motion.p>
 
         {/* CTA Row */}
@@ -221,7 +226,7 @@ export function LandingHero() {
           className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3"
           style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)', letterSpacing: '0.04em' }}
         >
-          {['NSPIRE-Ready', 'HUD Audit-Proof', '3-Year Retention', '9-Level RBAC', 'Progressive Web App'].map((item) => (
+          {['Construction PM Suite', 'NSPIRE Compliance', 'HUD Audit-Ready', 'Offline-Capable PWA', '9-Level RBAC', 'AI Voice Agent'].map((item) => (
             <span key={item} className="flex items-center gap-2">
               <span style={{ width: '6px', height: '6px', background: 'var(--apas-sapphire)', borderRadius: '2px', display: 'inline-block', transform: 'rotate(45deg)' }} />
               {item}
