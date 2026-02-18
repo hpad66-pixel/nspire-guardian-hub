@@ -44,7 +44,8 @@ import {
   Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useMyProfile } from '@/hooks/useMyProfile';
 import {
   Tooltip,
   TooltipContent,
@@ -160,6 +161,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();
 
   const { data: unreadCount = 0 } = useUnreadThreadCount();
@@ -392,55 +394,56 @@ export function AppSidebar() {
             <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" collapsed={collapsed} />
           )}
 
-          {/* User identity block */}
-          <div className={cn(
-            "flex items-center gap-2.5 mt-1 px-3 py-2 rounded-md",
-            collapsed && "justify-center px-0"
-          )}>
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={signOut}
-                    className="flex flex-col items-center gap-1"
-                    title="Sign out"
-                  >
-                    <Avatar className="h-7 w-7 cursor-pointer">
-                      <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  {userName} · Sign out
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <>
-                <Avatar className="h-7 w-7 flex-shrink-0">
-                  <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
-                    {userName}
-                  </p>
-                  <p className="text-[10px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
-                    {userRole}
-                  </p>
-                </div>
+          {/* User identity block — clickable to go to /profile */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button
-                  onClick={signOut}
-                  className="flex-shrink-0 rounded p-1 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"
-                  title="Log out"
+                  onClick={() => navigate('/profile')}
+                  className="flex w-full items-center justify-center rounded-md p-1.5 transition-colors hover:bg-white/5 focus:outline-none"
+                  title="My Profile"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
+                  <Avatar className="h-7 w-7 cursor-pointer">
+                    <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
+                    <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
                 </button>
-              </>
-            )}
-          </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                {userName} · My Profile
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={() => navigate('/profile')}
+              className="flex w-full items-center gap-2.5 mt-1 px-3 py-2 rounded-md transition-colors hover:bg-white/5 focus:outline-none text-left"
+              title="My Profile"
+            >
+              <Avatar className="h-7 w-7 flex-shrink-0">
+                <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
+                <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
+                  {userName}
+                </p>
+                <p className="text-[10px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
+                  {userRole}
+                </p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); signOut(); }}
+                className="flex-shrink-0 rounded p-1 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"
+                title="Log out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </button>
+          )}
         </SidebarFooter>
       </Sidebar>
     </TooltipProvider>
