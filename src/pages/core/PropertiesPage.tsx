@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical, BarChart2 } from 'lucide-react';
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PropertyDialog } from '@/components/properties/PropertyDialog';
@@ -181,17 +181,31 @@ export default function PropertiesPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    {property.nspire_enabled && (
-                      <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
-                        NSPIRE
-                      </Badge>
-                    )}
-                    {property.projects_enabled && (
-                      <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
-                        Projects
-                      </Badge>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      {property.nspire_enabled && (
+                        <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
+                          NSPIRE
+                        </Badge>
+                      )}
+                      {property.projects_enabled && (
+                        <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
+                          Projects
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/properties/${property.id}/analytics`);
+                      }}
+                    >
+                      <BarChart2 className="h-3 w-3" />
+                      Analytics
+                    </Button>
                   </div>
                 </div>
               </CardContent>
