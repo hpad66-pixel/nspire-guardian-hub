@@ -26,36 +26,49 @@ export function useTextPolish(): UseTextPolishResult {
       });
 
       if (error) {
-        // Try to extract the human-readable message from the edge function response
+        // Parse error message from edge function response
         let message = 'Failed to polish text';
+        let isCreditsError = false;
         if (error.message) {
           try {
             const parsed = JSON.parse(error.message);
             message = parsed.error || error.message;
+            isCreditsError = message.toLowerCase().includes('credits');
           } catch {
             message = error.message;
+            isCreditsError = message.toLowerCase().includes('credits');
           }
         }
+        if (isCreditsError) {
+          // Gracefully fall back to original text — don't block the user
+          toast.warning('AI polish unavailable (credits exhausted). Your text has been saved as-is.');
+          return text;
+        }
         toast.error(message);
-        return null;
+        return text; // Always return original text so the UI doesn't get stuck
       }
 
       if (data?.error) {
+        const isCreditsError = data.error.toLowerCase().includes('credits');
+        if (isCreditsError) {
+          toast.warning('AI polish unavailable (credits exhausted). Your text has been saved as-is.');
+          return text;
+        }
         toast.error(data.error);
-        return null;
+        return text;
       }
 
       if (data?.polished) {
-        toast.success('Text polished');
+        toast.success('Text polished successfully');
         return data.polished;
       }
 
-      return null;
-    } catch (error) {
-      console.error('Polish error:', error);
-      const message = error instanceof Error ? error.message : 'Failed to polish text';
-      toast.error(message);
-      return null;
+      return text;
+    } catch (err) {
+      console.error('Polish error:', err);
+      // Never crash — return original text
+      toast.warning('AI polish unavailable. Your text has been saved as-is.');
+      return text;
     } finally {
       setIsPolishing(false);
     }
