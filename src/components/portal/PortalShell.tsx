@@ -1,38 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { House, Camera, MessageCircle, FileText, LogOut, ChevronDown } from 'lucide-react';
+import { House, MessageCircle, FolderOpen, LogOut, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadClientMessageCount } from '@/hooks/useClientCommunication';
+import { WelcomeModal } from './WelcomeModal';
 import type { CompanyBranding } from '@/hooks/useCompanyBranding';
 
-export type PortalTab = 'home' | 'updates' | 'messages' | 'docs';
+export type PortalTab = 'home' | 'messages' | 'docs';
 
 interface PortalShellProps {
   children: React.ReactNode;
   activeTab: PortalTab;
   onTabChange: (tab: PortalTab) => void;
   projectId: string;
+  projectName?: string;
   branding: CompanyBranding | null;
 }
 
 const TABS: { id: PortalTab; label: string; icon: React.ElementType }[] = [
-  { id: 'home',     label: 'Home',     icon: House         },
-  { id: 'updates',  label: 'Updates',  icon: Camera        },
-  { id: 'messages', label: 'Messages', icon: MessageCircle },
-  { id: 'docs',     label: 'Docs',     icon: FileText      },
+  { id: 'home',     label: 'Overview',  icon: House         },
+  { id: 'messages', label: 'Messages',  icon: MessageCircle },
+  { id: 'docs',     label: 'Files',     icon: FolderOpen    },
 ];
 
-export function PortalShell({ children, activeTab, onTabChange, projectId, branding }: PortalShellProps) {
+export function PortalShell({
+  children,
+  activeTab,
+  onTabChange,
+  projectId,
+  projectName,
+  branding,
+}: PortalShellProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const { data: unreadCount = 0 } = useUnreadClientMessageCount(projectId);
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
   const companyName = branding?.company_name ?? 'Your Contractor';
   const userInitial = user?.email?.charAt(0).toUpperCase() ?? '?';
+
+  // First-visit welcome modal
+  useEffect(() => {
+    if (!projectId) return;
+    const storageKey = `portal_welcomed_${projectId}`;
+    if (!localStorage.getItem(storageKey)) {
+      const timer = setTimeout(() => setShowWelcome(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [projectId]);
+
+  function handleWelcomeClose() {
+    localStorage.setItem(`portal_welcomed_${projectId}`, '1');
+    setShowWelcome(false);
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -107,7 +131,6 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
         className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-4 border-b border-white/[0.06]"
         style={{ background: '#0D1117' }}
       >
-        {/* Logo / company */}
         <div>
           {branding?.logo_url ? (
             <img src={branding.logo_url} alt={companyName} className="h-7 w-auto object-contain" />
@@ -116,12 +139,8 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
           )}
         </div>
 
-        {/* Right: message badge + user avatar */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => onTabChange('messages')}
-            className="relative p-1.5"
-          >
+          <button onClick={() => onTabChange('messages')} className="relative p-1.5">
             <MessageCircle size={20} className="text-slate-400" />
             {unreadCount > 0 && (
               <span
@@ -217,6 +236,16 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
           );
         })}
       </nav>
+
+      {/* ── First-visit Welcome Modal ───────────────────────────── */}
+      <WelcomeModal
+        open={showWelcome}
+        onClose={handleWelcomeClose}
+        projectName={projectName}
+        companyName={companyName}
+        accentColor={accentColor}
+        logoUrl={branding?.logo_url}
+      />
     </div>
   );
 }

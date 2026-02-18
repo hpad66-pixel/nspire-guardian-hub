@@ -2059,6 +2059,50 @@ export type Database = {
           },
         ]
       }
+      portal_client_uploads: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          project_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          project_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          project_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_client_uploads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           auto_bcc_enabled: boolean | null

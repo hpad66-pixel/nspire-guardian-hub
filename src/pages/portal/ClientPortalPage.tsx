@@ -8,7 +8,6 @@ import { useCompanyBranding } from '@/hooks/useCompanyBranding';
 import { PortalShell, type PortalTab } from '@/components/portal/PortalShell';
 import { PortalHome } from '@/components/portal/PortalHome';
 import { PortalMessages } from '@/components/portal/PortalMessages';
-import { PortalUpdates } from '@/components/portal/PortalUpdates';
 import { PortalDocuments } from '@/components/portal/PortalDocuments';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -44,7 +43,6 @@ function usePortalUpdates(projectId: string) {
   return useQuery({
     queryKey: ['portal-updates', projectId],
     queryFn: async () => {
-      // Try project_client_updates table; if missing, return empty
       const { data, error } = await supabase
         .from('project_client_updates' as any)
         .select('*')
@@ -70,7 +68,7 @@ export default function ClientPortalPage() {
 
   const { data: branding } = useCompanyBranding();
   const { data: project, isLoading: projectLoading, error: projectError } = usePortalProject(projectId ?? '');
-  const { data: updates = [], isLoading: updatesLoading } = usePortalUpdates(projectId ?? '');
+  const { data: updates = [] } = usePortalUpdates(projectId ?? '');
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
 
@@ -129,15 +127,8 @@ export default function ClientPortalPage() {
             project={project!}
             companyBranding={branding ?? null}
             updates={updates}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => setActiveTab(tab as PortalTab)}
             accentColor={accentColor}
-          />
-        );
-      case 'updates':
-        return (
-          <PortalUpdates
-            updates={updates}
-            isLoading={updatesLoading}
           />
         );
       case 'messages':
@@ -163,6 +154,7 @@ export default function ClientPortalPage() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       projectId={projectId}
+      projectName={project?.name}
       branding={branding ?? null}
     >
       {renderTab()}
