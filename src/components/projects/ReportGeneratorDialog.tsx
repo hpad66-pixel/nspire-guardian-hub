@@ -47,13 +47,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-} from "docx";
+// docx is loaded dynamically when needed to keep the initial bundle small
+type DocxModule = typeof import("docx");
+let _docx: DocxModule | null = null;
+async function getDocx(): Promise<DocxModule> {
+  if (!_docx) _docx = await import("docx");
+  return _docx;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ReportType = "weekly" | "monthly_invoice";
@@ -171,6 +171,7 @@ function buildBrandedHtml(
 
 // ── Word export helper ────────────────────────────────────────────────────────
 async function exportToWord(content: string, title: string) {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await getDocx();
   const lines = stripHtml(content).split("\n").filter(Boolean);
 
   const children = lines.map((line) => {
