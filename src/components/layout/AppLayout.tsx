@@ -5,9 +5,12 @@ import { AppSidebar } from './AppSidebar';
 import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Search, Menu } from 'lucide-react';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
+import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
+import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
@@ -22,6 +25,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   type AppRole = Database['public']['Enums']['app_role'];
@@ -71,6 +75,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     return user?.email?.slice(0, 2).toUpperCase() || 'U';
   })();
 
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
   // Keyboard shortcut for search
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -115,42 +124,84 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          {/* Top Header Bar */}
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-border bg-background px-4">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-            <Button
-              variant="outline"
-              className="relative h-9 flex-1 max-w-sm justify-start text-sm text-muted-foreground"
-              onClick={() => setSearchOpen(true)}
+    <>
+      <PWAUpdateBanner />
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          {/* Desktop sidebar — hidden on mobile */}
+          <div className="hidden lg:block">
+            <AppSidebar />
+          </div>
+
+          {/* Mobile nav drawer */}
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetContent
+              side="left"
+              className="w-72 p-0 border-r border-border"
             >
-              <Search className="mr-2 h-4 w-4 shrink-0" />
-              <span className="truncate">Search...</span>
-              <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </Button>
-            <div className="flex-1" />
-            <div className="flex items-center gap-3">
-              <NotificationCenter />
-              <Badge variant="outline" className="text-xs">
-                {displayRoles.length > 0 ? displayRoles.join(', ') : 'User'}
-              </Badge>
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-xs font-medium text-primary-foreground">{initials}</span>
+              {/* AppSidebar renders inside the drawer on mobile */}
+              <AppSidebar />
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex flex-1 flex-col min-w-0">
+            {/* Top Header Bar */}
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
+              {/* Mobile hamburger */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label="Open navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+
+              {/* Desktop sidebar trigger */}
+              <div className="hidden lg:block">
+                <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               </div>
-            </div>
-          </header>
-          {/* Main Content */}
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+
+              {/* Search bar */}
+              <Button
+                variant="outline"
+                className="relative h-9 flex-1 max-w-xs justify-start text-sm text-muted-foreground"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate hidden sm:inline">Search...</span>
+                <span className="truncate sm:hidden">Search</span>
+                <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 md:flex">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </Button>
+
+              <div className="flex-1" />
+
+              <div className="flex items-center gap-2">
+                <NotificationCenter />
+                {/* Role badge — hide on small mobile */}
+                <Badge variant="outline" className="text-xs hidden sm:inline-flex">
+                  {displayRoles.length > 0 ? displayRoles[0] : 'User'}
+                </Badge>
+                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <span className="text-xs font-medium text-primary-foreground">{initials}</span>
+                </div>
+              </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-    </SidebarProvider>
+        <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      </SidebarProvider>
+
+      {/* PWA Install Banner — rendered outside SidebarProvider so it overlays correctly */}
+      <PWAInstallBanner />
+    </>
   );
 }

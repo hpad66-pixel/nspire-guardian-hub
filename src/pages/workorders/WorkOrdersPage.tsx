@@ -94,7 +94,7 @@ export default function WorkOrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4 text-muted-foreground" />;
-      case 'assigned': return <User className="h-4 w-4 text-blue-500" />;
+      case 'assigned': return <User className="h-4 w-4 text-accent" />;
       case 'in_progress': return <Wrench className="h-4 w-4 text-warning" />;
       case 'completed': return <CheckCircle2 className="h-4 w-4 text-success" />;
       case 'verified': return <CheckCircle2 className="h-4 w-4 text-success" />;
@@ -176,10 +176,10 @@ export default function WorkOrdersPage() {
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
+      {/* Filters — wraps on mobile */}
+      <div className="flex flex-wrap gap-2">
         <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-          <SelectTrigger className="w-[220px]">
+          <SelectTrigger className="w-full sm:w-[220px]">
             <SelectValue placeholder="Select property" />
           </SelectTrigger>
           <SelectContent>
@@ -191,8 +191,8 @@ export default function WorkOrdersPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
+          <SelectTrigger className="flex-1 sm:w-[160px] sm:flex-none">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
@@ -204,8 +204,8 @@ export default function WorkOrdersPage() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by priority" />
+          <SelectTrigger className="flex-1 sm:w-[160px] sm:flex-none">
+            <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Priorities</SelectItem>
@@ -214,9 +214,9 @@ export default function WorkOrdersPage() {
           </SelectContent>
         </Select>
         
-        <div className="flex-1" />
+        <div className="hidden sm:flex flex-1" />
         
-        <Button variant="outline" onClick={handleExport} disabled={filteredWorkOrders.length === 0}>
+        <Button variant="outline" onClick={handleExport} disabled={filteredWorkOrders.length === 0} className="w-full sm:w-auto">
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
@@ -248,10 +248,10 @@ export default function WorkOrdersPage() {
                     <div 
                       key={wo.id}
                       onClick={() => handleWorkOrderClick(wo)}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="flex items-center gap-2 shrink-0">
                         {wo.priority === 'emergency' ? (
                           <Badge variant="destructive">Emergency</Badge>
                         ) : (
@@ -259,20 +259,20 @@ export default function WorkOrdersPage() {
                         )}
                         {getStatusIcon(wo.status)}
                       </div>
-                      <div>
-                        <p className="font-medium">{wo.title}</p>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{wo.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
                           {wo.defect?.item_name} - {wo.defect?.defect_condition}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center justify-between sm:justify-end sm:gap-6">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building className="h-4 w-4" />
-                        <span>{wo.property?.name}</span>
-                        {wo.unit && <span>• Unit {wo.unit.unit_number}</span>}
+                        <Building className="h-4 w-4 shrink-0" />
+                        <span className="truncate max-w-[120px]">{wo.property?.name}</span>
+                        {wo.unit && <span className="hidden md:inline">• Unit {wo.unit.unit_number}</span>}
                       </div>
-                      <div className="text-right min-w-[100px]">
+                      <div className="text-right">
                         <div className="flex items-center gap-1 text-sm">
                           <Calendar className="h-4 w-4" />
                           <span className={isOverdue ? 'text-destructive font-medium' : ''}>
