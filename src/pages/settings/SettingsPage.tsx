@@ -2,6 +2,7 @@ import { useModules } from '@/contexts/ModuleContext';
 import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { useClientsWithCounts } from '@/hooks/useClients';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const { data: organizations } = useClientsWithCounts();
   const updateProperty = useUpdateProperty();
   const navigate = useNavigate();
+  const { workspace, isLoading: workspaceLoading } = useWorkspaceContext();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
@@ -63,11 +65,27 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-            <Settings className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+              <Settings className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          {!workspaceLoading && workspace && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">{workspace.name}</span>
+              <Badge variant="outline" className="capitalize text-xs">
+                {workspace.plan}
+              </Badge>
+              <Badge
+                variant={workspace.status === 'active' ? 'default' : 'secondary'}
+                className="text-xs capitalize"
+              >
+                {workspace.status}
+              </Badge>
+            </div>
+          )}
         </div>
         <p className="text-muted-foreground">
           Manage platform modules, users, and tenant configuration
