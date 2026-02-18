@@ -177,6 +177,45 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          industry: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_branding: {
         Row: {
           address_line1: string | null
@@ -2623,12 +2662,14 @@ export type Database = {
         Row: {
           actual_end_date: string | null
           budget: number | null
+          client_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           name: string
-          property_id: string
+          project_type: string
+          property_id: string | null
           scope: string | null
           spent: number | null
           start_date: string | null
@@ -2639,12 +2680,14 @@ export type Database = {
         Insert: {
           actual_end_date?: string | null
           budget?: number | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           name: string
-          property_id: string
+          project_type?: string
+          property_id?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -2655,12 +2698,14 @@ export type Database = {
         Update: {
           actual_end_date?: string | null
           budget?: number | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           name?: string
-          property_id?: string
+          project_type?: string
+          property_id?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -2669,6 +2714,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_property_id_fkey"
             columns: ["property_id"]
