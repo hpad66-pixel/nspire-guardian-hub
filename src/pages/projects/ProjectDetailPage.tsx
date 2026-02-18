@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  ArrowLeft, Building2, Calendar, DollarSign, Edit, FolderKanban,
+  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
   TrendingUp, Clock, MessageSquareText, Activity,
 } from 'lucide-react';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
@@ -123,9 +123,22 @@ export default function ProjectDetailPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Building2 className="h-4 w-4" /><span>{project.property?.name}</span>
+                <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
+                  {(project as any).project_type === 'client' ? (
+                    <>
+                      <Briefcase className="h-4 w-4" />
+                      <span>{(project as any).client?.name || 'Standalone'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-4 w-4" />
+                      <span>{project.property?.name || '—'}</span>
+                    </>
+                  )}
                   <Badge variant="outline" className={statusColors[project.status]}>{statusLabels[project.status]}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {(project as any).project_type === 'client' ? 'Client Project' : 'Property Project'}
+                  </Badge>
                 </div>
               </div>
             </div>
