@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, ChevronRight, Send, AlertTriangle, Camera, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Send, AlertTriangle, ImageIcon, Loader2, ChevronDown } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActionItemCard } from './ActionItemCard';
@@ -42,7 +42,7 @@ interface PortalHomeProps {
   project: Project;
   companyBranding: CompanyBranding | null;
   updates: ClientUpdate[];
-  onNavigate: (tab: 'updates' | 'messages') => void;
+  onNavigate: (tab: string) => void;
   accentColor: string;
 }
 
@@ -59,6 +59,7 @@ const PHASES = ['Not Started', 'In Progress', 'Final Review', 'Complete'];
 
 export function PortalHome({ project, companyBranding, updates, onNavigate, accentColor }: PortalHomeProps) {
   const [showAllItems, setShowAllItems] = useState(false);
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [messageText, setMessageText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -106,7 +107,6 @@ export function PortalHome({ project, companyBranding, updates, onNavigate, acce
   ).slice(0, 4);
 
   const statusMeta = STATUS_MAP[project.status] ?? STATUS_MAP['active'];
-  const latestUpdate = updates[0] ?? null;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
@@ -252,42 +252,48 @@ export function PortalHome({ project, companyBranding, updates, onNavigate, acce
         )}
       </motion.section>
 
-      {/* ── BLOCK 4: Latest Update ───────────────────────────── */}
+      {/* ── BLOCK 4: Updates ─────────────────────────────────── */}
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Latest Update</h2>
-          {updates.length > 1 && (
-            <button
-              onClick={() => onNavigate('updates')}
-              className="flex items-center gap-1 text-xs font-medium"
-              style={{ color: accentColor }}
-            >
-              See all <ChevronRight size={12} />
-            </button>
-          )}
-        </div>
+        <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
+          {updates.length > 1 ? 'Recent Updates' : 'Latest Update'}
+        </h2>
 
-        {latestUpdate ? (
-          <div
-            className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden cursor-pointer hover:bg-white/[0.05] transition-colors"
-            onClick={() => onNavigate('updates')}
-          >
-            {latestUpdate.photo_url && (
-              <div className="aspect-video w-full overflow-hidden">
-                <img src={latestUpdate.photo_url} alt={latestUpdate.title} className="w-full h-full object-cover" />
+        {updates.length > 0 ? (
+          <div className="space-y-3">
+            {(showAllUpdates ? updates : updates.slice(0, 3)).map((update) => (
+              <div
+                key={update.id}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden"
+              >
+                {update.photo_url && (
+                  <div className="aspect-video w-full overflow-hidden">
+                    <img src={update.photo_url} alt={update.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <p className="text-xs text-slate-500 mb-1">
+                    {format(new Date(update.created_at), 'MMMM d, yyyy')}
+                  </p>
+                  <p className="font-semibold text-white text-sm mb-1">{update.title}</p>
+                  <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{update.body}</p>
+                </div>
               </div>
+            ))}
+
+            {updates.length > 3 && !showAllUpdates && (
+              <button
+                onClick={() => setShowAllUpdates(true)}
+                className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                style={{ color: accentColor }}
+              >
+                <ChevronDown size={14} />
+                Show {updates.length - 3} more update{updates.length - 3 !== 1 ? 's' : ''}
+              </button>
             )}
-            <div className="p-4">
-              <p className="text-xs text-slate-500 mb-1">
-                {format(new Date(latestUpdate.created_at), 'MMMM d, yyyy')}
-              </p>
-              <p className="font-semibold text-white text-sm mb-1">{latestUpdate.title}</p>
-              <p className="text-sm text-slate-400 leading-relaxed line-clamp-2">{latestUpdate.body}</p>
-            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-10 gap-3">
-            <Camera size={28} className="text-slate-600" />
+            <ImageIcon size={28} className="text-slate-600" />
             <p className="text-sm text-slate-500 text-center max-w-xs">
               Updates from the job site appear here.
             </p>
