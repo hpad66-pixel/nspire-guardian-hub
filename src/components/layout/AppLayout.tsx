@@ -237,7 +237,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Mobile bottom navigation */}
       {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border bg-background px-2 pb-safe">
+        <nav className="fixed bottom-0 left-0 right-0 z-[100] flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md px-2">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
@@ -245,12 +245,14 @@ export function AppLayout({ children }: AppLayoutProps) {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-lg px-2 transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-lg px-3 transition-colors ${
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+                <span className="text-[10px] font-medium leading-none">{item.label}</span>
               </button>
             );
           })}
