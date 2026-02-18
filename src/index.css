@@ -2,7 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Glorieta Gardens Apartments Design System */
+/* APAS OS Design System */
+
+/* APAS Landing Page Custom Properties */
+:root {
+  --apas-midnight: #0A0C12;
+  --apas-deep: #10131D;
+  --apas-surface: #161B2B;
+  --apas-border: rgba(255,255,255,0.08);
+  --apas-sapphire: #1D6FE8;
+  --apas-sapphire-glow: rgba(29,111,232,0.2);
+  --apas-emerald: #10B981;
+  --apas-amber: #F59E0B;
+  --apas-rose: #F43F5E;
+  --apas-violet: #8B5CF6;
+  --apas-white: #F1F5FF;
+  --apas-muted: #6B7A99;
+  --apas-grid: rgba(29,111,232,0.04);
+}
 
 @layer base {
   :root {
