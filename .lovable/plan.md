@@ -1,287 +1,164 @@
 
-# Organizations & Clients — Enterprise Data Layer Overhaul
+# APAS OS — Complete Tier 2 & Tier 3 Execution Plan
 
-## What We're Fixing (Root Cause Analysis)
+## Current Status Assessment
 
-After auditing the full codebase and database, here is exactly what is broken:
+### Tier 1 (Core PWA) — DONE
+`manifest.webmanifest`, branded icons, offline page, `PWAInstallBanner`, `PWAUpdateBanner`, iOS meta tags, service worker caching — all complete.
 
-**Problem 1 — Clients table is orphaned (no management UI)**
-The `clients` table exists in the database with full RLS policies, and `useClients` / `useCreateClient` / `useUpdateClient` / `useDeleteClient` hooks are all written. But there is zero page, zero settings tab, zero management UI anywhere in the app to create, view, edit, or delete clients. Admins are forced to use the inline "+" button inside the Project Dialog — which only creates the minimal name, no contact info, no industry, nothing else.
+### Tier 2 (Mobile UX) — ~30% done
+Only `WorkOrdersPage` was converted to mobile cards. All other pages still use desktop-first layouts with overflowing tables and headers.
 
-**Problem 2 — "tenants" table is the WRONG entity (naming collision)**
-The `tenants` table in the database is for unit lease tenants (residents with lease_start, lease_end, rent_amount, unit_id). This is completely different from what you mean by "tenants/organizations" — i.e., the companies and businesses that use the platform or are project clients. There is no "organizations" concept in the database at all. The `clients` table IS the right table for what you're describing — it just needs to be expanded and surfaced properly.
+### Tier 3 (Enterprise Features) — 0% done
+Push notifications, realtime notification delivery, and an `/install` guide page are not built.
 
-**Problem 3 — Users have no organizational affiliation**
-The `profiles` table (user data) has no `client_id` or `organization_id` column. When you invite a user, they get a role and optionally a property, but they are never linked to a company or client organization. This means there's no way to say "this user belongs to R4 Capital Partners" or "this user is an ERC Recyclables contact."
-
-**Problem 4 — Project → Client link is non-functional**
-The `projects` table has `client_id` (nullable UUID FK to `clients`). The Project Dialog renders a client selector. But because there are zero clients in the database (the table is empty — confirmed via query), the dropdown is always empty. Creating a client via the inline "+" only stores the name — it silently fails to populate contact info. The link technically works at the DB level but has zero data flowing through it.
-
-**Problem 5 — No "client type" distinction**
-A client like "R4 Capital Partners" (your own company/organization) is fundamentally different from "ERC Recyclables" (an external business client) or "APAS" (a regulatory/government client). There is no `client_type` field to distinguish these.
+### Tier 4 (Performance) — DONE
+Bundle splitting and dynamic imports are complete. Build passes.
 
 ---
 
-## The Solution Architecture
+## Tier 2 — Mobile Responsiveness (All Remaining Pages)
 
-The `clients` table becomes the **single source of truth for all organizations, companies, and external clients**. It gets expanded with richer fields. A new **Organizations & Clients** management page is created at `/settings/organizations` (or surfaced as a standalone `/organizations` page). Users gain an optional `client_id` link to tie them to an organization.
+The approach across every page: **stack-on-mobile, table-on-desktop** — no horizontal scrolling, touch targets >= 44px, filter rows wrap on small screens.
+
+### Pages to fix (7 remaining):
+
+**1. `Dashboard.tsx`**
+- Header: responsive flex-wrap, property selector collapses on mobile
+- Module cards: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
+- My Tasks: tighten spacing, hide low-priority columns on mobile
+
+**2. `IssuesPage.tsx`**
+- Header buttons: overflow into a row that wraps and stacks on mobile
+- Stats cards: `grid-cols-2 md:grid-cols-4`
+- Issue rows: on mobile, collapse into card-style layout (severity + title top row, property + badges bottom row), hide area badge
+
+**3. `InspectionsDashboard.tsx`**
+- Header: `flex-col sm:flex-row` for title + button
+- Stats grid: `grid-cols-2 md:grid-cols-4`
+- Annual Progress card: area breakdown goes `grid-cols-1 md:grid-cols-3`
+- Defects list rows: collapse into stacked card layout on mobile
+
+**4. `ProjectsDashboard.tsx`**
+- Header: already partially wrapped, ensure button doesn't clip
+- Stats: `grid-cols-2 lg:grid-cols-4`
+- Control row: search full width on mobile, selects wrap below it
+- Project cards: already cards — just ensure they stack `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
+- Health strip: horizontal scroll on very small screens
+
+**5. `PeoplePage.tsx`**
+- Header buttons wrap on mobile
+- Filters column: full-width search, selects go `flex-wrap`
+- `PeopleTable` component: convert to card layout on `< md` via `useIsMobile` hook (already exists)
+
+**6. `PermitsDashboard.tsx`**
+- Header: flex-wrap
+- Filter row: wraps below search on mobile
+- `PermitCard` items: already card-based — verify padding and text don't overflow
+
+**7. `ReportsPage.tsx`**
+- Date range preset buttons: horizontal scroll or wrap on mobile
+- Report category cards: `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
+- Tab pills: scrollable on mobile
+
+**8. `OccupancyPage.tsx` and `PropertiesPage.tsx`**
+- Both use table or card layouts — ensure `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` responsive grids
+
+---
+
+## Tier 3 — Enterprise Features
+
+### 3A: Web Push Notifications (Browser-native, works on Android + desktop; iOS 16.4+ PWA)
+
+**Database**
+- New migration to create `push_subscriptions` table:
+  ```sql
+  CREATE TABLE push_subscriptions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    endpoint text NOT NULL UNIQUE,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    created_at timestamptz DEFAULT now()
+  );
+  ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+  -- Users can only manage their own subscriptions
+  CREATE POLICY "own_subs" ON push_subscriptions
+    USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  ```
+
+**Edge Function: `send-push-notification`**
+- Accepts `{ user_id, title, body, url }` payload
+- Fetches all subscriptions for the given user_id
+- Uses Web Push Protocol (VAPID) to dispatch push to each endpoint
+- Needs `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` secrets (generated once, stored in secrets)
+- Falls back gracefully if no subscription exists
+
+**Frontend Hook: `usePushNotifications.ts`**
+- `subscribe()`: calls `Notification.requestPermission()`, then `serviceWorker.pushManager.subscribe()`, then saves the subscription to the `push_subscriptions` table
+- `unsubscribe()`: removes from DB
+- `isSupported`: boolean check for browser capability
+- `permission`: current state (`'default'` | `'granted'` | `'denied'`)
+
+**Service Worker additions in `vite.config.ts`**
+- Add `push` event listener in the SW via Workbox's `injectManifest` mode OR via a custom `sw.js` that handles push events and shows `self.registration.showNotification()`
+
+**UI: `NotificationPermissionBanner`**
+- Displayed once in `AppLayout` (below header) for users who haven't been asked
+- "Enable Notifications" button → calls `subscribe()`
+- Shows on Android Chrome and Desktop; hidden on iOS (push requires iOS 16.4+ Safari and the app must be added to home screen)
+
+**Integration points** — existing notifications already written to the `notifications` table by DB triggers (mentions, messages, deadlines). We add a call to the push edge function from those same triggers.
+
+### 3B: Offline Form Submission Queue (IndexedDB)
+
+This allows field staff (inspectors) to submit daily inspection items and work order notes without connectivity.
+
+**`src/lib/offlineQueue.ts`**
+- Opens an IndexedDB store called `apas-offline-queue`
+- `enqueue(action)`: saves `{ type, payload, timestamp }` to IDB
+- `flush()`: processes all queued items when `navigator.onLine` fires `true`
+- Listens to `window.addEventListener('online', flush)`
+
+**Integration points**
+- `DailyInspectionWizard.tsx`: wrap submit mutation with `try { await mutate() } catch { enqueue({type:'daily_inspection', payload}) }`
+- `WorkOrderDetailSheet.tsx`: same pattern for status updates made offline
+- Show a small amber "Offline — changes queued" toast/banner when device is offline
+
+### 3C: `/install` Guide Page (PWA How-To)
+
+A dedicated `/install` route (public-accessible, no auth required) that shows:
+- Step-by-step Android Chrome installation with animated screenshots
+- Step-by-step iOS Safari "Add to Home Screen" instructions
+- QR code linking to the app for desktop users to scan
+- "Already Installed? Open App →" CTA
+
+This page will be linked from:
+- `PWAInstallBanner` (iOS step text becomes a link)
+- The public landing page (`LandingPage.tsx`) via a "Download App" button
+
+---
+
+## Implementation Order
 
 ```text
-clients (expanded)
-  ├── id
-  ├── name                    ← company/org name (e.g. "R4 Capital Partners")
-  ├── client_type             ← NEW: 'internal_org' | 'business_client' | 'property_management' | 'government' | 'other'
-  ├── contact_name
-  ├── contact_email
-  ├── contact_phone
-  ├── website                 ← NEW
-  ├── address                 ← NEW
-  ├── industry
-  ├── notes
-  ├── is_active               ← NEW: soft-delete/archive flag
-  ├── created_by
-  ├── created_at / updated_at
-
-profiles (add FK to clients)
-  └── client_id               ← NEW: nullable FK to clients.id (which org does this user belong to?)
-
-user_invitations (add client_id)
-  └── client_id               ← NEW: nullable FK to clients.id (pre-assign during invite)
+Step 1  — DB migration: push_subscriptions table + RLS
+Step 2  — Edge Function: send-push-notification (VAPID)
+Step 3  — Hook: usePushNotifications.ts
+Step 4  — UI: NotificationPermissionBanner + wire into AppLayout
+Step 5  — Service Worker: push event handler (custom sw.js)
+Step 6  — Offline Queue: src/lib/offlineQueue.ts
+Step 7  — Wire offline queue into DailyInspectionWizard + WorkOrders
+Step 8  — /install page (with QR code, iOS + Android steps)
+Step 9  — Tier 2 mobile: Dashboard, Issues, Inspections, Projects, People, Permits, Reports, Occupancy, Properties (all pages)
+Step 10 — Link /install from LandingPage + PWAInstallBanner
 ```
-
----
-
-## Part 1 — Database Migration
-
-### Expand the `clients` table
-
-```sql
-ALTER TABLE public.clients 
-  ADD COLUMN client_type TEXT NOT NULL DEFAULT 'business_client'
-    CHECK (client_type IN ('internal_org','business_client','property_management','government','other')),
-  ADD COLUMN website TEXT,
-  ADD COLUMN address TEXT,
-  ADD COLUMN city TEXT,
-  ADD COLUMN state TEXT,
-  ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
-```
-
-### Link profiles → clients
-
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL;
-```
-
-### Link invitations → clients (pre-assign org on invite)
-
-```sql
-ALTER TABLE public.user_invitations
-  ADD COLUMN client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL;
-```
-
-### Seed the first internal org (R4 Capital Partners type)
-
-After the migration, the admin can create orgs via the new UI. No seed data needed — the migration is purely structural.
-
----
-
-## Part 2 — Expanded Hook: `useClients.ts`
-
-The existing hooks work but are missing:
-- `useClient(id)` — single client detail
-- RLS for INSERT currently has no `WITH CHECK` (any authenticated user can insert) — needs a manager/admin guard
-- No `client_type`, `website`, `address`, `city`, `state`, `is_active` in the TypeScript interface
-
-**Updated `Client` interface:**
-```typescript
-export interface Client {
-  id: string;
-  name: string;
-  client_type: 'internal_org' | 'business_client' | 'property_management' | 'government' | 'other';
-  contact_name: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  website: string | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  industry: string | null;
-  notes: string | null;
-  is_active: boolean;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-  // Joined
-  member_count?: number;
-  project_count?: number;
-}
-```
-
-**Additional hooks added:**
-- `useClient(id)` — single client with member_count and project_count joined
-- `useActiveClients()` — filters `is_active = true` (used in project dialog)
-- `useArchiveClient()` — sets `is_active = false` (soft delete)
-- `useClientMembers(clientId)` — fetches profiles where `client_id = clientId`
-
----
-
-## Part 3 — New Organizations & Clients Management Page
-
-### New route: `/organizations`
-
-A new top-level page added to the app and sidebar under the Core Platform section (between People and Contacts, since it is a related entity management page).
-
-**Page structure:**
-
-```
-Organizations & Clients
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[Stat: 1 Internal Org] [Stat: 3 Business Clients] [Stat: 0 Property Mgmt] [12 Total Members]
-
-[Search...]  [Type Filter ▾]  [Status: Active/Archived ▾]   [+ New Organization]
-
-┌─ R4 Capital Partners ──────────────────── [Internal Org] ─ [Active] ─────┐
-│  📧 admin@r4capital.com  │ 📞 305-XXX-XXXX  │ 🏢 Real Estate              │
-│  6 team members linked  │  4 active projects                              │
-│  [View Members] [Edit] [Archive]                                          │
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ ERC Recyclables ──────────────────────── [Business Client] ─ [Active] ──┐
-│  📧 contact@erc.com     │ 📞 786-XXX-XXXX  │ 🏭 Environmental             │
-│  2 team members linked  │  1 active project                               │
-│  [View Members] [Edit] [Archive]                                          │
-└───────────────────────────────────────────────────────────────────────────┘
-
-┌─ APAS ─────────────────────────────────── [Government] ─ [Active] ───────┐
-│  📧 info@apas.gov       │ 📞 954-XXX-XXXX  │ 🏛 Government / Regulatory  │
-│  0 team members linked  │  2 active projects                              │
-│  [Edit] [Archive]                                                         │
-└───────────────────────────────────────────────────────────────────────────┘
-```
-
-Clicking "View Members" opens a slide-in sheet showing all profiles linked to that client, with the ability to unlink or assign them to a different org.
-
-### Client Type Color Coding
-
-| Type | Badge Color | Icon |
-|---|---|---|
-| Internal Org | Indigo | Building2 |
-| Business Client | Blue | Briefcase |
-| Property Management | Green | Home |
-| Government | Amber | Shield |
-| Other | Gray | Globe |
-
----
-
-## Part 4 — New `OrganizationDialog.tsx` Component
-
-Full create/edit dialog for organizations:
-
-**Fields:**
-- Organization Name (required)
-- Type (required, color-coded pill selector): Internal Organization / Business Client / Property Management / Government / Other
-- Primary Contact Name
-- Primary Contact Email
-- Primary Contact Phone
-- Website URL
-- Address / City / State
-- Industry (text field)
-- Notes (textarea)
-
-On save: creates/updates `clients` row. Immediately available in the Project Dialog client selector and in the invite flow.
-
----
-
-## Part 5 — Update Invite Flow to Include Organization
-
-**`InviteUserDialog.tsx`** gets a new optional field:
-
-```
-[Email Address]
-[Role ▾]
-[Assign to Property ▾]  (existing)
-[Assign to Organization ▾]  ← NEW: dropdown of all active clients
-```
-
-When the invitation is accepted in `AcceptInvitePage.tsx`, the `client_id` from the invitation is written to `profiles.client_id` for the new user. This establishes the permanent org link.
-
-**`PersonDialog.tsx`** (used when manually adding an existing user to the system) also gets the organization assignment dropdown, writing to `profiles.client_id` directly.
-
----
-
-## Part 6 — Update `ProjectDialog.tsx`
-
-The existing client selector in the Project Dialog currently:
-1. Shows an empty list (no clients in DB) — **fixed by the new Organizations page creating real data**
-2. Has no visual distinction between client types — **fixed by adding type badge in the dropdown**
-3. Allows creating a client inline but only captures the name — **fixed: the inline "+" now opens a mini version of the OrganizationDialog capturing at minimum name + type + email**
-
-**Updated client selector in ProjectDialog:**
-```
-[Select client...                    ▾]  [+ New]
- ┌─────────────────────────────────────┐
- │ 🏢 R4 Capital Partners  [Internal] │
- │ 💼 ERC Recyclables  [Business]     │
- │ 🏛 APAS  [Government]              │
- └─────────────────────────────────────┘
-```
-
-The "New" button now opens a popover with the full `OrganizationDialog` rather than just a name input, ensuring complete data capture every time.
-
----
-
-## Part 7 — Settings Page: Organization Tab Enhancement
-
-The existing **Settings → Organization** tab currently shows a static card with "Tenant Configuration" placeholder text and no real content. This gets replaced with:
-
-- A link/section showing the primary internal organization (the `internal_org` type client)
-- A link to `/organizations` to manage all organizations
-- Company branding settings (already exists via `useCompanyBranding` hook)
-
-This turns the empty settings tab into a functional hub.
-
----
-
-## Part 8 — Sidebar: Add Organizations to Navigation
-
-In `AppSidebar.tsx`, add "Organizations" as a nav item in the Core Platform section, positioned between "People" and "Contacts":
-
-```
-People
-Organizations    ← NEW (icon: Building2 or Layers)
-Contacts
-```
-
-Route: `/organizations`
-
-New page file: `src/pages/organizations/OrganizationsPage.tsx`
-
----
-
-## Summary of All Files Changed
-
-| File | Type | Change |
-|---|---|---|
-| Migration SQL | New | Expand `clients` table (client_type, website, address, city, state, is_active), add `client_id` to `profiles` and `user_invitations` |
-| `src/hooks/useClients.ts` | Update | Add new fields to Client interface, add `useClient`, `useActiveClients`, `useArchiveClient`, `useClientMembers` hooks |
-| `src/pages/organizations/OrganizationsPage.tsx` | New | Full org management page with cards, search, type filter |
-| `src/components/organizations/OrganizationDialog.tsx` | New | Full create/edit dialog with all org fields |
-| `src/components/organizations/OrganizationMembersSheet.tsx` | New | Slide-in panel showing users linked to an org |
-| `src/components/people/InviteUserDialog.tsx` | Update | Add organization assignment field |
-| `src/components/people/PersonDialog.tsx` | Update | Add organization assignment field |
-| `src/pages/auth/AcceptInvitePage.tsx` | Update | Write `client_id` from invitation to profile on accept |
-| `src/components/projects/ProjectDialog.tsx` | Update | Better client selector with type badges, improved inline creation |
-| `src/components/layout/AppSidebar.tsx` | Update | Add Organizations nav item |
-| `src/App.tsx` | Update | Add `/organizations` route |
-| `src/pages/settings/SettingsPage.tsx` | Update | Replace empty Organization tab with real content |
-
----
 
 ## Technical Notes
 
-- **No circular dependencies** — `useClients` remains independent; `OrganizationsPage` imports it; `ProjectDialog` imports `useActiveClients` (filtered view).
-- **Backward compatible** — `client_id` on profiles is nullable (existing users unaffected). `client_type` has a default of `business_client` (existing `clients` rows, if any, get the default).
-- **RLS fix for INSERT** — The current INSERT policy on `clients` has no `WITH CHECK` clause, meaning any authenticated user can insert. This is tightened to require `admin` or `manager` role, matching the UPDATE policy.
-- **Type safety** — The `Client` TypeScript interface is updated to include all new fields. The `supabase/types.ts` auto-regenerates.
-- **The tenant naming collision** — The `tenants` table is left untouched (it handles residential lease data). The word "tenant" in the Settings UI description ("Tenant Configuration") is relabeled to "Organization" to avoid confusion.
+- VAPID key pair generation: handled inside the edge function on first run (or pre-generated and stored as secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`). The public key must also be embedded in the frontend for `pushManager.subscribe({ applicationServerKey })`.
+- The existing `notifications` table + in-app `NotificationCenter` is untouched. Push is a parallel delivery channel that supplements it.
+- The offline queue uses IndexedDB (not localStorage) because it can store larger structured data and survives browser restarts.
+- All Tier 2 mobile fixes use Tailwind responsive prefixes only — no new dependencies needed.
+- The `/install` page uses the existing `QRCodeGenerator` component already in the codebase (`src/components/qr/QRCodeGenerator.tsx`).
+- `useIsMobile` hook already exists at `src/hooks/use-mobile.tsx` — used for conditional rendering inside table-heavy pages.
