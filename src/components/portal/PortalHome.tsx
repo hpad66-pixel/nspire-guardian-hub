@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, ChevronRight, Send, AlertTriangle, ImageIcon, Loader2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Send, AlertTriangle, ImageIcon, Loader2 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ActionItemCard } from './ActionItemCard';
@@ -59,7 +59,6 @@ const PHASES = ['Not Started', 'In Progress', 'Final Review', 'Complete'];
 
 export function PortalHome({ project, companyBranding, updates, onNavigate, accentColor }: PortalHomeProps) {
   const [showAllItems, setShowAllItems] = useState(false);
-  const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [messageText, setMessageText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -260,7 +259,7 @@ export function PortalHome({ project, companyBranding, updates, onNavigate, acce
 
         {updates.length > 0 ? (
           <div className="space-y-3">
-            {(showAllUpdates ? updates : updates.slice(0, 3)).map((update) => (
+            {updates.slice(0, 3).map((update) => (
               <div
                 key={update.id}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden"
@@ -279,17 +278,6 @@ export function PortalHome({ project, companyBranding, updates, onNavigate, acce
                 </div>
               </div>
             ))}
-
-            {updates.length > 3 && !showAllUpdates && (
-              <button
-                onClick={() => setShowAllUpdates(true)}
-                className="flex items-center gap-1.5 text-sm font-medium transition-colors"
-                style={{ color: accentColor }}
-              >
-                <ChevronDown size={14} />
-                Show {updates.length - 3} more update{updates.length - 3 !== 1 ? 's' : ''}
-              </button>
-            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 py-10 gap-3">
