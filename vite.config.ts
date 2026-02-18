@@ -30,10 +30,6 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-accordion",
             "@radix-ui/react-checkbox",
           ],
-          // Heavy document/export libs — loaded on demand via dynamic import
-          "vendor-pdf": ["jspdf", "html2canvas"],
-          "vendor-docs": ["docx"],
-          "vendor-xlsx": ["xlsx"],
           // Charts
           "vendor-charts": ["recharts"],
           // TipTap rich text editor
@@ -83,8 +79,8 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        // Allow chunks up to 5 MB in the precache manifest (default is 2 MB)
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Allow large vendor chunks up to 6 MB in the precache manifest
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // CRITICAL: Never cache OAuth redirects
         navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/],
         navigateFallback: "/offline.html",

@@ -1,5 +1,5 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// jsPDF and html2canvas are loaded dynamically so they never land in the main
+// bundle — they're only fetched when the user actually triggers a PDF action.
 
 export interface PDFOptions {
   filename: string;
@@ -16,7 +16,11 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  // Render the element to a canvas with high quality
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
   const canvas = await html2canvas(element, {
     scale,
     useCORS: true,
@@ -29,41 +33,33 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
   const imgWidth = canvas.width;
   const imgHeight = canvas.height;
 
-  // Create PDF with appropriate dimensions
-  // A4: 210mm x 297mm = 595.28pt x 841.89pt
-  const pdfWidth = 210; // mm
-  const pdfHeight = 297; // mm
+  const pdfWidth = 210;
+  const pdfHeight = 297;
   const contentWidth = pdfWidth - margin * 2;
 
-  // Calculate the scale factor to fit content width
   const scaleFactor = (contentWidth * scale) / imgWidth;
   const scaledHeight = (imgHeight * scaleFactor) / scale;
 
-  // Create PDF - portrait orientation
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  // Calculate number of pages needed
   const pageHeight = pdfHeight - margin * 2;
   const totalPages = Math.ceil(scaledHeight / pageHeight);
 
-  // Add content, splitting across pages if needed
   for (let page = 0; page < totalPages; page++) {
     if (page > 0) {
       pdf.addPage();
     }
 
-    // Calculate the portion of the image to show on this page
     const sourceY = (page * pageHeight * scale) / scaleFactor;
     const sourceHeight = Math.min(
       (pageHeight * scale) / scaleFactor,
       imgHeight - sourceY
     );
 
-    // Create a temporary canvas for this page section
     const pageCanvas = document.createElement('canvas');
     pageCanvas.width = imgWidth;
     pageCanvas.height = sourceHeight;
@@ -92,7 +88,6 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
     }
   }
 
-  // Download the PDF
   pdf.save(filename);
 }
 
@@ -110,7 +105,11 @@ export async function generatePDFBase64(options: PDFBase64Options): Promise<stri
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  // Render the element to a canvas with high quality
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
   const canvas = await html2canvas(element, {
     scale,
     useCORS: true,
@@ -122,40 +121,33 @@ export async function generatePDFBase64(options: PDFBase64Options): Promise<stri
   const imgWidth = canvas.width;
   const imgHeight = canvas.height;
 
-  // Create PDF with appropriate dimensions
-  const pdfWidth = 210; // mm
-  const pdfHeight = 297; // mm
+  const pdfWidth = 210;
+  const pdfHeight = 297;
   const contentWidth = pdfWidth - margin * 2;
 
-  // Calculate the scale factor to fit content width
   const scaleFactor = (contentWidth * scale) / imgWidth;
   const scaledHeight = (imgHeight * scaleFactor) / scale;
 
-  // Create PDF - portrait orientation
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  // Calculate number of pages needed
   const pageHeight = pdfHeight - margin * 2;
   const totalPages = Math.ceil(scaledHeight / pageHeight);
 
-  // Add content, splitting across pages if needed
   for (let page = 0; page < totalPages; page++) {
     if (page > 0) {
       pdf.addPage();
     }
 
-    // Calculate the portion of the image to show on this page
     const sourceY = (page * pageHeight * scale) / scaleFactor;
     const sourceHeight = Math.min(
       (pageHeight * scale) / scaleFactor,
       imgHeight - sourceY
     );
 
-    // Create a temporary canvas for this page section
     const pageCanvas = document.createElement('canvas');
     pageCanvas.width = imgWidth;
     pageCanvas.height = sourceHeight;
@@ -184,7 +176,6 @@ export async function generatePDFBase64(options: PDFBase64Options): Promise<stri
     }
   }
 
-  // Return as base64 string (without the data URL prefix)
   const base64 = pdf.output('datauristring').split(',')[1];
   return base64;
 }
@@ -195,7 +186,6 @@ export async function printReport(elementId: string): Promise<void> {
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  // Clone the element for printing
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     throw new Error('Could not open print window');
@@ -234,7 +224,6 @@ export async function printReport(elementId: string): Promise<void> {
 
   printWindow.document.close();
 
-  // Wait for content to load then print
   printWindow.onload = () => {
     printWindow.print();
     printWindow.close();
