@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Wrench,
   MessageCircle,
-  Menu,
+  MoreHorizontal,
 } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -42,7 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   type AppRole = Database['public']['Enums']['app_role'];
@@ -92,9 +92,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     return user?.email?.slice(0, 2).toUpperCase() || 'U';
   })();
 
-  // Close mobile nav on route change
+  // Close more menu on route change
   useEffect(() => {
-    setMobileNavOpen(false);
+    setMoreMenuOpen(false);
   }, [location.pathname]);
 
   // Keyboard shortcut for search
@@ -167,24 +167,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               </div>
 
-              {/* Mobile: hamburger that opens full sidebar as a sheet */}
-              {isMobile && (
-                <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-                      aria-label="Open navigation"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-72 p-0 border-r border-border">
-                    <AppSidebar />
-                  </SheetContent>
-                </Sheet>
-              )}
+
+
 
               {/* Search — full width on desktop, condensed on mobile */}
               <Button
@@ -262,6 +246,18 @@ export function AppLayout({ children }: AppLayoutProps) {
               </button>
             );
           })}
+          {/* More — opens full sidebar sheet */}
+          <Sheet open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+            <SheetTrigger asChild>
+              <button className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground">
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="text-[10px] font-medium leading-none">More</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <AppSidebar />
+            </SheetContent>
+          </Sheet>
         </nav>
       )}
 
