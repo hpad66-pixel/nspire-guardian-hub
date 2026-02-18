@@ -6,6 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,9 +23,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const systemPrompt = `You are a maintenance issue extraction assistant for property management. 
@@ -41,7 +43,20 @@ Rules:
 - Do NOT duplicate issues if the caller mentions the same problem multiple times
 - Use professional language, not the caller's exact words
 - Assign severity based on urgency keywords and safety implications
-- If the caller mentions an emergency (flooding, gas leak, fire, no heat in winter), mark as "severe"`;
+- If the caller mentions an emergency (flooding, gas leak, fire, no heat in winter), mark as "severe"
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "issues": [
+    {
+      "title": "string",
+      "description": "string",
+      "severity": "severe|moderate|low",
+      "area": "unit|inside|outside",
+      "category": "string"
+    }
+  ]
+}`;
 
     const userPrompt = `Caller: ${caller_name || "Unknown"}
 Reported Category: ${issue_category || "general"}
@@ -50,52 +65,20 @@ Property ID: ${property_id || "unknown"}
 TRANSCRIPT:
 ${transcript}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_issues",
-              description: "Extract maintenance issues from the call transcript",
-              parameters: {
-                type: "object",
-                properties: {
-                  issues: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string", description: "Clear issue title, max 60 chars" },
-                        description: { type: "string", description: "Detailed description, 2-3 sentences" },
-                        severity: { type: "string", enum: ["severe", "moderate", "low"] },
-                        area: { type: "string", enum: ["unit", "inside", "outside"] },
-                        category: { type: "string" },
-                      },
-                      required: ["title", "description", "severity", "area", "category"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["issues"],
-                additionalProperties: false,
-              },
-            },
+    const response = await fetch(
+      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
           },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_issues" } },
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -104,25 +87,19 @@ ${transcript}`;
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits depleted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("Gemini API error:", response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!toolCall?.function?.arguments) {
+    if (!rawText) {
       throw new Error("No issues extracted from transcript");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
+    const parsed = JSON.parse(rawText);
     const issues = parsed.issues || [];
 
     return new Response(

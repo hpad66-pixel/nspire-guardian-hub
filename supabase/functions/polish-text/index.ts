@@ -43,16 +43,38 @@ const contextPrompts: Record<string, string> = {
 Maintain all factual content. Fix grammar and improve clarity. Output only the formatted minutes, no explanations.`,
 };
 
+// Google Gemini API endpoint
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
+async function callGemini(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
+  // Map OpenAI-style model names to Gemini model IDs
+  const modelMap: Record<string, string> = {
+    "google/gemini-2.5-pro": "gemini-2.5-pro-preview-06-05",
+    "google/gemini-3-flash-preview": "gemini-2.0-flash",
+    "google/gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
+    "google/gemini-2.5-flash-lite": "gemini-2.5-flash-lite-preview-06-17",
+  };
+  const geminiModel = modelMap[model] || "gemini-2.0-flash";
+
+  return await fetch(`${GEMINI_API_BASE}/${geminiModel}:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: userText }] }],
+    }),
+  });
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured');
       throw new Error('AI service is not configured');
     }
 
@@ -69,40 +91,22 @@ serve(async (req) => {
 
     const systemPrompt = contextPrompts[context] || contextPrompts.notes;
 
-    // Model routing:
-    // - meetings (meeting_minutes) → Gemini 2.5 Pro (highest quality for structured docs)
-    // - activity feed / notes     → Gemini 3 Flash Preview (fast, efficient)
-    // Caller can also pass preferredModel to override.
+    // Model routing: meeting_minutes → Pro, others → Flash
     const defaultModel = preferredModel
       ? preferredModel
       : context === 'meeting_minutes'
         ? 'google/gemini-2.5-pro'
         : 'google/gemini-3-flash-preview';
 
-    // Fallback chain if primary model returns 402
     const fallbacks = ['google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
     const modelsToTry = [defaultModel, ...fallbacks.filter(m => m !== defaultModel)];
 
     for (const model of modelsToTry) {
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text },
-          ],
-          stream: false,
-        }),
-      });
+      const response = await callGemini(GEMINI_API_KEY, model, systemPrompt, text);
 
       if (response.ok) {
         const result = await response.json();
-        const polished = result.choices?.[0]?.message?.content || text;
+        const polished = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
         console.log(`Successfully polished text with model: ${model}`);
         return new Response(
           JSON.stringify({ polished, model }),
@@ -117,20 +121,18 @@ serve(async (req) => {
         );
       }
 
-      if (response.status === 402) {
-        console.warn(`Model ${model} returned 402, trying next fallback...`);
-        continue;
+      if (response.status === 403 || response.status === 401) {
+        const errorText = await response.text();
+        console.error('Gemini API auth error:', response.status, errorText);
+        throw new Error('Invalid Gemini API key or quota exceeded');
       }
 
-      // Other non-OK status — fail fast
+      // Other errors — try next model
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error('AI service error');
+      console.warn(`Model ${model} returned ${response.status}, trying next...`, errorText);
     }
 
-    // All models exhausted credits — return 200 with the original text so the
-    // client receives it through the normal `data` path (not the SDK error path).
-    // The `warning` flag tells the hook to show a friendly toast instead of crashing.
+    // All models failed — return original text with warning
     return new Response(
       JSON.stringify({ polished: null, warning: 'credits_exhausted', original: text }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

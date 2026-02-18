@@ -7,6 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
 interface GenerateProposalRequest {
   projectId: string;
   proposalType: string;
@@ -24,7 +26,6 @@ serve(async (req) => {
     // Auth validation
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      console.error("Missing or invalid authorization header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -39,15 +40,16 @@ serve(async (req) => {
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData?.user) {
-      console.error("Auth validation failed:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = userData.user.id;
-    console.log("Authenticated user:", userId);
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
 
     const body: GenerateProposalRequest = await req.json();
     const { projectId, proposalType, templateId, userNotes, subject } = body;
@@ -59,9 +61,7 @@ serve(async (req) => {
       });
     }
 
-    console.log("Generating proposal for project:", projectId, "type:", proposalType);
-
-    // Fetch project details with property
+    // Fetch project details
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select(`*, property:properties(name, address, city, state)`)
@@ -69,7 +69,6 @@ serve(async (req) => {
       .single();
 
     if (projectError || !project) {
-      console.error("Project not found:", projectError);
       return new Response(JSON.stringify({ error: "Project not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -79,11 +78,7 @@ serve(async (req) => {
     // Fetch template
     let template;
     if (templateId) {
-      const { data } = await supabase
-        .from("proposal_templates")
-        .select("*")
-        .eq("id", templateId)
-        .single();
+      const { data } = await supabase.from("proposal_templates").select("*").eq("id", templateId).single();
       template = data;
     } else {
       const { data } = await supabase
@@ -96,24 +91,15 @@ serve(async (req) => {
     }
 
     if (!template) {
-      console.error("Template not found for type:", proposalType);
       return new Response(JSON.stringify({ error: "Template not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Using template:", template.name);
-
-    // Build prompt with project context
     const formatBudget = (budget: number | null) => {
       if (!budget) return "TBD";
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(budget);
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(budget);
     };
 
     const prompt = template.prompt_template
@@ -128,27 +114,7 @@ serve(async (req) => {
       .replace(/\{\{user_notes\}\}/g, userNotes || "")
       .replace(/\{\{subject\}\}/g, subject || "");
 
-    console.log("Generated prompt length:", prompt.length);
-
-    // Call Lovable AI Gateway
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `You are a professional business consultant and proposal writer with expertise in construction, property management, and project management.
+    const systemPrompt = `You are a professional business consultant and proposal writer with expertise in construction, property management, and project management.
 
 Generate clear, professional, and persuasive business documents.
 
@@ -158,50 +124,57 @@ IMPORTANT FORMATTING RULES:
 - Do NOT include <html>, <head>, <body>, or <style> tags - just the content HTML
 - Use professional business language
 - Be specific and actionable
-- Include placeholders like [CLIENT NAME] or [SPECIFIC DATE] where appropriate for user to fill in`,
-          },
-          { role: "user", content: prompt },
-        ],
-        stream: true,
-      }),
-    });
+- Include placeholders like [CLIENT NAME] or [SPECIFIC DATE] where appropriate for user to fill in`;
+
+    // Gemini doesn't support native SSE streaming the same way, so we use generateContent
+    // and stream the response back character by character for a smooth UX
+    const aiResponse = await fetch(
+      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI Gateway error:", aiResponse.status, errorText);
+      console.error("Gemini API error:", aiResponse.status, errorText);
 
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       throw new Error("Failed to generate proposal");
     }
 
-    console.log("AI response received, streaming back to client");
+    const result = await aiResponse.json();
+    const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Stream response back
-    return new Response(aiResponse.body, {
+    // Stream back as SSE to match the client's streaming expectation
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        // Emit content as a single SSE chunk
+        const payload = JSON.stringify({ choices: [{ delta: { content } }] });
+        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error in generate-proposal function:", error);
-
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
