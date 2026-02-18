@@ -5044,6 +5044,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_project_team_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
