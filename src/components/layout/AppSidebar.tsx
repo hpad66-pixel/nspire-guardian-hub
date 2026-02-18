@@ -5,27 +5,19 @@ import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
+import { useProperties } from '@/hooks/useProperties';
+import { useOpenDefects } from '@/hooks/useDefects';
+import { useIssues } from '@/hooks/useIssues';
 import { useProjects } from '@/hooks/useProjects';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
   Building2,
   ClipboardCheck,
@@ -38,12 +30,9 @@ import {
   LayoutDashboard,
   Building,
   DoorOpen,
-  TreePine,
   LogOut,
   BarChart3,
-  History,
   Sun,
-  ClipboardList,
   Wrench,
   Mail,
   Shield,
@@ -53,11 +42,6 @@ import {
   Contact,
   MessageCircle,
   Phone,
-  ChevronRight,
-  Briefcase,
-  Megaphone,
-  Layers,
-  Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -68,135 +52,138 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// ── Zone label (non-interactive, uppercase) ──────────────────────────────
+function ZoneLabel({ label }: { label: string }) {
+  return (
+    <div className="px-4 pt-4 pb-1">
+      <span className="text-[10px] uppercase tracking-widest font-semibold text-[hsl(var(--sidebar-zone-label))]">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ── Zone divider ─────────────────────────────────────────────────────────
+function ZoneDivider() {
+  return <div className="mx-3 my-1 border-t border-[hsl(var(--sidebar-border)/0.4)]" />;
+}
+
+// ── Individual nav item ───────────────────────────────────────────────────
 interface NavItemProps {
   to: string;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   label: string;
   collapsed: boolean;
   end?: boolean;
   badge?: number;
+  badgeVariant?: 'urgent' | 'default';
   tooltip?: string;
 }
 
-function NavItem({ to, icon, label, collapsed, end, badge, tooltip }: NavItemProps) {
-  const content = (
-    <SidebarMenuButton asChild>
-      <NavLink
-        to={to}
-        end={end}
-        className="flex items-center gap-3 text-sidebar-foreground hover:bg-sidebar-accent"
-        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-      >
-        <div className="relative shrink-0">
-          {icon}
-          {badge !== undefined && badge > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[10px] font-medium bg-primary text-primary-foreground rounded-full flex items-center justify-center">
-              {badge > 9 ? '9+' : badge}
-            </span>
-          )}
-        </div>
-        {!collapsed && <span className="truncate">{label}</span>}
-      </NavLink>
-    </SidebarMenuButton>
+function NavItem({ to, icon: Icon, label, collapsed, end, badge, badgeVariant = 'default', tooltip }: NavItemProps) {
+  const hasBadge = badge !== undefined && badge > 0;
+  const badgeNum = badge ?? 0;
+
+  const inner = (
+    <NavLink
+      to={to}
+      end={end}
+      className={cn(
+        "group relative flex items-center gap-2.5 h-9 px-3 rounded-lg w-full text-sm font-medium",
+        "text-[hsl(var(--sidebar-muted))] transition-colors duration-150",
+        "hover:bg-white/5 hover:text-[hsl(var(--sidebar-foreground))]",
+        collapsed && "justify-center px-0"
+      )}
+      activeClassName={cn(
+        "!bg-[hsl(217_91%_60%/0.12)] !text-white",
+        "border-l-2 border-[hsl(217,91%,60%)] rounded-l-none rounded-r-lg"
+      )}
+    >
+      {/* Icon + collapsed badge dot */}
+      <div className="relative shrink-0">
+        <Icon className="h-4 w-4" />
+        {collapsed && hasBadge && (
+          <span className={cn(
+            "absolute -top-1 -right-1 h-2 w-2 rounded-full",
+            badgeVariant === 'urgent'
+              ? "bg-[hsl(0,84%,60%)]"
+              : "bg-[hsl(217,91%,60%)]"
+          )} />
+        )}
+      </div>
+
+      {/* Label (expanded only) */}
+      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+
+      {/* Count badge (expanded only) */}
+      {!collapsed && hasBadge && (
+        <span className={cn(
+          "ml-auto h-5 min-w-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center tabular-nums",
+          badgeVariant === 'urgent'
+            ? "bg-[hsl(0,84%,60%/0.2)] text-[hsl(0,84%,60%)]"
+            : "bg-[hsl(217,91%,60%/0.2)] text-[hsl(217,91%,60%)]"
+        )}>
+          {badgeNum > 99 ? '99+' : badgeNum}
+        </span>
+      )}
+    </NavLink>
   );
 
-  // Always show tooltip in collapsed mode; optionally show if tooltip prop set
   if (collapsed) {
+    const tipLabel = hasBadge ? `${label} (${badgeNum})` : label;
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{tooltip || label}</TooltipContent>
+        <TooltipTrigger asChild>{inner}</TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">{tooltip || tipLabel}</TooltipContent>
       </Tooltip>
     );
   }
 
-  return content;
+  return inner;
 }
 
-interface CollapsibleNavGroupProps {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  collapsed: boolean;
-  defaultOpen?: boolean;
-  isActive?: boolean;
-  indicator?: string;
-}
-
-function CollapsibleNavGroup({ 
-  title, 
-  icon, 
-  children, 
-  collapsed, 
-  defaultOpen = false,
-  isActive = false,
-  indicator,
-}: CollapsibleNavGroupProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen || isActive);
-
-  if (collapsed) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>{children}</SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    );
-  }
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <SidebarGroup>
-        <CollapsibleTrigger className="w-full">
-          <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider cursor-pointer hover:text-sidebar-foreground transition-colors flex items-center justify-between pr-2">
-            <div className="flex items-center gap-2">
-              {indicator && (
-                <div className={cn("h-2 w-2 rounded-full", indicator)} />
-              )}
-              {icon}
-              <span>{title}</span>
-            </div>
-            <ChevronRight 
-              className={cn(
-                "h-3 w-3 transition-transform duration-200",
-                isOpen && "rotate-90"
-              )} 
-            />
-          </SidebarGroupLabel>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarGroupContent>
-            <SidebarMenu>{children}</SidebarMenu>
-          </SidebarGroupContent>
-        </CollapsibleContent>
-      </SidebarGroup>
-    </Collapsible>
-  );
-}
-
+// ── Main sidebar ─────────────────────────────────────────────────────────
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isModuleEnabled, userRole } = useModules();
+  const { isModuleEnabled } = useModules();
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { canView, currentRole } = useUserPermissions();
-  
+
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   useUnreadThreadCountRealtime();
 
-  const isAdmin = currentRole === 'admin';
-  
-  // Recent projects (tracked in localStorage)
+  // Live data for badges
+  const { data: openDefects = [] } = useOpenDefects();
+  const { data: issues = [] } = useIssues();
   const { data: allProjects } = useProjects();
-  const [recentIds, setRecentIds] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('recent_projects') || '[]');
-    } catch { return []; }
-  });
+  const { data: properties } = useProperties();
 
-  // Track current project visits
+  const isAdmin = currentRole === 'admin';
+
+  // Open severe defects badge
+  const severeDefectCount = openDefects.filter(d => d.severity === 'severe').length;
+
+  // Open issues badge
+  const openIssueCount = (issues as Array<{ status: string | null }>).filter(
+    i => i.status !== 'resolved' && i.status !== 'verified'
+  ).length;
+
+  // Active projects badge
+  const activeProjectCount = (allProjects ?? []).filter(p => p.status === 'active').length;
+
+  // Selected property name for context indicator
+  const firstProperty = properties?.[0];
+  const propertyLabel = properties && properties.length > 1
+    ? `${properties.length} properties`
+    : firstProperty?.name ?? 'All Properties';
+
+  // Recent projects (tracked in localStorage)
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('recent_projects') || '[]'); } catch { return []; }
+  });
   const currentPath = location.pathname;
   useEffect(() => {
     const match = currentPath.match(/^\/projects\/([^/]+)$/);
@@ -208,464 +195,250 @@ export function AppSidebar() {
       return next;
     });
   }, [currentPath]);
-
   const recentProjects = recentIds
     .map(id => allProjects?.find(p => p.id === id))
     .filter(Boolean) as NonNullable<typeof allProjects>[number][];
-  
-  const userInitials = user?.user_metadata?.full_name
-    ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-    : user?.email?.charAt(0).toUpperCase() || 'U';
 
-  // Route matching for auto-expanding groups
-  const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
-  const isOperationsActive = ['/issues', '/work-orders', '/permits'].some(p => currentPath.startsWith(p));
-  const isCommunicationsActive = ['/messages', '/inbox', '/voice-agent'].some(p => currentPath.startsWith(p));
-  const isOrganizationActive = ['/people', '/contacts', '/training', '/reports', '/documents', '/organizations'].some(p => currentPath.startsWith(p));
-  const isDailyGroundsActive = currentPath.startsWith('/inspections/daily') || currentPath.startsWith('/inspections/history') || currentPath.startsWith('/inspections/review');
-  const isNspireActive = currentPath.startsWith('/inspections') && !isDailyGroundsActive;
-  const isProjectsActive = currentPath.startsWith('/projects');
+  // User info
+  const userInitials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.charAt(0).toUpperCase() || 'U';
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userRole = currentRole
+    ? currentRole.charAt(0).toUpperCase() + currentRole.slice(1).replace('_', ' ')
+    : 'Member';
 
   return (
     <TooltipProvider delayDuration={300}>
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-        <SidebarHeader className="border-b border-sidebar-border p-4">
-          <NavLink to="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary shrink-0">
-              <Building2 className="h-5 w-5 text-sidebar-primary-foreground" />
+
+        {/* ── HEADER ─────────────────────────────────────────────────────── */}
+        <SidebarHeader className="p-3 pb-0">
+          <NavLink to="/" className={cn(
+            "flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/5 transition-colors",
+            collapsed && "justify-center"
+          )}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-primary))] shrink-0">
+              <Building2 className="h-4 w-4 text-white" />
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold tracking-tight text-sidebar-foreground truncate">APAS Consulting</span>
+                <span className="text-sm font-bold text-white leading-tight">PM APAS</span>
+                <span className="text-[11px] text-[hsl(var(--sidebar-muted))] leading-tight">Property OS</span>
               </div>
             )}
           </NavLink>
+
+          {/* Property context indicator */}
+          {!collapsed && (
+            <div className="mt-2 px-1.5 pb-2">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5">
+                <Building className="h-3 w-3 text-[hsl(var(--sidebar-muted))] shrink-0" />
+                <span className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">{propertyLabel}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="border-b border-[hsl(var(--sidebar-border)/0.4)] mt-1" />
         </SidebarHeader>
 
-        <SidebarContent className="overflow-y-auto">
-          {/* Dashboard - Always visible at top */}
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <NavItem
-                    to="/dashboard"
-                    icon={<LayoutDashboard className="h-4 w-4" />}
-                    label="Dashboard"
-                    collapsed={collapsed}
-                    end
-                  />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {/* ── CONTENT ────────────────────────────────────────────────────── */}
+        <SidebarContent className="overflow-y-auto px-2 py-2">
 
-          {/* Daily Grounds Module */}
-          {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-            <CollapsibleNavGroup
-              title="Daily Grounds"
-              icon={<Sun className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isDailyGroundsActive}
-              indicator="bg-emerald-500"
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/daily"
-                  icon={<Sun className="h-4 w-4" />}
-                  label="Today's Inspection"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/history"
-                  icon={<History className="h-4 w-4" />}
-                  label="History"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/review"
-                  icon={<ClipboardList className="h-4 w-4" />}
-                  label="Review Queue"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-            </CollapsibleNavGroup>
-          )}
+          {/* ZONE 1 — OVERVIEW */}
+          <nav className="space-y-0.5">
+            <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} end />
+          </nav>
 
-          {/* Projects Module */}
-          {isModuleEnabled('projectsEnabled') && canView('projects') && (
-            <CollapsibleNavGroup
-              title="Projects"
-              icon={<FolderKanban className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isProjectsActive}
-              indicator="bg-[hsl(var(--module-projects))]"
-            >
-              <SidebarMenuItem>
+          <ZoneDivider />
+
+          {/* ZONE 2 — PROPERTY */}
+          {!collapsed && <ZoneLabel label="Property" />}
+          <nav className="space-y-0.5">
+            <NavItem to="/properties" icon={Building} label="Properties" collapsed={collapsed} />
+            <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
+            <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
+            {isModuleEnabled('occupancyEnabled') && (
+              <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
+            )}
+          </nav>
+
+          <ZoneDivider />
+
+          {/* ZONE 3 — OPERATIONS */}
+          {!collapsed && <ZoneLabel label="Operations" />}
+          <nav className="space-y-0.5">
+            {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
+              <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('nspireEnabled') && canView('inspections') && (
+              <NavItem
+                to="/inspections"
+                icon={ClipboardCheck}
+                label="Compliance"
+                collapsed={collapsed}
+                badge={severeDefectCount}
+                badgeVariant="urgent"
+                tooltip={severeDefectCount > 0 ? `Compliance — ${severeDefectCount} severe` : 'NSPIRE Compliance'}
+              />
+            )}
+            {isModuleEnabled('projectsEnabled') && canView('projects') && (
+              <>
                 <NavItem
                   to="/projects"
-                  icon={<FolderKanban className="h-4 w-4" />}
-                  label="All Projects"
+                  icon={FolderKanban}
+                  label="Projects"
                   collapsed={collapsed}
-                  end
+                  badge={activeProjectCount}
+                  badgeVariant="default"
+                  tooltip={activeProjectCount > 0 ? `Projects — ${activeProjectCount} active` : 'Projects'}
                 />
-              </SidebarMenuItem>
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <NavItem
-                    to="/projects/proposals"
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Proposals"
-                    collapsed={collapsed}
-                  />
-                </SidebarMenuItem>
-              )}
-              {/* Recent projects (non-collapsed mode only) */}
-              {!collapsed && recentProjects.length > 0 && (
-                <>
-                  <div className="px-2 pt-2 pb-0.5">
-                    <span className="text-[10px] uppercase tracking-widest text-sidebar-muted font-semibold">Recent</span>
+                {/* Recent projects — expanded only */}
+                {!collapsed && recentProjects.length > 0 && (
+                  <div className="pl-7 space-y-0.5 pb-0.5">
+                    {recentProjects.map(p => {
+                      const health = computeHealth(p);
+                      const hc = HEALTH_CONFIG[health];
+                      const isCurrentProject = currentPath === `/projects/${p.id}`;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => navigate(`/projects/${p.id}`)}
+                          className={cn(
+                            'flex items-center gap-2 w-full text-left px-2 h-7 rounded-md text-xs transition-colors',
+                            'text-[hsl(var(--sidebar-muted))] hover:bg-white/5 hover:text-[hsl(var(--sidebar-foreground))]',
+                            isCurrentProject && 'bg-white/8 text-white font-medium'
+                          )}
+                        >
+                          <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', hc.dot)} />
+                          <span className="truncate">{p.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  {recentProjects.map(p => {
-                    const health = computeHealth(p);
-                    const hc = HEALTH_CONFIG[health];
-                    const isCurrentProject = currentPath === `/projects/${p.id}`;
-                    return (
-                      <SidebarMenuItem key={p.id}>
-                        <SidebarMenuButton asChild>
-                          <button
-                            onClick={() => navigate(`/projects/${p.id}`)}
-                            className={cn(
-                              'flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors',
-                              'text-sidebar-foreground hover:bg-sidebar-accent',
-                              isCurrentProject && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                            )}
-                          >
-                            <div className={cn('h-2 w-2 rounded-full shrink-0', hc.dot)} />
-                            <span className="truncate text-xs">{p.name}</span>
-                          </button>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </>
-              )}
-            </CollapsibleNavGroup>
-          )}
-
-
-          {/* NSPIRE Compliance Module */}
-          {isModuleEnabled('nspireEnabled') && canView('inspections') && (
-            <CollapsibleNavGroup
-              title="NSPIRE Compliance"
-              icon={<ClipboardCheck className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isNspireActive}
-              indicator="bg-[hsl(var(--module-inspections))]"
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections"
-                  icon={<ClipboardCheck className="h-4 w-4" />}
-                  label="Dashboard"
-                  collapsed={collapsed}
-                  end
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/outside"
-                  icon={<TreePine className="h-4 w-4" />}
-                  label="Outside"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/inside"
-                  icon={<Building className="h-4 w-4" />}
-                  label="Inside"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/inspections/units"
-                  icon={<DoorOpen className="h-4 w-4" />}
-                  label="Units"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-            </CollapsibleNavGroup>
-          )}
-
-          {/* Portfolio - Properties, Units, Assets, Occupancy */}
-          {canView('properties') && (
-            <CollapsibleNavGroup
-              title="Portfolio"
-              icon={<Layers className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isPortfolioActive}
-            >
-              <SidebarMenuItem>
-                <NavItem
-                  to="/properties"
-                  icon={<Building className="h-4 w-4" />}
-                  label="Properties"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/units"
-                  icon={<DoorOpen className="h-4 w-4" />}
-                  label="Units"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <NavItem
-                  to="/assets"
-                  icon={<Box className="h-4 w-4" />}
-                  label="Assets"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
-              {isModuleEnabled('occupancyEnabled') && (
-                <SidebarMenuItem>
-                  <NavItem
-                    to="/occupancy"
-                    icon={<Home className="h-4 w-4" />}
-                    label="Occupancy"
-                    collapsed={collapsed}
-                  />
-                </SidebarMenuItem>
-              )}
-            </CollapsibleNavGroup>
-          )}
-
-          {/* Operations - Issues, Work Orders, Permits */}
-          {(canView('issues') || canView('work_orders')) && (
-            <CollapsibleNavGroup
-              title="Operations"
-              icon={<Wrench className="h-3 w-3" />}
-              collapsed={collapsed}
-              isActive={isOperationsActive}
-            >
-              {canView('issues') && (
-                <SidebarMenuItem>
-                  <NavItem
-                    to="/issues"
-                    icon={<AlertTriangle className="h-4 w-4" />}
-                    label="Issues"
-                    collapsed={collapsed}
-                  />
-                </SidebarMenuItem>
-              )}
-              {canView('work_orders') && (
-                <>
-                  <SidebarMenuItem>
-                    <NavItem
-                      to="/work-orders"
-                      icon={<Wrench className="h-4 w-4" />}
-                      label="Work Orders"
-                      collapsed={collapsed}
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <NavItem
-                      to="/permits"
-                      icon={<Shield className="h-4 w-4" />}
-                      label="Permits"
-                      collapsed={collapsed}
-                    />
-                  </SidebarMenuItem>
-                </>
-              )}
-            </CollapsibleNavGroup>
-          )}
-
-          {/* Communications - Messages, Email, Voice Agent */}
-          <CollapsibleNavGroup
-            title="Communications"
-            icon={<Megaphone className="h-3 w-3" />}
-            collapsed={collapsed}
-            isActive={isCommunicationsActive}
-          >
-            <SidebarMenuItem>
-              <NavItem
-                to="/messages"
-                icon={<MessageCircle className="h-4 w-4" />}
-                label="Messages"
-                collapsed={collapsed}
-                badge={unreadCount}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/inbox"
-                icon={<Mail className="h-4 w-4" />}
-                label="Email"
-                collapsed={collapsed}
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/voice-agent"
-                icon={<Phone className="h-4 w-4" />}
-                label="Voice Agent"
-                collapsed={collapsed}
-                tooltip="AI Voice Call Center"
-              />
-            </SidebarMenuItem>
-          </CollapsibleNavGroup>
-
-          {/* Organization - People, Contacts, Training, Reports, Documents */}
-          <CollapsibleNavGroup
-            title="Organization"
-            icon={<Briefcase className="h-3 w-3" />}
-            collapsed={collapsed}
-            isActive={isOrganizationActive}
-          >
-            {canView('people') && (
-              <SidebarMenuItem>
-                <NavItem
-                  to="/people"
-                  icon={<Users className="h-4 w-4" />}
-                  label="People"
-                  collapsed={collapsed}
-                  tooltip="Team member management"
-                />
-              </SidebarMenuItem>
+                )}
+                {isAdmin && (
+                  <div className="pl-7">
+                    <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
+                  </div>
+                )}
+              </>
             )}
-            <SidebarMenuItem>
+            {canView('issues') && (
               <NavItem
-                to="/organizations"
-                icon={<Building2 className="h-4 w-4" />}
-                label="Organizations"
+                to="/issues"
+                icon={AlertTriangle}
+                label="Issues"
                 collapsed={collapsed}
-                tooltip="Companies & Clients"
+                badge={openIssueCount}
+                badgeVariant={openIssueCount > 5 ? 'urgent' : 'default'}
+                tooltip={openIssueCount > 0 ? `Issues — ${openIssueCount} open` : 'Issues'}
               />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/contacts"
-                icon={<Contact className="h-4 w-4" />}
-                label="Contacts"
-                collapsed={collapsed}
-                tooltip="CRM - Vendors & contacts"
-              />
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <NavItem
-                to="/training"
-                icon={<GraduationCap className="h-4 w-4" />}
-                label="Training"
-                collapsed={collapsed}
-                tooltip="Training Academy"
-              />
-            </SidebarMenuItem>
+            )}
+            {canView('work_orders') && (
+              <>
+                <NavItem to="/work-orders" icon={Wrench} label="Work Orders" collapsed={collapsed} />
+                <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
+              </>
+            )}
+          </nav>
+
+          <ZoneDivider />
+
+          {/* ZONE 4 — TEAM & TOOLS */}
+          {!collapsed && <ZoneLabel label="Team & Tools" />}
+          <nav className="space-y-0.5">
+            <NavItem
+              to="/messages"
+              icon={MessageCircle}
+              label="Messages"
+              collapsed={collapsed}
+              badge={unreadCount}
+              badgeVariant="default"
+              tooltip={unreadCount > 0 ? `Messages — ${unreadCount} unread` : 'Messages'}
+            />
+            <NavItem to="/inbox" icon={Mail} label="Email" collapsed={collapsed} />
+            <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
+            <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} tooltip="CRM — Vendors & contacts" />
+            {canView('people') && (
+              <NavItem to="/people" icon={Users} label="People" collapsed={collapsed} tooltip="Team member management" />
+            )}
+            <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} tooltip="Training Academy" />
             {canView('documents') && (
-              <SidebarMenuItem>
-                <NavItem
-                  to="/documents"
-                  icon={<FileText className="h-4 w-4" />}
-                  label="Documents"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
+              <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />
             )}
             {canView('reports') && (
-              <SidebarMenuItem>
-                <NavItem
-                  to="/reports"
-                  icon={<BarChart3 className="h-4 w-4" />}
-                  label="Reports"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
+              <NavItem to="/reports" icon={BarChart3} label="Reports" collapsed={collapsed} />
             )}
-          </CollapsibleNavGroup>
-
-          {/* Tools - QR Scanner (conditional) */}
-          {isModuleEnabled('qrScanningEnabled') && (
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">
-                Tools
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <NavItem
-                      to="/qr-scanner"
-                      icon={<QrCode className="h-4 w-4" />}
-                      label="QR Scanner"
-                      collapsed={collapsed}
-                    />
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
+            {isModuleEnabled('qrScanningEnabled') && (
+              <NavItem to="/qr-scanner" icon={QrCode} label="QR Scanner" collapsed={collapsed} />
+            )}
+          </nav>
         </SidebarContent>
 
-        {/* Rail — thin clickable strip on the sidebar edge for collapse/expand */}
+        {/* Rail */}
         <SidebarRail />
 
-        {/* Footer with user and settings */}
-        <SidebarFooter className="border-t border-sidebar-border p-2">
-          <SidebarMenu>
-            {/* User info */}
-            <SidebarMenuItem>
-              <div className={cn(
-                "flex items-center gap-3 px-2 py-2",
-                collapsed && "justify-center"
-              )}>
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
+        {/* ── FOOTER ─────────────────────────────────────────────────────── */}
+        <SidebarFooter className="p-2 border-t border-[hsl(var(--sidebar-border)/0.4)]">
+          {/* Settings */}
+          {canView('settings') && (
+            <NavItem to="/settings" icon={Settings} label="Settings" collapsed={collapsed} />
+          )}
+
+          {/* User identity block */}
+          <div className={cn(
+            "flex items-center gap-2.5 mt-1 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors",
+            collapsed && "justify-center px-0"
+          )}>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={signOut}
+                    className="flex flex-col items-center gap-1"
+                    title="Sign out"
+                  >
+                    <Avatar className="h-8 w-8 cursor-pointer">
+                      <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-xs font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {userName} · Sign out
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <>
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-xs font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                {!collapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">
-                      {user?.user_metadata?.full_name || 'User'}
-                    </p>
-                    <p className="text-xs text-sidebar-muted truncate">
-                      {user?.email}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </SidebarMenuItem>
-            
-            {/* Settings - Admin only */}
-            {canView('settings') && (
-              <SidebarMenuItem>
-                <NavItem
-                  to="/settings"
-                  icon={<Settings className="h-4 w-4" />}
-                  label="Settings"
-                  collapsed={collapsed}
-                />
-              </SidebarMenuItem>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
+                    {userName}
+                  </p>
+                  <p className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
+                    {userRole}
+                  </p>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={signOut}
+                      className="h-7 w-7 flex items-center justify-center rounded-md text-[hsl(var(--sidebar-muted))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors shrink-0"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">Sign out</TooltipContent>
+                </Tooltip>
+              </>
             )}
-            
-            {/* Logout */}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={signOut}
-                className="flex items-center gap-3 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-                {!collapsed && <span>Log out</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          </div>
         </SidebarFooter>
       </Sidebar>
     </TooltipProvider>
