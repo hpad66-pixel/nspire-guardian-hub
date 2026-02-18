@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence';
+export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence' | 'meeting_minutes';
 
 interface UseTextPolishResult {
   polish: (text: string, context?: PolishContext) => Promise<string | null>;

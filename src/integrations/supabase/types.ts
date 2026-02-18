@@ -1909,6 +1909,72 @@ export type Database = {
           },
         ]
       }
+      project_meetings: {
+        Row: {
+          attendees: Json | null
+          created_at: string
+          created_by: string | null
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          location: string | null
+          meeting_date: string
+          meeting_time: string | null
+          meeting_type: string
+          polished_notes: string | null
+          polished_notes_html: string | null
+          project_id: string
+          raw_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: Json | null
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          location?: string | null
+          meeting_date?: string
+          meeting_time?: string | null
+          meeting_type?: string
+          polished_notes?: string | null
+          polished_notes_html?: string | null
+          project_id: string
+          raw_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: Json | null
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          location?: string | null
+          meeting_date?: string
+          meeting_time?: string | null
+          meeting_type?: string
+          polished_notes?: string | null
+          polished_notes_html?: string | null
+          project_id?: string
+          raw_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_milestones: {
         Row: {
           assigned_to: string | null
