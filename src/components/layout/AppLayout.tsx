@@ -6,7 +6,8 @@ import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, Download } from 'lucide-react';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
@@ -23,6 +24,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
+  const { isInstallable, install } = usePWAInstall();
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -181,6 +183,17 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="flex-1" />
 
               <div className="flex items-center gap-2">
+                {isInstallable && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={install}
+                    className="hidden sm:flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Install App
+                  </Button>
+                )}
                 <NotificationCenter />
                 {/* Role badge — hide on small mobile */}
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">
