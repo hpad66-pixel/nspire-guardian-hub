@@ -10,6 +10,37 @@ const contextPrompts: Record<string, string> = {
   scope: "Structure this as a professional scope of work. Use numbered or bulleted lists for deliverables if there are multiple items. Be specific about what is included. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
+  meeting_minutes: `Transform these raw meeting notes into formal, structured meeting minutes. Use the following format:
+
+**MEETING MINUTES**
+
+**Date & Time:** [extract from notes or leave as provided]
+**Location:** [extract or leave blank]
+**Attendees:** [list all mentioned attendees]
+
+---
+
+**1. CALL TO ORDER / OPENING**
+[Brief opening summary]
+
+**2. AGENDA ITEMS DISCUSSED**
+[Numbered list of topics discussed with brief summaries]
+
+**3. KEY DECISIONS MADE**
+[Bullet list of all decisions reached]
+
+**4. ACTION ITEMS**
+| Action Item | Responsible Party | Due Date |
+|---|---|---|
+[Table of action items extracted from notes]
+
+**5. NEXT STEPS / UPCOMING MEETINGS**
+[Summary of follow-ups and next meeting details if mentioned]
+
+---
+*Minutes prepared by [leave blank for signature]*
+
+Maintain all factual content. Fix grammar and improve clarity. Output only the formatted minutes, no explanations.`,
 };
 
 serve(async (req) => {

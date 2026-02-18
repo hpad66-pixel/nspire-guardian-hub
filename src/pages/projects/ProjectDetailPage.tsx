@@ -33,6 +33,7 @@ import { SafetyTab } from '@/components/projects/SafetyTab';
 import { ProcurementTab } from '@/components/projects/ProcurementTab';
 import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
+import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { useAuth } from '@/hooks/useAuth';
 
 const statusColors: Record<string, string> = {
@@ -218,6 +219,7 @@ export default function ProjectDetailPage() {
             <TabsTrigger value="progress">Progress</TabsTrigger>
             <TabsTrigger value="procurement">Procurement</TabsTrigger>
             <TabsTrigger value="safety">Safety</TabsTrigger>
+            <TabsTrigger value="meetings">Meetings</TabsTrigger>
             <TabsTrigger value="closeout">Closeout</TabsTrigger>
             <TabsTrigger value="proposals">Proposals</TabsTrigger>
           </TabsList>
@@ -312,6 +314,9 @@ export default function ProjectDetailPage() {
           </TabsContent>
           <TabsContent value="safety">
             <SafetyTab projectId={id!} />
+          </TabsContent>
+          <TabsContent value="meetings">
+            <MeetingsTab projectId={id!} />
           </TabsContent>
           <TabsContent value="closeout">
             <CloseoutTab projectId={id!} />
