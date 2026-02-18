@@ -1,6 +1,7 @@
 import { useModules } from '@/contexts/ModuleContext';
 import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useClientsWithCounts } from '@/hooks/useClients';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { 
   Settings, 
   ClipboardCheck, 
@@ -20,6 +23,10 @@ import {
   Building2,
   Sun,
   TreePine,
+  ArrowRight,
+  Briefcase,
+  Home,
+  Shield,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { toast } from 'sonner';
@@ -28,7 +35,9 @@ export default function SettingsPage() {
   const { modules, toggleModule, isLoading: modulesLoading, refetchModules } = useModules();
   const { data: properties, isLoading: propertiesLoading } = useProperties();
   const { data: currentUserRole } = useCurrentUserRole();
+  const { data: organizations } = useClientsWithCounts();
   const updateProperty = useUpdateProperty();
+  const navigate = useNavigate();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
@@ -400,37 +409,114 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="organization">
-          {/* Tenant Info */}
+        <TabsContent value="organization" className="space-y-4">
+          {/* Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Tenant Configuration
-              </CardTitle>
-              <CardDescription>Organization settings and preferences</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Organizations & Clients
+                  </CardTitle>
+                  <CardDescription>
+                    Manage companies, clients, and organizational affiliations
+                  </CardDescription>
+                </div>
+                <Button onClick={() => navigate('/organizations')}>
+                  Manage Organizations
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Organization Name</Label>
-                    <p className="font-medium">Acme Property Management</p>
+              {/* Quick stats */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
+                {[
+                  { type: 'internal_org', label: 'Internal Orgs', icon: <Building2 className="h-4 w-4" /> },
+                  { type: 'business_client', label: 'Business Clients', icon: <Briefcase className="h-4 w-4" /> },
+                  { type: 'property_management', label: 'Property Mgmt', icon: <Home className="h-4 w-4" /> },
+                  { type: 'government', label: 'Government', icon: <Shield className="h-4 w-4" /> },
+                ].map(({ type, label, icon }) => (
+                  <div key={type} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      {icon}
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold leading-none">
+                        {organizations?.filter(o => o.client_type === type && o.is_active).length ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Tenant ID</Label>
-                    <p className="font-medium font-mono text-sm">tenant_abc123</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Properties</Label>
-                    <p className="font-medium">{properties?.length || 0} active</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Total Units</Label>
-                    <p className="font-medium">
-                      {properties?.reduce((sum, p) => sum + (p.total_units || 0), 0) || 0}
+                ))}
+              </div>
+
+              {/* Recent orgs preview */}
+              {organizations && organizations.filter(o => o.is_active).length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Active Organizations</p>
+                  {organizations.filter(o => o.is_active).slice(0, 5).map((org) => (
+                    <div key={org.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{org.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {org.client_type.replace(/_/g, ' ')} · {org.member_count ?? 0} members · {org.project_count ?? 0} projects
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {organizations.filter(o => o.is_active).length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      +{organizations.filter(o => o.is_active).length - 5} more
                     </p>
-                  </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/30">
+                  <Building2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                  <p className="text-sm font-medium">No organizations yet</p>
+                  <p className="text-xs mt-1">Create organizations to link them to projects and team members</p>
+                  <Button variant="outline" className="mt-4" size="sm" onClick={() => navigate('/organizations')}>
+                    Create First Organization
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Platform info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Information</CardTitle>
+              <CardDescription>Your current platform configuration</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Properties</Label>
+                  <p className="font-medium">{properties?.length || 0} active</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Total Units</Label>
+                  <p className="font-medium">
+                    {properties?.reduce((sum, p) => sum + (p.total_units || 0), 0) || 0}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Organizations</Label>
+                  <p className="font-medium">{organizations?.filter(o => o.is_active).length || 0} active</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Linked Members</Label>
+                  <p className="font-medium">
+                    {organizations?.reduce((sum, o) => sum + (o.member_count ?? 0), 0) || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -440,3 +526,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
