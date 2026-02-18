@@ -57,24 +57,24 @@ export default function PeoplePage() {
   }, [canManageRoles, activeTab]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">People</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">People</h1>
+          <p className="text-sm text-muted-foreground">
             Manage team members across all properties
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(userRole === 'admin' || userRole === 'owner' || userRole === 'manager') && (
-            <Button variant="outline" onClick={() => setShowInviteDialog(true)}>
+            <Button variant="outline" size="sm" onClick={() => setShowInviteDialog(true)}>
               <Mail className="mr-2 h-4 w-4" />
               Invite User
             </Button>
           )}
           {canCreate('people') && (
-            <Button onClick={() => setShowAddDialog(true)}>
+            <Button size="sm" onClick={() => setShowAddDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Person
             </Button>
@@ -83,7 +83,7 @@ export default function PeoplePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Members</CardTitle>

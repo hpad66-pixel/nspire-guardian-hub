@@ -158,49 +158,52 @@ export default function IssuesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-9 w-9 rounded-lg bg-warning/10 flex items-center justify-center">
               <AlertTriangle className="h-5 w-5 text-warning" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Issues</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Issues</h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Cross-module issue tracking • Unified view of all property issues
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {needsAttentionCount > 0 && (
             <Button 
               variant={filterNeedsAttention ? "default" : "outline"}
+              size="sm"
               onClick={() => setFilterNeedsAttention(!filterNeedsAttention)}
-              className="gap-2"
+              className="gap-2 h-9"
             >
               <AtSign className="h-4 w-4" />
-              Needs Your Attention
+              <span className="hidden sm:inline">Needs Your Attention</span>
+              <span className="sm:hidden">Attention</span>
               <Badge variant="secondary" className="ml-1">
                 {needsAttentionCount}
               </Badge>
             </Button>
           )}
           <IssueFilterPopover filters={filters} onFiltersChange={setFilters} />
-          <Button variant="outline" onClick={handleExport} disabled={displayedIssues.length === 0}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={displayedIssues.length === 0}>
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export CSV</span>
           </Button>
           {canCreate('issues') && (
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Issue
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Create Issue</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-destructive">{stats.severe}</div>
@@ -260,58 +263,55 @@ export default function IssuesPage() {
             </div>
           ) : paginatedData && paginatedData.length > 0 ? (
             <div className="space-y-3">
-              {paginatedData.map((issue) => {
-                const isAssigned = issue.assigned_to === user?.id && issue.status !== 'resolved';
-                const isMentioned = mentionedIssueIds.includes(issue.id) && issue.status !== 'resolved';
-                const needsAttention = isAssigned || isMentioned;
-                
-                return (
-                  <div 
-                    key={issue.id} 
-                    onClick={() => handleIssueClick(issue)}
-                    className={cn(
-                      "flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer",
-                      needsAttention && "border-l-4 border-l-primary"
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium">{issue.title}</p>
-                          {isAssigned && (
-                            <Badge variant="default" className="text-xs">
-                              Assigned to You
-                            </Badge>
-                          )}
-                          {isMentioned && !isAssigned && (
-                            <Badge variant="secondary" className="text-xs gap-1">
-                              <AtSign className="h-3 w-3" />
-                              Mentioned
-                            </Badge>
-                          )}
+                  {paginatedData.map((issue) => {
+                    const isAssigned = issue.assigned_to === user?.id && issue.status !== 'resolved';
+                    const isMentioned = mentionedIssueIds.includes(issue.id) && issue.status !== 'resolved';
+                    const needsAttention = isAssigned || isMentioned;
+                    
+                    return (
+                      <div 
+                        key={issue.id} 
+                        onClick={() => handleIssueClick(issue)}
+                        className={cn(
+                          "p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer",
+                          needsAttention && "border-l-4 border-l-primary"
+                        )}
+                      >
+                        {/* Mobile: stacked layout */}
+                        <div className="flex items-start gap-3">
+                          <SeverityBadge severity={issue.severity as 'low' | 'moderate' | 'severe'} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-medium text-sm leading-snug">{issue.title}</p>
+                              <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'} className="shrink-0 text-xs">
+                                {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {issue.property?.name || 'Unknown property'}
+                              {issue.unit?.unit_number && ` • Unit ${issue.unit.unit_number}`}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              {isAssigned && (
+                                <Badge variant="default" className="text-xs">Assigned to You</Badge>
+                              )}
+                              {isMentioned && !isAssigned && (
+                                <Badge variant="secondary" className="text-xs gap-1">
+                                  <AtSign className="h-3 w-3" />Mentioned
+                                </Badge>
+                              )}
+                              <span className={`text-xs px-2 py-0.5 rounded ${sourceColors[issue.source_module] || sourceColors.core}`}>
+                                {sourceLabels[issue.source_module] || 'Core'}
+                              </span>
+                              {issue.proof_required && (
+                                <span className="text-xs text-warning">Proof req.</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {issue.property?.name || 'Unknown property'}
-                          {issue.unit?.unit_number && ` • Unit ${issue.unit.unit_number}`}
-                        </p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {issue.area && <AreaBadge area={issue.area as 'outside' | 'inside' | 'unit'} />}
-                      <span className={`text-xs px-2 py-1 rounded ${sourceColors[issue.source_module] || sourceColors.core}`}>
-                        {sourceLabels[issue.source_module] || 'Core'}
-                      </span>
-                      <Badge variant={issue.status === 'open' ? 'outline' : issue.status === 'in_progress' ? 'secondary' : 'default'}>
-                        {issue.status === 'open' ? 'Open' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
-                      </Badge>
-                      {issue.proof_required && (
-                        <span className="text-xs text-warning">Proof required</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
             </div>
           ) : (
             <div className="text-center py-12">

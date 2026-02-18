@@ -1,6 +1,7 @@
-import { X, Download, Smartphone } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/usePWA';
+import { Link } from 'react-router-dom';
 
 export function PWAInstallBanner() {
   const { isInstallable, isIOS, isInstalled, showBanner, install, dismiss } = usePWAInstall();
@@ -17,7 +18,8 @@ export function PWAInstallBanner() {
           <p className="text-sm font-semibold text-foreground leading-tight">Install APAS OS</p>
           {isIOS ? (
             <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-              Tap <strong>Share</strong> then <strong>"Add to Home Screen"</strong> for the best experience.
+              Tap <strong>Share</strong> then <strong>"Add to Home Screen"</strong>.{' '}
+              <Link to="/install" className="underline">View full guide →</Link>
             </p>
           ) : (
             <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
