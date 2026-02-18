@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
 import { getAssignedPropertyIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
+import { useAuth } from './useAuth';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
@@ -70,7 +71,8 @@ async function buildNonAdminFilter(query: any) {
 }
 
 export function useProjects() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', isAdmin],
     queryFn: async () => {
@@ -87,11 +89,14 @@ export function useProjects() {
       if (error) throw error;
       return data as Project[];
     },
+    // Don't fire until we know for sure whether user is admin or not
+    enabled: !!user && !permissionsLoading,
   });
 }
 
 export function useActiveProjects() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', 'active', isAdmin],
     queryFn: async () => {
@@ -109,11 +114,13 @@ export function useActiveProjects() {
       if (error) throw error;
       return data as Project[];
     },
+    enabled: !!user && !permissionsLoading,
   });
 }
 
 export function useProject(projectId: string | null) {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', projectId, isAdmin],
     queryFn: async () => {
@@ -132,12 +139,13 @@ export function useProject(projectId: string | null) {
       if (error) throw error;
       return data as Project;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!user && !permissionsLoading,
   });
 }
 
 export function useProjectsByProperty(propertyId: string | null) {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', 'property', propertyId, isAdmin],
     queryFn: async () => {
@@ -156,12 +164,13 @@ export function useProjectsByProperty(propertyId: string | null) {
       if (error) throw error;
       return data as Project[];
     },
-    enabled: !!propertyId,
+    enabled: !!propertyId && !!user && !permissionsLoading,
   });
 }
 
 export function useProjectStats() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', 'stats', isAdmin],
     queryFn: async () => {
@@ -185,6 +194,7 @@ export function useProjectStats() {
 
       return { active, planning, onHold, completed, totalBudget, totalSpent, total: data.length };
     },
+    enabled: !!user && !permissionsLoading,
   });
 }
 
