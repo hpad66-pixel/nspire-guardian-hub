@@ -2,21 +2,11 @@ import { ReactNode, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
+import { MobileNav } from './MobileNav';
 import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import {
-  Search,
-  Download,
-  WifiOff,
-  LayoutDashboard,
-  ClipboardCheck,
-  AlertTriangle,
-  Wrench,
-  MessageCircle,
-  MoreHorizontal,
-} from 'lucide-react';
+import { Search, Download, WifiOff } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -25,6 +15,7 @@ import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
+import { cn } from '@/lib/utils';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
@@ -38,11 +29,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
   const { isInstallable, install } = usePWAInstall();
   const isOnline = useOnlineStatus();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(); // < 768px
+  // Show bottom nav on anything below desktop (< 1024px)
+  const [showMobileNav, setShowMobileNav] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setShowMobileNav(mql.matches);
+    mql.addEventListener('change', onChange);
+    setShowMobileNav(mql.matches);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   type AppRole = Database['public']['Enums']['app_role'];
@@ -92,11 +93,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     return user?.email?.slice(0, 2).toUpperCase() || 'U';
   })();
 
-  // Close more menu on route change
-  useEffect(() => {
-    setMoreMenuOpen(false);
-  }, [location.pathname]);
-
   // Keyboard shortcut for search
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -140,20 +136,12 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 
-  const primaryNavItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Inspections', icon: ClipboardCheck, path: '/inspections' },
-    { label: 'Issues', icon: AlertTriangle, path: '/issues' },
-    { label: 'Work Orders', icon: Wrench, path: '/work-orders' },
-    { label: 'Messages', icon: MessageCircle, path: '/messages' },
-  ];
-
   return (
     <>
       <PWAUpdateBanner />
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          {/* Desktop sidebar — hidden on mobile */}
+          {/* Desktop sidebar — hidden on mobile/tablet */}
           <div className="hidden lg:block">
             <AppSidebar />
           </div>
@@ -162,24 +150,32 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Header */}
             <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
 
-              {/* Desktop: sidebar trigger */}
+              {/* Desktop only: sidebar trigger */}
               <div className="hidden lg:block">
                 <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               </div>
 
-
-
-
-              {/* Search — full width on desktop, condensed on mobile */}
+              {/* Mobile: icon-only search button */}
               <Button
-                variant="outline"
-                className="relative h-9 flex-1 max-w-xs justify-start text-sm text-muted-foreground"
+                variant="ghost"
+                size="icon"
+                className={cn('h-9 w-9 lg:hidden')}
                 onClick={() => setSearchOpen(true)}
               >
-                <Search className="mr-2 h-4 w-4 shrink-0" />
-                <span className="truncate hidden sm:inline">Search...</span>
-                <span className="truncate sm:hidden">Search</span>
-                <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 md:flex">
+                <Search className="h-4 w-4" />
+              </Button>
+
+              {/* Desktop: full search bar */}
+              <Button
+                variant="outline"
+                className={cn(
+                  'relative h-9 w-64 justify-start text-sm text-muted-foreground hidden lg:flex'
+                )}
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Search...
+                <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
@@ -212,8 +208,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Push notification permission banner */}
             <NotificationPermissionBanner />
 
-            {/* Main Content — add bottom padding on mobile for nav bar */}
-            <main className="flex-1 overflow-auto pb-16 md:pb-0">
+            {/* Main Content — pb-16 on mobile/tablet for bottom nav bar */}
+            <main className={cn('flex-1 overflow-auto', showMobileNav && 'pb-16')}>
               {!isOnline && (
                 <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-sm font-medium text-yellow-950">
                   <WifiOff className="h-4 w-4 shrink-0" />
@@ -227,41 +223,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       </SidebarProvider>
 
-      {/* Mobile Bottom Navigation — only on mobile */}
-      {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-[100] flex h-16 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md px-2">
-          {primaryNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
-                <span className="text-[10px] font-medium leading-none">{item.label}</span>
-              </button>
-            );
-          })}
-          {/* More — opens full sidebar sheet */}
-          <Sheet open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
-            <SheetTrigger asChild>
-              <button className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground">
-                <MoreHorizontal className="h-5 w-5" />
-                <span className="text-[10px] font-medium leading-none">More</span>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <SidebarProvider defaultOpen={true} style={{ '--sidebar-width': '18rem' } as React.CSSProperties}>
-                <AppSidebar />
-              </SidebarProvider>
-            </SheetContent>
-          </Sheet>
-        </nav>
-      )}
+      {/* Mobile Bottom Navigation — iPhone + iPad (< 1024px) */}
+      {showMobileNav && <MobileNav />}
 
       {/* PWA Install Banner — rendered outside SidebarProvider so it overlays correctly */}
       <PWAInstallBanner />
