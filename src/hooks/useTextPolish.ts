@@ -4,29 +4,32 @@ import { toast } from 'sonner';
 
 export type PolishContext = 'description' | 'scope' | 'notes' | 'correspondence' | 'meeting_minutes';
 
-interface PolishOptions {
+export interface PolishOptions {
   context?: PolishContext;
   /** Override the AI model used. Falls back to context-based routing if omitted. */
   model?: string;
 }
 
 interface UseTextPolishResult {
-  polish: (text: string, options?: PolishContext | PolishOptions) => Promise<string | null>;
+  polish: (text: string, options?: PolishContext | PolishOptions) => Promise<string>;
   isPolishing: boolean;
 }
 
 export function useTextPolish(): UseTextPolishResult {
   const [isPolishing, setIsPolishing] = useState(false);
 
-  const polish = useCallback(async (text: string, options?: PolishContext | PolishOptions): Promise<string | null> => {
-    // Accept either a plain context string (legacy) or an options object
-    const context: PolishContext = typeof options === 'string' ? options : (options?.context ?? 'notes');
-    const preferredModel: string | undefined = typeof options === 'object' ? options?.model : undefined;
+  const polish = useCallback(async (
+    text: string,
+    options?: PolishContext | PolishOptions,
+  ): Promise<string> => {
+    // Always return the original text as a safe fallback
+    if (!text.trim()) return text;
 
-    if (!text.trim()) {
-      toast.error('Please enter some text first');
-      return null;
-    }
+    // Accept either a plain context string (legacy) or an options object
+    const context: PolishContext =
+      typeof options === 'string' ? options : (options?.context ?? 'notes');
+    const preferredModel: string | undefined =
+      typeof options === 'object' ? options?.model : undefined;
 
     setIsPolishing(true);
 
@@ -35,36 +38,23 @@ export function useTextPolish(): UseTextPolishResult {
         body: { text, context, preferredModel },
       });
 
+      // SDK-level error (network failure, unexpected non-2xx, etc.)
       if (error) {
-        // Parse error message from edge function response
-        let message = 'Failed to polish text';
-        let isCreditsError = false;
-        if (error.message) {
-          try {
-            const parsed = JSON.parse(error.message);
-            message = parsed.error || error.message;
-            isCreditsError = message.toLowerCase().includes('credits');
-          } catch {
-            message = error.message;
-            isCreditsError = message.toLowerCase().includes('credits');
-          }
-        }
-        if (isCreditsError) {
-          // Gracefully fall back to original text — don't block the user
-          toast.warning('AI polish unavailable (credits exhausted). Your text has been saved as-is.');
-          return text;
-        }
-        toast.error(message);
-        return text; // Always return original text so the UI doesn't get stuck
+        console.warn('polish-text function error:', error.message);
+        toast.warning('AI polish unavailable right now. Your text has been kept as-is.');
+        return text;
       }
 
+      // Edge function signalled credits exhausted via a 200 + warning flag
+      if (data?.warning === 'credits_exhausted') {
+        toast.warning('AI credits exhausted — text saved as-is. Add credits in Settings → Workspace → Usage.');
+        return data.original ?? text;
+      }
+
+      // Any other data-level error
       if (data?.error) {
-        const isCreditsError = data.error.toLowerCase().includes('credits');
-        if (isCreditsError) {
-          toast.warning('AI polish unavailable (credits exhausted). Your text has been saved as-is.');
-          return text;
-        }
-        toast.error(data.error);
+        console.warn('polish-text data error:', data.error);
+        toast.warning('AI polish unavailable. Your text has been kept as-is.');
         return text;
       }
 
@@ -75,9 +65,9 @@ export function useTextPolish(): UseTextPolishResult {
 
       return text;
     } catch (err) {
-      console.error('Polish error:', err);
-      // Never crash — return original text
-      toast.warning('AI polish unavailable. Your text has been saved as-is.');
+      // Should never reach here given the try/catch in invoke, but just in case
+      console.error('Unexpected polish error:', err);
+      toast.warning('AI polish unavailable. Your text has been kept as-is.');
       return text;
     } finally {
       setIsPolishing(false);
