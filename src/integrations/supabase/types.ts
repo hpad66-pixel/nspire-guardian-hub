@@ -1103,6 +1103,85 @@ export type Database = {
           },
         ]
       }
+      inventory_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          linked_project_id: string | null
+          linked_work_order_id: string | null
+          notes: string | null
+          property_id: string
+          quantity: number
+          quantity_after: number | null
+          reference_number: string | null
+          total_cost: number | null
+          transaction_date: string
+          transaction_type: string
+          unit_cost: number | null
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          linked_project_id?: string | null
+          linked_work_order_id?: string | null
+          notes?: string | null
+          property_id: string
+          quantity: number
+          quantity_after?: number | null
+          reference_number?: string | null
+          total_cost?: number | null
+          transaction_date?: string
+          transaction_type: string
+          unit_cost?: number | null
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          linked_project_id?: string | null
+          linked_work_order_id?: string | null
+          notes?: string | null
+          property_id?: string
+          quantity?: number
+          quantity_after?: number | null
+          reference_number?: string | null
+          total_cost?: number | null
+          transaction_date?: string
+          transaction_type?: string
+          unit_cost?: number | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "property_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_linked_project_id_fkey"
+            columns: ["linked_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       issue_comments: {
         Row: {
           content: string
@@ -3371,6 +3450,74 @@ export type Database = {
           },
         ]
       }
+      property_inventory_items: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          current_quantity: number
+          description: string | null
+          id: string
+          is_active: boolean
+          minimum_quantity: number | null
+          name: string
+          photo_url: string | null
+          preferred_vendor: string | null
+          property_id: string
+          sku: string | null
+          storage_location: string | null
+          unit_cost: number | null
+          unit_of_measure: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_quantity?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_quantity?: number | null
+          name: string
+          photo_url?: string | null
+          preferred_vendor?: string | null
+          property_id: string
+          sku?: string | null
+          storage_location?: string | null
+          unit_cost?: number | null
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_quantity?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          minimum_quantity?: number | null
+          name?: string
+          photo_url?: string | null
+          preferred_vendor?: string | null
+          property_id?: string
+          sku?: string | null
+          storage_location?: string | null
+          unit_cost?: number | null
+          unit_of_measure?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_team_members: {
         Row: {
           added_by: string | null
@@ -3429,6 +3576,89 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "property_team_members_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_utility_bills: {
+        Row: {
+          account_number: string | null
+          amount: number
+          amount_paid: number | null
+          bill_date: string | null
+          bill_period_end: string
+          bill_period_start: string
+          consumption_unit: string | null
+          consumption_value: number | null
+          created_at: string
+          created_by: string | null
+          document_name: string | null
+          document_url: string | null
+          due_date: string | null
+          id: string
+          is_estimated: boolean
+          notes: string | null
+          paid_at: string | null
+          property_id: string
+          provider_name: string | null
+          status: string
+          updated_at: string
+          utility_type: string
+        }
+        Insert: {
+          account_number?: string | null
+          amount: number
+          amount_paid?: number | null
+          bill_date?: string | null
+          bill_period_end: string
+          bill_period_start: string
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_name?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_estimated?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          property_id: string
+          provider_name?: string | null
+          status?: string
+          updated_at?: string
+          utility_type: string
+        }
+        Update: {
+          account_number?: string | null
+          amount?: number
+          amount_paid?: number | null
+          bill_date?: string | null
+          bill_period_end?: string
+          bill_period_start?: string
+          consumption_unit?: string | null
+          consumption_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          document_name?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          id?: string
+          is_estimated?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          property_id?: string
+          provider_name?: string | null
+          status?: string
+          updated_at?: string
+          utility_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_utility_bills_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
