@@ -1,164 +1,135 @@
 
-# APAS OS — Complete Tier 2 & Tier 3 Execution Plan
+## Add "Email Externally" to RFIs, Submittals, Change Orders, Progress Reports & Proposals
 
-## Current Status Assessment
+### What This Does
+Every major project document type — RFIs, Submittals, Change Orders, Progress Reports, and Proposals — will get a premium **"Email Externally"** button/action. Clicking it opens a beautiful, reusable email compose dialog that lets users send the document to any external party (architect, subcontractor, owner, inspector, etc.) as a formatted email — with CC/BCC support, a pre-filled subject, optional personal message, and a PDF attachment of the document.
 
-### Tier 1 (Core PWA) — DONE
-`manifest.webmanifest`, branded icons, offline page, `PWAInstallBanner`, `PWAUpdateBanner`, iOS meta tags, service worker caching — all complete.
-
-### Tier 2 (Mobile UX) — ~30% done
-Only `WorkOrdersPage` was converted to mobile cards. All other pages still use desktop-first layouts with overflowing tables and headers.
-
-### Tier 3 (Enterprise Features) — 0% done
-Push notifications, realtime notification delivery, and an `/install` guide page are not built.
-
-### Tier 4 (Performance) — DONE
-Bundle splitting and dynamic imports are complete. Build passes.
+### Reference: Procore Screenshot Analysis
+The Procore screenshot shows an RFI detail page with an **"Emails (0)"** tab, a **Distribution List**, and metadata fields. Our version will be far more actionable — instead of just tracking email history on a separate tab, we'll give users a **one-click "Send via Email"** button right on each item that opens a polished compose dialog, 10x better than Procore's passive tab approach.
 
 ---
 
-## Tier 2 — Mobile Responsiveness (All Remaining Pages)
+### Architecture
 
-The approach across every page: **stack-on-mobile, table-on-desktop** — no horizontal scrolling, touch targets >= 44px, filter rows wrap on small screens.
-
-### Pages to fix (7 remaining):
-
-**1. `Dashboard.tsx`**
-- Header: responsive flex-wrap, property selector collapses on mobile
-- Module cards: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
-- My Tasks: tighten spacing, hide low-priority columns on mobile
-
-**2. `IssuesPage.tsx`**
-- Header buttons: overflow into a row that wraps and stacks on mobile
-- Stats cards: `grid-cols-2 md:grid-cols-4`
-- Issue rows: on mobile, collapse into card-style layout (severity + title top row, property + badges bottom row), hide area badge
-
-**3. `InspectionsDashboard.tsx`**
-- Header: `flex-col sm:flex-row` for title + button
-- Stats grid: `grid-cols-2 md:grid-cols-4`
-- Annual Progress card: area breakdown goes `grid-cols-1 md:grid-cols-3`
-- Defects list rows: collapse into stacked card layout on mobile
-
-**4. `ProjectsDashboard.tsx`**
-- Header: already partially wrapped, ensure button doesn't clip
-- Stats: `grid-cols-2 lg:grid-cols-4`
-- Control row: search full width on mobile, selects wrap below it
-- Project cards: already cards — just ensure they stack `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
-- Health strip: horizontal scroll on very small screens
-
-**5. `PeoplePage.tsx`**
-- Header buttons wrap on mobile
-- Filters column: full-width search, selects go `flex-wrap`
-- `PeopleTable` component: convert to card layout on `< md` via `useIsMobile` hook (already exists)
-
-**6. `PermitsDashboard.tsx`**
-- Header: flex-wrap
-- Filter row: wraps below search on mobile
-- `PermitCard` items: already card-based — verify padding and text don't overflow
-
-**7. `ReportsPage.tsx`**
-- Date range preset buttons: horizontal scroll or wrap on mobile
-- Report category cards: `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
-- Tab pills: scrollable on mobile
-
-**8. `OccupancyPage.tsx` and `PropertiesPage.tsx`**
-- Both use table or card layouts — ensure `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` responsive grids
-
----
-
-## Tier 3 — Enterprise Features
-
-### 3A: Web Push Notifications (Browser-native, works on Android + desktop; iOS 16.4+ PWA)
-
-**Database**
-- New migration to create `push_subscriptions` table:
-  ```sql
-  CREATE TABLE push_subscriptions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    endpoint text NOT NULL UNIQUE,
-    p256dh text NOT NULL,
-    auth text NOT NULL,
-    created_at timestamptz DEFAULT now()
-  );
-  ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-  -- Users can only manage their own subscriptions
-  CREATE POLICY "own_subs" ON push_subscriptions
-    USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-  ```
-
-**Edge Function: `send-push-notification`**
-- Accepts `{ user_id, title, body, url }` payload
-- Fetches all subscriptions for the given user_id
-- Uses Web Push Protocol (VAPID) to dispatch push to each endpoint
-- Needs `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` secrets (generated once, stored in secrets)
-- Falls back gracefully if no subscription exists
-
-**Frontend Hook: `usePushNotifications.ts`**
-- `subscribe()`: calls `Notification.requestPermission()`, then `serviceWorker.pushManager.subscribe()`, then saves the subscription to the `push_subscriptions` table
-- `unsubscribe()`: removes from DB
-- `isSupported`: boolean check for browser capability
-- `permission`: current state (`'default'` | `'granted'` | `'denied'`)
-
-**Service Worker additions in `vite.config.ts`**
-- Add `push` event listener in the SW via Workbox's `injectManifest` mode OR via a custom `sw.js` that handles push events and shows `self.registration.showNotification()`
-
-**UI: `NotificationPermissionBanner`**
-- Displayed once in `AppLayout` (below header) for users who haven't been asked
-- "Enable Notifications" button → calls `subscribe()`
-- Shows on Android Chrome and Desktop; hidden on iOS (push requires iOS 16.4+ Safari and the app must be added to home screen)
-
-**Integration points** — existing notifications already written to the `notifications` table by DB triggers (mentions, messages, deadlines). We add a call to the push edge function from those same triggers.
-
-### 3B: Offline Form Submission Queue (IndexedDB)
-
-This allows field staff (inspectors) to submit daily inspection items and work order notes without connectivity.
-
-**`src/lib/offlineQueue.ts`**
-- Opens an IndexedDB store called `apas-offline-queue`
-- `enqueue(action)`: saves `{ type, payload, timestamp }` to IDB
-- `flush()`: processes all queued items when `navigator.onLine` fires `true`
-- Listens to `window.addEventListener('online', flush)`
-
-**Integration points**
-- `DailyInspectionWizard.tsx`: wrap submit mutation with `try { await mutate() } catch { enqueue({type:'daily_inspection', payload}) }`
-- `WorkOrderDetailSheet.tsx`: same pattern for status updates made offline
-- Show a small amber "Offline — changes queued" toast/banner when device is offline
-
-### 3C: `/install` Guide Page (PWA How-To)
-
-A dedicated `/install` route (public-accessible, no auth required) that shows:
-- Step-by-step Android Chrome installation with animated screenshots
-- Step-by-step iOS Safari "Add to Home Screen" instructions
-- QR code linking to the app for desktop users to scan
-- "Already Installed? Open App →" CTA
-
-This page will be linked from:
-- `PWAInstallBanner` (iOS step text becomes a link)
-- The public landing page (`LandingPage.tsx`) via a "Download App" button
-
----
-
-## Implementation Order
+A single reusable `SendExternalEmailDialog` component will be created. Each document type just passes the relevant context (title, type, content) and the dialog handles the rest. No duplication.
 
 ```text
-Step 1  — DB migration: push_subscriptions table + RLS
-Step 2  — Edge Function: send-push-notification (VAPID)
-Step 3  — Hook: usePushNotifications.ts
-Step 4  — UI: NotificationPermissionBanner + wire into AppLayout
-Step 5  — Service Worker: push event handler (custom sw.js)
-Step 6  — Offline Queue: src/lib/offlineQueue.ts
-Step 7  — Wire offline queue into DailyInspectionWizard + WorkOrders
-Step 8  — /install page (with QR code, iOS + Android steps)
-Step 9  — Tier 2 mobile: Dashboard, Issues, Inspections, Projects, People, Permits, Reports, Occupancy, Properties (all pages)
-Step 10 — Link /install from LandingPage + PWAInstallBanner
+src/components/projects/
+  └─ SendExternalEmailDialog.tsx    ← NEW: reusable dialog (all document types)
+
+Components Updated:
+  ├─ RFIDetailSheet.tsx             ← Add "Send Email" button (sheet action)
+  ├─ RFIList.tsx                    ← Add "Send Email" per-row action (dropdown)
+  ├─ SubmittalsTab.tsx              ← Add "Send Email" per-row action
+  ├─ ChangeOrdersList.tsx           ← Add "Send Email" per-item action
+  ├─ ReportGeneratorDialog.tsx      ← Add "Email Report" button in review step
+  └─ ProposalList.tsx               ← Add "Email" option in dropdown menu
 ```
 
-## Technical Notes
+---
 
-- VAPID key pair generation: handled inside the edge function on first run (or pre-generated and stored as secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`). The public key must also be embedded in the frontend for `pushManager.subscribe({ applicationServerKey })`.
-- The existing `notifications` table + in-app `NotificationCenter` is untouched. Push is a parallel delivery channel that supplements it.
-- The offline queue uses IndexedDB (not localStorage) because it can store larger structured data and survives browser restarts.
-- All Tier 2 mobile fixes use Tailwind responsive prefixes only — no new dependencies needed.
-- The `/install` page uses the existing `QRCodeGenerator` component already in the codebase (`src/components/qr/QRCodeGenerator.tsx`).
-- `useIsMobile` hook already exists at `src/hooks/use-mobile.tsx` — used for conditional rendering inside table-heavy pages.
+### Technical Plan
+
+#### Step 1 — New Reusable Component: `SendExternalEmailDialog.tsx`
+
+Build a rich email composition dialog (inspired by the existing `SendReportEmailDialog` from inspections, which already has an excellent pattern with ContactPicker + badge recipients).
+
+**Props interface:**
+```typescript
+interface SendExternalEmailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  documentType: 'rfi' | 'submittal' | 'change_order' | 'progress_report' | 'proposal';
+  documentTitle: string;
+  documentId: string;
+  projectName: string;
+  defaultSubject?: string;
+  contentHtml?: string;    // for inline email body preview
+  onSent?: () => void;
+}
+```
+
+**Dialog design (premium, 10x Procore):**
+
+- **Header**: Icon (Mail) + "Send via Email" + document type chip badge (e.g. "RFI #9")
+- **Document preview card**: compact card showing document title, type chip, project name — so sender confirms what they're emailing
+- **To field**: Multi-email tag input with:
+  - Free-type any external email
+  - "From Contacts" button → opens existing `ContactPicker` component (already built)
+  - Tag badges with × remove
+- **CC field**: Collapsible (show "Add CC/BCC +" link), same multi-email tag input
+- **BCC field**: Same as CC, collapsed by default
+- **Subject**: Pre-filled intelligently based on document type (e.g. `"RFI #9 — Testing Company Information | [Project Name]"`)
+- **Personal message**: Textarea with placeholder — optional note shown in email body above the document details
+- **Attachment notice**: Pill showing `📎 Document summary included` (email body will contain formatted document info — no actual PDF required for RFIs/submittals, since we don't generate per-item PDFs; for Progress Reports and Proposals we use the existing PDF generation)
+- **Send button**: Primary CTA with loading state
+
+**Email content strategy by type:**
+- **RFI**: Subject: question, Due date, Status, Response (if any) — formatted as HTML table
+- **Submittal**: Title, submittal number, status, due date
+- **Change Order**: Title, amount, status, description
+- **Progress Report**: Uses existing PDF generation from `ReportGeneratorDialog` (already has `generatePDF`)
+- **Proposal**: Uses existing PDF path from `ProposalSendDialog` (already generates PDF)
+
+The dialog calls `useSendEmail` hook (the simple compose hook at `src/hooks/useSendEmail.ts`) which invokes the `send-email` edge function — this is already fully wired up and working for the mailbox module.
+
+#### Step 2 — Wire into RFIDetailSheet
+
+In `RFIDetailSheet.tsx`, add a **"Send via Email"** button in the actions section (alongside the existing "Close RFI" button):
+
+```
+[ Close RFI ]   [ Send via Email ↗ ]
+```
+
+Pass: `documentType="rfi"`, `documentTitle={rfi.subject}`, `documentId={rfi.id}`, and construct `contentHtml` from the RFI's question + response fields.
+
+Also add a per-row **dropdown action** in `RFIList.tsx` — each table row gets a `...` menu with "Open" and "Send via Email" options (mirrors the Procore "Emails" tab concept but far more accessible).
+
+#### Step 3 — Wire into SubmittalsTab
+
+In `SubmittalsTab.tsx`, add a **Mail icon button** on each submittal row (between the status badge and the status select dropdown). Clicking it opens the dialog for that submittal.
+
+#### Step 4 — Wire into ChangeOrdersList
+
+In `ChangeOrdersList.tsx`, add a **"Send via Email"** button for each change order item. Most useful for **pending** orders (send to client/owner for approval) but available on all statuses. Place it next to the existing Approve/Reject/Edit buttons.
+
+#### Step 5 — Wire into ReportGeneratorDialog (Progress Reports)
+
+In the **review step** of `ReportGeneratorDialog.tsx`, an existing `Mail` icon button is already present but needs to be wired to the external email dialog instead of (or in addition to) the internal send. Add a "Send Externally" option that opens `SendExternalEmailDialog` with PDF generation.
+
+#### Step 6 — Wire into ProposalList
+
+In `ProposalList.tsx`, add an **"Email Externally"** `DropdownMenuItem` in the per-proposal `...` menu. Currently the menu has View/Edit, Duplicate, Delete. Add **"Send via Email"** between Edit and Duplicate. This opens `SendExternalEmailDialog` with PDF generation (reusing the `ProposalSendDialog` PDF logic).
+
+---
+
+### Files to Create
+| File | Description |
+|---|---|
+| `src/components/projects/SendExternalEmailDialog.tsx` | New reusable email dialog |
+
+### Files to Modify
+| File | Change |
+|---|---|
+| `src/components/projects/RFIDetailSheet.tsx` | Add Send button in actions area |
+| `src/components/projects/RFIList.tsx` | Add per-row dropdown with Send option |
+| `src/components/projects/SubmittalsTab.tsx` | Add Mail button per row |
+| `src/components/projects/ChangeOrdersList.tsx` | Add Send button per change order |
+| `src/components/projects/ReportGeneratorDialog.tsx` | Wire email button in review step |
+| `src/components/proposals/ProposalList.tsx` | Add Email option in dropdown |
+
+### No Database Changes Required
+The existing `send-email` edge function and `report_emails` table already handle external email sending and logging. No new tables or migrations needed.
+
+---
+
+### UX Flow (10x Better Than Procore)
+
+**Procore:** User must navigate to a separate "Emails" tab, then click "Create Email", then fill a form.
+
+**Our version:**
+1. User clicks **"⇗ Email Externally"** directly on the RFI/Submittal/Change Order
+2. Compose dialog appears with document details pre-filled
+3. User types recipient email or picks from Contacts
+4. Hits Send — email sent instantly, logged in the mailbox system
+5. Done — 3 steps, no navigation required
