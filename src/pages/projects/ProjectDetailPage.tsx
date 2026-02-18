@@ -10,9 +10,10 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft, Building2, Calendar, DollarSign, Edit, FolderKanban,
-  TrendingUp, Clock, MessageSquareText,
+  TrendingUp, Clock, MessageSquareText, Activity,
 } from 'lucide-react';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
+import { ActivityFeedPanel } from '@/components/projects/ActivityFeedPanel';
 import { useProject } from '@/hooks/useProjects';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
@@ -57,6 +58,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
   const { data: milestones } = useMilestonesByProject(id ?? null);
@@ -129,7 +131,22 @@ export default function ProjectDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant={discussionsPanelOpen ? "secondary" : "outline"} onClick={() => setDiscussionsPanelOpen(!discussionsPanelOpen)}>
+            <Button
+              variant={activityFeedOpen ? "secondary" : "outline"}
+              onClick={() => {
+                setActivityFeedOpen(!activityFeedOpen);
+                if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
+              }}
+            >
+              <Activity className="h-4 w-4 mr-2" />Activity Feed
+            </Button>
+            <Button
+              variant={discussionsPanelOpen ? "secondary" : "outline"}
+              onClick={() => {
+                setDiscussionsPanelOpen(!discussionsPanelOpen);
+                if (activityFeedOpen) setActivityFeedOpen(false);
+              }}
+            >
               <MessageSquareText className="h-4 w-4 mr-2" />Discussions
             </Button>
             <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
@@ -330,6 +347,9 @@ export default function ProjectDetailPage() {
       </div>
 
       <AnimatePresence>
+        {activityFeedOpen && id && (
+          <ActivityFeedPanel projectId={id} open={activityFeedOpen} onClose={() => setActivityFeedOpen(false)} />
+        )}
         {discussionsPanelOpen && id && (
           <DiscussionPanel projectId={id} open={discussionsPanelOpen} onClose={() => setDiscussionsPanelOpen(false)} />
         )}
