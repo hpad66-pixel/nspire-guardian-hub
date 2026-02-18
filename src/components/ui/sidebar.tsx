@@ -136,7 +136,8 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const sidebarContext = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile } = sidebarContext;
 
   if (collapsible === "none") {
     return (
@@ -164,7 +165,9 @@ const Sidebar = React.forwardRef<
           }
           side={side}
         >
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <SidebarContext.Provider value={sidebarContext}>
+            <div className="flex h-full w-full flex-col">{children}</div>
+          </SidebarContext.Provider>
         </SheetContent>
       </Sheet>
     );

@@ -65,13 +65,13 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
-          <p className="text-muted-foreground">Manage your property portfolio</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Properties</h1>
+          <p className="text-sm text-muted-foreground">Manage your property portfolio</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button size="sm" onClick={() => setDialogOpen(true)} className="self-start sm:self-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Property
         </Button>

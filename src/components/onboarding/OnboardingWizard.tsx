@@ -78,6 +78,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <button
+        onClick={onComplete}
+        className="absolute top-4 right-4 text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+      >
+        Skip setup
+      </button>
       <div className="w-full max-w-2xl">
         <AnimatePresence mode="wait">
           <motion.div

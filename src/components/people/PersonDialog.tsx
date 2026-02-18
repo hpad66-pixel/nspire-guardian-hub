@@ -34,6 +34,7 @@ import { useRoleDefinitions } from '@/hooks/useRoleDefinitions';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAddPropertyAssignment } from '@/hooks/usePeople';
 import { useUserPermissions, getAssignableRoles } from '@/hooks/usePermissions';
+import { useActiveClients, useAssignClientToProfile } from '@/hooks/useClients';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -44,6 +45,7 @@ const formSchema = z.object({
   role: z.string().min(1, 'Please select a role'),
   title: z.string().optional(),
   department: z.string().optional(),
+  client_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -57,9 +59,11 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
   const { data: properties } = useProperties();
   const { data: roles } = useRoleDefinitions();
   const { data: profiles } = useProfiles();
+  const { data: clients } = useActiveClients();
   const { currentRole } = useUserPermissions();
   const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
   const addAssignment = useAddPropertyAssignment();
+  const assignClient = useAssignClientToProfile();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,6 +73,7 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
       role: 'user',
       title: '',
       department: '',
+      client_id: 'none',
     },
   });
 
@@ -80,6 +85,10 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
       title: data.title || undefined,
       department: data.department || undefined,
     });
+    // Assign to org if selected
+    if (data.client_id && data.client_id !== 'none') {
+      await assignClient.mutateAsync({ userId: data.user_id, clientId: data.client_id });
+    }
     form.reset();
     onOpenChange(false);
   };
@@ -215,6 +224,32 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="client_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organization (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="No organization" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">No organization</SelectItem>
+                      {clients?.map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

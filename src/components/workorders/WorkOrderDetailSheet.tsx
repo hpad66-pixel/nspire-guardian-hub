@@ -41,6 +41,7 @@ import { WorkOrderStatusStepper } from './WorkOrderStatusStepper';
 import { WorkOrderActivityLog } from './WorkOrderActivityLog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { enqueue } from '@/lib/offlineQueue';
 
 interface WorkOrderDetailSheetProps {
   workOrder: WorkOrder | null;
@@ -109,22 +110,35 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   };
   
   const handleSubmitForApproval = async () => {
-    await updateWorkOrder.mutateAsync({
-      id: workOrder.id,
-      status: 'pending_approval' as WorkOrder['status'],
-      submitted_at: new Date().toISOString(),
-      estimated_cost: estimatedCost ? parseFloat(estimatedCost) : null,
-      notes,
-    });
-    
-    await supabase.from('work_order_activity').insert({
-      work_order_id: workOrder.id,
-      user_id: user?.id,
-      action: 'submitted',
-      details: { estimated_cost: estimatedCost },
-    });
-    
-    toast.success('Work order submitted for approval');
+    try {
+      await updateWorkOrder.mutateAsync({
+        id: workOrder.id,
+        status: 'pending_approval' as WorkOrder['status'],
+        submitted_at: new Date().toISOString(),
+        estimated_cost: estimatedCost ? parseFloat(estimatedCost) : null,
+        notes,
+      });
+      
+      await supabase.from('work_order_activity').insert({
+        work_order_id: workOrder.id,
+        user_id: user?.id,
+        action: 'submitted',
+        details: { estimated_cost: estimatedCost },
+      });
+      
+      toast.success('Work order submitted for approval');
+    } catch {
+      if (!navigator.onLine) {
+        await enqueue({
+          type: 'work_order_status',
+          payload: { id: workOrder.id, status: 'pending_approval', notes, estimatedCost },
+          timestamp: Date.now(),
+        });
+        toast.warning('Offline — status update queued and will sync when reconnected.');
+      } else {
+        toast.error('Failed to submit work order');
+      }
+    }
   };
   
   const handleApprove = async () => {

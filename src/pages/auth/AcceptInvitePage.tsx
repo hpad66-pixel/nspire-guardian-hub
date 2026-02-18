@@ -82,6 +82,17 @@ export default function AcceptInvitePage() {
         console.error('Failed to mark invitation as accepted:', updateError);
       }
 
+      // Link user to organization if invitation had one
+      if (invitation.client_id && authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ client_id: invitation.client_id })
+          .eq('user_id', authData.user.id);
+        if (profileError) {
+          console.error('Failed to link user to organization:', profileError);
+        }
+      }
+
       setIsAccepted(true);
       toast.success('Account created successfully!');
 

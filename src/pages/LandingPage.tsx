@@ -6,10 +6,13 @@ import { LandingNav } from '@/components/landing/LandingNav';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { ValueProposition } from '@/components/landing/ValueProposition';
 import { PlatformOverview } from '@/components/features/PlatformOverview';
-import { VoiceAgentShowcase } from '@/components/landing/VoiceAgentShowcase';
+import { ModuleShowcase } from '@/components/features/ModuleShowcase';
 import { FeatureGrid } from '@/components/landing/FeatureGrid';
 import { RoleValueSection } from '@/components/features/RoleValueSection';
+import { MobilePWASection } from '@/components/landing/MobilePWASection';
 import { EnterpriseFeatures } from '@/components/features/EnterpriseFeatures';
+import { PricingSection } from '@/components/landing/PricingSection';
+import { RoadmapSection } from '@/components/landing/RoadmapSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 
 export default function LandingPage() {
@@ -24,25 +27,26 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--apas-midnight)' }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--apas-sapphire)' }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div style={{ background: 'var(--apas-midnight)', minHeight: '100vh' }}>
       <LandingNav />
       <main>
         <LandingHero />
         <ValueProposition />
         <PlatformOverview />
-        <VoiceAgentShowcase />
+        <ModuleShowcase />
         <FeatureGrid />
         <RoleValueSection />
-        <section id="security">
-          <EnterpriseFeatures />
-        </section>
+        <MobilePWASection />
+        <EnterpriseFeatures />
+        <PricingSection />
+        <RoadmapSection />
       </main>
       <LandingFooter />
     </div>

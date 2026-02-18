@@ -73,19 +73,19 @@ export default function PermitsDashboard() {
   });
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold">Permits & Compliance</h1>
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Track regulatory requirements and deadlines
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button size="sm" onClick={() => setIsDialogOpen(true)} className="self-start sm:self-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Permit
         </Button>
@@ -96,7 +96,7 @@ export default function PermitsDashboard() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search permits..."

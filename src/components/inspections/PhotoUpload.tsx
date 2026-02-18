@@ -112,6 +112,7 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          capture="environment"
           multiple
           className="hidden"
           onChange={handleFileChange}

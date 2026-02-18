@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.extract-transcript-issues]
 verify_jwt = false
+
+[functions.generate-progress-report]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false

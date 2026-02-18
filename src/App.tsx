@@ -1,55 +1,81 @@
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAuth } from '@/hooks/useAuth';
 
-// Pages
-import Dashboard from "./pages/Dashboard";
-import LandingPage from "./pages/LandingPage";
-import FeaturesPage from "./pages/FeaturesPage";
-import AuthPage from "./pages/auth/AuthPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
-import InspectionsDashboard from "./pages/inspections/InspectionsDashboard";
-import OutsideInspections from "./pages/inspections/OutsideInspections";
-import InsideInspections from "./pages/inspections/InsideInspections";
-import UnitInspections from "./pages/inspections/UnitInspections";
-import ProjectsDashboard from "./pages/projects/ProjectsDashboard";
-import ProjectDetailPage from "./pages/projects/ProjectDetailPage";
-import ProposalsPage from "./pages/projects/ProposalsPage";
-import SettingsPage from "./pages/settings/SettingsPage";
-import PropertiesPage from "./pages/core/PropertiesPage";
-import UnitsPage from "./pages/core/UnitsPage";
-import IssuesPage from "./pages/core/IssuesPage";
-import WorkOrdersPage from "./pages/workorders/WorkOrdersPage";
-import ReportsPage from "./pages/reports/ReportsPage";
-import DocumentsPage from "./pages/documents/DocumentsPage";
-import PropertyArchivesPage from "./pages/documents/PropertyArchivesPage";
-import ActivityLogPage from "./pages/settings/ActivityLogPage";
-import NotFound from "./pages/NotFound";
-import AssetsPage from "./pages/assets/AssetsPage";
-import DailyGroundsPage from "./pages/inspections/DailyGroundsPage";
-import InspectionReviewPage from "./pages/inspections/InspectionReviewPage";
-import InspectionHistoryPage from "./pages/inspections/InspectionHistoryPage";
-import MailboxPage from "./pages/inbox/MailboxPage";
-import MessagesPage from "./pages/messages/MessagesPage";
-import PermitsDashboard from "./pages/permits/PermitsDashboard";
-import PermitDetailPage from "./pages/permits/PermitDetailPage";
-import PeoplePage from "./pages/people/PeoplePage";
-import OccupancyPage from "./pages/occupancy/OccupancyPage";
-import QRScannerPage from "./pages/qr/QRScannerPage";
-import TrainingPage from "./pages/training/TrainingPage";
-import ContactsPage from "./pages/crm/ContactsPage";
-import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
-import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
+// Pages — lazy loaded for code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const InstallPage = lazy(() => import('./pages/InstallPage'));
+const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const AcceptInvitePage = lazy(() => import('./pages/auth/AcceptInvitePage'));
+const InspectionsDashboard = lazy(() => import('./pages/inspections/InspectionsDashboard'));
+const OutsideInspections = lazy(() => import('./pages/inspections/OutsideInspections'));
+const InsideInspections = lazy(() => import('./pages/inspections/InsideInspections'));
+const UnitInspections = lazy(() => import('./pages/inspections/UnitInspections'));
+const DailyGroundsPage = lazy(() => import('./pages/inspections/DailyGroundsPage'));
+const InspectionReviewPage = lazy(() => import('./pages/inspections/InspectionReviewPage'));
+const InspectionHistoryPage = lazy(() => import('./pages/inspections/InspectionHistoryPage'));
+const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'));
+const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
+const ProposalsPage = lazy(() => import('./pages/projects/ProposalsPage'));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
+const PropertiesPage = lazy(() => import('./pages/core/PropertiesPage'));
+const UnitsPage = lazy(() => import('./pages/core/UnitsPage'));
+const IssuesPage = lazy(() => import('./pages/core/IssuesPage'));
+const WorkOrdersPage = lazy(() => import('./pages/workorders/WorkOrdersPage'));
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
+const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
+const PropertyArchivesPage = lazy(() => import('./pages/documents/PropertyArchivesPage'));
+const AssetsPage = lazy(() => import('./pages/assets/AssetsPage'));
+const MailboxPage = lazy(() => import('./pages/inbox/MailboxPage'));
+const MessagesPage = lazy(() => import('./pages/messages/MessagesPage'));
+const PermitsDashboard = lazy(() => import('./pages/permits/PermitsDashboard'));
+const PermitDetailPage = lazy(() => import('./pages/permits/PermitDetailPage'));
+const PeoplePage = lazy(() => import('./pages/people/PeoplePage'));
+const OccupancyPage = lazy(() => import('./pages/occupancy/OccupancyPage'));
+const QRScannerPage = lazy(() => import('./pages/qr/QRScannerPage'));
+const TrainingPage = lazy(() => import('./pages/training/TrainingPage'));
+const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
+const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
+const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: (failureCount, error: any) => {
+        if (error?.status === 404 || error?.status === 403) return false;
+        return failureCount < 2;
+      },
+    },
+  },
+});
+
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <LandingPageAlt />;
+}
 
 const App = () => (
   <ErrorBoundary>
@@ -60,74 +86,89 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/features" element={<FeaturesPage />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                
-                {/* Protected Routes */}
-              <Route
-                path="/*"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Routes>
-                        {/* Dashboard */}
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        
-                        {/* Core Platform */}
-                        <Route path="/properties" element={<PropertiesPage />} />
-                        <Route path="/units" element={<UnitsPage />} />
-                        <Route path="/assets" element={<AssetsPage />} />
-                        <Route path="/issues" element={<IssuesPage />} />
-                        <Route path="/work-orders" element={<WorkOrdersPage />} />
-                        <Route path="/documents" element={<DocumentsPage />} />
-                        <Route path="/documents/archives" element={<PropertyArchivesPage />} />
-                        <Route path="/people" element={<PeoplePage />} />
-                        <Route path="/inbox" element={<MailboxPage />} />
-                        <Route path="/messages" element={<MessagesPage />} />
-                        <Route path="/messages/:threadId" element={<MessagesPage />} />
-                        <Route path="/reports" element={<ReportsPage />} />
-                        <Route path="/occupancy" element={<OccupancyPage />} />
-                        <Route path="/qr-scanner" element={<QRScannerPage />} />
-                        <Route path="/training" element={<TrainingPage />} />
-                        <Route path="/contacts" element={<ContactsPage />} />
-                        <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
-                        <Route path="/settings/activity-log" element={<ActivityLogPage />} />
-                        
-                        {/* NSPIRE Inspections Module */}
-                        <Route path="/inspections" element={<InspectionsDashboard />} />
-                        <Route path="/inspections/daily" element={<DailyGroundsPage />} />
-                        <Route path="/inspections/history" element={<InspectionHistoryPage />} />
-                        <Route path="/inspections/review" element={<InspectionReviewPage />} />
-                        <Route path="/inspections/outside" element={<OutsideInspections />} />
-                        <Route path="/inspections/inside" element={<InsideInspections />} />
-                        <Route path="/inspections/units" element={<UnitInspections />} />
-                        
-                        {/* Projects Module */}
-                        <Route path="/projects" element={<ProjectsDashboard />} />
-                        <Route path="/projects/proposals" element={<ProposalsPage />} />
-                        <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                        
-                        {/* Permits & Compliance */}
-                        <Route path="/permits" element={<PermitsDashboard />} />
-                        <Route path="/permits/:id" element={<PermitDetailPage />} />
-                        
-                        {/* Settings */}
-                        <Route path="/settings" element={<SettingsPage />} />
-                        
-                        {/* 404 */}
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </AppLayout>
-                  </ProtectedRoute>
-                }
-              />
-              </Routes>
+              <Suspense fallback={
+                <div className="flex h-screen w-full items-center justify-center bg-background">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  </div>
+                </div>
+              }>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<RootRedirect />} />
+                  <Route path="/features" element={<FeaturesPage />} />
+                  <Route path="/install" element={<InstallPage />} />
+                  <Route path="/home-alt" element={<LandingPage />} />
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                  
+                  {/* Protected Routes */}
+                  <Route
+                    path="/*"
+                    element={
+                      <ProtectedRoute>
+                        <AppLayout>
+                          <Routes>
+                            {/* Dashboard */}
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            
+                            {/* Core Platform */}
+                            <Route path="/properties" element={<PropertiesPage />} />
+                            <Route path="/units" element={<UnitsPage />} />
+                            <Route path="/assets" element={<AssetsPage />} />
+                            <Route path="/issues" element={<IssuesPage />} />
+                            <Route path="/work-orders" element={<WorkOrdersPage />} />
+                            <Route path="/documents" element={<DocumentsPage />} />
+                            <Route path="/documents/archives" element={<PropertyArchivesPage />} />
+                            <Route path="/people" element={<PeoplePage />} />
+                            <Route path="/organizations" element={<OrganizationsPage />} />
+                            <Route path="/inbox" element={<MailboxPage />} />
+                            <Route path="/messages" element={<MessagesPage />} />
+                            <Route path="/messages/:threadId" element={<MessagesPage />} />
+                            <Route path="/reports" element={<ReportsPage />} />
+                            <Route path="/occupancy" element={<OccupancyPage />} />
+                            <Route path="/qr-scanner" element={<QRScannerPage />} />
+                            <Route path="/training" element={<TrainingPage />} />
+                            <Route path="/contacts" element={<ContactsPage />} />
+                            <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
+                            <Route path="/settings/activity-log" element={<ActivityLogPage />} />
+                            
+                            {/* NSPIRE Inspections Module */}
+                            <Route path="/inspections" element={<InspectionsDashboard />} />
+                            <Route path="/inspections/daily" element={<DailyGroundsPage />} />
+                            <Route path="/inspections/history" element={<InspectionHistoryPage />} />
+                            <Route path="/inspections/review" element={<InspectionReviewPage />} />
+                            <Route path="/inspections/outside" element={<OutsideInspections />} />
+                            <Route path="/inspections/inside" element={<InsideInspections />} />
+                            <Route path="/inspections/units" element={<UnitInspections />} />
+                            
+                            {/* Projects Module */}
+                            <Route path="/projects" element={<ProjectsDashboard />} />
+                            <Route path="/projects/proposals" element={<ProposalsPage />} />
+                            <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                            
+                            {/* Permits & Compliance */}
+                            <Route path="/permits" element={<PermitsDashboard />} />
+                            <Route path="/permits/:id" element={<PermitDetailPage />} />
+                            
+                            {/* Profile */}
+                            <Route path="/profile" element={<ProfilePage />} />
+                            
+                            {/* Settings */}
+                            <Route path="/settings" element={<SettingsPage />} />
+                            
+                            {/* 404 */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </AppLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </ModuleProvider>
         </AuthProvider>

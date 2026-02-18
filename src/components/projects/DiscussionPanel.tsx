@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { format, isToday, isYesterday, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -59,6 +61,7 @@ async function uploadAttachment(file: File, projectId: string): Promise<string> 
 }
 
 export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelProps) {
+  const isMobile = useIsMobile();
   const [view, setView] = useState<View>("list");
   const [selectedDiscussion, setSelectedDiscussion] = useState<DiscussionWithDetails | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -198,14 +201,8 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
 
   if (!open) return null;
 
-  return (
-    <motion.div
-      initial={{ x: 400, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 400, opacity: 0 }}
-      transition={{ type: "spring", damping: 26, stiffness: 300 }}
-      className="w-[400px] border-l bg-background flex flex-col h-full overflow-hidden"
-    >
+  const panelContent = (
+    <div className="w-full bg-background flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
@@ -642,7 +639,23 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
           <p className="text-[10px] text-muted-foreground">⌘+Enter to send · 📷 attach photos · @ tag team members</p>
         </div>
       )}
-    </motion.div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <SheetContent side="bottom" className="h-[85vh] p-0 rounded-t-xl overflow-hidden flex flex-col">
+          {panelContent}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <div className="w-full bg-background flex flex-col h-full overflow-hidden border-l">
+      {panelContent}
+    </div>
   );
 }
 

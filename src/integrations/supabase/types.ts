@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_item_comments: {
+        Row: {
+          action_item_id: string
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_item_id: string
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_item_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_item_comments_action_item_id_fkey"
+            columns: ["action_item_id"]
+            isOneToOne: false
+            referencedRelation: "project_action_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_log: {
         Row: {
           action: string
@@ -176,6 +211,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          city: string | null
+          client_type: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          industry: string | null
+          is_active: boolean
+          name: string
+          notes: string | null
+          state: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          client_type?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          state?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          client_type?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          state?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
       }
       company_branding: {
         Row: {
@@ -1154,6 +1246,56 @@ export type Database = {
           },
         ]
       }
+      meeting_unlock_requests: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          reason: string | null
+          requested_at: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          reason?: string | null
+          requested_at?: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          reason?: string | null
+          requested_at?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_unlock_requests_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "project_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_threads: {
         Row: {
           created_at: string | null
@@ -1556,6 +1698,7 @@ export type Database = {
         Row: {
           auto_bcc_enabled: boolean | null
           avatar_url: string | null
+          client_id: string | null
           created_at: string
           department: string | null
           email: string | null
@@ -1575,6 +1718,7 @@ export type Database = {
         Insert: {
           auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1594,6 +1738,7 @@ export type Database = {
         Update: {
           auto_bcc_enabled?: boolean | null
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string
           department?: string | null
           email?: string | null
@@ -1610,7 +1755,80 @@ export type Database = {
           user_id?: string
           work_email?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_action_items: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          priority: string
+          project_id: string
+          sort_order: number | null
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          priority?: string
+          project_id: string
+          sort_order?: number | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          priority?: string
+          project_id?: string
+          sort_order?: number | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_action_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_closeout_items: {
         Row: {
@@ -1909,6 +2127,84 @@ export type Database = {
           },
         ]
       }
+      project_meetings: {
+        Row: {
+          attendees: Json | null
+          created_at: string
+          created_by: string | null
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          location: string | null
+          meeting_date: string
+          meeting_time: string | null
+          meeting_type: string
+          polished_notes: string | null
+          polished_notes_html: string | null
+          project_id: string
+          raw_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+          unlock_request_reason: string | null
+          unlock_requested: boolean | null
+          unlock_requested_at: string | null
+          unlock_requested_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          attendees?: Json | null
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          location?: string | null
+          meeting_date?: string
+          meeting_time?: string | null
+          meeting_type?: string
+          polished_notes?: string | null
+          polished_notes_html?: string | null
+          project_id: string
+          raw_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+          unlock_request_reason?: string | null
+          unlock_requested?: boolean | null
+          unlock_requested_at?: string | null
+          unlock_requested_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attendees?: Json | null
+          created_at?: string
+          created_by?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          location?: string | null
+          meeting_date?: string
+          meeting_time?: string | null
+          meeting_type?: string
+          polished_notes?: string | null
+          polished_notes_html?: string | null
+          project_id?: string
+          raw_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+          unlock_request_reason?: string | null
+          unlock_requested?: boolean | null
+          unlock_requested_at?: string | null
+          unlock_requested_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_milestones: {
         Row: {
           assigned_to: string | null
@@ -2021,6 +2317,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_progress_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_progress_reports: {
+        Row: {
+          content_html: string | null
+          created_at: string | null
+          generated_by: string | null
+          id: string
+          project_id: string
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content_html?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          project_id: string
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content_html?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          project_id?: string
+          report_period_end?: string
+          report_period_start?: string
+          report_type?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_reports_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2557,12 +2903,14 @@ export type Database = {
         Row: {
           actual_end_date: string | null
           budget: number | null
+          client_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           name: string
-          property_id: string
+          project_type: string
+          property_id: string | null
           scope: string | null
           spent: number | null
           start_date: string | null
@@ -2573,12 +2921,14 @@ export type Database = {
         Insert: {
           actual_end_date?: string | null
           budget?: number | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           name: string
-          property_id: string
+          project_type?: string
+          property_id?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -2589,12 +2939,14 @@ export type Database = {
         Update: {
           actual_end_date?: string | null
           budget?: number | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           name?: string
-          property_id?: string
+          project_type?: string
+          property_id?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -2603,6 +2955,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_property_id_fkey"
             columns: ["property_id"]
@@ -2929,6 +3288,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       report_emails: {
         Row: {
@@ -3548,6 +3934,7 @@ export type Database = {
       user_invitations: {
         Row: {
           accepted_at: string | null
+          client_id: string | null
           created_at: string
           email: string
           expires_at: string
@@ -3559,6 +3946,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          client_id?: string | null
           created_at?: string
           email: string
           expires_at: string
@@ -3570,6 +3958,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          client_id?: string | null
           created_at?: string
           email?: string
           expires_at?: string
@@ -3580,6 +3969,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_invitations_property_id_fkey"
             columns: ["property_id"]
@@ -3964,6 +4360,7 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           accepted_at: string | null
+          client_id: string | null
           created_at: string
           email: string
           expires_at: string

@@ -9,15 +9,41 @@ type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 
 export interface Project extends ProjectRow {
-  property?: {
-    name: string;
-  };
+  property?: { name: string } | null;
+  client?: { name: string } | null;
   milestones?: Array<{
     id: string;
     name: string;
     due_date: string;
     status: string;
   }>;
+}
+
+const PROJECT_SELECT = `
+  *,
+  property:properties(name),
+  client:clients(name),
+  milestones:project_milestones(id, name, due_date, status)
+`;
+
+const PROJECT_SELECT_DETAIL = `
+  *,
+  property:properties(name),
+  client:clients(name),
+  milestones:project_milestones(id, name, due_date, status, notes, completed_at)
+`;
+
+/** For non-admins: returns projects they can see (property-linked ones via membership,
+ *  plus all client/standalone projects which are org-wide). */
+async function buildNonAdminFilter(query: any) {
+  const propertyIds = await getAssignedPropertyIds();
+  // Include property projects they're assigned to OR any non-property project (client / standalone)
+  if (propertyIds.length === 0) {
+    // Only show non-property projects
+    return query.is('property_id', null);
+  }
+  // property projects assigned OR no property_id (client projects)
+  return query.or(`property_id.in.(${propertyIds.join(',')}),property_id.is.null`);
 }
 
 export function useProjects() {
@@ -27,21 +53,14 @@ export function useProjects() {
     queryFn: async () => {
       let query = supabase
         .from('projects')
-        .select(`
-          *,
-          property:properties(name),
-          milestones:project_milestones(id, name, due_date, status)
-        `)
+        .select(PROJECT_SELECT)
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
-        const propertyIds = await getAssignedPropertyIds();
-        if (propertyIds.length === 0) return [] as Project[];
-        query = query.in('property_id', propertyIds);
+        query = await buildNonAdminFilter(query);
       }
 
       const { data, error } = await query;
-      
       if (error) throw error;
       return data as Project[];
     },
@@ -55,22 +74,15 @@ export function useActiveProjects() {
     queryFn: async () => {
       let query = supabase
         .from('projects')
-        .select(`
-          *,
-          property:properties(name),
-          milestones:project_milestones(id, name, due_date, status)
-        `)
+        .select(PROJECT_SELECT)
         .in('status', ['planning', 'active'])
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
-        const propertyIds = await getAssignedPropertyIds();
-        if (propertyIds.length === 0) return [] as Project[];
-        query = query.in('property_id', propertyIds);
+        query = await buildNonAdminFilter(query);
       }
 
       const { data, error } = await query;
-      
       if (error) throw error;
       return data as Project[];
     },
@@ -86,21 +98,14 @@ export function useProject(projectId: string | null) {
 
       let query = supabase
         .from('projects')
-        .select(`
-          *,
-          property:properties(name),
-          milestones:project_milestones(id, name, due_date, status, notes, completed_at)
-        `)
+        .select(PROJECT_SELECT_DETAIL)
         .eq('id', projectId);
 
       if (!isAdmin) {
-        const propertyIds = await getAssignedPropertyIds();
-        if (propertyIds.length === 0) return null;
-        query = query.in('property_id', propertyIds);
+        query = await buildNonAdminFilter(query);
       }
 
       const { data, error } = await query.single();
-      
       if (error) throw error;
       return data as Project;
     },
@@ -121,14 +126,10 @@ export function useProjectsByProperty(propertyId: string | null) {
 
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          property:properties(name),
-          milestones:project_milestones(id, name, due_date, status)
-        `)
+        .select(PROJECT_SELECT)
         .eq('property_id', propertyId)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data as Project[];
     },
@@ -146,24 +147,19 @@ export function useProjectStats() {
         .select('status, budget, spent, property_id');
 
       if (!isAdmin) {
-        const propertyIds = await getAssignedPropertyIds();
-        if (propertyIds.length === 0) {
-          return { active: 0, planning: 0, onHold: 0, completed: 0, totalBudget: 0, totalSpent: 0, total: 0 };
-        }
-        query = query.in('property_id', propertyIds);
+        query = await buildNonAdminFilter(query);
       }
 
       const { data, error } = await query;
-      
       if (error) throw error;
-      
+
       const active = data.filter(p => p.status === 'active').length;
       const planning = data.filter(p => p.status === 'planning').length;
       const onHold = data.filter(p => p.status === 'on_hold').length;
       const completed = data.filter(p => p.status === 'completed' || p.status === 'closed').length;
       const totalBudget = data.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
       const totalSpent = data.reduce((sum, p) => sum + (Number(p.spent) || 0), 0);
-      
+
       return { active, planning, onHold, completed, totalBudget, totalSpent, total: data.length };
     },
   });
@@ -171,17 +167,14 @@ export function useProjectStats() {
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (project: Omit<ProjectInsert, 'id' | 'created_at' | 'updated_at'>) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
       const { data, error } = await supabase
         .from('projects')
         .insert({ ...project, created_by: user?.id })
         .select()
         .single();
-      
       if (error) throw error;
       return data;
     },
@@ -197,7 +190,6 @@ export function useCreateProject() {
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ProjectRow> & { id: string }) => {
       const { data, error } = await supabase
@@ -206,7 +198,6 @@ export function useUpdateProject() {
         .eq('id', id)
         .select()
         .single();
-      
       if (error) throw error;
       return data;
     },
@@ -222,14 +213,9 @@ export function useUpdateProject() {
 
 export function useDeleteProject() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from('projects').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

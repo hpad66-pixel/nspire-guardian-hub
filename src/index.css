@@ -2,7 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Glorieta Gardens Apartments Design System */
+/* APAS OS Design System */
+
+/* APAS Landing Page Custom Properties */
+:root {
+  --apas-midnight: #0A0C12;
+  --apas-deep: #10131D;
+  --apas-surface: #161B2B;
+  --apas-border: rgba(255,255,255,0.08);
+  --apas-sapphire: #1D6FE8;
+  --apas-sapphire-glow: rgba(29,111,232,0.2);
+  --apas-emerald: #10B981;
+  --apas-amber: #F59E0B;
+  --apas-rose: #F43F5E;
+  --apas-violet: #8B5CF6;
+  --apas-white: #F1F5FF;
+  --apas-muted: #6B7A99;
+  --apas-grid: rgba(29,111,232,0.04);
+}
 
 @layer base {
   :root {
@@ -62,15 +79,21 @@
     --radius: 0.5rem;
 
     /* Sidebar - Dark professional */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 215 20% 85%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 215 25% 92%;
+    --sidebar-primary: 217 91% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent: 217 91% 62%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 30% 20%;
-    --sidebar-ring: 217 91% 60%;
-    --sidebar-muted: 215 16% 47%;
+    --sidebar-border: 222 30% 17%;
+    --sidebar-ring: 217 91% 62%;
+    --sidebar-muted: 215 15% 58%;
+    --sidebar-label: 215 12% 48%;
+
+    /* Sidebar nav utility tokens */
+    --sidebar-nav-active-bg: 217 91% 62%;
+    --sidebar-nav-hover-bg: 222 47% 18%;
+    --sidebar-zone-label: 215 12% 48%;
   }
 
   .dark {
