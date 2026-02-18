@@ -82,14 +82,25 @@ export default function AcceptInvitePage() {
         console.error('Failed to mark invitation as accepted:', updateError);
       }
 
-      // Link user to organization if invitation had one
-      if (invitation.client_id && authData.user) {
+      // Assign the inviter's workspace to the new user's profile
+      const profileUpdates: Record<string, unknown> = {};
+
+      if ((invitation as any).workspace_id) {
+        profileUpdates.workspace_id = (invitation as any).workspace_id;
+      }
+
+      // Also link to organization if invitation had one
+      if (invitation.client_id) {
+        profileUpdates.client_id = invitation.client_id;
+      }
+
+      if (authData.user && Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ client_id: invitation.client_id })
+          .update(profileUpdates)
           .eq('user_id', authData.user.id);
         if (profileError) {
-          console.error('Failed to link user to organization:', profileError);
+          console.error('Failed to update user profile:', profileError);
         }
       }
 

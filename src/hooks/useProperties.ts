@@ -7,6 +7,7 @@ import { getAssignedPropertyIds } from './propertyAccess';
 export interface Property {
   id: string;
   name: string;
+  workspace_id?: string | null;
   address: string;
   city: string;
   state: string;

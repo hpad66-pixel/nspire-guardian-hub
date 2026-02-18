@@ -28,9 +28,10 @@ interface TeamStepProps {
   onNext: (data: Partial<OnboardingData>) => void;
   onBack: () => void;
   propertyName?: string;
+  workspaceId?: string;
 }
 
-export function TeamStep({ onNext, onBack, propertyName }: TeamStepProps) {
+export function TeamStep({ onNext, onBack, propertyName, workspaceId }: TeamStepProps) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<TeamMember['role']>('inspector');
   const [members, setMembers] = useState<TeamMember[]>([]);

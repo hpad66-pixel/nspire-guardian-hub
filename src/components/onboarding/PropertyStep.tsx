@@ -35,9 +35,10 @@ interface PropertyStepProps {
   onNext: (data: Partial<OnboardingData>) => void;
   onBack: () => void;
   initialData?: OnboardingData['property'];
+  workspaceId?: string;
 }
 
-export function PropertyStep({ onNext, onBack, initialData }: PropertyStepProps) {
+export function PropertyStep({ onNext, onBack, initialData, workspaceId }: PropertyStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PropertyFormData>({
@@ -57,7 +58,6 @@ export function PropertyStep({ onNext, onBack, initialData }: PropertyStepProps)
 
   const onSubmit = (data: PropertyFormData) => {
     setIsSubmitting(true);
-    // Simulate a brief delay for UX
     setTimeout(() => {
       onNext({
         property: {

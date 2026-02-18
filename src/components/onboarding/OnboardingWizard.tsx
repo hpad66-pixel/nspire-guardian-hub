@@ -4,6 +4,9 @@ import { WelcomeStep } from './WelcomeStep';
 import { PropertyStep } from './PropertyStep';
 import { TeamStep } from './TeamStep';
 import { CompleteStep } from './CompleteStep';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 export type OnboardingStep = 'welcome' | 'property' | 'team' | 'complete';
@@ -11,6 +14,8 @@ export type OnboardingStep = 'welcome' | 'property' | 'team' | 'complete';
 type AppRole = Database['public']['Enums']['app_role'];
 
 export interface OnboardingData {
+  workspaceName?: string;
+  workspaceId?: string;
   property?: {
     name: string;
     address: string;
@@ -35,18 +40,61 @@ interface OnboardingWizardProps {
 }
 
 export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [data, setData] = useState<OnboardingData>({});
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
+  // Called by WelcomeStep with { workspaceName }
+  const handleWelcomeNext = async (welcomeData: { workspaceName: string }) => {
+    if (!user) return;
+
+    setIsCreatingWorkspace(true);
+    try {
+      // 1. Create the workspace
+      const { data: workspace, error: wsError } = await supabase
+        .from('workspaces')
+        .insert({
+          name: welcomeData.workspaceName,
+          owner_user_id: user.id,
+          plan: 'trial',
+          status: 'trial',
+        })
+        .select('id, name, slug, plan, status')
+        .single();
+
+      if (wsError) throw wsError;
+
+      // 2. Assign workspace to the user's profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ workspace_id: workspace.id })
+        .eq('user_id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 3. Store in local state and advance
+      setData((prev) => ({
+        ...prev,
+        workspaceName: welcomeData.workspaceName,
+        workspaceId: workspace.id,
+      }));
+      setCurrentStep('property');
+    } catch (err: any) {
+      console.error('Failed to create workspace:', err);
+      toast.error('Failed to create workspace. Please try again.');
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
+  };
+
+  // Called by subsequent steps with partial OnboardingData
   const handleNext = (stepData?: Partial<OnboardingData>) => {
     if (stepData) {
       setData((prev) => ({ ...prev, ...stepData }));
     }
 
     switch (currentStep) {
-      case 'welcome':
-        setCurrentStep('property');
-        break;
       case 'property':
         setCurrentStep('team');
         break;
@@ -95,13 +143,17 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             transition={{ duration: 0.3 }}
           >
             {currentStep === 'welcome' && (
-              <WelcomeStep onNext={handleNext} />
+              <WelcomeStep
+                onNext={handleWelcomeNext}
+                isLoading={isCreatingWorkspace}
+              />
             )}
             {currentStep === 'property' && (
               <PropertyStep
                 onNext={handleNext}
                 onBack={handleBack}
                 initialData={data.property}
+                workspaceId={data.workspaceId}
               />
             )}
             {currentStep === 'team' && (
@@ -109,6 +161,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 onNext={handleNext}
                 onBack={handleBack}
                 propertyName={data.property?.name}
+                workspaceId={data.workspaceId}
               />
             )}
             {currentStep === 'complete' && (
