@@ -1,289 +1,180 @@
 
-# ClickUp-Style Action Items & To-Do System — Enterprise Implementation
+# Projects UX/UI Overhaul — View Toggle, Health Signals & Project Deletion
 
-## Vision & UX Strategy
+## What We're Solving
 
-The goal is a **live, persistent task thread** that lives in two places simultaneously:
-1. **Inside each project** — an "Action Items" panel (same pattern as Activity Feed), accessible from the project header
-2. **On the Dashboard** — a dedicated "My Tasks" section that aggregates all tasks assigned to the current user across all projects, always visible and "staring at your face"
+**Three concrete problems identified in the codebase:**
 
-The design language draws from **ClickUp's task cards**, **Linear's clean list view**, and **GitHub's assignee/label system** — compact, color-coded, drag-and-drop ready, with real-time status syncing between the assigner's view and the assignee's view.
+1. **No delete UI** — `useDeleteProject()` hook and the RLS DELETE policy (`has_role(auth.uid(), 'admin')`) already exist in the database, but there is zero UI to trigger them. Admins and owners cannot delete projects from the frontend.
 
----
+2. **Tile-only layout doesn't scale** — `ProjectsDashboard.tsx` renders a single vertical list of tiles. With 20+ projects, this becomes a scroll-heavy, hard-to-scan experience. There is no table, no list mode, no sorting, no global search, and no status-based filtering beyond All/Property/Client.
 
-## Where It Lives in the Project
-
-A new **"Tasks"** button is added to the project header action bar (next to Activity, Discuss, Reports):
-
-```
-[Activity] [Discuss] [Tasks ✓] [Reports] [Edit]
-```
-
-Clicking **Tasks** slides open an overlay panel from the right — identical UX pattern to the Activity Feed panel (absolute-positioned overlay, no horizontal scroll). The panel has two tabs:
-- **All Tasks** — all action items for this project
-- **Mine** — only tasks assigned to the current user
+3. **No project health signals** — The tile shows a budget progress bar and a due date, but there is no computed "health" status (On Track / At Risk / Overdue / Stalled) that gives the admin an instant read on portfolio health without clicking into each project.
 
 ---
 
-## Database Schema
+## Part 1 — Project Deletion (Admin/Owner Only)
 
-### New Table: `project_action_items`
+### Where the delete trigger lives
 
-```sql
-CREATE TABLE public.project_action_items (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  title             TEXT NOT NULL,
-  description       TEXT,
-  status            TEXT NOT NULL DEFAULT 'todo'  
-                    CHECK (status IN ('todo','in_progress','in_review','done','cancelled')),
-  priority          TEXT NOT NULL DEFAULT 'medium'
-                    CHECK (priority IN ('urgent','high','medium','low')),
-  assigned_to       UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_by        UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  due_date          DATE,
-  completed_at      TIMESTAMPTZ,
-  tags              TEXT[] DEFAULT '{}',
-  linked_entity_type TEXT,          -- 'rfi', 'punch_item', 'meeting', 'milestone', etc.
-  linked_entity_id  UUID,
-  sort_order        INTEGER DEFAULT 0,
-  created_at        TIMESTAMPTZ DEFAULT now(),
-  updated_at        TIMESTAMPTZ DEFAULT now()
-);
+**Two surfaces:**
 
-ALTER TABLE public.project_action_items ENABLE ROW LEVEL SECURITY;
+**Surface A — Projects Dashboard (the list)**
+Each project row/tile gets a `⋯` (more options) dropdown on hover containing:
+- Edit
+- Archive (change status to `closed`)
+- **Delete** (destructive, red, admin/owner only)
 
--- All authenticated users can view action items (they're project-scoped)
-CREATE POLICY "Authenticated users can view action items"
-  ON public.project_action_items FOR SELECT
-  TO authenticated USING (true);
+**Surface B — Project Detail Page header**
+The existing "Edit" button gains a `⋯` dropdown next to it containing Edit, Archive, and Delete — so the admin can delete while looking at a project.
 
--- Users can create action items
-CREATE POLICY "Users can create action items"
-  ON public.project_action_items FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = created_by);
+### Delete confirmation flow
+Clicking Delete opens a dedicated `AlertDialog` (already in the shadcn library) that:
+1. Shows the project name prominently: `"Delete 'Building Exterior Renovation'?"`
+2. Warns: "This will permanently delete all associated milestones, daily reports, change orders, RFIs, meetings, action items, and all other project data. This cannot be undone."
+3. Requires the user to type the project name to confirm (enterprise-grade safety UX, used by GitHub, Vercel, and Linear)
+4. Shows a red "Delete Project" button that only enables once the name is typed correctly
+5. On success → navigates back to `/projects` and shows a toast
 
--- Creator or assignee can update
-CREATE POLICY "Creator or assignee can update action items"
-  ON public.project_action_items FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = created_by OR auth.uid() = assigned_to);
+### Role-gating
+The delete option is only rendered when `currentRole === 'admin' || currentRole === 'owner'`. This is checked using the existing `useUserPermissions()` hook. The RLS policy already restricts deletion to `admin` on the database side, so the UI gating is a UX guard on top of the server-side security.
 
--- Only creator can delete
-CREATE POLICY "Creator can delete action items"
-  ON public.project_action_items FOR DELETE
-  TO authenticated USING (auth.uid() = created_by);
-```
-
-### New Table: `action_item_comments`
-
-```sql
-CREATE TABLE public.action_item_comments (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  action_item_id  UUID NOT NULL REFERENCES project_action_items(id) ON DELETE CASCADE,
-  content         TEXT NOT NULL,
-  created_by      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at      TIMESTAMPTZ DEFAULT now(),
-  updated_at      TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.action_item_comments ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can view comments"
-  ON public.action_item_comments FOR SELECT TO authenticated USING (true);
-  
-CREATE POLICY "Users can create comments"
-  ON public.action_item_comments FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = created_by);
-
-CREATE POLICY "Users can update their own comments"
-  ON public.action_item_comments FOR UPDATE TO authenticated
-  USING (auth.uid() = created_by);
-```
-
-### Enable Realtime
-
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.project_action_items;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.action_item_comments;
-```
+### Files changed:
+- `src/pages/projects/ProjectsDashboard.tsx` — add `⋯` menu with delete to each project tile
+- `src/pages/projects/ProjectDetailPage.tsx` — add `⋯` dropdown next to Edit button with delete option
+- **New file**: `src/components/projects/DeleteProjectDialog.tsx` — the typed-confirmation AlertDialog
+- `src/hooks/useProjects.ts` — no changes needed (hook already exists and works)
 
 ---
 
-## New Files
+## Part 2 — View Toggle: Tile / List / Table
 
-### 1. `src/hooks/useActionItems.ts`
+### Three view modes
 
-Manages all CRUD operations and real-time subscription:
-- `useActionItemsByProject(projectId)` — fetches with assignee profile join, realtime subscription
-- `useMyActionItems()` — fetches all items `assigned_to = current user` across all projects (for dashboard)
-- `useActionItemComments(actionItemId)` — comment thread, realtime
-- `useCreateActionItem()` — mutation
-- `useUpdateActionItem()` — mutation (status, priority, assignee, due date, title)
-- `useDeleteActionItem()` — mutation
-- `useCreateActionItemComment()` — mutation
-- When `assigned_to` changes, a `notification` is created for the new assignee via the existing `notifications` table with `type: 'assignment'` and `entity_type: 'action_item'`
+**Mode 1: Card View (current default)** — Rich tiles with budget bar and milestone count. Best for <10 projects. Keep as-is.
 
-### 2. `src/components/projects/ActionItemsPanel.tsx`
-
-The slide-in overlay panel — mirrors the `ActivityFeedPanel` structure but with richer task UI:
-
-**Panel structure:**
+**Mode 2: List View (new)** — Compact single-line rows. Each row shows:
 ```
-┌──────────────────────────────────┐
-│  ✓ Action Items    [All] [Mine]  │  ← header with tab filter
-│  ────────────────────────────── │
-│  [+ Add Task           ▾ Filter]│  ← quick add inline
-│  ════════════════════════════════│
-│                                  │
-│  ● URGENT                        │  ← priority group header
-│  ┌────────────────────────────┐  │
-│  │ ◈ Fix RFI response delay   │  │  ← task card
-│  │   👤 John D. · Due Mar 1   │  │
-│  │   [Todo] → [In Progress]   │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  ● HIGH                          │
-│  ┌────────────────────────────┐  │
-│  │ ◈ Submit permit docs       │  │
-│  │   👤 Sarah K. · Due Mar 5  │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  [See all completed tasks ↓]     │
-└──────────────────────────────────┘
+[●] Project Name    [Property Badge]    $350k/$500k ████░░ 70%    Due Mar 15    [On Track ✓]    [⋯]
 ```
+This is similar to Linear's issue list. ~4x more projects visible on screen without scrolling.
 
-**Quick-add bar**: A single text input at the top — type a task title and press Enter to create it instantly (like ClickUp's quick-add). A "More options" expander reveals the full form (assignee, due date, priority, description, linked entity).
+**Mode 3: Table View (new)** — Full sortable data table with columns:
+- Name (sortable, clickable)
+- Type (Property / Client)
+- Property / Client
+- Status (sortable)
+- Budget (sortable)
+- Spent %
+- Start Date
+- End Date (sortable)
+- Health (sortable)
+- Actions
 
-**Task Cards** show:
-- Checkbox (clicking immediately marks done with a satisfying animation)
-- Title (click to expand into detail view)
-- Assignee avatar + name
-- Priority color tag (left border: red=urgent, orange=high, blue=medium, gray=low)
-- Due date (turns red if overdue, yellow if due within 3 days)
-- Status pill with one-click status transitions
-- Comment count badge
-
-**Clicking a task card** expands it inline (ClickUp-style accordion) to show:
-- Editable title and description
-- Comment thread (live, real-time)
-- Linked entity (e.g., "Linked to: RFI #12")
-- Status change buttons
-- Delete button (for creator only)
-
-**Filtering**: A filter dropdown by status (Todo / In Progress / In Review / Done), by assignee, by priority.
-
-### 3. `src/components/projects/ActionItemDialog.tsx`
-
-Full create/edit dialog for cases where the quick-add needs more detail:
-- Title (required)
-- Description (rich text, optional)
-- Priority picker (Urgent / High / Medium / Low — color-coded pills)
-- Assignee picker (searchable profile dropdown with avatars)
-- Due date (calendar picker)
-- Tags (free text tags)
-- Link to entity (optional: RFI, Punch Item, Meeting, Milestone dropdown)
-
-### 4. Dashboard Integration — `src/pages/Dashboard.tsx`
-
-A new **"My Tasks"** section is added prominently in the dashboard, below the core metrics and above the module cards. It uses the existing `useMyActionItems()` hook:
-
+### View toggle control
+Three icon buttons added to the Projects Dashboard header row (right side, next to "New Project"):
 ```
-┌─────────────────────────────────────────────────────────┐
-│  ✓ My Tasks                               [View All →]  │
-│  ─────────────────────────────────────────────────────  │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ 🔴 Fix RFI response          Due: Today  [Todo]  │   │
-│  │    Tower Renovation Project               →      │   │
-│  ├──────────────────────────────────────────────────┤   │
-│  │ 🟡 Submit permit documents   Due: Feb 22 [In Pr] │   │
-│  │    Riverside Phase 2                      →      │   │
-│  ├──────────────────────────────────────────────────┤   │
-│  │ 🔵 Review safety checklist   Due: Feb 25 [Todo]  │   │
-│  │    Office Buildout                        →      │   │
-│  └──────────────────────────────────────────────────┘   │
-│  [+ Create Task]                [2 more tasks ↓]        │
-└─────────────────────────────────────────────────────────┘
+[≡ List] [⊞ Cards] [⊟ Table]  ← toggle group
 ```
+The selected view is persisted to `localStorage` under key `projects_view_preference` so it remembers the user's choice across sessions.
 
-Each row in "My Tasks":
-- Priority dot (red/orange/blue/gray)
-- Task title
-- Due date (colored based on urgency)
-- Status pill (click to change inline)
-- Project name (links to project)
-- Checkbox (one-click complete)
+### Sorting & filtering
+Added to the dashboard header:
+- **Sort by**: Name / Created / Due Date / Budget / Health (dropdown)
+- **Sort direction**: ASC/DESC toggle button
+- **Status filter**: All / Active / Planning / On Hold / Completed (extends current All/Property/Client tabs)
+- **Search bar**: Real-time filter by project name (client-side, no DB call) using a `useState` filter on the fetched `projects` array
 
-Tasks are sorted: overdue first, then by due date, then by priority. Completed tasks are hidden but a "Show X completed" toggle is available.
-
-**Persistence**: The section is sticky — after login, this is the first thing users see after the greeting and core metrics.
+### Files changed:
+- `src/pages/projects/ProjectsDashboard.tsx` — major refactor to support three views
+- **New file**: `src/components/projects/ProjectListView.tsx` — compact list row component
+- **New file**: `src/components/projects/ProjectTableView.tsx` — sortable table component
 
 ---
 
-## Integration Points
+## Part 3 — Project Health Signals
 
-### Project Header Button
-In `ProjectDetailPage.tsx`, add the Tasks button alongside the Activity button:
+### Health computation logic
+Each project gets a computed `health` value derived from existing data already fetched in the dashboard. This is a **pure client-side computation** on the data already in-memory — no extra DB queries.
 
-```tsx
-<Button
-  variant={actionItemsOpen ? 'secondary' : 'outline'}
-  size="sm"
-  className="gap-1.5 relative"
-  onClick={() => { setActionItemsOpen(!actionItemsOpen); /* close others */ }}
->
-  <CheckSquare className="h-4 w-4" />
-  <span className="hidden sm:inline">Tasks</span>
-  {openTaskCount > 0 && (
-    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white text-[10px] flex items-center justify-center">
-      {openTaskCount}
-    </span>
-  )}
-</Button>
+```typescript
+function computeHealth(project: Project): 'on_track' | 'at_risk' | 'overdue' | 'stalled' {
+  const daysUntilEnd = project.target_end_date 
+    ? differenceInDays(new Date(project.target_end_date), new Date()) 
+    : null;
+  const budgetPct = project.budget && project.spent 
+    ? (Number(project.spent) / Number(project.budget)) * 100 
+    : 0;
+  const daysSinceUpdate = differenceInDays(new Date(), new Date(project.updated_at));
+
+  if (daysUntilEnd !== null && daysUntilEnd < 0) return 'overdue';
+  if (daysSinceUpdate > 14 && project.status === 'active') return 'stalled';
+  if (budgetPct > 90 || (daysUntilEnd !== null && daysUntilEnd < 7)) return 'at_risk';
+  return 'on_track';
+}
 ```
 
-A red badge on the button shows the count of open/overdue tasks for the project.
+### Health badge design
 
-### Notifications
-When a task is assigned to a user, a notification is inserted into the `notifications` table:
-- `type: 'assignment'`
-- `title: 'You've been assigned a task'`
-- `message: '<task title> — <project name>'`
-- `entity_type: 'action_item'`
-- `entity_id: <task id>`
-
-This surfaces in the existing NotificationCenter bell and in the Dashboard "Action Required" section.
-
----
-
-## Visual Design System — Priority Colors
-
-| Priority | Color | Left Border | Badge |
+| Health | Color | Icon | Meaning |
 |---|---|---|---|
-| Urgent | Red `#EF4444` | `border-l-red-500` | `bg-red-50 text-red-700` |
-| High | Orange `#F97316` | `border-l-orange-500` | `bg-orange-50 text-orange-700` |
-| Medium | Blue `#3B82F6` | `border-l-blue-500` | `bg-blue-50 text-blue-700` |
-| Low | Gray `#94A3B8` | `border-l-slate-300` | `bg-slate-50 text-slate-500` |
+| On Track | `text-green-600 bg-green-50` | ✓ CheckCircle | Budget OK, timeline OK |
+| At Risk | `text-amber-600 bg-amber-50` | ⚠ AlertTriangle | Budget >90% or due <7 days |
+| Overdue | `text-red-600 bg-red-50` | ✕ XCircle | Past target end date |
+| Stalled | `text-slate-500 bg-slate-100` | ⏸ Pause | No updates in 14+ days |
 
-## Visual Design System — Status Flow
-
+### Dashboard summary bar
+A new horizontal summary strip added ABOVE the project list/cards (below the 4 stat cards):
 ```
-[Todo] → [In Progress] → [In Review] → [Done]
-                   ↓
-             [Cancelled]
+Portfolio Health:  ● 8 On Track   ⚠ 2 At Risk   ✕ 1 Overdue   ⏸ 0 Stalled
 ```
+Each chip is clickable and filters the list to show only projects of that health category.
 
-Each status transition is animated: checking "Done" plays a satisfying strikethrough animation on the task title.
+### Files changed:
+- `src/pages/projects/ProjectsDashboard.tsx` — adds `computeHealth()` and health filter chips
+- A new shared utility `src/lib/projectHealth.ts` — exports `computeHealth()` and `HEALTH_CONFIG` so all three views (Card, List, Table) can use identical logic
 
 ---
 
-## Technical Implementation Steps
+## Part 4 — Sidebar: Project Navigator Enhancement
 
-1. **Database migration** — Create `project_action_items` and `action_item_comments` tables with RLS policies and enable realtime
-2. **`useActionItems.ts`** — Full hook with CRUD mutations, realtime subscriptions, and notification creation on assignment
-3. **`ActionItemsPanel.tsx`** — Overlay panel with quick-add, grouped task cards, inline comment thread expansion
-4. **`ActionItemDialog.tsx`** — Full create/edit form with assignee picker, due date, priority, entity linking
-5. **`ProjectDetailPage.tsx`** — Add Tasks button to header, wire overlay panel (same absolute overlay pattern as Activity)
-6. **`Dashboard.tsx`** — Add "My Tasks" section with `useMyActionItems()` data, priority sorting, one-click complete
+### Current state
+The Projects sidebar group has only two items: "All Projects" and "Proposals". When you have 10+ projects, navigating between them requires going back to `/projects`, scanning, and clicking in.
 
-No new npm dependencies are required — all UI components use existing shadcn, Radix, Framer Motion, and Lucide.
+### Enhancement: Recent Projects in sidebar
+Below "All Projects" in the sidebar, add a dynamic "Recent" section showing the 3 most recently accessed projects (tracked via `localStorage`). Each item shows:
+- Project name (truncated)
+- A health dot (colored)
+- Clicking navigates directly to `/projects/{id}`
+
+In icon-collapsed mode, these items are hidden (the sidebar is too narrow), and a tooltip on "All Projects" says "All Projects (3 recent)".
+
+This mirrors how Linear and Jira keep recently visited items in the sidebar for fast re-access.
+
+### Files changed:
+- `src/components/layout/AppSidebar.tsx` — add recent projects section inside the Projects `CollapsibleNavGroup`
+- `src/hooks/useProjects.ts` — no changes (data already available)
+
+---
+
+## Summary of All Files Changed
+
+| File | Change Type | What Changes |
+|---|---|---|
+| `src/pages/projects/ProjectsDashboard.tsx` | Major refactor | View toggle (Card/List/Table), sorting, search, health chips, delete trigger |
+| `src/pages/projects/ProjectDetailPage.tsx` | Minor addition | `⋯` dropdown next to Edit with Archive + Delete options |
+| `src/components/projects/DeleteProjectDialog.tsx` | New file | Typed-confirmation delete dialog |
+| `src/components/projects/ProjectListView.tsx` | New file | Compact list row component |
+| `src/components/projects/ProjectTableView.tsx` | New file | Sortable data table component |
+| `src/lib/projectHealth.ts` | New file | `computeHealth()` utility + `HEALTH_CONFIG` constants |
+| `src/components/layout/AppSidebar.tsx` | Minor addition | Recent projects section in Projects nav group |
+
+---
+
+## Technical Notes
+
+- **No new dependencies** required — view toggle uses existing Lucide icons; table uses Tailwind; `AlertDialog` is already in the shadcn library
+- **No new DB queries** — health computation runs on already-fetched data; recent projects use `localStorage`
+- **Delete safety**: typed-name confirmation guards against accidental deletion; server-side RLS policy provides the real security wall
+- **Database cascade**: all child tables (`project_action_items`, `project_milestones`, `project_discussions`, etc.) already have `ON DELETE CASCADE` foreign keys referencing `projects.id` — confirmed by seeing 17 child tables all reference the project id. Deleting the parent row cascades automatically.
+- **The `useDeleteProject` hook already works** — it calls `supabase.from('projects').delete().eq('id', id)` and the `admin` RLS policy already allows it. We just need the UI.
