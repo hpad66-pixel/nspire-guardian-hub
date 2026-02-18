@@ -25,6 +25,7 @@ import {
   FileSpreadsheet, ChevronDown, ChevronRight, Users,
 } from 'lucide-react';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { ProjectTeamSheet } from '@/components/projects/ProjectTeamSheet';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUpdateProject } from '@/hooks/useProjects';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
@@ -33,6 +34,7 @@ import { ActionItemsPanel } from '@/components/projects/ActionItemsPanel';
 import { ReportGeneratorDialog } from '@/components/projects/ReportGeneratorDialog';
 
 import { useProject } from '@/hooks/useProjects';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
 import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
@@ -94,6 +96,7 @@ export default function ProjectDetailPage() {
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [actionItemsOpen, setActionItemsOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [teamSheetOpen, setTeamSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement>(null);
@@ -106,6 +109,7 @@ export default function ProjectDetailPage() {
   const { data: punchStats } = usePunchItemStats(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
+  const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
 
@@ -704,6 +708,44 @@ export default function ProjectDetailPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Team card */}
+              <div className="rounded-xl border bg-card p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center">
+                      <Users className="h-3.5 w-3.5 text-module-projects" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">Project Team</h3>
+                      <p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}>
+                    <Users className="h-3 w-3" />
+                    Manage Team
+                  </Button>
+                </div>
+                {teamMembers.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {teamMembers.slice(0, 8).map(m => (
+                      <div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs">
+                        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                          {(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span>
+                      </div>
+                    ))}
+                    {teamMembers.length > 8 && (
+                      <div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
+                        +{teamMembers.length - 8} more
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
@@ -728,6 +770,12 @@ export default function ProjectDetailPage() {
         <ReportGeneratorDialog
           open={reportDialogOpen}
           onOpenChange={setReportDialogOpen}
+          projectId={id!}
+          projectName={project.name}
+        />
+        <ProjectTeamSheet
+          open={teamSheetOpen}
+          onOpenChange={setTeamSheetOpen}
           projectId={id!}
           projectName={project.name}
         />
