@@ -1,182 +1,129 @@
 
-# Meeting Minutes — Complete UX/UI & Editor Overhaul
+# Enterprise Navigation & Layout Overhaul
 
-## What's Wrong Today (Diagnosis)
+## Diagnosis: What Is Broken and Why
 
-1. **Header branding is incorrect** — It says "Asset & Property Administration System" underneath "APAS." You explicitly want just "APAS Consulting" — nothing more, nothing less.
-2. **Header is visually too heavy** — The full-width gradient banner is bulky and corporate, not sleek or modern.
-3. **AI output is poorly processed** — The markdown → HTML regex conversion in `handlePolish()` is fragile and produces broken markup with stray special characters and garbled tables.
-4. **AI prompt is weak** — The `meeting_minutes` prompt in `polish-text/index.ts` doesn't instruct Gemini to write at a McKinsey-grade level: expansive, formal, detailed, with full sentences, not cryptic bullets.
-5. **Rich text editor is basic** — Only has Bold/Italic/Underline/Strike/H2/H3/Lists. Missing: H1, font colors, highlight/background colors, text alignment, image insertion, tables, code blocks, Notion-style slash commands / AI autocomplete.
-6. **No full-screen editor mode** — The sheet sidebar has a fixed max-width. There's no way to expand it to a full-screen editing experience.
-7. **Notion-style AI completion** — The user wants to type a partial sentence and have AI complete it inline (like Notion's AI assistant).
+### Problem 1 — Horizontal Scrolling on the Project Page
+The `ProjectDetailPage` renders as a flex row: `[main content flex-1] + [ActivityFeedPanel 380px] + [DiscussionPanel 380px]`. When a panel opens, the 380px panel is added as a sibling that pushes `flex-1` content leftward — but there is no room because the outer container is `overflow-hidden`. The result is that the main content shrinks and the page scrolls horizontally.
 
----
+**Fix**: Convert the Activity and Discussion panels from flex siblings into **absolute/fixed overlay drawers** that sit on top of the content using `position: absolute right-0` within the already-bounded content container. They should NOT push the content — they should overlay it. Alternatively, the panels can be rendered as right-edge sheets using Radix `Sheet`. This is the correct enterprise UX pattern (used by Linear, Jira, Notion).
 
-## Solution Architecture
+### Problem 2 — Sidebar UX Issues
+The sidebar already uses `collapsible="icon"` which is the correct shadcn pattern. The ghost spacer div correctly reserves layout space. However:
+- When expanded, the sidebar has many nav groups open simultaneously causing overflow — the `SidebarContent` has `overflow-y-auto` but the visible area is correct. This is actually the primary scroll problem: too many groups are `defaultOpen={true}` at once.
+- The sidebar `SidebarContent` height can be improved with better scrollbar styling.
+- No visual "resize handle" or persistent expand/collapse state preference for the user.
 
-### Part 1 — Upgrade the Rich Text Editor (`rich-text-editor.tsx`)
+**Fix**: 
+- Collapse most groups by default — only the active group auto-opens
+- Add smooth CSS transitions to collapsible groups
+- Persist sidebar state to localStorage (the Shadcn SidebarProvider already uses a cookie — we will reinforce this)
+- Add a subtle collapse/expand rail to the sidebar edge
 
-The existing `RichTextEditor` is barebones Tiptap. We need to significantly expand it. The installed Tiptap packages are `starter-kit`, `extension-placeholder`, and `extension-underline`. We will add additional Tiptap extensions that are available from the already-installed `@tiptap` packages (no new npm installs needed for core features), or use additional extensions that can be installed.
-
-**New editor capabilities:**
-- **Formatting**: H1, H2, H3, Bold, Italic, Underline, Strike, Code (inline), Code Block
-- **Structure**: Bullet list, Ordered list, Blockquote, Horizontal Rule
-- **Alignment**: Left, Center, Right, Justify (using CSS class approach via `TextAlign` extension — already in Tiptap starter ecosystem)
-- **Colors**: Text color picker, Highlight/background color picker
-- **Tables**: Insert table, add/remove rows/columns
-- **Images**: Upload or paste images (stored via existing `organization-documents` storage bucket)
-- **Undo/Redo**: Full history
-- **AI Completion**: A dedicated "AI Complete" button in the toolbar — takes the current paragraph text as context and appends AI-generated continuation inline
-
-The toolbar will be organized into **logical groups** with dividers:
-```
-[H1][H2][H3] | [B][I][U][S] | [Color][Highlight] | [Align↔] | [List][OList][Quote][HR] | [Table] | [Image] | [AI✨] | [Undo][Redo]
-```
-
-### Part 2 — Full-Screen Expand/Collapse
-
-The `MeetingEditorSheet` currently uses `<Sheet>` (a Radix side panel). We will add:
-- An **Expand button** (maximize icon) in the sheet header that transitions the editor from sidebar mode to a full-screen overlay (using a `Dialog` with `max-w-screen-2xl` or `w-screen h-screen` class)
-- When full-screen, the same editor content, tabs, and toolbar are displayed but with much more horizontal space — the editor fills 2/3 width, and a live branded preview occupies the right 1/3
-- A **Collapse button** (minimize icon) returns to the sidebar sheet
-- State is preserved seamlessly — no content loss during the mode switch
-
-The implementation uses a `isFullScreen` boolean that conditionally renders either a `<Sheet>` wrapper or a `<Dialog className="w-screen h-screen max-w-full rounded-none">` wrapper around the same inner content.
-
-### Part 3 — APAS Branding Fix
-
-**Current (wrong):**
-```
-APAS
-Asset & Property Administration System
-```
-
-**Fixed (correct):**
-```
-APAS Consulting
-```
-
-The header becomes a sleek, minimal strip — not a towering gradient block. Design language:
-- **Left-aligned** horizontal letterhead strip (McKinsey-style)
-- Thin rule under the company name
-- `APAS Consulting` in a strong, slightly spaced serif-feel sans-serif — not a banner
-- The meeting title, date, and type sit below in elegant type hierarchy
-- No giant gradient — just clean whitespace with a thin navy left border accent
-
-### Part 4 — Upgraded AI Prompt (McKinsey-Grade Minutes)
-
-The `meeting_minutes` prompt in `supabase/functions/polish-text/index.ts` is rewritten to:
-
-1. Instruct the model to write **full, complete, professional sentences** — not cryptic abbreviations
-2. Demand **proper HTML output** directly (not markdown that gets mangled) — the prompt explicitly asks for clean HTML with `<h2>`, `<h3>`, `<p>`, `<ul>`, `<table>` tags
-3. Set a tone: *"You are a senior project management consultant preparing formal board-level meeting minutes. Write with precision, authority, and completeness..."*
-4. Include all canonical McKinsey minutes sections:
-   - **Meeting Information** (auto-extracted)
-   - **Executive Summary** (2–3 paragraph narrative of what was accomplished)
-   - **Agenda & Discussion** (numbered sections per topic, full narrative per topic)
-   - **Key Decisions** (complete sentences, not fragments)
-   - **Risks & Issues Identified** (with severity and owner if mentioned)
-   - **Action Items** (proper HTML table: Item | Owner | Due Date | Priority)
-   - **Next Steps & Upcoming Meetings**
-   - **Prepared By / Distribution** (signature line)
-
-5. The `handlePolish` function will no longer apply regex post-processing — the AI returns clean HTML directly, which is loaded straight into the Tiptap editor.
-
-### Part 5 — Notion-Style AI Continuation
-
-A dedicated **`AI Continue`** toolbar button in the editor:
-- Takes the last paragraph or selected text as context
-- Sends it to the `polish-text` edge function with a new `context: 'ai_continue'` mode
-- Appends the AI-generated continuation text at the current cursor position
-- Shows a subtle loading state on the button while generating
-
-The new prompt for `ai_continue`:
-> "Continue writing the following text in a formal, professional project management tone. Write naturally as a continuation — no headings, no repetition of the existing text. Output only the continuation text."
+### Problem 3 — Header Bar
+The top header bar at `h-14` is solid but the search bar uses a fixed `w-64` which looks misaligned at some breakpoints.
 
 ---
 
-## Files to Change
+## Changes Required
 
-### 1. `src/components/ui/rich-text-editor.tsx` — Complete Rewrite
-**New capabilities:**
-- Additional Tiptap extensions: `TextAlign`, `Color`, `Highlight`, `Image`, `Table`, `TableRow`, `TableHeader`, `TableCell`, `HorizontalRule`, `CodeBlock`
-- These are installed via the packages `@tiptap/extension-text-align`, `@tiptap/extension-color`, `@tiptap/extension-highlight`, `@tiptap/extension-image`, `@tiptap/extension-table` — we will need to **install these packages**
-- New `ProRichTextEditor` component with the expanded toolbar, grouped into logical sections
-- Export both the original `RichTextEditor` (for backward compat elsewhere) and the new `ProRichTextEditor`
-- The `ProRichTextEditor` accepts an `onAiComplete?: (context: string) => Promise<string>` prop for the AI continuation button
+### File 1: `src/pages/projects/ProjectDetailPage.tsx`
 
-### 2. `src/components/projects/MeetingsTab.tsx` — Major Refactor
-**Changes:**
-- Replace `APAS` + subtitle with just `APAS Consulting` in slim, modern letterhead style
-- Complete redesign of `MinutesViewer` — clean white document with narrow navy left-border accent, elegant typography
-- `MeetingEditorSheet`: Add `isFullScreen` state and toggle button; render Sheet vs full-screen Dialog based on state
-- Switch from basic `RichTextEditor` to `ProRichTextEditor` in the edit mode
-- Remove the regex-based markdown-to-HTML conversion in `handlePolish` — AI now returns HTML directly
-- Wire up the `onAiComplete` prop for inline AI continuation in the editor
+**Change the panel rendering strategy completely:**
 
-### 3. `supabase/functions/polish-text/index.ts` — Prompt Upgrade
-**Changes:**
-- Rewrite the `meeting_minutes` prompt for McKinsey-grade, HTML-output minutes
-- Add new `ai_continue` context prompt for inline sentence completion
-- Keep all other prompts unchanged
+Currently:
+```tsx
+<div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+  <div className="flex-1 overflow-auto">
+    {/* main content */}
+  </div>
+  <AnimatePresence>
+    {activityFeedOpen && <ActivityFeedPanel ... />}
+    {discussionsPanelOpen && <DiscussionPanel ... />}
+  </AnimatePresence>
+</div>
+```
 
-### 4. Package Additions
-We need to install the following Tiptap extensions:
-- `@tiptap/extension-text-align`
-- `@tiptap/extension-color`
-- `@tiptap/extension-highlight`
-- `@tiptap/extension-image`
-- `@tiptap/extension-table`
+The `ActivityFeedPanel` and `DiscussionPanel` are siblings in the flex row and push content sideways. The fix is to make the outer container `relative` and the panels `absolute right-0 top-0 h-full` — so they overlay the content without pushing it.
 
-These are all official Tiptap v3-compatible packages from the same `@tiptap` family already in use.
+New structure:
+```tsx
+<div className="relative h-[calc(100vh-3.5rem)] overflow-hidden flex">
+  <div className="flex-1 overflow-auto min-w-0">
+    {/* all main content */}
+  </div>
+  
+  {/* Overlay panels — positioned absolute, slide in from right */}
+  <AnimatePresence>
+    {activityFeedOpen && (
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        className="absolute right-0 top-0 h-full w-[380px] border-l shadow-xl z-20 bg-background"
+      >
+        <ActivityFeedPanel ... />
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
+```
+
+This way the panels slide over the content, not push it — exactly like Linear, GitHub's PR sidebar, or Jira's detail panel.
+
+### File 2: `src/components/projects/ActivityFeedPanel.tsx`
+
+**Remove the outer `motion.div` wrapper** — the motion is now handled by the parent in `ProjectDetailPage`. The panel itself should be a plain `div className="flex flex-col h-full"`. This avoids double-animation and keeps the component clean.
+
+### File 3: `src/components/projects/DiscussionPanel.tsx`
+
+**Same change** — remove the outer `motion.div`/animation wrapper from the panel itself. Motion is handled by the parent overlay container.
+
+### File 4: `src/components/layout/AppSidebar.tsx`
+
+**Key UX improvements:**
+
+1. **Fix defaultOpen for groups** — Currently "Daily Grounds", "Projects", and "NSPIRE" all have `defaultOpen={true}`. When all three are active modules, the sidebar shows 10+ items expanded at once. Only the **currently active group** should be open by default, all others closed.
+
+   Change: Remove `defaultOpen={true}` from all groups except when they are the active route. Each `CollapsibleNavGroup` already receives `isActive` — use that to drive the initial open state exclusively.
+
+2. **Better mini-mode icons** — In icon-only/collapsed mode, wrap each `NavItem` in a `Tooltip` showing the label. This already exists via the `tooltip` prop but it's not applied consistently. Ensure ALL `NavItem` calls in collapsed mode show tooltips.
+
+3. **Smooth group animations** — The Radix `CollapsibleContent` already animates, but we need to ensure the CSS `overflow-hidden` + `animate-accordion-down/up` classes are applied (from the existing index.css `tailwindcss-animate` config).
+
+4. **Sidebar toggle persistence** — The shadcn `SidebarProvider` already saves state to a cookie (`sidebar:state`). Ensure the `defaultOpen` prop reads from that cookie on mount so the sidebar remembers whether the user left it collapsed or expanded.
+
+5. **Add a `SidebarRail`** — The shadcn `SidebarRail` component provides a thin, hoverable strip on the edge of the sidebar that lets users click to expand/collapse. Add `<SidebarRail />` inside `<Sidebar>` for a more polished feel.
+
+6. **Logo text fix** — Change "PM APAS" to "APAS Consulting" and remove the "Property OS" subtitle, matching the brand standard established in meeting minutes.
+
+### File 5: `src/components/layout/AppLayout.tsx`
+
+**Header improvements:**
+
+1. Make the search bar `flex-1 max-w-sm` instead of a fixed `w-64` so it breathes on different viewports.
+2. Move the `SidebarTrigger` to be visually integrated with the sidebar — add a hover state that clearly communicates "click to toggle."
+3. Add a keyboard shortcut hint `⌘B` next to the sidebar trigger (the shadcn default is Ctrl/Cmd+B).
 
 ---
 
-## Visual Design — What It Will Look Like
+## Summary of UX Changes
 
-### The Letterhead Strip (MinutesViewer)
-```
-┌──────────────────────────────────────────────────────┐
-│▌ APAS Consulting                              [logo] │  ← slim, left-aligned, navy left border
-│▌ ─────────────────────────────────────────────────  │  ← hairline rule
-│                                                      │
-│  WEEKLY PROGRESS MEETING                            │  ← meeting type, small caps, slate
-│  Week 12 Site Coordination                          │  ← meeting title, large, bold
-│  Monday, February 18, 2026  ·  9:00 AM  ·  Site    │  ← meta in one clean line
-│                                                      │
-│ ─────────────────────────────────────────────────   │
-│                                                      │
-│  ATTENDEES                                           │
-│  ┌──────────┬─────────────┬──────────────────┐      │
-│  │ Name     │ Role        │ Company          │      │
-│  ├──────────┼─────────────┼──────────────────┤      │
-│  │ ...      │ ...         │ ...              │      │
-│  └──────────┴─────────────┴──────────────────┘      │
-│                                                      │
-│  1. EXECUTIVE SUMMARY                               │
-│  The project team convened for the twelfth weekly   │
-│  progress meeting to review schedule performance... │
-│                                                      │
-│  2. AGENDA & DISCUSSION                             │
-│  ...                                                 │
-└──────────────────────────────────────────────────────┘
-```
+| Issue | Root Cause | Fix |
+|---|---|---|
+| Content scrolls horizontally when panel opens | Activity/Discussion panels are flex siblings, pushing content | Convert panels to `position: absolute` overlays on the right edge |
+| Sidebar shows too many expanded groups | All groups have `defaultOpen={true}` | Only auto-open the group containing the current route |
+| Sidebar mini-mode has no tooltips for all items | `tooltip` prop not applied to all `NavItem` calls | Apply tooltip to every item when `collapsed` is true |
+| Brand name wrong in sidebar | Shows "PM APAS / Property OS" | Change to "APAS Consulting" |
+| No rail for resizing/toggling | `SidebarRail` not used | Add `<SidebarRail />` inside `Sidebar` |
+| Header search bar fixed width | `w-64` class | Change to `flex-1 max-w-sm` |
 
-### Full-Screen Editor Mode
-```
-┌──[Header: APAS Consulting · Week 12 · Draft]──[↙Collapse]──[Save][Finalize][Email][PDF][Word]──┐
-│                                                                                                   │
-│  ┌──[Raw Notes]──[Formatted Minutes]──[AI Polish ✨]──────────────────────────────────────────┐  │
-│  │                                                                                              │  │
-│  │  EDITOR (left 60%)                    │  LIVE PREVIEW (right 40%)                          │  │
-│  │  ┌──Toolbar──────────────────────┐    │  ┌───────────────────────────────┐                 │  │
-│  │  │ H1 H2 H3 | B I U | Color...  │    │  │▌ APAS Consulting              │                 │  │
-│  │  ├───────────────────────────────┤    │  │▌ ─────────────────────────── │                 │  │
-│  │  │                               │    │  │  WEEKLY PROGRESS MEETING      │                 │  │
-│  │  │  [Editing content here...]    │    │  │  Week 12 Site Coordination... │                 │  │
-│  │  │                               │    │  │                               │                 │  │
-│  │  └───────────────────────────────┘    │  └───────────────────────────────┘                 │  │
-│  └──────────────────────────────────────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+---
+
+## Technical Notes
+
+- No new dependencies needed — all changes are structural Tailwind/React refactors
+- The `motion.div` wrappers are moved UP to the parent (`ProjectDetailPage`) so the panel components themselves become simpler
+- The Radix `Sheet` component could also be used for the overlay panels, but `motion.div` + `absolute` is simpler here and avoids adding a Radix portal which would require z-index management against the sidebar
+- The sidebar `SidebarRail` is already exported from `@/components/ui/sidebar` — it just needs to be used
+- Cookie-based sidebar state persistence is already built into `SidebarProvider` — no extra work needed
