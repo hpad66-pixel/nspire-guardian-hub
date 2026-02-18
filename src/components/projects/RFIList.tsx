@@ -5,6 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -12,13 +18,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, MessageSquare, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, MessageSquare, Clock, CheckCircle, XCircle, MoreHorizontal, Mail } from 'lucide-react';
 import { useRFIsByProject, useRFIStats, type RFI } from '@/hooks/useRFIs';
 import { RFIDialog } from './RFIDialog';
 import { RFIDetailSheet } from './RFIDetailSheet';
+import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 
 interface RFIListProps {
   projectId: string;
+  projectName?: string;
 }
 
 const statusConfig = {
@@ -28,18 +36,26 @@ const statusConfig = {
   closed: { label: 'Closed', variant: 'secondary' as const, icon: XCircle },
 };
 
-export function RFIList({ projectId }: RFIListProps) {
+export function RFIList({ projectId, projectName = '' }: RFIListProps) {
   const { data: rfis, isLoading } = useRFIsByProject(projectId);
   const { data: stats } = useRFIStats(projectId);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedRFI, setSelectedRFI] = useState<RFI | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  
+  const [emailRFI, setEmailRFI] = useState<RFI | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+
   const handleRFIClick = (rfi: RFI) => {
     setSelectedRFI(rfi);
     setDetailSheetOpen(true);
   };
-  
+
+  const handleEmailRFI = (e: React.MouseEvent, rfi: RFI) => {
+    e.stopPropagation();
+    setEmailRFI(rfi);
+    setEmailDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats */}
@@ -69,7 +85,7 @@ export function RFIList({ projectId }: RFIListProps) {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* RFI List */}
       <Card>
         <CardHeader>
@@ -100,13 +116,14 @@ export function RFIList({ projectId }: RFIListProps) {
                   <TableHead>Status</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rfis.map((rfi) => {
                   const config = statusConfig[rfi.status];
                   const StatusIcon = config.icon;
-                  
+
                   return (
                     <TableRow
                       key={rfi.id}
@@ -138,6 +155,24 @@ export function RFIList({ projectId }: RFIListProps) {
                       <TableCell className="text-muted-foreground">
                         {format(new Date(rfi.created_at), 'MMM d, yyyy')}
                       </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleRFIClick(rfi)}>
+                              Open RFI
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleEmailRFI(e, rfi)} className="gap-2">
+                              <Mail className="h-4 w-4" />
+                              Email Externally
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -158,18 +193,38 @@ export function RFIList({ projectId }: RFIListProps) {
           )}
         </CardContent>
       </Card>
-      
+
       <RFIDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         projectId={projectId}
       />
-      
+
       <RFIDetailSheet
         rfi={selectedRFI}
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
+        projectName={projectName}
       />
+
+      {emailRFI && (
+        <SendExternalEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          documentType="rfi"
+          documentTitle={`RFI #${emailRFI.rfi_number} — ${emailRFI.subject}`}
+          documentId={emailRFI.id}
+          projectName={projectName}
+          contentHtml={`
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailRFI.status}</td></tr>
+              ${emailRFI.due_date ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Due Date</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailRFI.due_date}</td></tr>` : ''}
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Question</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailRFI.question}</td></tr>
+              ${emailRFI.response ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Response</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailRFI.response}</td></tr>` : ''}
+            </table>
+          `}
+        />
+      )}
     </div>
   );
 }

@@ -19,9 +19,10 @@ type ChangeOrderRow = Database['public']['Tables']['change_orders']['Row'];
 interface ProjectFinancialsProps {
   project: ProjectRow & { property?: { name: string } };
   changeOrders: ChangeOrderRow[];
+  projectName?: string;
 }
 
-export function ProjectFinancials({ project, changeOrders }: ProjectFinancialsProps) {
+export function ProjectFinancials({ project, changeOrders, projectName }: ProjectFinancialsProps) {
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
     return new Intl.NumberFormat('en-US', {
@@ -180,7 +181,7 @@ export function ProjectFinancials({ project, changeOrders }: ProjectFinancialsPr
       </div>
 
       {/* Change Orders List */}
-      <ChangeOrdersList projectId={project.id} changeOrders={changeOrders} />
+      <ChangeOrdersList projectId={project.id} changeOrders={changeOrders} projectName={projectName} />
     </div>
   );
 }

@@ -17,14 +17,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Calendar, User, MessageSquare, CheckCircle, XCircle, Clock, Send } from 'lucide-react';
+import { Calendar, User, MessageSquare, CheckCircle, XCircle, Clock, Send, Mail } from 'lucide-react';
 import { type RFI, useRespondToRFI, useCloseRFI } from '@/hooks/useRFIs';
 import { useAuth } from '@/hooks/useAuth';
+import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 
 interface RFIDetailSheetProps {
   rfi: RFI | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectName?: string;
 }
 
 const statusConfig = {
@@ -34,12 +36,13 @@ const statusConfig = {
   closed: { label: 'Closed', variant: 'secondary' as const, className: '' },
 };
 
-export function RFIDetailSheet({ rfi, open, onOpenChange }: RFIDetailSheetProps) {
+export function RFIDetailSheet({ rfi, open, onOpenChange, projectName = '' }: RFIDetailSheetProps) {
   const { user } = useAuth();
   const respondToRFI = useRespondToRFI();
   const closeRFI = useCloseRFI();
   
   const [response, setResponse] = useState('');
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   
   if (!rfi) return null;
   
@@ -136,8 +139,16 @@ export function RFIDetailSheet({ rfi, open, onOpenChange }: RFIDetailSheetProps)
           <Separator />
           
           {/* Actions */}
-          {rfi.status !== 'closed' && (
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setEmailDialogOpen(true)}
+            >
+              <Mail className="h-4 w-4" />
+              Email Externally
+            </Button>
+            {rfi.status !== 'closed' && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="w-full">
@@ -158,10 +169,27 @@ export function RFIDetailSheet({ rfi, open, onOpenChange }: RFIDetailSheetProps)
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </SheetContent>
+
+      <SendExternalEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        documentType="rfi"
+        documentTitle={`RFI #${rfi.rfi_number} — ${rfi.subject}`}
+        documentId={rfi.id}
+        projectName={projectName}
+        contentHtml={`
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.status}</td></tr>
+            ${rfi.due_date ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Due Date</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.due_date}</td></tr>` : ''}
+            <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Question</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.question}</td></tr>
+            ${rfi.response ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Response</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.response}</td></tr>` : ''}
+          </table>
+        `}
+      />
     </Sheet>
   );
 }
