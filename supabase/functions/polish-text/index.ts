@@ -56,7 +56,7 @@ serve(async (req) => {
       throw new Error('AI service is not configured');
     }
 
-    const { text, context = 'notes' } = await req.json();
+    const { text, context = 'notes', preferredModel } = await req.json();
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return new Response(
@@ -65,13 +65,23 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Polishing text with context: ${context}, length: ${text.length}`);
+    console.log(`Polishing text with context: ${context}, preferredModel: ${preferredModel ?? 'default'}, length: ${text.length}`);
 
     const systemPrompt = contextPrompts[context] || contextPrompts.notes;
 
-    // Try models in order — fall back if credits exhausted on one
-    const modelsToTry = ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash-lite', 'google/gemini-2.5-flash'];
-    let lastStatus = 0;
+    // Model routing:
+    // - meetings (meeting_minutes) → Gemini 2.5 Pro (highest quality for structured docs)
+    // - activity feed / notes     → Gemini 3 Flash Preview (fast, efficient)
+    // Caller can also pass preferredModel to override.
+    const defaultModel = preferredModel
+      ? preferredModel
+      : context === 'meeting_minutes'
+        ? 'google/gemini-2.5-pro'
+        : 'google/gemini-3-flash-preview';
+
+    // Fallback chain if primary model returns 402
+    const fallbacks = ['google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+    const modelsToTry = [defaultModel, ...fallbacks.filter(m => m !== defaultModel)];
 
     for (const model of modelsToTry) {
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -95,12 +105,10 @@ serve(async (req) => {
         const polished = result.choices?.[0]?.message?.content || text;
         console.log(`Successfully polished text with model: ${model}`);
         return new Response(
-          JSON.stringify({ polished }),
+          JSON.stringify({ polished, model }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      lastStatus = response.status;
 
       if (response.status === 429) {
         return new Response(
@@ -110,12 +118,11 @@ serve(async (req) => {
       }
 
       if (response.status === 402) {
-        console.warn(`Model ${model} returned 402, trying next model...`);
-        // Try next model in the list
+        console.warn(`Model ${model} returned 402, trying next fallback...`);
         continue;
       }
 
-      // Other non-OK status — log and fail fast
+      // Other non-OK status — fail fast
       const errorText = await response.text();
       console.error('AI gateway error:', response.status, errorText);
       throw new Error('AI service error');

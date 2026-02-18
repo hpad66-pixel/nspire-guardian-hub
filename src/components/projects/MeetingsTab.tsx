@@ -186,7 +186,11 @@ function MeetingEditorSheet({
   const handlePolish = useCallback(async () => {
     if (!rawNotes.trim()) { toast.error('Enter some notes first'); return; }
     setPreviousNotes(polishedNotes);
-    const result = await polish(rawNotes, 'meeting_minutes');
+    // Meetings use Gemini 2.5 Pro — highest quality for structured meeting minutes
+    const result = await polish(rawNotes, {
+      context: 'meeting_minutes',
+      model: 'google/gemini-2.5-pro',
+    });
     if (result) setPolishedNotes(result);
   }, [rawNotes, polishedNotes, polish]);
 
