@@ -130,6 +130,7 @@ IMPORTANT FORMATTING RULES:
     // and stream the response back character by character for a smooth UX
     const aiResponse = await fetch(
       `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

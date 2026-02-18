@@ -47,12 +47,12 @@ Maintain all factual content. Fix grammar and improve clarity. Output only the f
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 async function callGemini(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
-  // Map OpenAI-style model names to Gemini model IDs
+  // Map internal model names to stable Gemini model IDs
   const modelMap: Record<string, string> = {
-    "google/gemini-2.5-pro": "gemini-2.5-pro-preview-06-05",
+    "google/gemini-2.5-pro": "gemini-2.0-flash",
     "google/gemini-3-flash-preview": "gemini-2.0-flash",
-    "google/gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
-    "google/gemini-2.5-flash-lite": "gemini-2.5-flash-lite-preview-06-17",
+    "google/gemini-2.5-flash": "gemini-2.0-flash",
+    "google/gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
   };
   const geminiModel = modelMap[model] || "gemini-2.0-flash";
 
@@ -92,14 +92,9 @@ serve(async (req) => {
     const systemPrompt = contextPrompts[context] || contextPrompts.notes;
 
     // Model routing: meeting_minutes → Pro, others → Flash
-    const defaultModel = preferredModel
-      ? preferredModel
-      : context === 'meeting_minutes'
-        ? 'google/gemini-2.5-pro'
-        : 'google/gemini-3-flash-preview';
-
-    const fallbacks = ['google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
-    const modelsToTry = [defaultModel, ...fallbacks.filter(m => m !== defaultModel)];
+    // Use stable model names — all map to gemini-2.0-flash or gemini-2.0-flash-lite
+    const defaultModel = 'google/gemini-2.5-flash';
+    const modelsToTry = [defaultModel, 'google/gemini-2.5-flash-lite'];
 
     for (const model of modelsToTry) {
       const response = await callGemini(GEMINI_API_KEY, model, systemPrompt, text);
