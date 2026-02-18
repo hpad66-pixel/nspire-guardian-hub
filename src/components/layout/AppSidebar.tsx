@@ -55,8 +55,8 @@ import {
 // ── Zone label (non-interactive, uppercase) ──────────────────────────────
 function ZoneLabel({ label }: { label: string }) {
   return (
-    <div className="px-4 pt-4 pb-1">
-      <span className="text-[10px] uppercase tracking-widest font-semibold text-[hsl(var(--sidebar-zone-label))]">
+    <div className="px-3 pt-4 pb-1">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--sidebar-label))]">
         {label}
       </span>
     </div>
@@ -65,13 +65,13 @@ function ZoneLabel({ label }: { label: string }) {
 
 // ── Zone divider ─────────────────────────────────────────────────────────
 function ZoneDivider() {
-  return <div className="mx-3 my-1 border-t border-[hsl(var(--sidebar-border)/0.4)]" />;
+  return <div className="mx-3 my-1 border-t border-[hsl(var(--sidebar-border))]" />;
 }
 
 // ── Individual nav item ───────────────────────────────────────────────────
 interface NavItemProps {
   to: string;
-  icon: React.ElementType;
+  icon: React.ReactNode;
   label: string;
   collapsed: boolean;
   end?: boolean;
@@ -80,66 +80,76 @@ interface NavItemProps {
   tooltip?: string;
 }
 
-function NavItem({ to, icon: Icon, label, collapsed, end, badge, badgeVariant = 'default', tooltip }: NavItemProps) {
+function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'default', tooltip }: NavItemProps) {
   const hasBadge = badge !== undefined && badge > 0;
   const badgeNum = badge ?? 0;
 
-  const inner = (
+  const content = (
     <NavLink
       to={to}
       end={end}
       className={cn(
-        "group relative flex items-center gap-2.5 h-9 px-3 rounded-lg w-full text-sm font-medium",
-        "text-[hsl(var(--sidebar-muted))] transition-colors duration-150",
+        "group/navitem flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-normal w-full",
+        "text-[hsl(var(--sidebar-foreground)/0.75)] transition-colors duration-150",
         "hover:bg-white/5 hover:text-[hsl(var(--sidebar-foreground))]",
         collapsed && "justify-center px-0"
       )}
-      activeClassName={cn(
-        "!bg-[hsl(217_91%_60%/0.12)] !text-white",
-        "border-l-2 border-[hsl(217,91%,60%)] rounded-l-none rounded-r-lg"
-      )}
+      activeClassName="!bg-[hsl(var(--sidebar-accent)/0.15)] !text-[hsl(var(--sidebar-accent))] !font-medium border-l-2 border-[hsl(var(--sidebar-accent))] rounded-l-none pl-[10px]"
     >
       {/* Icon + collapsed badge dot */}
-      <div className="relative shrink-0">
-        <Icon className="h-4 w-4" />
+      <div className="relative flex-shrink-0">
+        {icon}
         {collapsed && hasBadge && (
           <span className={cn(
-            "absolute -top-1 -right-1 h-2 w-2 rounded-full",
+            "absolute -top-1 -right-1 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]",
             badgeVariant === 'urgent'
-              ? "bg-[hsl(0,84%,60%)]"
-              : "bg-[hsl(217,91%,60%)]"
+              ? "bg-[hsl(var(--destructive))]"
+              : "bg-[hsl(var(--sidebar-accent))]"
           )} />
         )}
       </div>
 
-      {/* Label (expanded only) */}
-      {!collapsed && <span className="flex-1 truncate">{label}</span>}
-
-      {/* Count badge (expanded only) */}
-      {!collapsed && hasBadge && (
-        <span className={cn(
-          "ml-auto h-5 min-w-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center tabular-nums",
-          badgeVariant === 'urgent'
-            ? "bg-[hsl(0,84%,60%/0.2)] text-[hsl(0,84%,60%)]"
-            : "bg-[hsl(217,91%,60%/0.2)] text-[hsl(217,91%,60%)]"
-        )}>
-          {badgeNum > 99 ? '99+' : badgeNum}
-        </span>
+      {/* Label + badge (expanded only) */}
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">{label}</span>
+          {hasBadge && (
+            <span className={cn(
+              "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+              badgeVariant === 'urgent'
+                ? "bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]"
+                : "bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]"
+            )}>
+              {badgeNum > 99 ? '99+' : badgeNum}
+            </span>
+          )}
+        </>
       )}
     </NavLink>
   );
 
   if (collapsed) {
-    const tipLabel = hasBadge ? `${label} (${badgeNum})` : label;
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{inner}</TooltipTrigger>
-        <TooltipContent side="right" className="text-xs">{tooltip || tipLabel}</TooltipContent>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right" className="flex items-center gap-2 text-xs">
+          {tooltip || label}
+          {hasBadge && (
+            <span className={cn(
+              "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold",
+              badgeVariant === 'urgent'
+                ? "bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]"
+                : "bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]"
+            )}>
+              {badgeNum}
+            </span>
+          )}
+        </TooltipContent>
       </Tooltip>
     );
   }
 
-  return inner;
+  return content;
 }
 
 // ── Main sidebar ─────────────────────────────────────────────────────────
@@ -213,53 +223,49 @@ export function AppSidebar() {
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
-        <SidebarHeader className="p-3 pb-0">
+        <SidebarHeader className="border-b border-[hsl(var(--sidebar-border))] px-3 py-4">
           <NavLink to="/" className={cn(
-            "flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/5 transition-colors",
+            "flex items-center gap-3 outline-none rounded-md",
             collapsed && "justify-center"
           )}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-primary))] shrink-0">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))]">
               <Building2 className="h-4 w-4 text-white" />
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-white leading-tight">PM APAS</span>
-                <span className="text-[11px] text-[hsl(var(--sidebar-muted))] leading-tight">Property OS</span>
+                <span className="text-[13px] font-semibold text-[hsl(var(--sidebar-foreground))] leading-tight">PM APAS</span>
+                <span className="text-[10px] font-normal text-[hsl(var(--sidebar-muted))] leading-tight tracking-wide">Property OS</span>
               </div>
             )}
           </NavLink>
 
           {/* Property context indicator */}
           {!collapsed && (
-            <div className="mt-2 px-1.5 pb-2">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5">
-                <Building className="h-3 w-3 text-[hsl(var(--sidebar-muted))] shrink-0" />
-                <span className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">{propertyLabel}</span>
-              </div>
+            <div className="mt-3 flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5">
+              <Building className="h-3 w-3 text-[hsl(var(--sidebar-muted))] shrink-0" />
+              <span className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">{propertyLabel}</span>
             </div>
           )}
-
-          <div className="border-b border-[hsl(var(--sidebar-border)/0.4)] mt-1" />
         </SidebarHeader>
 
         {/* ── CONTENT ────────────────────────────────────────────────────── */}
-        <SidebarContent className="overflow-y-auto px-2 py-2">
+        <SidebarContent className="overflow-y-auto px-1 py-2">
 
           {/* ZONE 1 — OVERVIEW */}
-          <nav className="space-y-0.5">
-            <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} end />
+          <nav className="space-y-0.5 px-2 pb-1">
+            <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" collapsed={collapsed} end />
           </nav>
 
           <ZoneDivider />
 
           {/* ZONE 2 — PROPERTY */}
           {!collapsed && <ZoneLabel label="Property" />}
-          <nav className="space-y-0.5">
-            <NavItem to="/properties" icon={Building} label="Properties" collapsed={collapsed} />
-            <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
-            <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
+          <nav className="space-y-0.5 px-2">
+            <NavItem to="/properties" icon={<Building className="h-4 w-4" />} label="Properties" collapsed={collapsed} />
+            <NavItem to="/units" icon={<DoorOpen className="h-4 w-4" />} label="Units" collapsed={collapsed} />
+            <NavItem to="/assets" icon={<Box className="h-4 w-4" />} label="Assets" collapsed={collapsed} />
             {isModuleEnabled('occupancyEnabled') && (
-              <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
+              <NavItem to="/occupancy" icon={<Home className="h-4 w-4" />} label="Occupancy" collapsed={collapsed} />
             )}
           </nav>
 
@@ -267,14 +273,14 @@ export function AppSidebar() {
 
           {/* ZONE 3 — OPERATIONS */}
           {!collapsed && <ZoneLabel label="Operations" />}
-          <nav className="space-y-0.5">
+          <nav className="space-y-0.5 px-2">
             {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-              <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
+              <NavItem to="/inspections/daily" icon={<Sun className="h-4 w-4" />} label="Daily Grounds" collapsed={collapsed} />
             )}
             {isModuleEnabled('nspireEnabled') && canView('inspections') && (
               <NavItem
                 to="/inspections"
-                icon={ClipboardCheck}
+                icon={<ClipboardCheck className="h-4 w-4" />}
                 label="Compliance"
                 collapsed={collapsed}
                 badge={severeDefectCount}
@@ -286,7 +292,7 @@ export function AppSidebar() {
               <>
                 <NavItem
                   to="/projects"
-                  icon={FolderKanban}
+                  icon={<FolderKanban className="h-4 w-4" />}
                   label="Projects"
                   collapsed={collapsed}
                   badge={activeProjectCount}
@@ -319,7 +325,7 @@ export function AppSidebar() {
                 )}
                 {isAdmin && (
                   <div className="pl-7">
-                    <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
+                    <NavItem to="/projects/proposals" icon={<FileText className="h-4 w-4" />} label="Proposals" collapsed={collapsed} />
                   </div>
                 )}
               </>
@@ -327,7 +333,7 @@ export function AppSidebar() {
             {canView('issues') && (
               <NavItem
                 to="/issues"
-                icon={AlertTriangle}
+                icon={<AlertTriangle className="h-4 w-4" />}
                 label="Issues"
                 collapsed={collapsed}
                 badge={openIssueCount}
@@ -337,8 +343,8 @@ export function AppSidebar() {
             )}
             {canView('work_orders') && (
               <>
-                <NavItem to="/work-orders" icon={Wrench} label="Work Orders" collapsed={collapsed} />
-                <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
+                <NavItem to="/work-orders" icon={<Wrench className="h-4 w-4" />} label="Work Orders" collapsed={collapsed} />
+                <NavItem to="/permits" icon={<Shield className="h-4 w-4" />} label="Permits" collapsed={collapsed} />
               </>
             )}
           </nav>
@@ -347,31 +353,31 @@ export function AppSidebar() {
 
           {/* ZONE 4 — TEAM & TOOLS */}
           {!collapsed && <ZoneLabel label="Team & Tools" />}
-          <nav className="space-y-0.5">
+          <nav className="space-y-0.5 px-2">
             <NavItem
               to="/messages"
-              icon={MessageCircle}
+              icon={<MessageCircle className="h-4 w-4" />}
               label="Messages"
               collapsed={collapsed}
               badge={unreadCount}
               badgeVariant="default"
               tooltip={unreadCount > 0 ? `Messages — ${unreadCount} unread` : 'Messages'}
             />
-            <NavItem to="/inbox" icon={Mail} label="Email" collapsed={collapsed} />
-            <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
-            <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} tooltip="CRM — Vendors & contacts" />
+            <NavItem to="/inbox" icon={<Mail className="h-4 w-4" />} label="Email" collapsed={collapsed} />
+            <NavItem to="/voice-agent" icon={<Phone className="h-4 w-4" />} label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
+            <NavItem to="/contacts" icon={<Contact className="h-4 w-4" />} label="Contacts" collapsed={collapsed} tooltip="CRM — Vendors & contacts" />
             {canView('people') && (
-              <NavItem to="/people" icon={Users} label="People" collapsed={collapsed} tooltip="Team member management" />
+              <NavItem to="/people" icon={<Users className="h-4 w-4" />} label="People" collapsed={collapsed} tooltip="Team member management" />
             )}
-            <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} tooltip="Training Academy" />
+            <NavItem to="/training" icon={<GraduationCap className="h-4 w-4" />} label="Training" collapsed={collapsed} tooltip="Training Academy" />
             {canView('documents') && (
-              <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />
+              <NavItem to="/documents" icon={<FileText className="h-4 w-4" />} label="Documents" collapsed={collapsed} />
             )}
             {canView('reports') && (
-              <NavItem to="/reports" icon={BarChart3} label="Reports" collapsed={collapsed} />
+              <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />} label="Reports" collapsed={collapsed} />
             )}
             {isModuleEnabled('qrScanningEnabled') && (
-              <NavItem to="/qr-scanner" icon={QrCode} label="QR Scanner" collapsed={collapsed} />
+              <NavItem to="/qr-scanner" icon={<QrCode className="h-4 w-4" />} label="QR Scanner" collapsed={collapsed} />
             )}
           </nav>
         </SidebarContent>
@@ -380,15 +386,15 @@ export function AppSidebar() {
         <SidebarRail />
 
         {/* ── FOOTER ─────────────────────────────────────────────────────── */}
-        <SidebarFooter className="p-2 border-t border-[hsl(var(--sidebar-border)/0.4)]">
+        <SidebarFooter className="p-2 border-t border-[hsl(var(--sidebar-border))]">
           {/* Settings */}
           {canView('settings') && (
-            <NavItem to="/settings" icon={Settings} label="Settings" collapsed={collapsed} />
+            <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" collapsed={collapsed} />
           )}
 
           {/* User identity block */}
           <div className={cn(
-            "flex items-center gap-2.5 mt-1 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors",
+            "flex items-center gap-2.5 mt-1 px-3 py-2 rounded-md",
             collapsed && "justify-center px-0"
           )}>
             {collapsed ? (
@@ -399,8 +405,8 @@ export function AppSidebar() {
                     className="flex flex-col items-center gap-1"
                     title="Sign out"
                   >
-                    <Avatar className="h-8 w-8 cursor-pointer">
-                      <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-xs font-semibold">
+                    <Avatar className="h-7 w-7 cursor-pointer">
+                      <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
@@ -412,30 +418,26 @@ export function AppSidebar() {
               </Tooltip>
             ) : (
               <>
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-xs font-semibold">
+                <Avatar className="h-7 w-7 flex-shrink-0">
+                  <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
+                  <p className="text-[12px] font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
                     {userName}
                   </p>
-                  <p className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
+                  <p className="text-[10px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
                     {userRole}
                   </p>
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={signOut}
-                      className="h-7 w-7 flex items-center justify-center rounded-md text-[hsl(var(--sidebar-muted))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors shrink-0"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">Sign out</TooltipContent>
-                </Tooltip>
+                <button
+                  onClick={signOut}
+                  className="flex-shrink-0 rounded p-1 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"
+                  title="Log out"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
               </>
             )}
           </div>
