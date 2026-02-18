@@ -8,11 +8,22 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
+  MoreHorizontal, Archive, Trash2,
 } from 'lucide-react';
+import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { useUpdateProject } from '@/hooks/useProjects';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
 import { ActivityFeedPanel } from '@/components/projects/ActivityFeedPanel';
 import { ActionItemsPanel } from '@/components/projects/ActionItemsPanel';
@@ -71,6 +82,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [actionItemsOpen, setActionItemsOpen] = useState(false);
@@ -85,6 +97,8 @@ export default function ProjectDetailPage() {
   const { data: punchStats } = usePunchItemStats(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
+  const { isAdmin } = useUserPermissions();
+  const updateProject = useUpdateProject();
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
@@ -237,6 +251,32 @@ export default function ProjectDetailPage() {
                 <Edit className="h-4 w-4" />
                 <span className="hidden sm:inline">Edit</span>
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                    <Edit className="h-4 w-4 mr-2" />Edit Project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
+                    <Archive className="h-4 w-4 mr-2" />Archive Project
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteDialogOpen(true)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />Delete Project
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -501,6 +541,16 @@ export default function ProjectDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete dialog */}
+      <DeleteProjectDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        projectId={project.id}
+        projectName={project.name}
+        navigateAfter
+      />
     </div>
   );
 }
+
