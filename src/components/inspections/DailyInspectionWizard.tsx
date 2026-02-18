@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useDailyInspections';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { enqueue } from '@/lib/offlineQueue';
 import { 
   ChevronLeft, 
   ChevronRight,
@@ -291,7 +292,17 @@ export function DailyInspectionWizard({
       toast.success('Inspection submitted for review!');
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit inspection');
+      if (!navigator.onLine) {
+        await enqueue({
+          type: 'daily_inspection',
+          payload: { propertyId, generalNotes, attachments, assetChecks, timestamp: Date.now() },
+          timestamp: Date.now(),
+        });
+        toast.warning('You\'re offline — inspection saved locally and will sync when reconnected.');
+        setStep('success');
+      } else {
+        toast.error('Failed to submit inspection');
+      }
     }
   };
 

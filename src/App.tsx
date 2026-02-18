@@ -49,6 +49,7 @@ import ContactsPage from "./pages/crm/ContactsPage";
 import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
 import OrganizationsPage from "./pages/organizations/OrganizationsPage";
+import InstallPage from "./pages/InstallPage";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/install" element={<InstallPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />

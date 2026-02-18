@@ -119,20 +119,20 @@ export default function OccupancyPage() {
 
   return (
     <TooltipProvider>
-      <div className="p-6 space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center">
                 <Users className="h-5 w-5 text-primary-foreground" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">Occupancy</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Occupancy</h1>
             </div>
-            <p className="text-muted-foreground">Manage tenants and lease information</p>
+            <p className="text-sm text-muted-foreground">Manage tenants and lease information</p>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button size="sm" onClick={() => setDialogOpen(true)} className="self-start sm:self-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Tenant
               </Button>
@@ -142,7 +142,7 @@ export default function OccupancyPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
           <StatCard
             title="Total Tenants"
             value={selectedPropertyId ? filteredStats.total : (stats?.total || 0)}

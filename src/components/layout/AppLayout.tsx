@@ -11,6 +11,7 @@ import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
+import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
@@ -190,6 +191,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </div>
               </div>
             </header>
+
+            {/* Push notification permission banner */}
+            <NotificationPermissionBanner />
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">

@@ -39,22 +39,22 @@ export default function InspectionsDashboard() {
   const urgentDefects = openDefects?.slice(0, 5) || [];
 
   return (
-    <div className="p-6 space-y-8 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-lg bg-module-inspections flex items-center justify-center">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-9 w-9 rounded-lg bg-module-inspections flex items-center justify-center">
               <ClipboardCheck className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">NSPIRE Inspections</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">NSPIRE Inspections</h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             100% annual unit inspections • NSPIRE compliant defect tracking • REAC scoring
           </p>
         </div>
         {canCreateInspections && (
-          <Button onClick={() => setWizardOpen(true)}>
+          <Button size="sm" onClick={() => setWizardOpen(true)} className="self-start sm:self-auto">
             <Plus className="h-4 w-4 mr-2" />
             New Inspection
           </Button>
@@ -72,8 +72,8 @@ export default function InspectionsDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          {/* Stats Overview */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Stats Overview */}
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
             {loadingDefects ? (
               <>
                 {[1, 2, 3, 4].map((i) => (
