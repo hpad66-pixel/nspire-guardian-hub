@@ -74,7 +74,7 @@ export function useProjects() {
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', isAdmin],
+    queryKey: ['projects', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -91,6 +91,7 @@ export function useProjects() {
     },
     // Don't fire until we know for sure whether user is admin or not
     enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
@@ -98,7 +99,7 @@ export function useActiveProjects() {
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', 'active', isAdmin],
+    queryKey: ['projects', 'active', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -115,6 +116,7 @@ export function useActiveProjects() {
       return data as Project[];
     },
     enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
@@ -122,7 +124,7 @@ export function useProject(projectId: string | null) {
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', projectId, isAdmin],
+    queryKey: ['projects', projectId, isAdmin, user?.id],
     queryFn: async () => {
       if (!projectId) return null;
 
@@ -140,6 +142,7 @@ export function useProject(projectId: string | null) {
       return data as Project;
     },
     enabled: !!projectId && !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
@@ -172,7 +175,7 @@ export function useProjectStats() {
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', 'stats', isAdmin],
+    queryKey: ['projects', 'stats', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -195,6 +198,7 @@ export function useProjectStats() {
       return { active, planning, onHold, completed, totalBudget, totalSpent, total: data.length };
     },
     enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
