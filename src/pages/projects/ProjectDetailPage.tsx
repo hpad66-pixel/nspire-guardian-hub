@@ -750,16 +750,16 @@ export default function ProjectDetailPage() {
 
             <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
             <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} /></TabsContent>
-            <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} /></TabsContent>
-            <TabsContent value="rfis"><RFIList projectId={id!} /></TabsContent>
-            <TabsContent value="submittals"><SubmittalsTab projectId={id!} /></TabsContent>
+            <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
+            <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
+            <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
             <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>
             <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
             <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
             <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
             <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
             <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
-            <TabsContent value="proposals"><ProposalList projectId={id!} /></TabsContent>
+            <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
             <TabsContent value="client-portal" className="pb-6">
               <ClientPortalTab projectId={id!} />
             </TabsContent>
