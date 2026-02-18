@@ -54,6 +54,7 @@ const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDas
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ClientPortalPage = lazy(() => import('./pages/portal/ClientPortalPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +105,7 @@ const App = () => (
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                  <Route path="/portal/:projectId" element={<ClientPortalPage />} />
                   
                   {/* Protected Routes */}
                   <Route
