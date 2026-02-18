@@ -58,6 +58,7 @@ export function useCreateInvitation() {
       role: AppRole;
       property_id?: string;
       client_id?: string;
+      workspace_id?: string;
     }) => {
       // Generate a secure token
       const token = crypto.randomUUID() + '-' + crypto.randomUUID();
@@ -77,6 +78,7 @@ export function useCreateInvitation() {
           role: invitation.role,
           property_id: invitation.property_id || null,
           client_id: invitation.client_id || null,
+          workspace_id: invitation.workspace_id || null,
           invited_by: user.id,
           token,
           expires_at: expires_at.toISOString(),

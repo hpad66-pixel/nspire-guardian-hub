@@ -31,7 +31,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
     setIsCreating(true);
 
     try {
-      // Create the property
+      // Create the property — include workspace_id so it's scoped to this tenant
       const property = await createProperty.mutateAsync({
         name: data.property.name,
         address: data.property.address,
@@ -43,6 +43,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
         daily_grounds_enabled: data.property.modules.daily_grounds,
         projects_enabled: data.property.modules.projects,
         status: 'active',
+        workspace_id: data.workspaceId ?? null,
         year_built: null,
         contact_name: null,
         contact_email: null,
@@ -53,7 +54,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
         mailing_zip: null,
       });
 
-      // Send invitations
+      // Send invitations — include workspace_id so invited users inherit this workspace
       if (data.invitations && data.invitations.length > 0) {
         for (const invite of data.invitations) {
           try {
@@ -61,6 +62,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
               email: invite.email,
               role: invite.role,
               property_id: property.id,
+              workspace_id: data.workspaceId ?? undefined,
             });
             await sendInvitation.mutateAsync(invitation.id);
           } catch (err) {
