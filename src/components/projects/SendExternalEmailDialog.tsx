@@ -17,8 +17,6 @@ import { useSendEmail } from '@/hooks/useSendEmail';
 import {
   Mail,
   X,
-  ChevronDown,
-  ChevronUp,
   Send,
   Paperclip,
   Users,
@@ -177,7 +175,6 @@ export function SendExternalEmailDialog({
   const [bccEmails, setBccEmails] = useState<string[]>([]);
   const [subject, setSubject] = useState(autoSubject);
   const [message, setMessage] = useState('');
-  const [showCcBcc, setShowCcBcc] = useState(false);
 
   const sendEmail = useSendEmail();
 
@@ -189,7 +186,6 @@ export function SendExternalEmailDialog({
       setBccEmails([]);
       setSubject(autoSubject);
       setMessage('');
-      setShowCcBcc(false);
     }
     onOpenChange(v);
   };
@@ -316,26 +312,57 @@ export function SendExternalEmailDialog({
                 />
               </div>
 
-              {/* CC/BCC toggle */}
-              <button
-                type="button"
-                onClick={() => setShowCcBcc(!showCcBcc)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showCcBcc ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-                {showCcBcc ? 'Hide CC / BCC' : 'Add CC / BCC'}
-              </button>
-
-              {showCcBcc && (
-                <div className="space-y-3 pt-1">
-                  <EmailTagInput label="CC" tags={ccEmails} onChange={setCcEmails} />
-                  <EmailTagInput label="BCC" tags={bccEmails} onChange={setBccEmails} />
+              {/* CC field — always visible, unlimited recipients */}
+              <div className="flex items-end justify-between">
+                <div className="flex-1">
+                  <EmailTagInput
+                    label="CC"
+                    tags={ccEmails}
+                    onChange={setCcEmails}
+                    placeholder="Add CC recipients..."
+                  />
                 </div>
-              )}
+                <ContactPicker
+                  selectedEmails={ccEmails}
+                  onSelect={setCcEmails}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-2 h-9 shrink-0 text-xs gap-1.5"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Contacts
+                    </Button>
+                  }
+                />
+              </div>
+
+              {/* BCC field — always visible, unlimited recipients */}
+              <div className="flex items-end justify-between">
+                <div className="flex-1">
+                  <EmailTagInput
+                    label="BCC"
+                    tags={bccEmails}
+                    onChange={setBccEmails}
+                    placeholder="Add BCC recipients..."
+                  />
+                </div>
+                <ContactPicker
+                  selectedEmails={bccEmails}
+                  onSelect={setBccEmails}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-2 h-9 shrink-0 text-xs gap-1.5"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Contacts
+                    </Button>
+                  }
+                />
+              </div>
             </div>
 
             <Separator />
@@ -374,7 +401,11 @@ export function SendExternalEmailDialog({
           <p className="text-xs text-muted-foreground">
             {toEmails.length === 0
               ? 'Add at least one recipient to send'
-              : `Sending to ${toEmails.length} recipient${toEmails.length > 1 ? 's' : ''}${ccEmails.length > 0 ? ` + ${ccEmails.length} CC` : ''}`}
+              : [
+                  `To: ${toEmails.length}`,
+                  ccEmails.length > 0 ? `CC: ${ccEmails.length}` : null,
+                  bccEmails.length > 0 ? `BCC: ${bccEmails.length}` : null,
+                ].filter(Boolean).join(' · ')}
           </p>
           <div className="flex items-center gap-2">
             <Button
