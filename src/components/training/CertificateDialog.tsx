@@ -5,8 +5,7 @@ import { Download, Printer } from 'lucide-react';
 import { CompletionCertificate } from './CompletionCertificate';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// jspdf and html2canvas are loaded dynamically to keep the initial bundle small
 import { toast } from 'sonner';
 
 interface CertificateDialogProps {
@@ -37,6 +36,11 @@ export function CertificateDialog({
     
     setIsGenerating(true);
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
       const canvas = await html2canvas(certificateRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',

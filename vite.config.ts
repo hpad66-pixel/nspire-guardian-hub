@@ -13,6 +13,39 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          // Radix UI components
+          "vendor-radix": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-checkbox",
+          ],
+          // Heavy document/export libs — loaded on demand via dynamic import
+          "vendor-pdf": ["jspdf", "html2canvas"],
+          "vendor-docs": ["docx"],
+          "vendor-xlsx": ["xlsx"],
+          // Charts
+          "vendor-charts": ["recharts"],
+          // TipTap rich text editor
+          "vendor-tiptap": [
+            "@tiptap/react",
+            "@tiptap/starter-kit",
+            "@tiptap/extension-placeholder",
+          ],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
@@ -50,6 +83,8 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        // Allow chunks up to 5 MB in the precache manifest (default is 2 MB)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // CRITICAL: Never cache OAuth redirects
         navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/],
         navigateFallback: "/offline.html",
