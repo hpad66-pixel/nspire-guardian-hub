@@ -37,13 +37,14 @@ export function useOnboarding() {
   // 2. User is admin, owner, or property manager
   // 3. No properties exist
   // 4. Onboarding not already completed
-  const shouldShowOnboarding = 
-    !!user && 
-    !statusLoading && 
+  const shouldShowOnboarding =
+    !!user &&
+    !statusLoading &&
     !propertiesLoading &&
     (userRole === 'admin' || userRole === 'owner' || userRole === 'manager') &&
     (!properties || properties.length === 0) &&
-    !onboardingStatus?.completed_at;
+    !onboardingStatus?.completed_at &&
+    onboardingStatus !== undefined; // only show if we've actually loaded the status
 
   return {
     shouldShowOnboarding,
