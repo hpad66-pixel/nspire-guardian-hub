@@ -50,6 +50,7 @@ import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 import VoiceAgentDashboard from "./pages/voice-agent/VoiceAgentDashboard";
 import OrganizationsPage from "./pages/organizations/OrganizationsPage";
 import InstallPage from "./pages/InstallPage";
+import LandingPageAlt from "./pages/LandingPageAlt";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/install" element={<InstallPage />} />
+                <Route path="/home-alt" element={<LandingPageAlt />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
