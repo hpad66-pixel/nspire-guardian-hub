@@ -81,11 +81,17 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         // Allow large vendor chunks up to 6 MB in the precache manifest
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // CRITICAL: Never cache OAuth redirects
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/],
-        navigateFallback: "/offline.html",
+        // CRITICAL: Never intercept OAuth, auth callbacks, or Supabase redirects
+        navigateFallbackDenylist: [
+          /^\/~oauth/,
+          /^\/auth\/callback/,
+          /^\/auth\//,
+        ],
+        // Use index.html as the SPA shell for all navigation — NOT offline.html
+        // This ensures the React router handles routing when online
+        navigateFallback: "index.html",
         runtimeCaching: [
-          // Supabase API — always network first, fall through on failure
+          // Supabase API — always network first, never serve stale auth data
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
