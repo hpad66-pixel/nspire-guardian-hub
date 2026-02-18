@@ -128,10 +128,12 @@ serve(async (req) => {
       throw new Error('AI service error');
     }
 
-    // All models exhausted credits
+    // All models exhausted credits — return 200 with the original text so the
+    // client receives it through the normal `data` path (not the SDK error path).
+    // The `warning` flag tells the hook to show a friendly toast instead of crashing.
     return new Response(
-      JSON.stringify({ error: 'AI credits exhausted. Please add credits to your Lovable workspace to continue.' }),
-      { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ polished: null, warning: 'credits_exhausted', original: text }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
     console.error('Polish text error:', error);
