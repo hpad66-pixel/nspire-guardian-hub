@@ -55,6 +55,7 @@ const OrganizationsPage = lazy(() => import('./pages/organizations/Organizations
 const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ClientPortalPage = lazy(() => import('./pages/portal/ClientPortalPage'));
+const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,7 @@ const App = () => (
                             
                             {/* Core Platform */}
                             <Route path="/properties" element={<PropertiesPage />} />
+                            <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
                             <Route path="/units" element={<UnitsPage />} />
                             <Route path="/assets" element={<AssetsPage />} />
                             <Route path="/issues" element={<IssuesPage />} />
