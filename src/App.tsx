@@ -3,12 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAuth } from '@/hooks/useAuth';
 
 // Pages — lazy loaded for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -68,6 +69,13 @@ const queryClient = new QueryClient({
   },
 });
 
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <LandingPageAlt />;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -87,7 +95,7 @@ const App = () => (
               }>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={<LandingPageAlt />} />
+                  <Route path="/" element={<RootRedirect />} />
                   <Route path="/features" element={<FeaturesPage />} />
                   <Route path="/install" element={<InstallPage />} />
                   <Route path="/home-alt" element={<LandingPage />} />
