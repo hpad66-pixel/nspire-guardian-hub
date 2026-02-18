@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from 'react';
+import { useAllPropertiesUtilitySummary } from '@/hooks/useUtilityBills';
 import { useModules } from '@/contexts/ModuleContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -615,6 +616,7 @@ export default function Dashboard() {
   
   const { data: properties, isLoading: loadingProperties } = useProperties();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const { data: allPropertiesUtility } = useAllPropertiesUtilitySummary();
   const { data: units = [] } = useUnitsByProperty(selectedPropertyId || null);
   const { data: issues = [], isLoading: loadingIssues } = useIssuesByProperty(selectedPropertyId || null);
   const { data: defects = [] } = useDefects();
@@ -993,8 +995,63 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* ── Portfolio Utility Costs (only shown when 2+ properties have data) ── */}
+          {allPropertiesUtility && allPropertiesUtility.length >= 2 && (() => {
+            const maxCost = Math.max(...allPropertiesUtility.map(p => p.ytd_total), 1);
+            return (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-base font-semibold tracking-tight">YTD Utility Costs by Property</h2>
+                  <p className="text-xs text-muted-foreground">Which property is costing the most to operate this year?</p>
+                </div>
+                <Card className="border-border/50 overflow-hidden">
+                  <CardContent className="p-5 space-y-4">
+                    {allPropertiesUtility.map((prop) => (
+                      <div key={prop.property_id} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <button
+                            type="button"
+                            className="font-medium hover:text-primary transition-colors text-left truncate max-w-[55%]"
+                            onClick={() => navigate(`/properties/${prop.property_id}/analytics`)}
+                          >
+                            {prop.property_name}
+                          </button>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="font-semibold">
+                              ${prop.ytd_total.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                            </span>
+                            {prop.cost_per_unit != null && (
+                              <span className="text-xs text-muted-foreground">
+                                ${prop.cost_per_unit.toFixed(0)}/unit
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                              onClick={() => navigate(`/properties/${prop.property_id}/analytics`)}
+                            >
+                              Details →
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${(prop.ytd_total / maxCost) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
           {/* ── Recent Issues ─────────────────────────────────────────────── */}
           <div className="space-y-4">
+
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold tracking-tight">Recent Issues</h2>
               <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg" asChild>
