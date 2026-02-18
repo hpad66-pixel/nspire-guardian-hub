@@ -1,106 +1,117 @@
 import { motion } from 'framer-motion';
 import { 
-  ClipboardCheck, 
-  Shield, 
-  FileText, 
-  Wrench, 
-  MessageSquare, 
-  BarChart3,
-  ArrowRight
+  ClipboardCheck, Shield, FileText, Wrench, MessageSquare, BarChart3, Phone, Users, FolderOpen
 } from 'lucide-react';
 
 const modules = [
-  { icon: ClipboardCheck, label: 'Inspections', color: 'from-emerald-500 to-emerald-600' },
-  { icon: Shield, label: 'Compliance', color: 'from-blue-500 to-blue-600' },
-  { icon: FileText, label: 'Permits', color: 'from-violet-500 to-violet-600' },
-  { icon: Wrench, label: 'Work Orders', color: 'from-amber-500 to-amber-600' },
-  { icon: MessageSquare, label: 'Messaging', color: 'from-pink-500 to-pink-600' },
-  { icon: BarChart3, label: 'Analytics', color: 'from-cyan-500 to-cyan-600' },
+  { icon: ClipboardCheck, label: 'Inspections', color: '#10B981' },
+  { icon: Shield, label: 'NSPIRE', color: '#1D6FE8' },
+  { icon: FileText, label: 'Permits', color: '#8B5CF6' },
+  { icon: Wrench, label: 'Work Orders', color: '#F59E0B' },
+  { icon: Phone, label: 'AI Voice', color: '#8B5CF6' },
+  { icon: FolderOpen, label: 'Documents', color: '#F59E0B' },
+  { icon: Users, label: 'Team RBAC', color: '#1D6FE8' },
+  { icon: MessageSquare, label: 'Messaging', color: '#F43F5E' },
+  { icon: BarChart3, label: 'Analytics', color: '#06B6D4' },
 ];
 
 export function PlatformOverview() {
   return (
-    <section className="py-24 md:py-32 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-      </div>
+    <section style={{ background: 'var(--apas-midnight)', padding: '100px 0', position: 'relative', overflow: 'hidden' }}>
+      {/* Blueprint grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(var(--apas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--apas-grid) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px',
+        }}
+      />
 
-      <div className="container mx-auto px-6">
+      <div className="relative max-w-7xl mx-auto px-6">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true, margin: '-80px' }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Everything.{' '}
-            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Connected.
-            </span>{' '}
-            Accountable.
+          <h2 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(28px, 4.5vw, 52px)', color: 'var(--apas-white)', lineHeight: 1.1, marginBottom: '20px' }}>
+            One OS.{' '}
+            <em style={{ color: 'var(--apas-sapphire)' }}>Every System.</em>{' '}
+            All Connected.
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            A unified property operations platform where every inspection, every work order, 
-            every permit, and every message lives in one place—with complete audit trails.
+          <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '680px', margin: '0 auto', lineHeight: 1.8 }}>
+            Every inspection auto-creates issues. Every issue auto-creates work orders. Every permit expiry triggers an alert. Every action leaves an audit trail.
           </p>
         </motion.div>
 
-        {/* Animated Module Flow */}
-        <div className="max-w-5xl mx-auto">
-          <div className="relative">
-            {/* Connection Lines */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-              {modules.map((module, index) => (
-                <motion.div
-                  key={module.label}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="relative group"
-                >
-                  <div className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-lg transition-all duration-300 text-center group-hover:-translate-y-2">
-                    <div className={`h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br ${module.color} flex items-center justify-center mb-4 shadow-lg`}>
-                      <module.icon className="h-7 w-7 text-white" />
-                    </div>
-                    <p className="font-medium text-sm">{module.label}</p>
-                  </div>
-                  
-                  {/* Arrow connector (hidden on last item) */}
-                  {index < modules.length - 1 && (
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 hidden lg:block">
-                      <ArrowRight className="h-4 w-4 text-muted-foreground/30" />
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* Central Hub Visualization */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            viewport={{ once: true }}
-            className="mt-16 text-center"
-          >
-            <div className="inline-flex items-center gap-4 bg-card/80 backdrop-blur-xl rounded-full px-8 py-4 border border-border shadow-xl">
-              <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-medium">Single Source of Truth</span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-muted-foreground">Complete Audit Trail</span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-muted-foreground">Real-Time Updates</span>
-            </div>
-          </motion.div>
+        {/* Module node grid */}
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3 max-w-5xl mx-auto mb-16">
+          {modules.map((mod, index) => (
+            <motion.div
+              key={mod.label}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: index * 0.07, ease: [0.16, 1, 0.3, 1] }}
+              viewport={{ once: true }}
+              className="flex flex-col items-center gap-2 group cursor-default"
+            >
+              <div
+                style={{
+                  height: '60px',
+                  width: '60px',
+                  borderRadius: '16px',
+                  background: `${mod.color}18`,
+                  border: `1px solid ${mod.color}30`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.25s ease',
+                  boxShadow: `0 0 0 0 ${mod.color}40`,
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLDivElement).style.background = `${mod.color}28`;
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 20px ${mod.color}30`;
+                  (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLDivElement).style.background = `${mod.color}18`;
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 0 ${mod.color}40`;
+                  (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                }}
+              >
+                <mod.icon size={22} color={mod.color} />
+              </div>
+              <span style={{ fontFamily: 'DM Sans', fontSize: '11px', fontWeight: 600, color: 'var(--apas-muted)', textAlign: 'center', lineHeight: 1.3 }}>{mod.label}</span>
+            </motion.div>
+          ))}
         </div>
+
+        {/* Status pill */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          viewport={{ once: true }}
+          className="flex justify-center"
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '16px',
+              background: 'var(--apas-surface)',
+              border: '1px solid var(--apas-border)',
+              borderRadius: '999px',
+              padding: '14px 28px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981', animation: 'pulse 2s infinite', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--apas-white)' }}>Every action. Every decision. Every defect.</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'var(--apas-muted)' }}>Timestamped, attributed, and retrievable.</span>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

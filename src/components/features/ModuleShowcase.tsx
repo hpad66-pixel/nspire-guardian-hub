@@ -1,386 +1,382 @@
 import { motion } from 'framer-motion';
 import { 
-  Mic, 
-  Camera, 
-  AlertCircle, 
-  CheckCircle2,
-  Shield,
-  Clock,
-  Wrench,
-  FileCheck,
-  Calendar,
-  Bell,
-  FileText,
-  FolderOpen,
-  Search,
-  History,
-  Milestone,
-  ClipboardList,
-  Receipt,
-  FileQuestion,
-  Sparkles,
-  Hammer,
-  GitBranch,
-  Flag,
-  MessageSquare,
-  Users,
-  UserCog,
-  GraduationCap,
-  Send,
-  BarChart3,
-  PieChart,
-  Download,
-  MessageCircle,
-  Zap,
-  AtSign,
-  Archive,
-  Lock,
-  BookOpen,
+  Mic, Camera, AlertCircle, CheckCircle2, Shield, Clock, Wrench, FileCheck,
+  Calendar, Bell, FileText, FolderOpen, Search, History, ClipboardList, Receipt,
+  FileQuestion, Sparkles, Hammer, GitBranch, Flag, MessageSquare, Users, UserCog,
+  GraduationCap, Send, BarChart3, PieChart, Download, MessageCircle, Zap, AtSign,
+  Archive, Lock, BookOpen, Milestone,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+// ─── Card visual components ───────────────────────────────────────────────────
+
+function VisualCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--apas-surface)', border: '1px solid var(--apas-border)', borderRadius: '20px', padding: '24px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
+      {children}
+    </div>
+  );
+}
+
+function CardLabel({ text, color = 'var(--apas-muted)' }: { text: string; color?: string }) {
+  return <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color, marginTop: '2px' }}>{text}</p>;
+}
+
+function CardTitle({ text }: { text: string }) {
+  return <p style={{ fontFamily: 'DM Sans', fontSize: '14px', fontWeight: 600, color: 'var(--apas-white)' }}>{text}</p>;
+}
+
+function RowItem({ children, bg = 'rgba(255,255,255,0.04)' }: { children: React.ReactNode; bg?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '12px', background: bg }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Visual variants ──────────────────────────────────────────────────────────
+
+type VisualType = 'inspections' | 'compliance' | 'permits' | 'documents' | 'archives' | 'projects' | 'workorders' | 'team' | 'messaging' | 'analytics';
+
+function ModuleVisual({ type }: { type: VisualType }) {
+  switch (type) {
+    case 'inspections':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ height: '40px', width: '40px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Mic size={18} color="#10B981" />
+            </div>
+            <div>
+              <CardTitle text="Daily Grounds Inspection" />
+              <CardLabel text="Today, 8:42 AM" color="#10B981" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { label: 'Parking Lot A', done: true },
+              { label: 'Playground Equipment', done: true },
+              { label: 'Building Exterior', done: false },
+            ].map(item => (
+              <RowItem key={item.label}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <CheckCircle2 size={16} color={item.done ? '#10B981' : 'var(--apas-muted)'} />
+                  <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>{item.label}</span>
+                </div>
+                {item.done && <Camera size={14} color="var(--apas-muted)" />}
+              </RowItem>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'compliance':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="NSPIRE Status" />
+            <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981', borderRadius: '999px', padding: '4px 12px', fontFamily: 'DM Sans', fontSize: '12px', fontWeight: 600 }}>Compliant</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+            {[
+              { label: 'Outside Areas', items: 0 },
+              { label: 'Inside Common', items: 0 },
+              { label: 'Unit Inspections', items: 2 },
+            ].map(area => (
+              <RowItem key={area.label}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: area.items === 0 ? '#10B981' : '#F59E0B', flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>{area.label}</span>
+                </div>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: area.items > 0 ? '#F59E0B' : 'var(--apas-muted)' }}>
+                  {area.items > 0 ? `${area.items} items` : 'All clear'}
+                </span>
+              </RowItem>
+            ))}
+          </div>
+          <div style={{ background: 'rgba(29,111,232,0.1)', border: '1px solid rgba(29,111,232,0.2)', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>NSPIRE Score</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '18px', fontWeight: 700, color: 'var(--apas-sapphire)' }}>94.2</span>
+          </div>
+        </VisualCard>
+      );
+
+    case 'permits':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="Permit Calendar" />
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>Feb 2026</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { name: 'Fire Safety Cert', days: '12d', color: '#F43F5E' },
+              { name: 'Elevator Inspection', days: '45d', color: '#F59E0B' },
+              { name: 'Stormwater Permit', days: '90d', color: '#10B981' },
+            ].map(p => (
+              <RowItem key={p.name}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FileCheck size={15} color={p.color} />
+                  <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>{p.name}</span>
+                </div>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '13px', color: p.color, fontWeight: 600 }}>{p.days}</span>
+              </RowItem>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'documents':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px' }}>
+            <Search size={14} color="var(--apas-muted)" />
+            <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)' }}>Search documents...</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {[
+              { name: 'Contracts', count: 12, color: '#1D6FE8' },
+              { name: 'Insurance', count: 4, color: '#10B981' },
+              { name: 'Policies', count: 8, color: '#F59E0B' },
+              { name: 'Legal', count: 6, color: '#F43F5E' },
+            ].map(f => (
+              <RowItem key={f.name}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FolderOpen size={15} color={f.color} />
+                  <span style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500, color: 'var(--apas-white)' }}>{f.name}</span>
+                </div>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>{f.count} files</span>
+              </RowItem>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'archives':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ height: '40px', width: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Archive size={18} color="white" />
+            </div>
+            <div>
+              <CardTitle text="Property Archives" />
+              <CardLabel text="Permanent retention vault" color="#F59E0B" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { name: 'As-Built Drawings', count: 24 },
+              { name: 'Equipment Manuals', count: 18 },
+              { name: 'Permits & Approvals', count: 12 },
+            ].map(cat => (
+              <RowItem key={cat.name}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FileText size={14} color="#F59E0B" />
+                  <span style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>{cat.name}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Lock size={11} color="var(--apas-muted)" />
+                  <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>{cat.count}</span>
+                </div>
+              </RowItem>
+            ))}
+          </div>
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--apas-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Lock size={12} color="var(--apas-muted)" />
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>Documents cannot be deleted</span>
+          </div>
+        </VisualCard>
+      );
+
+    case 'projects':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <CardTitle text="Roof Replacement" />
+            <span style={{ background: 'rgba(139,92,246,0.15)', color: '#8B5CF6', borderRadius: '999px', padding: '4px 12px', fontFamily: 'DM Sans', fontSize: '12px', fontWeight: 600 }}>Active</span>
+          </div>
+          <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', marginBottom: '8px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '60%', borderRadius: '999px', background: 'linear-gradient(90deg, #8B5CF6, #6D28D9)' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <span style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)' }}>Progress</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '13px', color: '#8B5CF6', fontWeight: 600 }}>60%</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+            {[
+              { v: '12', l: 'Daily Reports' },
+              { v: '3', l: 'Open RFIs' },
+              { v: '$45K', l: 'Change Orders' },
+            ].map(m => (
+              <div key={m.l} style={{ textAlign: 'center', padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)' }}>
+                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '16px', fontWeight: 700, color: 'var(--apas-white)' }}>{m.v}</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '11px', color: 'var(--apas-muted)', marginTop: '2px' }}>{m.l}</p>
+              </div>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'workorders':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="Work Orders" />
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>This Week</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { title: 'HVAC Unit B3', status: 'In Progress', priority: '#F43F5E' },
+              { title: 'Parking Light #7', status: 'Assigned', priority: '#F59E0B' },
+              { title: 'Lobby Door Seal', status: 'Completed', priority: '#10B981' },
+            ].map(wo => (
+              <RowItem key={wo.title}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: wo.priority, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500, color: 'var(--apas-white)' }}>{wo.title}</p>
+                    <p style={{ fontFamily: 'DM Sans', fontSize: '11px', color: 'var(--apas-muted)' }}>{wo.status}</p>
+                  </div>
+                </div>
+                <Wrench size={14} color="var(--apas-muted)" />
+              </RowItem>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'team':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="Team Members" />
+            <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981', borderRadius: '999px', padding: '4px 12px', fontFamily: 'DM Sans', fontSize: '12px', fontWeight: 600 }}>8 Active</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { name: 'Maria Garcia', role: 'Property Manager', initials: 'MG', color: '#1D6FE8' },
+              { name: 'James Wilson', role: 'Superintendent', initials: 'JW', color: '#F59E0B' },
+              { name: 'Lisa Chen', role: 'Inspector', initials: 'LC', color: '#10B981' },
+            ].map(m => (
+              <RowItem key={m.name}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ height: '36px', width: '36px', borderRadius: '50%', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 700, color: 'white' }}>{m.initials}</div>
+                  <div>
+                    <p style={{ fontFamily: 'DM Sans', fontSize: '13px', fontWeight: 500, color: 'var(--apas-white)' }}>{m.name}</p>
+                    <p style={{ fontFamily: 'DM Sans', fontSize: '11px', color: 'var(--apas-muted)' }}>{m.role}</p>
+                  </div>
+                </div>
+              </RowItem>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    case 'messaging':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="Team Messages" />
+            <div style={{ height: '20px', width: '20px', borderRadius: '50%', background: 'var(--apas-sapphire)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans', fontSize: '11px', fontWeight: 700, color: 'white' }}>3</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: '14px 14px 14px 4px', background: 'rgba(255,255,255,0.06)' }}>
+              <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>Inspection complete for Building A! 🎉</p>
+              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--apas-muted)', marginTop: '4px' }}>Maria · 2m ago</p>
+            </div>
+            <div style={{ padding: '12px 14px', borderRadius: '14px 14px 4px 14px', background: 'rgba(29,111,232,0.15)', border: '1px solid rgba(29,111,232,0.2)', marginLeft: '32px' }}>
+              <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-white)' }}>Great work! Moving to Building B now.</p>
+              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--apas-muted)', marginTop: '4px' }}>You · Just now</p>
+            </div>
+          </div>
+        </VisualCard>
+      );
+
+    case 'analytics':
+      return (
+        <VisualCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <CardTitle text="Monthly Overview" />
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>Feb 2026</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {[
+              { icon: PieChart, v: '94%', l: 'Compliance Rate', color: '#10B981', bg: 'rgba(16,185,129,0.12)' },
+              { icon: BarChart3, v: '127', l: 'Inspections', color: '#1D6FE8', bg: 'rgba(29,111,232,0.12)' },
+              { icon: Wrench, v: '48', l: 'Work Orders', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+              { icon: Clock, v: '2.3d', l: 'Avg Resolution', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+            ].map(m => (
+              <div key={m.l} style={{ padding: '16px', borderRadius: '12px', background: m.bg }}>
+                <m.icon size={16} color={m.color} style={{ marginBottom: '8px' }} />
+                <p style={{ fontFamily: 'JetBrains Mono', fontSize: '20px', fontWeight: 700, color: 'var(--apas-white)' }}>{m.v}</p>
+                <p style={{ fontFamily: 'DM Sans', fontSize: '11px', color: 'var(--apas-muted)', marginTop: '2px' }}>{m.l}</p>
+              </div>
+            ))}
+          </div>
+        </VisualCard>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// ─── Module section ───────────────────────────────────────────────────────────
 
 interface ModuleProps {
-  title: string;
+  eyebrow: string;
+  eyebrowColor: string;
   headline: string;
-  description?: string;
+  description: string;
   points: { icon: React.ElementType; text: string }[];
-  visual: 'inspections' | 'compliance' | 'permits' | 'documents' | 'archives' | 'projects' | 'workorders' | 'team' | 'messaging' | 'analytics';
+  visual: VisualType;
   reversed?: boolean;
 }
 
-function ModuleVisual({ type }: { type: ModuleProps['visual'] }) {
-  const visuals: Record<ModuleProps['visual'], React.ReactNode> = {
-    inspections: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-            <Mic className="h-5 w-5 text-emerald-500" />
-          </div>
-          <div>
-            <p className="font-medium">Daily Grounds Inspection</p>
-            <p className="text-xs text-muted-foreground">Today, 8:42 AM</p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          {['Parking Lot A', 'Playground Equipment', 'Building Exterior'].map((item, i) => (
-            <div key={item} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <CheckCircle2 className={cn("h-5 w-5", i < 2 ? "text-emerald-500" : "text-muted-foreground")} />
-              <span className="text-sm">{item}</span>
-              {i < 2 && <Camera className="h-4 w-4 text-muted-foreground ml-auto" />}
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    compliance: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">NSPIRE Status</h4>
-          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-sm font-medium">Compliant</span>
-        </div>
-        <div className="space-y-4">
-          {[
-            { label: 'Outside Areas', status: 'clear', items: 0 },
-            { label: 'Inside Common', status: 'clear', items: 0 },
-            { label: 'Unit Inspections', status: 'attention', items: 2 },
-          ].map((area) => (
-            <div key={area.label} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-2 w-2 rounded-full",
-                  area.status === 'clear' ? "bg-emerald-500" : "bg-amber-500"
-                )} />
-                <span className="text-sm">{area.label}</span>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {area.items > 0 ? `${area.items} items` : 'All clear'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    permits: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Permit Calendar</h4>
-          <span className="text-sm text-muted-foreground">February 2026</span>
-        </div>
-        <div className="space-y-3">
-          {[
-            { name: 'Fire Safety Certificate', days: 12, status: 'warning' },
-            { name: 'Elevator Inspection', days: 45, status: 'ok' },
-            { name: 'Stormwater Permit', days: 90, status: 'ok' },
-          ].map((permit) => (
-            <div key={permit.name} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-              <div className="flex items-center gap-3">
-                <FileCheck className={cn(
-                  "h-5 w-5",
-                  permit.status === 'warning' ? "text-amber-500" : "text-muted-foreground"
-                )} />
-                <span className="text-sm">{permit.name}</span>
-              </div>
-              <span className={cn(
-                "text-sm",
-                permit.status === 'warning' ? "text-amber-500" : "text-muted-foreground"
-              )}>
-                {permit.days}d
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    documents: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input 
-            type="text" 
-            placeholder="Search documents..." 
-            className="bg-transparent text-sm outline-none flex-1"
-            readOnly
-          />
-        </div>
-        <div className="space-y-2">
-          {[
-            { name: 'Contracts', icon: FolderOpen, count: 12 },
-            { name: 'Insurance', icon: Shield, count: 4 },
-            { name: 'Policies', icon: FileText, count: 8 },
-            { name: 'Legal', icon: FileCheck, count: 6 },
-          ].map((folder) => (
-            <div key={folder.name} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="flex items-center gap-3">
-                <folder.icon className="h-5 w-5 text-primary" />
-                <span className="text-sm font-medium">{folder.name}</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{folder.count} files</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    archives: (
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-            <Archive className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-white">Property Archives</h4>
-            <p className="text-xs text-slate-400">Permanent retention</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {[
-            { name: 'As-Built Drawings', count: 24, icon: FileText },
-            { name: 'Equipment Manuals', count: 18, icon: BookOpen },
-            { name: 'Permits & Approvals', count: 12, icon: FileCheck },
-          ].map((cat) => (
-            <div key={cat.name} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-              <div className="flex items-center gap-3">
-                <cat.icon className="h-5 w-5 text-amber-400" />
-                <span className="text-sm text-slate-200">{cat.name}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Lock className="h-3 w-3 text-slate-500" />
-                <span className="text-sm text-slate-400">{cat.count}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Lock className="h-3 w-3" />
-            <span>Documents cannot be deleted</span>
-          </div>
-        </div>
-      </div>
-    ),
-    projects: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Roof Replacement</h4>
-          <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">Active</span>
-        </div>
-        <div className="space-y-4">
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full w-3/5 bg-gradient-to-r from-primary to-primary/60 rounded-full" />
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">60%</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 pt-2">
-            <div className="text-center p-2 rounded-lg bg-muted/50">
-              <p className="text-lg font-bold">12</p>
-              <p className="text-xs text-muted-foreground">Daily Reports</p>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-muted/50">
-              <p className="text-lg font-bold">3</p>
-              <p className="text-xs text-muted-foreground">Open RFIs</p>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-muted/50">
-              <p className="text-lg font-bold">$45K</p>
-              <p className="text-xs text-muted-foreground">Change Orders</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    ),
-    workorders: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Work Orders</h4>
-          <span className="text-sm text-muted-foreground">This Week</span>
-        </div>
-        <div className="space-y-3">
-          {[
-            { title: 'HVAC Unit B3', status: 'In Progress', priority: 'high' },
-            { title: 'Parking Light #7', status: 'Assigned', priority: 'medium' },
-            { title: 'Lobby Door Seal', status: 'Completed', priority: 'low' },
-          ].map((wo) => (
-            <div key={wo.title} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-2 w-2 rounded-full",
-                  wo.priority === 'high' ? "bg-rose-500" :
-                  wo.priority === 'medium' ? "bg-amber-500" : "bg-emerald-500"
-                )} />
-                <div>
-                  <p className="text-sm font-medium">{wo.title}</p>
-                  <p className="text-xs text-muted-foreground">{wo.status}</p>
-                </div>
-              </div>
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    team: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Team Members</h4>
-          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-sm font-medium">8 Active</span>
-        </div>
-        <div className="space-y-3">
-          {[
-            { name: 'Maria Garcia', role: 'Property Manager', avatar: 'MG' },
-            { name: 'James Wilson', role: 'Superintendent', avatar: 'JW' },
-            { name: 'Lisa Chen', role: 'Inspector', avatar: 'LC' },
-          ].map((member) => (
-            <div key={member.name} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-sm font-medium">
-                {member.avatar}
-              </div>
-              <div>
-                <p className="text-sm font-medium">{member.name}</p>
-                <p className="text-xs text-muted-foreground">{member.role}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    messaging: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Team Messages</h4>
-          <span className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-xs text-primary-foreground">3</span>
-        </div>
-        <div className="space-y-3">
-          <div className="p-3 rounded-2xl rounded-bl-md bg-muted/50">
-            <p className="text-sm">Inspection complete for Building A. All clear! 🎉</p>
-            <p className="text-xs text-muted-foreground mt-1">Maria • 2m ago</p>
-          </div>
-          <div className="p-3 rounded-2xl rounded-br-md bg-primary/10 ml-8">
-            <p className="text-sm">Great work! Moving to Building B now.</p>
-            <p className="text-xs text-muted-foreground mt-1">You • Just now</p>
-          </div>
-        </div>
-      </div>
-    ),
-    analytics: (
-      <div className="bg-card rounded-2xl p-6 border border-border shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h4 className="font-semibold">Monthly Overview</h4>
-          <span className="text-sm text-muted-foreground">February 2026</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-emerald-500/10">
-            <PieChart className="h-5 w-5 text-emerald-500 mb-2" />
-            <p className="text-2xl font-bold">94%</p>
-            <p className="text-xs text-muted-foreground">Compliance Rate</p>
-          </div>
-          <div className="p-4 rounded-xl bg-primary/10">
-            <BarChart3 className="h-5 w-5 text-primary mb-2" />
-            <p className="text-2xl font-bold">127</p>
-            <p className="text-xs text-muted-foreground">Inspections</p>
-          </div>
-          <div className="p-4 rounded-xl bg-amber-500/10">
-            <Wrench className="h-5 w-5 text-amber-500 mb-2" />
-            <p className="text-2xl font-bold">48</p>
-            <p className="text-xs text-muted-foreground">Work Orders</p>
-          </div>
-          <div className="p-4 rounded-xl bg-violet-500/10">
-            <Clock className="h-5 w-5 text-violet-500 mb-2" />
-            <p className="text-2xl font-bold">2.3d</p>
-            <p className="text-xs text-muted-foreground">Avg Resolution</p>
-          </div>
-        </div>
-      </div>
-    ),
-  };
-
-  return visuals[type];
-}
-
-function ModuleSection({ title, headline, description, points, visual, reversed }: ModuleProps) {
+function ModuleSection({ eyebrow, eyebrowColor, headline, description, points, visual, reversed }: ModuleProps) {
   return (
-    <div className={cn(
-      "grid lg:grid-cols-2 gap-12 lg:gap-16 items-center",
-      reversed && "lg:flex-row-reverse"
-    )}>
+    <div className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center ${reversed ? 'lg:[&>*:first-child]:order-2' : ''}`}>
+      {/* Copy */}
       <motion.div
         initial={{ opacity: 0, x: reversed ? 30 : -30 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         viewport={{ once: true }}
-        className={cn(reversed && "lg:order-2")}
       >
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-          {title}
-        </span>
-        <h3 className="text-3xl md:text-4xl font-bold mb-4">{headline}</h3>
-        {description && (
-          <p className="text-lg text-muted-foreground mb-6">{description}</p>
-        )}
-        <div className="space-y-4">
-          {points.map((point, index) => (
+        <div
+          className="inline-flex items-center gap-2 mb-5"
+          style={{ background: `${eyebrowColor}18`, border: `1px solid ${eyebrowColor}35`, borderRadius: '999px', padding: '5px 14px' }}
+        >
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: eyebrowColor, flexShrink: 0 }} />
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: eyebrowColor, letterSpacing: '0.03em' }}>{eyebrow}</span>
+        </div>
+        <h3 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(26px, 3.5vw, 40px)', color: 'var(--apas-white)', lineHeight: 1.1, marginBottom: '16px' }}>{headline}</h3>
+        <p style={{ fontFamily: 'DM Sans', fontSize: '16px', color: 'var(--apas-muted)', lineHeight: 1.8, marginBottom: '28px' }}>{description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {points.map((point, i) => (
             <motion.div
-              key={index}
+              key={i}
               initial={{ opacity: 0, x: -10 }}
               whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
+              transition={{ duration: 0.4, delay: i * 0.07 }}
               viewport={{ once: true }}
-              className="flex items-start gap-3"
+              style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}
             >
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <point.icon className="h-4 w-4 text-primary" />
+              <div style={{ height: '32px', width: '32px', minWidth: '32px', borderRadius: '8px', background: `${eyebrowColor}18`, border: `1px solid ${eyebrowColor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                <point.icon size={15} color={eyebrowColor} />
               </div>
-              <p className="text-muted-foreground">{point.text}</p>
+              <p style={{ fontFamily: 'DM Sans', fontSize: '15px', color: 'var(--apas-muted)', lineHeight: 1.7 }}>{point.text}</p>
             </motion.div>
           ))}
         </div>
       </motion.div>
 
+      {/* Visual */}
       <motion.div
         initial={{ opacity: 0, x: reversed ? -30 : 30 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
+        transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
         viewport={{ once: true }}
-        className={cn(reversed && "lg:order-1")}
       >
         <ModuleVisual type={visual} />
       </motion.div>
@@ -388,149 +384,156 @@ function ModuleSection({ title, headline, description, points, visual, reversed 
   );
 }
 
+// ─── Module data ──────────────────────────────────────────────────────────────
+
 const modules: ModuleProps[] = [
   {
-    title: 'Daily Inspections',
+    eyebrow: 'Daily Inspections',
+    eyebrowColor: '#10B981',
     headline: 'Every Corner. Every Day. Documented.',
+    description: 'Your grounds inspection should produce undeniable photographic proof, not a handwritten checklist nobody can find.',
     points: [
-      { icon: Mic, text: 'Voice-powered inspections with automatic Spanish translation' },
-      { icon: Camera, text: 'Photo evidence with timestamps and GPS location' },
-      { icon: AlertCircle, text: 'Automatic issue creation when defects are found' },
-      { icon: CheckCircle2, text: 'Supervisor review queue with one-tap approval' },
+      { icon: Mic, text: 'Voice dictation in English and Spanish — speak your findings, AI transcribes them' },
+      { icon: Camera, text: 'Photo evidence with GPS coordinates and timestamps — court-admissible proof' },
+      { icon: AlertCircle, text: 'Defects auto-generate issues and work orders — nothing falls through after the walk' },
+      { icon: CheckCircle2, text: 'Supervisor review queue with one-tap approval, reviewer notes, and addendum support' },
     ],
     visual: 'inspections',
   },
   {
-    title: 'NSPIRE Compliance',
-    headline: 'HUD-Ready. Always.',
+    eyebrow: 'NSPIRE Compliance',
+    eyebrowColor: '#1D6FE8',
+    headline: 'HUD-Ready. Every Single Day.',
+    description: 'The complete NSPIRE defect catalog is built in. 80+ defect items across three areas. Every defect has its severity, deadline, and point value pre-loaded.',
     points: [
-      { icon: Shield, text: 'Complete NSPIRE defect catalog built-in' },
-      { icon: Clock, text: 'Severity-based repair deadlines (24h / 30d / 60d)' },
-      { icon: Wrench, text: 'Automatic work order generation for defects' },
-      { icon: History, text: 'Three-year audit trail retention for inspections' },
+      { icon: Shield, text: 'Complete NSPIRE defect catalog: 35 Outside · 28 Inside · 22+ Unit items' },
+      { icon: Clock, text: 'Repair deadline enforcement: 24h Life-Threatening · 30d Severe · 60d Moderate' },
+      { icon: Wrench, text: 'Defects auto-create work orders — the pipeline from inspection to resolution never breaks' },
+      { icon: History, text: '3-year audit trail retention — every inspection, finding, and resolution archived' },
     ],
     visual: 'compliance',
     reversed: true,
   },
   {
-    title: 'Permit Center',
-    headline: 'Never Miss a Deadline Again.',
+    eyebrow: 'Permit Center',
+    eyebrowColor: '#8B5CF6',
+    headline: 'Never Miss a Regulatory Deadline. Ever.',
+    description: 'Fire safety certificates. Elevator inspections. Stormwater permits. One missed deadline can mean shutdown, fines, or liability. APAS OS tracks every one.',
     points: [
-      { icon: FileCheck, text: 'Track every permit, certificate, and regulatory filing' },
-      { icon: Bell, text: 'Automated deliverable reminders before due dates' },
-      { icon: Calendar, text: 'Expiration tracking for all documents' },
-      { icon: AlertCircle, text: 'Overdue items automatically trigger issues' },
+      { icon: FileCheck, text: 'Expiration tracking for every permit, license, certificate, and insurance document' },
+      { icon: Bell, text: 'Automated alerts at 90, 60, 30, 14, and 7 days before expiration' },
+      { icon: Calendar, text: 'Deliverable tracking: log requirements, due dates, and responsible parties' },
+      { icon: AlertCircle, text: 'Overdue items auto-generate issues and notify supervisors' },
     ],
     visual: 'permits',
   },
   {
-    title: 'Document Center',
+    eyebrow: 'Document Center',
+    eyebrowColor: '#F59E0B',
     headline: 'Your Digital Filing Cabinet.',
+    description: 'Documents organized, version-controlled, searchable, and expiration-tracked. Archives is the permanent vault where as-built drawings and approved permits live forever.',
     points: [
-      { icon: FolderOpen, text: 'Organized by category: Contracts, Insurance, Legal, Policies' },
-      { icon: History, text: 'Version history on every document' },
-      { icon: Calendar, text: 'Expiration date tracking for contracts & insurance' },
-      { icon: Search, text: 'Instant search across all files' },
+      { icon: FolderOpen, text: 'Organized by Contracts · Insurance · Policies · Legal · Permits' },
+      { icon: Search, text: 'Instant full-text search across all files — find anything in seconds' },
+      { icon: Lock, text: 'Property Archives: permanent storage, admin-upload-only, view-only for teams' },
+      { icon: FileCheck, text: 'Expiration date tracking for contracts and insurance certificates' },
     ],
     visual: 'documents',
     reversed: true,
   },
   {
-    title: 'Property Archives',
-    headline: 'Your Permanent Digital Vault.',
+    eyebrow: 'Project Management',
+    eyebrowColor: '#8B5CF6',
+    headline: 'Capital Projects. Total Visibility.',
+    description: 'Milestones, daily reports, RFIs, submittals, change orders, punch lists, financials, safety logs. Everything a construction manager needs — without Procore prices.',
     points: [
-      { icon: Lock, text: 'As-built drawings and design documents secured forever' },
-      { icon: BookOpen, text: 'Equipment manuals accessible to maintenance staff' },
-      { icon: Shield, text: 'Admin-controlled uploads, view-only for teams' },
-      { icon: History, text: 'Complete audit trail of property documentation' },
-    ],
-    visual: 'archives',
-  },
-  {
-    title: 'Project Management',
-    headline: 'Capital Projects. Complete Visibility.',
-    points: [
-      { icon: Milestone, text: 'Milestone tracking with visual timeline view' },
-      { icon: ClipboardList, text: 'Daily reports with photo documentation' },
-      { icon: Receipt, text: 'Change order approval workflows' },
-      { icon: FileQuestion, text: 'RFI tracking and punch lists' },
-      { icon: Sparkles, text: 'AI-powered proposal generation' },
+      { icon: Milestone, text: 'Gantt chart + milestone timeline with visual progress tracking' },
+      { icon: ClipboardList, text: 'Daily reports with photo documentation and voice dictation (printable PDF)' },
+      { icon: Receipt, text: 'Change order approval workflow with cost tracking and budget variance' },
+      { icon: Sparkles, text: 'AI-powered proposal generation — describe the scope, get a professional draft' },
     ],
     visual: 'projects',
   },
   {
-    title: 'Work Orders',
-    headline: 'From Issue to Resolution. Tracked.',
+    eyebrow: 'Work Orders',
+    eyebrowColor: '#F59E0B',
+    headline: 'From Defect to Done. Nothing Lost.',
+    description: 'Every inspection defect, tenant complaint, and AI voice call creates a tracked work order. Five-stage pipeline with activity log and priority levels.',
     points: [
-      { icon: Hammer, text: 'Automatic creation from inspections and issues' },
-      { icon: GitBranch, text: 'Five-stage status pipeline for clear tracking' },
-      { icon: Flag, text: 'Priority levels with SLA awareness' },
-      { icon: MessageSquare, text: 'Full activity log and comment threads' },
+      { icon: Hammer, text: 'Auto-created from inspection defects, issues, and AI Voice Agent calls' },
+      { icon: GitBranch, text: '5-stage pipeline: Created → Assigned → In Progress → Review → Completed' },
+      { icon: Flag, text: 'Priority levels: Critical · High · Medium · Low with SLA tracking' },
+      { icon: MessageSquare, text: 'Comment threads and @mentions within each work order' },
     ],
     visual: 'workorders',
     reversed: true,
   },
   {
-    title: 'Team Management',
+    eyebrow: 'Team Management',
+    eyebrowColor: '#1D6FE8',
     headline: 'The Right Access. For Every Role.',
+    description: 'Nine permission levels. Property-specific assignments. Invitation system for contractors. Training tracking with digital certificate generation.',
     points: [
-      { icon: Users, text: 'Nine role levels from Admin to Viewer' },
-      { icon: UserCog, text: 'Property-specific assignments for team members' },
-      { icon: GraduationCap, text: 'Training tracking with certificates' },
-      { icon: Send, text: 'Invitation system for contractors and vendors' },
+      { icon: Users, text: '9 role levels: Owner → Administrator → Property Manager → Inspector → Viewer' },
+      { icon: UserCog, text: 'Property-specific assignments — users only see the properties they\'re assigned to' },
+      { icon: GraduationCap, text: 'Training courses with progress tracking and digital certificate generation' },
+      { icon: Send, text: 'Invitation system for contractors, vendors, and external teams' },
     ],
     visual: 'team',
   },
   {
-    title: 'Real-Time Messaging',
+    eyebrow: 'Communications',
+    eyebrowColor: '#F43F5E',
     headline: 'Your Team. In Sync.',
+    description: 'iMessage-style team messaging with threads, @mentions, and search history. Full email integration with complete audit trail. All in one platform.',
     points: [
-      { icon: MessageCircle, text: 'iMessage-style threaded conversations' },
-      { icon: Zap, text: 'Real-time message delivery with presence' },
-      { icon: AtSign, text: '@mentions and instant notifications' },
-      { icon: History, text: 'Full message history with search' },
+      { icon: MessageCircle, text: 'Threaded messaging with @mentions and instant read receipts' },
+      { icon: Zap, text: 'Full email integration: inbox, compose, reply, forward — with audit trail' },
+      { icon: AtSign, text: 'Smart notification center: deadline alerts, work order updates, approvals' },
+      { icon: History, text: 'Full message history search — never lose a conversation' },
     ],
     visual: 'messaging',
     reversed: true,
   },
   {
-    title: 'Analytics & Reporting',
+    eyebrow: 'Analytics & Reporting',
+    eyebrowColor: '#06B6D4',
     headline: 'Decisions Backed by Data.',
+    description: 'Portfolio-level analytics across all properties. Nine built-in report types. CSV export for every table. Printable PDF reports for audits and owner presentations.',
     points: [
-      { icon: PieChart, text: 'Property portfolio analytics at a glance' },
-      { icon: BarChart3, text: 'Inspection summary and compliance reports' },
-      { icon: Wrench, text: 'Work order performance metrics' },
-      { icon: Download, text: 'CSV export for all data' },
+      { icon: PieChart, text: 'Portfolio dashboard: compliance rate · open issues · work orders · velocity' },
+      { icon: BarChart3, text: '9 report types: Inspection Summary, Defect Analysis, Work Order Performance...' },
+      { icon: Download, text: 'CSV export for all data tables — works with Excel and accounting tools' },
     ],
     visual: 'analytics',
   },
 ];
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+
 export function ModuleShowcase() {
   return (
-    <section className="py-24 md:py-32">
-      <div className="container mx-auto px-6">
+    <section id="compliance" style={{ background: 'var(--apas-deep)', padding: '100px 0' }}>
+      <div className="max-w-7xl mx-auto px-6">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-20"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          viewport={{ once: true, margin: '-80px' }}
+          className="text-center mb-24"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <h2 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(28px, 4.5vw, 52px)', color: 'var(--apas-white)', lineHeight: 1.1, marginBottom: '20px' }}>
             Every Module.{' '}
-            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Built to Perform.
-            </span>
+            <em style={{ color: 'var(--apas-sapphire)' }}>Built to Perform.</em>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '580px', margin: '0 auto', lineHeight: 1.8 }}>
             Each capability designed with one goal: eliminate the chaos that costs you time, money, and peace of mind.
           </p>
         </motion.div>
 
-        <div className="space-y-24 md:space-y-32">
-          {modules.map((module, index) => (
-            <ModuleSection key={module.title} {...module} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '120px' }}>
+          {modules.map((mod) => (
+            <ModuleSection key={mod.eyebrow} {...mod} />
           ))}
         </div>
       </div>
