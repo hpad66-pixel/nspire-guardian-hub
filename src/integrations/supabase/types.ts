@@ -2133,6 +2133,56 @@ export type Database = {
           },
         ]
       }
+      project_progress_reports: {
+        Row: {
+          content_html: string | null
+          created_at: string | null
+          generated_by: string | null
+          id: string
+          project_id: string
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content_html?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          project_id: string
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content_html?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          project_id?: string
+          report_period_end?: string
+          report_period_start?: string
+          report_type?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_proposals: {
         Row: {
           ai_generated: boolean | null
