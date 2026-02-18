@@ -1,129 +1,289 @@
 
-# Enterprise Navigation & Layout Overhaul
+# ClickUp-Style Action Items & To-Do System — Enterprise Implementation
 
-## Diagnosis: What Is Broken and Why
+## Vision & UX Strategy
 
-### Problem 1 — Horizontal Scrolling on the Project Page
-The `ProjectDetailPage` renders as a flex row: `[main content flex-1] + [ActivityFeedPanel 380px] + [DiscussionPanel 380px]`. When a panel opens, the 380px panel is added as a sibling that pushes `flex-1` content leftward — but there is no room because the outer container is `overflow-hidden`. The result is that the main content shrinks and the page scrolls horizontally.
+The goal is a **live, persistent task thread** that lives in two places simultaneously:
+1. **Inside each project** — an "Action Items" panel (same pattern as Activity Feed), accessible from the project header
+2. **On the Dashboard** — a dedicated "My Tasks" section that aggregates all tasks assigned to the current user across all projects, always visible and "staring at your face"
 
-**Fix**: Convert the Activity and Discussion panels from flex siblings into **absolute/fixed overlay drawers** that sit on top of the content using `position: absolute right-0` within the already-bounded content container. They should NOT push the content — they should overlay it. Alternatively, the panels can be rendered as right-edge sheets using Radix `Sheet`. This is the correct enterprise UX pattern (used by Linear, Jira, Notion).
-
-### Problem 2 — Sidebar UX Issues
-The sidebar already uses `collapsible="icon"` which is the correct shadcn pattern. The ghost spacer div correctly reserves layout space. However:
-- When expanded, the sidebar has many nav groups open simultaneously causing overflow — the `SidebarContent` has `overflow-y-auto` but the visible area is correct. This is actually the primary scroll problem: too many groups are `defaultOpen={true}` at once.
-- The sidebar `SidebarContent` height can be improved with better scrollbar styling.
-- No visual "resize handle" or persistent expand/collapse state preference for the user.
-
-**Fix**: 
-- Collapse most groups by default — only the active group auto-opens
-- Add smooth CSS transitions to collapsible groups
-- Persist sidebar state to localStorage (the Shadcn SidebarProvider already uses a cookie — we will reinforce this)
-- Add a subtle collapse/expand rail to the sidebar edge
-
-### Problem 3 — Header Bar
-The top header bar at `h-14` is solid but the search bar uses a fixed `w-64` which looks misaligned at some breakpoints.
+The design language draws from **ClickUp's task cards**, **Linear's clean list view**, and **GitHub's assignee/label system** — compact, color-coded, drag-and-drop ready, with real-time status syncing between the assigner's view and the assignee's view.
 
 ---
 
-## Changes Required
+## Where It Lives in the Project
 
-### File 1: `src/pages/projects/ProjectDetailPage.tsx`
+A new **"Tasks"** button is added to the project header action bar (next to Activity, Discuss, Reports):
 
-**Change the panel rendering strategy completely:**
-
-Currently:
-```tsx
-<div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-  <div className="flex-1 overflow-auto">
-    {/* main content */}
-  </div>
-  <AnimatePresence>
-    {activityFeedOpen && <ActivityFeedPanel ... />}
-    {discussionsPanelOpen && <DiscussionPanel ... />}
-  </AnimatePresence>
-</div>
+```
+[Activity] [Discuss] [Tasks ✓] [Reports] [Edit]
 ```
 
-The `ActivityFeedPanel` and `DiscussionPanel` are siblings in the flex row and push content sideways. The fix is to make the outer container `relative` and the panels `absolute right-0 top-0 h-full` — so they overlay the content without pushing it.
+Clicking **Tasks** slides open an overlay panel from the right — identical UX pattern to the Activity Feed panel (absolute-positioned overlay, no horizontal scroll). The panel has two tabs:
+- **All Tasks** — all action items for this project
+- **Mine** — only tasks assigned to the current user
 
-New structure:
-```tsx
-<div className="relative h-[calc(100vh-3.5rem)] overflow-hidden flex">
-  <div className="flex-1 overflow-auto min-w-0">
-    {/* all main content */}
-  </div>
+---
+
+## Database Schema
+
+### New Table: `project_action_items`
+
+```sql
+CREATE TABLE public.project_action_items (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title             TEXT NOT NULL,
+  description       TEXT,
+  status            TEXT NOT NULL DEFAULT 'todo'  
+                    CHECK (status IN ('todo','in_progress','in_review','done','cancelled')),
+  priority          TEXT NOT NULL DEFAULT 'medium'
+                    CHECK (priority IN ('urgent','high','medium','low')),
+  assigned_to       UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_by        UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  due_date          DATE,
+  completed_at      TIMESTAMPTZ,
+  tags              TEXT[] DEFAULT '{}',
+  linked_entity_type TEXT,          -- 'rfi', 'punch_item', 'meeting', 'milestone', etc.
+  linked_entity_id  UUID,
+  sort_order        INTEGER DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.project_action_items ENABLE ROW LEVEL SECURITY;
+
+-- All authenticated users can view action items (they're project-scoped)
+CREATE POLICY "Authenticated users can view action items"
+  ON public.project_action_items FOR SELECT
+  TO authenticated USING (true);
+
+-- Users can create action items
+CREATE POLICY "Users can create action items"
+  ON public.project_action_items FOR INSERT
+  TO authenticated WITH CHECK (auth.uid() = created_by);
+
+-- Creator or assignee can update
+CREATE POLICY "Creator or assignee can update action items"
+  ON public.project_action_items FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = created_by OR auth.uid() = assigned_to);
+
+-- Only creator can delete
+CREATE POLICY "Creator can delete action items"
+  ON public.project_action_items FOR DELETE
+  TO authenticated USING (auth.uid() = created_by);
+```
+
+### New Table: `action_item_comments`
+
+```sql
+CREATE TABLE public.action_item_comments (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  action_item_id  UUID NOT NULL REFERENCES project_action_items(id) ON DELETE CASCADE,
+  content         TEXT NOT NULL,
+  created_by      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.action_item_comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view comments"
+  ON public.action_item_comments FOR SELECT TO authenticated USING (true);
   
-  {/* Overlay panels — positioned absolute, slide in from right */}
-  <AnimatePresence>
-    {activityFeedOpen && (
-      <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        className="absolute right-0 top-0 h-full w-[380px] border-l shadow-xl z-20 bg-background"
-      >
-        <ActivityFeedPanel ... />
-      </motion.div>
-    )}
-  </AnimatePresence>
-</div>
+CREATE POLICY "Users can create comments"
+  ON public.action_item_comments FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Users can update their own comments"
+  ON public.action_item_comments FOR UPDATE TO authenticated
+  USING (auth.uid() = created_by);
 ```
 
-This way the panels slide over the content, not push it — exactly like Linear, GitHub's PR sidebar, or Jira's detail panel.
+### Enable Realtime
 
-### File 2: `src/components/projects/ActivityFeedPanel.tsx`
-
-**Remove the outer `motion.div` wrapper** — the motion is now handled by the parent in `ProjectDetailPage`. The panel itself should be a plain `div className="flex flex-col h-full"`. This avoids double-animation and keeps the component clean.
-
-### File 3: `src/components/projects/DiscussionPanel.tsx`
-
-**Same change** — remove the outer `motion.div`/animation wrapper from the panel itself. Motion is handled by the parent overlay container.
-
-### File 4: `src/components/layout/AppSidebar.tsx`
-
-**Key UX improvements:**
-
-1. **Fix defaultOpen for groups** — Currently "Daily Grounds", "Projects", and "NSPIRE" all have `defaultOpen={true}`. When all three are active modules, the sidebar shows 10+ items expanded at once. Only the **currently active group** should be open by default, all others closed.
-
-   Change: Remove `defaultOpen={true}` from all groups except when they are the active route. Each `CollapsibleNavGroup` already receives `isActive` — use that to drive the initial open state exclusively.
-
-2. **Better mini-mode icons** — In icon-only/collapsed mode, wrap each `NavItem` in a `Tooltip` showing the label. This already exists via the `tooltip` prop but it's not applied consistently. Ensure ALL `NavItem` calls in collapsed mode show tooltips.
-
-3. **Smooth group animations** — The Radix `CollapsibleContent` already animates, but we need to ensure the CSS `overflow-hidden` + `animate-accordion-down/up` classes are applied (from the existing index.css `tailwindcss-animate` config).
-
-4. **Sidebar toggle persistence** — The shadcn `SidebarProvider` already saves state to a cookie (`sidebar:state`). Ensure the `defaultOpen` prop reads from that cookie on mount so the sidebar remembers whether the user left it collapsed or expanded.
-
-5. **Add a `SidebarRail`** — The shadcn `SidebarRail` component provides a thin, hoverable strip on the edge of the sidebar that lets users click to expand/collapse. Add `<SidebarRail />` inside `<Sidebar>` for a more polished feel.
-
-6. **Logo text fix** — Change "PM APAS" to "APAS Consulting" and remove the "Property OS" subtitle, matching the brand standard established in meeting minutes.
-
-### File 5: `src/components/layout/AppLayout.tsx`
-
-**Header improvements:**
-
-1. Make the search bar `flex-1 max-w-sm` instead of a fixed `w-64` so it breathes on different viewports.
-2. Move the `SidebarTrigger` to be visually integrated with the sidebar — add a hover state that clearly communicates "click to toggle."
-3. Add a keyboard shortcut hint `⌘B` next to the sidebar trigger (the shadcn default is Ctrl/Cmd+B).
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.project_action_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.action_item_comments;
+```
 
 ---
 
-## Summary of UX Changes
+## New Files
 
-| Issue | Root Cause | Fix |
-|---|---|---|
-| Content scrolls horizontally when panel opens | Activity/Discussion panels are flex siblings, pushing content | Convert panels to `position: absolute` overlays on the right edge |
-| Sidebar shows too many expanded groups | All groups have `defaultOpen={true}` | Only auto-open the group containing the current route |
-| Sidebar mini-mode has no tooltips for all items | `tooltip` prop not applied to all `NavItem` calls | Apply tooltip to every item when `collapsed` is true |
-| Brand name wrong in sidebar | Shows "PM APAS / Property OS" | Change to "APAS Consulting" |
-| No rail for resizing/toggling | `SidebarRail` not used | Add `<SidebarRail />` inside `Sidebar` |
-| Header search bar fixed width | `w-64` class | Change to `flex-1 max-w-sm` |
+### 1. `src/hooks/useActionItems.ts`
+
+Manages all CRUD operations and real-time subscription:
+- `useActionItemsByProject(projectId)` — fetches with assignee profile join, realtime subscription
+- `useMyActionItems()` — fetches all items `assigned_to = current user` across all projects (for dashboard)
+- `useActionItemComments(actionItemId)` — comment thread, realtime
+- `useCreateActionItem()` — mutation
+- `useUpdateActionItem()` — mutation (status, priority, assignee, due date, title)
+- `useDeleteActionItem()` — mutation
+- `useCreateActionItemComment()` — mutation
+- When `assigned_to` changes, a `notification` is created for the new assignee via the existing `notifications` table with `type: 'assignment'` and `entity_type: 'action_item'`
+
+### 2. `src/components/projects/ActionItemsPanel.tsx`
+
+The slide-in overlay panel — mirrors the `ActivityFeedPanel` structure but with richer task UI:
+
+**Panel structure:**
+```
+┌──────────────────────────────────┐
+│  ✓ Action Items    [All] [Mine]  │  ← header with tab filter
+│  ────────────────────────────── │
+│  [+ Add Task           ▾ Filter]│  ← quick add inline
+│  ════════════════════════════════│
+│                                  │
+│  ● URGENT                        │  ← priority group header
+│  ┌────────────────────────────┐  │
+│  │ ◈ Fix RFI response delay   │  │  ← task card
+│  │   👤 John D. · Due Mar 1   │  │
+│  │   [Todo] → [In Progress]   │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  ● HIGH                          │
+│  ┌────────────────────────────┐  │
+│  │ ◈ Submit permit docs       │  │
+│  │   👤 Sarah K. · Due Mar 5  │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  [See all completed tasks ↓]     │
+└──────────────────────────────────┘
+```
+
+**Quick-add bar**: A single text input at the top — type a task title and press Enter to create it instantly (like ClickUp's quick-add). A "More options" expander reveals the full form (assignee, due date, priority, description, linked entity).
+
+**Task Cards** show:
+- Checkbox (clicking immediately marks done with a satisfying animation)
+- Title (click to expand into detail view)
+- Assignee avatar + name
+- Priority color tag (left border: red=urgent, orange=high, blue=medium, gray=low)
+- Due date (turns red if overdue, yellow if due within 3 days)
+- Status pill with one-click status transitions
+- Comment count badge
+
+**Clicking a task card** expands it inline (ClickUp-style accordion) to show:
+- Editable title and description
+- Comment thread (live, real-time)
+- Linked entity (e.g., "Linked to: RFI #12")
+- Status change buttons
+- Delete button (for creator only)
+
+**Filtering**: A filter dropdown by status (Todo / In Progress / In Review / Done), by assignee, by priority.
+
+### 3. `src/components/projects/ActionItemDialog.tsx`
+
+Full create/edit dialog for cases where the quick-add needs more detail:
+- Title (required)
+- Description (rich text, optional)
+- Priority picker (Urgent / High / Medium / Low — color-coded pills)
+- Assignee picker (searchable profile dropdown with avatars)
+- Due date (calendar picker)
+- Tags (free text tags)
+- Link to entity (optional: RFI, Punch Item, Meeting, Milestone dropdown)
+
+### 4. Dashboard Integration — `src/pages/Dashboard.tsx`
+
+A new **"My Tasks"** section is added prominently in the dashboard, below the core metrics and above the module cards. It uses the existing `useMyActionItems()` hook:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ✓ My Tasks                               [View All →]  │
+│  ─────────────────────────────────────────────────────  │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ 🔴 Fix RFI response          Due: Today  [Todo]  │   │
+│  │    Tower Renovation Project               →      │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │ 🟡 Submit permit documents   Due: Feb 22 [In Pr] │   │
+│  │    Riverside Phase 2                      →      │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │ 🔵 Review safety checklist   Due: Feb 25 [Todo]  │   │
+│  │    Office Buildout                        →      │   │
+│  └──────────────────────────────────────────────────┘   │
+│  [+ Create Task]                [2 more tasks ↓]        │
+└─────────────────────────────────────────────────────────┘
+```
+
+Each row in "My Tasks":
+- Priority dot (red/orange/blue/gray)
+- Task title
+- Due date (colored based on urgency)
+- Status pill (click to change inline)
+- Project name (links to project)
+- Checkbox (one-click complete)
+
+Tasks are sorted: overdue first, then by due date, then by priority. Completed tasks are hidden but a "Show X completed" toggle is available.
+
+**Persistence**: The section is sticky — after login, this is the first thing users see after the greeting and core metrics.
 
 ---
 
-## Technical Notes
+## Integration Points
 
-- No new dependencies needed — all changes are structural Tailwind/React refactors
-- The `motion.div` wrappers are moved UP to the parent (`ProjectDetailPage`) so the panel components themselves become simpler
-- The Radix `Sheet` component could also be used for the overlay panels, but `motion.div` + `absolute` is simpler here and avoids adding a Radix portal which would require z-index management against the sidebar
-- The sidebar `SidebarRail` is already exported from `@/components/ui/sidebar` — it just needs to be used
-- Cookie-based sidebar state persistence is already built into `SidebarProvider` — no extra work needed
+### Project Header Button
+In `ProjectDetailPage.tsx`, add the Tasks button alongside the Activity button:
+
+```tsx
+<Button
+  variant={actionItemsOpen ? 'secondary' : 'outline'}
+  size="sm"
+  className="gap-1.5 relative"
+  onClick={() => { setActionItemsOpen(!actionItemsOpen); /* close others */ }}
+>
+  <CheckSquare className="h-4 w-4" />
+  <span className="hidden sm:inline">Tasks</span>
+  {openTaskCount > 0 && (
+    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white text-[10px] flex items-center justify-center">
+      {openTaskCount}
+    </span>
+  )}
+</Button>
+```
+
+A red badge on the button shows the count of open/overdue tasks for the project.
+
+### Notifications
+When a task is assigned to a user, a notification is inserted into the `notifications` table:
+- `type: 'assignment'`
+- `title: 'You've been assigned a task'`
+- `message: '<task title> — <project name>'`
+- `entity_type: 'action_item'`
+- `entity_id: <task id>`
+
+This surfaces in the existing NotificationCenter bell and in the Dashboard "Action Required" section.
+
+---
+
+## Visual Design System — Priority Colors
+
+| Priority | Color | Left Border | Badge |
+|---|---|---|---|
+| Urgent | Red `#EF4444` | `border-l-red-500` | `bg-red-50 text-red-700` |
+| High | Orange `#F97316` | `border-l-orange-500` | `bg-orange-50 text-orange-700` |
+| Medium | Blue `#3B82F6` | `border-l-blue-500` | `bg-blue-50 text-blue-700` |
+| Low | Gray `#94A3B8` | `border-l-slate-300` | `bg-slate-50 text-slate-500` |
+
+## Visual Design System — Status Flow
+
+```
+[Todo] → [In Progress] → [In Review] → [Done]
+                   ↓
+             [Cancelled]
+```
+
+Each status transition is animated: checking "Done" plays a satisfying strikethrough animation on the task title.
+
+---
+
+## Technical Implementation Steps
+
+1. **Database migration** — Create `project_action_items` and `action_item_comments` tables with RLS policies and enable realtime
+2. **`useActionItems.ts`** — Full hook with CRUD mutations, realtime subscriptions, and notification creation on assignment
+3. **`ActionItemsPanel.tsx`** — Overlay panel with quick-add, grouped task cards, inline comment thread expansion
+4. **`ActionItemDialog.tsx`** — Full create/edit form with assignee picker, due date, priority, entity linking
+5. **`ProjectDetailPage.tsx`** — Add Tasks button to header, wire overlay panel (same absolute overlay pattern as Activity)
+6. **`Dashboard.tsx`** — Add "My Tasks" section with `useMyActionItems()` data, priority sorting, one-click complete
+
+No new npm dependencies are required — all UI components use existing shadcn, Radix, Framer Motion, and Lucide.
