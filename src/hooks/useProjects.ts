@@ -33,17 +33,40 @@ const PROJECT_SELECT_DETAIL = `
   milestones:project_milestones(id, name, due_date, status, notes, completed_at)
 `;
 
-/** For non-admins: returns projects they can see (property-linked ones via membership,
- *  plus all client/standalone projects which are org-wide). */
+/** For non-admins: returns projects they can see.
+ *  Includes: property-linked projects via property team membership,
+ *  standalone/client projects (no property_id),
+ *  AND any project where the user is a direct project_team_member. */
 async function buildNonAdminFilter(query: any) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Get property IDs the user is assigned to
   const propertyIds = await getAssignedPropertyIds();
-  // Include property projects they're assigned to OR any non-property project (client / standalone)
-  if (propertyIds.length === 0) {
-    // Only show non-property projects
-    return query.is('property_id', null);
+
+  // Get project IDs where the user is a direct project team member
+  const { data: projectMemberships } = await supabase
+    .from('project_team_members')
+    .select('project_id')
+    .eq('user_id', user?.id ?? '');
+  const directProjectIds = (projectMemberships ?? []).map(m => m.project_id);
+
+  // Build combined filter
+  const orParts: string[] = [];
+
+  // Always include standalone/client projects (no property)
+  orParts.push('property_id.is.null');
+
+  // Include property-linked projects for assigned properties
+  if (propertyIds.length > 0) {
+    orParts.push(`property_id.in.(${propertyIds.join(',')})`);
   }
-  // property projects assigned OR no property_id (client projects)
-  return query.or(`property_id.in.(${propertyIds.join(',')}),property_id.is.null`);
+
+  // Include projects where user is a direct team member
+  if (directProjectIds.length > 0) {
+    orParts.push(`id.in.(${directProjectIds.join(',')})`);
+  }
+
+  return query.or(orParts.join(','));
 }
 
 export function useProjects() {

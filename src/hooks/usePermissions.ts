@@ -48,8 +48,11 @@ export function useUserPermissions() {
     // Admin has all permissions
     if (currentRole === 'admin') return true;
     // Owners can always access and create project records
-    // (data visibility remains property-scoped in project hooks).
     if (currentRole === 'owner' && module === 'projects' && (action === 'view' || action === 'create')) {
+      return true;
+    }
+    // Project managers can always view and manage projects
+    if (currentRole === 'project_manager' && module === 'projects' && (action === 'view' || action === 'create' || action === 'update')) {
       return true;
     }
 
