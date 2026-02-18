@@ -87,7 +87,6 @@ function WorkModuleButton({
   const hasBadge = badge !== undefined && badge > 0;
 
   if (collapsed) {
-    // Icon-only: children are plain nav items, show them directly
     return (
       <div className="px-2 space-y-0.5">
         {children}
@@ -99,28 +98,29 @@ function WorkModuleButton({
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className={cn(
         'mx-2 rounded-lg overflow-hidden transition-all duration-200',
-        isActive
-          ? 'bg-white/5 ring-1 ring-white/8'
-          : 'hover:bg-white/3'
-      )}>
+        isActive ? 'ring-1 ring-white/10' : ''
+      )}
+        style={{ background: isActive ? 'rgba(255,255,255,0.04)' : undefined }}
+      >
         {/* Module header trigger */}
         <CollapsibleTrigger asChild>
-          <button className="flex w-full items-center gap-3 px-3 py-2.5 text-left group/module">
-            {/* Colored icon container — the visual differentiator */}
-            <div className={cn(
-              'h-7 w-7 rounded-md flex items-center justify-center shrink-0 transition-opacity',
-              iconBg,
-              !isActive && 'opacity-80 group-hover/module:opacity-100'
-            )}>
-              <span className={iconColor}>{icon}</span>
+          <button
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left group/module hover:bg-white/5 transition-colors rounded-lg"
+          >
+            {/* Colored icon container — solid background for maximum visual weight */}
+            <div
+              className="h-7 w-7 rounded-md flex items-center justify-center shrink-0 flex-shrink-0"
+              style={{ background: accentColor, opacity: isActive ? 1 : 0.85 }}
+            >
+              <span className="text-white">{icon}</span>
             </div>
 
             {/* Module name */}
             <span className={cn(
               'flex-1 text-sm font-semibold leading-none truncate transition-colors',
               isActive
-                ? 'text-[hsl(var(--sidebar-foreground))]'
-                : 'text-[hsl(var(--sidebar-foreground)/0.7)] group-hover/module:text-[hsl(var(--sidebar-foreground))]'
+                ? 'text-white'
+                : 'text-[hsl(var(--sidebar-foreground)/0.8)] group-hover/module:text-white'
             )}>
               {title}
             </span>
@@ -130,8 +130,8 @@ function WorkModuleButton({
               <span className={cn(
                 'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums',
                 badgeVariant === 'urgent'
-                  ? 'bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]'
-                  : 'bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]'
+                  ? 'bg-destructive/20 text-destructive'
+                  : 'bg-white/15 text-white'
               )}>
                 {(badge ?? 0) > 9 ? '9+' : badge}
               </span>
@@ -139,16 +139,13 @@ function WorkModuleButton({
 
             {/* Chevron */}
             <ChevronRight className={cn(
-              'h-3.5 w-3.5 shrink-0 transition-all duration-200',
-              isActive
-                ? 'text-[hsl(var(--sidebar-foreground)/0.5)]'
-                : 'text-[hsl(var(--sidebar-label))]',
+              'h-3.5 w-3.5 shrink-0 transition-all duration-200 text-white/40',
               isOpen && 'rotate-90'
             )} />
           </button>
         </CollapsibleTrigger>
 
-        {/* Children with subtle left accent line */}
+        {/* Children with accent left border */}
         <CollapsibleContent>
           <div
             className="pb-1.5"
