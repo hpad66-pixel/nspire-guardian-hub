@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -9,17 +9,6 @@ import { PortalShell, type PortalTab } from '@/components/portal/PortalShell';
 import { PortalHome } from '@/components/portal/PortalHome';
 import { PortalMessages } from '@/components/portal/PortalMessages';
 import { PortalDocuments } from '@/components/portal/PortalDocuments';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface ClientUpdate {
-  id: string;
-  title: string;
-  body: string;
-  photo_url: string | null;
-  update_type: string | null;
-  created_at: string;
-}
 
 // ─── Data hooks ──────────────────────────────────────────────────────────────
 
@@ -39,54 +28,29 @@ function usePortalProject(projectId: string) {
   });
 }
 
-function usePortalUpdates(projectId: string) {
-  return useQuery({
-    queryKey: ['portal-updates', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('project_client_updates' as any)
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Portal updates fetch:', error.message);
-        return [] as ClientUpdate[];
-      }
-      return (data ?? []) as unknown as ClientUpdate[];
-    },
-    enabled: !!projectId,
-  });
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ClientPortalPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<PortalTab>('home');
-  const [showWelcome, setShowWelcome] = useState(false);
+
+  const WELCOME_KEY = `portal_welcomed_${projectId}`;
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return !localStorage.getItem(WELCOME_KEY); }
+    catch { return true; }
+  });
 
   const { data: branding } = useCompanyBranding();
   const { data: project, isLoading: projectLoading, error: projectError } = usePortalProject(projectId ?? '');
-  const { data: updates = [] } = usePortalUpdates(projectId ?? '');
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
 
-  // First-visit welcome modal (lifted from PortalShell)
-  useEffect(() => {
-    if (!projectId) return;
-    const storageKey = `portal_welcomed_${projectId}`;
-    if (!localStorage.getItem(storageKey)) {
-      const timer = setTimeout(() => setShowWelcome(true), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [projectId]);
-
   function handleWelcomeDismiss() {
-    localStorage.setItem(`portal_welcomed_${projectId!}`, '1');
+    try { localStorage.setItem(WELCOME_KEY, '1'); } catch {}
     setShowWelcome(false);
   }
+
 
   // ── Auth guard ───────────────────────────────────────────
   if (authLoading) {
@@ -142,7 +106,7 @@ export default function ClientPortalPage() {
           <PortalHome
             project={project!}
             companyBranding={branding ?? null}
-            updates={updates}
+            updates={[]}
             onNavigate={(tab) => setActiveTab(tab as PortalTab)}
             accentColor={accentColor}
           />
