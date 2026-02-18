@@ -92,6 +92,7 @@ export function useCurrentUserRole() {
       
       return sortedRoles[0] || 'user';
     },
+    staleTime: 30 * 1000,
   });
 }
 
