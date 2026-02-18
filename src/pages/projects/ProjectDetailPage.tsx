@@ -361,8 +361,8 @@ export default function ProjectDetailPage() {
         {/* ── Tab Section ── */}
         <div className="px-6 pt-4 pb-8 space-y-6 animate-fade-in">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {/* Custom tab bar */}
-            <div className="overflow-x-auto pb-1 -mx-1 px-1">
+            {/* Custom tab bar — horizontally scrollable on mobile */}
+            <div className="overflow-x-auto scrollbar-hide -mx-6 px-6 pb-1">
               <div className="flex gap-1 min-w-max">
                 {TABS.map(tab => {
                   const Icon = tab.icon;
