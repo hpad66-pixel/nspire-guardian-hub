@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { DollarSign, Clock, ShieldAlert, FileWarning, TrendingDown, Scale } from 'lucide-react';
+import { DollarSign, Clock, ShieldAlert, FileWarning, FolderX, Scale } from 'lucide-react';
 
 const stats = [
   {
@@ -12,16 +12,16 @@ const stats = [
   },
   {
     icon: Clock,
-    value: '40 hrs/mo',
-    label: 'Wasted every month on spreadsheets, emails, and paper forms',
+    value: '23 hrs/wk',
+    label: 'Lost switching between disconnected apps and spreadsheets',
     color: '#F59E0B',
     accent: 'rgba(245,158,11,0.12)',
     borderColor: 'rgba(245,158,11,0.25)',
   },
   {
     icon: ShieldAlert,
-    value: '3×',
-    label: 'More likely to face enforcement without digital audit trails',
+    value: '67%',
+    label: 'Of construction defect disputes traced to missing documentation',
     color: 'var(--apas-sapphire)',
     accent: 'rgba(29,111,232,0.12)',
     borderColor: 'rgba(29,111,232,0.25)',
@@ -38,16 +38,16 @@ const painPoints = [
     iconColor: '#F43F5E',
   },
   {
-    icon: TrendingDown,
-    title: 'Operational Black Holes',
-    description: 'Your team completed an inspection. Did the defects get issued? Did the work orders get created? Did the sub get notified? Without a connected system, you don\'t know — until a regulator asks.',
+    icon: FolderX,
+    title: 'Projects Without Guardrails',
+    description: 'You took on a rehab job. The RFIs are in email. The submittals are on a USB drive. Change orders are verbal. When something goes wrong — and it will — you have no defense.',
     accent: 'rgba(245,158,11,0.08)',
     accentBorder: 'rgba(245,158,11,0.2)',
     iconColor: '#F59E0B',
   },
   {
     icon: Scale,
-    title: 'No Accountability, No Defense',
+    title: 'No Documentation = No Defense',
     description: 'Without timestamped records, GPS-tagged photos, and complete audit trails, you can\'t prove what was done, when, or by whom. In a dispute — with a tenant, inspector, or regulator — that gap is everything.',
     accent: 'rgba(29,111,232,0.08)',
     accentBorder: 'rgba(29,111,232,0.2)',
@@ -68,11 +68,11 @@ export function ValueProposition() {
           className="text-center mb-16"
         >
           <h2 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(28px, 4.5vw, 54px)', color: 'var(--apas-white)', lineHeight: 1.1, marginBottom: '20px' }}>
-            The Silent Killer in Property Operations<br />
-            <em style={{ color: 'var(--apas-muted)' }}>Isn't Neglect. It's Fragmentation.</em>
+            The Field Is Punishing Enough.<br />
+            <em style={{ color: 'var(--apas-muted)' }}>Don't Let Your Software Make It Worse.</em>
           </h2>
-          <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.8 }}>
-            Property management isn't just about collecting rent. It's about protecting a multi-million dollar asset from risks that compound daily.
+          <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '620px', margin: '0 auto', lineHeight: 1.8 }}>
+            You're bidding jobs, running compliance, managing crews, and handling tenants — often on the same day, in the same building. Fragmented tools don't just slow you down. They create liability.
           </p>
         </motion.div>
 
