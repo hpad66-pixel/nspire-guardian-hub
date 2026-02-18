@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_item_comments: {
+        Row: {
+          action_item_id: string
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_item_id: string
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_item_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_item_comments_action_item_id_fkey"
+            columns: ["action_item_id"]
+            isOneToOne: false
+            referencedRelation: "project_action_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_log: {
         Row: {
           action: string
@@ -1700,6 +1735,71 @@ export type Database = {
           work_email?: string | null
         }
         Relationships: []
+      }
+      project_action_items: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          priority: string
+          project_id: string
+          sort_order: number | null
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          priority?: string
+          project_id: string
+          sort_order?: number | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          priority?: string
+          project_id?: string
+          sort_order?: number | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_action_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_closeout_items: {
         Row: {
