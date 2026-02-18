@@ -56,17 +56,14 @@ import {
 } from '@/components/ui/tooltip';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER 1 — Work Module Button (dominant, colored, always visible)
+// TIER 1 — WorkModuleButton: dominant, solid-color icon, bold presence
 // ─────────────────────────────────────────────────────────────────────────────
 interface WorkModuleButtonProps {
   title: string;
+  /** The icon element (e.g. <Sun className="h-4 w-4" />) */
   icon: React.ReactNode;
-  /** CSS color string for the left accent border */
-  accentColor: string;
-  /** Background class for the icon container */
-  iconBg: string;
-  /** Text/icon color class */
-  iconColor: string;
+  /** Solid CSS color for the icon pill background and left accent line */
+  color: string;
   children: React.ReactNode;
   collapsed: boolean;
   isActive: boolean;
@@ -75,8 +72,7 @@ interface WorkModuleButtonProps {
 }
 
 function WorkModuleButton({
-  title, icon, accentColor, iconBg, iconColor,
-  children, collapsed, isActive, badge, badgeVariant = 'default',
+  title, icon, color, children, collapsed, isActive, badge, badgeVariant = 'default',
 }: WorkModuleButtonProps) {
   const [isOpen, setIsOpen] = useState(isActive);
 
@@ -86,51 +82,53 @@ function WorkModuleButton({
 
   const hasBadge = badge !== undefined && badge > 0;
 
+  // ── Collapsed: icon-only, show children (NavItems handle their own tooltips)
   if (collapsed) {
-    return (
-      <div className="px-2 space-y-0.5">
-        {children}
-      </div>
-    );
+    return <div className="space-y-0.5">{children}</div>;
   }
 
+  // ── Expanded sidebar layout
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={cn(
-        'mx-2 rounded-lg overflow-hidden transition-all duration-200',
-        isActive ? 'ring-1 ring-white/10' : ''
-      )}
-        style={{ background: isActive ? 'rgba(255,255,255,0.04)' : undefined }}
+      {/* Card wrapper — subtle active glow */}
+      <div
+        className={cn(
+          'mx-2 mb-1 rounded-xl transition-all duration-200',
+          isActive
+            ? 'ring-1 ring-white/10'
+            : 'hover:ring-1 hover:ring-white/5'
+        )}
+        style={{
+          background: isActive ? 'rgba(255,255,255,0.05)' : undefined,
+        }}
       >
-        {/* Module header trigger */}
+        {/* ── Module trigger row ── */}
         <CollapsibleTrigger asChild>
-          <button
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left group/module hover:bg-white/5 transition-colors rounded-lg"
-          >
-            {/* Colored icon container — solid background for maximum visual weight */}
-            <div
-              className="h-7 w-7 rounded-md flex items-center justify-center shrink-0 flex-shrink-0"
-              style={{ background: accentColor, opacity: isActive ? 1 : 0.85 }}
+          <button className="group/mod flex w-full items-center gap-3 px-3 py-2.5 text-left rounded-xl transition-colors hover:bg-white/[0.04]">
+            {/* Solid color icon pill — the dominant Tier 1 visual */}
+            <span
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg shadow-sm"
+              style={{ background: color }}
             >
-              <span className="text-white">{icon}</span>
-            </div>
+              <span className="text-white [&_svg]:h-4 [&_svg]:w-4">{icon}</span>
+            </span>
 
-            {/* Module name */}
+            {/* Module title */}
             <span className={cn(
-              'flex-1 text-sm font-semibold leading-none truncate transition-colors',
+              'flex-1 truncate text-[13px] font-semibold leading-none transition-colors',
               isActive
                 ? 'text-white'
-                : 'text-[hsl(var(--sidebar-foreground)/0.8)] group-hover/module:text-white'
+                : 'text-[hsl(var(--sidebar-foreground)/0.75)] group-hover/mod:text-white'
             )}>
               {title}
             </span>
 
-            {/* Badge */}
+            {/* Alert badge */}
             {hasBadge && (
               <span className={cn(
-                'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums',
+                'flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
                 badgeVariant === 'urgent'
-                  ? 'bg-destructive/20 text-destructive'
+                  ? 'bg-[hsl(var(--destructive)/0.25)] text-[hsl(var(--destructive))]'
                   : 'bg-white/15 text-white'
               )}>
                 {(badge ?? 0) > 9 ? '9+' : badge}
@@ -139,20 +137,20 @@ function WorkModuleButton({
 
             {/* Chevron */}
             <ChevronRight className={cn(
-              'h-3.5 w-3.5 shrink-0 transition-all duration-200 text-white/40',
+              'h-3.5 w-3.5 flex-shrink-0 text-white/30 transition-transform duration-200',
               isOpen && 'rotate-90'
             )} />
           </button>
         </CollapsibleTrigger>
 
-        {/* Children with accent left border */}
+        {/* ── Expanded children with left accent stripe ── */}
         <CollapsibleContent>
           <div
-            className="pb-1.5"
+            className="pb-2 pt-0.5"
             style={{
-              borderLeft: `2px solid ${accentColor}`,
-              marginLeft: '17px',
-              paddingLeft: '4px',
+              marginLeft: '20px',
+              paddingLeft: '6px',
+              borderLeft: `2px solid ${color}`,
             }}
           >
             {children}
@@ -164,11 +162,10 @@ function WorkModuleButton({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER 2 & 3 — CollapsibleNavGroup (quieter, supporting sections)
+// TIER 2 & 3 — CollapsibleNavGroup: quieter, text-label trigger
 // ─────────────────────────────────────────────────────────────────────────────
 interface CollapsibleNavGroupProps {
   title: string;
-  icon: React.ReactNode;
   children: React.ReactNode;
   collapsed: boolean;
   defaultOpen?: boolean;
@@ -176,7 +173,7 @@ interface CollapsibleNavGroupProps {
 }
 
 function CollapsibleNavGroup({
-  title, icon, children, collapsed, defaultOpen = false, isActive = false,
+  title, children, collapsed, defaultOpen = false, isActive = false,
 }: CollapsibleNavGroupProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen || isActive);
 
@@ -185,28 +182,24 @@ function CollapsibleNavGroup({
   }, [isActive]);
 
   if (collapsed) {
-    return (
-      <div className="px-2 space-y-0.5">
-        {children}
-      </div>
-    );
+    return <div className="space-y-0.5">{children}</div>;
   }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <button className="flex w-full items-center justify-between mx-2 px-2 py-1.5 mb-0.5 rounded-md group/navgroup hover:bg-white/5 transition-colors text-left">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--sidebar-muted))] transition-colors group-hover/navgroup:text-[hsl(var(--sidebar-foreground)/0.6)]">
+        <button className="group/grp flex w-full items-center justify-between rounded-md px-3 py-1.5 transition-colors hover:bg-white/5 text-left">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[hsl(var(--sidebar-label))] transition-colors group-hover/grp:text-[hsl(var(--sidebar-muted))]">
             {title}
           </span>
           <ChevronRight className={cn(
-            'h-3 w-3 text-[hsl(var(--sidebar-label))] transition-all duration-200 group-hover/navgroup:text-[hsl(var(--sidebar-muted))]',
+            'h-3 w-3 text-[hsl(var(--sidebar-label))] transition-transform duration-200 group-hover/grp:text-[hsl(var(--sidebar-muted))]',
             isOpen && 'rotate-90'
           )} />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="px-2 space-y-0.5 pb-1">
+        <div className="space-y-0.5 pb-1 pl-2 pr-1">
           {children}
         </div>
       </CollapsibleContent>
@@ -215,7 +208,7 @@ function CollapsibleNavGroup({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NavItem — individual nav link
+// NavItem — individual navigation link
 // ─────────────────────────────────────────────────────────────────────────────
 interface NavItemProps {
   to: string;
@@ -232,35 +225,34 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
   const hasBadge = badge !== undefined && badge > 0;
   const badgeNum = badge ?? 0;
 
-  const content = (
+  const linkContent = (
     <NavLink
       to={to}
       end={end}
       className={cn(
-        'group/navitem flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-normal w-full',
-        'text-[hsl(var(--sidebar-foreground)/0.75)] transition-colors duration-150',
-        'hover:bg-white/5 hover:text-[hsl(var(--sidebar-foreground))]',
-        collapsed && 'justify-center px-0'
+        'group/ni flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-normal',
+        'text-[hsl(var(--sidebar-foreground)/0.65)] transition-colors duration-150',
+        'hover:bg-white/[0.06] hover:text-[hsl(var(--sidebar-foreground))]',
+        collapsed && 'justify-center px-0 py-2'
       )}
-      activeClassName="!bg-[hsl(var(--sidebar-accent)/0.15)] !text-[hsl(var(--sidebar-accent))] !font-medium border-l-2 border-[hsl(var(--sidebar-accent))] rounded-l-none pl-[10px]"
+      activeClassName="!bg-[hsl(var(--sidebar-accent)/0.18)] !text-[hsl(var(--sidebar-accent))] !font-medium"
     >
-      <div className="relative flex-shrink-0">
+      <span className="relative flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4">
         {icon}
+        {/* Dot badge when collapsed */}
         {collapsed && hasBadge && (
           <span className={cn(
-            'absolute -top-1 -right-1 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]',
-            badgeVariant === 'urgent'
-              ? 'bg-[hsl(var(--destructive))]'
-              : 'bg-[hsl(var(--sidebar-accent))]'
+            'absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]',
+            badgeVariant === 'urgent' ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--sidebar-accent))]'
           )} />
         )}
-      </div>
+      </span>
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>
           {hasBadge && (
             <span className={cn(
-              'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums',
+              'ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums',
               badgeVariant === 'urgent'
                 ? 'bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]'
                 : 'bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]'
@@ -276,7 +268,7 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2 text-xs">
           {tooltip || label}
           {hasBadge && (
@@ -294,14 +286,14 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
     );
   }
 
-  return content;
+  return linkContent;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Zone divider
+// Thin zone divider
 // ─────────────────────────────────────────────────────────────────────────────
 function ZoneDivider() {
-  return <div className="mx-3 my-2 border-t border-[hsl(var(--sidebar-border))]" />;
+  return <div className="my-2 mx-3 border-t border-[hsl(var(--sidebar-border))]" />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -338,10 +330,12 @@ export function AppSidebar() {
     ? `${properties.length} properties`
     : firstProperty?.name ?? 'All Properties';
 
+  // Recent projects for quick-jump inside Projects module
   const [recentIds, setRecentIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('recent_projects') || '[]'); } catch { return []; }
   });
   const currentPath = location.pathname;
+
   useEffect(() => {
     const match = currentPath.match(/^\/projects\/([^/]+)$/);
     if (!match) return;
@@ -352,10 +346,12 @@ export function AppSidebar() {
       return next;
     });
   }, [currentPath]);
+
   const recentProjects = recentIds
     .map(id => allProjects?.find(p => p.id === id))
     .filter(Boolean) as NonNullable<typeof allProjects>[number][];
 
+  // User display
   const userInitials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || 'U';
@@ -364,8 +360,10 @@ export function AppSidebar() {
     ? currentRole.charAt(0).toUpperCase() + currentRole.slice(1).replace('_', ' ')
     : 'Member';
 
-  // Active-section detection for auto-expanding work modules
-  const isGroundsActive = currentPath.startsWith('/inspections/daily') || currentPath.startsWith('/inspections/history') || currentPath.startsWith('/inspections/review');
+  // Active section detection
+  const isGroundsActive = currentPath.startsWith('/inspections/daily')
+    || currentPath.startsWith('/inspections/history')
+    || currentPath.startsWith('/inspections/review');
   const isNspireActive = currentPath.startsWith('/inspections') && !isGroundsActive;
   const isProjectsActive = currentPath.startsWith('/projects');
   const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
@@ -373,75 +371,81 @@ export function AppSidebar() {
   const isCommsActive = ['/messages', '/inbox', '/voice-agent', '/contacts'].some(p => currentPath.startsWith(p));
   const isOrgActive = ['/people', '/training', '/documents', '/reports'].some(p => currentPath.startsWith(p));
 
+  // Module accent colors (solid, vivid)
+  const COLOR_GROUNDS = 'hsl(142 76% 36%)';    // emerald-600
+  const COLOR_NSPIRE  = 'hsl(199 89% 42%)';    // cyan-600
+  const COLOR_PROJECTS = 'hsl(262 83% 58%)';   // violet-500
+
   return (
     <TooltipProvider delayDuration={300}>
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <Sidebar collapsible="icon" className="border-r border-[hsl(var(--sidebar-border))] overflow-hidden">
 
-        {/* ── HEADER ── */}
-        <SidebarHeader className="border-b border-[hsl(var(--sidebar-border))] px-3 py-4">
-          <NavLink to="/" className={cn(
-            'flex items-center gap-3 outline-none rounded-md',
-            collapsed && 'justify-center'
-          )}>
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))]">
+        {/* ────────────────── HEADER ────────────────── */}
+        <SidebarHeader className="border-b border-[hsl(var(--sidebar-border))] px-3 py-3">
+          <NavLink
+            to="/"
+            className={cn('flex items-center gap-2.5 outline-none rounded-md', collapsed && 'justify-center')}
+          >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))]">
               <Building2 className="h-4 w-4 text-white" />
-            </div>
+            </span>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[13px] font-semibold text-[hsl(var(--sidebar-foreground))] leading-tight">PM APAS</span>
-                <span className="text-[10px] font-normal text-[hsl(var(--sidebar-muted))] leading-tight tracking-wide">Property OS</span>
+                <span className="text-[13px] font-bold text-[hsl(var(--sidebar-foreground))] leading-tight tracking-tight">PM APAS</span>
+                <span className="text-[10px] text-[hsl(var(--sidebar-muted))] leading-tight">Property OS</span>
               </div>
             )}
           </NavLink>
 
+          {/* Property context chip */}
           {!collapsed && (
-            <div className="mt-3 flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5">
-              <Building className="h-3 w-3 text-[hsl(var(--sidebar-muted))] shrink-0" />
-              <span className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">{propertyLabel}</span>
+            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-1">
+              <Building className="h-3 w-3 flex-shrink-0 text-[hsl(var(--sidebar-muted))]" />
+              <span className="truncate text-[11px] text-[hsl(var(--sidebar-muted))]">{propertyLabel}</span>
             </div>
           )}
         </SidebarHeader>
 
-        {/* ── CONTENT ── */}
-        <SidebarContent className="overflow-y-auto px-1 py-2">
+        {/* ────────────────── CONTENT ────────────────── */}
+        <SidebarContent className="flex flex-col gap-0 overflow-y-auto overflow-x-hidden py-2">
 
-          {/* Dashboard — always first */}
-          <div className="px-2 pb-1">
+          {/* ── Dashboard (always visible, not gated) ── */}
+          <div className={cn('px-2 pb-1', collapsed && 'px-1')}>
             <NavItem
               to="/dashboard"
-              icon={<LayoutDashboard className="h-4 w-4" />}
+              icon={<LayoutDashboard />}
               label="Dashboard"
               collapsed={collapsed}
               end
+              tooltip="Dashboard"
             />
           </div>
 
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* TIER 1: WORK ENGINES — dominant, colored, primary focus  */}
-          {/* ──────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════
+               TIER 1 — WORK ENGINES
+               Three dominant colored module launchers
+          ══════════════════════════════════════════════ */}
           {!collapsed && (
-            <div className="px-4 pt-3 pb-1">
-              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[hsl(var(--sidebar-label))]">
+            <div className="px-3 pb-1 pt-3">
+              <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[hsl(var(--sidebar-label))]">
                 Work Modules
               </span>
             </div>
           )}
-          {collapsed && <div className="my-1 mx-3 border-t border-[hsl(var(--sidebar-border))]" />}
+          {collapsed && <ZoneDivider />}
 
           {/* Daily Grounds */}
           {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
             <WorkModuleButton
               title="Daily Grounds"
-              icon={<Sun className="h-4 w-4" />}
-              accentColor="hsl(142 76% 36%)"
-              iconBg="bg-emerald-500/20"
-              iconColor="text-emerald-400"
+              icon={<Sun />}
+              color={COLOR_GROUNDS}
               collapsed={collapsed}
               isActive={isGroundsActive}
             >
-              <NavItem to="/inspections/daily"   icon={<Sun className="h-4 w-4" />}           label="Today's Rounds"  collapsed={collapsed} />
-              <NavItem to="/inspections/history" icon={<ClipboardCheck className="h-4 w-4" />} label="History"         collapsed={collapsed} />
-              <NavItem to="/inspections/review"  icon={<FileText className="h-4 w-4" />}       label="Review Queue"    collapsed={collapsed} />
+              <NavItem to="/inspections/daily"   icon={<Sun />}           label="Today's Rounds" collapsed={collapsed} tooltip="Today's Inspection Rounds" />
+              <NavItem to="/inspections/history" icon={<ClipboardCheck />} label="History"        collapsed={collapsed} tooltip="Inspection History" />
+              <NavItem to="/inspections/review"  icon={<FileText />}       label="Review Queue"   collapsed={collapsed} tooltip="Review Queue" />
             </WorkModuleButton>
           )}
 
@@ -449,22 +453,23 @@ export function AppSidebar() {
           {isModuleEnabled('nspireEnabled') && canView('inspections') && (
             <WorkModuleButton
               title="NSPIRE Compliance"
-              icon={<ClipboardCheck className="h-4 w-4" />}
-              accentColor="hsl(var(--module-inspections))"
-              iconBg="bg-blue-500/20"
-              iconColor="text-blue-400"
+              icon={<ClipboardCheck />}
+              color={COLOR_NSPIRE}
               collapsed={collapsed}
               isActive={isNspireActive}
               badge={severeDefectCount}
               badgeVariant="urgent"
             >
-              <NavItem to="/inspections"          icon={<ClipboardCheck className="h-4 w-4" />} label="Dashboard"       collapsed={collapsed} end
+              <NavItem
+                to="/inspections" end
+                icon={<ClipboardCheck />} label="Dashboard"
+                collapsed={collapsed}
                 badge={severeDefectCount} badgeVariant="urgent"
-                tooltip={severeDefectCount > 0 ? `Compliance — ${severeDefectCount} severe` : 'NSPIRE Overview'}
+                tooltip={severeDefectCount > 0 ? `${severeDefectCount} severe defects` : 'NSPIRE Overview'}
               />
-              <NavItem to="/inspections/outside"  icon={<Sun className="h-4 w-4" />}           label="Outside"         collapsed={collapsed} />
-              <NavItem to="/inspections/inside"   icon={<Building className="h-4 w-4" />}      label="Inside"          collapsed={collapsed} />
-              <NavItem to="/inspections/units"    icon={<DoorOpen className="h-4 w-4" />}      label="Units"           collapsed={collapsed} />
+              <NavItem to="/inspections/outside" icon={<Sun />}            label="Outside" collapsed={collapsed} />
+              <NavItem to="/inspections/inside"  icon={<Building />}       label="Inside"  collapsed={collapsed} />
+              <NavItem to="/inspections/units"   icon={<DoorOpen />}       label="Units"   collapsed={collapsed} />
             </WorkModuleButton>
           )}
 
@@ -472,43 +477,37 @@ export function AppSidebar() {
           {isModuleEnabled('projectsEnabled') && canView('projects') && (
             <WorkModuleButton
               title="Projects"
-              icon={<FolderKanban className="h-4 w-4" />}
-              accentColor="hsl(var(--module-projects))"
-              iconBg="bg-violet-500/20"
-              iconColor="text-violet-400"
+              icon={<FolderKanban />}
+              color={COLOR_PROJECTS}
               collapsed={collapsed}
               isActive={isProjectsActive}
               badge={activeProjectCount}
-              badgeVariant="default"
             >
               <NavItem
-                to="/projects"
-                icon={<FolderKanban className="h-4 w-4" />}
-                label="All Projects"
+                to="/projects" end
+                icon={<FolderKanban />} label="All Projects"
                 collapsed={collapsed}
-                end
                 badge={activeProjectCount}
-                badgeVariant="default"
-                tooltip={activeProjectCount > 0 ? `Projects — ${activeProjectCount} active` : 'Projects'}
+                tooltip={activeProjectCount > 0 ? `${activeProjectCount} active` : 'Projects'}
               />
-              {/* Recent projects — expanded only */}
+              {/* Recent project quick-jumps */}
               {!collapsed && recentProjects.length > 0 && (
-                <div className="pl-4 space-y-0.5 pb-0.5">
+                <div className="pl-3 space-y-0.5 pb-0.5">
                   {recentProjects.map(p => {
                     const health = computeHealth(p);
                     const hc = HEALTH_CONFIG[health];
-                    const isCurrentProject = currentPath === `/projects/${p.id}`;
+                    const isCurrent = currentPath === `/projects/${p.id}`;
                     return (
                       <button
                         key={p.id}
                         onClick={() => navigate(`/projects/${p.id}`)}
                         className={cn(
-                          'flex items-center gap-2 w-full text-left px-2 h-7 rounded-md text-xs transition-colors',
+                          'flex items-center gap-2 w-full rounded-md px-2 py-1 text-xs text-left transition-colors',
                           'text-[hsl(var(--sidebar-muted))] hover:bg-white/5 hover:text-[hsl(var(--sidebar-foreground))]',
-                          isCurrentProject && 'bg-white/8 text-white font-medium'
+                          isCurrent && 'bg-white/8 !text-white font-medium'
                         )}
                       >
-                        <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', hc.dot)} />
+                        <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', hc.dot)} />
                         <span className="truncate">{p.name}</span>
                       </button>
                     );
@@ -516,132 +515,136 @@ export function AppSidebar() {
                 </div>
               )}
               {isAdmin && (
-                <NavItem to="/projects/proposals" icon={<FileText className="h-4 w-4" />} label="Proposals" collapsed={collapsed} />
+                <NavItem to="/projects/proposals" icon={<FileText />} label="Proposals" collapsed={collapsed} />
               )}
             </WorkModuleButton>
           )}
 
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* TIER 2: PLATFORM — quieter, collapsible groups           */}
-          {/* ──────────────────────────────────────────────────────── */}
+          {/* ══════════════════════════════════════════════
+               TIER 2 — PLATFORM
+               Portfolio & Operations — quieter section labels
+          ══════════════════════════════════════════════ */}
           <ZoneDivider />
 
-          {/* Portfolio */}
-          <CollapsibleNavGroup
-            title="Portfolio"
-            icon={<Building className="h-3.5 w-3.5" />}
-            collapsed={collapsed}
-            defaultOpen
-            isActive={isPortfolioActive}
-          >
-            <NavItem to="/properties" icon={<Building className="h-4 w-4" />}   label="Properties" collapsed={collapsed} />
-            <NavItem to="/units"      icon={<DoorOpen className="h-4 w-4" />}    label="Units"      collapsed={collapsed} />
-            <NavItem to="/assets"     icon={<Box className="h-4 w-4" />}          label="Assets"     collapsed={collapsed} />
-            {isModuleEnabled('occupancyEnabled') && (
-              <NavItem to="/occupancy" icon={<Home className="h-4 w-4" />} label="Occupancy" collapsed={collapsed} />
-            )}
-          </CollapsibleNavGroup>
-
-          {/* Operations */}
-          <CollapsibleNavGroup
-            title="Operations"
-            icon={<Wrench className="h-3.5 w-3.5" />}
-            collapsed={collapsed}
-            defaultOpen={isOpsActive}
-            isActive={isOpsActive}
-          >
-            {canView('issues') && (
-              <NavItem
-                to="/issues"
-                icon={<AlertTriangle className="h-4 w-4" />}
-                label="Issues"
-                collapsed={collapsed}
-                badge={openIssueCount}
-                badgeVariant={openIssueCount > 5 ? 'urgent' : 'default'}
-                tooltip={openIssueCount > 0 ? `Issues — ${openIssueCount} open` : 'Issues'}
-              />
-            )}
-            {canView('work_orders') && (
-              <>
-                <NavItem to="/work-orders" icon={<Wrench className="h-4 w-4" />}  label="Work Orders" collapsed={collapsed} />
-                <NavItem to="/permits"     icon={<Shield className="h-4 w-4" />}  label="Permits"     collapsed={collapsed} />
-              </>
-            )}
-          </CollapsibleNavGroup>
-
-          {/* ──────────────────────────────────────────────────────── */}
-          {/* TIER 3: SUPPORTING — communications & org, lightest      */}
-          {/* ──────────────────────────────────────────────────────── */}
-          <ZoneDivider />
-
-          {/* Communications */}
-          <CollapsibleNavGroup
-            title="Communications"
-            icon={<MessageCircle className="h-3.5 w-3.5" />}
-            collapsed={collapsed}
-            defaultOpen={isCommsActive}
-            isActive={isCommsActive}
-          >
-            <NavItem
-              to="/messages"
-              icon={<MessageCircle className="h-4 w-4" />}
-              label="Messages"
+          <div className={cn('px-2', collapsed && 'px-1')}>
+            {/* Portfolio */}
+            <CollapsibleNavGroup
+              title="Portfolio"
               collapsed={collapsed}
-              badge={unreadCount}
-              badgeVariant="default"
-              tooltip={unreadCount > 0 ? `Messages — ${unreadCount} unread` : 'Messages'}
-            />
-            <NavItem to="/inbox"       icon={<Mail className="h-4 w-4" />}    label="Email"       collapsed={collapsed} />
-            <NavItem to="/voice-agent" icon={<Phone className="h-4 w-4" />}   label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
-            <NavItem to="/contacts"    icon={<Contact className="h-4 w-4" />} label="Contacts"    collapsed={collapsed} tooltip="CRM — Vendors & contacts" />
-          </CollapsibleNavGroup>
+              defaultOpen={isPortfolioActive}
+              isActive={isPortfolioActive}
+            >
+              <NavItem to="/properties" icon={<Building />}   label="Properties" collapsed={collapsed} />
+              <NavItem to="/units"      icon={<DoorOpen />}   label="Units"      collapsed={collapsed} />
+              <NavItem to="/assets"     icon={<Box />}        label="Assets"     collapsed={collapsed} />
+              {isModuleEnabled('occupancyEnabled') && (
+                <NavItem to="/occupancy" icon={<Home />} label="Occupancy" collapsed={collapsed} />
+              )}
+            </CollapsibleNavGroup>
 
-          {/* Organization */}
-          <CollapsibleNavGroup
-            title="Organization"
-            icon={<Users className="h-3.5 w-3.5" />}
-            collapsed={collapsed}
-            defaultOpen={isOrgActive}
-            isActive={isOrgActive}
-          >
-            {canView('people') && (
-              <NavItem to="/people"   icon={<Users className="h-4 w-4" />}       label="People"    collapsed={collapsed} tooltip="Team member management" />
-            )}
-            <NavItem to="/training"  icon={<GraduationCap className="h-4 w-4" />} label="Training"  collapsed={collapsed} tooltip="Training Academy" />
-            {canView('documents') && (
-              <NavItem to="/documents" icon={<FileText className="h-4 w-4" />}  label="Documents" collapsed={collapsed} />
-            )}
-            {canView('reports') && (
-              <NavItem to="/reports"   icon={<BarChart3 className="h-4 w-4" />} label="Reports"   collapsed={collapsed} />
-            )}
-            {isModuleEnabled('qrScanningEnabled') && (
-              <NavItem to="/qr-scanner" icon={<QrCode className="h-4 w-4" />} label="QR Scanner" collapsed={collapsed} />
-            )}
-          </CollapsibleNavGroup>
+            {/* Operations */}
+            <CollapsibleNavGroup
+              title="Operations"
+              collapsed={collapsed}
+              defaultOpen={isOpsActive}
+              isActive={isOpsActive}
+            >
+              {canView('issues') && (
+                <NavItem
+                  to="/issues"
+                  icon={<AlertTriangle />}
+                  label="Issues"
+                  collapsed={collapsed}
+                  badge={openIssueCount}
+                  badgeVariant={openIssueCount > 5 ? 'urgent' : 'default'}
+                  tooltip={openIssueCount > 0 ? `${openIssueCount} open issues` : 'Issues'}
+                />
+              )}
+              {canView('work_orders') && (
+                <>
+                  <NavItem to="/work-orders" icon={<Wrench />} label="Work Orders" collapsed={collapsed} />
+                  <NavItem to="/permits"     icon={<Shield />} label="Permits"     collapsed={collapsed} />
+                </>
+              )}
+            </CollapsibleNavGroup>
+          </div>
+
+          {/* ══════════════════════════════════════════════
+               TIER 3 — SUPPORTING
+               Communications & Organization — lightest
+          ══════════════════════════════════════════════ */}
+          <ZoneDivider />
+
+          <div className={cn('px-2', collapsed && 'px-1')}>
+            {/* Communications */}
+            <CollapsibleNavGroup
+              title="Communications"
+              collapsed={collapsed}
+              defaultOpen={isCommsActive}
+              isActive={isCommsActive}
+            >
+              <NavItem
+                to="/messages"
+                icon={<MessageCircle />}
+                label="Messages"
+                collapsed={collapsed}
+                badge={unreadCount}
+                tooltip={unreadCount > 0 ? `${unreadCount} unread` : 'Messages'}
+              />
+              <NavItem to="/inbox"       icon={<Mail />}    label="Email"       collapsed={collapsed} />
+              <NavItem to="/voice-agent" icon={<Phone />}   label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
+              <NavItem to="/contacts"    icon={<Contact />} label="Contacts"    collapsed={collapsed} tooltip="CRM — Vendors & Contacts" />
+            </CollapsibleNavGroup>
+
+            {/* Organization */}
+            <CollapsibleNavGroup
+              title="Organization"
+              collapsed={collapsed}
+              defaultOpen={isOrgActive}
+              isActive={isOrgActive}
+            >
+              {canView('people') && (
+                <NavItem to="/people"   icon={<Users />}        label="People"    collapsed={collapsed} tooltip="Team Members" />
+              )}
+              <NavItem to="/contacts"  icon={<Contact />}      label="Contacts"  collapsed={collapsed} tooltip="CRM" />
+              <NavItem to="/training"  icon={<GraduationCap />} label="Training"  collapsed={collapsed} tooltip="Training Academy" />
+              {canView('documents') && (
+                <NavItem to="/documents" icon={<FileText />}  label="Documents" collapsed={collapsed} />
+              )}
+              {canView('reports') && (
+                <NavItem to="/reports"   icon={<BarChart3 />} label="Reports"   collapsed={collapsed} />
+              )}
+            </CollapsibleNavGroup>
+          </div>
 
         </SidebarContent>
 
-        {/* Rail */}
+        {/* Rail for drag-to-resize */}
         <SidebarRail />
 
-        {/* ── FOOTER ── */}
-        <SidebarFooter className="p-2 border-t border-[hsl(var(--sidebar-border))]">
-          {canView('settings') && (
-            <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" collapsed={collapsed} />
+        {/* ────────────────── FOOTER ────────────────── */}
+        <SidebarFooter className="border-t border-[hsl(var(--sidebar-border))] p-2 space-y-0.5">
+          {/* QR Scanner (if module enabled) */}
+          {isModuleEnabled('qrScanningEnabled') && (
+            <NavItem to="/qr-scanner" icon={<QrCode />} label="QR Scanner" collapsed={collapsed} />
           )}
 
-          {/* User identity — clickable → /profile */}
+          {/* Settings */}
+          {canView('settings') && (
+            <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
+          )}
+
+          {/* User identity → /profile */}
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate('/profile')}
                   className="flex w-full items-center justify-center rounded-md p-1.5 transition-colors hover:bg-white/5 focus:outline-none"
-                  title="My Profile"
                 >
-                  <Avatar className="h-7 w-7 cursor-pointer">
-                    <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
-                    <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile" />
+                    <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.25)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -652,33 +655,38 @@ export function AppSidebar() {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <button
-              onClick={() => navigate('/profile')}
-              className="flex w-full items-center gap-2.5 mt-1 px-3 py-2 rounded-md transition-colors hover:bg-white/5 focus:outline-none text-left"
-              title="My Profile"
-            >
-              <Avatar className="h-7 w-7 flex-shrink-0">
-                <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
-                <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium text-[hsl(var(--sidebar-foreground))] truncate leading-tight">
-                  {userName}
-                </p>
-                <p className="text-[10px] text-[hsl(var(--sidebar-muted))] truncate leading-tight">
-                  {userRole}
-                </p>
-              </div>
+            <div className="flex items-center gap-2 mt-1 pl-1">
+              {/* Avatar → profile */}
               <button
-                onClick={(e) => { e.stopPropagation(); signOut(); }}
-                className="flex-shrink-0 rounded p-1 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"
+                onClick={() => navigate('/profile')}
+                className="flex flex-1 min-w-0 items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-white/5 focus:outline-none text-left"
+                title="My Profile"
+              >
+                <Avatar className="h-7 w-7 flex-shrink-0">
+                  <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile" />
+                  <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.25)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-[12px] font-medium leading-tight text-[hsl(var(--sidebar-foreground))]">
+                    {userName}
+                  </p>
+                  <p className="truncate text-[10px] leading-tight text-[hsl(var(--sidebar-muted))]">
+                    {userRole}
+                  </p>
+                </div>
+              </button>
+
+              {/* Log out */}
+              <button
+                onClick={signOut}
+                className="flex-shrink-0 rounded-md p-1.5 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"
                 title="Log out"
               >
                 <LogOut className="h-3.5 w-3.5" />
               </button>
-            </button>
+            </div>
           )}
         </SidebarFooter>
       </Sidebar>
