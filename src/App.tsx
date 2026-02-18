@@ -53,6 +53,7 @@ const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +153,9 @@ const App = () => (
                             {/* Permits & Compliance */}
                             <Route path="/permits" element={<PermitsDashboard />} />
                             <Route path="/permits/:id" element={<PermitDetailPage />} />
+                            
+                            {/* Profile */}
+                            <Route path="/profile" element={<ProfilePage />} />
                             
                             {/* Settings */}
                             <Route path="/settings" element={<SettingsPage />} />

@@ -6,6 +6,8 @@ import { MobileNav } from './MobileNav';
 import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, Download, WifiOff } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -19,6 +21,7 @@ import { cn } from '@/lib/utils';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
+import { useMyProfile } from '@/hooks/useMyProfile';
 import type { Database } from '@/integrations/supabase/types';
 
 interface AppLayoutProps {
@@ -43,6 +46,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, []);
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
+  const { data: myProfile } = useMyProfile();
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -199,9 +203,26 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                   {displayRoles.length > 0 ? displayRoles[0] : 'User'}
                 </Badge>
-                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                  <span className="text-xs font-medium text-primary-foreground">{initials}</span>
-                </div>
+                {/* Profile avatar — clickable */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className="rounded-full ring-2 ring-transparent hover:ring-primary/30 transition-all duration-200 focus:outline-none focus:ring-primary/50"
+                      aria-label="My Profile"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    My Profile
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </header>
 
@@ -211,7 +232,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Main Content — pb-16 on mobile/tablet for bottom nav bar */}
             <main className={cn('flex-1 overflow-auto', showMobileNav && 'pb-16')}>
               {!isOnline && (
-                <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-sm font-medium text-yellow-950">
+                <div className="flex items-center justify-center gap-2 bg-yellow-500/90 px-4 py-2 text-sm font-medium text-yellow-950">
                   <WifiOff className="h-4 w-4 shrink-0" />
                   <span>You are offline — your changes will sync when connection is restored</span>
                 </div>
