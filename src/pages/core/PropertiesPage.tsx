@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical, BarChart2 } from 'lucide-react';
+import {
+  Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical,
+  BarChart2, Zap,
+} from 'lucide-react';
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PropertyDialog } from '@/components/properties/PropertyDialog';
 import { useNavigate } from 'react-router-dom';
+import { useAllPropertiesUtilitySummary } from '@/hooks/useUtilityBills';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +36,13 @@ export default function PropertiesPage() {
   
   const { data: properties, isLoading, error } = useProperties();
   const deleteProperty = useDeleteProperty();
+  const { data: utilitySummary } = useAllPropertiesUtilitySummary();
+
+  // Build a lookup: propertyId → ytd_total
+  const ytdByProperty: Record<string, number> = {};
+  for (const row of utilitySummary ?? []) {
+    ytdByProperty[row.property_id] = row.ytd_total;
+  }
 
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
@@ -98,119 +109,140 @@ export default function PropertiesPage() {
         </div>
       ) : properties && properties.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {properties.map((property) => (
-            <Card
-              key={property.id}
-              className="card-interactive cursor-pointer"
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenProperty(property.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleOpenProperty(property.id);
-                }
-              }}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Building className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{property.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {property.city}, {property.state}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={property.status === 'active' ? 'secondary' : 'outline'}>
-                      {property.status === 'active' ? 'Active' : property.status}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(property);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingProperty(property);
-                          }}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">{property.address}</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <DoorOpen className="h-4 w-4" />
-                      <span>{property.total_units} units</span>
-                    </div>
-                    {property.year_built && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>Built {property.year_built}</span>
+          {properties.map((property) => {
+            const ytd = ytdByProperty[property.id];
+            return (
+              <Card
+                key={property.id}
+                className="card-interactive cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenProperty(property.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOpenProperty(property.id);
+                  }
+                }}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building className="h-5 w-5 text-primary" />
                       </div>
-                    )}
+                      <div>
+                        <CardTitle className="text-lg">{property.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {property.city}, {property.state}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={property.status === 'active' ? 'secondary' : 'outline'}>
+                        {property.status === 'active' ? 'Active' : property.status}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(property);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingProperty(property);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      {property.nspire_enabled && (
-                        <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
-                          NSPIRE
-                        </Badge>
-                      )}
-                      {property.projects_enabled && (
-                        <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
-                          Projects
-                        </Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">{property.address}</p>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <DoorOpen className="h-4 w-4" />
+                        <span>{property.total_units} units</span>
+                      </div>
+                      {property.year_built && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Built {property.year_built}</span>
+                        </div>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/properties/${property.id}/analytics`);
-                      }}
-                    >
-                      <BarChart2 className="h-3 w-3" />
-                      Analytics
-                    </Button>
+
+                    {/* YTD utility cost indicator */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Zap className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                      {ytd != null ? (
+                        <span className="text-muted-foreground">
+                          YTD Utilities:{' '}
+                          <span className="font-semibold text-foreground">
+                            ${ytd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/60 italic">No utility data — add a bill</span>
+                      )}
+                    </div>
+
+                    {/* Module badges + Analytics button */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-2">
+                        {property.nspire_enabled && (
+                          <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
+                            NSPIRE
+                          </Badge>
+                        )}
+                        {property.projects_enabled && (
+                          <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
+                            Projects
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/properties/${property.id}/analytics`);
+                        }}
+                      >
+                        <BarChart2 className="h-3 w-3" />
+                        Analytics
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card className="p-12 text-center">
