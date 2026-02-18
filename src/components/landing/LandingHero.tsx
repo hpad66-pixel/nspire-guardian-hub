@@ -19,7 +19,7 @@ export function LandingHero() {
           backgroundSize: '60px 60px',
         }}
       />
-      {/* Radial glow behind hero */}
+      {/* Radial glow */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -136,6 +136,7 @@ export function LandingHero() {
 
         {/* H1 — word-by-word */}
         <h1 style={{ fontFamily: 'Instrument Serif', lineHeight: 0.95, marginBottom: '28px', letterSpacing: '-0.02em' }}>
+          {/* Line 1: "Run the Job." — all white */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 16px', fontSize: 'clamp(56px, 10vw, 96px)', marginBottom: '4px' }}>
             {words1.map((word, i) => (
               <motion.span
@@ -149,6 +150,7 @@ export function LandingHero() {
               </motion.span>
             ))}
           </div>
+          {/* Line 2: "Pass" white, "the Audit." sapphire */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 16px', fontSize: 'clamp(56px, 10vw, 96px)' }}>
             {words2.map((word, i) => (
               <motion.span
@@ -156,7 +158,7 @@ export function LandingHero() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.46 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                style={{ color: i >= 1 ? 'var(--apas-sapphire)' : 'var(--apas-white)', display: 'inline-block' }}
+                style={{ color: i === 0 ? 'var(--apas-white)' : 'var(--apas-sapphire)', display: 'inline-block' }}
               >
                 {word}
               </motion.span>
