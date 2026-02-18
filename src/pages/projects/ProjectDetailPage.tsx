@@ -151,8 +151,8 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="relative flex h-[calc(100vh-3.5rem)] overflow-hidden">
-      <div className="flex-1 overflow-auto min-w-0">
+    <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
+      <div className="flex-1 md:overflow-auto min-w-0">
         {/* ── Hero Header ── */}
         <div className="relative border-b bg-gradient-to-br from-background via-background to-module-projects/5 px-6 pt-4 pb-6">
           {/* Purple accent glow */}
