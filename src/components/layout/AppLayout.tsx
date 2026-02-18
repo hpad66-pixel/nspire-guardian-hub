@@ -254,8 +254,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <span className="text-[10px] font-medium leading-none">More</span>
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <SidebarProvider>
+            <SheetContent side="left" className="p-0 w-72 overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <SidebarProvider defaultOpen={true} style={{ '--sidebar-width': '18rem' } as React.CSSProperties}>
                 <AppSidebar />
               </SidebarProvider>
             </SheetContent>
