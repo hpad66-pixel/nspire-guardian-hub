@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -84,97 +85,99 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <ModuleProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Suspense fallback={
-                <div className="flex h-screen w-full items-center justify-center bg-background">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-sm text-muted-foreground">Loading...</p>
+          <WorkspaceProvider>
+            <ModuleProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Suspense fallback={
+                  <div className="flex h-screen w-full items-center justify-center bg-background">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                      <p className="text-sm text-muted-foreground">Loading...</p>
+                    </div>
                   </div>
-                </div>
-              }>
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<RootRedirect />} />
-                  <Route path="/features" element={<FeaturesPage />} />
-                  <Route path="/install" element={<InstallPage />} />
-                  <Route path="/home-alt" element={<LandingPage />} />
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                  <Route path="/portal/:projectId" element={<ClientPortalPage />} />
-                  
-                  {/* Protected Routes */}
-                  <Route
-                    path="/*"
-                    element={
-                      <ProtectedRoute>
-                        <AppLayout>
-                          <Routes>
-                            {/* Dashboard */}
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            
-                            {/* Core Platform */}
-                            <Route path="/properties" element={<PropertiesPage />} />
-                            <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
-                            <Route path="/units" element={<UnitsPage />} />
-                            <Route path="/assets" element={<AssetsPage />} />
-                            <Route path="/issues" element={<IssuesPage />} />
-                            <Route path="/work-orders" element={<WorkOrdersPage />} />
-                            <Route path="/documents" element={<DocumentsPage />} />
-                            <Route path="/documents/archives" element={<PropertyArchivesPage />} />
-                            <Route path="/people" element={<PeoplePage />} />
-                            <Route path="/organizations" element={<OrganizationsPage />} />
-                            <Route path="/inbox" element={<MailboxPage />} />
-                            <Route path="/messages" element={<MessagesPage />} />
-                            <Route path="/messages/:threadId" element={<MessagesPage />} />
-                            <Route path="/reports" element={<ReportsPage />} />
-                            <Route path="/occupancy" element={<OccupancyPage />} />
-                            <Route path="/qr-scanner" element={<QRScannerPage />} />
-                            <Route path="/training" element={<TrainingPage />} />
-                            <Route path="/contacts" element={<ContactsPage />} />
-                            <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
-                            <Route path="/settings/activity-log" element={<ActivityLogPage />} />
-                            
-                            {/* NSPIRE Inspections Module */}
-                            <Route path="/inspections" element={<InspectionsDashboard />} />
-                            <Route path="/inspections/daily" element={<DailyGroundsPage />} />
-                            <Route path="/inspections/history" element={<InspectionHistoryPage />} />
-                            <Route path="/inspections/review" element={<InspectionReviewPage />} />
-                            <Route path="/inspections/outside" element={<OutsideInspections />} />
-                            <Route path="/inspections/inside" element={<InsideInspections />} />
-                            <Route path="/inspections/units" element={<UnitInspections />} />
-                            
-                            {/* Projects Module */}
-                            <Route path="/projects" element={<ProjectsDashboard />} />
-                            <Route path="/projects/proposals" element={<ProposalsPage />} />
-                            <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                            
-                            {/* Permits & Compliance */}
-                            <Route path="/permits" element={<PermitsDashboard />} />
-                            <Route path="/permits/:id" element={<PermitDetailPage />} />
-                            
-                            {/* Profile */}
-                            <Route path="/profile" element={<ProfilePage />} />
-                            
-                            {/* Settings */}
-                            <Route path="/settings" element={<SettingsPage />} />
-                            
-                            {/* 404 */}
-                            <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </AppLayout>
-                      </ProtectedRoute>
-                    }
-                  />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-          </ModuleProvider>
+                }>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<RootRedirect />} />
+                    <Route path="/features" element={<FeaturesPage />} />
+                    <Route path="/install" element={<InstallPage />} />
+                    <Route path="/home-alt" element={<LandingPage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                    <Route path="/portal/:projectId" element={<ClientPortalPage />} />
+                    
+                    {/* Protected Routes */}
+                    <Route
+                      path="/*"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <Routes>
+                              {/* Dashboard */}
+                              <Route path="/dashboard" element={<Dashboard />} />
+                              
+                              {/* Core Platform */}
+                              <Route path="/properties" element={<PropertiesPage />} />
+                              <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
+                              <Route path="/units" element={<UnitsPage />} />
+                              <Route path="/assets" element={<AssetsPage />} />
+                              <Route path="/issues" element={<IssuesPage />} />
+                              <Route path="/work-orders" element={<WorkOrdersPage />} />
+                              <Route path="/documents" element={<DocumentsPage />} />
+                              <Route path="/documents/archives" element={<PropertyArchivesPage />} />
+                              <Route path="/people" element={<PeoplePage />} />
+                              <Route path="/organizations" element={<OrganizationsPage />} />
+                              <Route path="/inbox" element={<MailboxPage />} />
+                              <Route path="/messages" element={<MessagesPage />} />
+                              <Route path="/messages/:threadId" element={<MessagesPage />} />
+                              <Route path="/reports" element={<ReportsPage />} />
+                              <Route path="/occupancy" element={<OccupancyPage />} />
+                              <Route path="/qr-scanner" element={<QRScannerPage />} />
+                              <Route path="/training" element={<TrainingPage />} />
+                              <Route path="/contacts" element={<ContactsPage />} />
+                              <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
+                              <Route path="/settings/activity-log" element={<ActivityLogPage />} />
+                              
+                              {/* NSPIRE Inspections Module */}
+                              <Route path="/inspections" element={<InspectionsDashboard />} />
+                              <Route path="/inspections/daily" element={<DailyGroundsPage />} />
+                              <Route path="/inspections/history" element={<InspectionHistoryPage />} />
+                              <Route path="/inspections/review" element={<InspectionReviewPage />} />
+                              <Route path="/inspections/outside" element={<OutsideInspections />} />
+                              <Route path="/inspections/inside" element={<InsideInspections />} />
+                              <Route path="/inspections/units" element={<UnitInspections />} />
+                              
+                              {/* Projects Module */}
+                              <Route path="/projects" element={<ProjectsDashboard />} />
+                              <Route path="/projects/proposals" element={<ProposalsPage />} />
+                              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                              
+                              {/* Permits & Compliance */}
+                              <Route path="/permits" element={<PermitsDashboard />} />
+                              <Route path="/permits/:id" element={<PermitDetailPage />} />
+                              
+                              {/* Profile */}
+                              <Route path="/profile" element={<ProfilePage />} />
+                              
+                              {/* Settings */}
+                              <Route path="/settings" element={<SettingsPage />} />
+                              
+                              {/* 404 */}
+                              <Route path="*" element={<NotFound />} />
+                            </Routes>
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+            </ModuleProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
