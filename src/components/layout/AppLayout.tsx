@@ -6,9 +6,10 @@ import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Search, Menu, Download, WifiOff } from 'lucide-react';
+import { Search, Menu, Download, WifiOff, LayoutDashboard, ClipboardCheck, AlertTriangle, Wrench, MessageCircle } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
@@ -27,6 +28,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
   const { isInstallable, install } = usePWAInstall();
   const isOnline = useOnlineStatus();
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -128,6 +130,14 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 
+  const bottomNavItems = [
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { label: 'Inspections', icon: ClipboardCheck, path: '/inspections' },
+    { label: 'Issues', icon: AlertTriangle, path: '/issues' },
+    { label: 'Work Orders', icon: Wrench, path: '/work-orders' },
+    { label: 'Messages', icon: MessageCircle, path: '/messages' },
+  ];
+
   return (
     <>
       <PWAUpdateBanner />
@@ -211,7 +221,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <NotificationPermissionBanner />
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto pb-16 md:pb-0">
               {!isOnline && (
                 <div className="flex items-center justify-center gap-2 bg-yellow-500 px-4 py-2 text-sm font-medium text-yellow-950">
                   <WifiOff className="h-4 w-4 shrink-0" />
@@ -224,6 +234,28 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       </SidebarProvider>
+
+      {/* Mobile bottom navigation */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-border bg-background px-2 pb-safe">
+          {bottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-lg px-2 transition-colors ${
+                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {/* PWA Install Banner — rendered outside SidebarProvider so it overlays correctly */}
       <PWAInstallBanner />
