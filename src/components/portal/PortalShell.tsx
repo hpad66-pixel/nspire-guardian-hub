@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { House, MessageCircle, FolderOpen, LogOut, ChevronDown } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,8 +16,10 @@ interface PortalShellProps {
   activeTab: PortalTab;
   onTabChange: (tab: PortalTab) => void;
   projectId: string;
-  projectName?: string;
+  projectName: string;
   branding: CompanyBranding | null;
+  showWelcome: boolean;
+  onWelcomeDismiss: () => void;
 }
 
 const TABS: { id: PortalTab; label: string; icon: React.ElementType }[] = [
@@ -32,31 +35,17 @@ export function PortalShell({
   projectId,
   projectName,
   branding,
+  showWelcome,
+  onWelcomeDismiss,
 }: PortalShellProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const { data: unreadCount = 0 } = useUnreadClientMessageCount(projectId);
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
   const companyName = branding?.company_name ?? 'Your Contractor';
   const userInitial = user?.email?.charAt(0).toUpperCase() ?? '?';
-
-  // First-visit welcome modal
-  useEffect(() => {
-    if (!projectId) return;
-    const storageKey = `portal_welcomed_${projectId}`;
-    if (!localStorage.getItem(storageKey)) {
-      const timer = setTimeout(() => setShowWelcome(true), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [projectId]);
-
-  function handleWelcomeClose() {
-    localStorage.setItem(`portal_welcomed_${projectId}`, '1');
-    setShowWelcome(false);
-  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -238,13 +227,17 @@ export function PortalShell({
       </nav>
 
       {/* ── First-visit Welcome Modal ───────────────────────────── */}
-      <WelcomeModal
-        open={showWelcome}
-        onClose={handleWelcomeClose}
-        projectName={projectName}
-        branding={branding}
-        accentColor={accentColor}
-      />
+      <AnimatePresence>
+        {showWelcome && (
+          <WelcomeModal
+            open={showWelcome}
+            onClose={onWelcomeDismiss}
+            projectName={projectName}
+            branding={branding}
+            accentColor={accentColor}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
