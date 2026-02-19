@@ -116,6 +116,77 @@ export default function ProjectDetailPage() {
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const in14Days = new Date(today);
+  in14Days.setDate(today.getDate() + 14);
+
+  // ── Overdue items (past due, still open/pending)
+  const overdueItems: { label: string; sub: string; tab: string; daysLate: number }[] = [
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) < today)
+      .map(r => ({
+        label: `RFI-${String(r.rfi_number).padStart(3,'0')}`,
+        sub: r.subject,
+        tab: 'rfis',
+        daysLate: Math.floor((today.getTime() - new Date(r.due_date!).getTime()) / 86400000),
+      })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) < today)
+      .map(s => ({
+        label: `SUB-${String(s.submittal_number).padStart(3,'0')}`,
+        sub: s.title,
+        tab: 'submittals',
+        daysLate: Math.floor((today.getTime() - new Date(s.due_date!).getTime()) / 86400000),
+      })),
+    ...actionItems
+      .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) < today)
+      .map(a => ({
+        label: 'Task',
+        sub: a.title,
+        tab: 'overview',
+        daysLate: Math.floor((today.getTime() - new Date(a.due_date!).getTime()) / 86400000),
+      })),
+  ].sort((a, b) => b.daysLate - a.daysLate);
+
+  // ── Due this week (due in next 7 days, not overdue)
+  const dueSoonItems: { label: string; sub: string; tab: string; dueDate: Date }[] = [
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) >= today && new Date(r.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!) })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) >= today && new Date(s.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!) })),
+    ...actionItems
+      .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) >= today && new Date(a.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(a => ({ label: 'Task', sub: a.title, tab: 'overview', dueDate: new Date(a.due_date!) })),
+  ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+  // ── Waiting on others (submitted/answered, awaiting their move)
+  const waitingItems: { label: string; sub: string; tab: string }[] = [
+    ...rfis
+      .filter(r => r.status === 'answered')
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis' })),
+    ...submittals
+      .filter(s => s.status === 'approved')
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals' })),
+  ];
+
+  // ── Coming up: next 3 milestones or due items within 14 days
+  const comingUp: { label: string; sub: string; tab: string; dueDate: Date }[] = [
+    ...(milestones ?? [])
+      .filter(m => m.status !== 'completed' && m.due_date && new Date(m.due_date) >= today && new Date(m.due_date) <= in14Days)
+      .map(m => ({ label: 'Milestone', sub: m.name, tab: 'schedule', dueDate: new Date(m.due_date) })),
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) > new Date(today.getTime() + 7*86400000) && new Date(r.due_date) <= in14Days)
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!) })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) > new Date(today.getTime() + 7*86400000) && new Date(s.due_date) <= in14Days)
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!) })),
+  ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()).slice(0, 3);
+
+  const allClear = overdueItems.length === 0 && dueSoonItems.length === 0;
+
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
     return new Intl.NumberFormat('en-US', {
