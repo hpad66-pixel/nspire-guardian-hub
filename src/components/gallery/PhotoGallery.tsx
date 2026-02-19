@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Images, Plus, Search, Grid3x3, List, Camera } from 'lucide-react';
+import { Images, Plus, Search, Grid3x3, List, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { usePropertyGallery } from '@/hooks/usePropertyGallery';
+import { usePropertyGallery, useDeleteGalleryPhoto } from '@/hooks/usePropertyGallery';
 import { useProjectGallery } from '@/hooks/useProjectGallery';
 import type { GalleryPhoto, GalleryFilters } from '@/hooks/usePropertyGallery';
 import { GalleryPhotoCard } from './GalleryPhotoCard';
 import { GalleryLightbox } from './GalleryLightbox';
 import { AddPhotosSheet } from './AddPhotosSheet';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface PhotoGalleryProps {
   context: 'property' | 'project';
@@ -90,12 +91,16 @@ function PhotoGridTile({
   photo,
   index,
   onOpen,
+  onDelete,
 }: {
   photo: GalleryPhoto;
   index: number;
   onOpen: () => void;
+  onDelete: (photo: GalleryPhoto) => void;
 }) {
   const isFeatured = index % 7 === 3;
+  const isDirect = photo.source === 'direct';
+
   return (
     <div
       className={cn(
@@ -119,6 +124,16 @@ function PhotoGridTile({
           {sourceShortLabels[photo.source] || photo.source}
         </span>
       </div>
+      {/* Delete button — only for direct uploads */}
+      {isDirect && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(photo); }}
+          className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+          title="Delete photo"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
       {/* Caption */}
       {photo.caption ? (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-200">
@@ -182,7 +197,9 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
   const [search, setSearch] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [addPhotosOpen, setAddPhotosOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<GalleryPhoto | null>(null);
   const navigate = useNavigate();
+  const deletePhoto = useDeleteGalleryPhoto();
 
   const filters: GalleryFilters = useMemo(() => ({
     source: sourceFilter === 'all' ? undefined : sourceFilter,
@@ -208,6 +225,29 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
     setSourceFilter('all');
     setTimeFilter('all_time');
     setSearch('');
+  };
+
+  const handleDeleteRequest = (photo: GalleryPhoto) => {
+    setDeleteTarget(photo);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    deletePhoto.mutate(
+      {
+        photoId: deleteTarget.id,
+        propertyId: context === 'property' ? contextId : undefined,
+        projectId: context === 'project' ? contextId : undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Photo deleted');
+          setDeleteTarget(null);
+          if (lightboxIndex !== null) setLightboxIndex(null);
+        },
+        onError: () => toast.error('Failed to delete photo'),
+      }
+    );
   };
 
   const monthGroups = useMemo(() => groupByMonth(photos), [photos]);
@@ -238,7 +278,6 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
 
       {/* Filter bars */}
       <div className="px-4 py-3 space-y-2 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        {/* Source filter chips */}
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {sourceFilters.map(f => (
             <button
@@ -256,7 +295,6 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           ))}
         </div>
 
-        {/* Row 2: time + view + search */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-1 shrink-0">
             {TIME_FILTERS.map(f => (
@@ -321,18 +359,18 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
             timeFilter={timeFilter}
           />
         ) : viewMode === 'grid' ? (
-          /* ── GRID VIEW ── */
           <div className="p-0">
-            {(showDayGroups ? dayGroups.map(g => ({ key: g.dayKey, label: g.dayLabel, photos: g.photos })) : monthGroups.map(g => ({ key: g.monthKey, label: g.monthLabel, photos: g.photos }))).map(group => {
+            {(showDayGroups
+              ? dayGroups.map(g => ({ key: g.dayKey, label: g.dayLabel, photos: g.photos }))
+              : monthGroups.map(g => ({ key: g.monthKey, label: g.monthLabel, photos: g.photos }))
+            ).map(group => {
               const globalOffset = photos.indexOf(group.photos[0]);
               return (
                 <div key={group.key}>
-                  {/* Group header */}
                   <div className="flex items-baseline justify-between py-3 px-4 sticky top-0 z-10 bg-background/90 backdrop-blur-sm border-b">
                     <h3 className="text-sm font-bold tracking-tight uppercase">{group.label}</h3>
                     <span className="text-xs text-muted-foreground">{group.photos.length} photos</span>
                   </div>
-                  {/* Masonry-like grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0.5 bg-border">
                     {group.photos.map((photo, i) => (
                       <PhotoGridTile
@@ -340,6 +378,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
                         photo={photo}
                         index={globalOffset + i}
                         onOpen={() => setLightboxIndex(photos.indexOf(photo))}
+                        onDelete={handleDeleteRequest}
                       />
                     ))}
                   </div>
@@ -348,11 +387,12 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
             })}
           </div>
         ) : (
-          /* ── TIMELINE VIEW ── */
           <div className="p-4 space-y-8">
-            {(showDayGroups ? dayGroups.map(g => ({ key: g.dayKey, label: g.dayLabel, photos: g.photos })) : monthGroups.map(g => ({ key: g.monthKey, label: g.monthLabel, photos: g.photos }))).map(group => (
+            {(showDayGroups
+              ? dayGroups.map(g => ({ key: g.dayKey, label: g.dayLabel, photos: g.photos }))
+              : monthGroups.map(g => ({ key: g.monthKey, label: g.monthLabel, photos: g.photos }))
+            ).map(group => (
               <div key={group.key}>
-                {/* Divider header */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-border" />
                   <span className="text-sm font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{group.label}</span>
@@ -367,6 +407,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
                       propertyId={context === 'property' ? contextId : undefined}
                       projectId={context === 'project' ? contextId : undefined}
                       onNavigateToSource={route => navigate(route)}
+                      onDelete={handleDeleteRequest}
                       showCaption
                     />
                   ))}
@@ -385,6 +426,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           onClose={() => setLightboxIndex(null)}
           propertyId={context === 'property' ? contextId : undefined}
           projectId={context === 'project' ? contextId : undefined}
+          onDelete={handleDeleteRequest}
         />
       )}
 
@@ -396,6 +438,46 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
         propertyId={context === 'property' ? contextId : undefined}
         contextName={contextName}
       />
+
+      {/* Delete confirmation dialog — only reachable for direct uploads */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Delete Photo?</h3>
+                <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
+              </div>
+            </div>
+            {deleteTarget.caption && (
+              <p className="text-sm text-muted-foreground italic bg-muted rounded-lg px-3 py-2 line-clamp-2">
+                "{deleteTarget.caption}"
+              </p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deletePhoto.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleDeleteConfirm}
+                disabled={deletePhoto.isPending}
+              >
+                {deletePhoto.isPending ? 'Deleting…' : 'Delete Photo'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

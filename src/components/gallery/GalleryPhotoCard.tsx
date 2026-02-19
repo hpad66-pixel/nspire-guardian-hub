@@ -4,9 +4,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, ExternalLink, Check } from 'lucide-react';
-import { useUpdatePhotoCaption } from '@/hooks/usePropertyGallery';
+import { CalendarIcon, ExternalLink, Check, Trash2 } from 'lucide-react';
+import { useUpdatePhotoCaption, useDeleteGalleryPhoto } from '@/hooks/usePropertyGallery';
 import type { GalleryPhoto } from '@/hooks/usePropertyGallery';
+import { toast } from 'sonner';
 
 const sourceColors: Record<string, string> = {
   grounds_inspection: 'bg-emerald-600',
@@ -31,6 +32,7 @@ interface GalleryPhotoCardProps {
   propertyId?: string;
   projectId?: string;
   onNavigateToSource?: (route: string) => void;
+  onDelete?: (photo: GalleryPhoto) => void;
   showCaption?: boolean;
 }
 
@@ -39,6 +41,7 @@ export function GalleryPhotoCard({
   propertyId,
   projectId,
   onNavigateToSource,
+  onDelete,
   showCaption = true,
 }: GalleryPhotoCardProps) {
   const [caption, setCaption] = useState(photo.caption || '');
@@ -99,7 +102,7 @@ export function GalleryPhotoCard({
   return (
     <div className="rounded-xl overflow-hidden border bg-card shadow-sm">
       {/* Image */}
-      <div className="relative aspect-[4/3] bg-muted">
+      <div className="relative aspect-[4/3] bg-muted group">
         <img
           src={photo.url}
           alt={caption || 'Photo'}
@@ -115,8 +118,18 @@ export function GalleryPhotoCard({
             {sourceShortLabels[photo.source] || photo.source}
           </span>
         </div>
+        {/* Delete button — only for direct uploads */}
+        {photo.source === 'direct' && onDelete && (
+          <button
+            onClick={() => onDelete(photo)}
+            className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+            title="Delete photo"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
         {saved && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full">
+          <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full">
             <Check className="h-2.5 w-2.5" />
             Saved
           </div>

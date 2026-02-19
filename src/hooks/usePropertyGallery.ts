@@ -168,6 +168,31 @@ export function usePropertyGallery(propertyId: string, filters?: GalleryFilters)
   });
 }
 
+export function useDeleteGalleryPhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      photoId,
+      propertyId,
+      projectId,
+    }: {
+      photoId: string;
+      propertyId?: string;
+      projectId?: string;
+    }) => {
+      const { error } = await supabase
+        .from('photo_gallery')
+        .delete()
+        .eq('id', photoId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      if (vars.propertyId) queryClient.invalidateQueries({ queryKey: ['property-gallery', vars.propertyId] });
+      if (vars.projectId) queryClient.invalidateQueries({ queryKey: ['project-gallery', vars.projectId] });
+    },
+  });
+}
+
 export function useUpdatePhotoCaption() {
   const queryClient = useQueryClient();
   return useMutation({

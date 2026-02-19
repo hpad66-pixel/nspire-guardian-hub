@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { X, ChevronLeft, ChevronRight, ExternalLink, Edit2, Check } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ExternalLink, Edit2, Check, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUpdatePhotoCaption } from '@/hooks/usePropertyGallery';
 import type { GalleryPhoto } from '@/hooks/usePropertyGallery';
@@ -26,9 +26,10 @@ interface GalleryLightboxProps {
   onClose: () => void;
   propertyId?: string;
   projectId?: string;
+  onDelete?: (photo: GalleryPhoto) => void;
 }
 
-export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, projectId }: GalleryLightboxProps) {
+export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, projectId, onDelete }: GalleryLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [editingCaption, setEditingCaption] = useState(false);
   const [caption, setCaption] = useState('');
@@ -92,6 +93,8 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
 
   if (!photo) return null;
 
+  const isDirect = photo.source === 'direct';
+
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
@@ -112,7 +115,6 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
 
       {/* Image area */}
       <div className="flex-1 relative flex items-center justify-center min-h-0 px-10">
-        {/* Prev */}
         <button
           onClick={goPrev}
           disabled={currentIndex === 0}
@@ -128,7 +130,6 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
           style={{ maxHeight: 'calc(100vh - 280px)' }}
         />
 
-        {/* Next */}
         <button
           onClick={goNext}
           disabled={currentIndex === photos.length - 1}
@@ -141,7 +142,7 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
       {/* Detail panel */}
       <div className="flex-shrink-0 bg-card rounded-t-2xl mx-0 border-t border-border shadow-2xl">
         <div className="px-4 pt-4 pb-6 space-y-3 max-w-2xl mx-auto">
-          {/* Source + date */}
+          {/* Source + date + delete */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className={cn(
               'text-[11px] font-semibold px-2 py-0.5 rounded-full text-white',
@@ -158,6 +159,17 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
               <span className="flex items-center gap-1 text-emerald-600 text-xs font-medium">
                 <Check className="h-3 w-3" /> Saved
               </span>
+            )}
+            {/* Delete — only direct uploads */}
+            {isDirect && onDelete && (
+              <button
+                onClick={() => onDelete(photo)}
+                className="ml-auto flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
+                title="Delete this photo"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
             )}
           </div>
 
@@ -209,7 +221,7 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
             )}
           </div>
 
-          {/* Source navigation */}
+          {/* Source navigation — not shown for direct uploads (no source report) */}
           {photo.source_route && (
             <button
               onClick={handleNavigateToSource}
