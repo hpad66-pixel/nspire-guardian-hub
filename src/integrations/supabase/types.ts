@@ -646,6 +646,177 @@ export type Database = {
           },
         ]
       }
+      credential_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          credential_id: string
+          id: string
+          sent_at: string | null
+          sent_to: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          credential_id: string
+          id?: string
+          sent_at?: string | null
+          sent_to: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          credential_id?: string
+          id?: string
+          sent_at?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_alerts_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_alerts_sent_to_fkey"
+            columns: ["sent_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      credential_share_links: {
+        Row: {
+          access_count: number
+          accessed_at: string | null
+          created_at: string
+          created_by: string
+          credential_id: string
+          expires_at: string
+          id: string
+          revoked: boolean
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          accessed_at?: string | null
+          created_at?: string
+          created_by: string
+          credential_id: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token: string
+        }
+        Update: {
+          access_count?: number
+          accessed_at?: string | null
+          created_at?: string
+          created_by?: string
+          credential_id?: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "credential_share_links_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credentials: {
+        Row: {
+          created_at: string
+          credential_number: string | null
+          credential_type: string
+          custom_type_label: string | null
+          document_url: string | null
+          expiry_date: string | null
+          holder_id: string
+          id: string
+          is_org_credential: boolean
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          renewal_url: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_number?: string | null
+          credential_type: string
+          custom_type_label?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          holder_id: string
+          id?: string
+          is_org_credential?: boolean
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          renewal_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_number?: string | null
+          credential_type?: string
+          custom_type_label?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          holder_id?: string
+          id?: string
+          is_org_credential?: boolean
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          renewal_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credentials_holder_id_fkey"
+            columns: ["holder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "credentials_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       crm_contacts: {
         Row: {
           address_line1: string | null

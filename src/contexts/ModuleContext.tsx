@@ -22,6 +22,7 @@ const defaultModules: ModuleConfig = {
   occupancyEnabled: false,
   emailInboxEnabled: false,
   qrScanningEnabled: false,
+  credentialWalletEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -44,6 +45,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     occupancyEnabled: null,
     emailInboxEnabled: null,
     qrScanningEnabled: null,
+    credentialWalletEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
@@ -59,13 +61,14 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       // Module is enabled if ANY property has it enabled
-      const tenant = {
+      const tenant: ModuleConfig = {
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
         occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
         emailInboxEnabled: true, // Always enabled - inbox is functional
         qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
+        credentialWalletEnabled: true, // Always enabled for now
       };
 
       setTenantModules(tenant);
@@ -79,6 +82,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           occupancyEnabled: null,
           emailInboxEnabled: null,
           qrScanningEnabled: null,
+          credentialWalletEnabled: null,
         });
         return;
       }
@@ -97,6 +101,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         occupancyEnabled: null,
         emailInboxEnabled: null,
         qrScanningEnabled: null,
+        credentialWalletEnabled: null,
       };
 
       (overrides || []).forEach((row) => {
