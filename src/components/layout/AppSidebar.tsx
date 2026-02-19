@@ -387,8 +387,8 @@ export function AppSidebar() {
             </span>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[13px] font-bold text-[hsl(var(--sidebar-foreground))] leading-tight tracking-tight">PM APAS</span>
-                <span className="text-[10px] text-[hsl(var(--sidebar-muted))] leading-tight">Property OS</span>
+                <span className="text-[13px] font-bold text-[hsl(var(--sidebar-foreground))] leading-tight tracking-tight">APAS OS</span>
+                <span className="text-[10px] text-[hsl(var(--sidebar-muted))] leading-tight">Property Operations</span>
               </div>
             )}
           </NavLink>
