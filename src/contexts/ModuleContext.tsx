@@ -80,6 +80,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         trainingHubEnabled: true,
         safetyModuleEnabled: true,
         equipmentTrackerEnabled: true,
+        clientPortalEnabled: true,
       };
 
       setTenantModules(tenant);
@@ -97,6 +98,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           trainingHubEnabled: null,
           safetyModuleEnabled: null,
           equipmentTrackerEnabled: null,
+          clientPortalEnabled: null,
         });
         return;
       }
@@ -119,6 +121,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         trainingHubEnabled: null,
         safetyModuleEnabled: null,
         equipmentTrackerEnabled: null,
+        clientPortalEnabled: null,
       };
 
       (overrides || []).forEach((row) => {
