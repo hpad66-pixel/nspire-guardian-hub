@@ -50,6 +50,7 @@ const PeoplePage = lazy(() => import('./pages/people/PeoplePage'));
 const OccupancyPage = lazy(() => import('./pages/occupancy/OccupancyPage'));
 const QRScannerPage = lazy(() => import('./pages/qr/QRScannerPage'));
 const TrainingPage = lazy(() => import('./pages/training/TrainingPage'));
+const TrainingDashboardPage = lazy(() => import('./pages/training/TrainingDashboardPage'));
 const CertificateSharePage = lazy(() => import('./pages/training/CertificateSharePage'));
 const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
@@ -123,6 +124,10 @@ const App = () => (
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
                      <Route path="/portal/:projectId" element={<ClientPortalPage />} />
+                     <Route path="/portal/:slug/login" element={<PortalLoginPage />} />
+                     <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
+                     <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
+                     <Route path="/portal/:slug/home" element={<PortalHomePage />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      
@@ -155,6 +160,7 @@ const App = () => (
                               <Route path="/occupancy" element={<OccupancyPage />} />
                               <Route path="/qr-scanner" element={<QRScannerPage />} />
                               <Route path="/training" element={<TrainingPage />} />
+                              <Route path="/training/dashboard" element={<TrainingDashboardPage />} />
                               <Route path="/contacts" element={<ContactsPage />} />
                               <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
                               <Route path="/settings/activity-log" element={<ActivityLogPage />} />
@@ -195,6 +201,10 @@ const App = () => (
                               {/* Equipment & Fleet */}
                               <Route path="/equipment" element={<EquipmentDashboardPage />} />
                               <Route path="/equipment/setup" element={<EquipmentSetupPage />} />
+
+                              {/* Client Portals */}
+                              <Route path="/portals" element={<PortalsDashboardPage />} />
+                              <Route path="/portals/:id" element={<PortalManagePage />} />
                               
                               {/* 404 */}
                               <Route path="*" element={<NotFound />} />
