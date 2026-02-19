@@ -488,7 +488,7 @@ export function MobileNav() {
         {/* Dashboard — always visible */}
         <PrimaryItem
           icon={<LayoutDashboard className="h-5 w-5" />}
-          label="Dashboard"
+          label="Command"
           isActive={activeSection === 'dashboard'}
           onClick={() => navigate('/dashboard')}
         />

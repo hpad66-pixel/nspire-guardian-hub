@@ -425,10 +425,10 @@ export function AppSidebar() {
             <NavItem
               to="/dashboard"
               icon={<LayoutDashboard />}
-              label="Dashboard"
+              label="Command Center"
               collapsed={collapsed}
               end
-              tooltip="Dashboard"
+              tooltip="Command Center"
             />
             <NavItem
               to="/inbox"
