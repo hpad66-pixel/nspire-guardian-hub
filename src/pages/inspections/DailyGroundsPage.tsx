@@ -30,6 +30,7 @@ export default function DailyGroundsPage() {
   const [assetRoundsCompleted, setAssetRoundsCompleted] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(false);
 
   const { data: properties = [] } = useManagedProperties();
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
