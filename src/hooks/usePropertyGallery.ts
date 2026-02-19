@@ -147,7 +147,7 @@ export function usePropertyGallery(propertyId: string, filters?: GalleryFilters)
 
       const dateRange = filters?.dateRange || getDateRange(filters?.timeFilter);
       if (dateRange) {
-        filtered = filtered.filter(p => p.taken_at >= dateRange.start && p.taken_at <= dateRange.end);
+        filtered = filtered.filter(p => p.taken_at && p.taken_at >= dateRange.start && p.taken_at <= dateRange.end);
       }
 
       if (filters?.source && filters.source !== 'all') {
@@ -162,7 +162,7 @@ export function usePropertyGallery(propertyId: string, filters?: GalleryFilters)
         );
       }
 
-      filtered.sort((a, b) => b.taken_at.localeCompare(a.taken_at));
+      filtered.sort((a, b) => (b.taken_at || '').localeCompare(a.taken_at || ''));
       return filtered;
     },
   });

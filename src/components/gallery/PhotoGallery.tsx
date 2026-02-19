@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Images, Plus, Search, Grid3x3, List, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -87,22 +87,18 @@ function groupByDay(photos: GalleryPhoto[]): Array<{ dayKey: string; dayLabel: s
   });
 }
 
-function PhotoGridTile({
-  photo,
-  index,
-  onOpen,
-  onDelete,
-}: {
+const PhotoGridTile = forwardRef<HTMLDivElement, {
   photo: GalleryPhoto;
   index: number;
   onOpen: () => void;
   onDelete: (photo: GalleryPhoto) => void;
-}) {
+}>(function PhotoGridTile({ photo, index, onOpen, onDelete }, ref) {
   const isFeatured = index % 7 === 3;
   const isDirect = photo.source === 'direct';
 
   return (
     <div
+      ref={ref}
       className={cn(
         'relative group overflow-hidden cursor-pointer bg-muted',
         isFeatured ? 'col-span-2 aspect-[4/3]' : 'aspect-square'
@@ -148,7 +144,7 @@ function PhotoGridTile({
       )}
     </div>
   );
-}
+});
 
 function EmptyState({ hasFilters, onClearFilters, timeFilter }: {
   hasFilters: boolean;
