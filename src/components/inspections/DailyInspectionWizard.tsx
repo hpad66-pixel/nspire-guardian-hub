@@ -36,7 +36,13 @@ import {
   Mic,
   Upload,
   AlertTriangle,
+  Download,
+  Printer,
+  Mail,
+  Loader2,
 } from 'lucide-react';
+import { generatePDF, printReport } from '@/lib/generatePDF';
+import { SendReportEmailDialog } from './SendReportEmailDialog';
 import { InspectionReportDialog } from './InspectionReportDialog';
 import { cn } from '@/lib/utils';
 
@@ -138,10 +144,13 @@ export function DailyInspectionWizard({
   const [isUploading, setIsUploading] = useState(false);
   const [inspection, setInspection] = useState<DailyInspection | null>(existingInspection || null);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [certChecked, setCertChecked] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [submitTime, setSubmitTime] = useState('');
   const [isListeningNotes, setIsListeningNotes] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: assets = [] } = useAssets(propertyId);
@@ -343,6 +352,45 @@ export function DailyInspectionWizard({
 
   const inspectorName = user?.user_metadata?.full_name || user?.email || 'Inspector';
   const inspectorInitials = inspectorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+
+  const reportFilename = inspection
+    ? `daily-grounds-inspection-${format(new Date(), 'yyyy-MM-dd')}-${inspection.id.slice(0, 8)}.pdf`
+    : 'daily-grounds-inspection.pdf';
+
+  const successStatusSummary = {
+    ok: stats.okCount,
+    attention: stats.attentionCount,
+    defect: stats.defectCount,
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      await generatePDF({
+        filename: reportFilename,
+        elementId: 'printable-inspection-report',
+        scale: 2,
+      });
+      toast.success('Report saved to your device');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const handlePrintReport = async () => {
+    setIsPrinting(true);
+    try {
+      await printReport('printable-inspection-report');
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Failed to print report');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -633,23 +681,25 @@ export function DailyInspectionWizard({
 
         {/* ═══ SUCCESS ═══ */}
         {step === 'success' && (
-          <div className="space-y-6 text-center">
-            <div className="py-8">
-              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 border-4 border-green-200 mb-4 shadow-lg shadow-green-100">
+          <div className="space-y-5">
+            {/* Celebration header */}
+            <div className="text-center py-6">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 border-4 border-green-200 mb-4 shadow-lg">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
-              <h2 className="text-3xl font-black text-green-600 mb-1">Report Submitted!</h2>
+              <h2 className="text-3xl font-black text-green-600 mb-1">Inspection Submitted!</h2>
               {submitTime && (
                 <p className="text-sm text-muted-foreground">Submitted at {submitTime}</p>
               )}
               <p className="text-muted-foreground mt-1 max-w-sm mx-auto text-sm">
-                Your daily grounds inspection is now pending supervisor review.
+                Pending supervisor review.
               </p>
             </div>
 
+            {/* Stats summary */}
             <Card>
               <CardContent className="pt-5">
-                <div className="grid grid-cols-3 gap-3 text-center mb-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
                     <p className="text-2xl font-black text-green-600">{stats.okCount}</p>
                     <p className="text-xs text-green-600 font-semibold">OK</p>
@@ -666,15 +716,51 @@ export function DailyInspectionWizard({
               </CardContent>
             </Card>
 
-            <div className="space-y-3">
-              <Button size="lg" className="w-full h-14 text-lg gap-2" onClick={() => setShowReportDialog(true)}>
-                <FileText className="h-5 w-5" />View Report
+            {/* ── Report action buttons ── */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground text-center mb-3 uppercase tracking-wide">Share Your Report</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 h-12"
+                  onClick={handleDownloadPDF}
+                  disabled={isGeneratingPDF}
+                >
+                  {isGeneratingPDF
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Download className="h-4 w-4" />
+                  }
+                  {isGeneratingPDF ? 'Saving…' : 'Save PDF'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 h-12"
+                  onClick={handlePrintReport}
+                  disabled={isPrinting}
+                >
+                  {isPrinting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Printer className="h-4 w-4" />
+                  }
+                  {isPrinting ? 'Printing…' : 'Print'}
+                </Button>
+                <Button
+                  className="flex-1 gap-2 h-12"
+                  onClick={() => setShowEmailDialog(true)}
+                >
+                  <Mail className="h-4 w-4" />
+                  Email Report
+                </Button>
+              </div>
+            </div>
+
+            {/* Secondary navigation */}
+            <div className="border-t pt-4 space-y-2">
+              <Button size="sm" variant="ghost" className="w-full gap-2 text-muted-foreground" onClick={() => setShowReportDialog(true)}>
+                <FileText className="h-4 w-4" />View Full Report
               </Button>
-              <Button size="lg" variant="outline" className="w-full" onClick={handleGoToDashboard}>
-                Go to Dashboard
-              </Button>
-              <Button size="lg" variant="ghost" className="w-full" onClick={onComplete}>
-                Back to Daily Grounds
+              <Button size="lg" variant="outline" className="w-full" onClick={onComplete}>
+                Back to Dashboard
               </Button>
             </div>
           </div>
@@ -687,6 +773,19 @@ export function DailyInspectionWizard({
         inspectionId={inspection?.id}
         inspection={inspection}
       />
+
+      {inspection && (
+        <SendReportEmailDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          inspectionId={inspection.id}
+          propertyName="Property"
+          inspectorName={inspectorName}
+          inspectionDate={inspection.inspection_date}
+          reportElementId="printable-inspection-report"
+          statusSummary={successStatusSummary}
+        />
+      )}
 
       <Dialog open={assetDialogOpen && !!selectedAsset}
         onOpenChange={(open) => { setAssetDialogOpen(open); if (!open) setSelectedAssetId(null); }}>
