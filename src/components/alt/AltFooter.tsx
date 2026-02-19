@@ -31,7 +31,7 @@ export function AltFooter() {
               </span>
             </div>
             <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#64748B', lineHeight: 1.65, marginBottom: '8px' }}>Property operations, built right.</p>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#2563EB' }}>pm.apas.ai</p>
+            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#2563EB' }}>apasos.lovable.app</p>
           </div>
 
           {/* Link columns */}
@@ -59,7 +59,7 @@ export function AltFooter() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8" style={{ borderTop: '1px solid #E2E8F0' }}>
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8' }}>
-            © 2026 APAS.AI · All rights reserved · pm.apas.ai
+            © 2026 APAS.AI · All rights reserved · apasos.lovable.app
           </p>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#CBD5E1' }}>
             Built by APAS Labs
