@@ -1,37 +1,41 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { WeatherSelector } from './WeatherSelector';
 import { InspectionProgress } from './InspectionProgress';
 import { AssetCheckCard } from './AssetCheckCard';
-import { VoiceDictation } from '@/components/ui/voice-dictation';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAssets, Asset } from '@/hooks/useAssets';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { 
-  useCreateDailyInspection, 
-  useUpdateDailyInspection, 
+import {
+  useCreateDailyInspection,
+  useUpdateDailyInspection,
   useUpsertInspectionItem,
   useInspectionItems,
   DailyInspection,
   InspectionItemStatus,
-  WEATHER_OPTIONS 
+  WEATHER_OPTIONS
 } from '@/hooks/useDailyInspections';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { enqueue } from '@/lib/offlineQueue';
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
-  Play, 
-  CheckCircle2, 
-  Upload, 
+  Play,
+  CheckCircle2,
   Send,
   Paperclip,
   X,
-  FileText
+  FileText,
+  Mic,
+  Upload,
+  AlertTriangle,
 } from 'lucide-react';
 import { InspectionReportDialog } from './InspectionReportDialog';
 import { cn } from '@/lib/utils';
@@ -52,12 +56,77 @@ interface AssetCheckData {
   defectDescription: string;
 }
 
+// ── Dot tracker ────────────────────────────────────────────────────────────
+
+function DotTracker({
+  assets,
+  checks,
+}: {
+  assets: Asset[];
+  checks: Record<string, AssetCheckData>;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap justify-center mt-2">
+      {assets.map((asset) => {
+        const s = checks[asset.id]?.status;
+        const color =
+          s === 'ok'
+            ? 'bg-green-500'
+            : s === 'needs_attention'
+            ? 'bg-amber-500'
+            : s === 'defect_found'
+            ? 'bg-red-500'
+            : 'bg-slate-300';
+        return (
+          <div
+            key={asset.id}
+            title={asset.name}
+            className={cn('w-3 h-3 rounded-full transition-all', color)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Confetti ───────────────────────────────────────────────────────────────
+
+function ConfettiBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  const colors = ['#059669', '#34D399', '#FBBF24', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6'];
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {Array.from({ length: 30 }).map((_, i) => (
+        <div
+          key={i}
+          className="absolute w-2.5 h-2.5 rounded-sm"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: '-12px',
+            backgroundColor: colors[i % colors.length],
+            animation: `confetti-fall ${0.8 + Math.random() * 1.6}s ease-in forwards`,
+            animationDelay: `${Math.random() * 0.6}s`,
+            transform: `rotate(${Math.random() * 360}deg) scale(${0.6 + Math.random() * 0.8})`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confetti-fall {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function DailyInspectionWizard({
   propertyId,
   existingInspection,
   onComplete,
   onCancel,
 }: DailyInspectionWizardProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState<WizardStep>('start');
   const [weather, setWeather] = useState(existingInspection?.weather || '');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
@@ -68,6 +137,11 @@ export function DailyInspectionWizard({
   const [isUploading, setIsUploading] = useState(false);
   const [inspection, setInspection] = useState<DailyInspection | null>(existingInspection || null);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [certChecked, setCertChecked] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [submitTime, setSubmitTime] = useState('');
+  const [isListeningNotes, setIsListeningNotes] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: assets = [] } = useAssets(propertyId);
   const { data: existingItems = [] } = useInspectionItems(inspection?.id || '');
@@ -91,7 +165,7 @@ export function DailyInspectionWizard({
     }
   }, [existingItems]);
 
-  const activeAssets = useMemo(() => 
+  const activeAssets = useMemo(() =>
     assets.filter(a => a.status === 'active'),
     [assets]
   );
@@ -111,30 +185,23 @@ export function DailyInspectionWizard({
     return { okCount, attentionCount, defectCount };
   }, [assetChecks]);
 
-  const handleStartInspection = async () => {
-    if (!weather) {
-      toast.error('Please select the weather');
-      return;
-    }
+  const checkedCount = stats.okCount + stats.attentionCount + stats.defectCount;
+  const totalPhotos = Object.values(assetChecks).reduce((s, c) => s + c.photoUrls.length, 0)
+    + attachments.length;
 
+  const handleStartInspection = async () => {
+    if (!weather) { toast.error('Please select the weather'); return; }
     if (!inspection) {
       try {
-        const newInspection = await createInspection.mutateAsync({
-          property_id: propertyId,
-          weather,
-        });
+        const newInspection = await createInspection.mutateAsync({ property_id: propertyId, weather });
         setInspection(newInspection);
-      } catch (error) {
-        return;
-      }
+      } catch { return; }
     }
-
     setStep('assets');
   };
 
   const handleAssetCheck = (field: keyof AssetCheckData, value: any) => {
     if (!selectedAsset) return;
-    
     setAssetChecks(prev => ({
       ...prev,
       [selectedAsset.id]: {
@@ -146,7 +213,6 @@ export function DailyInspectionWizard({
 
   const handleSaveAssetCheck = async () => {
     if (!selectedAsset || !inspection) return;
-    
     const check = assetChecks[selectedAsset.id];
     if (check?.status) {
       await upsertItem.mutateAsync({
@@ -166,53 +232,48 @@ export function DailyInspectionWizard({
     setAssetDialogOpen(true);
   };
 
-  const handleVoiceTranscript = (text: string) => {
-    setGeneralNotes(prev => prev ? `${prev}\n\n${text}` : text);
+  // Voice for notes
+  const handleVoiceNotes = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error('Voice not supported'); return; }
+    const r = new SR();
+    r.lang = 'en-US';
+    setIsListeningNotes(true);
+    r.start();
+    r.onresult = (e: any) => {
+      const t = e.results[0][0].transcript;
+      setGeneralNotes(prev => prev ? `${prev}\n\n${t}` : t);
+      setIsListeningNotes(false);
+    };
+    r.onerror = () => setIsListeningNotes(false);
+    r.onend = () => setIsListeningNotes(false);
   };
 
-  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     setIsUploading(true);
     const newUrls: string[] = [];
-
     try {
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${inspection?.id || 'temp'}-${Date.now()}.${fileExt}`;
-        const filePath = `daily-inspections/attachments/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('inspection-photos')
-          .upload(filePath, file);
-
+        const filePath = `daily-inspections/attachments/${inspection?.id || 'temp'}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(filePath, file);
         if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('inspection-photos')
-          .getPublicUrl(filePath);
-
+        const { data: { publicUrl } } = supabase.storage.from('inspection-photos').getPublicUrl(filePath);
         newUrls.push(publicUrl);
       }
-
       setAttachments(prev => [...prev, ...newUrls]);
-      toast.success('Attachment uploaded');
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload attachment');
-    } finally {
-      setIsUploading(false);
-    }
+      toast.success('Photo uploaded');
+    } catch { toast.error('Failed to upload'); }
+    finally { setIsUploading(false); }
   };
 
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    if (!inspection) return;
-
+    if (!inspection || !certChecked) return;
     try {
-      // Persist all checked assets before submitting
       const itemsToSave = Object.entries(assetChecks)
         .filter(([, check]) => !!check.status)
         .map(([assetId, check]) =>
@@ -225,12 +286,8 @@ export function DailyInspectionWizard({
             defect_description: check.defectDescription || undefined,
           })
         );
+      if (itemsToSave.length > 0) await Promise.all(itemsToSave);
 
-      if (itemsToSave.length > 0) {
-        await Promise.all(itemsToSave);
-      }
-
-      // Find a property manager to assign issues
       const { data: pm } = await supabase
         .from('property_team_members')
         .select('user_id')
@@ -239,43 +296,20 @@ export function DailyInspectionWizard({
         .eq('status', 'active')
         .maybeSingle();
 
-      const assignedTo = pm?.user_id || null;
-
-      // Create issues for assets needing attention or with defects
       const issueCreates = activeAssets.flatMap((asset) => {
         const check = assetChecks[asset.id];
         if (!check?.status || check.status === 'ok') return [];
-
         const severity: 'severe' | 'moderate' = check.status === 'defect_found' ? 'severe' : 'moderate';
-        const title =
-          check.status === 'defect_found'
-            ? `Defect found: ${asset.name}`
-            : `Needs attention: ${asset.name}`;
-
-        const descriptionParts = [
+        const title = check.status === 'defect_found' ? `Defect found: ${asset.name}` : `Needs attention: ${asset.name}`;
+        const descParts = [
           `Daily Grounds Inspection: ${inspection.id}`,
           asset.location_description ? `Location: ${asset.location_description}` : null,
           check.notes ? `Notes: ${check.notes}` : null,
           check.defectDescription ? `Defect: ${check.defectDescription}` : null,
         ].filter(Boolean);
-
-        return [
-          {
-            property_id: propertyId,
-            title,
-            description: descriptionParts.join('\n'),
-            source_module: 'core' as const,
-            area: 'outside' as const,
-            severity,
-            status: 'open',
-            assigned_to: assignedTo,
-          },
-        ];
+        return [{ property_id: propertyId, title, description: descParts.join('\n'), source_module: 'core' as const, area: 'outside' as const, severity, status: 'open', assigned_to: pm?.user_id || null }];
       });
-
-      if (issueCreates.length > 0) {
-        await supabase.from('issues').insert(issueCreates);
-      }
+      if (issueCreates.length > 0) await supabase.from('issues').insert(issueCreates);
 
       await updateInspection.mutateAsync({
         id: inspection.id,
@@ -287,18 +321,15 @@ export function DailyInspectionWizard({
         submitted_at: new Date().toISOString(),
       } as any);
 
-      // Show success screen instead of navigating away
+      setSubmitTime(format(new Date(), 'h:mm a'));
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       setStep('success');
       toast.success('Inspection submitted for review!');
     } catch (error) {
-      console.error('Submit error:', error);
       if (!navigator.onLine) {
-        await enqueue({
-          type: 'daily_inspection',
-          payload: { propertyId, generalNotes, attachments, assetChecks, timestamp: Date.now() },
-          timestamp: Date.now(),
-        });
-        toast.warning('You\'re offline — inspection saved locally and will sync when reconnected.');
+        await enqueue({ type: 'daily_inspection', payload: { propertyId, generalNotes, attachments, assetChecks, timestamp: Date.now() }, timestamp: Date.now() });
+        toast.warning("You're offline — saved locally and will sync when reconnected.");
         setStep('success');
       } else {
         toast.error('Failed to submit inspection');
@@ -306,51 +337,37 @@ export function DailyInspectionWizard({
     }
   };
 
-  const handleGoToDashboard = () => {
-    onComplete();
-    navigate('/dashboard');
-  };
+  const handleGoToDashboard = () => { onComplete(); navigate('/dashboard'); };
 
-  const handleStartNewInspection = () => {
-    onComplete();
-    // Stay on daily grounds page to potentially start another property
-  };
-
-  const checkedCount = stats.okCount + stats.attentionCount + stats.defectCount;
+  const inspectorName = user?.user_metadata?.full_name || user?.email || 'Inspector';
+  const inspectorInitials = inspectorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <div className="min-h-screen bg-background pb-8">
+      <ConfettiBurst active={showConfetti} />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Exit
+            <ChevronLeft className="h-4 w-4 mr-1" />Exit
           </Button>
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(), 'EEEE, MMMM d')}
+          </p>
           <div className="w-16" />
         </div>
       </div>
 
       <div className="p-4 max-w-lg mx-auto">
-        {/* Step: Start */}
+
+        {/* ═══ START ═══ */}
         {step === 'start' && (
           <div className="space-y-6">
             <div className="text-center py-6">
               <h1 className="text-2xl font-bold mb-2">Daily Grounds Inspection</h1>
-              <p className="text-muted-foreground">
-                {activeAssets.length} assets to check today
-              </p>
+              <p className="text-muted-foreground">{activeAssets.length} assets to check today</p>
             </div>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">What's the weather?</CardTitle>
@@ -359,20 +376,14 @@ export function DailyInspectionWizard({
                 <WeatherSelector value={weather} onChange={setWeather} />
               </CardContent>
             </Card>
-
-            <Button
-              size="lg"
-              className="w-full h-16 text-xl gap-3"
-              onClick={handleStartInspection}
-              disabled={!weather || createInspection.isPending}
-            >
-              <Play className="h-6 w-6" />
-              Let's Go!
+            <Button size="lg" className="w-full h-16 text-xl gap-3"
+              onClick={handleStartInspection} disabled={!weather || createInspection.isPending}>
+              <Play className="h-6 w-6" />Let's Go!
             </Button>
           </div>
         )}
 
-        {/* Step: Assets */}
+        {/* ═══ ASSETS ═══ */}
         {step === 'assets' && (
           <div className="space-y-4">
             {activeAssets.length === 0 ? (
@@ -380,13 +391,13 @@ export function DailyInspectionWizard({
                 <CardContent className="pt-6 text-center">
                   <p className="text-muted-foreground mb-4">No assets found for this property.</p>
                   <Button onClick={() => setStep('notes')}>
-                    Continue to Notes
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    Continue to Notes <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <>
+                {/* Enhanced progress */}
                 <InspectionProgress
                   current={checkedCount}
                   total={activeAssets.length}
@@ -394,313 +405,270 @@ export function DailyInspectionWizard({
                   attentionCount={stats.attentionCount}
                   defectCount={stats.defectCount}
                 />
+                <DotTracker assets={activeAssets} checks={assetChecks} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {activeAssets.map((asset) => {
                     const check = assetChecks[asset.id];
-                    const status = check?.status;
-                    const statusLabel =
-                      status === 'ok'
-                        ? 'OK'
-                        : status === 'needs_attention'
-                        ? 'Needs attention'
-                        : status === 'defect_found'
-                        ? 'Defect found'
-                        : 'Not checked';
-                    const statusClass =
-                      status === 'ok'
-                        ? 'bg-green-100 text-green-700'
-                        : status === 'needs_attention'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : status === 'defect_found'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-muted text-muted-foreground';
-                    const noteText =
-                      status === 'needs_attention'
-                        ? check?.notes
-                        : status === 'defect_found'
-                        ? check?.defectDescription || check?.notes
-                        : check?.notes;
+                    const s = check?.status;
+                    const statusLabel = s === 'ok' ? 'OK' : s === 'needs_attention' ? 'Needs attention' : s === 'defect_found' ? 'Defect found' : 'Not checked';
+                    const statusClass = s === 'ok' ? 'bg-green-100 text-green-700' : s === 'needs_attention' ? 'bg-yellow-100 text-yellow-700' : s === 'defect_found' ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground';
 
                     return (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        onClick={() => handleOpenAsset(asset.id)}
-                        className={cn(
-                          'text-left w-full rounded-lg border p-3 transition-colors hover:bg-muted/40',
-                          status === 'defect_found' && 'border-red-200'
-                        )}
-                      >
+                      <button key={asset.id} type="button" onClick={() => handleOpenAsset(asset.id)}
+                        className={cn('text-left w-full rounded-lg border p-3 transition-colors hover:bg-muted/40', s === 'defect_found' && 'border-red-200')}>
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium">{asset.name}</p>
                             {asset.location_description && (
-                              <p className="text-xs text-muted-foreground">
-                                {asset.location_description}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{asset.location_description}</p>
                             )}
                           </div>
-                          <span className={cn('text-xs font-medium px-2 py-1 rounded-full', statusClass)}>
+                          <span className={cn('text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap', statusClass)}>
                             {statusLabel}
                           </span>
                         </div>
-                        {noteText && (
-                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                            {noteText}
-                          </p>
-                        )}
                       </button>
                     );
                   })}
                 </div>
 
-                <Button
-                  className="w-full h-12"
-                  onClick={() => setStep('notes')}
-                >
-                  Continue to Notes
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                <Button className="w-full h-12" onClick={() => setStep('notes')}>
+                  Continue to Notes <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </>
             )}
           </div>
         )}
 
-        {/* Step: Notes */}
+        {/* ═══ NOTES ═══ */}
         {step === 'notes' && (
-          <div className="space-y-6">
-            <div className="text-center py-4">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <h2 className="text-xl font-bold">Assets Checked!</h2>
-              <p className="text-muted-foreground">
-                {checkedCount} of {activeAssets.length} completed
-              </p>
+          <div className="space-y-5">
+            {/* Day summary card */}
+            <div className="rounded-2xl bg-slate-900 p-4 text-white">
+              <p className="text-xs text-slate-400 font-medium mb-3 uppercase tracking-wide">Day Summary</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold text-slate-200">
+                  {checkedCount} assets checked
+                </span>
+                <span className="text-slate-600">·</span>
+                <span className="flex items-center gap-1 bg-green-900/60 border border-green-700 text-green-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                  <CheckCircle2 className="h-3 w-3" />{stats.okCount} OK
+                </span>
+                <span className="flex items-center gap-1 bg-amber-900/50 border border-amber-700 text-amber-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                  <AlertTriangle className="h-3 w-3" />{stats.attentionCount} Attention
+                </span>
+                <span className="flex items-center gap-1 bg-red-900/50 border border-red-700 text-red-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                  ❌ {stats.defectCount} Defects
+                </span>
+              </div>
             </div>
 
+            {/* Rich text editor */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center justify-between">
+                <CardTitle className="text-base flex items-center justify-between">
                   General Notes
-                  <VoiceDictation onTranscript={handleVoiceTranscript} />
+                  <button type="button" onClick={handleVoiceNotes}
+                    className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all',
+                      isListeningNotes ? 'border-red-400 bg-red-50 text-red-600 animate-pulse' : 'border-slate-200 text-slate-500 hover:bg-slate-50')}>
+                    <Mic className="h-3.5 w-3.5" />
+                    {isListeningNotes ? 'Listening…' : '🎙 Voice'}
+                  </button>
                 </CardTitle>
-                <CardDescription>
-                  Add any observations, exterior defects, or housekeeping notes
-                </CardDescription>
+                <CardDescription>Add any exterior observations, defects, or housekeeping notes</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  placeholder="Describe any exterior defects observed, general housekeeping notes, or other observations..."
-                  value={generalNotes}
-                  onChange={(e) => setGeneralNotes(e.target.value)}
-                  className="min-h-[150px]"
+                <RichTextEditor
+                  content={generalNotes}
+                  onChange={setGeneralNotes}
+                  placeholder="Describe any exterior defects, general housekeeping notes, or other observations…"
                 />
 
-                {/* Attachments */}
+                {/* Day photos grid */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Attachments</label>
-                  <div className="flex flex-wrap gap-2">
-                    {attachments.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-sm hover:bg-muted/80"
-                        >
-                          <Paperclip className="h-3 w-3" />
-                          Attachment {index + 1}
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
-                          className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-2.5 w-2.5" />
+                  <Label className="text-sm font-medium">Day Photos — tap to add</Label>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={isUploading}
+                  />
+                  <div className="grid grid-cols-4 gap-2">
+                    {attachments.map((url, i) => (
+                      <div key={i} className="relative group aspect-square">
+                        <img src={url} alt="" className="w-full h-full object-cover rounded-xl border border-slate-200" />
+                        <button type="button"
+                          onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-1 right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ))}
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        multiple
-                        onChange={handleAttachmentUpload}
-                        className="hidden"
-                        disabled={isUploading}
-                      />
-                      <span className="flex items-center gap-1 px-2 py-1 border border-dashed rounded text-sm hover:bg-muted transition-colors">
-                        <Upload className="h-3 w-3" />
-                        {isUploading ? 'Uploading...' : 'Add File'}
-                      </span>
-                    </label>
+                    <button type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors">
+                      {isUploading
+                        ? <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                        : <>
+                            <Upload className="h-5 w-5" />
+                            <span className="text-xs">Add</span>
+                          </>}
+                    </button>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setStep('assets')}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Back to Assets
+              <Button variant="outline" className="flex-1" onClick={() => setStep('assets')}>
+                <ChevronLeft className="h-4 w-4 mr-1" />Back
               </Button>
-              <Button
-                className="flex-1"
-                onClick={() => setStep('review')}
-              >
-                Review
-                <ChevronRight className="h-4 w-4 ml-1" />
+              <Button className="flex-1" onClick={() => setStep('review')}>
+                Review <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step: Review */}
+        {/* ═══ REVIEW / SIGN-OFF ═══ */}
         {step === 'review' && (
-          <div className="space-y-6">
-            <div className="text-center py-4">
-              <h2 className="text-xl font-bold">Review & Submit</h2>
-              <p className="text-muted-foreground">
-                {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
+          <div className="space-y-5">
+            <div className="text-center py-3">
+              <h2 className="text-xl font-bold">Sign Off & Submit</h2>
+              <p className="text-muted-foreground text-sm">
+                {format(new Date(), 'EEEE, MMMM d, yyyy')}
               </p>
             </div>
 
-            {/* Summary Card */}
+            {/* Stats pills */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center p-4 bg-green-50 border border-green-200 rounded-2xl">
+                <p className="text-3xl font-black text-green-600">{stats.okCount}</p>
+                <p className="text-xs font-semibold text-green-600 mt-0.5">OK</p>
+              </div>
+              <div className="flex flex-col items-center p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                <p className="text-3xl font-black text-amber-600">{stats.attentionCount}</p>
+                <p className="text-xs font-semibold text-amber-600 mt-0.5">Attention</p>
+              </div>
+              <div className="flex flex-col items-center p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <p className="text-3xl font-black text-red-600">{stats.defectCount}</p>
+                <p className="text-xs font-semibold text-red-600 mt-0.5">Defects</p>
+              </div>
+            </div>
+
+            {/* Photos count */}
+            {totalPhotos > 0 && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700 font-medium">
+                📷 {totalPhotos} photo{totalPhotos !== 1 ? 's' : ''} attached
+              </div>
+            )}
+
+            {/* Dot tracker summary */}
             <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Weather</span>
-                  <span className="font-medium">
-                    {WEATHER_OPTIONS.find(w => w.value === weather)?.icon}{' '}
-                    {WEATHER_OPTIONS.find(w => w.value === weather)?.label}
-                  </span>
-                </div>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-muted-foreground font-medium mb-2">Asset findings pattern</p>
+                <DotTracker assets={activeAssets} checks={assetChecks} />
+              </CardContent>
+            </Card>
 
-                <div className="border-t pt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Asset Status</p>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">{stats.okCount}</p>
-                      <p className="text-xs text-green-600">OK</p>
-                    </div>
-                    <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                      <p className="text-2xl font-bold text-yellow-600">{stats.attentionCount}</p>
-                      <p className="text-xs text-yellow-600">Attention</p>
-                    </div>
-                    <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                      <p className="text-2xl font-bold text-red-600">{stats.defectCount}</p>
-                      <p className="text-xs text-red-600">Defects</p>
-                    </div>
+            {/* Inspector sign-off */}
+            <Card className="border-2 border-slate-200">
+              <CardContent className="pt-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
+                    {inspectorInitials}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Signing as</p>
+                    <p className="font-semibold text-sm">{inspectorName}</p>
                   </div>
                 </div>
 
-                {generalNotes && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-2">General Notes</p>
-                    <p className="text-sm whitespace-pre-wrap">{generalNotes}</p>
-                  </div>
-                )}
-
-                {attachments.length > 0 && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Attachments ({attachments.length})
-                    </p>
-                  </div>
-                )}
+                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <input
+                    type="checkbox"
+                    id="cert-check"
+                    checked={certChecked}
+                    onChange={e => setCertChecked(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-primary cursor-pointer"
+                  />
+                  <Label htmlFor="cert-check" className="text-sm text-slate-700 leading-snug cursor-pointer">
+                    I certify that this inspection report is accurate and complete to the best of my knowledge.
+                  </Label>
+                </div>
               </CardContent>
             </Card>
 
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setStep('notes')}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
+              <Button variant="outline" className="flex-1" onClick={() => setStep('notes')}>
+                <ChevronLeft className="h-4 w-4 mr-1" />Back
               </Button>
-              <Button
-                className="flex-1 bg-green-600 hover:bg-green-700"
+              <button
                 onClick={handleSubmit}
-                disabled={updateInspection.isPending}
+                disabled={!certChecked || updateInspection.isPending}
+                className={cn(
+                  'flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all',
+                  certChecked
+                    ? 'bg-green-600 hover:bg-green-500 text-white shadow-md shadow-green-200 active:scale-[0.98]'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                )}
               >
-                <Send className="h-4 w-4 mr-1" />
-                {updateInspection.isPending ? 'Submitting...' : 'Submit Inspection'}
-              </Button>
+                <Send className="h-4 w-4" />
+                {updateInspection.isPending ? 'Submitting…' : 'Submit Daily Report →'}
+              </button>
             </div>
           </div>
         )}
 
-        {/* Step: Success */}
+        {/* ═══ SUCCESS ═══ */}
         {step === 'success' && (
           <div className="space-y-6 text-center">
             <div className="py-8">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 border-4 border-green-200 mb-4 shadow-lg shadow-green-100">
+                <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-green-600 mb-2">
-                Inspection Submitted!
-              </h2>
-              <p className="text-muted-foreground max-w-sm mx-auto">
-                Your daily grounds inspection has been submitted and is now pending supervisor review.
+              <h2 className="text-3xl font-black text-green-600 mb-1">Report Submitted!</h2>
+              {submitTime && (
+                <p className="text-sm text-muted-foreground">Submitted at {submitTime}</p>
+              )}
+              <p className="text-muted-foreground mt-1 max-w-sm mx-auto text-sm">
+                Your daily grounds inspection is now pending supervisor review.
               </p>
             </div>
 
-            {/* Summary Stats */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-3 gap-4 text-center mb-4">
-                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{stats.okCount}</p>
-                    <p className="text-xs text-green-600">OK</p>
+              <CardContent className="pt-5">
+                <div className="grid grid-cols-3 gap-3 text-center mb-4">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <p className="text-2xl font-black text-green-600">{stats.okCount}</p>
+                    <p className="text-xs text-green-600 font-semibold">OK</p>
                   </div>
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-600">{stats.attentionCount}</p>
-                    <p className="text-xs text-yellow-600">Attention</p>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <p className="text-2xl font-black text-amber-600">{stats.attentionCount}</p>
+                    <p className="text-xs text-amber-600 font-semibold">Attention</p>
                   </div>
-                  <div className="p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600">{stats.defectCount}</p>
-                    <p className="text-xs text-red-600">Defects</p>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                    <p className="text-2xl font-black text-red-600">{stats.defectCount}</p>
+                    <p className="text-xs text-red-600 font-semibold">Defects</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(), 'EEEE, MMMM d, yyyy • h:mm a')}
-                </p>
               </CardContent>
             </Card>
 
-            {/* Actions */}
             <div className="space-y-3">
-              <Button
-                size="lg"
-                className="w-full h-14 text-lg gap-2"
-                onClick={() => setShowReportDialog(true)}
-              >
-                <FileText className="h-5 w-5" />
-                View Report
+              <Button size="lg" className="w-full h-14 text-lg gap-2" onClick={() => setShowReportDialog(true)}>
+                <FileText className="h-5 w-5" />View Report
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full"
-                onClick={handleGoToDashboard}
-              >
+              <Button size="lg" variant="outline" className="w-full" onClick={handleGoToDashboard}>
                 Go to Dashboard
               </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                className="w-full"
-                onClick={handleStartNewInspection}
-              >
+              <Button size="lg" variant="ghost" className="w-full" onClick={onComplete}>
                 Back to Daily Grounds
               </Button>
             </div>
@@ -708,7 +676,6 @@ export function DailyInspectionWizard({
         )}
       </div>
 
-      {/* Report Dialog */}
       <InspectionReportDialog
         open={showReportDialog}
         onOpenChange={setShowReportDialog}
@@ -716,30 +683,30 @@ export function DailyInspectionWizard({
         inspection={inspection}
       />
 
-      <Dialog
-        open={assetDialogOpen && !!selectedAsset}
-        onOpenChange={(open) => {
-          setAssetDialogOpen(open);
-          if (!open) setSelectedAssetId(null);
-        }}
-      >
+      <Dialog open={assetDialogOpen && !!selectedAsset}
+        onOpenChange={(open) => { setAssetDialogOpen(open); if (!open) setSelectedAssetId(null); }}>
         <DialogContent className="max-w-lg p-0 border-0 bg-transparent shadow-none">
-          {selectedAsset && (
-            <AssetCheckCard
-              asset={selectedAsset}
-              status={selectedCheck?.status}
-              photoUrls={selectedCheck?.photoUrls || []}
-              notes={selectedCheck?.notes || ''}
-              defectDescription={selectedCheck?.defectDescription || ''}
-              onStatusChange={(status) => handleAssetCheck('status', status)}
-              onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
-              onNotesChange={(notes) => handleAssetCheck('notes', notes)}
-              onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
-              onNext={handleSaveAssetCheck}
-              isLast
-              nextLabel="Save & Close"
-            />
-          )}
+          {selectedAsset && (() => {
+            const idx = activeAssets.findIndex(a => a.id === selectedAsset.id);
+            const nextAsset = idx < activeAssets.length - 1 ? activeAssets[idx + 1] : undefined;
+            return (
+              <AssetCheckCard
+                asset={selectedAsset}
+                nextAsset={nextAsset}
+                status={selectedCheck?.status}
+                photoUrls={selectedCheck?.photoUrls || []}
+                notes={selectedCheck?.notes || ''}
+                defectDescription={selectedCheck?.defectDescription || ''}
+                onStatusChange={(status) => handleAssetCheck('status', status)}
+                onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
+                onNotesChange={(notes) => handleAssetCheck('notes', notes)}
+                onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
+                onNext={handleSaveAssetCheck}
+                isLast={idx === activeAssets.length - 1}
+                nextLabel="Save & Close"
+              />
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
