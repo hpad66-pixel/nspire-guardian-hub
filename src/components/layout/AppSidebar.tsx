@@ -46,6 +46,7 @@ import {
   ChevronRight,
   TriangleAlert,
   BadgeCheck,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -646,6 +647,17 @@ export function AppSidebar() {
               label="Safety"
               collapsed={collapsed}
               tooltip="Safety Incident Log"
+            />
+          )}
+
+          {/* Equipment & Fleet Tracker */}
+          {isModuleEnabled('equipmentTrackerEnabled') && (
+            <NavItem
+              to="/equipment"
+              icon={<Truck />}
+              label="Equipment"
+              collapsed={collapsed}
+              tooltip="Equipment & Fleet Tracker"
             />
           )}
 

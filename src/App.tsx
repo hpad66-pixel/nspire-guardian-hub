@@ -63,6 +63,8 @@ const CredentialsDashboardPage = lazy(() => import('./pages/credentials/Credenti
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
+const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
+const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -183,6 +185,10 @@ const App = () => (
 
                               {/* Safety Module */}
                               <Route path="/safety" element={<SafetyDashboardPage />} />
+
+                              {/* Equipment & Fleet */}
+                              <Route path="/equipment" element={<EquipmentDashboardPage />} />
+                              <Route path="/equipment/setup" element={<EquipmentSetupPage />} />
                               
                               {/* 404 */}
                               <Route path="*" element={<NotFound />} />

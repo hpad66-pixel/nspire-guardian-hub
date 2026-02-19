@@ -9,6 +9,7 @@ export interface ModuleConfig {
   credentialWalletEnabled: boolean; // Credential & License Wallet
   trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
   safetyModuleEnabled: boolean;     // Safety Incident Log & OSHA recordkeeping
+  equipmentTrackerEnabled: boolean; // Equipment & Fleet Tracker
 }
 
 // NSPIRE Severity Levels
