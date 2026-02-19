@@ -3,6 +3,7 @@ import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { useClientsWithCounts } from '@/hooks/useClients';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceModules, useToggleWorkspaceModule } from '@/hooks/useWorkspaceModules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,12 @@ import {
   Briefcase,
   Home,
   Shield,
+  BadgeCheck,
+  GraduationCap,
+  ShieldAlert,
+  Truck,
+  Share2,
+  Lock,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
@@ -41,9 +48,26 @@ export default function SettingsPage() {
   const updateProperty = useUpdateProperty();
   const navigate = useNavigate();
   const { workspace, isLoading: workspaceLoading } = useWorkspaceContext();
+  const { data: wsModules, isLoading: wsModulesLoading } = useWorkspaceModules();
+  const toggleWsModule = useToggleWorkspaceModule();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
+
+  // Helper: toggle a workspace-level module field
+  const handleWsToggle = async (
+    field: Parameters<typeof toggleWsModule.mutate>[0]['field'],
+    currentValue: boolean
+  ) => {
+    if (!workspace?.id) {
+      toast.error('Workspace not loaded');
+      return;
+    }
+    toggleWsModule.mutate(
+      { workspaceId: workspace.id, field, value: !currentValue },
+      { onSuccess: () => { refetchModules(); } }
+    );
+  };
 
   const handlePropertyModuleChange = async (
     propertyId: string, 
@@ -273,6 +297,172 @@ export default function SettingsPage() {
                   checked={modules.qrScanningEnabled}
                   onCheckedChange={() => toggleModule('qrScanningEnabled')}
                   disabled={!isAdmin}
+                />
+              </div>
+
+              {/* ─── PLATFORM ADD-ON MODULES ──────────────────────────────────── */}
+              <div className="pt-2">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+                  Platform Add-On Modules
+                </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  These modules are activated based on your subscription tier. Your account admin enables them at the platform level; 
+                  workspace admins can optionally disable them for their team.
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Credential Wallet */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <BadgeCheck className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="credentialWallet" className="font-medium">Credential & License Wallet</Label>
+                      <Badge variant="outline">Add-On</Badge>
+                      {wsModules && !wsModules.platform_credential_wallet && (
+                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Track team certifications, licenses, and compliance credentials
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="credentialWallet"
+                  checked={wsModules?.credential_wallet_enabled ?? true}
+                  onCheckedChange={() =>
+                    handleWsToggle('credential_wallet_enabled', wsModules?.credential_wallet_enabled ?? true)
+                  }
+                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_credential_wallet : false)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Training Hub */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <GraduationCap className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="trainingHub" className="font-medium">Training Hub</Label>
+                      <Badge variant="outline">Add-On</Badge>
+                      {wsModules && !wsModules.platform_training_hub && (
+                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Course assignments, completion tracking, and compliance training
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="trainingHub"
+                  checked={wsModules?.training_hub_enabled ?? true}
+                  onCheckedChange={() =>
+                    handleWsToggle('training_hub_enabled', wsModules?.training_hub_enabled ?? true)
+                  }
+                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_training_hub : false)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Safety Module */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <ShieldAlert className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="safetyModule" className="font-medium">Safety Incident Log</Label>
+                      <Badge variant="outline">Add-On</Badge>
+                      {wsModules && !wsModules.platform_safety_module && (
+                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      OSHA recordkeeping, incident reporting, and safety classification
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="safetyModule"
+                  checked={wsModules?.safety_module_enabled ?? true}
+                  onCheckedChange={() =>
+                    handleWsToggle('safety_module_enabled', wsModules?.safety_module_enabled ?? true)
+                  }
+                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_safety_module : false)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Equipment Tracker */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Truck className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="equipmentTracker" className="font-medium">Equipment Tracker</Label>
+                      <Badge variant="outline">Add-On</Badge>
+                      {wsModules && !wsModules.platform_equipment_tracker && (
+                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Fleet, tools, and equipment management with document expiry tracking
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="equipmentTracker"
+                  checked={wsModules?.equipment_tracker_enabled ?? true}
+                  onCheckedChange={() =>
+                    handleWsToggle('equipment_tracker_enabled', wsModules?.equipment_tracker_enabled ?? true)
+                  }
+                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_equipment_tracker : false)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Client Portals */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                    <Share2 className="h-5 w-5 text-teal-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="clientPortal" className="font-medium">Client Portals</Label>
+                      <Badge variant="outline">Add-On</Badge>
+                      {wsModules && !wsModules.platform_client_portal && (
+                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      White-labeled portals for sharing compliance data with clients and stakeholders
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="clientPortal"
+                  checked={wsModules?.client_portal_enabled ?? true}
+                  onCheckedChange={() =>
+                    handleWsToggle('client_portal_enabled', wsModules?.client_portal_enabled ?? true)
+                  }
+                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_client_portal : false)}
                 />
               </div>
               </CardContent>
