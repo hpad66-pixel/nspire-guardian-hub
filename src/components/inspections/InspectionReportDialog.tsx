@@ -98,53 +98,15 @@ export function InspectionReportDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+        {/* Simplified header — title + date only */}
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle>Daily Grounds Inspection Report</DialogTitle>
-              <DialogDescription>
-                {propertyName} • {format(parseISO(inspection.inspection_date), 'MMMM d, yyyy')}
-              </DialogDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                disabled={isPrinting || isLoading}
-              >
-                {isPrinting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Printer className="h-4 w-4" />
-                )}
-                <span className="hidden sm:inline ml-2">Print</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleDownloadPDF}
-                disabled={isGenerating || isLoading}
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                <Download className="h-4 w-4" />
-                )}
-                <span className="hidden sm:inline ml-2">Download PDF</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => setShowEmailDialog(true)}
-                disabled={isLoading}
-              >
-                <Mail className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Email</span>
-              </Button>
-            </div>
-          </div>
+          <DialogTitle>Daily Grounds Inspection Report</DialogTitle>
+          <DialogDescription>
+            {propertyName} • {format(parseISO(inspection.inspection_date), 'MMMM d, yyyy')}
+          </DialogDescription>
         </DialogHeader>
 
+        {/* Scrollable report preview */}
         <ScrollArea className="flex-1">
           {isLoading ? (
             <div className="p-8 space-y-6">
@@ -153,7 +115,7 @@ export function InspectionReportDialog({
               <Skeleton className="h-48 w-full" />
             </div>
           ) : (
-            <div className="bg-gray-100 p-4 sm:p-8">
+            <div className="bg-muted p-4 sm:p-8">
               <div className="shadow-xl rounded-lg overflow-hidden">
                 <PrintableDailyInspectionReport
                   id="printable-inspection-report"
@@ -167,6 +129,44 @@ export function InspectionReportDialog({
             </div>
           )}
         </ScrollArea>
+
+        {/* Pinned bottom action bar — three equal columns */}
+        <div className="border-t px-6 py-3 flex gap-3 flex-shrink-0 bg-background">
+          <Button
+            variant="outline"
+            className="flex-1 gap-2"
+            onClick={handlePrint}
+            disabled={isPrinting || isLoading}
+          >
+            {isPrinting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            {isPrinting ? 'Printing…' : 'Print'}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 gap-2"
+            onClick={handleDownloadPDF}
+            disabled={isGenerating || isLoading}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isGenerating ? 'Saving…' : 'Save PDF'}
+          </Button>
+          <Button
+            className="flex-1 gap-2"
+            onClick={() => setShowEmailDialog(true)}
+            disabled={isLoading}
+          >
+            <Mail className="h-4 w-4" />
+            Email Report
+          </Button>
+        </div>
 
         {/* Email Dialog */}
         <SendReportEmailDialog
