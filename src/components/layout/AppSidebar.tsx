@@ -47,6 +47,7 @@ import {
   TriangleAlert,
   BadgeCheck,
   Truck,
+  Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -658,6 +659,17 @@ export function AppSidebar() {
               label="Equipment"
               collapsed={collapsed}
               tooltip="Equipment & Fleet Tracker"
+            />
+          )}
+
+          {/* Client Portals (admin/manager only, if module enabled) */}
+          {isModuleEnabled('clientPortalEnabled') && isAdmin && (
+            <NavItem
+              to="/portals"
+              icon={<Share2 />}
+              label="Portals"
+              collapsed={collapsed}
+              tooltip="Client Portals"
             />
           )}
 
