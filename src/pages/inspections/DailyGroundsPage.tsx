@@ -15,13 +15,15 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 import { format, parseISO } from 'date-fns';
-import { Download, Printer, Mail, FileText, PlusCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Download, Printer, Mail, FileText, PlusCircle, Loader2, CheckCircle2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 
 export default function DailyGroundsPage() {
   // ── All hooks at the top level, before any early returns ──
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [showWizard, setShowWizard] = useState(false);
+  const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [showAddendum, setShowAddendum] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -245,8 +247,8 @@ export default function DailyGroundsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 gap-1.5 text-xs"
-                  onClick={() => setShowReportDialog(true)}
+                  onClick={() => setShowFullReport(true)}
+                  className="flex-1"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   View Full Report
@@ -255,13 +257,22 @@ export default function DailyGroundsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 gap-1.5 text-xs"
                     onClick={() => setShowAddendum(true)}
+                    className="flex-1"
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     Add Addendum
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIncidentSheetOpen(true)}
+                  className="flex-1 border-amber-400 text-amber-600 hover:bg-amber-50"
+                >
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                  Log Incident
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -308,6 +319,14 @@ export default function DailyGroundsPage() {
           statusSummary={statusSummary}
         />
       )}
+
+      <LogIncidentSheet
+        open={incidentSheetOpen}
+        onOpenChange={setIncidentSheetOpen}
+        sourceType="grounds_inspection"
+        sourceId={todayInspection?.id}
+        sourceName={`${propertyName} — ${todayInspection ? format(parseISO(todayInspection.inspection_date), 'MMM d, yyyy') : 'Today'}`}
+      />
     </div>
   );
 }

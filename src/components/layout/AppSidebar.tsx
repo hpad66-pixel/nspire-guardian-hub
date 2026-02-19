@@ -44,6 +44,7 @@ import {
   MessageCircle,
   Phone,
   ChevronRight,
+  TriangleAlert,
   BadgeCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -634,6 +635,17 @@ export function AppSidebar() {
               label="Credentials"
               collapsed={collapsed}
               tooltip="Credential Compliance"
+            />
+          )}
+
+          {/* Safety Module */}
+          {isModuleEnabled('safetyModuleEnabled') && (
+            <NavItem
+              to="/safety"
+              icon={<TriangleAlert />}
+              label="Safety"
+              collapsed={collapsed}
+              tooltip="Safety Incident Log"
             />
           )}
 

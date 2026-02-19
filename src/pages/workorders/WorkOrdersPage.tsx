@@ -12,11 +12,13 @@ import {
   Calendar,
   User,
   Download,
+  TriangleAlert,
 } from 'lucide-react';
 import { useWorkOrdersByProperty, type WorkOrder } from '@/hooks/useWorkOrders';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailSheet';
+import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { useDataExport } from '@/hooks/useDataExport';
@@ -27,6 +29,7 @@ export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [searchParams] = useSearchParams();
@@ -220,6 +223,10 @@ export default function WorkOrdersPage() {
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
+        <Button variant="outline" onClick={() => setIncidentSheetOpen(true)} className="w-full sm:w-auto border-amber-400 text-amber-600 hover:bg-amber-50">
+          <TriangleAlert className="h-4 w-4 mr-2 text-amber-500" />
+          Log Incident
+        </Button>
       </div>
 
       {/* Work Orders List */}
@@ -317,6 +324,14 @@ export default function WorkOrdersPage() {
         workOrder={selectedWorkOrder}
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
+      />
+
+      <LogIncidentSheet
+        open={incidentSheetOpen}
+        onOpenChange={setIncidentSheetOpen}
+        sourceType="work_order"
+        sourceId={selectedWorkOrder?.id}
+        sourceName={selectedWorkOrder?.title ?? 'Work Order'}
       />
     </div>
   );
