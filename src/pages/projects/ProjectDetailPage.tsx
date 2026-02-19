@@ -778,7 +778,7 @@ export default function ProjectDetailPage() {
                   </div>
                 </TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
-                <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} /></TabsContent>
+                <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
                 <TabsContent value="financials" className="mt-0"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
                 <TabsContent value="rfis" className="mt-0"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="submittals" className="mt-0"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
@@ -1056,7 +1056,7 @@ export default function ProjectDetailPage() {
                 </div>
               </TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
-              <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} /></TabsContent>
+              <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
               <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
               <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
