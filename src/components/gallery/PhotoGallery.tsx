@@ -1,5 +1,5 @@
 import { useState, useMemo, forwardRef } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { Images, Plus, Search, Grid3x3, List, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,18 +57,17 @@ const sourceShortLabels: Record<string, string> = {
 function groupByMonth(photos: GalleryPhoto[]): Array<{ monthKey: string; monthLabel: string; photos: GalleryPhoto[] }> {
   const groups = new Map<string, GalleryPhoto[]>();
   for (const photo of photos) {
-    let key = '';
-    try {
-      key = format(parseISO(photo.taken_at), 'yyyy-MM');
-    } catch {
-      key = photo.taken_at?.slice(0, 7) || 'unknown';
-    }
+    const raw = photo.taken_at || '';
+    const key = raw.slice(0, 7) || 'unknown';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(photo);
   }
   return Array.from(groups.entries()).map(([key, photos]) => {
     let label = key;
-    try { label = format(parseISO(key + '-01'), 'MMMM yyyy'); } catch {}
+    try {
+      const d = new Date(key + '-01T12:00:00');
+      label = format(d, 'MMMM yyyy');
+    } catch {}
     return { monthKey: key, monthLabel: label, photos };
   });
 }
@@ -76,13 +75,16 @@ function groupByMonth(photos: GalleryPhoto[]): Array<{ monthKey: string; monthLa
 function groupByDay(photos: GalleryPhoto[]): Array<{ dayKey: string; dayLabel: string; photos: GalleryPhoto[] }> {
   const groups = new Map<string, GalleryPhoto[]>();
   for (const photo of photos) {
-    const key = photo.taken_at || 'unknown';
+    const key = photo.taken_at?.slice(0, 10) || 'unknown';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(photo);
   }
   return Array.from(groups.entries()).map(([key, photos]) => {
     let label = key;
-    try { label = format(parseISO(key), 'EEEE, MMMM d'); } catch {}
+    try {
+      const d = new Date(key + 'T12:00:00');
+      label = format(d, 'EEEE, MMMM d');
+    } catch {}
     return { dayKey: key, dayLabel: label, photos };
   });
 }
