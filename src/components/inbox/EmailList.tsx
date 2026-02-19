@@ -13,6 +13,7 @@ import {
   Mail,
   Users,
   Filter,
+  PenLine,
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday, isThisWeek } from "date-fns";
 import { ReportEmail } from "@/hooks/useReportEmails";
@@ -67,6 +68,8 @@ export function EmailList({
       result = result.filter((e) => (e as any).is_archived && !(e as any).is_deleted);
     } else if (folder === "trash") {
       result = result.filter((e) => (e as any).is_deleted);
+    } else if (folder === "drafts") {
+      result = []; // Drafts are in localStorage — shown via CTA in empty state
     } else if (folder === "all") {
       result = result.filter((e) => !(e as any).is_archived && !(e as any).is_deleted);
     }
@@ -220,11 +223,19 @@ export function EmailList({
         {filteredEmails.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
             <div className="p-4 rounded-full bg-muted mb-4">
-              <Mail className="h-8 w-8 text-muted-foreground" />
+              {folder === "drafts" ? (
+                <PenLine className="h-8 w-8 text-muted-foreground" />
+              ) : (
+                <Mail className="h-8 w-8 text-muted-foreground" />
+              )}
             </div>
-            <h3 className="text-lg font-medium mb-1">No emails</h3>
+            <h3 className="text-lg font-medium mb-1">
+              {folder === "drafts" ? "No saved drafts" : "No emails"}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              {searchQuery
+              {folder === "drafts"
+                ? "Start composing an email — drafts auto-save every 30 seconds"
+                : searchQuery
                 ? "No emails match your search"
                 : "No emails in this folder"}
             </p>
