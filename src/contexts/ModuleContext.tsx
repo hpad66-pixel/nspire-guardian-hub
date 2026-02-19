@@ -23,6 +23,7 @@ const defaultModules: ModuleConfig = {
   emailInboxEnabled: false,
   qrScanningEnabled: false,
   credentialWalletEnabled: false,
+  trainingHubEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -46,6 +47,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     emailInboxEnabled: null,
     qrScanningEnabled: null,
     credentialWalletEnabled: null,
+    trainingHubEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         emailInboxEnabled: true, // Always enabled - inbox is functional
         qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
         credentialWalletEnabled: true, // Always enabled for now
+        trainingHubEnabled: true, // Always enabled for now
       };
 
       setTenantModules(tenant);
@@ -83,6 +86,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           emailInboxEnabled: null,
           qrScanningEnabled: null,
           credentialWalletEnabled: null,
+          trainingHubEnabled: null,
         });
         return;
       }
@@ -102,6 +106,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         emailInboxEnabled: null,
         qrScanningEnabled: null,
         credentialWalletEnabled: null,
+        trainingHubEnabled: null,
       };
 
       (overrides || []).forEach((row) => {
