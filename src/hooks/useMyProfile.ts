@@ -68,14 +68,11 @@ export function useUpdateMyProfile() {
     mutationFn: async (updates: Partial<Omit<MyProfile, 'id' | 'user_id' | 'updated_at'>>) => {
       const { data, error } = await supabase
         .from('profiles')
-        .upsert(
-          {
-            user_id: user!.id,
-            ...updates,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        )
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user!.id)
         .select()
         .single();
 
