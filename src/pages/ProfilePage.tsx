@@ -16,11 +16,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Camera, User, Lock, Loader2 } from 'lucide-react';
+import { Camera, User, Lock, Loader2, BadgeCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
+import { MyCredentialsList } from '@/components/credentials/MyCredentialsList';
+import { useModules } from '@/contexts/ModuleContext';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -53,6 +55,7 @@ const roleColors: Record<AppRole, string> = {
 };
 
 export default function ProfilePage() {
+  const { isModuleEnabled } = useModules();
   const { user } = useAuth();
   const { data: profile, isLoading } = useMyProfile();
   const { data: currentRole } = useCurrentUserRole();
@@ -166,7 +169,12 @@ export default function ProfilePage() {
         </div>
 
         <Tabs defaultValue="profile">
-          <TabsList className="mb-6 grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
+          <TabsList className={cn(
+            'mb-6 grid w-full',
+            isModuleEnabled('credentialWalletEnabled')
+              ? 'grid-cols-3 sm:w-auto sm:inline-flex'
+              : 'grid-cols-2 sm:w-auto sm:inline-flex'
+          )}>
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -175,6 +183,12 @@ export default function ProfilePage() {
               <Lock className="h-4 w-4" />
               Security
             </TabsTrigger>
+            {isModuleEnabled('credentialWalletEnabled') && (
+              <TabsTrigger value="credentials" className="gap-2">
+                <BadgeCheck className="h-4 w-4" />
+                Credentials
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ── PROFILE TAB ─────────────────────────────────────────────── */}
@@ -512,6 +526,13 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ── CREDENTIALS TAB ─────────────────────────────────────────── */}
+          {isModuleEnabled('credentialWalletEnabled') && (
+            <TabsContent value="credentials">
+              <MyCredentialsList />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

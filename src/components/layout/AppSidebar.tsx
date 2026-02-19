@@ -44,6 +44,7 @@ import {
   MessageCircle,
   Phone,
   ChevronRight,
+  BadgeCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -623,6 +624,17 @@ export function AppSidebar() {
           {/* QR Scanner (if module enabled) */}
           {isModuleEnabled('qrScanningEnabled') && (
             <NavItem to="/qr-scanner" icon={<QrCode />} label="QR Scanner" collapsed={collapsed} />
+          )}
+
+          {/* Credentials (admin only, if module enabled) */}
+          {isModuleEnabled('credentialWalletEnabled') && isAdmin && (
+            <NavItem
+              to="/credentials"
+              icon={<BadgeCheck />}
+              label="Credentials"
+              collapsed={collapsed}
+              tooltip="Credential Compliance"
+            />
           )}
 
           {/* Documents */}

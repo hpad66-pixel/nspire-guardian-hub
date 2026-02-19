@@ -58,6 +58,8 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ClientPortalPage = lazy(() => import('./pages/portal/ClientPortalPage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
 const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
+const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
+const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,8 +111,9 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                    <Route path="/portal/:projectId" element={<ClientPortalPage />} />
-                    
+                     <Route path="/portal/:projectId" element={<ClientPortalPage />} />
+                     <Route path="/share/credential/:token" element={<CredentialSharePage />} />
+                     
                     {/* Protected Routes */}
                     <Route
                       path="/*"
@@ -164,7 +167,10 @@ const App = () => (
                               
                               {/* Profile */}
                               <Route path="/profile" element={<ProfilePage />} />
-                              
+
+                              {/* Credentials */}
+                              <Route path="/credentials" element={<CredentialsDashboardPage />} />
+
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
                               
