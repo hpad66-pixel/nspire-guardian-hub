@@ -26,6 +26,7 @@ const defaultModules: ModuleConfig = {
   trainingHubEnabled: false,
   safetyModuleEnabled: false,
   equipmentTrackerEnabled: false,
+  clientPortalEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -52,6 +53,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     trainingHubEnabled: null,
     safetyModuleEnabled: null,
     equipmentTrackerEnabled: null,
+    clientPortalEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);

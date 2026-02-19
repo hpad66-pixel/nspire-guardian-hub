@@ -10,6 +10,7 @@ export interface ModuleConfig {
   trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
   safetyModuleEnabled: boolean;     // Safety Incident Log & OSHA recordkeeping
   equipmentTrackerEnabled: boolean; // Equipment & Fleet Tracker
+  clientPortalEnabled: boolean;     // Client Portal (white-labeled sharing)
 }
 
 // NSPIRE Severity Levels

@@ -466,6 +466,80 @@ export type Database = {
           },
         ]
       }
+      client_portals: {
+        Row: {
+          brand_accent_color: string | null
+          brand_logo_url: string | null
+          client_contact_email: string | null
+          client_contact_name: string | null
+          client_name: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          pending_requests_count: number
+          portal_slug: string
+          portal_type: string
+          project_id: string | null
+          shared_modules: string[]
+          status: string
+          updated_at: string
+          welcome_message: string | null
+          workspace_id: string
+        }
+        Insert: {
+          brand_accent_color?: string | null
+          brand_logo_url?: string | null
+          client_contact_email?: string | null
+          client_contact_name?: string | null
+          client_name?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pending_requests_count?: number
+          portal_slug: string
+          portal_type?: string
+          project_id?: string | null
+          shared_modules?: string[]
+          status?: string
+          updated_at?: string
+          welcome_message?: string | null
+          workspace_id: string
+        }
+        Update: {
+          brand_accent_color?: string | null
+          brand_logo_url?: string | null
+          client_contact_email?: string | null
+          client_contact_name?: string | null
+          client_name?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pending_requests_count?: number
+          portal_slug?: string
+          portal_type?: string
+          project_id?: string | null
+          shared_modules?: string[]
+          status?: string
+          updated_at?: string
+          welcome_message?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -2753,6 +2827,119 @@ export type Database = {
           },
         ]
       }
+      portal_access: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_at: string
+          invited_by: string
+          is_active: boolean
+          last_login_at: string | null
+          login_count: number
+          magic_link_expires_at: string | null
+          magic_link_token: string | null
+          name: string | null
+          password_hash: string | null
+          portal_id: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string
+          invited_by: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          name?: string | null
+          password_hash?: string | null
+          portal_id: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          name?: string | null
+          password_hash?: string | null
+          portal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_access_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "portal_access_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_activity: {
+        Row: {
+          activity_type: string
+          actor_email: string
+          actor_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          module: string | null
+          portal_id: string
+          record_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          actor_email: string
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string | null
+          portal_id: string
+          record_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          actor_email?: string
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string | null
+          portal_id?: string
+          record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_activity_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_client_uploads: {
         Row: {
           created_at: string
@@ -2793,6 +2980,123 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_document_requests: {
+        Row: {
+          created_at: string
+          fulfilled_module: string | null
+          fulfilled_record_id: string | null
+          id: string
+          message: string
+          module: string | null
+          portal_id: string
+          request_type: string
+          requested_by_email: string
+          requested_by_name: string | null
+          responded_at: string | null
+          responded_by: string | null
+          response_message: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fulfilled_module?: string | null
+          fulfilled_record_id?: string | null
+          id?: string
+          message: string
+          module?: string | null
+          portal_id: string
+          request_type?: string
+          requested_by_email: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_message?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fulfilled_module?: string | null
+          fulfilled_record_id?: string | null
+          id?: string
+          message?: string
+          module?: string | null
+          portal_id?: string
+          request_type?: string
+          requested_by_email?: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_message?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_document_requests_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_document_requests_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      portal_exclusions: {
+        Row: {
+          created_at: string
+          excluded_by: string
+          id: string
+          module: string
+          portal_id: string
+          reason: string | null
+          record_id: string
+        }
+        Insert: {
+          created_at?: string
+          excluded_by: string
+          id?: string
+          module: string
+          portal_id: string
+          reason?: string | null
+          record_id: string
+        }
+        Update: {
+          created_at?: string
+          excluded_by?: string
+          id?: string
+          module?: string
+          portal_id?: string
+          reason?: string | null
+          record_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_exclusions_excluded_by_fkey"
+            columns: ["excluded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "portal_exclusions_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
             referencedColumns: ["id"]
           },
         ]

@@ -65,6 +65,12 @@ const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPa
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
 const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
 const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
+const PortalsDashboardPage = lazy(() => import('./pages/portals/PortalsDashboardPage'));
+const PortalManagePage = lazy(() => import('./pages/portals/PortalManagePage'));
+const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
+const PortalAuthPage = lazy(() => import('./pages/portal/PortalAuthPage'));
+const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'));
+const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
