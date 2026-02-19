@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical,
-  BarChart2, Zap,
+  BarChart2, Zap, Images,
 } from 'lucide-react';
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -225,18 +225,32 @@ export default function PropertiesPage() {
                           </Badge>
                         )}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1.5"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/properties/${property.id}/analytics`);
-                        }}
-                      >
-                        <BarChart2 className="h-3 w-3" />
-                        Analytics
-                      </Button>
+                      <div className="flex gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/properties/${property.id}/gallery`);
+                          }}
+                        >
+                          <Images className="h-3 w-3" />
+                          Gallery
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/properties/${property.id}/analytics`);
+                          }}
+                        >
+                          <BarChart2 className="h-3 w-3" />
+                          Analytics
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

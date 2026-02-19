@@ -22,8 +22,9 @@ import {
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
   MoreHorizontal, Archive, Trash2,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
-  FileSpreadsheet, ChevronDown, ChevronRight, Users,
+  FileSpreadsheet, ChevronDown, ChevronRight, Users, Images,
 } from 'lucide-react';
+import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { ProjectTeamSheet } from '@/components/projects/ProjectTeamSheet';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -242,6 +243,7 @@ export default function ProjectDetailPage() {
     { value: 'overview',     label: 'Overview',     shortLabel: 'Overview', icon: LayoutDashboard, group: 'core',       badge: null as number | null },
     { value: 'schedule',     label: 'Schedule',     shortLabel: 'Schedule', icon: CalendarDays,    group: 'core',       badge: null as number | null },
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
+    { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
     { value: 'financials',   label: 'Financials',   shortLabel: 'Finance',  icon: Wallet,          group: 'core',       badge: null as number | null },
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
@@ -1057,6 +1059,13 @@ export default function ProjectDetailPage() {
               </TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
               <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
+              <TabsContent value="gallery" className="p-0 h-[calc(100vh-280px)]">
+                <PhotoGallery
+                  context="project"
+                  contextId={id!}
+                  contextName={project.name}
+                />
+              </TabsContent>
               <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
               <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
