@@ -16,7 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Camera, User, Lock, Loader2, BadgeCheck } from 'lucide-react';
+import { Camera, User, Lock, Loader2, BadgeCheck, GraduationCap } from 'lucide-react';
+import { MyTrainingDashboard } from '@/components/training/MyTrainingDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -171,9 +172,19 @@ export default function ProfilePage() {
         <Tabs defaultValue="profile">
           <TabsList className={cn(
             'mb-6 grid w-full',
-            isModuleEnabled('credentialWalletEnabled')
+            [
+              true, // profile + security always
+              isModuleEnabled('credentialWalletEnabled'),
+              isModuleEnabled('trainingHubEnabled'),
+            ].filter(Boolean).length === 2
+              ? 'grid-cols-2 sm:w-auto sm:inline-flex'
+              : [
+                  true,
+                  isModuleEnabled('credentialWalletEnabled'),
+                  isModuleEnabled('trainingHubEnabled'),
+                ].filter(Boolean).length === 3
               ? 'grid-cols-3 sm:w-auto sm:inline-flex'
-              : 'grid-cols-2 sm:w-auto sm:inline-flex'
+              : 'grid-cols-4 sm:w-auto sm:inline-flex'
           )}>
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
@@ -187,6 +198,12 @@ export default function ProfilePage() {
               <TabsTrigger value="credentials" className="gap-2">
                 <BadgeCheck className="h-4 w-4" />
                 Credentials
+              </TabsTrigger>
+            )}
+            {isModuleEnabled('trainingHubEnabled') && (
+              <TabsTrigger value="training" className="gap-2">
+                <GraduationCap className="h-4 w-4" />
+                Training
               </TabsTrigger>
             )}
           </TabsList>
@@ -531,6 +548,13 @@ export default function ProfilePage() {
           {isModuleEnabled('credentialWalletEnabled') && (
             <TabsContent value="credentials">
               <MyCredentialsList />
+            </TabsContent>
+          )}
+
+          {/* ── TRAINING TAB ─────────────────────────────────────────────── */}
+          {isModuleEnabled('trainingHubEnabled') && (
+            <TabsContent value="training">
+              <MyTrainingDashboard />
             </TabsContent>
           )}
         </Tabs>
