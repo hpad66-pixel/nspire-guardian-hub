@@ -32,7 +32,7 @@ Access is role-based: higher roles inherit broader permissions and can manage lo
 - Document Center is restricted to admin/owner operations (as intended).
 - Documents sent from Eros are uploaded into the Documents section under Organization.
 - CRM is implemented inside the app and follows similar role-based access control.
-- Site is hosted on Cloudflare at `pm.apas.ai`.
+- Site is hosted on Cloudflare at `apasos.ai`.
 - Google Drive replica folder structure has been created.
 - Issue tab is responsive and working.
 
@@ -51,4 +51,4 @@ Access is role-based: higher roles inherit broader permissions and can manage lo
 - Organization tab exists but is static; needs real tenant/org settings and placement confirmation.
 
 ## Deployment Status
-- Site is already hosted on Cloudflare at `pm.apas.ai`.
+- Site is already hosted on Cloudflare at `apasos.ai`.
