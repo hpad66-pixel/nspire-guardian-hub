@@ -11,56 +11,24 @@ const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 const features = [
-  {
-    icon: ShieldCheck,
-    color: '#10B981',
-    label: 'NSPIRE Compliance',
-    desc: 'Real-time scoring, defect tracking & audit-ready reporting',
-  },
-  {
-    icon: HardHat,
-    color: '#1D6FE8',
-    label: 'Construction Projects',
-    desc: 'RFIs, submittals, daily reports & client portals in one place',
-  },
-  {
-    icon: ClipboardList,
-    color: '#8B5CF6',
-    label: 'Daily Inspections',
-    desc: 'Grounds walkthroughs with photo evidence and voice notes',
-  },
-  {
-    icon: Wrench,
-    color: '#F59E0B',
-    label: 'Maintenance & Work Orders',
-    desc: 'Issue tracking from request to resolution, fully traced',
-  },
-  {
-    icon: BarChart3,
-    color: '#F43F5E',
-    label: 'Operations Intelligence',
-    desc: 'Cross-module dashboards for every role in your org',
-  },
-  {
-    icon: Building2,
-    color: '#1D6FE8',
-    label: 'Multi-Property Management',
-    desc: 'Manage your entire portfolio from a single command center',
-  },
+  { icon: ShieldCheck,  color: 'hsl(var(--success))',            label: 'NSPIRE Compliance',          desc: 'Real-time scoring, defect tracking & audit-ready reports' },
+  { icon: HardHat,      color: 'hsl(var(--accent))',             label: 'Construction Projects',       desc: 'RFIs, submittals, daily reports & client portals in one place' },
+  { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Daily Inspections',           desc: 'Grounds walkthroughs with photo evidence and voice notes' },
+  { icon: Wrench,       color: 'hsl(var(--warning))',            label: 'Maintenance & Work Orders',   desc: 'Issue tracking from request to resolution, fully traced' },
+  { icon: BarChart3,    color: 'hsl(var(--severity-severe))',    label: 'Operations Intelligence',     desc: 'Cross-module dashboards for every role in your org' },
+  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from a single command center' },
 ];
 
 export default function AuthPage() {
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail, setLoginEmail]       = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   useEffect(() => {
-    if (user && !loading) {
-      navigate('/dashboard');
-    }
+    if (user && !loading) navigate('/dashboard');
   }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -69,20 +37,13 @@ export default function AuthPage() {
       emailSchema.parse(loginEmail);
       passwordSchema.parse(loginPassword);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
-        return;
-      }
+      if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
     }
     setIsSubmitting(true);
     const { error } = await signIn(loginEmail, loginPassword);
     setIsSubmitting(false);
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password. Please try again.');
-      } else {
-        toast.error(error.message);
-      }
+      toast.error(error.message.includes('Invalid login credentials') ? 'Invalid email or password. Please try again.' : error.message);
     } else {
       toast.success('Welcome back!');
       navigate('/dashboard');
@@ -92,12 +53,8 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
-      });
-      if (error) {
-        toast.error('Failed to sign in with Google. Please try again.');
-      }
+      const { error } = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
+      if (error) toast.error('Failed to sign in with Google. Please try again.');
     } catch {
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
@@ -107,101 +64,82 @@ export default function AuthPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0C12' }}>
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#1D6FE8' }} />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0A0C12' }}>
-      {/* ── Left panel: APAS OS Brand & Features ── */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden flex-col justify-between p-12 xl:p-16"
-        style={{ background: 'linear-gradient(135deg, #0A0C12 0%, #10131D 60%, #161B2B 100%)' }}>
+    <div className="min-h-screen flex bg-background">
 
-        {/* Subtle grid overlay */}
-        <div className="absolute inset-0 pointer-events-none"
+      {/* ── LEFT: Brand panel ── */}
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-primary">
+
+        {/* Subtle grid */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-20"
           style={{
-            backgroundImage: 'linear-gradient(rgba(29,111,232,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(29,111,232,0.04) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
-          }} />
-
-        {/* Sapphire glow orbs */}
-        <div className="absolute top-1/4 right-0 w-[28rem] h-[28rem] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(29,111,232,0.12) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-        <div className="absolute bottom-1/4 left-0 w-[20rem] h-[20rem] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+            backgroundImage:
+              'linear-gradient(hsl(var(--accent)/0.15) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--accent)/0.15) 1px, transparent 1px)',
+            backgroundSize: '52px 52px',
+          }}
+        />
+        {/* Glow orbs */}
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, hsl(var(--accent)/0.18) 0%, transparent 70%)', filter: 'blur(56px)' }} />
+        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, hsl(var(--module-projects)/0.14) 0%, transparent 70%)', filter: 'blur(48px)' }} />
 
         {/* Brand lockup */}
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: -18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* APAS OS Logo mark */}
-          <div className="flex items-end gap-3 mb-10">
-            <div className="flex items-center gap-1">
-              {/* APAS */}
-              <span
-                className="font-black tracking-tight leading-none"
-                style={{
-                  fontSize: '3.5rem',
-                  color: '#F1F5FF',
-                  letterSpacing: '-0.03em',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                }}
-              >
-                APAS
-              </span>
-              {/* OS — distinct treatment */}
-              <div className="flex items-end mb-1 ml-1">
-                <span
-                  className="font-black leading-none"
-                  style={{
-                    fontSize: '3.5rem',
-                    background: 'linear-gradient(135deg, #1D6FE8 0%, #60a5fa 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    letterSpacing: '-0.03em',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                  }}
-                >
-                  OS
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* OS pill badge */}
-          <div className="flex items-center gap-2 mb-6">
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase"
+          {/* APAS OS wordmark */}
+          <div className="flex items-end gap-0 mb-8 select-none">
+            <span
+              className="font-black leading-none tracking-tight text-primary-foreground"
+              style={{ fontSize: 'clamp(3rem, 4.5vw, 4rem)', letterSpacing: '-0.04em' }}
+            >
+              APAS
+            </span>
+            <span
+              className="font-black leading-none tracking-tight ml-2"
               style={{
-                background: 'rgba(29,111,232,0.15)',
-                border: '1px solid rgba(29,111,232,0.35)',
-                color: '#60a5fa',
+                fontSize: 'clamp(3rem, 4.5vw, 4rem)',
+                letterSpacing: '-0.04em',
+                background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--module-inspections)) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              OS
+            </span>
+          </div>
+
+          {/* OS descriptor badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-7"
+            style={{
+              background: 'hsl(var(--accent)/0.18)',
+              border: '1px solid hsl(var(--accent)/0.30)',
+            }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            <span className="text-xs font-semibold tracking-widest uppercase text-accent">
               Operating System for Property &amp; Construction
-            </div>
+            </span>
           </div>
 
           {/* Tagline */}
-          <h2
-            className="font-bold leading-tight mb-4"
-            style={{
-              fontSize: 'clamp(1.75rem, 2.5vw, 2.5rem)',
-              color: '#F1F5FF',
-              letterSpacing: '-0.02em',
-            }}
-          >
+          <h2 className="font-bold text-primary-foreground mb-4 leading-tight"
+            style={{ fontSize: 'clamp(1.8rem, 2.8vw, 2.6rem)', letterSpacing: '-0.02em' }}>
             Run the Job.{' '}
-            <span style={{ color: '#10B981' }}>Pass the Audit.</span>
+            <span className="text-success">Pass the Audit.</span>
           </h2>
-          <p style={{ color: '#6B7A99', fontSize: '1.05rem', maxWidth: '440px', lineHeight: 1.65 }}>
+          <p className="text-primary-foreground/60 text-base leading-relaxed max-w-md">
             One integrated platform for inspections, compliance, project management,
             maintenance, and team operations — built for property managers and construction teams.
           </p>
@@ -211,112 +149,92 @@ export default function AuthPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.25 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           className="relative z-10 grid grid-cols-2 gap-3 mt-10"
         >
           {features.map((f, i) => (
             <motion.div
               key={f.label}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 + i * 0.07 }}
+              transition={{ duration: 0.35, delay: 0.3 + i * 0.07 }}
               className="flex items-start gap-3 p-3.5 rounded-xl"
               style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'hsl(var(--primary-foreground)/0.04)',
+                border: '1px solid hsl(var(--primary-foreground)/0.08)',
               }}
             >
               <div
                 className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: `${f.color}18`, border: `1px solid ${f.color}30` }}
+                style={{ background: `color-mix(in srgb, ${f.color} 15%, transparent)` }}
               >
-                <f.icon style={{ color: f.color, width: 16, height: 16 }} />
+                <f.icon style={{ color: f.color, width: 15, height: 15 }} />
               </div>
               <div>
-                <p className="text-sm font-semibold mb-0.5" style={{ color: '#F1F5FF' }}>{f.label}</p>
-                <p className="text-xs leading-relaxed" style={{ color: '#6B7A99' }}>{f.desc}</p>
+                <p className="text-sm font-semibold text-primary-foreground mb-0.5">{f.label}</p>
+                <p className="text-xs text-primary-foreground/50 leading-relaxed">{f.desc}</p>
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Footer attribution */}
+        {/* Footer */}
         <div className="relative z-10 mt-8">
-          <p className="text-xs" style={{ color: '#6B7A99' }}>
+          <p className="text-xs text-primary-foreground/35">
             © 2025 APAS OS · apasos.ai · All rights reserved
           </p>
         </div>
       </div>
 
-      {/* ── Right panel: Sign-in form ── */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12"
-        style={{ background: '#10131D', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* ── RIGHT: Sign-in form ── */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-background border-l border-border">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.45 }}
           className="w-full max-w-md"
         >
-          {/* Mobile logo */}
+          {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-10">
-            <div className="flex items-end gap-1 mb-3">
-              <span
-                className="font-black tracking-tight"
-                style={{ fontSize: '2.5rem', color: '#F1F5FF', letterSpacing: '-0.03em' }}
-              >
+            <div className="flex items-end gap-1 mb-2 select-none">
+              <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
                 APAS
               </span>
               <span
-                className="font-black tracking-tight"
+                className="font-black text-4xl tracking-tight ml-1"
                 style={{
-                  fontSize: '2.5rem',
-                  background: 'linear-gradient(135deg, #1D6FE8 0%, #60a5fa 100%)',
+                  letterSpacing: '-0.04em',
+                  background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--module-inspections)) 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
-                  letterSpacing: '-0.03em',
-                  marginLeft: '4px',
                 }}
               >
                 OS
               </span>
             </div>
-            <p className="text-xs tracking-widest uppercase" style={{ color: '#6B7A99' }}>Operating System</p>
+            <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Operating System</p>
           </div>
 
           {/* Card */}
-          <div
-            className="rounded-2xl p-8"
-            style={{
-              background: '#161B2B',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
-            }}
-          >
+          <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
             <div className="mb-7">
-              <h1 className="text-2xl font-bold mb-1.5" style={{ color: '#F1F5FF' }}>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
                 Welcome back
               </h1>
-              <p className="text-sm" style={{ color: '#6B7A99' }}>
-                Sign in to access your operations dashboard
+              <p className="text-sm text-muted-foreground">
+                Sign in to access your APAS OS dashboard
               </p>
             </div>
 
-            {/* Google Sign In */}
+            {/* Google */}
             <button
               onClick={handleGoogleSignIn}
               disabled={isGoogleLoading}
-              className="w-full flex items-center justify-center gap-3 h-12 rounded-xl text-sm font-medium transition-all mb-5"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: '#F1F5FF',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              className="w-full flex items-center justify-center gap-3 h-12 rounded-xl text-sm font-medium border border-border bg-background text-foreground transition-colors hover:bg-muted mb-5 disabled:opacity-60"
             >
               {isGoogleLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#6B7A99' }} />
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <svg className="h-4 w-4" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -330,15 +248,15 @@ export default function AuthPage() {
 
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-              <span className="text-xs" style={{ color: '#6B7A99' }}>or sign in with email</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">or continue with email</span>
+              <div className="flex-1 h-px bg-border" />
             </div>
 
-            {/* Email / Password form */}
+            {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7A99' }}>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
                   Email address
                 </label>
                 <input
@@ -348,23 +266,13 @@ export default function AuthPage() {
                   placeholder="you@example.com"
                   required
                   disabled={isSubmitting}
-                  className="w-full h-11 rounded-xl px-3.5 text-sm outline-none transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    color: '#F1F5FF',
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(29,111,232,0.6)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
+                  className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
                 />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium" style={{ color: '#6B7A99' }}>Password</label>
-                  <Link to="/forgot-password" className="text-xs transition-colors" style={{ color: '#1D6FE8' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#60a5fa')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#1D6FE8')}
-                  >
+                  <label className="text-sm font-medium text-foreground">Password</label>
+                  <Link to="/forgot-password" className="text-xs text-accent hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -375,54 +283,31 @@ export default function AuthPage() {
                   placeholder="••••••••"
                   required
                   disabled={isSubmitting}
-                  className="w-full h-11 rounded-xl px-3.5 text-sm outline-none transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    color: '#F1F5FF',
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(29,111,232,0.6)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
+                  className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-12 rounded-xl text-sm font-semibold transition-all mt-2 flex items-center justify-center gap-2"
-                style={{
-                  background: 'linear-gradient(135deg, #1D6FE8 0%, #2563eb 100%)',
-                  color: '#fff',
-                  boxShadow: '0 0 24px rgba(29,111,232,0.25)',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 32px rgba(29,111,232,0.45)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 24px rgba(29,111,232,0.25)')}
+                className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>
                 ) : (
                   'Sign In to APAS OS'
                 )}
               </button>
             </form>
 
-            <p className="text-xs text-center mt-5" style={{ color: '#6B7A99' }}>
+            <p className="text-xs text-center mt-5 text-muted-foreground">
               Access is by invitation only.{' '}
-              <span style={{ color: '#F1F5FF' }}>Contact your administrator</span> for access.
+              <span className="text-foreground font-medium">Contact your administrator</span> for access.
             </p>
           </div>
 
           <div className="mt-6 text-center">
-            <Link
-              to="/"
-              className="text-xs transition-colors"
-              style={{ color: '#6B7A99' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#F1F5FF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6B7A99')}
-            >
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               ← Back to home
             </Link>
           </div>
