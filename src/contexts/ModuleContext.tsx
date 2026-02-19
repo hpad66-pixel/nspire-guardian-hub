@@ -25,6 +25,7 @@ const defaultModules: ModuleConfig = {
   credentialWalletEnabled: false,
   trainingHubEnabled: false,
   safetyModuleEnabled: false,
+  equipmentTrackerEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -50,6 +51,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     credentialWalletEnabled: null,
     trainingHubEnabled: null,
     safetyModuleEnabled: null,
+    equipmentTrackerEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
@@ -70,11 +72,12 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
         occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
-        emailInboxEnabled: true, // Always enabled - inbox is functional
+        emailInboxEnabled: true,
         qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
-        credentialWalletEnabled: true, // Always enabled for now
-        trainingHubEnabled: true, // Always enabled for now
-        safetyModuleEnabled: true, // Always enabled for now
+        credentialWalletEnabled: true,
+        trainingHubEnabled: true,
+        safetyModuleEnabled: true,
+        equipmentTrackerEnabled: true,
       };
 
       setTenantModules(tenant);
@@ -91,6 +94,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           credentialWalletEnabled: null,
           trainingHubEnabled: null,
           safetyModuleEnabled: null,
+          equipmentTrackerEnabled: null,
         });
         return;
       }
@@ -112,6 +116,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         credentialWalletEnabled: null,
         trainingHubEnabled: null,
         safetyModuleEnabled: null,
+        equipmentTrackerEnabled: null,
       };
 
       (overrides || []).forEach((row) => {

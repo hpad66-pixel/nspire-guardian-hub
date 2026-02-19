@@ -1269,6 +1269,271 @@ export type Database = {
           },
         ]
       }
+      equipment_assets: {
+        Row: {
+          asset_tag: string | null
+          assigned_location: string | null
+          assigned_to: string | null
+          category_slug: string
+          color: string | null
+          condition: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          license_plate: string | null
+          make: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          photo_url: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+          vin: string | null
+          workspace_id: string
+          year: number | null
+        }
+        Insert: {
+          asset_tag?: string | null
+          assigned_location?: string | null
+          assigned_to?: string | null
+          category_slug: string
+          color?: string | null
+          condition?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          photo_url?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          workspace_id: string
+          year?: number | null
+        }
+        Update: {
+          asset_tag?: string | null
+          assigned_location?: string | null
+          assigned_to?: string | null
+          category_slug?: string
+          color?: string | null
+          condition?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          photo_url?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          workspace_id?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_assets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "equipment_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      equipment_categories: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      equipment_checkouts: {
+        Row: {
+          asset_id: string
+          checked_in_at: string | null
+          checked_in_by: string | null
+          checked_out_at: string
+          checked_out_by: string
+          condition_on_return: string | null
+          created_at: string
+          destination: string | null
+          expected_return: string | null
+          id: string
+          is_active: boolean
+          purpose: string | null
+          return_notes: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string
+          checked_out_by: string
+          condition_on_return?: string | null
+          created_at?: string
+          destination?: string | null
+          expected_return?: string | null
+          id?: string
+          is_active?: boolean
+          purpose?: string | null
+          return_notes?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string
+          checked_out_by?: string
+          condition_on_return?: string | null
+          created_at?: string
+          destination?: string | null
+          expected_return?: string | null
+          id?: string
+          is_active?: boolean
+          purpose?: string | null
+          return_notes?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_checkouts_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_checkouts_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "equipment_checkouts_checked_out_by_fkey"
+            columns: ["checked_out_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      equipment_documents: {
+        Row: {
+          asset_id: string
+          created_at: string
+          custom_type_label: string | null
+          document_number: string | null
+          document_type: string
+          document_url: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          custom_type_label?: string | null
+          document_number?: string | null
+          document_type: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          custom_type_label?: string | null
+          document_number?: string | null
+          document_type?: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_documents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       hud_sample_sizes: {
         Row: {
           created_at: string
@@ -5817,6 +6082,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workspace_equipment_config: {
+        Row: {
+          active_category_slugs: string[]
+          asset_limit: number
+          created_at: string
+          custom_category_icon: string | null
+          custom_category_name: string | null
+          id: string
+          setup_completed: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          active_category_slugs?: string[]
+          asset_limit?: number
+          created_at?: string
+          custom_category_icon?: string | null
+          custom_category_name?: string | null
+          id?: string
+          setup_completed?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          active_category_slugs?: string[]
+          asset_limit?: number
+          created_at?: string
+          custom_category_icon?: string | null
+          custom_category_name?: string | null
+          id?: string
+          setup_completed?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       workspaces: {
         Row: {
