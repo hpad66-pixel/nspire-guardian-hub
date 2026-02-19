@@ -50,6 +50,7 @@ const PeoplePage = lazy(() => import('./pages/people/PeoplePage'));
 const OccupancyPage = lazy(() => import('./pages/occupancy/OccupancyPage'));
 const QRScannerPage = lazy(() => import('./pages/qr/QRScannerPage'));
 const TrainingPage = lazy(() => import('./pages/training/TrainingPage'));
+const CertificateSharePage = lazy(() => import('./pages/training/CertificateSharePage'));
 const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
@@ -113,6 +114,7 @@ const App = () => (
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
                      <Route path="/portal/:projectId" element={<ClientPortalPage />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
+                     <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      
                     {/* Protected Routes */}
                     <Route

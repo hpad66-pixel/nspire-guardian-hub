@@ -61,7 +61,7 @@ export default function CertificateSharePage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-sm w-full text-center space-y-4">
           <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <LinkX className="h-6 w-6 text-muted-foreground" />
+            <Link2Off className="h-6 w-6 text-muted-foreground" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">This link has expired</h1>
