@@ -2059,6 +2059,69 @@ export type Database = {
           },
         ]
       }
+      photo_gallery: {
+        Row: {
+          caption: string | null
+          created_at: string | null
+          id: string
+          project_id: string | null
+          property_id: string | null
+          source: string
+          source_id: string | null
+          source_label: string | null
+          source_route: string | null
+          taken_at: string
+          updated_at: string | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          property_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_label?: string | null
+          source_route?: string | null
+          taken_at?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          property_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_label?: string | null
+          source_route?: string | null
+          taken_at?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_gallery_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_gallery_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_client_uploads: {
         Row: {
           created_at: string
