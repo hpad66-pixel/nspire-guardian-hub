@@ -82,7 +82,10 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       // effective = platform gate AND workspace admin toggle (defaults to true if no row yet)
       const wsEnabled = (platformField: string, wsField: string): boolean => {
         if (!ws) return true; // no row yet → show as enabled (dev / first-run mode)
-        return (ws[platformField] ?? true) && (ws[wsField] ?? true);
+        // Default both platform gate and workspace toggle to true if null/undefined
+        const platformOn = ws[platformField] !== false;
+        const wsOn = ws[wsField] !== false;
+        return platformOn && wsOn;
       };
 
       // Module is enabled if ANY property has it enabled
