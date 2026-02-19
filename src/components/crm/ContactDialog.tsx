@@ -135,10 +135,29 @@ export function ContactDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Convert empty strings to null for nullable DB fields (dates, optional text)
+    const nullify = (v: string | undefined) => (v === "" ? null : v) as string | undefined;
+
     const submitData = {
       ...formData,
       property_id: isPersonal ? undefined : formData.property_id,
+      last_name: nullify(formData.last_name),
+      company_name: nullify(formData.company_name),
+      job_title: nullify(formData.job_title),
+      email: nullify(formData.email),
+      phone: nullify(formData.phone),
+      mobile: nullify(formData.mobile),
+      fax: nullify(formData.fax),
+      address_line1: nullify(formData.address_line1),
+      address_line2: nullify(formData.address_line2),
+      city: nullify(formData.city),
+      state: nullify(formData.state),
+      zip_code: nullify(formData.zip_code),
+      website: nullify(formData.website),
+      license_number: nullify(formData.license_number),
+      insurance_expiry: nullify(formData.insurance_expiry) ?? undefined,
+      notes: nullify(formData.notes),
     };
 
     try {
