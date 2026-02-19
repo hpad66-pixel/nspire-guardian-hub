@@ -12,8 +12,8 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 
 const features = [
   { icon: ShieldCheck,  color: 'hsl(var(--success))',            label: 'NSPIRE Compliance',          desc: 'Real-time scoring, defect tracking & audit-ready reports' },
-  { icon: HardHat,      color: 'hsl(var(--accent))',             label: 'Construction Projects',       desc: 'RFIs, submittals, daily reports & client portals in one place' },
-  { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Daily Inspections',           desc: 'Grounds walkthroughs with photo evidence and voice notes' },
+  { icon: HardHat,      color: 'hsl(var(--accent))',             label: 'Construction Management',     desc: 'RFIs, submittals, daily reports & client portals in one place' },
+  { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Project Management',          desc: 'Full project lifecycle from proposal to closeout, fully traced' },
   { icon: Wrench,       color: 'hsl(var(--warning))',            label: 'Maintenance & Work Orders',   desc: 'Issue tracking from request to resolution, fully traced' },
   { icon: BarChart3,    color: 'hsl(var(--severity-severe))',    label: 'Operations Intelligence',     desc: 'Cross-module dashboards for every role in your org' },
   { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from a single command center' },
@@ -99,17 +99,17 @@ export default function AuthPage() {
           className="relative z-10"
         >
           {/* APAS OS wordmark */}
-          <div className="flex items-end gap-0 mb-8 select-none">
+          <div className="flex items-end gap-0 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
-              style={{ fontSize: 'clamp(3rem, 4.5vw, 4rem)', letterSpacing: '-0.04em' }}
+              style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
               APAS
             </span>
             <span
               className="font-black leading-none tracking-tight ml-2"
               style={{
-                fontSize: 'clamp(3rem, 4.5vw, 4rem)',
+                fontSize: 'clamp(3rem, 4.5vw, 4.2rem)',
                 letterSpacing: '-0.04em',
                 background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--module-inspections)) 100%)',
                 WebkitBackgroundClip: 'text',
@@ -121,6 +121,12 @@ export default function AuthPage() {
             </span>
           </div>
 
+          {/* "Operating System" label — the key identity line */}
+          <p className="text-primary-foreground/70 font-semibold tracking-[0.22em] uppercase mb-7"
+            style={{ fontSize: '0.78rem', letterSpacing: '0.22em' }}>
+            Operating System
+          </p>
+
           {/* OS descriptor badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-7"
             style={{
@@ -129,7 +135,7 @@ export default function AuthPage() {
             }}>
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-semibold tracking-widest uppercase text-accent">
-              Operating System for Property &amp; Construction
+              For Contractors · Consultants · Property Pros
             </span>
           </div>
 
@@ -140,8 +146,8 @@ export default function AuthPage() {
             <span className="text-success">Pass the Audit.</span>
           </h2>
           <p className="text-primary-foreground/60 text-base leading-relaxed max-w-md">
-            One integrated platform for inspections, compliance, project management,
-            maintenance, and team operations — built for property managers and construction teams.
+            One platform for construction management, project delivery, NSPIRE compliance,
+            and property operations — built for solopreneurs, SMBs, and enterprise teams alike.
           </p>
         </motion.div>
 
@@ -196,7 +202,7 @@ export default function AuthPage() {
         >
           {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-10">
-            <div className="flex items-end gap-1 mb-2 select-none">
+            <div className="flex items-end gap-1 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
                 APAS
               </span>
@@ -213,7 +219,8 @@ export default function AuthPage() {
                 OS
               </span>
             </div>
-            <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Operating System</p>
+            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Operating System</p>
+            <p className="text-xs text-muted-foreground text-center">For Contractors · Consultants · Property Pros</p>
           </div>
 
           {/* Card */}
