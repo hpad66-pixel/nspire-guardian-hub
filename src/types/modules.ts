@@ -8,6 +8,7 @@ export interface ModuleConfig {
   qrScanningEnabled: boolean;       // Future: QR asset scanning
   credentialWalletEnabled: boolean; // Credential & License Wallet
   trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
+  safetyModuleEnabled: boolean;     // Safety Incident Log & OSHA recordkeeping
 }
 
 // NSPIRE Severity Levels

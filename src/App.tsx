@@ -62,6 +62,7 @@ const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
+const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {

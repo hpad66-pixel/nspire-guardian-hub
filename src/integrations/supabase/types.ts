@@ -4594,6 +4594,217 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_incident_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          incident_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          incident_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          incident_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incident_attachments_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "safety_incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_incident_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      safety_incidents: {
+        Row: {
+          body_part_affected: string | null
+          case_number: string | null
+          corrective_actions: string | null
+          corrective_actions_completed: boolean | null
+          corrective_actions_due: string | null
+          created_at: string
+          days_away_from_work: number | null
+          days_employed: number | null
+          days_on_job_transfer: number | null
+          days_on_restriction: number | null
+          facility_name: string | null
+          id: string
+          incident_classification: string | null
+          incident_date: string
+          incident_time: string | null
+          injured_employee_department: string | null
+          injured_employee_id: string | null
+          injured_employee_job_title: string | null
+          injured_employee_name: string
+          injury_icon: string | null
+          injury_involved: boolean | null
+          injury_type: string | null
+          is_osha_recordable: boolean | null
+          is_privacy_case: boolean | null
+          location_description: string
+          medical_treatment: string | null
+          photo_urls: string[] | null
+          physician_name: string | null
+          reported_at: string
+          reported_by: string
+          resulted_in_days_away: boolean | null
+          resulted_in_death: boolean | null
+          resulted_in_other_recordable: boolean | null
+          resulted_in_transfer: boolean | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          updated_at: string
+          what_happened: string
+          witness_contact: string | null
+          witness_name: string | null
+          workspace_id: string
+        }
+        Insert: {
+          body_part_affected?: string | null
+          case_number?: string | null
+          corrective_actions?: string | null
+          corrective_actions_completed?: boolean | null
+          corrective_actions_due?: string | null
+          created_at?: string
+          days_away_from_work?: number | null
+          days_employed?: number | null
+          days_on_job_transfer?: number | null
+          days_on_restriction?: number | null
+          facility_name?: string | null
+          id?: string
+          incident_classification?: string | null
+          incident_date: string
+          incident_time?: string | null
+          injured_employee_department?: string | null
+          injured_employee_id?: string | null
+          injured_employee_job_title?: string | null
+          injured_employee_name: string
+          injury_icon?: string | null
+          injury_involved?: boolean | null
+          injury_type?: string | null
+          is_osha_recordable?: boolean | null
+          is_privacy_case?: boolean | null
+          location_description: string
+          medical_treatment?: string | null
+          photo_urls?: string[] | null
+          physician_name?: string | null
+          reported_at?: string
+          reported_by: string
+          resulted_in_days_away?: boolean | null
+          resulted_in_death?: boolean | null
+          resulted_in_other_recordable?: boolean | null
+          resulted_in_transfer?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          what_happened: string
+          witness_contact?: string | null
+          witness_name?: string | null
+          workspace_id: string
+        }
+        Update: {
+          body_part_affected?: string | null
+          case_number?: string | null
+          corrective_actions?: string | null
+          corrective_actions_completed?: boolean | null
+          corrective_actions_due?: string | null
+          created_at?: string
+          days_away_from_work?: number | null
+          days_employed?: number | null
+          days_on_job_transfer?: number | null
+          days_on_restriction?: number | null
+          facility_name?: string | null
+          id?: string
+          incident_classification?: string | null
+          incident_date?: string
+          incident_time?: string | null
+          injured_employee_department?: string | null
+          injured_employee_id?: string | null
+          injured_employee_job_title?: string | null
+          injured_employee_name?: string
+          injury_icon?: string | null
+          injury_involved?: boolean | null
+          injury_type?: string | null
+          is_osha_recordable?: boolean | null
+          is_privacy_case?: boolean | null
+          location_description?: string
+          medical_treatment?: string | null
+          photo_urls?: string[] | null
+          physician_name?: string | null
+          reported_at?: string
+          reported_by?: string
+          resulted_in_days_away?: boolean | null
+          resulted_in_death?: boolean | null
+          resulted_in_other_recordable?: boolean | null
+          resulted_in_transfer?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          what_happened?: string
+          witness_contact?: string | null
+          witness_name?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incidents_injured_employee_id_fkey"
+            columns: ["injured_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "safety_incidents_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "safety_incidents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
