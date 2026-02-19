@@ -180,6 +180,9 @@ const App = () => (
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
+
+                              {/* Safety Module */}
+                              <Route path="/safety" element={<SafetyDashboardPage />} />
                               
                               {/* 404 */}
                               <Route path="*" element={<NotFound />} />

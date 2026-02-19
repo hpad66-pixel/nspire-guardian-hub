@@ -20,12 +20,13 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2,
+  MoreHorizontal, Archive, Trash2, TriangleAlert,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 import { ProjectTeamSheet } from '@/components/projects/ProjectTeamSheet';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUpdateProject } from '@/hooks/useProjects';
@@ -93,6 +94,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
@@ -356,6 +358,17 @@ export default function ProjectDetailPage() {
               >
                 <Edit className="h-4 w-4" />
                 <span className="hidden sm:inline">Edit</span>
+              </Button>
+
+              {/* Log Incident */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                onClick={() => setIncidentSheetOpen(true)}
+              >
+                <TriangleAlert className="h-4 w-4 text-amber-500" />
+                <span className="hidden sm:inline">Log Incident</span>
               </Button>
 
               {/* Overflow */}
@@ -1170,6 +1183,14 @@ export default function ProjectDetailPage() {
         projectId={project.id}
         projectName={project.name}
         navigateAfter
+      />
+
+      <LogIncidentSheet
+        open={incidentSheetOpen}
+        onOpenChange={setIncidentSheetOpen}
+        sourceType="project"
+        sourceId={project.id}
+        sourceName={project.name}
       />
     </div>
   );
