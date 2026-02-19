@@ -1611,6 +1611,89 @@ export type Database = {
           },
         ]
       }
+      lw_courses: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean
+          lw_course_id: string
+          lw_url: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          lw_course_id: string
+          lw_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          lw_course_id?: string
+          lw_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lw_sso_sessions: {
+        Row: {
+          expires_at: string
+          id: string
+          launched_at: string
+          lw_course_id: string | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          id?: string
+          launched_at?: string
+          lw_course_id?: string | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          launched_at?: string
+          lw_course_id?: string | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lw_sso_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       maintenance_request_activity: {
         Row: {
           action: string
@@ -4540,6 +4623,128 @@ export type Database = {
           },
         ]
       }
+      training_assignments: {
+        Row: {
+          assigned_by: string
+          assigned_to: string | null
+          assigned_to_role: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          is_mandatory: boolean
+          lw_course_id: string
+          next_due_date: string | null
+          notes: string | null
+          recurrence: string | null
+          recurrence_interval_days: number | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          assigned_by: string
+          assigned_to?: string | null
+          assigned_to_role?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean
+          lw_course_id: string
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence?: string | null
+          recurrence_interval_days?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          assigned_by?: string
+          assigned_to?: string | null
+          assigned_to_role?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean
+          lw_course_id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence?: string | null
+          recurrence_interval_days?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "training_assignments_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      training_completions: {
+        Row: {
+          certificate_id: string | null
+          certificate_url: string | null
+          completed_at: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          lw_completion_id: string | null
+          lw_course_id: string
+          passed: boolean | null
+          score: number | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          certificate_id?: string | null
+          certificate_url?: string | null
+          completed_at: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          lw_completion_id?: string | null
+          lw_course_id: string
+          passed?: boolean | null
+          score?: number | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          certificate_id?: string | null
+          certificate_url?: string | null
+          completed_at?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          lw_completion_id?: string | null
+          lw_course_id?: string
+          passed?: boolean | null
+          score?: number | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       training_courses: {
         Row: {
           allow_resume: boolean | null
@@ -4753,6 +4958,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      training_share_links: {
+        Row: {
+          access_count: number
+          accessed_at: string | null
+          completion_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          revoked: boolean
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          accessed_at?: string | null
+          completion_id: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token: string
+        }
+        Update: {
+          access_count?: number
+          accessed_at?: string | null
+          completion_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_share_links_completion_id_fkey"
+            columns: ["completion_id"]
+            isOneToOne: false
+            referencedRelation: "training_completions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       units: {
         Row: {

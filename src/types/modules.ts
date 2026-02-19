@@ -7,6 +7,7 @@ export interface ModuleConfig {
   emailInboxEnabled: boolean;       // Future: email integration
   qrScanningEnabled: boolean;       // Future: QR asset scanning
   credentialWalletEnabled: boolean; // Credential & License Wallet
+  trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
 }
 
 // NSPIRE Severity Levels
