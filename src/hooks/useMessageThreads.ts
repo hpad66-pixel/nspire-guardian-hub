@@ -145,6 +145,9 @@ export interface CreateThreadParams {
   participantIds: string[];
   initialMessage?: string;
   initialMessageHtml?: string;
+  context_type?: 'project' | 'property' | 'inspection' | null;
+  context_id?: string | null;
+  context_label?: string | null;
 }
 
 export function useCreateThread() {
@@ -168,6 +171,9 @@ export function useCreateThread() {
           created_by: userId,
           participant_ids: allParticipants,
           is_group: allParticipants.length > 2,
+          context_type: params.context_type ?? null,
+          context_id: params.context_id ?? null,
+          context_label: params.context_label ?? null,
         })
         .select()
         .single();
