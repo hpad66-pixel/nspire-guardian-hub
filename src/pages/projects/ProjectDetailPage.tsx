@@ -108,6 +108,8 @@ export default function ProjectDetailPage() {
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
   const { data: rfiStats } = useRFIStats(id ?? null);
   const { data: punchStats } = usePunchItemStats(id ?? null);
+  const { data: rfis = [] } = useRFIsByProject(id ?? null);
+  const { data: submittals = [] } = useSubmittalsByProject(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
