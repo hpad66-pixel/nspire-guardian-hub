@@ -109,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build email payload
     const emailPayload: Record<string, unknown> = {
-      from: `Glorieta Gardens <admin@apas.ai>`,
+      from: `${senderName} <admin@apas.ai>`,
       to: recipients,
       subject: subject,
       html: bodyHtml,
