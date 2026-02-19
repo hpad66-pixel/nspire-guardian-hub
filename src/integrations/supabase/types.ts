@@ -3509,6 +3509,7 @@ export type Database = {
           daily_grounds_enabled: boolean | null
           id: string
           is_demo: boolean | null
+          is_managed_property: boolean
           mailing_address: string | null
           mailing_city: string | null
           mailing_state: string | null
@@ -3537,6 +3538,7 @@ export type Database = {
           daily_grounds_enabled?: boolean | null
           id?: string
           is_demo?: boolean | null
+          is_managed_property?: boolean
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -3565,6 +3567,7 @@ export type Database = {
           daily_grounds_enabled?: boolean | null
           id?: string
           is_demo?: boolean | null
+          is_managed_property?: boolean
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null

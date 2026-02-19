@@ -21,7 +21,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { useDataExport } from '@/hooks/useDataExport';
 import { useSearchParams } from 'react-router-dom';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 
 export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -31,7 +31,7 @@ export default function WorkOrdersPage() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
-  const { data: properties = [] } = useProperties();
+  const { data: properties = [] } = useManagedProperties();
   const { data: workOrders = [], isLoading } = useWorkOrdersByProperty(selectedPropertyId || null);
   const { exportToCSV } = useDataExport();
 
