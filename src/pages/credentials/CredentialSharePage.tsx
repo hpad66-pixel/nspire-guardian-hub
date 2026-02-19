@@ -117,8 +117,8 @@ export default function CredentialSharePage() {
 
           <p className="mt-6 text-xs text-muted-foreground">
             Verified via{' '}
-            <a href="https://apasos.lovable.app" className="text-primary hover:underline">
-              APAS OS · apasos.lovable.app
+            <a href="https://apasos.ai" className="text-primary hover:underline">
+              APAS OS · apasos.ai
             </a>
           </p>
         </div>
@@ -216,8 +216,8 @@ export default function CredentialSharePage() {
       <div className="mt-6 space-y-1 text-center">
         <p className="text-xs text-muted-foreground">
           Verified via{' '}
-          <a href="https://apasos.lovable.app" className="text-primary hover:underline">
-            APAS OS · apasos.lovable.app
+          <a href="https://apasos.ai" className="text-primary hover:underline">
+            APAS OS · apasos.ai
           </a>
         </p>
         <p className="text-xs text-muted-foreground">
