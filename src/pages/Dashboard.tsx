@@ -20,9 +20,11 @@ import {
   Calendar,
   AtSign,
   MessageSquare,
+  MessageCircle,
   CheckSquare,
   Users,
   Circle,
+  Bell,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -715,6 +717,65 @@ export default function Dashboard() {
     return d.repair_deadline && isPast(new Date(d.repair_deadline));
   }).length;
 
+  // ── "Your Attention" derived data ─────────────────────────────────────────
+  const dashboardToday = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const attentionItems = useMemo(() => {
+    const items: { label: string; sub: string; urgency: 'red' | 'amber' | 'blue'; to: string }[] = [];
+
+    // Overdue open issues
+    openIssues
+      .filter(i => i.deadline && new Date(i.deadline) < dashboardToday)
+      .slice(0, 4)
+      .forEach(i => items.push({
+        label: i.severity === 'severe' ? 'Severe Issue' : 'Issue',
+        sub: i.title,
+        urgency: 'red',
+        to: '/issues',
+      }));
+
+    // Overdue defects
+    scopedOpenDefects
+      .filter(d => d.repair_deadline && new Date(d.repair_deadline) < dashboardToday)
+      .slice(0, 3)
+      .forEach(d => items.push({
+        label: 'Defect Overdue',
+        sub: d.item_name,
+        urgency: 'red',
+        to: '/inspections/history',
+      }));
+
+    // Unread mentions / assignments from the last 7 days
+    actionNotifications
+      .filter(n => !n.is_read)
+      .slice(0, 3)
+      .forEach(n => items.push({
+        label: n.type === 'mention' ? '@Mention' : 'Assignment',
+        sub: n.title,
+        urgency: 'blue',
+        to: n.entity_type === 'project' && n.entity_id ? `/projects/${n.entity_id}` : '/issues',
+      }));
+
+    // Overdue tasks (my tasks)
+    myTasks
+      .filter(t => !['done', 'cancelled'].includes(t.status) && t.due_date && isPast(new Date(t.due_date + 'T00:00:00')) && !isToday(new Date(t.due_date + 'T00:00:00')))
+      .slice(0, 3)
+      .forEach(t => items.push({
+        label: 'Task Overdue',
+        sub: t.title,
+        urgency: 'amber',
+        to: t.project ? `/projects/${t.project.id}` : '/projects',
+      }));
+
+    return items;
+  }, [openIssues, scopedOpenDefects, actionNotifications, myTasks, dashboardToday]);
+
+  const dashboardAllClear = attentionItems.length === 0;
+
   return (
     <>
       {shouldShowOnboarding && (
@@ -810,6 +871,66 @@ export default function Dashboard() {
                   iconColor="text-[hsl(var(--success))]"
                 />
               </>
+            )}
+          </div>
+
+          {/* ── YOUR ATTENTION ─────────────────────────────────────────── */}
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50">
+              <div className={cn(
+                'h-6 w-6 rounded-md flex items-center justify-center',
+                dashboardAllClear ? 'bg-[hsl(var(--success)/0.1)]' : attentionItems.some(i => i.urgency === 'red') ? 'bg-destructive/10' : 'bg-warning/10'
+              )}>
+                <Bell className={cn('h-3.5 w-3.5',
+                  dashboardAllClear ? 'text-[hsl(var(--success))]' :
+                  attentionItems.some(i => i.urgency === 'red') ? 'text-destructive' : 'text-warning'
+                )} />
+              </div>
+              <span className="text-sm font-semibold">Your Attention</span>
+              {!dashboardAllClear && (
+                <span className={cn(
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1',
+                  attentionItems.some(i => i.urgency === 'red')
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-warning/10 text-warning'
+                )}>
+                  {attentionItems.length} item{attentionItems.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            {dashboardAllClear ? (
+              <div className="flex items-center gap-2 px-4 py-3 text-sm font-medium" style={{ color: 'hsl(var(--success))' }}>
+                <CheckCircle2 className="h-4 w-4" />
+                You're all caught up — nothing needs your attention right now.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 px-4 py-3">
+                {attentionItems.map((item, i) => (
+                  <Link
+                    key={i}
+                    to={item.to}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-left transition-colors',
+                      item.urgency === 'red'   && 'border-destructive/20 bg-destructive/5 hover:bg-destructive/10',
+                      item.urgency === 'amber' && 'border-warning/20 bg-warning/5 hover:bg-warning/10',
+                      item.urgency === 'blue'  && 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10',
+                    )}
+                  >
+                    {item.urgency === 'blue'  && <MessageCircle className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
+                    {item.urgency === 'red'   && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                    {item.urgency === 'amber' && <Clock className="h-3.5 w-3.5 text-warning shrink-0" />}
+                    <div>
+                      <span className={cn(
+                        'text-xs font-semibold block leading-tight',
+                        item.urgency === 'red'   && 'text-destructive',
+                        item.urgency === 'amber' && 'text-warning',
+                        item.urgency === 'blue'  && 'text-blue-400',
+                      )}>{item.label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-none">{item.sub}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             )}
           </div>
 
