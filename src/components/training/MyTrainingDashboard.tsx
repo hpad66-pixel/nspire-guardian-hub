@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { GraduationCap, BookOpen, Award, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useTrainingAccess, useFilteredCourses } from '@/hooks/useTrainingAccess';
 import { useMyAssignments, useMyCertificates, useCatalog, useMyLWProgress, useMyLWCertificates } from '@/hooks/useTraining';
 import { LWCourseCardStandalone as CourseCard } from './LWCourseCardStandalone';
 import { AssignmentCard } from './AssignmentCard';
 import { CertificateCard } from './CertificateCard';
 import { CourseLauncher } from './CourseLauncher';
+import { SchoolSwitcher } from './SchoolSwitcher';
+import { useUserSchool, useSwitchPrimarySchool } from '@/hooks/useUserSchool';
 import type { LWCourse } from '@/services/learnworlds/learnworldsTypes';
 import { CATEGORY_LABELS } from '@/services/learnworlds/learnworldsTypes';
 import { cn } from '@/lib/utils';
 
 export function MyTrainingDashboard() {
   const { canAccessTraining, visibleCategories, subscriptionTier } = useTrainingAccess();
+  const { primarySchool, allSchools, hasMultipleSchools } = useUserSchool();
+  const switchSchool = useSwitchPrimarySchool();
+
   const { data: assignments = [] } = useMyAssignments();
   const { data: dbCerts = [] } = useMyCertificates();
   const { data: catalogRaw = [] } = useCatalog();
@@ -77,6 +81,15 @@ export function MyTrainingDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* ── School Switcher (only shown when user has 2+ schools) ────────── */}
+      {hasMultipleSchools && (
+        <SchoolSwitcher
+          schools={allSchools}
+          activeSchoolId={primarySchool?.id ?? null}
+          onSwitch={switchSchool}
+        />
+      )}
+
       {/* ── Section 1: My Assignments ──────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
@@ -176,7 +189,12 @@ export function MyTrainingDashboard() {
               Browse Full Catalog
             </Button>
           </div>
-          <p className="mt-0.5 ml-6 text-xs text-muted-foreground">{tierSubtitleMap[subscriptionTier]}</p>
+          <p className="mt-0.5 ml-6 text-xs text-muted-foreground">
+            {tierSubtitleMap[subscriptionTier]}
+            {primarySchool && (
+              <span className="text-muted-foreground/60"> · {primarySchool.name}</span>
+            )}
+          </p>
         </div>
 
         {/* Category filter tabs */}

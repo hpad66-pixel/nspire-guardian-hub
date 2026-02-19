@@ -1659,6 +1659,118 @@ export type Database = {
         }
         Relationships: []
       }
+      lw_school_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          notes: string | null
+          priority: number
+          school_id: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          priority?: number
+          school_id: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          priority?: number
+          school_id?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lw_school_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "lw_school_assignments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "lw_schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lw_school_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      lw_schools: {
+        Row: {
+          api_key: string | null
+          categories: string[]
+          client_id: string | null
+          client_secret: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          logo_url: string | null
+          name: string
+          school_url: string
+          slug: string
+          sso_secret: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          categories?: string[]
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          logo_url?: string | null
+          name: string
+          school_url: string
+          slug: string
+          sso_secret?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          categories?: string[]
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          logo_url?: string | null
+          name?: string
+          school_url?: string
+          slug?: string
+          sso_secret?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lw_sso_sessions: {
         Row: {
           expires_at: string
