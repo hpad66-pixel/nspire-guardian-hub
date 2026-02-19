@@ -2,6 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export interface EmailAttachment {
+  filename: string;
+  contentBase64: string;
+  contentType: string;
+  size: number;
+}
+
 export interface SendEmailParams {
   recipients: string[];
   ccRecipients?: string[];
@@ -9,6 +16,7 @@ export interface SendEmailParams {
   subject: string;
   bodyHtml: string;
   bodyText?: string;
+  attachments?: EmailAttachment[];
 }
 
 export function useSendEmail() {

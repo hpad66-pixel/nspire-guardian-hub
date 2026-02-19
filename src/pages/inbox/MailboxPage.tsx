@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useReportEmails, useReportEmailStats } from "@/hooks/useReportEmails";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -12,8 +12,23 @@ import { EmailPreview } from "@/components/inbox/EmailPreview";
 import { EmailDetailSheet } from "@/components/inbox/EmailDetailSheet";
 import { ComposeEmailDialog } from "@/components/inbox/ComposeEmailDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Mail, Sparkles, Send, Inbox } from "lucide-react";
+import { Plus, Mail, Sparkles, Send, Inbox, Keyboard } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+const SHORTCUTS = [
+  { key: "C", description: "Compose new email" },
+  { key: "/", description: "Focus search" },
+  { key: "Esc", description: "Deselect email" },
+  { key: "1", description: "Inbox" },
+  { key: "2", description: "Sent" },
+  { key: "3", description: "Drafts" },
+  { key: "4", description: "Archive" },
+];
 
 export default function MailboxPage() {
   const [folder, setFolder] = useState<FolderType>("inbox");
@@ -25,6 +40,48 @@ export default function MailboxPage() {
   const isMobile = useIsMobile();
   const { data: emails = [], isLoading } = useReportEmails({});
   const { data: stats } = useReportEmailStats();
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isTyping =
+        ["INPUT", "TEXTAREA"].includes(target.tagName) ||
+        target.contentEditable === "true" ||
+        target.closest("[data-radix-dialog-content]") !== null;
+      if (isTyping) return;
+
+      switch (e.key) {
+        case "c":
+          e.preventDefault();
+          setComposeOpen(true);
+          break;
+        case "/":
+          e.preventDefault();
+          document
+            .querySelector<HTMLInputElement>('input[placeholder="Search emails..."]')
+            ?.focus();
+          break;
+        case "Escape":
+          setSelectedEmailId(null);
+          break;
+        case "1":
+          setFolder("inbox");
+          break;
+        case "2":
+          setFolder("sent");
+          break;
+        case "3":
+          setFolder("drafts");
+          break;
+        case "4":
+          setFolder("archive");
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleSelectEmail = (id: string) => {
     setSelectedEmailId(id);
@@ -41,7 +98,7 @@ export default function MailboxPage() {
     return (
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Mobile Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b"
@@ -65,10 +122,10 @@ export default function MailboxPage() {
               </Button>
             </div>
           </div>
-          
+
           {/* Folder tabs */}
           <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
-            {(["inbox", "sent", "archive", "trash", "all"] as FolderType[]).map((f) => (
+            {(["inbox", "sent", "drafts", "archive", "trash", "all"] as FolderType[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFolder(f)}
@@ -109,7 +166,7 @@ export default function MailboxPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Desktop Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="border-b bg-gradient-to-r from-primary/5 via-background to-background"
@@ -130,11 +187,11 @@ export default function MailboxPage() {
                 </p>
               </div>
             </div>
-            
-            {/* Quick Stats */}
-            <div className="flex items-center gap-6">
+
+            {/* Quick Stats + shortcuts */}
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success">
                   <Send className="h-3.5 w-3.5" />
                   <span className="font-medium">{stats?.sent || 0} sent</span>
                 </div>
@@ -148,6 +205,30 @@ export default function MailboxPage() {
                   <span className="font-medium">{stats?.total || 0} total</span>
                 </div>
               </div>
+
+              {/* Keyboard shortcut legend */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                    <Keyboard className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3" align="end">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Keyboard Shortcuts
+                  </p>
+                  <div className="space-y-1.5">
+                    {SHORTCUTS.map(({ key, description }) => (
+                      <div key={key} className="flex items-center justify-between gap-4">
+                        <span className="text-xs text-muted-foreground">{description}</span>
+                        <kbd className="text-[10px] font-mono bg-muted border rounded px-1.5 py-0.5">
+                          {key}
+                        </kbd>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
