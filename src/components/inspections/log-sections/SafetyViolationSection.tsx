@@ -65,12 +65,11 @@ export function SafetyViolationSection({ open, onOpenChange, propertyId, onEntri
       // Auto-create work order for follow-up
       await createWorkOrder.mutateAsync({
         property_id: propertyId,
-        title: `Safety Violation: ${VIOLATION_TYPES.find(v => v.value === form.violation_type)?.label}`,
-        description: form.description,
+        title: `Safety Violation Follow-up: ${VIOLATION_TYPES.find(v => v.value === form.violation_type)?.label}`,
+        description: `${form.description}${form.issued_to ? `\nIssued to: ${form.issued_to}` : ''}`,
         priority: 'high',
         status: 'pending',
         due_date: form.compliance_date,
-        source: 'daily_log',
       } as any);
 
       const entry: SafetyEntry = { ...form, id: crypto.randomUUID() };
