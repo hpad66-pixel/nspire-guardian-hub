@@ -24,6 +24,10 @@ import {
   ClipboardCheck,
   Activity,
   CircleDot,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ShieldCheck,
 } from 'lucide-react';
 
 // UI
@@ -393,12 +397,201 @@ function ZoneSkeleton({ count = 3 }: { count?: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Today at a Glance — KPI Strip
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface KpiTileProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ElementType;
+  iconClass: string;
+  accentClass: string;  // border + subtle bg
+  trend?: 'up' | 'down' | 'neutral';
+  trendLabel?: string;
+  trendGoodDirection?: 'up' | 'down'; // which direction is "good"
+  onClick?: () => void;
+}
+
+function KpiTile({
+  label, value, sub, icon: Icon, iconClass, accentClass,
+  trend, trendLabel, trendGoodDirection, onClick,
+}: KpiTileProps) {
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  const trendColor =
+    trend === 'neutral' || !trend
+      ? 'text-muted-foreground'
+      : trend === trendGoodDirection
+      ? 'text-green-500'
+      : 'text-red-500';
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.18 }}
+      className={cn(
+        'flex flex-col gap-2 rounded-xl border bg-card p-4 text-left w-full',
+        accentClass,
+        onClick ? 'cursor-pointer' : 'cursor-default'
+      )}
+      onClick={onClick}
+      type="button"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+        <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center', iconClass.replace('text-', 'bg-').replace('-500', '-500/10').replace('-400', '-400/10'))}>
+          <Icon className={cn('h-3.5 w-3.5', iconClass)} />
+        </div>
+      </div>
+      <div>
+        <span className="text-3xl font-bold tabular-nums tracking-tight">{value}</span>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      </div>
+      {trend && trendLabel && (
+        <div className={cn('flex items-center gap-1 text-xs font-medium', trendColor)}>
+          <TrendIcon className="h-3 w-3" />
+          {trendLabel}
+        </div>
+      )}
+    </motion.button>
+  );
+}
+
+interface GlanceStripProps {
+  issues: ReturnType<typeof useIssues>['data'];
+  workOrders: ReturnType<typeof useWorkOrders>['data'];
+  projects: ReturnType<typeof useProjects>['data'];
+  counts: { critical: number; warnings: number; teamGreen: number; teamAmber: number; teamRed: number };
+  teamTotal: number;
+  isLoading: boolean;
+}
+
+function GlanceStrip({ issues = [], workOrders = [], projects = [], counts, teamTotal, isLoading }: GlanceStripProps) {
+  const navigate = useNavigate();
+
+  const openIssues = issues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length;
+  const severeIssues = issues.filter(i => i.severity === 'severe' && i.status !== 'resolved' && i.status !== 'closed').length;
+
+  const openWOs = workOrders.filter(w =>
+    w.status !== 'completed' && w.status !== 'verified' && w.status !== 'closed' && w.status !== 'rejected'
+  ).length;
+  const inProgressWOs = workOrders.filter(w => w.status === 'in_progress').length;
+
+  const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'planning').length;
+
+  const compliancePct = teamTotal > 0
+    ? Math.round((counts.teamGreen / teamTotal) * 100)
+    : null;
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <KpiTile
+        label="Open Issues"
+        value={openIssues}
+        sub={severeIssues > 0 ? `${severeIssues} severe` : 'No severe issues'}
+        icon={ClipboardCheck}
+        iconClass="text-red-500"
+        accentClass={cn(
+          'border-border/60',
+          openIssues > 0 && severeIssues > 0 ? 'border-l-4 border-l-red-500' : ''
+        )}
+        trend={severeIssues > 0 ? 'up' : 'neutral'}
+        trendLabel={severeIssues > 0 ? `${severeIssues} need immediate attention` : 'All manageable'}
+        trendGoodDirection="down"
+        onClick={() => navigate('/issues')}
+      />
+
+      <KpiTile
+        label="Work Orders"
+        value={openWOs}
+        sub={inProgressWOs > 0 ? `${inProgressWOs} in progress` : 'None in progress'}
+        icon={Wrench}
+        iconClass="text-orange-500"
+        accentClass={cn(
+          'border-border/60',
+          openWOs > 5 ? 'border-l-4 border-l-orange-500' : ''
+        )}
+        trend={inProgressWOs > 0 ? 'neutral' : 'neutral'}
+        trendLabel={openWOs === 0 ? 'All clear' : `${openWOs} open`}
+        trendGoodDirection="down"
+        onClick={() => navigate('/work-orders')}
+      />
+
+      <KpiTile
+        label="Active Projects"
+        value={activeProjects}
+        sub={counts.critical > 0 ? `${counts.critical} critical alerts` : 'On track'}
+        icon={FolderKanban}
+        iconClass="text-indigo-500"
+        accentClass="border-border/60"
+        trend="neutral"
+        trendLabel={activeProjects === 0 ? 'No active projects' : `${activeProjects} in flight`}
+        trendGoodDirection="up"
+        onClick={() => navigate('/projects')}
+      />
+
+      {compliancePct !== null ? (
+        <KpiTile
+          label="Team Compliance"
+          value={`${compliancePct}%`}
+          sub={`${counts.teamGreen} of ${teamTotal} members`}
+          icon={ShieldCheck}
+          iconClass={compliancePct === 100 ? 'text-green-500' : compliancePct >= 75 ? 'text-amber-500' : 'text-red-500'}
+          accentClass={cn(
+            'border-border/60',
+            compliancePct === 100
+              ? 'border-l-4 border-l-green-500'
+              : compliancePct >= 75
+              ? 'border-l-4 border-l-amber-500'
+              : 'border-l-4 border-l-red-500'
+          )}
+          trend={compliancePct === 100 ? 'up' : compliancePct >= 75 ? 'neutral' : 'down'}
+          trendLabel={compliancePct === 100 ? 'Fully compliant' : `${counts.teamRed + counts.teamAmber} need attention`}
+          trendGoodDirection="up"
+          onClick={() => {}}
+        />
+      ) : (
+        <KpiTile
+          label="Alerts Summary"
+          value={counts.critical + counts.warnings}
+          sub={`${counts.critical} critical · ${counts.warnings} warnings`}
+          icon={AlertTriangle}
+          iconClass={counts.critical > 0 ? 'text-red-500' : counts.warnings > 0 ? 'text-amber-500' : 'text-green-500'}
+          accentClass={cn(
+            'border-border/60',
+            counts.critical > 0 ? 'border-l-4 border-l-red-500' : counts.warnings > 0 ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-green-500'
+          )}
+          trend={counts.critical > 0 ? 'up' : counts.warnings > 0 ? 'neutral' : 'down'}
+          trendLabel={counts.critical + counts.warnings === 0 ? 'All clear' : 'Review below'}
+          trendGoodDirection="down"
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: profile } = useMyProfile();
+  const { data: issues = [] } = useIssues();
+  const { data: workOrders = [] } = useWorkOrders();
+  const { data: projects = [] } = useProjects();
   const {
     criticalAlerts,
     warningAlerts,
@@ -477,6 +670,16 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* ── Today at a Glance ─────────────────────────────────────────────── */}
+      <GlanceStrip
+        issues={issues}
+        workOrders={workOrders}
+        projects={projects}
+        counts={counts}
+        teamTotal={teamTotal}
+        isLoading={isLoading}
+      />
 
       {/* ── Zone 1 + 2 or All Clear ───────────────────────────────────────── */}
       <AnimatePresence mode="wait">
