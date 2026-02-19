@@ -59,7 +59,8 @@ export default function ContactsPage() {
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
     contactType: typeFilter,
-    propertyId: ownershipTab === "personal" ? undefined : (propertyFilter || undefined),
+    // Only filter by property when explicitly on the "property" tab and a property is selected
+    propertyId: ownershipTab === "property" ? (propertyFilter || undefined) : undefined,
     showPersonal: ownershipTab === "all" || ownershipTab === "personal",
     showProperty: ownershipTab === "all" || ownershipTab === "property",
   });
