@@ -29,6 +29,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { useProperties } from '@/hooks/useProperties';
+import { useAuth } from '@/hooks/useAuth';
 import { useUnitsByProperty } from '@/hooks/useUnits';
 import { useIssuesByProperty } from '@/hooks/useIssues';
 import { useDefects, useOpenDefects } from '@/hooks/useDefects';
@@ -613,6 +614,7 @@ function issueStatusBadge(status: string | null) {
 
 export default function Dashboard() {
   const { isModuleEnabled } = useModules();
+  const { user } = useAuth();
   const { shouldShowOnboarding } = useOnboarding();
   const navigate = useNavigate();
   
@@ -705,7 +707,9 @@ export default function Dashboard() {
   };
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greetingBase = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = (user?.user_metadata?.full_name as string | undefined)?.trim().split(/\s+/)[0] ?? '';
+  const greeting = firstName ? `${greetingBase}, ${firstName}` : greetingBase;
 
   const hasNspire = isModuleEnabled('nspireEnabled');
   const hasDailyGrounds = isModuleEnabled('dailyGroundsEnabled');
