@@ -61,6 +61,7 @@ const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsP
 const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
+const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -170,8 +171,11 @@ const App = () => (
                               {/* Profile */}
                               <Route path="/profile" element={<ProfilePage />} />
 
-                              {/* Credentials */}
+              {/* Credentials */}
                               <Route path="/credentials" element={<CredentialsDashboardPage />} />
+
+                              {/* Admin */}
+                              <Route path="/admin/schools" element={<SchoolManagementPage />} />
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />

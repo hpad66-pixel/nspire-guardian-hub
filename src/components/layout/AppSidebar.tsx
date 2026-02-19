@@ -637,6 +637,17 @@ export function AppSidebar() {
             />
           )}
 
+          {/* LW Schools (super admin only) */}
+          {isAdmin && (
+            <NavItem
+              to="/admin/schools"
+              icon={<GraduationCap />}
+              label="LW Schools"
+              collapsed={collapsed}
+              tooltip="LearnWorlds School Management"
+            />
+          )}
+
           {/* Documents */}
           {canView('documents') && (
             <NavItem to="/documents" icon={<FileText />} label="Documents" collapsed={collapsed} />
