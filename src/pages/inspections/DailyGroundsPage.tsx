@@ -248,7 +248,7 @@ export default function DailyGroundsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowFullReport(true)}
+                  onClick={() => setShowReportDialog(true)}
                   className="flex-1"
                 >
                   <FileText className="h-3.5 w-3.5" />

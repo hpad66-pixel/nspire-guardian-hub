@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLogIncident, type SourceType, type LogIncidentPayload } from '@/hooks/useSafety';
-import { CheckCircle2, ChevronLeft, ChevronRight, TriangleAlert, Upload, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, TriangleAlert, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -585,12 +585,3 @@ export function LogIncidentSheet({
   );
 }
 
-// We need MapPin inside the component
-function MapPin({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
