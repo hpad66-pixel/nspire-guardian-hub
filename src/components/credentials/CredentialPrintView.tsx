@@ -137,7 +137,7 @@ export function CredentialPrintView({
   </div>` : ''}
 
   <div class="footer">
-    Generated from APAS OS · apasos.lovable.app
+    Generated from APAS OS · apasos.ai
   </div>
 
   <script>
