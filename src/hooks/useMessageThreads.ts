@@ -12,6 +12,11 @@ export interface MessageThread {
   participant_ids: string[];
   is_group: boolean;
   is_archived: boolean;
+
+  // Context tags — all optional, existing threads will have null values
+  context_type?: 'project' | 'property' | 'inspection' | null;
+  context_id?: string | null;
+  context_label?: string | null;
 }
 
 export interface ThreadWithLastMessage extends MessageThread {
