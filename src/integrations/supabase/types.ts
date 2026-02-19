@@ -4669,6 +4669,41 @@ export type Database = {
           },
         ]
       }
+      property_module_overrides: {
+        Row: {
+          enabled: boolean
+          id: string
+          module_key: string
+          property_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: string
+          module_key: string
+          property_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: string
+          module_key?: string
+          property_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_module_overrides_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_team_members: {
         Row: {
           added_by: string | null
@@ -6418,6 +6453,75 @@ export type Database = {
           custom_category_name?: string | null
           id?: string
           setup_completed?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_modules: {
+        Row: {
+          client_portal_enabled: boolean
+          created_at: string
+          credential_wallet_enabled: boolean
+          email_inbox_enabled: boolean
+          equipment_tracker_enabled: boolean
+          id: string
+          occupancy_enabled: boolean
+          platform_client_portal: boolean
+          platform_credential_wallet: boolean
+          platform_email_inbox: boolean
+          platform_equipment_tracker: boolean
+          platform_occupancy: boolean
+          platform_qr_scanning: boolean
+          platform_safety_module: boolean
+          platform_training_hub: boolean
+          qr_scanning_enabled: boolean
+          safety_module_enabled: boolean
+          training_hub_enabled: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          client_portal_enabled?: boolean
+          created_at?: string
+          credential_wallet_enabled?: boolean
+          email_inbox_enabled?: boolean
+          equipment_tracker_enabled?: boolean
+          id?: string
+          occupancy_enabled?: boolean
+          platform_client_portal?: boolean
+          platform_credential_wallet?: boolean
+          platform_email_inbox?: boolean
+          platform_equipment_tracker?: boolean
+          platform_occupancy?: boolean
+          platform_qr_scanning?: boolean
+          platform_safety_module?: boolean
+          platform_training_hub?: boolean
+          qr_scanning_enabled?: boolean
+          safety_module_enabled?: boolean
+          training_hub_enabled?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          client_portal_enabled?: boolean
+          created_at?: string
+          credential_wallet_enabled?: boolean
+          email_inbox_enabled?: boolean
+          equipment_tracker_enabled?: boolean
+          id?: string
+          occupancy_enabled?: boolean
+          platform_client_portal?: boolean
+          platform_credential_wallet?: boolean
+          platform_email_inbox?: boolean
+          platform_equipment_tracker?: boolean
+          platform_occupancy?: boolean
+          platform_qr_scanning?: boolean
+          platform_safety_module?: boolean
+          platform_training_hub?: boolean
+          qr_scanning_enabled?: boolean
+          safety_module_enabled?: boolean
+          training_hub_enabled?: boolean
           updated_at?: string
           workspace_id?: string
         }

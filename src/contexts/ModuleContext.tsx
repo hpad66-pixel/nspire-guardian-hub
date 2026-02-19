@@ -59,28 +59,45 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { isAdmin } = useUserPermissions();
 
-  // Load module settings from properties on app start
+  // Load module settings from properties + workspace_modules on app start
   const loadModulesFromProperties = async () => {
     try {
-      const { data: properties, error } = await supabase
-        .from('properties')
-        .select('nspire_enabled, daily_grounds_enabled, projects_enabled, occupancy_enabled, qr_scanning_enabled');
+      const [{ data: properties, error: propError }, { data: wsModules, error: wsError }] = await Promise.all([
+        supabase
+          .from('properties')
+          .select('nspire_enabled, daily_grounds_enabled, projects_enabled, occupancy_enabled, qr_scanning_enabled'),
+        supabase
+          .from('workspace_modules')
+          .select('*')
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      if (error) throw error;
+      if (propError) throw propError;
+      if (wsError) throw wsError;
+
+      const ws = wsModules as any;
+
+      // For workspace-level modules:
+      // effective = platform gate AND workspace admin toggle (defaults to true if no row yet)
+      const wsEnabled = (platformField: string, wsField: string): boolean => {
+        if (!ws) return true; // no row yet → show as enabled (dev / first-run mode)
+        return (ws[platformField] ?? true) && (ws[wsField] ?? true);
+      };
 
       // Module is enabled if ANY property has it enabled
       const tenant: ModuleConfig = {
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
-        occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
-        emailInboxEnabled: true,
-        qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
-        credentialWalletEnabled: true,
-        trainingHubEnabled: true,
-        safetyModuleEnabled: true,
-        equipmentTrackerEnabled: true,
-        clientPortalEnabled: true,
+        occupancyEnabled: wsEnabled('platform_occupancy', 'occupancy_enabled'),
+        emailInboxEnabled: wsEnabled('platform_email_inbox', 'email_inbox_enabled'),
+        qrScanningEnabled: wsEnabled('platform_qr_scanning', 'qr_scanning_enabled'),
+        credentialWalletEnabled: wsEnabled('platform_credential_wallet', 'credential_wallet_enabled'),
+        trainingHubEnabled: wsEnabled('platform_training_hub', 'training_hub_enabled'),
+        safetyModuleEnabled: wsEnabled('platform_safety_module', 'safety_module_enabled'),
+        equipmentTrackerEnabled: wsEnabled('platform_equipment_tracker', 'equipment_tracker_enabled'),
+        clientPortalEnabled: wsEnabled('platform_client_portal', 'client_portal_enabled'),
       };
 
       setTenantModules(tenant);
