@@ -132,6 +132,7 @@ export function DailyInspectionWizard({
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [generalNotes, setGeneralNotes] = useState(existingInspection?.general_notes || '');
+  const [generalNotesHtml, setGeneralNotesHtml] = useState(existingInspection?.general_notes_html || '');
   const [attachments, setAttachments] = useState<string[]>(existingInspection?.attachments || []);
   const [assetChecks, setAssetChecks] = useState<Record<string, AssetCheckData>>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -314,6 +315,7 @@ export function DailyInspectionWizard({
       await updateInspection.mutateAsync({
         id: inspection.id,
         general_notes: generalNotes,
+        general_notes_html: generalNotesHtml,
         attachments,
         status: 'completed',
         completed_at: new Date().toISOString(),
@@ -481,7 +483,10 @@ export function DailyInspectionWizard({
               <CardContent className="space-y-4">
                 <RichTextEditor
                   content={generalNotes}
-                  onChange={setGeneralNotes}
+                  onChange={(html) => {
+                    setGeneralNotes(html);
+                    setGeneralNotesHtml(html);
+                  }}
                   placeholder="Describe any exterior defects, general housekeeping notes, or other observations…"
                 />
 
