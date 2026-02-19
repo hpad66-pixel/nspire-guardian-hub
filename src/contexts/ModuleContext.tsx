@@ -24,6 +24,7 @@ const defaultModules: ModuleConfig = {
   qrScanningEnabled: false,
   credentialWalletEnabled: false,
   trainingHubEnabled: false,
+  safetyModuleEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -48,6 +49,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     qrScanningEnabled: null,
     credentialWalletEnabled: null,
     trainingHubEnabled: null,
+    safetyModuleEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +74,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
         credentialWalletEnabled: true, // Always enabled for now
         trainingHubEnabled: true, // Always enabled for now
+        safetyModuleEnabled: true, // Always enabled for now
       };
 
       setTenantModules(tenant);
@@ -87,6 +90,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           qrScanningEnabled: null,
           credentialWalletEnabled: null,
           trainingHubEnabled: null,
+          safetyModuleEnabled: null,
         });
         return;
       }
@@ -107,6 +111,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         qrScanningEnabled: null,
         credentialWalletEnabled: null,
         trainingHubEnabled: null,
+        safetyModuleEnabled: null,
       };
 
       (overrides || []).forEach((row) => {
