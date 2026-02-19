@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AssetDialog } from '@/components/assets/AssetDialog';
 import { AssetTypeIcon } from '@/components/assets/AssetTypeIcon';
 import { useAssets, useDeleteAsset, useAssetTypes, Asset, AssetType, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { useLowStockCount } from '@/hooks/useInventory';
 import { InventoryStatusPanel } from '@/components/analytics/InventoryStatusPanel';
 import { 
@@ -43,7 +43,7 @@ export default function AssetsPage() {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [deleteAsset, setDeleteAsset] = useState<Asset | null>(null);
 
-  const { data: properties = [] } = useProperties();
+  const { data: properties = [] } = useManagedProperties();
   const { data: assetTypes = [] } = useAssetTypes();
   const { canCreate, canUpdate, canDelete } = useUserPermissions();
   const canCreateAssets = canCreate('properties');

@@ -8,7 +8,7 @@ import { InspectionReportDialog } from '@/components/inspections/InspectionRepor
 import { SendReportEmailDialog } from '@/components/inspections/SendReportEmailDialog';
 import { PrintableDailyInspectionReport } from '@/components/inspections/PrintableDailyInspectionReport';
 import { DailyLogDashboard } from '@/components/inspections/DailyLogDashboard';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { useDailyInspections, useTodayInspection, useInspectionItems } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -29,7 +29,7 @@ export default function DailyGroundsPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const { data: properties = [] } = useProperties();
+  const { data: properties = [] } = useManagedProperties();
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
   const { data: inspections = [] } = useDailyInspections(selectedPropertyId || undefined);
   const { data: todayInspection } = useTodayInspection(selectedPropertyId);

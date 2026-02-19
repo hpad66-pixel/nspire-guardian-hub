@@ -17,7 +17,7 @@ import {
   Building,
 } from 'lucide-react';
 import { useTenants, useTenantStats, type Tenant } from '@/hooks/useTenants';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TenantDialog } from '@/components/occupancy/TenantDialog';
@@ -41,7 +41,7 @@ export default function OccupancyPage() {
 
   const { data: tenants, isLoading } = useTenants();
   const { data: stats } = useTenantStats();
-  const { data: properties = [] } = useProperties();
+  const { data: properties = [] } = useManagedProperties();
 
   useEffect(() => {
     if (!selectedPropertyId && properties.length > 0) {

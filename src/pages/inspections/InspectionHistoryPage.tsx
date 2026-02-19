@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { useDailyInspections, useInspectionItems, WEATHER_OPTIONS, type DailyInspection } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -42,7 +42,7 @@ export default function InspectionHistoryPage() {
   const [selectedInspection, setSelectedInspection] = useState<DailyInspection | null>(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
 
-  const { data: properties = [], isLoading: propertiesLoading } = useProperties();
+  const { data: properties = [], isLoading: propertiesLoading } = useManagedProperties();
   const { data: allInspections = [], isLoading: inspectionsLoading } = useDailyInspections(
     selectedPropertyId || undefined
   );

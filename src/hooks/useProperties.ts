@@ -30,6 +30,7 @@ export interface Property {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  is_managed_property?: boolean;
 }
 
 export function useProperties() {
@@ -65,6 +66,16 @@ export function useProperties() {
       return properties.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
+}
+
+/** Only returns properties flagged as true PM/managed properties (is_managed_property = true).
+ *  Use this in unit/NSPIRE/grounds dropdowns so commercial/project sites don't appear. */
+export function useManagedProperties() {
+  const { data: all, ...rest } = useProperties();
+  return {
+    ...rest,
+    data: all?.filter(p => p.is_managed_property !== false) ?? [],
+  };
 }
 
 export function useProperty(id: string) {
