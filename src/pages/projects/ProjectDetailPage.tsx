@@ -551,6 +551,158 @@ export default function ProjectDetailPage() {
               {/* RIGHT: Tab content */}
               <div className="flex-1 min-w-0 space-y-4">
                 <TabsContent value="overview" className="space-y-6 mt-0">
+                  {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
+                  {!projectLoading && (
+                    <div className="rounded-xl border bg-card overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'h-6 w-6 rounded-md flex items-center justify-center',
+                            allClear ? 'bg-success/10' : overdueItems.length > 0 ? 'bg-destructive/10' : 'bg-warning/10'
+                          )}>
+                            {allClear
+                              ? <CheckSquare className="h-3.5 w-3.5 text-success" />
+                              : <AlertCircle className={cn('h-3.5 w-3.5', overdueItems.length > 0 ? 'text-destructive' : 'text-warning')} />
+                            }
+                          </div>
+                          <span className="text-sm font-semibold">Needs Attention</span>
+                          {!allClear && (
+                            <span className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                              overdueItems.length > 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                            )}>
+                              {overdueItems.length + dueSoonItems.length} item{overdueItems.length + dueSoonItems.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        {comingUp.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                            {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
+                          </span>
+                        )}
+                      </div>
+                      {/* All clear state */}
+                      {allClear && (
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-2 text-success text-sm font-medium">
+                            <CheckSquare className="h-4 w-4" />
+                            You're on top of it — nothing overdue or due this week.
+                          </div>
+                          {comingUp.length > 0 && (
+                            <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                              {comingUp.map((item, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setActiveTab(item.tab)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-xs"
+                                >
+                                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                                  <span className="font-medium text-foreground">{item.label}</span>
+                                  <span className="text-muted-foreground truncate max-w-[120px]">{item.sub}</span>
+                                  <span className="text-[10px] text-muted-foreground ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Attention items */}
+                      {!allClear && (
+                        <div className="divide-y divide-border/40">
+                          {/* Overdue lane */}
+                          {overdueItems.length > 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                                Overdue — action required
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {overdueItems.slice(0, 5).map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                    <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
+                                  </button>
+                                ))}
+                                {overdueItems.length > 5 && (
+                                  <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">
+                                    +{overdueItems.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {/* Due this week lane */}
+                          {dueSoonItems.length > 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-warning mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning" />
+                                Due this week
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {dueSoonItems.map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Waiting on others lane */}
+                          {waitingItems.length > 0 && overdueItems.length === 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                Waiting on others
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {waitingItems.slice(0, 4).map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-blue-400 shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Coming up footer strip */}
+                          {comingUp.length > 0 && (
+                            <div className="px-4 py-2.5 bg-muted/20 flex items-center gap-3 flex-wrap">
+                              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">Coming up</span>
+                              {comingUp.map((item, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setActiveTab(item.tab)}
+                                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <Calendar className="h-3 w-3 shrink-0" />
+                                  <span className="font-medium">{item.label}</span>
+                                  <span className="truncate max-w-[100px]">{item.sub}</span>
+                                  <span className="font-semibold text-foreground">{format(item.dueDate, 'MMM d')}</span>
+                                  {i < comingUp.length - 1 && <span className="text-border ml-1">·</span>}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
                   <div className="grid gap-6 lg:grid-cols-2">
                     <div className="rounded-xl border bg-card p-5 space-y-3">
@@ -720,6 +872,127 @@ export default function ProjectDetailPage() {
             {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
             <div className="lg:hidden mt-2 space-y-4">
               <TabsContent value="overview" className="space-y-6">
+                {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
+                {!projectLoading && (
+                  <div className="rounded-xl border bg-card overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          'h-6 w-6 rounded-md flex items-center justify-center',
+                          allClear ? 'bg-success/10' : overdueItems.length > 0 ? 'bg-destructive/10' : 'bg-warning/10'
+                        )}>
+                          {allClear
+                            ? <CheckSquare className="h-3.5 w-3.5 text-success" />
+                            : <AlertCircle className={cn('h-3.5 w-3.5', overdueItems.length > 0 ? 'text-destructive' : 'text-warning')} />
+                          }
+                        </div>
+                        <span className="text-sm font-semibold">Needs Attention</span>
+                        {!allClear && (
+                          <span className={cn(
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                            overdueItems.length > 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                          )}>
+                            {overdueItems.length + dueSoonItems.length} item{overdueItems.length + dueSoonItems.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      {comingUp.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                          {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
+                        </span>
+                      )}
+                    </div>
+                    {allClear && (
+                      <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                        <div className="flex items-center gap-2 text-success text-sm font-medium">
+                          <CheckSquare className="h-4 w-4" />
+                          You're on top of it — nothing overdue or due this week.
+                        </div>
+                        {comingUp.length > 0 && (
+                          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                            {comingUp.map((item, i) => (
+                              <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-xs">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <span className="font-medium text-foreground">{item.label}</span>
+                                <span className="text-muted-foreground truncate max-w-[120px]">{item.sub}</span>
+                                <span className="text-[10px] text-muted-foreground ml-1">{format(item.dueDate, 'MMM d')}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!allClear && (
+                      <div className="divide-y divide-border/40">
+                        {overdueItems.length > 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                              Overdue — action required
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {overdueItems.slice(0, 5).map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
+                                </button>
+                              ))}
+                              {overdueItems.length > 5 && <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">+{overdueItems.length - 5} more</span>}
+                            </div>
+                          </div>
+                        )}
+                        {dueSoonItems.length > 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-warning mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning" />
+                              Due this week
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {dueSoonItems.map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {waitingItems.length > 0 && overdueItems.length === 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
+                              Waiting on others
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {waitingItems.slice(0, 4).map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-blue-400 shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {comingUp.length > 0 && (
+                          <div className="px-4 py-2.5 bg-muted/20 flex items-center gap-3 flex-wrap">
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">Coming up</span>
+                            {comingUp.map((item, i) => (
+                              <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                <Calendar className="h-3 w-3 shrink-0" />
+                                <span className="font-medium">{item.label}</span>
+                                <span className="truncate max-w-[100px]">{item.sub}</span>
+                                <span className="font-semibold text-foreground">{format(item.dueDate, 'MMM d')}</span>
+                                {i < comingUp.length - 1 && <span className="text-border ml-1">·</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
                 <div className="grid gap-6 lg:grid-cols-2">
                   <div className="rounded-xl border bg-card p-5 space-y-3">
