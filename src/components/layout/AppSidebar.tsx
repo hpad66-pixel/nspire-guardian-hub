@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOfflineSyncStatus } from '@/hooks/useOfflineSyncStatus';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
@@ -311,6 +312,7 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();
+  const { failedCount } = useOfflineSyncStatus();
 
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   useUnreadThreadCountRealtime();
@@ -702,6 +704,19 @@ export function AppSidebar() {
               label="Workspace Profile"
               collapsed={collapsed}
               tooltip="Company Branding & Identity"
+            />
+          )}
+
+          {/* Sync Issues indicator — shown when offline queue has permanently failed items */}
+          {failedCount > 0 && (
+            <NavItem
+              to="/settings"
+              icon={<TriangleAlert />}
+              label={`Sync Issues (${failedCount})`}
+              collapsed={collapsed}
+              badge={failedCount}
+              badgeVariant="urgent"
+              tooltip={`${failedCount} offline change${failedCount !== 1 ? 's' : ''} failed to sync`}
             />
           )}
 

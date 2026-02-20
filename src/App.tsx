@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from '@/hooks/useAuth';
+import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -96,6 +97,24 @@ function RootRedirect() {
   return <LandingPageAlt />;
 }
 
+/** Registers the offline queue flush handler on mount and on connectivity restore. */
+function OfflineQueueManager() {
+  useEffect(() => {
+    // Flush once on app startup (catches queued items from previous offline session)
+    flushOfflineQueue(false).catch(console.error);
+
+    // Flush again whenever connectivity is restored
+    const handleOnline = () => {
+      flushOfflineQueue(true).catch(console.error);
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  return null;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -105,6 +124,7 @@ const App = () => (
             <ModuleProvider>
               <Toaster />
               <Sonner />
+              <OfflineQueueManager />
               <BrowserRouter>
                 <Suspense fallback={
                   <div className="flex h-screen w-full items-center justify-center bg-background">
