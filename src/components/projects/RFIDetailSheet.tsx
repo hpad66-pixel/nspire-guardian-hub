@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Calendar, User, MessageSquare, CheckCircle, XCircle, Clock, Send, Mail } from 'lucide-react';
-import { type RFI, useRespondToRFI, useCloseRFI } from '@/hooks/useRFIs';
+import { Calendar, XCircle, Send, Mail, Pencil, X } from 'lucide-react';
+import { type RFI, useRespondToRFI, useCloseRFI, useUpdateRFI } from '@/hooks/useRFIs';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 
 interface RFIDetailSheetProps {
@@ -39,30 +41,88 @@ const statusConfig = {
 export function RFIDetailSheet({ rfi, open, onOpenChange, projectName = '' }: RFIDetailSheetProps) {
   const { user } = useAuth();
   const respondToRFI = useRespondToRFI();
+  const updateRFI = useUpdateRFI();
   const closeRFI = useCloseRFI();
   
-  const [response, setResponse] = useState('');
+  const [newResponse, setNewResponse] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedResponse, setEditedResponse] = useState('');
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  
+
+  // Fetch the responder's profile so we can show their name
+  const { data: responderProfile } = useQuery({
+    queryKey: ['profile', rfi?.responded_by],
+    queryFn: async () => {
+      if (!rfi?.responded_by) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .eq('user_id', rfi.responded_by)
+        .single();
+      return data;
+    },
+    enabled: !!rfi?.responded_by,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Reset edit state when the RFI changes
+  useEffect(() => {
+    setIsEditing(false);
+    setEditedResponse('');
+    setNewResponse('');
+  }, [rfi?.id]);
+
   if (!rfi) return null;
-  
+
   const config = statusConfig[rfi.status];
-  
+  const isResponder = user?.id === rfi.responded_by;
+  const responderName = responderProfile?.full_name || responderProfile?.email || 'Unknown';
+
   const handleRespond = async () => {
-    if (!user || !response.trim()) return;
-    
+    if (!user || !newResponse.trim()) return;
     await respondToRFI.mutateAsync({
       id: rfi.id,
-      response,
+      response: newResponse.trim(),
       respondedBy: user.id,
     });
-    
-    setResponse('');
+    setNewResponse('');
   };
-  
+
+  const handleStartEdit = () => {
+    setEditedResponse(rfi.response ?? '');
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedResponse('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedResponse.trim()) return;
+    await updateRFI.mutateAsync({
+      id: rfi.id,
+      response: editedResponse.trim(),
+    });
+    setIsEditing(false);
+  };
+
   const handleClose = async () => {
     await closeRFI.mutateAsync(rfi.id);
   };
+
+  // Build the email HTML for external sharing — includes responder attribution
+  const emailContentHtml = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1)}</td></tr>
+      ${rfi.due_date ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Due Date</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${format(new Date(rfi.due_date), 'MMM d, yyyy')}</td></tr>` : ''}
+      <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Question</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.question.replace(/\n/g, '<br/>')}</td></tr>
+      ${rfi.response ? `
+        <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F0FDF4;font-weight:600;">Response</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.response.replace(/\n/g, '<br/>')}</td></tr>
+        <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Responded By</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${responderName}${rfi.responded_at ? ` &bull; ${format(new Date(rfi.responded_at), 'MMM d, yyyy h:mm a')}` : ''}</td></tr>
+      ` : ''}
+    </table>
+  `;
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -103,31 +163,81 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, projectName = '' }: RF
           
           <Separator />
           
-          {/* Response */}
+          {/* Response section */}
           {rfi.response ? (
             <div className="space-y-2">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">Response</Label>
-              <div className="p-4 rounded-lg border bg-success/5 border-success/20">
-                <p className="whitespace-pre-wrap">{rfi.response}</p>
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Response</Label>
+                {/* Only the person who wrote the response can edit it */}
+                {isResponder && !isEditing && rfi.status !== 'closed' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={handleStartEdit}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </Button>
+                )}
               </div>
-              {rfi.responded_at && (
-                <p className="text-xs text-muted-foreground">
-                  Responded on {format(new Date(rfi.responded_at), 'MMM d, yyyy h:mm a')}
-                </p>
+
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editedResponse}
+                    onChange={(e) => setEditedResponse(e.target.value)}
+                    rows={5}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={!editedResponse.trim() || updateRFI.isPending}
+                      className="flex-1"
+                    >
+                      {updateRFI.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg border bg-success/5 border-success/20">
+                  <p className="whitespace-pre-wrap text-sm">{rfi.response}</p>
+                </div>
               )}
+
+              {/* Attribution: who responded and when */}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Responded by</span>
+                <span className="font-medium text-foreground">{responderName}</span>
+                {rfi.responded_at && (
+                  <>
+                    <span>·</span>
+                    <span>{format(new Date(rfi.responded_at), 'MMM d, yyyy h:mm a')}</span>
+                  </>
+                )}
+              </div>
             </div>
           ) : rfi.status !== 'closed' ? (
             <div className="space-y-3">
               <Label className="text-muted-foreground text-xs uppercase tracking-wider">Add Response</Label>
               <Textarea
-                value={response}
-                onChange={(e) => setResponse(e.target.value)}
+                value={newResponse}
+                onChange={(e) => setNewResponse(e.target.value)}
                 placeholder="Type your response..."
                 rows={4}
               />
               <Button
                 onClick={handleRespond}
-                disabled={!response.trim() || respondToRFI.isPending}
+                disabled={!newResponse.trim() || respondToRFI.isPending}
                 className="w-full"
               >
                 <Send className="h-4 w-4 mr-2" />
@@ -181,14 +291,7 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, projectName = '' }: RF
         documentTitle={`RFI #${rfi.rfi_number} — ${rfi.subject}`}
         documentId={rfi.id}
         projectName={projectName}
-        contentHtml={`
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.status}</td></tr>
-            ${rfi.due_date ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Due Date</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.due_date}</td></tr>` : ''}
-            <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Question</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.question}</td></tr>
-            ${rfi.response ? `<tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Response</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${rfi.response}</td></tr>` : ''}
-          </table>
-        `}
+        contentHtml={emailContentHtml}
       />
     </Sheet>
   );
