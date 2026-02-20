@@ -163,6 +163,15 @@ export function useCreateThread() {
       // Ensure creator is included in participants
       const allParticipants = [...new Set([userId, ...params.participantIds])];
 
+      // Resolve workspace_id for the current user (required by RLS)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("workspace_id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!profile?.workspace_id) throw new Error("Workspace not found");
+
       // Create thread
       const { data: thread, error: threadError } = await supabase
         .from("message_threads")
@@ -171,6 +180,7 @@ export function useCreateThread() {
           created_by: userId,
           participant_ids: allParticipants,
           is_group: allParticipants.length > 2,
+          workspace_id: profile.workspace_id,
           context_type: params.context_type ?? null,
           context_id: params.context_id ?? null,
           context_label: params.context_label ?? null,

@@ -2387,6 +2387,7 @@ export type Database = {
           participant_ids: string[]
           subject: string
           updated_at: string | null
+          workspace_id: string
         }
         Insert: {
           created_at?: string | null
@@ -2398,6 +2399,7 @@ export type Database = {
           participant_ids?: string[]
           subject: string
           updated_at?: string | null
+          workspace_id: string
         }
         Update: {
           created_at?: string | null
@@ -2409,8 +2411,17 @@ export type Database = {
           participant_ids?: string[]
           subject?: string
           updated_at?: string | null
+          workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "message_threads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
