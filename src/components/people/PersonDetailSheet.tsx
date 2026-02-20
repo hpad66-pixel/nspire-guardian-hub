@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { 
   X, Mail, Phone, Calendar, Building2, Plus, 
-  Shield, History, Archive, RotateCcw, Edit2, Save 
+  Shield, History, Archive, RotateCcw, Edit2, Save, FolderLock,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ import { useAddUserRole, useRemoveUserRole } from '@/hooks/useUserManagement';
 import { useUserPermissions, getAssignableRoles, canRoleManage } from '@/hooks/usePermissions';
 import { PropertyAssignmentDialog } from './PropertyAssignmentDialog';
 import { ArchivePersonDialog } from './ArchivePersonDialog';
+import { HRVaultTab } from './HRVaultTab';
 import type { PersonWithAssignments, PropertyTeamMember } from '@/hooks/usePeople';
 import type { Database } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -301,10 +302,10 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
             <TabsList
               className={`grid w-full ${
                 canManageRoles && canManageModules
-                  ? 'grid-cols-4'
+                  ? 'grid-cols-5'
                   : canManageRoles || canManageModules
-                  ? 'grid-cols-3'
-                  : 'grid-cols-2'
+                  ? 'grid-cols-4'
+                  : 'grid-cols-3'
               }`}
             >
               <TabsTrigger value="assignments" className="gap-1">
@@ -321,6 +322,12 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
                 <TabsTrigger value="modules" className="gap-1">
                   <Shield className="h-4 w-4" />
                   Modules
+                </TabsTrigger>
+              )}
+              {(canManageRoles || isAdmin || isOwner) && (
+                <TabsTrigger value="hr-vault" className="gap-1">
+                  <FolderLock className="h-4 w-4" />
+                  HR Vault
                 </TabsTrigger>
               )}
               <TabsTrigger value="history" className="gap-1">
@@ -549,6 +556,12 @@ export function PersonDetailSheet({ person, open, onOpenChange }: PersonDetailSh
                     );
                   })}
                 </div>
+              </TabsContent>
+            )}
+
+            {(canManageRoles || isAdmin || isOwner) && (
+              <TabsContent value="hr-vault" className="space-y-4">
+                <HRVaultTab employeeId={person.user_id} />
               </TabsContent>
             )}
 

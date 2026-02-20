@@ -1618,6 +1618,104 @@ export type Database = {
           },
         ]
       }
+      hr_document_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          name: string
+          requires_expiry: boolean
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name: string
+          requires_expiry?: boolean
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+          requires_expiry?: boolean
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_document_categories_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_documents: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          employee_id: string
+          expiry_date: string | null
+          file_name: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          employee_id: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          employee_id?: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "hr_document_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hud_sample_sizes: {
         Row: {
           created_at: string
