@@ -694,6 +694,17 @@ export function AppSidebar() {
             <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
           )}
 
+          {/* Workspace Profile (admin only) */}
+          {isAdmin && (
+            <NavItem
+              to="/settings/workspace"
+              icon={<Building />}
+              label="Workspace Profile"
+              collapsed={collapsed}
+              tooltip="Company Branding & Identity"
+            />
+          )}
+
           {/* Settings */}
           {canView('settings') && (
             <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />

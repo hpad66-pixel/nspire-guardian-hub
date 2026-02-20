@@ -33,6 +33,7 @@ const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProposalsPage = lazy(() => import('./pages/projects/ProposalsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
 const PropertiesPage = lazy(() => import('./pages/core/PropertiesPage'));
 const UnitsPage = lazy(() => import('./pages/core/UnitsPage'));
@@ -193,6 +194,7 @@ const App = () => (
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
+                              <Route path="/settings/workspace" element={<WorkspaceProfilePage />} />
 
                               {/* Safety Module */}
                               <Route path="/safety" element={<SafetyDashboardPage />} />
