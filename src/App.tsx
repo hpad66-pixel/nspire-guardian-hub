@@ -123,8 +123,7 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                     <Route path="/portal/:projectId" element={<ClientPortalPage />} />
-                     <Route path="/portal/:slug/login" element={<PortalLoginPage />} />
+                     <Route path="/portal/:slug" element={<PortalLoginPage />} />
                      <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
                      <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
                      <Route path="/portal/:slug/home" element={<PortalHomePage />} />
@@ -159,7 +158,7 @@ const App = () => (
                               <Route path="/reports" element={<ReportsPage />} />
                               <Route path="/occupancy" element={<OccupancyPage />} />
                               <Route path="/qr-scanner" element={<QRScannerPage />} />
-                              <Route path="/training" element={<TrainingPage />} />
+                              <Route path="/training" element={<TrainingDashboardPage />} />
                               <Route path="/training/dashboard" element={<TrainingDashboardPage />} />
                               <Route path="/contacts" element={<ContactsPage />} />
                               <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
