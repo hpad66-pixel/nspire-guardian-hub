@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Building2, MoreHorizontal, Mail, Phone, Calendar } from 'lucide-react';
+import { Building2, MoreHorizontal, Mail, Phone, Calendar, FolderLock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PersonWithAssignments } from '@/hooks/usePeople';
+import { useHRVault } from '@/hooks/useHRVault';
 
 interface PeopleTableProps {
   people: PersonWithAssignments[];
@@ -27,6 +29,35 @@ interface PeopleTableProps {
   onPersonClick: (person: PersonWithAssignments) => void;
   groupByProperty?: boolean;
   showArchiveInfo?: boolean;
+}
+
+// ─── Vault indicator badge (reads from hook's allDocCounts cache) ─────────────
+function VaultBadge({ userId }: { userId: string }) {
+  const { allDocCounts } = useHRVault(null); // null = no per-employee fetch, just counts
+  const info = allDocCounts[userId];
+  if (!info || info.count === 0) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full border ${
+            info.hasAlert
+              ? 'border-destructive/40 text-destructive bg-destructive/10'
+              : 'border-border text-muted-foreground'
+          }`}>
+            <FolderLock className="h-3 w-3" />
+            {info.count}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {info.hasAlert
+            ? `${info.count} HR doc${info.count > 1 ? 's' : ''} — expiry alert`
+            : `${info.count} HR doc${info.count > 1 ? 's' : ''} on file`}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 const getRoleBadgeVariant = (role: string) => {
@@ -233,7 +264,10 @@ export function PeopleTable({
                     <AvatarFallback>{getInitials(person.full_name)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{person.full_name || 'Unknown'}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{person.full_name || 'Unknown'}</span>
+                      <VaultBadge userId={person.user_id} />
+                    </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="h-3 w-3" />
                       {person.email}
