@@ -589,38 +589,50 @@ serve(async (req) => {
 
     console.log(`CaseIQ: Pass 1 complete. Domain: ${regulatoryDomain}. Starting Pass 2 formatting...`);
 
-    // ── PASS 2: HTML formatting via Claude ──
+    // ── PASS 2: HTML formatting via Lovable AI (avoids Anthropic rate limits) ──
     const htmlPrompt = reportStyle === "aurum" ? AURUM_REPORT_PROMPT : WHITEPAPER_REPORT_PROMPT;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
 
-    const pass2Response = await fetch(ANTHROPIC_API_URL, {
+    const pass2Response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 16000,
-        temperature: 0.1,
-        system: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
+        model: "google/gemini-2.5-flash",
         messages: [
+          {
+            role: "system",
+            content: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
+          },
           {
             role: "user",
             content: `Here is the complete regulatory case analysis:\n\n${rawAnalysis}\n\n---\n\nNow format this analysis into a complete, self-contained HTML document using these exact instructions:\n\n${htmlPrompt}`,
           },
         ],
+        temperature: 0.1,
+        max_tokens: 16000,
       }),
     });
 
     if (!pass2Response.ok) {
       const errorText = await pass2Response.text();
       console.error("CaseIQ Pass 2 error:", pass2Response.status, errorText);
+      if (pass2Response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again in a few minutes." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       throw new Error("Report formatting failed");
     }
 
     const pass2Result = await pass2Response.json();
-    let reportHtml = pass2Result.content?.[0]?.text || "";
+    let reportHtml = pass2Result.choices?.[0]?.message?.content || "";
 
     // Clean output — strip code fences if present
     reportHtml = reportHtml
