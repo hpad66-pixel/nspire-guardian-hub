@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT — core regulatory analysis IP
@@ -469,9 +469,9 @@ serve(async (req) => {
       });
     }
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const body: ReviewRequest = await req.json();
@@ -502,32 +502,18 @@ serve(async (req) => {
       .map((f) => `\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE: ${f.name} ---\n`)
       .join("\n");
 
-    // Build content parts for Claude (Anthropic messages API)
-    const contentParts: Array<Record<string, unknown>> = [];
+    // Build user message content for Lovable AI (OpenAI-compatible format)
+    // For binary files, include them as image_url parts with data URIs
+    const userContentParts: Array<Record<string, unknown>> = [];
 
-    // Add binary files as base64 content blocks
     for (const f of files) {
       if (f.isBase64) {
-        // Claude supports PDF as document type, images as image type
-        if (f.mimeType === "application/pdf") {
-          contentParts.push({
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: f.mimeType,
-              data: f.content,
-            },
-          });
-        } else if (f.mimeType.startsWith("image/")) {
-          contentParts.push({
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: f.mimeType,
-              data: f.content,
-            },
-          });
-        }
+        userContentParts.push({
+          type: "image_url",
+          image_url: {
+            url: `data:${f.mimeType};base64,${f.content}`,
+          },
+        });
       }
     }
 
@@ -543,24 +529,25 @@ serve(async (req) => {
       analysisPrompt += `\n\nADDITIONAL CONTEXT FROM CLIENT: ${additionalContext}`;
     }
 
-    contentParts.push({ type: "text", text: analysisPrompt });
+    userContentParts.push({ type: "text", text: analysisPrompt });
 
     console.log(`CaseIQ: Starting analysis of ${files.length} files, style=${reportStyle}`);
 
-    // ── PASS 1: Analysis via Claude ──
-    const pass1Response = await fetch(ANTHROPIC_API_URL, {
+    // ── PASS 1: Analysis via Lovable AI (Gemini 2.5 Pro for heavy multimodal reasoning) ──
+    const pass1Response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 16000,
+        model: "google/gemini-2.5-pro",
+        messages: [
+          { role: "system", content: REGULATORY_SYSTEM_PROMPT },
+          { role: "user", content: userContentParts },
+        ],
         temperature: 0.2,
-        system: REGULATORY_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: contentParts }],
+        max_tokens: 16000,
       }),
     });
 
@@ -573,11 +560,17 @@ serve(async (req) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (pass1Response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add funds to continue." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       throw new Error("AI analysis failed");
     }
 
     const pass1Result = await pass1Response.json();
-    const rawAnalysis = pass1Result.content?.[0]?.text || "";
+    const rawAnalysis = pass1Result.choices?.[0]?.message?.content || "";
 
     if (!rawAnalysis) {
       throw new Error("AI returned empty analysis");
@@ -589,14 +582,10 @@ serve(async (req) => {
 
     console.log(`CaseIQ: Pass 1 complete. Domain: ${regulatoryDomain}. Starting Pass 2 formatting...`);
 
-    // ── PASS 2: HTML formatting via Lovable AI (avoids Anthropic rate limits) ──
+    // ── PASS 2: HTML formatting via Lovable AI ──
     const htmlPrompt = reportStyle === "aurum" ? AURUM_REPORT_PROMPT : WHITEPAPER_REPORT_PROMPT;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
-    const pass2Response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const pass2Response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
