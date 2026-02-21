@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.regulatory-case-review]
 verify_jwt = false
+
+[functions.inbound-email-webhook]
+verify_jwt = false

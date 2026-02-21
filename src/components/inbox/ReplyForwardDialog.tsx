@@ -127,6 +127,8 @@ export function ReplyForwardDialog({
       subject,
       bodyHtml: bodyHtml + quotedHtml,
       bodyText: "",
+      threadId: isReply ? (email.thread_id || email.id) : undefined,
+      replyToId: isReply ? email.id : undefined,
     });
 
     onOpenChange(false);

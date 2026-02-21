@@ -46,6 +46,26 @@ Set these secrets in Supabase (do not hard-code in the repo):
 
 These are read by `supabase/functions/voice-agent-token/index.ts`.
 
+## App-Owned Email Inbox (Thread Alias + Inbound Webhook)
+
+External email threading now uses a per-thread reply alias format:
+`thread+<thread_uuid>@<your-reply-domain>`.
+
+Implemented in:
+- `supabase/functions/send-email/index.ts`
+- `supabase/functions/send-report-email/index.ts`
+- `supabase/functions/inbound-email-webhook/index.ts`
+
+Set these Supabase function secrets:
+- `INBOUND_REPLY_DOMAIN` (example: `mail.yourdomain.com`)
+- `INBOUND_WEBHOOK_SECRET` (required by inbound webhook)
+- `INBOUND_FORWARD_TO_USER` (`true` to forward inbound copies to user email)
+- `RESEND_API_KEY` (already used for outbound and optional forwarding)
+
+Webhook endpoint:
+- `POST /functions/v1/inbound-email-webhook`
+- Send `x-inbound-webhook-secret: <INBOUND_WEBHOOK_SECRET>` (or `Authorization: Bearer <secret>`)
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).

@@ -16,6 +16,13 @@ interface SendEmailRequest {
   subject: string;
   bodyHtml: string;
   bodyText?: string;
+  threadId?: string;
+  replyToId?: string;
+}
+
+function normalizeReplyDomain(rawDomain: string | null): string | null {
+  if (!rawDomain) return null;
+  return rawDomain.trim().replace(/^@/, "").toLowerCase() || null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -62,7 +69,29 @@ const handler = async (req: Request): Promise<Response> => {
       subject,
       bodyHtml,
       bodyText,
+      threadId,
+      replyToId,
     } = body;
+
+    let resolvedThreadId = threadId || crypto.randomUUID();
+    if (!threadId && replyToId) {
+      const { data: parentEmail } = await supabase
+        .from("report_emails")
+        .select("id, thread_id")
+        .eq("id", replyToId)
+        .single();
+
+      if (parentEmail) {
+        resolvedThreadId = parentEmail.thread_id || parentEmail.id;
+      }
+    }
+
+    const replyDomain = normalizeReplyDomain(
+      Deno.env.get("INBOUND_REPLY_DOMAIN") ?? Deno.env.get("EMAIL_REPLY_DOMAIN")
+    );
+    const replyToAlias = replyDomain
+      ? `thread+${resolvedThreadId}@${replyDomain}`
+      : null;
 
     // Get user's profile for auto-BCC if not provided
     let finalBccRecipients = bccRecipients || [];
@@ -114,6 +143,10 @@ const handler = async (req: Request): Promise<Response> => {
       subject: subject,
       html: bodyHtml,
     };
+
+    if (replyToAlias) {
+      emailPayload.reply_to = replyToAlias;
+    }
 
     // Add CC if any
     if (ccRecipients && ccRecipients.length > 0) {
@@ -229,6 +262,8 @@ const handler = async (req: Request): Promise<Response> => {
       body_text: bodyText || "",
       is_read: true,
       source_module: "mailbox",
+      thread_id: resolvedThreadId,
+      reply_to_id: replyToId || null,
     };
 
     const { error: insertError } = await supabaseAdmin

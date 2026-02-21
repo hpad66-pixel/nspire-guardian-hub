@@ -25,11 +25,18 @@ interface SendReportEmailRequest {
   propertyId?: string;
   projectId?: string;
   workOrderId?: string;
+  threadId?: string;
+  replyToId?: string;
   statusSummary?: {
     ok: number;
     attention: number;
     defect: number;
   };
+}
+
+function normalizeReplyDomain(rawDomain: string | null): string | null {
+  if (!rawDomain) return null;
+  return rawDomain.trim().replace(/^@/, "").toLowerCase() || null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -81,8 +88,30 @@ const handler = async (req: Request): Promise<Response> => {
       message,
       pdfBase64,
       pdfFilename,
+      threadId,
+      replyToId,
       statusSummary,
     } = body;
+
+    let resolvedThreadId = threadId || crypto.randomUUID();
+    if (!threadId && replyToId) {
+      const { data: parentEmail } = await supabase
+        .from("report_emails")
+        .select("id, thread_id")
+        .eq("id", replyToId)
+        .single();
+
+      if (parentEmail) {
+        resolvedThreadId = parentEmail.thread_id || parentEmail.id;
+      }
+    }
+
+    const replyDomain = normalizeReplyDomain(
+      Deno.env.get("INBOUND_REPLY_DOMAIN") ?? Deno.env.get("EMAIL_REPLY_DOMAIN")
+    );
+    const replyToAlias = replyDomain
+      ? `thread+${resolvedThreadId}@${replyDomain}`
+      : null;
 
     // Get user's profile for auto-BCC if not provided
     let finalBccRecipients = bccRecipients || [];
@@ -228,6 +257,10 @@ const handler = async (req: Request): Promise<Response> => {
       ],
     };
 
+    if (replyToAlias) {
+      emailPayload.reply_to = replyToAlias;
+    }
+
     // Add BCC recipients if any
     if (finalBccRecipients.length > 0) {
       emailPayload.bcc = finalBccRecipients;
@@ -330,6 +363,8 @@ const handler = async (req: Request): Promise<Response> => {
       property_id: body.propertyId || null,
       project_id: body.projectId || null,
       work_order_id: body.workOrderId || null,
+      thread_id: resolvedThreadId,
+      reply_to_id: replyToId || null,
     };
 
     if (reportType === "daily_inspection") {
