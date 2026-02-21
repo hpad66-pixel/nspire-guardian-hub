@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const replyDomain = normalizeReplyDomain(
-      Deno.env.get("INBOUND_REPLY_DOMAIN") ?? Deno.env.get("EMAIL_REPLY_DOMAIN")
+      (Deno.env.get("INBOUND_REPLY_DOMAIN") ?? Deno.env.get("EMAIL_REPLY_DOMAIN")) || null
     );
     const replyToAlias = replyDomain
       ? `thread+${resolvedThreadId}@${replyDomain}`

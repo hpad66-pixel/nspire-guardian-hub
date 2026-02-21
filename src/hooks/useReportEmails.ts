@@ -27,6 +27,8 @@ export interface ReportEmailFull extends ReportEmail {
   attachment_size: number | null;
   is_archived: boolean;
   is_deleted: boolean;
+  thread_id: string | null;
+  reply_to_id: string | null;
 }
 
 export interface ReportEmailFilters {
