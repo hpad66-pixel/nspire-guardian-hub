@@ -25,6 +25,7 @@ import {
 } from "@/hooks/useProgressReports";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { generatePDF } from "@/lib/generatePDF";
+import { SendExternalEmailDialog } from "./SendExternalEmailDialog";
 import {
   FileText,
   BarChart3,
@@ -44,6 +45,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,6 +56,7 @@ async function getDocx(): Promise<DocxModule> {
   if (!_docx) _docx = await import("docx");
   return _docx;
 }
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ReportType = "weekly" | "monthly_invoice";
@@ -232,6 +235,7 @@ export function ReportGeneratorDialog({
   const [savedReportId, setSavedReportId] = useState<string | undefined>();
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
+  const [externalEmailOpen, setExternalEmailOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [isWordExporting, setIsWordExporting] = useState(false);
@@ -458,32 +462,44 @@ export function ReportGeneratorDialog({
 
               {/* ── Step: Review ── */}
               {step === "review" && (
-                <ReviewStep
-                  config={config}
-                  projectName={projectName}
-                  branding={branding || null}
-                  currentHtml={currentHtml}
-                  brandedFull={brandedFull}
-                  editMode={editMode}
-                  setEditMode={setEditMode}
-                  onEditedHtmlChange={setEditedHtml}
-                  isSaving={isSaving}
-                  isPdfExporting={isPdfExporting}
-                  isWordExporting={isWordExporting}
-                  isSendingEmail={sendEmail.isPending}
-                  emailDialogOpen={emailDialogOpen}
-                  setEmailDialogOpen={setEmailDialogOpen}
-                  emailTo={emailTo}
-                  setEmailTo={setEmailTo}
-                  onSaveDraft={() => handleSave("draft")}
-                  onFinalize={() => handleSave("finalized")}
-                  onPdfExport={handlePdfExport}
-                  onWordExport={handleWordExport}
-                  onPrint={handlePrint}
-                  onSendEmail={handleSendEmail}
-                  onReset={handleReset}
-                  savedReportId={savedReportId}
-                />
+                <>
+                  <ReviewStep
+                    config={config}
+                    projectName={projectName}
+                    branding={branding || null}
+                    currentHtml={currentHtml}
+                    brandedFull={brandedFull}
+                    editMode={editMode}
+                    setEditMode={setEditMode}
+                    onEditedHtmlChange={setEditedHtml}
+                    isSaving={isSaving}
+                    isPdfExporting={isPdfExporting}
+                    isWordExporting={isWordExporting}
+                    isSendingEmail={sendEmail.isPending}
+                    emailDialogOpen={emailDialogOpen}
+                    setEmailDialogOpen={setEmailDialogOpen}
+                    emailTo={emailTo}
+                    setEmailTo={setEmailTo}
+                    onSaveDraft={() => handleSave("draft")}
+                    onFinalize={() => handleSave("finalized")}
+                    onPdfExport={handlePdfExport}
+                    onWordExport={handleWordExport}
+                    onPrint={handlePrint}
+                    onSendEmail={handleSendEmail}
+                    onReset={handleReset}
+                    savedReportId={savedReportId}
+                    onEmailExternally={() => setExternalEmailOpen(true)}
+                  />
+                  <SendExternalEmailDialog
+                    open={externalEmailOpen}
+                    onOpenChange={setExternalEmailOpen}
+                    documentType="progress_report"
+                    documentTitle={reportTitle}
+                    documentId={savedReportId || "unsaved"}
+                    projectName={projectName}
+                    contentHtml={brandedFull}
+                  />
+                </>
               )}
             </>
           )}
@@ -681,55 +697,19 @@ function GeneratingStep({ streamedHtml }: { streamedHtml: string }) {
 
 // ── Review Step ───────────────────────────────────────────────────────────────
 function ReviewStep({
-  config,
-  projectName,
-  branding,
-  currentHtml,
-  brandedFull,
-  editMode,
-  setEditMode,
-  onEditedHtmlChange,
-  isSaving,
-  isPdfExporting,
-  isWordExporting,
-  isSendingEmail,
-  emailDialogOpen,
-  setEmailDialogOpen,
-  emailTo,
-  setEmailTo,
-  onSaveDraft,
-  onFinalize,
-  onPdfExport,
-  onWordExport,
-  onPrint,
-  onSendEmail,
-  onReset,
-  savedReportId,
+  config, projectName, branding, currentHtml, brandedFull, editMode, setEditMode,
+  onEditedHtmlChange, isSaving, isPdfExporting, isWordExporting, isSendingEmail,
+  emailDialogOpen, setEmailDialogOpen, emailTo, setEmailTo, onSaveDraft, onFinalize,
+  onPdfExport, onWordExport, onPrint, onSendEmail, onReset, savedReportId, onEmailExternally,
 }: {
-  config: ReportConfig;
-  projectName: string;
-  branding: any;
-  currentHtml: string;
-  brandedFull: string;
-  editMode: boolean;
-  setEditMode: (v: boolean) => void;
-  onEditedHtmlChange: (html: string) => void;
-  isSaving: boolean;
-  isPdfExporting: boolean;
-  isWordExporting: boolean;
-  isSendingEmail: boolean;
-  emailDialogOpen: boolean;
-  setEmailDialogOpen: (v: boolean) => void;
-  emailTo: string;
-  setEmailTo: (v: string) => void;
-  onSaveDraft: () => void;
-  onFinalize: () => void;
-  onPdfExport: () => void;
-  onWordExport: () => void;
-  onPrint: () => void;
-  onSendEmail: () => void;
-  onReset: () => void;
-  savedReportId?: string;
+  config: ReportConfig; projectName: string; branding: any; currentHtml: string;
+  brandedFull: string; editMode: boolean; setEditMode: (v: boolean) => void;
+  onEditedHtmlChange: (html: string) => void; isSaving: boolean; isPdfExporting: boolean;
+  isWordExporting: boolean; isSendingEmail: boolean; emailDialogOpen: boolean;
+  setEmailDialogOpen: (v: boolean) => void; emailTo: string; setEmailTo: (v: string) => void;
+  onSaveDraft: () => void; onFinalize: () => void; onPdfExport: () => void;
+  onWordExport: () => void; onPrint: () => void; onSendEmail: () => void;
+  onReset: () => void; savedReportId?: string; onEmailExternally: () => void;
 }) {
   return (
     <div className="h-full flex flex-col">
@@ -767,6 +747,9 @@ function ReviewStep({
         <Button variant="outline" size="sm" onClick={onPdfExport} disabled={isPdfExporting} className="gap-1.5 h-8 text-xs">
           {isPdfExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           PDF
+        </Button>
+        <Button variant="outline" size="sm" onClick={onEmailExternally} className="gap-1.5 h-8 text-xs">
+          <ExternalLink className="h-3.5 w-3.5" /> Email Externally
         </Button>
         <Button variant="outline" size="sm" onClick={() => setEmailDialogOpen(true)} className="gap-1.5 h-8 text-xs">
           <Mail className="h-3.5 w-3.5" /> Email

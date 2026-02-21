@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   Edit,
+  Mail,
 } from 'lucide-react';
+import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 import { useApproveChangeOrder, useRejectChangeOrder } from '@/hooks/useChangeOrders';
 import { ChangeOrderDialog } from './ChangeOrderDialog';
 import type { Database } from '@/integrations/supabase/types';
@@ -23,6 +25,7 @@ type ChangeOrderRow = Database['public']['Tables']['change_orders']['Row'];
 interface ChangeOrdersListProps {
   projectId: string;
   changeOrders: ChangeOrderRow[];
+  projectName?: string;
 }
 
 const statusConfig = {
@@ -52,9 +55,11 @@ const statusConfig = {
   },
 };
 
-export function ChangeOrdersList({ projectId, changeOrders }: ChangeOrdersListProps) {
+export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: ChangeOrdersListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCO, setEditingCO] = useState<ChangeOrderRow | null>(null);
+  const [emailCO, setEmailCO] = useState<ChangeOrderRow | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   const approveMutation = useApproveChangeOrder();
   const rejectMutation = useRejectChangeOrder();
@@ -171,41 +176,48 @@ export function ChangeOrdersList({ projectId, changeOrders }: ChangeOrdersListPr
                         <DollarSign className="h-4 w-4" />
                         {formatCurrency(Number(co.amount))}
                       </p>
-                      {co.status === 'pending' && (
-                        <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+                          onClick={() => { setEmailCO(co); setEmailDialogOpen(true); }}
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          Email
+                        </Button>
+                        {co.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => rejectMutation.mutate(co.id)}
+                              disabled={rejectMutation.isPending}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => approveMutation.mutate(co.id)}
+                              disabled={approveMutation.isPending}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                          </>
+                        )}
+                        {co.status === 'draft' && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => rejectMutation.mutate(co.id)}
-                            disabled={rejectMutation.isPending}
+                            onClick={() => { setEditingCO(co); setDialogOpen(true); }}
                           >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => approveMutation.mutate(co.id)}
-                            disabled={approveMutation.isPending}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                        </div>
-                      )}
-                      {co.status === 'draft' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            setEditingCO(co);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -217,13 +229,23 @@ export function ChangeOrdersList({ projectId, changeOrders }: ChangeOrdersListPr
 
       <ChangeOrderDialog
         open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setEditingCO(null);
-        }}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingCO(null); }}
         projectId={projectId}
         changeOrder={editingCO}
       />
+
+      {emailCO && (
+        <SendExternalEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          documentType="change_order"
+          documentTitle={emailCO.title}
+          documentId={emailCO.id}
+          projectName={projectName}
+          contentHtml={`<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Title</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailCO.title}</td></tr><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Amount</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${formatCurrency(Number(emailCO.amount))}</td></tr><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailCO.status}</td></tr></table>`}
+        />
+      )}
     </Card>
   );
 }
+

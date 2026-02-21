@@ -68,14 +68,11 @@ export function useUpdateMyProfile() {
     mutationFn: async (updates: Partial<Omit<MyProfile, 'id' | 'user_id' | 'updated_at'>>) => {
       const { data, error } = await supabase
         .from('profiles')
-        .upsert(
-          {
-            user_id: user!.id,
-            ...updates,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        )
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user!.id)
         .select()
         .single();
 
@@ -127,18 +124,14 @@ export function useUploadAvatar() {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(fileName);
 
+      // Use UPDATE instead of upsert so we don't need INSERT permission here
       const { error: profileError } = await supabase
         .from('profiles')
-        .upsert(
-          {
-            user_id: user.id,
-            avatar_url: publicUrl,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        )
-        .select()
-        .single();
+        .update({
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id);
 
       if (profileError) throw profileError;
 

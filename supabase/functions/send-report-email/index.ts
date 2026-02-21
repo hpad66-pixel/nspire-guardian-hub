@@ -261,6 +261,59 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // ── AUTO-CONTACT EXTRACTION ─────────────────────────────────────────────
+    // Silently create CRM contacts for any new external recipients.
+    const { data: senderProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("workspace_id, email, work_email")
+      .eq("user_id", userId)
+      .single();
+
+    const workspaceId = senderProfile?.workspace_id;
+    const senderEmail = senderProfile?.work_email || senderProfile?.email;
+
+    for (const email of recipients) {
+      if (senderEmail && email.toLowerCase() === senderEmail.toLowerCase()) continue;
+
+      const { data: existing } = await supabaseAdmin
+        .from("crm_contacts")
+        .select("id")
+        .ilike("email", email)
+        .eq("workspace_id", workspaceId ?? "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
+
+      if (!existing) {
+        const localPart = email.split("@")[0] ?? "";
+        const nameParts = localPart.replace(/[._\-+]/g, " ").split(" ").filter(Boolean);
+        const firstName = nameParts[0]
+          ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1).toLowerCase()
+          : "Unknown";
+        const lastName = nameParts[1]
+          ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1).toLowerCase()
+          : null;
+
+        const { error: contactErr } = await supabaseAdmin
+          .from("crm_contacts")
+          .insert({
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            contact_type: "other",
+            notes: `Auto-captured from ${body.reportType ?? "report"} email on ${new Date().toISOString().split("T")[0]}. Subject: "${subject}"`,
+            workspace_id: workspaceId ?? "00000000-0000-0000-0000-000000000001",
+            created_by: userId,
+            is_active: true,
+          });
+
+        if (contactErr) {
+          console.warn("Auto-contact insert failed for", email, contactErr.message);
+        } else {
+          console.log("Auto-contact created:", email);
+        }
+      }
+    }
+    // ── END AUTO-CONTACT EXTRACTION ─────────────────────────────────────────
+
     const emailRecord: Record<string, unknown> = {
       recipients,
       bcc_recipients: finalBccRecipients,

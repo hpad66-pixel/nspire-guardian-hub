@@ -20,11 +20,13 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2,
+  MoreHorizontal, Archive, Trash2, TriangleAlert,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
-  FileSpreadsheet, ChevronDown, ChevronRight, Users,
+  FileSpreadsheet, ChevronDown, ChevronRight, Users, Images,
 } from 'lucide-react';
+import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 import { ProjectTeamSheet } from '@/components/projects/ProjectTeamSheet';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUpdateProject } from '@/hooks/useProjects';
@@ -38,7 +40,8 @@ import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
 import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
-import { useRFIStats } from '@/hooks/useRFIs';
+import { useRFIStats, useRFIsByProject } from '@/hooks/useRFIs';
+import { useSubmittalsByProject } from '@/hooks/useSubmittals';
 import { usePunchItemStats } from '@/hooks/usePunchItems';
 import { useActionItemsByProject } from '@/hooks/useActionItems';
 import { MilestoneTimeline } from '@/components/projects/MilestoneTimeline';
@@ -91,6 +94,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
@@ -107,11 +111,84 @@ export default function ProjectDetailPage() {
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
   const { data: rfiStats } = useRFIStats(id ?? null);
   const { data: punchStats } = usePunchItemStats(id ?? null);
+  const { data: rfis = [] } = useRFIsByProject(id ?? null);
+  const { data: submittals = [] } = useSubmittalsByProject(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const in14Days = new Date(today);
+  in14Days.setDate(today.getDate() + 14);
+
+  // ── Overdue items (past due, still open/pending)
+  const overdueItems: { label: string; sub: string; tab: string; daysLate: number }[] = [
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) < today)
+      .map(r => ({
+        label: `RFI-${String(r.rfi_number).padStart(3,'0')}`,
+        sub: r.subject,
+        tab: 'rfis',
+        daysLate: Math.floor((today.getTime() - new Date(r.due_date!).getTime()) / 86400000),
+      })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) < today)
+      .map(s => ({
+        label: `SUB-${String(s.submittal_number).padStart(3,'0')}`,
+        sub: s.title,
+        tab: 'submittals',
+        daysLate: Math.floor((today.getTime() - new Date(s.due_date!).getTime()) / 86400000),
+      })),
+    ...actionItems
+      .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) < today)
+      .map(a => ({
+        label: 'Task',
+        sub: a.title,
+        tab: 'overview',
+        daysLate: Math.floor((today.getTime() - new Date(a.due_date!).getTime()) / 86400000),
+      })),
+  ].sort((a, b) => b.daysLate - a.daysLate);
+
+  // ── Due this week (due in next 7 days, not overdue)
+  const dueSoonItems: { label: string; sub: string; tab: string; dueDate: Date }[] = [
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) >= today && new Date(r.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!) })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) >= today && new Date(s.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!) })),
+    ...actionItems
+      .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) >= today && new Date(a.due_date) <= new Date(today.getTime() + 7*86400000))
+      .map(a => ({ label: 'Task', sub: a.title, tab: 'overview', dueDate: new Date(a.due_date!) })),
+  ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+  // ── Waiting on others (submitted/answered, awaiting their move)
+  const waitingItems: { label: string; sub: string; tab: string }[] = [
+    ...rfis
+      .filter(r => r.status === 'answered')
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis' })),
+    ...submittals
+      .filter(s => s.status === 'approved')
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals' })),
+  ];
+
+  // ── Coming up: next 3 milestones or due items within 14 days
+  const comingUp: { label: string; sub: string; tab: string; dueDate: Date }[] = [
+    ...(milestones ?? [])
+      .filter(m => m.status !== 'completed' && m.due_date && new Date(m.due_date) >= today && new Date(m.due_date) <= in14Days)
+      .map(m => ({ label: 'Milestone', sub: m.name, tab: 'schedule', dueDate: new Date(m.due_date) })),
+    ...rfis
+      .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) > new Date(today.getTime() + 7*86400000) && new Date(r.due_date) <= in14Days)
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!) })),
+    ...submittals
+      .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) > new Date(today.getTime() + 7*86400000) && new Date(s.due_date) <= in14Days)
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!) })),
+  ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()).slice(0, 3);
+
+  const allClear = overdueItems.length === 0 && dueSoonItems.length === 0;
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
@@ -168,6 +245,7 @@ export default function ProjectDetailPage() {
     { value: 'overview',     label: 'Overview',     shortLabel: 'Overview', icon: LayoutDashboard, group: 'core',       badge: null as number | null },
     { value: 'schedule',     label: 'Schedule',     shortLabel: 'Schedule', icon: CalendarDays,    group: 'core',       badge: null as number | null },
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
+    { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
     { value: 'financials',   label: 'Financials',   shortLabel: 'Finance',  icon: Wallet,          group: 'core',       badge: null as number | null },
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
@@ -280,6 +358,17 @@ export default function ProjectDetailPage() {
               >
                 <Edit className="h-4 w-4" />
                 <span className="hidden sm:inline">Edit</span>
+              </Button>
+
+              {/* Log Incident */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                onClick={() => setIncidentSheetOpen(true)}
+              >
+                <TriangleAlert className="h-4 w-4 text-amber-500" />
+                <span className="hidden sm:inline">Log Incident</span>
               </Button>
 
               {/* Overflow */}
@@ -418,71 +507,317 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* ── Tab Navigation + Content ───────────────────────────────────── */}
-        <div className="px-4 md:px-6 pt-3 pb-8 space-y-4 animate-fade-in">
+        <div className="px-4 md:px-6 pt-3 pb-8 animate-fade-in">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
 
-            {/* ── DESKTOP: custom scrollable pill row (same as before, ≥1024px) ── */}
-            <div className="hidden lg:block overflow-x-auto scrollbar-hide -mx-6 px-6 pb-1">
-              <div className="flex gap-1 min-w-max">
-                {PROJECT_TABS.map(tab => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.value;
+            {/* ── DESKTOP: Vertical grouped sidebar nav (≥1024px) ── */}
+            <div className="hidden lg:flex gap-6 items-start">
+
+              {/* LEFT: Vertical sidebar */}
+              <div className="w-[188px] shrink-0 sticky top-4 space-y-1">
+                {TAB_GROUPS.map((group) => {
+                  const groupTabs = PROJECT_TABS.filter(t => t.group === group.key);
                   return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      className={cn(
-                        'relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap',
-                        isActive
-                          ? 'bg-module-projects text-white shadow-sm shadow-module-projects/30'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
-                      {tab.label}
-                      {tab.badge !== null && (
-                        <span className={cn(
-                          'ml-0.5 h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                          isActive ? 'bg-white/25 text-white' : 'bg-destructive text-white'
-                        )}>
-                          {tab.badge}
-                        </span>
-                      )}
-                    </button>
+                    <div key={group.key} className="mb-2">
+                      <p className={cn(
+                        'text-[10px] font-bold uppercase tracking-widest px-2 mb-1 mt-2',
+                        group.color
+                      )}>
+                        {group.label}
+                      </p>
+                      {groupTabs.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.value;
+                        return (
+                          <button
+                            key={tab.value}
+                            onClick={() => setActiveTab(tab.value)}
+                            className={cn(
+                              'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-left group relative',
+                              isActive
+                                ? 'bg-module-projects/10 text-module-projects'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                            )}
+                          >
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-module-projects" />
+                            )}
+                            <Icon className={cn(
+                              'h-3.5 w-3.5 shrink-0 transition-colors',
+                              isActive ? 'text-module-projects' : GROUP_ICON_COLORS[group.key]
+                            )} />
+                            <span className="flex-1 truncate">{tab.label}</span>
+                            {tab.badge !== null && (
+                              <span className={cn(
+                                'h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0',
+                                isActive ? 'bg-module-projects/20 text-module-projects' : 'bg-destructive text-white'
+                              )}>
+                                {tab.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   );
                 })}
+              </div>
+
+              {/* RIGHT: Tab content */}
+              <div className="flex-1 min-w-0 space-y-4">
+                <TabsContent value="overview" className="space-y-6 mt-0">
+                  {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
+                  {!projectLoading && (
+                    <div className="rounded-xl border bg-card overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'h-6 w-6 rounded-md flex items-center justify-center',
+                            allClear ? 'bg-success/10' : overdueItems.length > 0 ? 'bg-destructive/10' : 'bg-warning/10'
+                          )}>
+                            {allClear
+                              ? <CheckSquare className="h-3.5 w-3.5 text-success" />
+                              : <AlertCircle className={cn('h-3.5 w-3.5', overdueItems.length > 0 ? 'text-destructive' : 'text-warning')} />
+                            }
+                          </div>
+                          <span className="text-sm font-semibold">Needs Attention</span>
+                          {!allClear && (
+                            <span className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                              overdueItems.length > 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                            )}>
+                              {overdueItems.length + dueSoonItems.length} item{overdueItems.length + dueSoonItems.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        {comingUp.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                            {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
+                          </span>
+                        )}
+                      </div>
+                      {/* All clear state */}
+                      {allClear && (
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex items-center gap-2 text-success text-sm font-medium">
+                            <CheckSquare className="h-4 w-4" />
+                            You're on top of it — nothing overdue or due this week.
+                          </div>
+                          {comingUp.length > 0 && (
+                            <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                              {comingUp.map((item, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setActiveTab(item.tab)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-xs"
+                                >
+                                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                                  <span className="font-medium text-foreground">{item.label}</span>
+                                  <span className="text-muted-foreground truncate max-w-[120px]">{item.sub}</span>
+                                  <span className="text-[10px] text-muted-foreground ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Attention items */}
+                      {!allClear && (
+                        <div className="divide-y divide-border/40">
+                          {/* Overdue lane */}
+                          {overdueItems.length > 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                                Overdue — action required
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {overdueItems.slice(0, 5).map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                    <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
+                                  </button>
+                                ))}
+                                {overdueItems.length > 5 && (
+                                  <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">
+                                    +{overdueItems.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {/* Due this week lane */}
+                          {dueSoonItems.length > 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-warning mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning" />
+                                Due this week
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {dueSoonItems.map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Waiting on others lane */}
+                          {waitingItems.length > 0 && overdueItems.length === 0 && (
+                            <div className="px-4 py-3">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                Waiting on others
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {waitingItems.slice(0, 4).map((item, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setActiveTab(item.tab)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-left"
+                                  >
+                                    <span className="text-[10px] font-bold text-blue-400 shrink-0">{item.label}</span>
+                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Coming up footer strip */}
+                          {comingUp.length > 0 && (
+                            <div className="px-4 py-2.5 bg-muted/20 flex items-center gap-3 flex-wrap">
+                              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">Coming up</span>
+                              {comingUp.map((item, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => setActiveTab(item.tab)}
+                                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <Calendar className="h-3 w-3 shrink-0" />
+                                  <span className="font-medium">{item.label}</span>
+                                  <span className="truncate max-w-[100px]">{item.sub}</span>
+                                  <span className="font-semibold text-foreground">{format(item.dueDate, 'MMM d')}</span>
+                                  {i < comingUp.length - 1 && <span className="text-border ml-1">·</span>}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <div className="rounded-xl border bg-card p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center">
+                          <PenSquare className="h-3.5 w-3.5 text-module-projects" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-sm">Scope of Work</h3>
+                          <p className="text-[10px] text-muted-foreground">Project description & scope</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 pt-1">
+                        {project.description && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p></div>)}
+                        {project.scope && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p></div>)}
+                        {!project.description && !project.scope && (<p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet.</p>)}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border bg-card p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-accent/10 flex items-center justify-center"><CalendarDays className="h-3.5 w-3.5 text-accent" /></div>
+                        <div><h3 className="font-semibold text-sm">Key Dates</h3><p className="text-[10px] text-muted-foreground">Project timeline</p></div>
+                      </div>
+                      <div className="space-y-2 pt-1">
+                        {[
+                          { label: 'Start Date', value: project.start_date ? format(new Date(project.start_date), 'MMM d, yyyy') : 'Not set' },
+                          { label: 'Target End', value: project.target_end_date ? format(new Date(project.target_end_date), 'MMM d, yyyy') : 'Not set' },
+                          { label: 'Actual End', value: project.actual_end_date ? format(new Date(project.actual_end_date), 'MMM d, yyyy') : 'In progress' },
+                          { label: 'Created', value: format(new Date(project.created_at), 'MMM d, yyyy') },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="flex items-center justify-between py-2 border-b last:border-0 border-border/50">
+                            <span className="text-sm text-muted-foreground">{label}</span>
+                            <span className="text-sm font-medium">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                    {[
+                      { label: 'Milestones', value: totalMilestones, icon: CheckSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                      { label: 'Daily Reports', value: dailyReports?.length || 0, icon: ClipboardList, color: 'text-module-projects', bg: 'bg-module-projects/10' },
+                      { label: 'Change Orders', value: changeOrders?.length || 0, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
+                      { label: 'Approved COs', value: formatCurrency(approvedCOAmount), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
+                    ].map(({ label, value, icon: Icon, color, bg }) => (
+                      <div key={label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
+                        <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', bg)}><Icon className={cn('h-4 w-4', color)} /></div>
+                        <div><p className="text-xl font-bold leading-none">{value}</p><p className="text-[10px] text-muted-foreground mt-1">{label}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-xl border bg-card p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
+                        <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p></div>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
+                    </div>
+                    {teamMembers.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {teamMembers.slice(0, 8).map(m => (
+                          <div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs">
+                            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div>
+                            <span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span>
+                          </div>
+                        ))}
+                        {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>
+                    )}
+                  </div>
+                </TabsContent>
+                <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
+                <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
+                <TabsContent value="financials" className="mt-0"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
+                <TabsContent value="rfis" className="mt-0"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="submittals" className="mt-0"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="punch-list" className="mt-0"><PunchListTab projectId={id!} /></TabsContent>
+                <TabsContent value="progress" className="mt-0"><ProgressTab projectId={id!} /></TabsContent>
+                <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
+                <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
+                <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
+                <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
+                <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
             </div>
 
             {/* ── TABLET: compact horizontally scrollable pill row (768–1023px) ── */}
-            <div
-              ref={tabScrollRef}
-              className="hidden md:flex lg:hidden gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1"
-            >
+            <div ref={tabScrollRef} className="hidden md:flex lg:hidden gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
               {PROJECT_TABS.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
                 return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-150 flex-shrink-0',
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                    )}
-                  >
+                  <button key={tab.value} onClick={() => setActiveTab(tab.value)} className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-150 flex-shrink-0', isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground')}>
                     <Icon className="h-3.5 w-3.5 shrink-0" />
                     {tab.shortLabel}
-                    {tab.badge !== null && (
-                      <span className={cn(
-                        'ml-0.5 h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                        isActive ? 'bg-white/30 text-white' : 'bg-destructive text-white'
-                      )}>
-                        {tab.badge}
-                      </span>
-                    )}
+                    {tab.badge !== null && (<span className={cn('ml-0.5 h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center', isActive ? 'bg-white/30 text-white' : 'bg-destructive text-white')}>{tab.badge}</span>)}
                   </button>
                 );
               })}
@@ -490,52 +825,23 @@ export default function ProjectDetailPage() {
 
             {/* ── MOBILE: active-tab pill + quick-jump badges + drawer (<768px) ── */}
             <div className="flex md:hidden items-stretch gap-2">
-              {/* Active tab indicator — tapping opens the full drawer */}
-              <button
-                onClick={() => setMobileNavOpen(true)}
-                className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/5 transition-colors text-left"
-              >
-                <div className={cn(
-                  'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
-                  GROUP_ICON_BG[activeTabDef.group]
-                )}>
-                  <activeTabDef.icon className={cn('h-4 w-4', GROUP_ICON_COLORS[activeTabDef.group])} />
-                </div>
+              <button onClick={() => setMobileNavOpen(true)} className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/5 transition-colors text-left">
+                <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', GROUP_ICON_BG[activeTabDef.group])}><activeTabDef.icon className={cn('h-4 w-4', GROUP_ICON_COLORS[activeTabDef.group])} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground truncate">{activeTabDef.label}</span>
-                    {activeTabDef.badge !== null && (
-                      <span className="h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-destructive text-white">
-                        {activeTabDef.badge}
-                      </span>
-                    )}
+                    {activeTabDef.badge !== null && (<span className="h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-destructive text-white">{activeTabDef.badge}</span>)}
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Tap to switch section</p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
-
-              {/* Quick-jump buttons for tabs that have active badges */}
               {badgeTabs.slice(0, 2).map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
                 return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      'h-[52px] w-[52px] rounded-xl border flex flex-col items-center justify-center gap-0.5 flex-shrink-0 transition-all',
-                      isActive
-                        ? 'border-primary/30 bg-primary/10 text-primary'
-                        : 'border-border bg-card text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <div className="relative">
-                      <Icon className="h-4 w-4" />
-                      <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-destructive text-white leading-none">
-                        {tab.badge}
-                      </span>
-                    </div>
+                  <button key={tab.value} onClick={() => setActiveTab(tab.value)} className={cn('h-[52px] w-[52px] rounded-xl border flex flex-col items-center justify-center gap-0.5 flex-shrink-0 transition-all', isActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:text-foreground')}>
+                    <div className="relative"><Icon className="h-4 w-4" /><span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center bg-destructive text-white leading-none">{tab.badge}</span></div>
                     <span className="text-[9px] font-medium leading-none">{tab.shortLabel}</span>
                   </button>
                 );
@@ -544,78 +850,29 @@ export default function ProjectDetailPage() {
 
             {/* ── MOBILE NAVIGATION DRAWER ─────────────────────────────── */}
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetContent
-                side="bottom"
-                className="h-[85vh] bg-[hsl(222,47%,9%)] border-t border-[hsl(222,30%,17%)] text-[hsl(215,25%,92%)] p-0 rounded-t-2xl"
-              >
-                {/* Drag handle */}
-                <div className="flex justify-center pt-3 pb-1">
-                  <div className="h-[4px] w-9 rounded-full bg-[hsl(222,30%,25%)]" />
-                </div>
-
+              <SheetContent side="bottom" className="h-[85vh] bg-[hsl(222,47%,9%)] border-t border-[hsl(222,30%,17%)] text-[hsl(215,25%,92%)] p-0 rounded-t-2xl">
+                <div className="flex justify-center pt-3 pb-1"><div className="h-[4px] w-9 rounded-full bg-[hsl(222,30%,25%)]" /></div>
                 <SheetHeader className="flex flex-row items-center justify-between px-5 pb-2 pt-1">
-                  <div>
-                    <SheetTitle className="text-base font-semibold text-[hsl(215,25%,92%)] text-left">
-                      Project Sections
-                    </SheetTitle>
-                    <p className="text-[11px] text-[hsl(215,16%,50%)] mt-0.5 text-left">{project.name}</p>
-                  </div>
+                  <div><SheetTitle className="text-base font-semibold text-[hsl(215,25%,92%)] text-left">Project Sections</SheetTitle><p className="text-[11px] text-[hsl(215,16%,50%)] mt-0.5 text-left">{project.name}</p></div>
                 </SheetHeader>
-
-                {/* Grouped tab tiles */}
                 <div className="overflow-y-auto px-4 pb-8 space-y-4">
                   {TAB_GROUPS.map(group => {
                     const groupTabs = PROJECT_TABS.filter(t => t.group === group.key);
                     return (
                       <div key={group.key}>
-                        {/* Group label */}
-                        <p className={cn('text-[10px] font-semibold uppercase tracking-widest px-1 mb-2', group.color)}>
-                          {group.label}
-                        </p>
-                        {/* 2-column grid */}
+                        <p className={cn('text-[10px] font-semibold uppercase tracking-widest px-1 mb-2', group.color)}>{group.label}</p>
                         <div className="grid grid-cols-2 gap-2">
                           {groupTabs.map(tab => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.value;
                             return (
-                              <button
-                                key={tab.value}
-                                onClick={() => {
-                                  setActiveTab(tab.value);
-                                  setMobileNavOpen(false);
-                                }}
-                                className={cn(
-                                  'flex items-center gap-3 px-3 py-3.5 rounded-xl border transition-all text-left',
-                                  isActive
-                                    ? 'border-primary/30 bg-primary/10'
-                                    : 'border-[hsl(222,30%,17%)] bg-[hsl(222,47%,11%)] hover:bg-[hsl(222,30%,15%)] active:bg-[hsl(222,30%,13%)]'
-                                )}
-                              >
-                                <div className={cn(
-                                  'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
-                                  isActive ? 'bg-primary/20' : GROUP_ICON_BG[group.key]
-                                )}>
-                                  <Icon className={cn(
-                                    'h-4 w-4',
-                                    isActive ? 'text-primary' : GROUP_ICON_COLORS[group.key]
-                                  )} />
-                                </div>
+                              <button key={tab.value} onClick={() => { setActiveTab(tab.value); setMobileNavOpen(false); }} className={cn('flex items-center gap-3 px-3 py-3.5 rounded-xl border transition-all text-left', isActive ? 'border-primary/30 bg-primary/10' : 'border-[hsl(222,30%,17%)] bg-[hsl(222,47%,11%)] hover:bg-[hsl(222,30%,15%)]')}>
+                                <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', isActive ? 'bg-primary/20' : GROUP_ICON_BG[group.key])}><Icon className={cn('h-4 w-4', isActive ? 'text-primary' : GROUP_ICON_COLORS[group.key])} /></div>
                                 <div className="min-w-0 flex-1">
-                                  <p className={cn(
-                                    'text-sm font-medium leading-tight truncate',
-                                    isActive ? 'text-primary' : 'text-[hsl(215,25%,85%)]'
-                                  )}>
-                                    {tab.label}
-                                  </p>
-                                  {tab.badge !== null && (
-                                    <p className="text-[10px] text-destructive font-medium mt-0.5 leading-none">
-                                      {tab.badge} open
-                                    </p>
-                                  )}
+                                  <p className={cn('text-sm font-medium leading-tight truncate', isActive ? 'text-primary' : 'text-[hsl(215,25%,85%)]')}>{tab.label}</p>
+                                  {tab.badge !== null && (<p className="text-[10px] text-destructive font-medium mt-0.5 leading-none">{tab.badge} open</p>)}
                                 </div>
-                                {isActive && (
-                                  <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                                )}
+                                {isActive && (<div className="h-2 w-2 rounded-full bg-primary shrink-0" />)}
                               </button>
                             );
                           })}
@@ -627,144 +884,221 @@ export default function ProjectDetailPage() {
               </SheetContent>
             </Sheet>
 
-            {/* ── ALL TAB CONTENTS — unchanged ─────────────────────────── */}
-            <TabsContent value="overview" className="space-y-6 mt-2">
-              <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Scope of Work */}
-                <div className="rounded-xl border bg-card p-5 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center">
-                      <PenSquare className="h-3.5 w-3.5 text-module-projects" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Scope of Work</h3>
-                      <p className="text-[10px] text-muted-foreground">Project description & scope</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3 pt-1">
-                    {project.description && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p>
-                        <p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p>
-                      </div>
-                    )}
-                    {project.scope && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p>
-                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p>
-                      </div>
-                    )}
-                    {!project.description && !project.scope && (
-                      <p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Key Dates */}
-                <div className="rounded-xl border bg-card p-5 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <CalendarDays className="h-3.5 w-3.5 text-accent" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Key Dates</h3>
-                      <p className="text-[10px] text-muted-foreground">Project timeline</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 pt-1">
-                    {[
-                      { label: 'Start Date', value: project.start_date ? format(new Date(project.start_date), 'MMM d, yyyy') : 'Not set' },
-                      { label: 'Target End', value: project.target_end_date ? format(new Date(project.target_end_date), 'MMM d, yyyy') : 'Not set' },
-                      { label: 'Actual End', value: project.actual_end_date ? format(new Date(project.actual_end_date), 'MMM d, yyyy') : 'In progress' },
-                      { label: 'Created', value: format(new Date(project.created_at), 'MMM d, yyyy') },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between py-2 border-b last:border-0 border-border/50">
-                        <span className="text-sm text-muted-foreground">{label}</span>
-                        <span className="text-sm font-medium">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick stats */}
-              <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                {[
-                  { label: 'Milestones', value: totalMilestones, icon: CheckSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                  { label: 'Daily Reports', value: dailyReports?.length || 0, icon: ClipboardList, color: 'text-module-projects', bg: 'bg-module-projects/10' },
-                  { label: 'Change Orders', value: changeOrders?.length || 0, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
-                  { label: 'Approved COs', value: formatCurrency(approvedCOAmount), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
-                ].map(({ label, value, icon: Icon, color, bg }) => (
-                  <div key={label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
-                    <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', bg)}>
-                      <Icon className={cn('h-4 w-4', color)} />
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold leading-none">{value}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Team card */}
-              <div className="rounded-xl border bg-card p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center">
-                      <Users className="h-3.5 w-3.5 text-module-projects" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Project Team</h3>
-                      <p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}>
-                    <Users className="h-3 w-3" />
-                    Manage Team
-                  </Button>
-                </div>
-                {teamMembers.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {teamMembers.slice(0, 8).map(m => (
-                      <div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs">
-                        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                          {(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}
+            {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
+            <div className="lg:hidden mt-2 space-y-4">
+              <TabsContent value="overview" className="space-y-6">
+                {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
+                {!projectLoading && (
+                  <div className="rounded-xl border bg-card overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          'h-6 w-6 rounded-md flex items-center justify-center',
+                          allClear ? 'bg-success/10' : overdueItems.length > 0 ? 'bg-destructive/10' : 'bg-warning/10'
+                        )}>
+                          {allClear
+                            ? <CheckSquare className="h-3.5 w-3.5 text-success" />
+                            : <AlertCircle className={cn('h-3.5 w-3.5', overdueItems.length > 0 ? 'text-destructive' : 'text-warning')} />
+                          }
                         </div>
-                        <span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span>
+                        <span className="text-sm font-semibold">Needs Attention</span>
+                        {!allClear && (
+                          <span className={cn(
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                            overdueItems.length > 0 ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                          )}>
+                            {overdueItems.length + dueSoonItems.length} item{overdueItems.length + dueSoonItems.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
-                    ))}
-                    {teamMembers.length > 8 && (
-                      <div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
-                        +{teamMembers.length - 8} more
+                      {comingUp.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                          {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
+                        </span>
+                      )}
+                    </div>
+                    {allClear && (
+                      <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                        <div className="flex items-center gap-2 text-success text-sm font-medium">
+                          <CheckSquare className="h-4 w-4" />
+                          You're on top of it — nothing overdue or due this week.
+                        </div>
+                        {comingUp.length > 0 && (
+                          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                            {comingUp.map((item, i) => (
+                              <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-xs">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <span className="font-medium text-foreground">{item.label}</span>
+                                <span className="text-muted-foreground truncate max-w-[120px]">{item.sub}</span>
+                                <span className="text-[10px] text-muted-foreground ml-1">{format(item.dueDate, 'MMM d')}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!allClear && (
+                      <div className="divide-y divide-border/40">
+                        {overdueItems.length > 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                              Overdue — action required
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {overdueItems.slice(0, 5).map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
+                                </button>
+                              ))}
+                              {overdueItems.length > 5 && <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">+{overdueItems.length - 5} more</span>}
+                            </div>
+                          </div>
+                        )}
+                        {dueSoonItems.length > 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-warning mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-warning" />
+                              Due this week
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {dueSoonItems.map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                  <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {waitingItems.length > 0 && overdueItems.length === 0 && (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2 flex items-center gap-1.5">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
+                              Waiting on others
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {waitingItems.slice(0, 4).map((item, i) => (
+                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-left">
+                                  <span className="text-[10px] font-bold text-blue-400 shrink-0">{item.label}</span>
+                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {comingUp.length > 0 && (
+                          <div className="px-4 py-2.5 bg-muted/20 flex items-center gap-3 flex-wrap">
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">Coming up</span>
+                            {comingUp.map((item, i) => (
+                              <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                <Calendar className="h-3 w-3 shrink-0" />
+                                <span className="font-medium">{item.label}</span>
+                                <span className="truncate max-w-[100px]">{item.sub}</span>
+                                <span className="font-semibold text-foreground">{format(item.dueDate, 'MMM d')}</span>
+                                {i < comingUp.length - 1 && <span className="text-border ml-1">·</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>
                 )}
-              </div>
-            </TabsContent>
+                <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border bg-card p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><PenSquare className="h-3.5 w-3.5 text-module-projects" /></div>
+                      <div><h3 className="font-semibold text-sm">Scope of Work</h3><p className="text-[10px] text-muted-foreground">Project description & scope</p></div>
+                    </div>
+                    <div className="space-y-3 pt-1">
+                      {project.description && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p></div>)}
+                      {project.scope && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p></div>)}
+                      {!project.description && !project.scope && (<p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet.</p>)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-card p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-accent/10 flex items-center justify-center"><CalendarDays className="h-3.5 w-3.5 text-accent" /></div>
+                      <div><h3 className="font-semibold text-sm">Key Dates</h3><p className="text-[10px] text-muted-foreground">Project timeline</p></div>
+                    </div>
+                    <div className="space-y-2 pt-1">
+                      {[
+                        { label: 'Start Date', value: project.start_date ? format(new Date(project.start_date), 'MMM d, yyyy') : 'Not set' },
+                        { label: 'Target End', value: project.target_end_date ? format(new Date(project.target_end_date), 'MMM d, yyyy') : 'Not set' },
+                        { label: 'Actual End', value: project.actual_end_date ? format(new Date(project.actual_end_date), 'MMM d, yyyy') : 'In progress' },
+                        { label: 'Created', value: format(new Date(project.created_at), 'MMM d, yyyy') },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between py-2 border-b last:border-0 border-border/50">
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                          <span className="text-sm font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                  {[
+                    { label: 'Milestones', value: totalMilestones, icon: CheckSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                    { label: 'Daily Reports', value: dailyReports?.length || 0, icon: ClipboardList, color: 'text-module-projects', bg: 'bg-module-projects/10' },
+                    { label: 'Change Orders', value: changeOrders?.length || 0, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
+                    { label: 'Approved COs', value: formatCurrency(approvedCOAmount), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
+                  ].map(({ label, value, icon: Icon, color, bg }) => (
+                    <div key={label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
+                      <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', bg)}><Icon className={cn('h-4 w-4', color)} /></div>
+                      <div><p className="text-xl font-bold leading-none">{value}</p><p className="text-[10px] text-muted-foreground mt-1">{label}</p></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
+                      <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p></div>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
+                  </div>
+                  {teamMembers.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {teamMembers.slice(0, 8).map(m => (<div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs"><div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div><span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span></div>))}
+                      {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
+                    </div>
+                  ) : (<p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>)}
+                </div>
+              </TabsContent>
+              <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
+              <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
+              <TabsContent value="gallery" className="p-0 h-[calc(100vh-280px)]">
+                <PhotoGallery
+                  context="project"
+                  contextId={id!}
+                  contextName={project.name}
+                />
+              </TabsContent>
+              <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
+              <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>
+              <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
+              <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
+              <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
+              <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
+              <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
+              <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
+            </div>
 
-            <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
-            <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} /></TabsContent>
-            <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} /></TabsContent>
-            <TabsContent value="rfis"><RFIList projectId={id!} /></TabsContent>
-            <TabsContent value="submittals"><SubmittalsTab projectId={id!} /></TabsContent>
-            <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>
-            <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
-            <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
-            <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
-            <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
-            <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
-            <TabsContent value="proposals"><ProposalList projectId={id!} /></TabsContent>
-            <TabsContent value="client-portal" className="pb-6">
-              <ClientPortalTab projectId={id!} />
-            </TabsContent>
           </Tabs>
         </div>
+
+        <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
+        <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
+        <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
+
 
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
         <ReportGeneratorDialog
@@ -849,6 +1183,14 @@ export default function ProjectDetailPage() {
         projectId={project.id}
         projectName={project.name}
         navigateAfter
+      />
+
+      <LogIncidentSheet
+        open={incidentSheetOpen}
+        onOpenChange={setIncidentSheetOpen}
+        sourceType="project"
+        sourceId={project.id}
+        sourceName={project.name}
       />
     </div>
   );

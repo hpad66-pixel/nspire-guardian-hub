@@ -33,11 +33,14 @@ import {
   Send,
   Lock,
   Mail,
+  ExternalLink,
 } from "lucide-react";
 import { ProposalEditor } from "./ProposalEditor";
+import { SendExternalEmailDialog } from "@/components/projects/SendExternalEmailDialog";
 
 interface ProposalListProps {
   projectId: string;
+  projectName?: string;
 }
 
 const statusConfig: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -58,7 +61,7 @@ const typeLabels: Record<string, string> = {
   correspondence: "Correspondence",
 };
 
-export function ProposalList({ projectId }: ProposalListProps) {
+export function ProposalList({ projectId, projectName = '' }: ProposalListProps) {
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
   
@@ -69,6 +72,8 @@ export function ProposalList({ projectId }: ProposalListProps) {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
+  const [emailProposal, setEmailProposal] = useState<Proposal | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -216,6 +221,16 @@ export function ProposalList({ projectId }: ProposalListProps) {
                             </>
                           )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEmailProposal(proposal);
+                            setEmailDialogOpen(true);
+                          }}
+                          className="gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          Email Externally
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicate(proposal)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
@@ -265,6 +280,25 @@ export function ProposalList({ projectId }: ProposalListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {emailProposal && (
+        <SendExternalEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          documentType="proposal"
+          documentTitle={emailProposal.title}
+          documentId={emailProposal.id}
+          projectName={projectName}
+          contentHtml={`
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Proposal #</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailProposal.proposal_number}</td></tr>
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Title</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailProposal.title}</td></tr>
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Type</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailProposal.proposal_type}</td></tr>
+              <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailProposal.status}</td></tr>
+            </table>
+          `}
+        />
+      )}
     </div>
   );
 }

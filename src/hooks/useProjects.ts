@@ -2,8 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
-import { getAssignedPropertyIds } from './propertyAccess';
+import { getAssignedPropertyIds, getDirectProjectIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
+import { useAuth } from './useAuth';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
@@ -33,23 +34,40 @@ const PROJECT_SELECT_DETAIL = `
   milestones:project_milestones(id, name, due_date, status, notes, completed_at)
 `;
 
-/** For non-admins: returns projects they can see (property-linked ones via membership,
- *  plus all client/standalone projects which are org-wide). */
+/** For non-admins: returns projects they can see.
+ *  Includes: property-linked projects via property team membership,
+ *  standalone/client projects (no property_id),
+ *  AND any project where the user is a direct project_team_member. */
 async function buildNonAdminFilter(query: any) {
-  const propertyIds = await getAssignedPropertyIds();
-  // Include property projects they're assigned to OR any non-property project (client / standalone)
-  if (propertyIds.length === 0) {
-    // Only show non-property projects
-    return query.is('property_id', null);
+  const [propertyIds, directProjectIds] = await Promise.all([
+    getAssignedPropertyIds(),
+    getDirectProjectIds(),
+  ]);
+
+  const orConditions: string[] = [];
+
+  // Property-linked projects they're assigned to
+  if (propertyIds.length > 0) {
+    orConditions.push(`property_id.in.(${propertyIds.join(',')})`);
   }
-  // property projects assigned OR no property_id (client projects)
-  return query.or(`property_id.in.(${propertyIds.join(',')}),property_id.is.null`);
+
+  // Non-property projects (client/standalone)
+  orConditions.push('property_id.is.null');
+
+  // Direct team member projects (cross-workspace invitations)
+  if (directProjectIds.length > 0) {
+    orConditions.push(`id.in.(${directProjectIds.join(',')})`);
+  }
+
+  if (orConditions.length === 0) return query.eq('id', 'no-match');
+  return query.or(orConditions.join(','));
 }
 
 export function useProjects() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', isAdmin],
+    queryKey: ['projects', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -64,13 +82,17 @@ export function useProjects() {
       if (error) throw error;
       return data as Project[];
     },
+    // Don't fire until we know for sure whether user is admin or not
+    enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
 export function useActiveProjects() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', 'active', isAdmin],
+    queryKey: ['projects', 'active', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -86,13 +108,16 @@ export function useActiveProjects() {
       if (error) throw error;
       return data as Project[];
     },
+    enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
 export function useProject(projectId: string | null) {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', projectId, isAdmin],
+    queryKey: ['projects', projectId, isAdmin, user?.id],
     queryFn: async () => {
       if (!projectId) return null;
 
@@ -109,12 +134,14 @@ export function useProject(projectId: string | null) {
       if (error) throw error;
       return data as Project;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 
 export function useProjectsByProperty(propertyId: string | null) {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
     queryKey: ['projects', 'property', propertyId, isAdmin],
     queryFn: async () => {
@@ -133,14 +160,15 @@ export function useProjectsByProperty(propertyId: string | null) {
       if (error) throw error;
       return data as Project[];
     },
-    enabled: !!propertyId,
+    enabled: !!propertyId && !!user && !permissionsLoading,
   });
 }
 
 export function useProjectStats() {
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['projects', 'stats', isAdmin],
+    queryKey: ['projects', 'stats', isAdmin, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('projects')
@@ -162,6 +190,8 @@ export function useProjectStats() {
 
       return { active, planning, onHold, completed, totalBudget, totalSpent, total: data.length };
     },
+    enabled: !!user && !permissionsLoading,
+    refetchOnMount: true,
   });
 }
 

@@ -81,7 +81,7 @@ export function LandingFooter() {
               </div>
               <p style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', lineHeight: 1.7, marginBottom: '8px' }}>Property Operations. Engineered.</p>
               <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginBottom: '4px' }}>Built on APAS.AI infrastructure intelligence</p>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-sapphire)' }}>pm.apas.ai</p>
+              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-sapphire)' }}>apasos.ai</p>
             </div>
 
             {/* Link columns */}
@@ -109,7 +109,7 @@ export function LandingFooter() {
           {/* Bottom bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: '1px solid var(--apas-border)' }}>
             <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)' }}>
-              © 2026 APAS.AI · pm.apas.ai · All rights reserved
+              © 2026 APAS.AI · apasos.ai · All rights reserved
             </p>
             <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>
               Powered by APAS Labs

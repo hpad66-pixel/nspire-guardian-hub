@@ -466,6 +466,80 @@ export type Database = {
           },
         ]
       }
+      client_portals: {
+        Row: {
+          brand_accent_color: string | null
+          brand_logo_url: string | null
+          client_contact_email: string | null
+          client_contact_name: string | null
+          client_name: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          pending_requests_count: number
+          portal_slug: string
+          portal_type: string
+          project_id: string | null
+          shared_modules: string[]
+          status: string
+          updated_at: string
+          welcome_message: string | null
+          workspace_id: string
+        }
+        Insert: {
+          brand_accent_color?: string | null
+          brand_logo_url?: string | null
+          client_contact_email?: string | null
+          client_contact_name?: string | null
+          client_name?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pending_requests_count?: number
+          portal_slug: string
+          portal_type?: string
+          project_id?: string | null
+          shared_modules?: string[]
+          status?: string
+          updated_at?: string
+          welcome_message?: string | null
+          workspace_id: string
+        }
+        Update: {
+          brand_accent_color?: string | null
+          brand_logo_url?: string | null
+          client_contact_email?: string | null
+          client_contact_name?: string | null
+          client_name?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pending_requests_count?: number
+          portal_slug?: string
+          portal_type?: string
+          project_id?: string | null
+          shared_modules?: string[]
+          status?: string
+          updated_at?: string
+          welcome_message?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -643,6 +717,177 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "training_courses"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      credential_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          credential_id: string
+          id: string
+          sent_at: string | null
+          sent_to: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          credential_id: string
+          id?: string
+          sent_at?: string | null
+          sent_to: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          credential_id?: string
+          id?: string
+          sent_at?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_alerts_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_alerts_sent_to_fkey"
+            columns: ["sent_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      credential_share_links: {
+        Row: {
+          access_count: number
+          accessed_at: string | null
+          created_at: string
+          created_by: string
+          credential_id: string
+          expires_at: string
+          id: string
+          revoked: boolean
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          accessed_at?: string | null
+          created_at?: string
+          created_by: string
+          credential_id: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token: string
+        }
+        Update: {
+          access_count?: number
+          accessed_at?: string | null
+          created_at?: string
+          created_by?: string
+          credential_id?: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "credential_share_links_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credentials: {
+        Row: {
+          created_at: string
+          credential_number: string | null
+          credential_type: string
+          custom_type_label: string | null
+          document_url: string | null
+          expiry_date: string | null
+          holder_id: string
+          id: string
+          is_org_credential: boolean
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          renewal_url: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_number?: string | null
+          credential_type: string
+          custom_type_label?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          holder_id: string
+          id?: string
+          is_org_credential?: boolean
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          renewal_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_number?: string | null
+          credential_type?: string
+          custom_type_label?: string | null
+          document_url?: string | null
+          expiry_date?: string | null
+          holder_id?: string
+          id?: string
+          is_org_credential?: boolean
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          renewal_url?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credentials_holder_id_fkey"
+            columns: ["holder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "credentials_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1073,6 +1318,7 @@ export type Database = {
           name: string
           parent_id: string | null
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1080,6 +1326,7 @@ export type Database = {
           name: string
           parent_id?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1087,6 +1334,7 @@ export type Database = {
           name?: string
           parent_id?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -1094,6 +1342,376 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_assets: {
+        Row: {
+          asset_tag: string | null
+          assigned_location: string | null
+          assigned_to: string | null
+          category_slug: string
+          color: string | null
+          condition: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          license_plate: string | null
+          make: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          photo_url: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+          vin: string | null
+          workspace_id: string
+          year: number | null
+        }
+        Insert: {
+          asset_tag?: string | null
+          assigned_location?: string | null
+          assigned_to?: string | null
+          category_slug: string
+          color?: string | null
+          condition?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          photo_url?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          workspace_id: string
+          year?: number | null
+        }
+        Update: {
+          asset_tag?: string | null
+          assigned_location?: string | null
+          assigned_to?: string | null
+          category_slug?: string
+          color?: string | null
+          condition?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          photo_url?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          workspace_id?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_assets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "equipment_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      equipment_categories: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      equipment_checkouts: {
+        Row: {
+          asset_id: string
+          checked_in_at: string | null
+          checked_in_by: string | null
+          checked_out_at: string
+          checked_out_by: string
+          condition_on_return: string | null
+          created_at: string
+          destination: string | null
+          expected_return: string | null
+          id: string
+          is_active: boolean
+          purpose: string | null
+          return_notes: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string
+          checked_out_by: string
+          condition_on_return?: string | null
+          created_at?: string
+          destination?: string | null
+          expected_return?: string | null
+          id?: string
+          is_active?: boolean
+          purpose?: string | null
+          return_notes?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string
+          checked_out_by?: string
+          condition_on_return?: string | null
+          created_at?: string
+          destination?: string | null
+          expected_return?: string | null
+          id?: string
+          is_active?: boolean
+          purpose?: string | null
+          return_notes?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_checkouts_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_checkouts_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "equipment_checkouts_checked_out_by_fkey"
+            columns: ["checked_out_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      equipment_documents: {
+        Row: {
+          asset_id: string
+          created_at: string
+          custom_type_label: string | null
+          document_number: string | null
+          document_type: string
+          document_url: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          custom_type_label?: string | null
+          document_number?: string | null
+          document_type: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          custom_type_label?: string | null
+          document_number?: string | null
+          document_type?: string
+          document_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_documents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      hr_document_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_system: boolean
+          name: string
+          requires_expiry: boolean
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name: string
+          requires_expiry?: boolean
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+          requires_expiry?: boolean
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_document_categories_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_documents: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          employee_id: string
+          expiry_date: string | null
+          file_name: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          employee_id: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          employee_id?: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "hr_document_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1440,6 +2058,201 @@ export type Database = {
           },
         ]
       }
+      lw_courses: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean
+          lw_course_id: string
+          lw_url: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          lw_course_id: string
+          lw_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          lw_course_id?: string
+          lw_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lw_school_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          notes: string | null
+          priority: number
+          school_id: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          priority?: number
+          school_id: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          priority?: number
+          school_id?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lw_school_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "lw_school_assignments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "lw_schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lw_school_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      lw_schools: {
+        Row: {
+          api_key: string | null
+          categories: string[]
+          client_id: string | null
+          client_secret: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          logo_url: string | null
+          name: string
+          school_url: string
+          slug: string
+          sso_secret: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          categories?: string[]
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          logo_url?: string | null
+          name: string
+          school_url: string
+          slug: string
+          sso_secret?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          categories?: string[]
+          client_id?: string | null
+          client_secret?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          logo_url?: string | null
+          name?: string
+          school_url?: string
+          slug?: string
+          sso_secret?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lw_sso_sessions: {
+        Row: {
+          expires_at: string
+          id: string
+          launched_at: string
+          lw_course_id: string | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          id?: string
+          launched_at?: string
+          lw_course_id?: string | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          launched_at?: string
+          lw_course_id?: string | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lw_sso_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       maintenance_request_activity: {
         Row: {
           action: string
@@ -1672,6 +2485,7 @@ export type Database = {
           participant_ids: string[]
           subject: string
           updated_at: string | null
+          workspace_id: string
         }
         Insert: {
           created_at?: string | null
@@ -1683,6 +2497,7 @@ export type Database = {
           participant_ids?: string[]
           subject: string
           updated_at?: string | null
+          workspace_id: string
         }
         Update: {
           created_at?: string | null
@@ -1694,8 +2509,17 @@ export type Database = {
           participant_ids?: string[]
           subject?: string
           updated_at?: string | null
+          workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "message_threads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -2055,6 +2879,343 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_gallery: {
+        Row: {
+          caption: string | null
+          created_at: string | null
+          id: string
+          project_id: string | null
+          property_id: string | null
+          source: string
+          source_id: string | null
+          source_label: string | null
+          source_route: string | null
+          taken_at: string
+          updated_at: string | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          property_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_label?: string | null
+          source_route?: string | null
+          taken_at?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          property_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_label?: string | null
+          source_route?: string | null
+          taken_at?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_gallery_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_gallery_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_access: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_at: string
+          invited_by: string
+          is_active: boolean
+          last_login_at: string | null
+          login_count: number
+          magic_link_expires_at: string | null
+          magic_link_token: string | null
+          name: string | null
+          password_hash: string | null
+          portal_id: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string
+          invited_by: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          name?: string | null
+          password_hash?: string | null
+          portal_id: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          name?: string | null
+          password_hash?: string | null
+          portal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_access_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "portal_access_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_activity: {
+        Row: {
+          activity_type: string
+          actor_email: string
+          actor_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          module: string | null
+          portal_id: string
+          record_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          actor_email: string
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string | null
+          portal_id: string
+          record_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          actor_email?: string
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string | null
+          portal_id?: string
+          record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_activity_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_client_uploads: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          project_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          project_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          project_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_client_uploads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_document_requests: {
+        Row: {
+          created_at: string
+          fulfilled_module: string | null
+          fulfilled_record_id: string | null
+          id: string
+          message: string
+          module: string | null
+          portal_id: string
+          request_type: string
+          requested_by_email: string
+          requested_by_name: string | null
+          responded_at: string | null
+          responded_by: string | null
+          response_message: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fulfilled_module?: string | null
+          fulfilled_record_id?: string | null
+          id?: string
+          message: string
+          module?: string | null
+          portal_id: string
+          request_type?: string
+          requested_by_email: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_message?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fulfilled_module?: string | null
+          fulfilled_record_id?: string | null
+          id?: string
+          message?: string
+          module?: string | null
+          portal_id?: string
+          request_type?: string
+          requested_by_email?: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_message?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_document_requests_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_document_requests_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      portal_exclusions: {
+        Row: {
+          created_at: string
+          excluded_by: string
+          id: string
+          module: string
+          portal_id: string
+          reason: string | null
+          record_id: string
+        }
+        Insert: {
+          created_at?: string
+          excluded_by: string
+          id?: string
+          module: string
+          portal_id: string
+          reason?: string | null
+          record_id: string
+        }
+        Update: {
+          created_at?: string
+          excluded_by?: string
+          id?: string
+          module?: string
+          portal_id?: string
+          reason?: string | null
+          record_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_exclusions_excluded_by_fkey"
+            columns: ["excluded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "portal_exclusions_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
             referencedColumns: ["id"]
           },
         ]
@@ -3402,6 +4563,7 @@ export type Database = {
           daily_grounds_enabled: boolean | null
           id: string
           is_demo: boolean | null
+          is_managed_property: boolean
           mailing_address: string | null
           mailing_city: string | null
           mailing_state: string | null
@@ -3430,6 +4592,7 @@ export type Database = {
           daily_grounds_enabled?: boolean | null
           id?: string
           is_demo?: boolean | null
+          is_managed_property?: boolean
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -3458,6 +4621,7 @@ export type Database = {
           daily_grounds_enabled?: boolean | null
           id?: string
           is_demo?: boolean | null
+          is_managed_property?: boolean
           mailing_address?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
@@ -3617,6 +4781,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "property_inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_module_overrides: {
+        Row: {
+          enabled: boolean
+          id: string
+          module_key: string
+          property_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: string
+          module_key: string
+          property_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: string
+          module_key?: string
+          property_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_module_overrides_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -4118,6 +5317,217 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_incident_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          incident_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          incident_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          incident_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incident_attachments_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "safety_incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_incident_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      safety_incidents: {
+        Row: {
+          body_part_affected: string | null
+          case_number: string | null
+          corrective_actions: string | null
+          corrective_actions_completed: boolean | null
+          corrective_actions_due: string | null
+          created_at: string
+          days_away_from_work: number | null
+          days_employed: number | null
+          days_on_job_transfer: number | null
+          days_on_restriction: number | null
+          facility_name: string | null
+          id: string
+          incident_classification: string | null
+          incident_date: string
+          incident_time: string | null
+          injured_employee_department: string | null
+          injured_employee_id: string | null
+          injured_employee_job_title: string | null
+          injured_employee_name: string
+          injury_icon: string | null
+          injury_involved: boolean | null
+          injury_type: string | null
+          is_osha_recordable: boolean | null
+          is_privacy_case: boolean | null
+          location_description: string
+          medical_treatment: string | null
+          photo_urls: string[] | null
+          physician_name: string | null
+          reported_at: string
+          reported_by: string
+          resulted_in_days_away: boolean | null
+          resulted_in_death: boolean | null
+          resulted_in_other_recordable: boolean | null
+          resulted_in_transfer: boolean | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          updated_at: string
+          what_happened: string
+          witness_contact: string | null
+          witness_name: string | null
+          workspace_id: string
+        }
+        Insert: {
+          body_part_affected?: string | null
+          case_number?: string | null
+          corrective_actions?: string | null
+          corrective_actions_completed?: boolean | null
+          corrective_actions_due?: string | null
+          created_at?: string
+          days_away_from_work?: number | null
+          days_employed?: number | null
+          days_on_job_transfer?: number | null
+          days_on_restriction?: number | null
+          facility_name?: string | null
+          id?: string
+          incident_classification?: string | null
+          incident_date: string
+          incident_time?: string | null
+          injured_employee_department?: string | null
+          injured_employee_id?: string | null
+          injured_employee_job_title?: string | null
+          injured_employee_name: string
+          injury_icon?: string | null
+          injury_involved?: boolean | null
+          injury_type?: string | null
+          is_osha_recordable?: boolean | null
+          is_privacy_case?: boolean | null
+          location_description: string
+          medical_treatment?: string | null
+          photo_urls?: string[] | null
+          physician_name?: string | null
+          reported_at?: string
+          reported_by: string
+          resulted_in_days_away?: boolean | null
+          resulted_in_death?: boolean | null
+          resulted_in_other_recordable?: boolean | null
+          resulted_in_transfer?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          what_happened: string
+          witness_contact?: string | null
+          witness_name?: string | null
+          workspace_id: string
+        }
+        Update: {
+          body_part_affected?: string | null
+          case_number?: string | null
+          corrective_actions?: string | null
+          corrective_actions_completed?: boolean | null
+          corrective_actions_due?: string | null
+          created_at?: string
+          days_away_from_work?: number | null
+          days_employed?: number | null
+          days_on_job_transfer?: number | null
+          days_on_restriction?: number | null
+          facility_name?: string | null
+          id?: string
+          incident_classification?: string | null
+          incident_date?: string
+          incident_time?: string | null
+          injured_employee_department?: string | null
+          injured_employee_id?: string | null
+          injured_employee_job_title?: string | null
+          injured_employee_name?: string
+          injury_icon?: string | null
+          injury_involved?: boolean | null
+          injury_type?: string | null
+          is_osha_recordable?: boolean | null
+          is_privacy_case?: boolean | null
+          location_description?: string
+          medical_treatment?: string | null
+          photo_urls?: string[] | null
+          physician_name?: string | null
+          reported_at?: string
+          reported_by?: string
+          resulted_in_days_away?: boolean | null
+          resulted_in_death?: boolean | null
+          resulted_in_other_recordable?: boolean | null
+          resulted_in_transfer?: boolean | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+          what_happened?: string
+          witness_contact?: string | null
+          witness_name?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_incidents_injured_employee_id_fkey"
+            columns: ["injured_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "safety_incidents_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "safety_incidents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -4256,6 +5666,128 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "message_threads"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_assignments: {
+        Row: {
+          assigned_by: string
+          assigned_to: string | null
+          assigned_to_role: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          is_mandatory: boolean
+          lw_course_id: string
+          next_due_date: string | null
+          notes: string | null
+          recurrence: string | null
+          recurrence_interval_days: number | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          assigned_by: string
+          assigned_to?: string | null
+          assigned_to_role?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean
+          lw_course_id: string
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence?: string | null
+          recurrence_interval_days?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          assigned_by?: string
+          assigned_to?: string | null
+          assigned_to_role?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean
+          lw_course_id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence?: string | null
+          recurrence_interval_days?: number | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "training_assignments_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      training_completions: {
+        Row: {
+          certificate_id: string | null
+          certificate_url: string | null
+          completed_at: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          lw_completion_id: string | null
+          lw_course_id: string
+          passed: boolean | null
+          score: number | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          certificate_id?: string | null
+          certificate_url?: string | null
+          completed_at: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          lw_completion_id?: string | null
+          lw_course_id: string
+          passed?: boolean | null
+          score?: number | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          certificate_id?: string | null
+          certificate_url?: string | null
+          completed_at?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          lw_completion_id?: string | null
+          lw_course_id?: string
+          passed?: boolean | null
+          score?: number | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -4472,6 +6004,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      training_share_links: {
+        Row: {
+          access_count: number
+          accessed_at: string | null
+          completion_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          revoked: boolean
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          accessed_at?: string | null
+          completion_id: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token: string
+        }
+        Update: {
+          access_count?: number
+          accessed_at?: string | null
+          completion_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          revoked?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_share_links_completion_id_fkey"
+            columns: ["completion_id"]
+            isOneToOne: false
+            referencedRelation: "training_completions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       units: {
         Row: {
@@ -4958,6 +6541,111 @@ export type Database = {
           },
         ]
       }
+      workspace_equipment_config: {
+        Row: {
+          active_category_slugs: string[]
+          asset_limit: number
+          created_at: string
+          custom_category_icon: string | null
+          custom_category_name: string | null
+          id: string
+          setup_completed: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          active_category_slugs?: string[]
+          asset_limit?: number
+          created_at?: string
+          custom_category_icon?: string | null
+          custom_category_name?: string | null
+          id?: string
+          setup_completed?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          active_category_slugs?: string[]
+          asset_limit?: number
+          created_at?: string
+          custom_category_icon?: string | null
+          custom_category_name?: string | null
+          id?: string
+          setup_completed?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_modules: {
+        Row: {
+          client_portal_enabled: boolean
+          created_at: string
+          credential_wallet_enabled: boolean
+          email_inbox_enabled: boolean
+          equipment_tracker_enabled: boolean
+          id: string
+          occupancy_enabled: boolean
+          platform_client_portal: boolean
+          platform_credential_wallet: boolean
+          platform_email_inbox: boolean
+          platform_equipment_tracker: boolean
+          platform_occupancy: boolean
+          platform_qr_scanning: boolean
+          platform_safety_module: boolean
+          platform_training_hub: boolean
+          qr_scanning_enabled: boolean
+          safety_module_enabled: boolean
+          training_hub_enabled: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          client_portal_enabled?: boolean
+          created_at?: string
+          credential_wallet_enabled?: boolean
+          email_inbox_enabled?: boolean
+          equipment_tracker_enabled?: boolean
+          id?: string
+          occupancy_enabled?: boolean
+          platform_client_portal?: boolean
+          platform_credential_wallet?: boolean
+          platform_email_inbox?: boolean
+          platform_equipment_tracker?: boolean
+          platform_occupancy?: boolean
+          platform_qr_scanning?: boolean
+          platform_safety_module?: boolean
+          platform_training_hub?: boolean
+          qr_scanning_enabled?: boolean
+          safety_module_enabled?: boolean
+          training_hub_enabled?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          client_portal_enabled?: boolean
+          created_at?: string
+          credential_wallet_enabled?: boolean
+          email_inbox_enabled?: boolean
+          equipment_tracker_enabled?: boolean
+          id?: string
+          occupancy_enabled?: boolean
+          platform_client_portal?: boolean
+          platform_credential_wallet?: boolean
+          platform_email_inbox?: boolean
+          platform_equipment_tracker?: boolean
+          platform_occupancy?: boolean
+          platform_qr_scanning?: boolean
+          platform_safety_module?: boolean
+          platform_training_hub?: boolean
+          qr_scanning_enabled?: boolean
+          safety_module_enabled?: boolean
+          training_hub_enabled?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
@@ -5042,6 +6730,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_project_team_member: {
+        Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
     }

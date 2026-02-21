@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
 import { useUnitsByProperty, useDeleteUnit, type Unit } from '@/hooks/useUnits';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,7 +33,7 @@ export default function UnitsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: units = [], isLoading } = useUnitsByProperty(propertyFilter || null);
-  const { data: properties } = useProperties();
+  const { data: properties } = useManagedProperties();
   const deleteUnit = useDeleteUnit();
   const { canCreate, canUpdate, canDelete } = useUserPermissions();
   const canCreateUnits = canCreate('properties');

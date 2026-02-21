@@ -18,14 +18,14 @@ import { useDataExport } from '@/hooks/useDataExport';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useSearchParams } from 'react-router-dom';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 
 export default function IssuesPage() {
   const { data: mentionedIssueIds = [] } = useMyMentionedIssueIds();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const { canCreate } = useUserPermissions();
-  const { data: properties = [] } = useProperties();
+  const { data: properties = [] } = useManagedProperties();
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterNeedsAttention, setFilterNeedsAttention] = useState(false);

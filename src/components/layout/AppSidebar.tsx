@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOfflineSyncStatus } from '@/hooks/useOfflineSyncStatus';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
@@ -44,6 +45,11 @@ import {
   MessageCircle,
   Phone,
   ChevronRight,
+  TriangleAlert,
+  BadgeCheck,
+  Truck,
+  Share2,
+  Gavel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -60,9 +66,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 interface WorkModuleButtonProps {
   title: string;
-  /** The icon element (e.g. <Sun className="h-4 w-4" />) */
   icon: React.ReactNode;
-  /** Solid CSS color for the icon pill background and left accent line */
   color: string;
   children: React.ReactNode;
   collapsed: boolean;
@@ -82,30 +86,21 @@ function WorkModuleButton({
 
   const hasBadge = badge !== undefined && badge > 0;
 
-  // ── Collapsed: icon-only, show children (NavItems handle their own tooltips)
   if (collapsed) {
     return <div className="space-y-0.5">{children}</div>;
   }
 
-  // ── Expanded sidebar layout
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      {/* Card wrapper — subtle active glow */}
       <div
         className={cn(
           'mx-2 mb-1 rounded-xl transition-all duration-200',
-          isActive
-            ? 'ring-1 ring-white/10'
-            : 'hover:ring-1 hover:ring-white/5'
+          isActive ? 'ring-1 ring-white/10' : 'hover:ring-1 hover:ring-white/5'
         )}
-        style={{
-          background: isActive ? 'rgba(255,255,255,0.05)' : undefined,
-        }}
+        style={{ background: isActive ? 'rgba(255,255,255,0.05)' : undefined }}
       >
-        {/* ── Module trigger row ── */}
         <CollapsibleTrigger asChild>
           <button className="group/mod flex w-full items-center gap-3 px-3 py-2.5 text-left rounded-xl transition-colors hover:bg-white/[0.04]">
-            {/* Solid color icon pill — the dominant Tier 1 visual */}
             <span
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg shadow-sm"
               style={{ background: color }}
@@ -113,7 +108,6 @@ function WorkModuleButton({
               <span className="text-white [&_svg]:h-4 [&_svg]:w-4">{icon}</span>
             </span>
 
-            {/* Module title */}
             <span className={cn(
               'flex-1 truncate text-[13px] font-semibold leading-none transition-colors',
               isActive
@@ -123,7 +117,6 @@ function WorkModuleButton({
               {title}
             </span>
 
-            {/* Alert badge */}
             {hasBadge && (
               <span className={cn(
                 'flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
@@ -135,7 +128,6 @@ function WorkModuleButton({
               </span>
             )}
 
-            {/* Chevron */}
             <ChevronRight className={cn(
               'h-3.5 w-3.5 flex-shrink-0 text-white/30 transition-transform duration-200',
               isOpen && 'rotate-90'
@@ -143,7 +135,6 @@ function WorkModuleButton({
           </button>
         </CollapsibleTrigger>
 
-        {/* ── Expanded children with left accent stripe ── */}
         <CollapsibleContent>
           <div
             className="pb-2 pt-0.5"
@@ -239,7 +230,6 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
     >
       <span className="relative flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4">
         {icon}
-        {/* Dot badge when collapsed */}
         {collapsed && hasBadge && (
           <span className={cn(
             'absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]',
@@ -290,6 +280,21 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// NavSubLabel — sub-section divider inside WorkModuleButton
+// ─────────────────────────────────────────────────────────────────────────────
+function NavSubLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-2 pt-3 pb-0.5">
+      <div className="flex-1 h-px bg-white/5" />
+      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-white/25">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-white/5" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Thin zone divider
 // ─────────────────────────────────────────────────────────────────────────────
 function ZoneDivider() {
@@ -308,6 +313,7 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();
+  const { failedCount } = useOfflineSyncStatus();
 
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   useUnreadThreadCountRealtime();
@@ -360,21 +366,18 @@ export function AppSidebar() {
     ? currentRole.charAt(0).toUpperCase() + currentRole.slice(1).replace('_', ' ')
     : 'Member';
 
-  // Active section detection
-  const isGroundsActive = currentPath.startsWith('/inspections/daily')
-    || currentPath.startsWith('/inspections/history')
-    || currentPath.startsWith('/inspections/review');
-  const isNspireActive = currentPath.startsWith('/inspections') && !isGroundsActive;
+  // ── Active section detection ──────────────────────────────────────────────
+  const isPropertyOpsActive = [
+    '/properties', '/units', '/assets', '/occupancy',
+    '/inspections', '/issues', '/work-orders', '/permits', '/voice-agent'
+  ].some(p => currentPath.startsWith(p));
+
   const isProjectsActive = currentPath.startsWith('/projects');
-  const isPortfolioActive = ['/properties', '/units', '/assets', '/occupancy'].some(p => currentPath.startsWith(p));
-  const isOpsActive = ['/issues', '/work-orders', '/permits'].some(p => currentPath.startsWith(p));
-  const isCommsActive = ['/messages', '/inbox', '/voice-agent', '/contacts'].some(p => currentPath.startsWith(p));
-  const isOrgActive = ['/people', '/training', '/documents', '/reports'].some(p => currentPath.startsWith(p));
+  const isPeopleActive = ['/people', '/contacts', '/training'].some(p => currentPath.startsWith(p));
 
   // Module accent colors (solid, vivid)
-  const COLOR_GROUNDS = 'hsl(142 76% 36%)';    // emerald-600
-  const COLOR_NSPIRE  = 'hsl(199 89% 42%)';    // cyan-600
-  const COLOR_PROJECTS = 'hsl(262 83% 58%)';   // violet-500
+  const COLOR_PROPERTY_OPS = 'hsl(142 76% 36%)'; // emerald-600
+  const COLOR_PROJECTS     = 'hsl(262 83% 58%)'; // violet-500
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -391,8 +394,8 @@ export function AppSidebar() {
             </span>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[13px] font-bold text-[hsl(var(--sidebar-foreground))] leading-tight tracking-tight">PM APAS</span>
-                <span className="text-[10px] text-[hsl(var(--sidebar-muted))] leading-tight">Property OS</span>
+                <span className="text-[13px] font-bold text-[hsl(var(--sidebar-foreground))] leading-tight tracking-tight">APAS OS</span>
+                <span className="text-[10px] text-[hsl(var(--sidebar-muted))] leading-tight">Property Operations</span>
               </div>
             )}
           </NavLink>
@@ -409,21 +412,47 @@ export function AppSidebar() {
         {/* ────────────────── CONTENT ────────────────── */}
         <SidebarContent className="flex flex-col gap-0 overflow-y-auto overflow-x-hidden py-2">
 
-          {/* ── Dashboard (always visible, not gated) ── */}
+          {/* ══════════════════════════════════════════════
+               ZONE 0 — COMMAND RAIL
+               Dashboard · Inbox · Messages — always visible, never collapsible
+          ══════════════════════════════════════════════ */}
+          {!collapsed && (
+            <div className="px-3 pb-1 pt-1">
+              <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[hsl(var(--sidebar-label))]">
+                Always
+              </span>
+            </div>
+          )}
+
           <div className={cn('px-2 pb-1', collapsed && 'px-1')}>
             <NavItem
               to="/dashboard"
               icon={<LayoutDashboard />}
-              label="Dashboard"
+              label="Command Center"
               collapsed={collapsed}
               end
-              tooltip="Dashboard"
+              tooltip="Command Center"
+            />
+            <NavItem
+              to="/inbox"
+              icon={<Mail />}
+              label="Inbox"
+              collapsed={collapsed}
+              tooltip="Email Inbox"
+            />
+            <NavItem
+              to="/messages"
+              icon={<MessageCircle />}
+              label="Messages"
+              collapsed={collapsed}
+              badge={unreadCount}
+              tooltip={unreadCount > 0 ? `${unreadCount} unread` : 'Messages'}
             />
           </div>
 
           {/* ══════════════════════════════════════════════
-               TIER 1 — WORK ENGINES
-               Three dominant colored module launchers
+               ZONE 1 + 2 — WORK MODULES
+               Property Ops + Projects
           ══════════════════════════════════════════════ */}
           {!collapsed && (
             <div className="px-3 pb-1 pt-3">
@@ -434,46 +463,79 @@ export function AppSidebar() {
           )}
           {collapsed && <ZoneDivider />}
 
-          {/* Daily Grounds */}
-          {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-            <WorkModuleButton
-              title="Daily Grounds"
-              icon={<Sun />}
-              color={COLOR_GROUNDS}
-              collapsed={collapsed}
-              isActive={isGroundsActive}
-            >
-              <NavItem to="/inspections/daily"   icon={<Sun />}           label="Today's Rounds" collapsed={collapsed} tooltip="Today's Inspection Rounds" />
-              <NavItem to="/inspections/history" icon={<ClipboardCheck />} label="History"        collapsed={collapsed} tooltip="Inspection History" />
-              <NavItem to="/inspections/review"  icon={<FileText />}       label="Review Queue"   collapsed={collapsed} tooltip="Review Queue" />
-            </WorkModuleButton>
-          )}
+          {/* ── Property Ops (merged Portfolio + Operations + Inspections + Voice) ── */}
+          <WorkModuleButton
+            title="Property Ops"
+            icon={<Building2 />}
+            color={COLOR_PROPERTY_OPS}
+            collapsed={collapsed}
+            isActive={isPropertyOpsActive}
+            badge={openIssueCount + severeDefectCount}
+            badgeVariant={severeDefectCount > 0 ? 'urgent' : 'default'}
+          >
+            {/* ── YOUR PORTFOLIO ── */}
+            <NavSubLabel label="Your Portfolio" />
+            <NavItem to="/properties" icon={<Building2 />} label="Properties" collapsed={collapsed} />
+            <NavItem to="/units"      icon={<DoorOpen />}  label="Units"      collapsed={collapsed} />
+            <NavItem to="/assets"     icon={<Box />}       label="Assets"     collapsed={collapsed} />
+            {isModuleEnabled('occupancyEnabled') && (
+              <NavItem to="/occupancy" icon={<Home />} label="Occupancy" collapsed={collapsed} />
+            )}
 
-          {/* NSPIRE Compliance */}
-          {isModuleEnabled('nspireEnabled') && canView('inspections') && (
-            <WorkModuleButton
-              title="NSPIRE Compliance"
-              icon={<ClipboardCheck />}
-              color={COLOR_NSPIRE}
-              collapsed={collapsed}
-              isActive={isNspireActive}
-              badge={severeDefectCount}
-              badgeVariant="urgent"
-            >
+            {/* ── INSPECT ── */}
+            {(isModuleEnabled('dailyGroundsEnabled') || isModuleEnabled('nspireEnabled')) && canView('inspections') && (
+              <NavSubLabel label="Inspect" />
+            )}
+            {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
               <NavItem
-                to="/inspections" end
-                icon={<ClipboardCheck />} label="Dashboard"
+                to="/inspections/daily"
+                icon={<Sun />}
+                label="Daily Rounds"
                 collapsed={collapsed}
-                badge={severeDefectCount} badgeVariant="urgent"
-                tooltip={severeDefectCount > 0 ? `${severeDefectCount} severe defects` : 'NSPIRE Overview'}
+                tooltip="Today's Inspection Rounds"
               />
-              <NavItem to="/inspections/outside" icon={<Sun />}            label="Outside" collapsed={collapsed} />
-              <NavItem to="/inspections/inside"  icon={<Building />}       label="Inside"  collapsed={collapsed} />
-              <NavItem to="/inspections/units"   icon={<DoorOpen />}       label="Units"   collapsed={collapsed} />
-            </WorkModuleButton>
-          )}
+            )}
+            {isModuleEnabled('nspireEnabled') && canView('inspections') && (
+              <NavItem
+                to="/inspections"
+                icon={<ClipboardCheck />}
+                label="NSPIRE"
+                collapsed={collapsed}
+                badge={severeDefectCount}
+                badgeVariant="urgent"
+                tooltip={severeDefectCount > 0 ? `${severeDefectCount} severe defects` : 'NSPIRE Compliance'}
+              />
+            )}
 
-          {/* Projects */}
+            {/* ── RESPOND ── */}
+            <NavSubLabel label="Respond" />
+            {canView('issues') && (
+              <NavItem
+                to="/issues"
+                icon={<AlertTriangle />}
+                label="Issues"
+                collapsed={collapsed}
+                badge={openIssueCount}
+                badgeVariant={openIssueCount > 5 ? 'urgent' : 'default'}
+                tooltip={openIssueCount > 0 ? `${openIssueCount} open issues` : 'Issues'}
+              />
+            )}
+            {canView('work_orders') && (
+              <>
+                <NavItem to="/work-orders" icon={<Wrench />} label="Work Orders" collapsed={collapsed} />
+                <NavItem to="/permits"     icon={<Shield />} label="Permits"     collapsed={collapsed} />
+              </>
+            )}
+            <NavItem
+              to="/voice-agent"
+              icon={<Phone />}
+              label="Voice Agent"
+              collapsed={collapsed}
+              tooltip="AI Call Center · auto-creates Issues"
+            />
+          </WorkModuleButton>
+
+          {/* ── Projects ── */}
           {isModuleEnabled('projectsEnabled') && canView('projects') && (
             <WorkModuleButton
               title="Projects"
@@ -490,7 +552,6 @@ export function AppSidebar() {
                 badge={activeProjectCount}
                 tooltip={activeProjectCount > 0 ? `${activeProjectCount} active` : 'Projects'}
               />
-              {/* Recent project quick-jumps */}
               {!collapsed && recentProjects.length > 0 && (
                 <div className="pl-3 space-y-0.5 pb-0.5">
                   {recentProjects.map(p => {
@@ -521,99 +582,41 @@ export function AppSidebar() {
           )}
 
           {/* ══════════════════════════════════════════════
-               TIER 2 — PLATFORM
-               Portfolio & Operations — quieter section labels
+               ZONE 3 — PEOPLE & CONTACTS
+               Replaces old Communications + Organization groups
           ══════════════════════════════════════════════ */}
           <ZoneDivider />
 
           <div className={cn('px-2', collapsed && 'px-1')}>
-            {/* Portfolio */}
             <CollapsibleNavGroup
-              title="Portfolio"
+              title="People & Contacts"
               collapsed={collapsed}
-              defaultOpen={isPortfolioActive}
-              isActive={isPortfolioActive}
-            >
-              <NavItem to="/properties" icon={<Building />}   label="Properties" collapsed={collapsed} />
-              <NavItem to="/units"      icon={<DoorOpen />}   label="Units"      collapsed={collapsed} />
-              <NavItem to="/assets"     icon={<Box />}        label="Assets"     collapsed={collapsed} />
-              {isModuleEnabled('occupancyEnabled') && (
-                <NavItem to="/occupancy" icon={<Home />} label="Occupancy" collapsed={collapsed} />
-              )}
-            </CollapsibleNavGroup>
-
-            {/* Operations */}
-            <CollapsibleNavGroup
-              title="Operations"
-              collapsed={collapsed}
-              defaultOpen={isOpsActive}
-              isActive={isOpsActive}
-            >
-              {canView('issues') && (
-                <NavItem
-                  to="/issues"
-                  icon={<AlertTriangle />}
-                  label="Issues"
-                  collapsed={collapsed}
-                  badge={openIssueCount}
-                  badgeVariant={openIssueCount > 5 ? 'urgent' : 'default'}
-                  tooltip={openIssueCount > 0 ? `${openIssueCount} open issues` : 'Issues'}
-                />
-              )}
-              {canView('work_orders') && (
-                <>
-                  <NavItem to="/work-orders" icon={<Wrench />} label="Work Orders" collapsed={collapsed} />
-                  <NavItem to="/permits"     icon={<Shield />} label="Permits"     collapsed={collapsed} />
-                </>
-              )}
-            </CollapsibleNavGroup>
-          </div>
-
-          {/* ══════════════════════════════════════════════
-               TIER 3 — SUPPORTING
-               Communications & Organization — lightest
-          ══════════════════════════════════════════════ */}
-          <ZoneDivider />
-
-          <div className={cn('px-2', collapsed && 'px-1')}>
-            {/* Communications */}
-            <CollapsibleNavGroup
-              title="Communications"
-              collapsed={collapsed}
-              defaultOpen={isCommsActive}
-              isActive={isCommsActive}
-            >
-              <NavItem
-                to="/messages"
-                icon={<MessageCircle />}
-                label="Messages"
-                collapsed={collapsed}
-                badge={unreadCount}
-                tooltip={unreadCount > 0 ? `${unreadCount} unread` : 'Messages'}
-              />
-              <NavItem to="/inbox"       icon={<Mail />}    label="Email"       collapsed={collapsed} />
-              <NavItem to="/voice-agent" icon={<Phone />}   label="Voice Agent" collapsed={collapsed} tooltip="AI Voice Call Center" />
-              <NavItem to="/contacts"    icon={<Contact />} label="Contacts"    collapsed={collapsed} tooltip="CRM — Vendors & Contacts" />
-            </CollapsibleNavGroup>
-
-            {/* Organization */}
-            <CollapsibleNavGroup
-              title="Organization"
-              collapsed={collapsed}
-              defaultOpen={isOrgActive}
-              isActive={isOrgActive}
+              defaultOpen={isPeopleActive}
+              isActive={isPeopleActive}
             >
               {canView('people') && (
-                <NavItem to="/people"   icon={<Users />}        label="People"    collapsed={collapsed} tooltip="Team Members" />
+                <NavItem
+                  to="/people"
+                  icon={<Users />}
+                  label="Team"
+                  collapsed={collapsed}
+                  tooltip="Team Members"
+                />
               )}
-              <NavItem to="/contacts"  icon={<Contact />}      label="Contacts"  collapsed={collapsed} tooltip="CRM" />
-              <NavItem to="/training"  icon={<GraduationCap />} label="Training"  collapsed={collapsed} tooltip="Training Academy" />
-              {canView('documents') && (
-                <NavItem to="/documents" icon={<FileText />}  label="Documents" collapsed={collapsed} />
-              )}
-              {canView('reports') && (
-                <NavItem to="/reports"   icon={<BarChart3 />} label="Reports"   collapsed={collapsed} />
-              )}
+              <NavItem
+                to="/contacts"
+                icon={<Contact />}
+                label="Contacts"
+                collapsed={collapsed}
+                tooltip="Vendors, Contractors & Regulators"
+              />
+              <NavItem
+                to="/training"
+                icon={<GraduationCap />}
+                label="Training"
+                collapsed={collapsed}
+                tooltip="Training Academy"
+              />
             </CollapsibleNavGroup>
           </div>
 
@@ -627,6 +630,106 @@ export function AppSidebar() {
           {/* QR Scanner (if module enabled) */}
           {isModuleEnabled('qrScanningEnabled') && (
             <NavItem to="/qr-scanner" icon={<QrCode />} label="QR Scanner" collapsed={collapsed} />
+          )}
+
+          {/* Credentials (admin only, if module enabled) */}
+          {isModuleEnabled('credentialWalletEnabled') && isAdmin && (
+            <NavItem
+              to="/credentials"
+              icon={<BadgeCheck />}
+              label="Credentials"
+              collapsed={collapsed}
+              tooltip="Credential Compliance"
+            />
+          )}
+
+          {/* Safety Module */}
+          {isModuleEnabled('safetyModuleEnabled') && (
+            <NavItem
+              to="/safety"
+              icon={<TriangleAlert />}
+              label="Safety"
+              collapsed={collapsed}
+              tooltip="Safety Incident Log"
+            />
+          )}
+
+          {/* Equipment & Fleet Tracker */}
+          {isModuleEnabled('equipmentTrackerEnabled') && (
+            <NavItem
+              to="/equipment"
+              icon={<Truck />}
+              label="Equipment"
+              collapsed={collapsed}
+              tooltip="Equipment & Fleet Tracker"
+            />
+          )}
+
+          {/* Client Portals (admin/manager only, if module enabled) */}
+          {isModuleEnabled('clientPortalEnabled') && isAdmin && (
+            <NavItem
+              to="/portals"
+              icon={<Share2 />}
+              label="Portals"
+              collapsed={collapsed}
+              tooltip="Client Portals"
+            />
+          )}
+
+          {/* LW Schools (super admin only) */}
+          {isAdmin && (
+            <NavItem
+              to="/admin/schools"
+              icon={<GraduationCap />}
+              label="LW Schools"
+              collapsed={collapsed}
+              tooltip="LearnWorlds School Management"
+            />
+          )}
+
+          {/* Documents */}
+          {canView('documents') && (
+            <NavItem to="/documents" icon={<FileText />} label="Documents" collapsed={collapsed} />
+          )}
+
+          {/* CaseIQ */}
+          {isAdmin && (
+            <NavItem
+              to="/case-review"
+              icon={<Gavel />}
+              label="CaseIQ"
+              collapsed={collapsed}
+              tooltip="AI Regulatory Case Review"
+            />
+          )}
+
+          {/* Reports */}
+          {canView('reports') && (
+            <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
+          )}
+
+          {/* Workspace Profile (admin only) */}
+          {isAdmin && (
+            <NavItem
+              to="/settings/workspace"
+              icon={<Building />}
+              label="Workspace Profile"
+              collapsed={collapsed}
+              tooltip="Company Branding & Identity"
+            />
+          )}
+
+          {/* Sync Issues indicator — shown when offline queue has permanently failed items */}
+          {failedCount > 0 && (
+            <NavItem
+              to="/settings"
+              icon={<TriangleAlert />}
+              label={`Sync Issues (${failedCount})`}
+              collapsed={collapsed}
+              badge={failedCount}
+              badgeVariant="urgent"
+              tooltip={`${failedCount} offline change${failedCount !== 1 ? 's' : ''} failed to sync`}
+            />
           )}
 
           {/* Settings */}
@@ -656,7 +759,6 @@ export function AppSidebar() {
             </Tooltip>
           ) : (
             <div className="flex items-center gap-2 mt-1 pl-1">
-              {/* Avatar → profile */}
               <button
                 onClick={() => navigate('/profile')}
                 className="flex flex-1 min-w-0 items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-white/5 focus:outline-none text-left"
@@ -678,7 +780,6 @@ export function AppSidebar() {
                 </div>
               </button>
 
-              {/* Log out */}
               <button
                 onClick={signOut}
                 className="flex-shrink-0 rounded-md p-1.5 text-[hsl(var(--sidebar-muted))] transition-colors hover:bg-white/5 hover:text-[hsl(var(--destructive))]"

@@ -1,11 +1,16 @@
 // Module Feature Flags
 export interface ModuleConfig {
-  nspireEnabled: boolean;        // Inside unit inspections (NSPIRE compliance)
-  dailyGroundsEnabled: boolean;  // Outside/grounds/asset inspections
-  projectsEnabled: boolean;      // Construction/renovation projects
-  occupancyEnabled: boolean;     // Future: tenant management
-  emailInboxEnabled: boolean;    // Future: email integration
-  qrScanningEnabled: boolean;    // Future: QR asset scanning
+  nspireEnabled: boolean;           // Inside unit inspections (NSPIRE compliance)
+  dailyGroundsEnabled: boolean;     // Outside/grounds/asset inspections
+  projectsEnabled: boolean;         // Construction/renovation projects
+  occupancyEnabled: boolean;        // Future: tenant management
+  emailInboxEnabled: boolean;       // Future: email integration
+  qrScanningEnabled: boolean;       // Future: QR asset scanning
+  credentialWalletEnabled: boolean; // Credential & License Wallet
+  trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
+  safetyModuleEnabled: boolean;     // Safety Incident Log & OSHA recordkeeping
+  equipmentTrackerEnabled: boolean; // Equipment & Fleet Tracker
+  clientPortalEnabled: boolean;     // Client Portal (white-labeled sharing)
 }
 
 // NSPIRE Severity Levels

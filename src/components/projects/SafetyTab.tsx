@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -236,10 +236,10 @@ export function SafetyTab({ projectId }: { projectId: string }) {
               <Label>Description</Label>
               <Textarea value={incidentForm.description} onChange={e => setIncidentForm({ ...incidentForm, description: e.target.value })} rows={3} />
             </div>
-            <DialogFooter>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
               <Button type="button" variant="outline" onClick={() => setIncidentDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={createIncident.isPending}>Report</Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -267,10 +267,10 @@ export function SafetyTab({ projectId }: { projectId: string }) {
               <Label>Description</Label>
               <Textarea value={talkForm.description} onChange={e => setTalkForm({ ...talkForm, description: e.target.value })} rows={3} />
             </div>
-            <DialogFooter>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
               <Button type="button" variant="outline" onClick={() => setTalkDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={createTalk.isPending}>Add Talk</Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

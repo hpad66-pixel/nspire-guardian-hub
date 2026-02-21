@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, Star } from 'lucide-react';
 
-const starterFeatures = ['Up to 3 properties / 50 units', 'Up to 10 team members', 'Daily inspections + photo documentation', 'NSPIRE compliance engine (full catalog)', 'Work order pipeline', 'Permit tracking', 'Document center (50 GB)', 'Team messaging', 'Reports & CSV export', 'Progressive Web App', '3-year data retention', 'Email support'];
-const proFeatures = ['Everything in Starter, plus:', 'Up to 15 properties / 500 units', 'Up to 40 team members', 'AI Voice Agent — 24/7 tenant call center', 'Full project management (Gantt, RFIs, change orders, closeout)', 'AI proposal generation', 'Training & certification module', 'CRM / contacts', 'Email integration', 'QR code scanning', 'Property Archives vault (permanent storage)', 'Priority support (4-hour response)'];
-const enterpriseFeatures = ['Everything in Professional, plus:', 'Unlimited properties + units', 'Custom NSPIRE configurations', 'White-label / custom domain', 'SSO / SAML authentication', 'Dedicated Customer Success Manager', 'Custom training and onboarding', 'API access', '1-hour SLA response'];
+const starterFeatures = ['Up to 3 properties / 100 units', 'Up to 10 team members', 'Unlimited photos & documents', 'Daily inspections + photo documentation', 'NSPIRE compliance engine (full catalog)', 'Work order pipeline', 'Unlimited permit tracking', 'Team messaging', 'Reports & CSV export', 'Progressive Web App (offline capable)', '3-year data retention', 'Email support (48-hr response)'];
+const proFeatures = ['Everything in Starter, plus:', 'Up to 10 properties / unlimited units', 'Up to 25 team members', 'Unlimited photos, videos & documents', 'AI Voice Agent — 24/7 tenant call center', 'Full project management (Gantt, RFIs, change orders, closeout)', 'AI proposal & report generation', 'Training & certification module', 'Unlimited CRM contacts', 'Email integration', 'QR code asset management', 'Property Archives vault (permanent storage)', 'Priority support (4-hour response)'];
+const enterpriseFeatures = ['Everything in Professional, plus:', 'Unlimited properties & units', 'Unlimited users & team members', 'Unlimited photos, videos & file storage', 'Unlimited AI usage', 'AI Voice Agent (unlimited call volume)', 'White-label / custom domain', 'Custom NSPIRE configurations', 'SSO / SAML authentication', 'Dedicated Customer Success Manager', 'API access for integrations', '1-hour SLA response'];
 
 const faqs = [
   { q: 'Do I need separate plans for multiple properties?', a: 'No. Each plan covers multiple properties up to the stated limit. You have one account, one dashboard, one subscription — all your properties inside.' },
@@ -120,7 +120,7 @@ export function AltPricing() {
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#0F172A', marginBottom: '4px' }}>Starter</div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>Up to 3 properties · 10 users</div>
             <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '40px', color: '#0F172A' }}>${annual ? '79' : '99'}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '40px', color: '#0F172A' }}>${annual ? '149' : '179'}</span>
               <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#94A3B8' }}>/mo</span>
               {annual && <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>billed annually</div>}
             </div>
@@ -153,9 +153,9 @@ export function AltPricing() {
               <Star size={11} fill="#fff" /> Most Popular
             </div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#0F172A', marginBottom: '4px' }}>Professional</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>Up to 15 properties · 40 users</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>Up to 10 properties · 25 users</div>
             <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '40px', color: '#2563EB' }}>${annual ? '199' : '249'}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '40px', color: '#2563EB' }}>${annual ? '349' : '399'}</span>
               <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#94A3B8' }}>/mo</span>
               {annual && <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>billed annually</div>}
             </div>
@@ -178,10 +178,10 @@ export function AltPricing() {
             style={{ background: '#0F172A', borderRadius: '16px', padding: '32px', border: '1px solid #1E3A5F', display: 'flex', flexDirection: 'column' }}
           >
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#F1F5F9', marginBottom: '4px' }}>Enterprise</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#64748B', marginBottom: '20px' }}>Unlimited properties & users</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#64748B', marginBottom: '20px' }}>Unlimited everything — properties, users, AI, storage</div>
             <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '30px', color: '#60A5FA' }}>Custom</span>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Contact us for pricing</div>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '30px', color: '#60A5FA' }}>from $799/mo</span>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#64748B', marginTop: '4px' }}>billed annually · custom for large portfolios</div>
             </div>
             <ul className="flex flex-col gap-2 flex-1 mb-8">
               {enterpriseFeatures.map(f => (

@@ -1,132 +1,113 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DailyInspectionWizard } from '@/components/inspections/DailyInspectionWizard';
 import { AddendumDialog } from '@/components/inspections/AddendumDialog';
-import { AddendumList } from '@/components/inspections/AddendumList';
 import { InspectionReportDialog } from '@/components/inspections/InspectionReportDialog';
-import { useProperties } from '@/hooks/useProperties';
-import { useDailyInspections, useTodayInspection, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
+import { SendReportEmailDialog } from '@/components/inspections/SendReportEmailDialog';
+import { PrintableDailyInspectionReport } from '@/components/inspections/PrintableDailyInspectionReport';
+import { DailyLogDashboard } from '@/components/inspections/DailyLogDashboard';
+import { useManagedProperties } from '@/hooks/useProperties';
+import { useDailyInspections, useTodayInspection, useInspectionItems } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useUserPermissions } from '@/hooks/usePermissions';
-import { 
-  ClipboardCheck, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  Play,
-  Lock,
-  FileText,
-  Plus,
-  History,
-  Info,
-  Sun,
-  Camera,
-  Mic,
-  Send
-} from 'lucide-react';
-import { format, isToday, parseISO } from 'date-fns';
-
-// Instructional Guide Card Component
-function InspectionGuideCard() {
-  return (
-    <Card className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20 overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <CardContent className="pt-5 pb-5">
-        <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-          <Info className="h-4 w-4 text-primary" />
-          What You'll Do Today
-        </h3>
-        <ul className="space-y-2.5 text-sm">
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <Sun className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <span className="text-muted-foreground">Report current weather conditions</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <ClipboardCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className="text-muted-foreground">Check infrastructure assets (Cleanouts, Catch Basins, etc.)</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Camera className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <span className="text-muted-foreground">Document findings with photos</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <Mic className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-            </div>
-            <span className="text-muted-foreground">
-              Add voice notes <span className="text-primary font-medium">(Spanish OK – auto-translated!)</span>
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <Send className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <span className="text-muted-foreground">Submit for supervisor review</span>
-          </li>
-        </ul>
-        <div className="mt-4 pt-3 border-t border-primary/10">
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Clock className="h-3 w-3" />
-            Estimated time: 10-15 minutes
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { generatePDF, printReport } from '@/lib/generatePDF';
+import { format, parseISO } from 'date-fns';
+import { Download, Printer, Mail, FileText, PlusCircle, Loader2, CheckCircle2, TriangleAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 
 export default function DailyGroundsPage() {
+  // ── All hooks at the top level, before any early returns ──
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [showWizard, setShowWizard] = useState(false);
+  const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [showAddendum, setShowAddendum] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  
-  const { data: properties = [] } = useProperties();
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [assetRoundsCompleted, setAssetRoundsCompleted] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(false);
+
+  const { data: properties = [] } = useManagedProperties();
   const { data: assets = [] } = useAssets(selectedPropertyId || undefined);
   const { data: inspections = [] } = useDailyInspections(selectedPropertyId || undefined);
   const { data: todayInspection } = useTodayInspection(selectedPropertyId);
+  const { data: profiles = [] } = useProfiles();
+  const { data: items = [] } = useInspectionItems(todayInspection?.id || '');
   const { canCreate } = useUserPermissions();
   const canCreateInspections = canCreate('inspections');
 
-  // Auto-select first property if only one
+  const isCompleted = todayInspection?.status === 'completed';
+
+  const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+  const inspector = profiles.find(p => p.user_id === todayInspection?.inspector_id);
+  const propertyName = selectedProperty?.name || 'Unknown Property';
+  const inspectorName = inspector?.full_name || inspector?.email || 'Unknown Inspector';
+
+  const reportFilename = todayInspection
+    ? `daily-grounds-inspection-${format(parseISO(todayInspection.inspection_date), 'yyyy-MM-dd')}-${todayInspection.id.slice(0, 8)}.pdf`
+    : 'daily-grounds-inspection.pdf';
+
+  const statusSummary = useMemo(() => {
+    const ok = items.filter(i => i.status === 'ok').length;
+    const attention = items.filter(i => i.status === 'needs_attention').length;
+    const defect = items.filter(i => i.status === 'defect_found').length;
+    return { ok, attention, defect };
+  }, [items]);
+
+  // Auto-select first property
   useEffect(() => {
     if (properties.length === 1 && !selectedPropertyId) {
       setSelectedPropertyId(properties[0].id);
     }
   }, [properties, selectedPropertyId]);
 
-  const activeAssets = assets.filter(a => a.status === 'active');
-  const recentInspections = inspections.slice(0, 5);
+  // Sync existing completed inspection into dashboard state
+  useEffect(() => {
+    if (todayInspection?.status === 'completed') {
+      setAssetRoundsCompleted(true);
+    }
+  }, [todayInspection]);
 
-  const handleStartInspection = () => {
-    setShowWizard(true);
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      await generatePDF({
+        filename: reportFilename,
+        elementId: 'printable-inspection-report',
+        scale: 2,
+      });
+      toast.success('Report saved to your device');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await printReport('printable-inspection-report');
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Failed to print report');
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const handleCompleteInspection = () => {
     setShowWizard(false);
+    setAssetRoundsCompleted(true);
   };
 
-  // Get review status display
-  const getReviewStatusBadge = (status: string | null) => {
-    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      pending_review: { label: 'Pending Review', variant: 'secondary' },
-      approved: { label: 'Approved', variant: 'default' },
-      needs_revision: { label: 'Needs Revision', variant: 'destructive' },
-      rejected: { label: 'Rejected', variant: 'destructive' },
-    };
-    const config = statusConfig[status || ''] || { label: 'Pending', variant: 'secondary' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
+  // ── Conditional renders (after all hooks) ──
 
   if (showWizard && selectedPropertyId && canCreateInspections) {
     return (
@@ -139,235 +120,181 @@ export default function DailyGroundsPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="text-center py-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <ClipboardCheck className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold">Daily Grounds Inspection</h1>
-          <p className="text-muted-foreground mt-1">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')}
-          </p>
-        </div>
-
-        {/* Instructional Guide - Show when inspection not started */}
-        {(!todayInspection || todayInspection.status !== 'completed') && selectedPropertyId && (
-          <InspectionGuideCard />
-        )}
-
-        {/* Property Selector */}
-        {properties.length > 1 && (
-          <Card>
-            <CardContent className="pt-6">
-              <label className="text-sm font-medium mb-2 block">Select Property</label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a property..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        )}
-
-        {selectedPropertyId && (
-          <>
-            {/* Today's Status */}
-            <Card className="border-2">
-              <CardContent className="pt-6 pb-4">
-                {todayInspection?.status === 'completed' ? (
-                  <div className="text-center space-y-4">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900">
-                      <Lock className="h-7 w-7 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Today's Inspection Complete!</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Completed at {format(parseISO(todayInspection.completed_at!), 'h:mm a')}
-                      </p>
-                      {getReviewStatusBadge((todayInspection as any).review_status)}
-                    </div>
-                    <div className="flex gap-2 justify-center">
-                      <Button variant="outline" onClick={() => setShowReportDialog(true)}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Report
-                      </Button>
-                      {canCreateInspections && (
-                        <Button variant="outline" onClick={() => setShowAddendum(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Addendum
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : todayInspection?.status === 'in_progress' ? (
-                  <div className="text-center space-y-3">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-yellow-100 dark:bg-yellow-900">
-                      <Clock className="h-7 w-7 text-yellow-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Inspection In Progress</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Started earlier today
-                      </p>
-                    </div>
-                    {canCreateInspections && (
-                      <Button size="lg" onClick={handleStartInspection} className="gap-2">
-                        <Play className="h-4 w-4" />
-                        Continue Inspection
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">Ready for Today's Inspection</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {activeAssets.length} assets to check
-                      </p>
-                    </div>
-                    {canCreateInspections && (
-                      <Button 
-                        size="lg" 
-                        className="w-full h-14 text-lg gap-3"
-                        onClick={handleStartInspection}
-                      >
-                        <Play className="h-5 w-5" />
-                        Start Today's Inspection
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Addendums for completed inspection */}
-            {todayInspection?.status === 'completed' && (
-              <AddendumList inspectionId={todayInspection.id} />
-            )}
-
-            {/* Asset Summary */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Assets to Inspect</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span>🔧 Cleanouts</span>
-                    <Badge variant="secondary">
-                      {assets.filter(a => a.asset_type === 'cleanout' && a.status === 'active').length}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span>🕳️ Catch Basins</span>
-                    <Badge variant="secondary">
-                      {assets.filter(a => a.asset_type === 'catch_basin' && a.status === 'active').length}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span>⚡ Lift Stations</span>
-                    <Badge variant="secondary">
-                      {assets.filter(a => a.asset_type === 'lift_station' && a.status === 'active').length}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span>💧 Retention Ponds</span>
-                    <Badge variant="secondary">
-                      {assets.filter(a => a.asset_type === 'retention_pond' && a.status === 'active').length}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded col-span-2">
-                    <span>🏡 General Grounds</span>
-                    <Badge variant="secondary">
-                      {assets.filter(a => a.asset_type === 'general_grounds' && a.status === 'active').length}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Inspections */}
-            {recentInspections.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Recent Inspections
-                    </CardTitle>
-                    <Link to="/inspections/history">
-                      <Button variant="ghost" size="sm" className="text-xs gap-1">
-                        <History className="h-3 w-3" />
-                        View All
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {recentInspections.map((inspection) => {
-                    const date = parseISO(inspection.inspection_date);
-                    const weather = WEATHER_OPTIONS.find(w => w.value === inspection.weather);
-                    
-                    return (
-                      <div
-                        key={inspection.id}
-                        className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          {inspection.status === 'completed' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          ) : (
-                            <Clock className="h-5 w-5 text-yellow-500" />
-                          )}
-                          <div>
-                            <p className="font-medium text-sm">
-                              {isToday(date) ? 'Today' : format(date, 'MMM d, yyyy')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {weather?.icon} {weather?.label || 'Unknown weather'}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant={inspection.status === 'completed' ? 'default' : 'secondary'}>
-                          {inspection.status === 'completed' ? 'Complete' : 'In Progress'}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-
-        {!selectedPropertyId && properties.length > 1 && (
-          <Card className="border-dashed">
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              <p>Select a property to start your daily inspection</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {properties.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              <p>No properties found. Please add a property first.</p>
-            </CardContent>
-          </Card>
-        )}
+  if (properties.length > 1 && !selectedPropertyId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6 space-y-4">
+            <h2 className="font-semibold text-center">Select a Property</h2>
+            <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose property..." />
+              </SelectTrigger>
+              <SelectContent>
+                {properties.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
       </div>
+    );
+  }
 
-      {/* Addendum Dialog */}
+  if (properties.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="border-dashed w-full max-w-sm">
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            No properties found. Please add a property first.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {/* Property switcher when multiple */}
+      {properties.length > 1 && (
+        <div className="px-4 pt-3 pb-0 max-w-2xl mx-auto w-full">
+          <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select property" />
+            </SelectTrigger>
+            <SelectContent>
+              {properties.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {selectedPropertyId && (
+        <DailyLogDashboard
+          propertyId={selectedPropertyId}
+          propertyName={selectedProperty?.name}
+          onStartAssetRounds={() => setShowWizard(true)}
+          onNavigateToSection={(section) => {
+            console.log('Navigate to section:', section);
+          }}
+          assetRoundsCompleted={assetRoundsCompleted}
+        />
+      )}
+
+      {/* ── Report Actions Panel — dominant after completion ── */}
+      {isCompleted && todayInspection && (
+        <div className="px-4 pb-6 max-w-2xl mx-auto w-full">
+          <Card className="border-2 border-green-200 shadow-md" style={{ background: 'linear-gradient(135deg, hsl(142 76% 97%), hsl(160 84% 96%))' }}>
+            <CardContent className="pt-5 pb-5 space-y-4">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-green-500">
+                  <CheckCircle2 className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-green-800 leading-tight">Today's Inspection Complete</p>
+                  <p className="text-xs text-green-600">
+                    {todayInspection.completed_at
+                      ? `Completed at ${format(new Date(todayInspection.completed_at), 'h:mm a')}`
+                      : 'Completed'} · Pending Review
+                  </p>
+                </div>
+              </div>
+
+              {/* Three main action buttons */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isGeneratingPDF}
+                  className="flex flex-col items-center gap-1.5 p-3 bg-background border-2 border-border rounded-xl hover:border-primary hover:bg-accent transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isGeneratingPDF
+                    ? <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    : <Download className="h-6 w-6 text-primary" />
+                  }
+                  <span className="text-xs font-semibold text-foreground leading-tight text-center">
+                    {isGeneratingPDF ? 'Saving…' : 'Save PDF'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={handlePrint}
+                  disabled={isPrinting}
+                  className="flex flex-col items-center gap-1.5 p-3 bg-background border-2 border-border rounded-xl hover:border-primary hover:bg-accent transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isPrinting
+                    ? <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    : <Printer className="h-6 w-6 text-primary" />
+                  }
+                  <span className="text-xs font-semibold text-foreground leading-tight text-center">
+                    {isPrinting ? 'Printing…' : 'Print Report'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setShowEmailDialog(true)}
+                  className="flex flex-col items-center gap-1.5 p-3 bg-background border-2 border-border rounded-xl hover:border-primary hover:bg-accent transition-all active:scale-95"
+                >
+                  <Mail className="h-6 w-6 text-primary" />
+                  <span className="text-xs font-semibold text-foreground leading-tight text-center">Email Report</span>
+                </button>
+              </div>
+
+              {/* Secondary actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowReportDialog(true)}
+                  className="flex-1"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  View Full Report
+                </Button>
+                {canCreateInspections && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddendum(true)}
+                    className="flex-1"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    Add Addendum
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIncidentSheetOpen(true)}
+                  className="flex-1 border-amber-400 text-amber-600 hover:bg-amber-50"
+                >
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                  Log Incident
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Hidden printable report — rendered off-screen so Save PDF / Print work without opening dialog */}
+      {isCompleted && todayInspection && (
+        <div className="sr-only print:block" aria-hidden="true">
+          <PrintableDailyInspectionReport
+            id="printable-inspection-report"
+            inspection={todayInspection}
+            items={items}
+            assets={assets}
+            propertyName={propertyName}
+            inspectorName={inspectorName}
+          />
+        </div>
+      )}
+
+      {/* Dialogs */}
       {todayInspection && canCreateInspections && (
         <AddendumDialog
           open={showAddendum}
@@ -375,13 +302,31 @@ export default function DailyGroundsPage() {
           inspectionId={todayInspection.id}
         />
       )}
-
-      {/* Report Dialog */}
       <InspectionReportDialog
         open={showReportDialog}
         onOpenChange={setShowReportDialog}
         inspectionId={todayInspection?.id}
         inspection={todayInspection}
+      />
+      {todayInspection && (
+        <SendReportEmailDialog
+          open={showEmailDialog}
+          onOpenChange={setShowEmailDialog}
+          inspectionId={todayInspection.id}
+          propertyName={propertyName}
+          inspectorName={inspectorName}
+          inspectionDate={todayInspection.inspection_date}
+          reportElementId="printable-inspection-report"
+          statusSummary={statusSummary}
+        />
+      )}
+
+      <LogIncidentSheet
+        open={incidentSheetOpen}
+        onOpenChange={setIncidentSheetOpen}
+        sourceType="grounds_inspection"
+        sourceId={todayInspection?.id}
+        sourceName={`${propertyName} — ${todayInspection ? format(parseISO(todayInspection.inspection_date), 'MMM d, yyyy') : 'Today'}`}
       />
     </div>
   );

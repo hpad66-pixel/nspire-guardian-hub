@@ -39,15 +39,18 @@ export function useCompanyBranding() {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) return null;
 
+      // Fetch the first branding row — no user_id filter.
+      // This allows portal clients to see contractor branding even though
+      // they have no branding row of their own.
       const { data, error } = await supabase
         .from("company_branding")
         .select("*")
-        .eq("user_id", sessionData.session.user.id)
+        .limit(1)
         .maybeSingle();
 
       if (error) {
         console.error("Error fetching branding:", error);
-        throw error;
+        return null;
       }
 
       return data as CompanyBranding | null;

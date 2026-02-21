@@ -1,30 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { House, Camera, MessageCircle, FileText, LogOut, ChevronDown } from 'lucide-react';
+import { House, MessageCircle, FolderOpen, LogOut, ChevronDown } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadClientMessageCount } from '@/hooks/useClientCommunication';
+import { WelcomeModal } from './WelcomeModal';
 import type { CompanyBranding } from '@/hooks/useCompanyBranding';
 
-export type PortalTab = 'home' | 'updates' | 'messages' | 'docs';
+export type PortalTab = 'home' | 'messages' | 'docs';
 
 interface PortalShellProps {
   children: React.ReactNode;
   activeTab: PortalTab;
   onTabChange: (tab: PortalTab) => void;
   projectId: string;
+  projectName: string;
   branding: CompanyBranding | null;
+  showWelcome: boolean;
+  onWelcomeDismiss: () => void;
 }
 
 const TABS: { id: PortalTab; label: string; icon: React.ElementType }[] = [
-  { id: 'home',     label: 'Home',     icon: House         },
-  { id: 'updates',  label: 'Updates',  icon: Camera        },
-  { id: 'messages', label: 'Messages', icon: MessageCircle },
-  { id: 'docs',     label: 'Docs',     icon: FileText      },
+  { id: 'home',     label: 'Overview',  icon: House         },
+  { id: 'messages', label: 'Messages',  icon: MessageCircle },
+  { id: 'docs',     label: 'Files',     icon: FolderOpen    },
 ];
 
-export function PortalShell({ children, activeTab, onTabChange, projectId, branding }: PortalShellProps) {
+export function PortalShell({
+  children,
+  activeTab,
+  onTabChange,
+  projectId,
+  projectName,
+  branding,
+  showWelcome,
+  onWelcomeDismiss,
+}: PortalShellProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -107,7 +120,6 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
         className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-4 border-b border-white/[0.06]"
         style={{ background: '#0D1117' }}
       >
-        {/* Logo / company */}
         <div>
           {branding?.logo_url ? (
             <img src={branding.logo_url} alt={companyName} className="h-7 w-auto object-contain" />
@@ -116,12 +128,8 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
           )}
         </div>
 
-        {/* Right: message badge + user avatar */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => onTabChange('messages')}
-            className="relative p-1.5"
-          >
+          <button onClick={() => onTabChange('messages')} className="relative p-1.5">
             <MessageCircle size={20} className="text-slate-400" />
             {unreadCount > 0 && (
               <span
@@ -217,6 +225,19 @@ export function PortalShell({ children, activeTab, onTabChange, projectId, brand
           );
         })}
       </nav>
+
+      {/* ── First-visit Welcome Modal ───────────────────────────── */}
+      <AnimatePresence>
+        {showWelcome && (
+          <WelcomeModal
+            open={showWelcome}
+            onClose={onWelcomeDismiss}
+            projectName={projectName}
+            branding={branding}
+            accentColor={accentColor}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

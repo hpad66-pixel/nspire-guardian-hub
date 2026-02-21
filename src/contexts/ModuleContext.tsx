@@ -22,6 +22,11 @@ const defaultModules: ModuleConfig = {
   occupancyEnabled: false,
   emailInboxEnabled: false,
   qrScanningEnabled: false,
+  credentialWalletEnabled: false,
+  trainingHubEnabled: false,
+  safetyModuleEnabled: false,
+  equipmentTrackerEnabled: false,
+  clientPortalEnabled: false,
 };
 
 // Map from ModuleConfig keys to database column names
@@ -44,28 +49,58 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     occupancyEnabled: null,
     emailInboxEnabled: null,
     qrScanningEnabled: null,
+    credentialWalletEnabled: null,
+    trainingHubEnabled: null,
+    safetyModuleEnabled: null,
+    equipmentTrackerEnabled: null,
+    clientPortalEnabled: null,
   });
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
   const { isAdmin } = useUserPermissions();
 
-  // Load module settings from properties on app start
+  // Load module settings from properties + workspace_modules on app start
   const loadModulesFromProperties = async () => {
     try {
-      const { data: properties, error } = await supabase
-        .from('properties')
-        .select('nspire_enabled, daily_grounds_enabled, projects_enabled, occupancy_enabled, qr_scanning_enabled');
+      const [{ data: properties, error: propError }, { data: wsModules, error: wsError }] = await Promise.all([
+        supabase
+          .from('properties')
+          .select('nspire_enabled, daily_grounds_enabled, projects_enabled, occupancy_enabled, qr_scanning_enabled'),
+        supabase
+          .from('workspace_modules')
+          .select('*')
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      if (error) throw error;
+      if (propError) throw propError;
+      if (wsError) throw wsError;
+
+      const ws = wsModules as any;
+
+      // For workspace-level modules:
+      // effective = platform gate AND workspace admin toggle (defaults to true if no row yet)
+      const wsEnabled = (platformField: string, wsField: string): boolean => {
+        if (!ws) return true; // no row yet → show as enabled (dev / first-run mode)
+        // Default both platform gate and workspace toggle to true if null/undefined
+        const platformOn = ws[platformField] !== false;
+        const wsOn = ws[wsField] !== false;
+        return platformOn && wsOn;
+      };
 
       // Module is enabled if ANY property has it enabled
-      const tenant = {
+      const tenant: ModuleConfig = {
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
-        occupancyEnabled: properties?.some((p: any) => p.occupancy_enabled) || false,
-        emailInboxEnabled: true, // Always enabled - inbox is functional
-        qrScanningEnabled: properties?.some((p: any) => p.qr_scanning_enabled) || false,
+        occupancyEnabled: wsEnabled('platform_occupancy', 'occupancy_enabled'),
+        emailInboxEnabled: wsEnabled('platform_email_inbox', 'email_inbox_enabled'),
+        qrScanningEnabled: wsEnabled('platform_qr_scanning', 'qr_scanning_enabled'),
+        credentialWalletEnabled: wsEnabled('platform_credential_wallet', 'credential_wallet_enabled'),
+        trainingHubEnabled: wsEnabled('platform_training_hub', 'training_hub_enabled'),
+        safetyModuleEnabled: wsEnabled('platform_safety_module', 'safety_module_enabled'),
+        equipmentTrackerEnabled: wsEnabled('platform_equipment_tracker', 'equipment_tracker_enabled'),
+        clientPortalEnabled: wsEnabled('platform_client_portal', 'client_portal_enabled'),
       };
 
       setTenantModules(tenant);
@@ -79,6 +114,11 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
           occupancyEnabled: null,
           emailInboxEnabled: null,
           qrScanningEnabled: null,
+          credentialWalletEnabled: null,
+          trainingHubEnabled: null,
+          safetyModuleEnabled: null,
+          equipmentTrackerEnabled: null,
+          clientPortalEnabled: null,
         });
         return;
       }
@@ -97,6 +137,11 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         occupancyEnabled: null,
         emailInboxEnabled: null,
         qrScanningEnabled: null,
+        credentialWalletEnabled: null,
+        trainingHubEnabled: null,
+        safetyModuleEnabled: null,
+        equipmentTrackerEnabled: null,
+        clientPortalEnabled: null,
       };
 
       (overrides || []).forEach((row) => {

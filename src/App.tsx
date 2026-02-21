@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from '@/hooks/useAuth';
+import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -33,6 +34,7 @@ const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProposalsPage = lazy(() => import('./pages/projects/ProposalsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
 const PropertiesPage = lazy(() => import('./pages/core/PropertiesPage'));
 const UnitsPage = lazy(() => import('./pages/core/UnitsPage'));
@@ -50,6 +52,8 @@ const PeoplePage = lazy(() => import('./pages/people/PeoplePage'));
 const OccupancyPage = lazy(() => import('./pages/occupancy/OccupancyPage'));
 const QRScannerPage = lazy(() => import('./pages/qr/QRScannerPage'));
 const TrainingPage = lazy(() => import('./pages/training/TrainingPage'));
+const TrainingDashboardPage = lazy(() => import('./pages/training/TrainingDashboardPage'));
+const CertificateSharePage = lazy(() => import('./pages/training/CertificateSharePage'));
 const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
@@ -57,6 +61,20 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ClientPortalPage = lazy(() => import('./pages/portal/ClientPortalPage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
+const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
+const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
+const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
+const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
+const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
+const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
+const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
+const PortalsDashboardPage = lazy(() => import('./pages/portals/PortalsDashboardPage'));
+const PortalManagePage = lazy(() => import('./pages/portals/PortalManagePage'));
+const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
+const PortalAuthPage = lazy(() => import('./pages/portal/PortalAuthPage'));
+const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'));
+const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
+const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +98,24 @@ function RootRedirect() {
   return <LandingPageAlt />;
 }
 
+/** Registers the offline queue flush handler on mount and on connectivity restore. */
+function OfflineQueueManager() {
+  useEffect(() => {
+    // Flush once on app startup (catches queued items from previous offline session)
+    flushOfflineQueue(false).catch(console.error);
+
+    // Flush again whenever connectivity is restored
+    const handleOnline = () => {
+      flushOfflineQueue(true).catch(console.error);
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  return null;
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -89,6 +125,7 @@ const App = () => (
             <ModuleProvider>
               <Toaster />
               <Sonner />
+              <OfflineQueueManager />
               <BrowserRouter>
                 <Suspense fallback={
                   <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -108,8 +145,13 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                    <Route path="/portal/:projectId" element={<ClientPortalPage />} />
-                    
+                     <Route path="/portal/:slug" element={<PortalLoginPage />} />
+                     <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
+                     <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
+                     <Route path="/portal/:slug/home" element={<PortalHomePage />} />
+                     <Route path="/share/credential/:token" element={<CredentialSharePage />} />
+                     <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
+                     
                     {/* Protected Routes */}
                     <Route
                       path="/*"
@@ -121,8 +163,9 @@ const App = () => (
                               <Route path="/dashboard" element={<Dashboard />} />
                               
                               {/* Core Platform */}
-                              <Route path="/properties" element={<PropertiesPage />} />
-                              <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
+              <Route path="/properties" element={<PropertiesPage />} />
+              <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
+              <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
                               <Route path="/units" element={<UnitsPage />} />
                               <Route path="/assets" element={<AssetsPage />} />
                               <Route path="/issues" element={<IssuesPage />} />
@@ -137,7 +180,8 @@ const App = () => (
                               <Route path="/reports" element={<ReportsPage />} />
                               <Route path="/occupancy" element={<OccupancyPage />} />
                               <Route path="/qr-scanner" element={<QRScannerPage />} />
-                              <Route path="/training" element={<TrainingPage />} />
+                              <Route path="/training" element={<TrainingDashboardPage />} />
+                              <Route path="/training/dashboard" element={<TrainingDashboardPage />} />
                               <Route path="/contacts" element={<ContactsPage />} />
                               <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
                               <Route path="/settings/activity-log" element={<ActivityLogPage />} />
@@ -162,9 +206,30 @@ const App = () => (
                               
                               {/* Profile */}
                               <Route path="/profile" element={<ProfilePage />} />
-                              
+
+              {/* Credentials */}
+                              <Route path="/credentials" element={<CredentialsDashboardPage />} />
+
+                              {/* Admin */}
+                              <Route path="/admin/schools" element={<SchoolManagementPage />} />
+
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
+                              <Route path="/settings/workspace" element={<WorkspaceProfilePage />} />
+
+                              {/* Safety Module */}
+                              <Route path="/safety" element={<SafetyDashboardPage />} />
+
+                              {/* Equipment & Fleet */}
+                              <Route path="/equipment" element={<EquipmentDashboardPage />} />
+                              <Route path="/equipment/setup" element={<EquipmentSetupPage />} />
+
+                              {/* CaseIQ */}
+                              <Route path="/case-review" element={<CaseReviewPage />} />
+
+                              {/* Client Portals */}
+                              <Route path="/portals" element={<PortalsDashboardPage />} />
+                              <Route path="/portals/:id" element={<PortalManagePage />} />
                               
                               {/* 404 */}
                               <Route path="*" element={<NotFound />} />

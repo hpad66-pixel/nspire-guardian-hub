@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +13,15 @@ import {
   Clock,
   Paperclip,
   FileText,
+  Star,
+  Loader2,
 } from "lucide-react";
 import { useReportEmail, useMarkEmailRead } from "@/hooks/useReportEmails";
 import { useProfiles } from "@/hooks/useProfiles";
 import { EmailActions } from "./EmailActions";
+import { useSendEmail } from "@/hooks/useSendEmail";
+import { getAttachmentDownloadUrl } from "@/hooks/useEmailAttachments";
+import { toast } from "sonner";
 
 interface EmailPreviewProps {
   emailId: string | null;
@@ -29,6 +34,9 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
   const { data: profiles = [] } = useProfiles();
   const markRead = useMarkEmailRead();
   const hasMarkedRead = useRef(false);
+  const [starred, setStarred] = useState(false);
+  const [downloadingAttachment, setDownloadingAttachment] = useState(false);
+  const sendEmail = useSendEmail();
 
   // Mark as read after 2 seconds of viewing
   useEffect(() => {
@@ -45,6 +53,11 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
     }
   }, [email, markRead]);
 
+  // Reset starred state when email changes
+  useEffect(() => {
+    setStarred(false);
+  }, [emailId]);
+
   const getSenderName = (sentBy: string | null) => {
     if (!sentBy) return "System";
     const profile = profiles.find((p) => p.user_id === sentBy);
@@ -55,21 +68,21 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
     switch (status) {
       case "sent":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
+          <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Sent
           </Badge>
         );
       case "failed":
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+          <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 gap-1">
             <XCircle className="h-3 w-3" />
             Failed
           </Badge>
         );
       case "pending":
         return (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+          <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 gap-1">
             <Clock className="h-3 w-3" />
             Pending
           </Badge>
@@ -84,6 +97,23 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleDownloadAttachment = async () => {
+    const attachmentUrl = (email as any)?.attachment_url;
+    if (!attachmentUrl) {
+      toast.error("No attachment URL available");
+      return;
+    }
+    setDownloadingAttachment(true);
+    try {
+      const signedUrl = await getAttachmentDownloadUrl(attachmentUrl);
+      window.open(signedUrl, "_blank");
+    } catch (err) {
+      toast.error("Failed to download attachment");
+    } finally {
+      setDownloadingAttachment(false);
+    }
   };
 
   if (!emailId) {
@@ -123,6 +153,10 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
     );
   }
 
+  const ccList: string[] = (email as any).cc_recipients || [];
+  const bccList: string[] = (email as any).bcc_recipients || [];
+  const hasAttachmentUrl = !!(email as any).attachment_url;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -137,7 +171,22 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
               )}
             </div>
           </div>
-          <EmailActions email={email} onActionComplete={onEmailDeleted} variant="dropdown" />
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Star toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setStarred(!starred)}
+            >
+              <Star
+                className={`h-4 w-4 transition-colors ${
+                  starred ? "fill-warning text-warning" : "text-muted-foreground"
+                }`}
+              />
+            </Button>
+            <EmailActions email={email} onActionComplete={onEmailDeleted} variant="dropdown" />
+          </div>
         </div>
 
         <div className="space-y-2 text-sm">
@@ -149,6 +198,18 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
             <span className="text-muted-foreground w-16">To:</span>
             <span>{email.recipients.join(", ")}</span>
           </div>
+          {ccList.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground w-16">Cc:</span>
+              <span>{ccList.join(", ")}</span>
+            </div>
+          )}
+          {bccList.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground w-16">Bcc:</span>
+              <span>{bccList.join(", ")}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground w-16">Date:</span>
             <span>{format(parseISO(email.sent_at), "MMMM d, yyyy 'at' h:mm a")}</span>
@@ -156,8 +217,8 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
         </div>
 
         {email.error_message && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-700">
+          <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md">
+            <p className="text-sm text-destructive">
               <strong>Error:</strong> {email.error_message}
             </p>
           </div>
@@ -199,14 +260,25 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" disabled>
-              <Download className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasAttachmentUrl || downloadingAttachment}
+              onClick={handleDownloadAttachment}
+            >
+              {downloadingAttachment ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
               Download
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            PDF attachments are not stored. Regenerate from the original report to download.
-          </p>
+          {!hasAttachmentUrl && (
+            <p className="text-xs text-muted-foreground mt-2">
+              PDF attachments are not stored. Regenerate from the original report to download.
+            </p>
+          )}
         </div>
       )}
 
@@ -214,8 +286,27 @@ export function EmailPreview({ emailId, onClose, onEmailDeleted }: EmailPreviewP
       <div className="p-4 border-t flex items-center justify-between gap-2">
         <EmailActions email={email} onActionComplete={onEmailDeleted} />
         {email.status === "failed" && (
-          <Button variant="outline" size="sm" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={sendEmail.isPending}
+            onClick={() =>
+              sendEmail.mutate(
+                {
+                  recipients: email.recipients,
+                  subject: email.subject,
+                  bodyHtml: email.body_html ?? "",
+                },
+                { onSuccess: () => toast.success("Resent!") }
+              )
+            }
+          >
+            {sendEmail.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Resend
           </Button>
         )}

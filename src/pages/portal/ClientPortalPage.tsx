@@ -8,19 +8,7 @@ import { useCompanyBranding } from '@/hooks/useCompanyBranding';
 import { PortalShell, type PortalTab } from '@/components/portal/PortalShell';
 import { PortalHome } from '@/components/portal/PortalHome';
 import { PortalMessages } from '@/components/portal/PortalMessages';
-import { PortalUpdates } from '@/components/portal/PortalUpdates';
 import { PortalDocuments } from '@/components/portal/PortalDocuments';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface ClientUpdate {
-  id: string;
-  title: string;
-  body: string;
-  photo_url: string | null;
-  update_type: string | null;
-  created_at: string;
-}
 
 // ─── Data hooks ──────────────────────────────────────────────────────────────
 
@@ -40,27 +28,6 @@ function usePortalProject(projectId: string) {
   });
 }
 
-function usePortalUpdates(projectId: string) {
-  return useQuery({
-    queryKey: ['portal-updates', projectId],
-    queryFn: async () => {
-      // Try project_client_updates table; if missing, return empty
-      const { data, error } = await supabase
-        .from('project_client_updates' as any)
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Portal updates fetch:', error.message);
-        return [] as ClientUpdate[];
-      }
-      return (data ?? []) as unknown as ClientUpdate[];
-    },
-    enabled: !!projectId,
-  });
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ClientPortalPage() {
@@ -68,11 +35,22 @@ export default function ClientPortalPage() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<PortalTab>('home');
 
+  const WELCOME_KEY = `portal_welcomed_${projectId}`;
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return !localStorage.getItem(WELCOME_KEY); }
+    catch { return true; }
+  });
+
   const { data: branding } = useCompanyBranding();
   const { data: project, isLoading: projectLoading, error: projectError } = usePortalProject(projectId ?? '');
-  const { data: updates = [], isLoading: updatesLoading } = usePortalUpdates(projectId ?? '');
 
   const accentColor = branding?.primary_color ?? 'hsl(217, 91%, 60%)';
+
+  function handleWelcomeDismiss() {
+    try { localStorage.setItem(WELCOME_KEY, '1'); } catch {}
+    setShowWelcome(false);
+  }
+
 
   // ── Auth guard ───────────────────────────────────────────
   if (authLoading) {
@@ -128,16 +106,9 @@ export default function ClientPortalPage() {
           <PortalHome
             project={project!}
             companyBranding={branding ?? null}
-            updates={updates}
-            onNavigate={(tab) => setActiveTab(tab)}
+            updates={[]}
+            onNavigate={(tab) => setActiveTab(tab as PortalTab)}
             accentColor={accentColor}
-          />
-        );
-      case 'updates':
-        return (
-          <PortalUpdates
-            updates={updates}
-            isLoading={updatesLoading}
           />
         );
       case 'messages':
@@ -163,7 +134,10 @@ export default function ClientPortalPage() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       projectId={projectId}
+      projectName={project?.name ?? ''}
       branding={branding ?? null}
+      showWelcome={showWelcome}
+      onWelcomeDismiss={handleWelcomeDismiss}
     >
       {renderTab()}
     </PortalShell>

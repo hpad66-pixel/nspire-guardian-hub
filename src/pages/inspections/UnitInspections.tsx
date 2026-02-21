@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { InspectionWizard } from '@/components/inspections/InspectionWizard';
 import { useInspectionsByArea } from '@/hooks/useInspections';
-import { useProperties } from '@/hooks/useProperties';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { useUnits } from '@/hooks/useUnits';
 import { useInspectionStats } from '@/hooks/useInspectionStats';
 import { format } from 'date-fns';
@@ -20,7 +20,7 @@ export default function UnitInspections() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const { data: inspections, isLoading: inspectionsLoading } = useInspectionsByArea('unit');
-  const { data: properties } = useProperties();
+  const { data: properties } = useManagedProperties();
   const { data: units } = useUnits();
   const { data: stats } = useInspectionStats();
 
