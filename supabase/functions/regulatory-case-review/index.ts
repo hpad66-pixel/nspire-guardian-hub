@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT — core regulatory analysis IP
@@ -469,9 +469,9 @@ serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const body: ReviewRequest = await req.json();
@@ -502,18 +502,32 @@ serve(async (req) => {
       .map((f) => `\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE: ${f.name} ---\n`)
       .join("\n");
 
-    // Build content parts for Gemini
+    // Build content parts for Claude (Anthropic messages API)
     const contentParts: Array<Record<string, unknown>> = [];
 
-    // Add binary files as inline data
+    // Add binary files as base64 content blocks
     for (const f of files) {
       if (f.isBase64) {
-        contentParts.push({
-          inlineData: {
-            mimeType: f.mimeType,
-            data: f.content,
-          },
-        });
+        // Claude supports PDF as document type, images as image type
+        if (f.mimeType === "application/pdf") {
+          contentParts.push({
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: f.mimeType,
+              data: f.content,
+            },
+          });
+        } else if (f.mimeType.startsWith("image/")) {
+          contentParts.push({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: f.mimeType,
+              data: f.content,
+            },
+          });
+        }
       }
     }
 
@@ -529,26 +543,26 @@ serve(async (req) => {
       analysisPrompt += `\n\nADDITIONAL CONTEXT FROM CLIENT: ${additionalContext}`;
     }
 
-    contentParts.push({ text: analysisPrompt });
+    contentParts.push({ type: "text", text: analysisPrompt });
 
     console.log(`CaseIQ: Starting analysis of ${files.length} files, style=${reportStyle}`);
 
-    // ── PASS 1: Analysis ──
-    const pass1Response = await fetch(
-      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: REGULATORY_SYSTEM_PROMPT }] },
-          contents: [{ role: "user", parts: contentParts }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8192,
-          },
-        }),
-      }
-    );
+    // ── PASS 1: Analysis via Claude ──
+    const pass1Response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        temperature: 0.2,
+        system: REGULATORY_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: contentParts }],
+      }),
+    });
 
     if (!pass1Response.ok) {
       const errorText = await pass1Response.text();
@@ -563,7 +577,7 @@ serve(async (req) => {
     }
 
     const pass1Result = await pass1Response.json();
-    const rawAnalysis = pass1Result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawAnalysis = pass1Result.content?.[0]?.text || "";
 
     if (!rawAnalysis) {
       throw new Error("AI returned empty analysis");
@@ -575,39 +589,29 @@ serve(async (req) => {
 
     console.log(`CaseIQ: Pass 1 complete. Domain: ${regulatoryDomain}. Starting Pass 2 formatting...`);
 
-    // ── PASS 2: HTML formatting ──
+    // ── PASS 2: HTML formatting via Claude ──
     const htmlPrompt = reportStyle === "aurum" ? AURUM_REPORT_PROMPT : WHITEPAPER_REPORT_PROMPT;
 
-    const pass2Response = await fetch(
-      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [
-              {
-                text: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
-              },
-            ],
+    const pass2Response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        temperature: 0.1,
+        system: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
+        messages: [
+          {
+            role: "user",
+            content: `Here is the complete regulatory case analysis:\n\n${rawAnalysis}\n\n---\n\nNow format this analysis into a complete, self-contained HTML document using these exact instructions:\n\n${htmlPrompt}`,
           },
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `Here is the complete regulatory case analysis:\n\n${rawAnalysis}\n\n---\n\nNow format this analysis into a complete, self-contained HTML document using these exact instructions:\n\n${htmlPrompt}`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 8192,
-          },
-        }),
-      }
-    );
+        ],
+      }),
+    });
 
     if (!pass2Response.ok) {
       const errorText = await pass2Response.text();
@@ -616,7 +620,7 @@ serve(async (req) => {
     }
 
     const pass2Result = await pass2Response.json();
-    let reportHtml = pass2Result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    let reportHtml = pass2Result.content?.[0]?.text || "";
 
     // Clean output — strip code fences if present
     reportHtml = reportHtml
