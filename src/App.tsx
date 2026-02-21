@@ -74,6 +74,7 @@ const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
 const PortalAuthPage = lazy(() => import('./pages/portal/PortalAuthPage'));
 const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'));
 const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
+const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -222,6 +223,9 @@ const App = () => (
                               {/* Equipment & Fleet */}
                               <Route path="/equipment" element={<EquipmentDashboardPage />} />
                               <Route path="/equipment/setup" element={<EquipmentSetupPage />} />
+
+                              {/* CaseIQ */}
+                              <Route path="/case-review" element={<CaseReviewPage />} />
 
                               {/* Client Portals */}
                               <Route path="/portals" element={<PortalsDashboardPage />} />

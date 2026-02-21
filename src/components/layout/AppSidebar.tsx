@@ -49,6 +49,7 @@ import {
   BadgeCheck,
   Truck,
   Share2,
+  Gavel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -689,6 +690,17 @@ export function AppSidebar() {
           {/* Documents */}
           {canView('documents') && (
             <NavItem to="/documents" icon={<FileText />} label="Documents" collapsed={collapsed} />
+          )}
+
+          {/* CaseIQ */}
+          {isAdmin && (
+            <NavItem
+              to="/case-review"
+              icon={<Gavel />}
+              label="CaseIQ"
+              collapsed={collapsed}
+              tooltip="AI Regulatory Case Review"
+            />
           )}
 
           {/* Reports */}
