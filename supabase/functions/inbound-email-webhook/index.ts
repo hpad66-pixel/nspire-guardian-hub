@@ -81,6 +81,46 @@ function extractThreadId(toRecipients: string[], replyDomain: string | null): st
   return null;
 }
 
+function extractThreadIdFromUnknown(value: unknown, replyDomain: string | null): string | null {
+  if (!value) return null;
+
+  const domainPattern = replyDomain
+    ? `(?:@${replyDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})?`
+    : "(?:@[a-z0-9.-]+)?";
+  const tokenRegex = new RegExp(`thread\\+([a-f0-9-]{32,36})${domainPattern}`, "i");
+
+  const tryMatch = (text: string): string | null => {
+    const m = text.match(tokenRegex);
+    if (!m) return null;
+    const token = m[1];
+    if (token.length === 36) return token.toLowerCase();
+    if (token.length === 32) {
+      return `${token.slice(0, 8)}-${token.slice(8, 12)}-${token.slice(12, 16)}-${token.slice(16, 20)}-${token.slice(20)}`.toLowerCase();
+    }
+    return null;
+  };
+
+  if (typeof value === "string") {
+    return tryMatch(value);
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const parsed = extractThreadIdFromUnknown(item, replyDomain);
+      if (parsed) return parsed;
+    }
+  }
+
+  if (typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      const parsed = extractThreadIdFromUnknown(v, replyDomain);
+      if (parsed) return parsed;
+    }
+  }
+
+  return null;
+}
+
 function firstString(...values: unknown[]): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -155,7 +195,13 @@ const handler = async (req: Request): Promise<Response> => {
     const replyDomain = normalizeReplyDomain(
       (Deno.env.get("INBOUND_REPLY_DOMAIN") ?? Deno.env.get("EMAIL_REPLY_DOMAIN")) || null
     );
-    const threadId = extractThreadId(toRecipients, replyDomain);
+    const threadId =
+      extractThreadId(toRecipients, replyDomain) ||
+      extractThreadIdFromUnknown(payload.to, replyDomain) ||
+      extractThreadIdFromUnknown(payload.recipients, replyDomain) ||
+      extractThreadIdFromUnknown(payload.delivered_to, replyDomain) ||
+      extractThreadIdFromUnknown(payload["envelope"], replyDomain) ||
+      extractThreadIdFromUnknown(payload, replyDomain);
 
     if (!threadId) {
       return new Response(
@@ -184,7 +230,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: threadRows, error: threadRowsError } = await supabaseAdmin
       .from("report_emails")
-      .select("id, thread_id, sent_by, from_user_id, recipient_user_ids, source_module, report_type, property_id, project_id, work_order_id")
+      .select("id, thread_id, sent_by, from_user_id, recipient_user_ids, source_module, report_type, property_id, project_id, work_order_id, report_id, daily_inspection_id, proposal_id")
       .or(`id.eq.${threadId},thread_id.eq.${threadId}`)
       .order("sent_at", { ascending: true });
 
@@ -208,6 +254,9 @@ const handler = async (req: Request): Promise<Response> => {
           .filter((value): value is string => typeof value === "string" && value.length > 0)
       )
     );
+    if (participantUserIds.length === 0 && root.sent_by) {
+      participantUserIds.push(root.sent_by);
+    }
 
     const { data: latestInThread } = await supabaseAdmin
       .from("report_emails")
@@ -236,6 +285,9 @@ const handler = async (req: Request): Promise<Response> => {
       property_id: root.property_id || null,
       project_id: root.project_id || null,
       work_order_id: root.work_order_id || null,
+      report_id: root.report_id || null,
+      daily_inspection_id: root.daily_inspection_id || null,
+      proposal_id: root.proposal_id || null,
     };
 
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
