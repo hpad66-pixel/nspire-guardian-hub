@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.regulatory-case-review]
+verify_jwt = false
