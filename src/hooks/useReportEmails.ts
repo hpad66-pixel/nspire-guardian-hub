@@ -62,39 +62,57 @@ export interface SendReportEmailParams {
   };
 }
 
+function dedupeById<T extends { id: string }>(rows: T[]): T[] {
+  const map = new Map<string, T>();
+  for (const row of rows) {
+    map.set(row.id, row);
+  }
+  return Array.from(map.values());
+}
+
 export function useReportEmails(filters?: ReportEmailFilters) {
   return useQuery({
     queryKey: ["report-emails", filters],
     queryFn: async () => {
-      // Get current user to filter received messages
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
       if (!userId) return [];
 
-      let query = supabase
-        .from("report_emails")
-        .select("*")
-        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`)
-        .order("sent_at", { ascending: false });
+      const buildBaseQuery = () => {
+        let q = supabase.from("report_emails").select("*");
 
-      if (filters?.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
-      }
+        if (filters?.status && filters.status !== "all") {
+          q = q.eq("status", filters.status);
+        }
 
-      if (filters?.search) {
-        query = query.or(
-          `subject.ilike.%${filters.search}%,recipients.cs.{${filters.search}}`
-        );
-      }
+        if (filters?.search) {
+          q = q.or(
+            `subject.ilike.%${filters.search}%,recipients.cs.{${filters.search}}`
+          );
+        }
 
-      const { data, error } = await query;
+        return q;
+      };
 
-      if (error) {
-        console.error("Error fetching report emails:", error);
-        throw error;
-      }
+      const [sentRes, fromRes, recipientRes] = await Promise.all([
+        buildBaseQuery().eq("sent_by", userId),
+        buildBaseQuery().eq("from_user_id", userId),
+        buildBaseQuery().contains("recipient_user_ids", [userId]),
+      ]);
 
-      return data as ReportEmail[];
+      if (sentRes.error) throw sentRes.error;
+      if (fromRes.error) throw fromRes.error;
+      if (recipientRes.error) throw recipientRes.error;
+
+      const merged = dedupeById([
+        ...(sentRes.data || []),
+        ...(fromRes.data || []),
+        ...(recipientRes.data || []),
+      ]) as ReportEmail[];
+
+      return merged.sort(
+        (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
+      );
     },
   });
 }
@@ -139,7 +157,6 @@ export function useReportEmailStats() {
   return useQuery({
     queryKey: ["report-email-stats"],
     queryFn: async () => {
-      // Get current user
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
       if (!userId) {
@@ -155,15 +172,30 @@ export function useReportEmailStats() {
         };
       }
 
-      const { data, error } = await supabase
-        .from("report_emails")
-        .select("status, is_read, is_archived, is_deleted, sent_by, from_user_id, recipient_user_ids, archived_by_user_ids, deleted_by_user_ids")
-        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`);
+      const [sentRes, fromRes, recipientRes] = await Promise.all([
+        supabase
+          .from("report_emails")
+          .select("id, status, is_read, is_archived, is_deleted, sent_by, from_user_id, recipient_user_ids, archived_by_user_ids, deleted_by_user_ids")
+          .eq("sent_by", userId),
+        supabase
+          .from("report_emails")
+          .select("id, status, is_read, is_archived, is_deleted, sent_by, from_user_id, recipient_user_ids, archived_by_user_ids, deleted_by_user_ids")
+          .eq("from_user_id", userId),
+        supabase
+          .from("report_emails")
+          .select("id, status, is_read, is_archived, is_deleted, sent_by, from_user_id, recipient_user_ids, archived_by_user_ids, deleted_by_user_ids")
+          .contains("recipient_user_ids", [userId]),
+      ]);
 
-      if (error) {
-        console.error("Error fetching report email stats:", error);
-        throw error;
-      }
+      if (sentRes.error) throw sentRes.error;
+      if (fromRes.error) throw fromRes.error;
+      if (recipientRes.error) throw recipientRes.error;
+
+      const data = dedupeById([
+        ...(sentRes.data || []),
+        ...(fromRes.data || []),
+        ...(recipientRes.data || []),
+      ]);
 
       const isDeletedForUser = (e: {
         is_deleted: boolean | null;
@@ -221,12 +253,18 @@ export function useReportEmail(id: string | null) {
       const { data, error } = await supabase
         .from("report_emails")
         .select("*")
-        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`)
         .eq("id", id!)
         .maybeSingle();
 
       if (error) throw error;
-      return data as ReportEmailFull | null;
+      if (!data) return null;
+
+      const visibleToUser =
+        data.sent_by === userId ||
+        data.from_user_id === userId ||
+        !!data.recipient_user_ids?.includes(userId);
+
+      return visibleToUser ? (data as ReportEmailFull) : null;
     },
   });
 }
