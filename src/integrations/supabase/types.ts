@@ -5099,6 +5099,7 @@ export type Database = {
       report_emails: {
         Row: {
           archived_at: string | null
+          archived_by_user_ids: string[] | null
           attachment_filename: string | null
           attachment_size: number | null
           bcc_recipients: string[] | null
@@ -5107,6 +5108,7 @@ export type Database = {
           cc_recipients: string[] | null
           daily_inspection_id: string | null
           deleted_at: string | null
+          deleted_by_user_ids: string[] | null
           error_message: string | null
           from_user_id: string | null
           from_user_name: string | null
@@ -5133,6 +5135,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          archived_by_user_ids?: string[] | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
@@ -5141,6 +5144,7 @@ export type Database = {
           cc_recipients?: string[] | null
           daily_inspection_id?: string | null
           deleted_at?: string | null
+          deleted_by_user_ids?: string[] | null
           error_message?: string | null
           from_user_id?: string | null
           from_user_name?: string | null
@@ -5167,6 +5171,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          archived_by_user_ids?: string[] | null
           attachment_filename?: string | null
           attachment_size?: number | null
           bcc_recipients?: string[] | null
@@ -5175,6 +5180,7 @@ export type Database = {
           cc_recipients?: string[] | null
           daily_inspection_id?: string | null
           deleted_at?: string | null
+          deleted_by_user_ids?: string[] | null
           error_message?: string | null
           from_user_id?: string | null
           from_user_name?: string | null
