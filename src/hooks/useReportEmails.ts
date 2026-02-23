@@ -18,6 +18,8 @@ export interface ReportEmail {
   recipient_user_ids: string[] | null;
   from_user_id: string | null;
   from_user_name: string | null;
+  archived_by_user_ids?: string[] | null;
+  deleted_by_user_ids?: string[] | null;
 }
 
 export interface ReportEmailFull extends ReportEmail {
@@ -67,10 +69,12 @@ export function useReportEmails(filters?: ReportEmailFilters) {
       // Get current user to filter received messages
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
+      if (!userId) return [];
 
       let query = supabase
         .from("report_emails")
         .select("*")
+        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`)
         .order("sent_at", { ascending: false });
 
       if (filters?.status && filters.status !== "all") {
@@ -138,36 +142,65 @@ export function useReportEmailStats() {
       // Get current user
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
+      if (!userId) {
+        return {
+          total: 0,
+          sent: 0,
+          failed: 0,
+          pending: 0,
+          unread: 0,
+          archived: 0,
+          deleted: 0,
+          inbox: 0,
+        };
+      }
 
       const { data, error } = await supabase
         .from("report_emails")
-        .select("status, is_read, is_archived, is_deleted, sent_by, recipient_user_ids");
+        .select("status, is_read, is_archived, is_deleted, sent_by, from_user_id, recipient_user_ids, archived_by_user_ids, deleted_by_user_ids")
+        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`);
 
       if (error) {
         console.error("Error fetching report email stats:", error);
         throw error;
       }
 
-      const activeEmails = data.filter((e) => !e.is_deleted);
+      const isDeletedForUser = (e: {
+        is_deleted: boolean | null;
+        deleted_by_user_ids?: string[] | null;
+      }) =>
+        Array.isArray(e.deleted_by_user_ids)
+          ? e.deleted_by_user_ids.includes(userId)
+          : !!e.is_deleted;
+
+      const isArchivedForUser = (e: {
+        is_archived: boolean | null;
+        archived_by_user_ids?: string[] | null;
+      }) =>
+        Array.isArray(e.archived_by_user_ids)
+          ? e.archived_by_user_ids.includes(userId)
+          : !!e.is_archived;
+
+      const activeEmails = data.filter((e) => !isDeletedForUser(e));
       
       // Count received emails (where current user is in recipient_user_ids)
       const receivedEmails = activeEmails.filter(
-        (e) => userId && e.recipient_user_ids?.includes(userId) && !e.is_archived
+        (e) => e.recipient_user_ids?.includes(userId) && !isArchivedForUser(e)
       );
       
       // Count sent emails (where current user is the sender)
       const sentEmails = activeEmails.filter(
-        (e) => e.sent_by === userId && e.status === "sent" && !e.is_archived
+        (e) => e.sent_by === userId && e.status === "sent" && !isArchivedForUser(e)
       );
 
       const stats = {
-        total: activeEmails.filter((e) => !e.is_archived).length,
+        total: activeEmails.filter((e) => !isArchivedForUser(e)).length,
         sent: sentEmails.length,
-        failed: activeEmails.filter((e) => e.status === "failed" && !e.is_archived).length,
-        pending: activeEmails.filter((e) => e.status === "pending" && !e.is_archived).length,
-        unread: activeEmails.filter((e) => !e.is_read && !e.is_archived).length,
-        archived: data.filter((e) => e.is_archived && !e.is_deleted).length,
-        deleted: data.filter((e) => e.is_deleted).length,
+        failed: activeEmails.filter((e) => e.status === "failed" && !isArchivedForUser(e)).length,
+        pending: activeEmails.filter((e) => e.status === "pending" && !isArchivedForUser(e)).length,
+        unread: activeEmails.filter((e) => !e.is_read && !isArchivedForUser(e)).length,
+        archived: data.filter((e) => isArchivedForUser(e) && !isDeletedForUser(e)).length,
+        deleted: data.filter((e) => isDeletedForUser(e)).length,
         inbox: receivedEmails.length,
       };
 
@@ -181,14 +214,19 @@ export function useReportEmail(id: string | null) {
     queryKey: ["report-email", id],
     enabled: !!id,
     queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) return null;
+
       const { data, error } = await supabase
         .from("report_emails")
         .select("*")
+        .or(`sent_by.eq.${userId},from_user_id.eq.${userId},recipient_user_ids.cs.{${userId}}`)
         .eq("id", id!)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data as ReportEmailFull;
+      return data as ReportEmailFull | null;
     },
   });
 }

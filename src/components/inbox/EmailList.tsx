@@ -45,33 +45,49 @@ export function EmailList({
   const [showInternalOnly, setShowInternalOnly] = useState(false);
 
   const filteredEmails = useMemo(() => {
-    let result = emails;
+    const isVisibleToUser = (e: ReportEmail) =>
+      !!userId &&
+      (e.sent_by === userId ||
+        e.from_user_id === userId ||
+        !!e.recipient_user_ids?.includes(userId));
+
+    const isArchivedForUser = (e: ReportEmail) =>
+      Array.isArray(e.archived_by_user_ids)
+        ? !!userId && e.archived_by_user_ids.includes(userId)
+        : !!(e as any).is_archived;
+
+    const isDeletedForUser = (e: ReportEmail) =>
+      Array.isArray(e.deleted_by_user_ids)
+        ? !!userId && e.deleted_by_user_ids.includes(userId)
+        : !!(e as any).is_deleted;
+
+    let result = emails.filter(isVisibleToUser);
 
     // Filter by folder
     if (folder === "sent") {
       // Show emails sent by current user
       result = result.filter(
-        (e) => e.sent_by === userId && e.status === "sent" && !(e as any).is_archived && !(e as any).is_deleted
+        (e) => e.sent_by === userId && e.status === "sent" && !isArchivedForUser(e) && !isDeletedForUser(e)
       );
     } else if (folder === "failed") {
-      result = result.filter((e) => e.status === "failed" && !(e as any).is_archived && !(e as any).is_deleted);
+      result = result.filter((e) => e.status === "failed" && !isArchivedForUser(e) && !isDeletedForUser(e));
     } else if (folder === "inbox") {
       // Show emails received by current user (where they are in recipient_user_ids)
       result = result.filter(
         (e) => 
           userId && 
           e.recipient_user_ids?.includes(userId) && 
-          !(e as any).is_archived && 
-          !(e as any).is_deleted
+          !isArchivedForUser(e) && 
+          !isDeletedForUser(e)
       );
     } else if (folder === "archive") {
-      result = result.filter((e) => (e as any).is_archived && !(e as any).is_deleted);
+      result = result.filter((e) => isArchivedForUser(e) && !isDeletedForUser(e));
     } else if (folder === "trash") {
-      result = result.filter((e) => (e as any).is_deleted);
+      result = result.filter((e) => isDeletedForUser(e));
     } else if (folder === "drafts") {
       result = []; // Drafts are in localStorage — shown via CTA in empty state
     } else if (folder === "all") {
-      result = result.filter((e) => !(e as any).is_archived && !(e as any).is_deleted);
+      result = result.filter((e) => !isArchivedForUser(e) && !isDeletedForUser(e));
     }
 
     // Filter by search

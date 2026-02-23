@@ -18,6 +18,7 @@ import { ComposeEmailDialog } from "@/components/inbox/ComposeEmailDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Mail, Sparkles, Send, Inbox, Keyboard } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Popover,
   PopoverContent,
@@ -42,9 +43,17 @@ export default function MailboxPage() {
   const [composeOpen, setComposeOpen] = useState(false);
 
   const isMobile = useIsMobile();
+  const { userRole } = useAuth();
+  const canViewAllMail = userRole === "admin";
   const { data: emails = [], isLoading } = useReportEmails({});
   const { data: stats } = useReportEmailStats();
   useReportEmailsRealtime();
+
+  useEffect(() => {
+    if (!canViewAllMail && folder === "all") {
+      setFolder("inbox");
+    }
+  }, [canViewAllMail, folder]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -130,7 +139,11 @@ export default function MailboxPage() {
 
           {/* Folder tabs */}
           <div className="px-4 pb-3 flex gap-2 overflow-x-auto">
-            {(["inbox", "sent", "drafts", "archive", "trash", "all"] as FolderType[]).map((f) => (
+            {(
+              canViewAllMail
+                ? (["inbox", "sent", "drafts", "archive", "trash", "all"] as FolderType[])
+                : (["inbox", "sent", "drafts", "archive", "trash"] as FolderType[])
+            ).map((f) => (
               <button
                 key={f}
                 onClick={() => setFolder(f)}
@@ -246,6 +259,7 @@ export default function MailboxPage() {
             <MailboxFolders
               currentFolder={folder}
               onFolderChange={setFolder}
+              canViewAllMail={canViewAllMail}
               folderCounts={stats}
               onCompose={() => setComposeOpen(true)}
             />

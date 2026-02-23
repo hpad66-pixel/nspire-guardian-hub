@@ -9,6 +9,7 @@ export type FolderType = "all" | "sent" | "failed" | "inbox" | "archive" | "tras
 interface MailboxFoldersProps {
   currentFolder: FolderType;
   onFolderChange: (folder: FolderType) => void;
+  canViewAllMail?: boolean;
   folderCounts: {
     total: number;
     sent: number;
@@ -35,6 +36,7 @@ const folders: { id: FolderType; label: string; icon: typeof Inbox }[] = [
 export function MailboxFolders({
   currentFolder,
   onFolderChange,
+  canViewAllMail = false,
   folderCounts,
   onCompose,
 }: MailboxFoldersProps) {
@@ -80,7 +82,9 @@ export function MailboxFolders({
 
       <ScrollArea className="flex-1">
         <div className="px-2 pb-2 space-y-1">
-          {folders.map((folder) => {
+          {folders
+            .filter((folder) => canViewAllMail || folder.id !== "all")
+            .map((folder) => {
             const Icon = folder.icon;
             const count = getCount(folder.id);
             const isActive = currentFolder === folder.id;

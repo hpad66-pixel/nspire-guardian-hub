@@ -34,6 +34,7 @@ import {
   usePermanentDeleteEmail,
 } from "@/hooks/useEmailActions";
 import { ReplyForwardDialog } from "./ReplyForwardDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 interface EmailActionsProps {
   email: ReportEmailFull;
@@ -50,14 +51,20 @@ export function EmailActions({
   const [forwardOpen, setForwardOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
+  const { user } = useAuth();
 
   const archiveEmail = useArchiveEmail();
   const restoreEmail = useRestoreEmail();
   const softDeleteEmail = useSoftDeleteEmail();
   const permanentDeleteEmail = usePermanentDeleteEmail();
 
-  const isArchived = (email as any).is_archived;
-  const isDeleted = (email as any).is_deleted;
+  const isArchived = Array.isArray((email as any).archived_by_user_ids)
+    ? !!user?.id && (email as any).archived_by_user_ids.includes(user.id)
+    : !!(email as any).is_archived;
+
+  const isDeleted = Array.isArray((email as any).deleted_by_user_ids)
+    ? !!user?.id && (email as any).deleted_by_user_ids.includes(user.id)
+    : !!(email as any).is_deleted;
 
   const handleArchive = async () => {
     await archiveEmail.mutateAsync(email.id);
@@ -180,8 +187,7 @@ export function EmailActions({
             <AlertDialogHeader>
               <AlertDialogTitle>Permanently Delete Email?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The email will be permanently
-                removed.
+                This removes the email from your trash only.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
