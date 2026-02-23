@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { useReportEmails, useReportEmailStats } from "@/hooks/useReportEmails";
+import {
+  useReportEmails,
+  useReportEmailStats,
+  useReportEmailsRealtime,
+} from "@/hooks/useReportEmails";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ResizablePanelGroup,
@@ -40,6 +44,7 @@ export default function MailboxPage() {
   const isMobile = useIsMobile();
   const { data: emails = [], isLoading } = useReportEmails({});
   const { data: stats } = useReportEmailStats();
+  useReportEmailsRealtime();
 
   // Keyboard shortcuts
   useEffect(() => {

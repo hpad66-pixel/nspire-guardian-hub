@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -209,4 +210,57 @@ export function useMarkEmailRead() {
       queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
     },
   });
+}
+
+export function useReportEmailsRealtime() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("report-emails-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "report_emails",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["report-emails"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "report_emails",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["report-emails"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "report_emails",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["report-emails"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["report-email"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 }
