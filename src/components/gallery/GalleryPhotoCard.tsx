@@ -97,7 +97,7 @@ export function GalleryPhotoCard({
   };
 
   let parsedDate: Date | undefined;
-  try { parsedDate = parseISO(takenAt); } catch {}
+  try { parsedDate = parseISO(takenAt); } catch (e) { console.error('[Gallery] Date parse failed:', e); }
 
   return (
     <div className="rounded-xl overflow-hidden border bg-card shadow-sm">

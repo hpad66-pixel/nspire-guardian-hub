@@ -89,7 +89,7 @@ export function GalleryLightbox({ photos, initialIndex, onClose, propertyId, pro
   };
 
   let parsedDate: Date | undefined;
-  try { parsedDate = parseISO(photo.taken_at); } catch {}
+  try { parsedDate = parseISO(photo.taken_at); } catch (e) { console.error('[Gallery] Date parse failed:', e); }
 
   if (!photo) return null;
 

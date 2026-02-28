@@ -67,7 +67,7 @@ function groupByMonth(photos: GalleryPhoto[]): Array<{ monthKey: string; monthLa
     try {
       const d = new Date(key + '-01T12:00:00');
       label = format(d, 'MMMM yyyy');
-    } catch {}
+    } catch (e) { console.error('[Gallery] Month label parse failed:', e); }
     return { monthKey: key, monthLabel: label, photos };
   });
 }
@@ -84,7 +84,7 @@ function groupByDay(photos: GalleryPhoto[]): Array<{ dayKey: string; dayLabel: s
     try {
       const d = new Date(key + 'T12:00:00');
       label = format(d, 'EEEE, MMMM d');
-    } catch {}
+    } catch (e) { console.error('[Gallery] Day label parse failed:', e); }
     return { dayKey: key, dayLabel: label, photos };
   });
 }
