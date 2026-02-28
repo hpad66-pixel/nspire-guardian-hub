@@ -4,30 +4,30 @@ import { CheckCircle, AlertTriangle, Mic, FileText, Camera, Zap, ShieldCheck, Be
 const F = ({ children }: { children: string }) => (
   <li className="flex items-start gap-2.5">
     <CheckCircle size={15} color="#059669" style={{ flexShrink: 0, marginTop: '3px' }} />
-    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#475569', lineHeight: 1.65 }}>{children}</span>
+    <span style={{ fontFamily: "var(--font-editor)", fontSize: '14px', color: 'var(--landing-slate)', lineHeight: 1.65 }}>{children}</span>
   </li>
 );
 
 /* ── tiny mock cards ── */
 function InspectionMock() {
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.07)', maxWidth: '340px' }}>
-      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '13px', color: '#1E3A5F', marginBottom: '14px' }}>Daily Grounds Inspection</div>
+    <div style={{ background: 'var(--landing-card)', borderRadius: '14px', padding: '20px', border: '1px solid var(--landing-border)', boxShadow: '0 8px 24px rgba(26,22,16,0.06)', maxWidth: '340px' }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '13px', color: 'var(--landing-ink)', marginBottom: '14px' }}>Daily Grounds Inspection</div>
       {[{ label: 'Parking Lot A', ok: true }, { label: 'Building Exterior', ok: true }, { label: 'Playground', ok: false }].map(item => (
-        <div key={item.label} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#0F172A' }}>{item.label}</span>
+        <div key={item.label} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--landing-border)' }}>
+          <span style={{ fontFamily: "var(--font-editor)", fontSize: '13px', color: 'var(--landing-ink)' }}>{item.label}</span>
           {item.ok ? <CheckCircle size={15} color="#059669" /> : <AlertTriangle size={15} color="#DC2626" />}
         </div>
       ))}
-      <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #F1F5F9' }}>
+      <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--landing-border)' }}>
         <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end' }}>
           {[8, 12, 6, 16, 10, 14, 8].map((h, i) => (
-            <div key={i} style={{ width: '4px', height: `${h}px`, background: '#2563EB', borderRadius: '2px', animation: `altWave2 1.2s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
+            <div key={i} style={{ width: '4px', height: `${h}px`, background: 'var(--apas-sapphire)', borderRadius: '2px', animation: `altWave2 1.2s ease-in-out infinite`, animationDelay: `${i * 0.15}s` }} />
           ))}
         </div>
         <style>{`@keyframes altWave2 { 0%,100%{transform:scaleY(0.5)} 50%{transform:scaleY(1)} }`}</style>
-        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#2563EB', fontWeight: 600 }}>Voice note recording…</span>
-        <div className="ml-auto" style={{ background: '#FFF5F5', color: '#DC2626', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>1 defect → WO Created</div>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: '12px', color: 'var(--apas-sapphire)', fontWeight: 600 }}>Voice note recording…</span>
+        <div className="ml-auto" style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', fontFamily: "var(--font-mono)" }}>1 defect → WO</div>
       </div>
     </div>
   );
@@ -35,19 +35,19 @@ function InspectionMock() {
 
 function PermitMock() {
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.07)', maxWidth: '340px' }}>
+    <div style={{ background: 'var(--landing-card)', borderRadius: '14px', padding: '20px', border: '1px solid var(--landing-border)', boxShadow: '0 8px 24px rgba(26,22,16,0.06)', maxWidth: '340px' }}>
       <div className="flex items-center justify-between mb-4">
-        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '13px', color: '#1E3A5F' }}>Permit Dashboard</span>
-        <span style={{ background: '#F0FDF4', color: '#059669', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>0 violations</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '13px', color: 'var(--landing-ink)' }}>Permit Dashboard</span>
+        <span style={{ background: 'var(--apas-gold-bg)', color: 'var(--apas-gold)', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', fontFamily: "var(--font-mono)" }}>0 violations</span>
       </div>
       {[
-        { name: 'Fire Safety Certificate', days: '12d', color: '#D97706', bg: '#FFFBEB' },
-        { name: 'Elevator Inspection', days: '45d', color: '#059669', bg: '#F0FDF4' },
-        { name: 'Stormwater Permit', days: '90d', color: '#059669', bg: '#F0FDF4' },
+        { name: 'Fire Safety Certificate', days: '12d', color: '#D97706', bg: 'rgba(217,119,6,0.08)' },
+        { name: 'Elevator Inspection', days: '45d', color: 'var(--apas-gold)', bg: 'var(--apas-gold-bg)' },
+        { name: 'Stormwater Permit', days: '90d', color: 'var(--apas-gold)', bg: 'var(--apas-gold-bg)' },
       ].map(p => (
-        <div key={p.name} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid #F1F5F9' }}>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#0F172A' }}>{p.name}</span>
-          <span style={{ background: p.bg, color: p.color, fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', fontFamily: "'JetBrains Mono', monospace" }}>{p.days}</span>
+        <div key={p.name} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid var(--landing-border)' }}>
+          <span style={{ fontFamily: "var(--font-editor)", fontSize: '13px', color: 'var(--landing-ink)' }}>{p.name}</span>
+          <span style={{ background: p.bg, color: p.color, fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', fontFamily: "var(--font-mono)" }}>{p.days}</span>
         </div>
       ))}
     </div>
@@ -56,23 +56,23 @@ function PermitMock() {
 
 function ProjectMock() {
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.07)', maxWidth: '340px' }}>
-      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '13px', color: '#1E3A5F', marginBottom: '4px' }}>Roof Replacement · Building C</div>
-      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#94A3B8', marginBottom: '12px' }}>60% complete</div>
-      <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '3px', marginBottom: '16px' }}>
-        <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg, #2563EB, #7C3AED)', borderRadius: '3px' }} />
+    <div style={{ background: 'var(--landing-card)', borderRadius: '14px', padding: '20px', border: '1px solid var(--landing-border)', boxShadow: '0 8px 24px rgba(26,22,16,0.06)', maxWidth: '340px' }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '13px', color: 'var(--landing-ink)', marginBottom: '4px' }}>Roof Replacement · Building C</div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: '11px', color: 'var(--landing-muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>60% COMPLETE</div>
+      <div style={{ height: '6px', background: 'var(--landing-border)', borderRadius: '3px', marginBottom: '16px' }}>
+        <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg, var(--apas-sapphire), #7C3AED)', borderRadius: '3px' }} />
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[{ label: 'Daily Reports', val: '12' }, { label: 'Open RFIs', val: '3' }, { label: 'Change Orders', val: '$45K' }].map(m => (
-          <div key={m.label} style={{ background: '#F8FAFC', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '14px', color: '#1E3A5F' }}>{m.val}</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '9px', color: '#94A3B8', marginTop: '2px' }}>{m.label}</div>
+          <div key={m.label} style={{ background: 'var(--landing-warm)', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: '14px', color: 'var(--landing-ink)' }}>{m.val}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: '9px', color: 'var(--landing-muted)', marginTop: '2px' }}>{m.label}</div>
           </div>
         ))}
       </div>
       {[0.4, 0.7, 0.55].map((w, i) => (
-        <div key={i} style={{ height: '6px', background: '#E2E8F0', borderRadius: '3px', marginBottom: '6px' }}>
-          <div style={{ width: `${w * 100}%`, height: '100%', background: i === 0 ? '#2563EB' : i === 1 ? '#059669' : '#D97706', borderRadius: '3px' }} />
+        <div key={i} style={{ height: '6px', background: 'var(--landing-border)', borderRadius: '3px', marginBottom: '6px' }}>
+          <div style={{ width: `${w * 100}%`, height: '100%', background: i === 0 ? 'var(--apas-sapphire)' : i === 1 ? '#059669' : '#D97706', borderRadius: '3px' }} />
         </div>
       ))}
     </div>
@@ -81,11 +81,11 @@ function ProjectMock() {
 
 function VoiceMock() {
   return (
-    <div style={{ background: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)', borderRadius: '14px', padding: '24px', boxShadow: '0 8px 24px rgba(15,23,42,0.15)', maxWidth: '340px' }}>
+    <div style={{ background: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)', borderRadius: '14px', padding: '24px', boxShadow: '0 8px 24px rgba(26,22,16,0.15)', maxWidth: '340px' }}>
       <div className="flex items-center gap-2 mb-4">
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#86EFAC', animation: 'altPulse2 1.5s ease-in-out infinite' }} />
         <style>{`@keyframes altPulse2 { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '13px', color: '#E9D5FF' }}>AI Voice Agent · Live</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '13px', color: '#E9D5FF' }}>AI Voice Agent · Live</span>
       </div>
       <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '16px', height: '32px' }}>
         {[12, 20, 28, 16, 24, 18, 28, 14].map((h, i) => (
@@ -94,14 +94,14 @@ function VoiceMock() {
         <style>{`@keyframes altWave3 { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }`}</style>
       </div>
       <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px' }}>
-        <div className="mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Tenant</div>
-        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#E9D5FF', marginBottom: '10px' }}>"Leak under my kitchen sink, Unit 204B"</div>
-        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>APAS AI</div>
-        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#86EFAC' }}>"Got it. Ticket created, your team has been notified."</div>
+        <div className="mb-2" style={{ fontFamily: "var(--font-mono)", fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Tenant</div>
+        <div style={{ fontFamily: "var(--font-editor)", fontSize: '13px', color: '#E9D5FF', marginBottom: '10px' }}>"Leak under my kitchen sink, Unit 204B"</div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>APAS AI</div>
+        <div style={{ fontFamily: "var(--font-editor)", fontSize: '13px', color: '#86EFAC' }}>"Got it. Ticket created, your team has been notified."</div>
       </div>
       <div className="flex gap-2 mt-3 flex-wrap">
         {[{ label: 'Plumbing', c: '#A78BFA' }, { label: 'Medium', c: '#FCD34D' }, { label: 'Created ✓', c: '#86EFAC' }].map(b => (
-          <span key={b.label} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '11px', fontWeight: 600, color: b.c, background: 'rgba(255,255,255,0.08)', padding: '3px 8px', borderRadius: '6px' }}>{b.label}</span>
+          <span key={b.label} style={{ fontFamily: "var(--font-mono)", fontSize: '10px', fontWeight: 600, color: b.c, background: 'rgba(255,255,255,0.08)', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{b.label}</span>
         ))}
       </div>
     </div>
@@ -110,45 +110,45 @@ function VoiceMock() {
 
 function WorkOrderMock() {
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.07)', maxWidth: '340px' }}>
-      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '13px', color: '#1E3A5F', marginBottom: '14px' }}>Work Orders</div>
+    <div style={{ background: 'var(--landing-card)', borderRadius: '14px', padding: '20px', border: '1px solid var(--landing-border)', boxShadow: '0 8px 24px rgba(26,22,16,0.06)', maxWidth: '340px' }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '13px', color: 'var(--landing-ink)', marginBottom: '14px' }}>Work Orders</div>
       {[
         { label: 'HVAC Unit B3', status: 'In Progress', priority: 'High', pColor: '#DC2626' },
         { label: 'Parking Light #7', status: 'Assigned', priority: 'Medium', pColor: '#D97706' },
-        { label: 'Lobby Door Seal', status: 'Completed', priority: 'Low', pColor: '#059669' },
+        { label: 'Lobby Door Seal', status: 'Completed', priority: 'Low', pColor: 'var(--apas-gold)' },
       ].map(wo => (
-        <div key={wo.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid #F1F5F9' }}>
+        <div key={wo.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid var(--landing-border)' }}>
           <div className="flex items-center gap-2">
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: wo.pColor, flexShrink: 0 }} />
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#0F172A' }}>{wo.label}</span>
+            <span style={{ fontFamily: "var(--font-editor)", fontSize: '13px', color: 'var(--landing-ink)' }}>{wo.label}</span>
           </div>
-          <span style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{wo.status}</span>
+          <span style={{ background: 'var(--landing-warm)', color: 'var(--landing-slate)', fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', fontFamily: "var(--font-mono)" }}>{wo.status}</span>
         </div>
       ))}
-      <div style={{ marginTop: '12px', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#94A3B8' }}>Assigned to James · 10 min ago</div>
+      <div style={{ marginTop: '12px', fontFamily: "var(--font-mono)", fontSize: '11px', color: 'var(--landing-muted)', letterSpacing: '0.02em' }}>Assigned to James · 10 min ago</div>
     </div>
   );
 }
 
 function TeamMock() {
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.07)', maxWidth: '340px' }}>
+    <div style={{ background: 'var(--landing-card)', borderRadius: '14px', padding: '20px', border: '1px solid var(--landing-border)', boxShadow: '0 8px 24px rgba(26,22,16,0.06)', maxWidth: '340px' }}>
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {[{ label: 'Compliance Rate', val: '94%', c: '#059669' }, { label: 'Inspections', val: '127', c: '#2563EB' }, { label: 'Work Orders', val: '48', c: '#D97706' }, { label: 'Avg Resolution', val: '2.3d', c: '#7C3AED' }].map(k => (
-          <div key={k.label} style={{ background: '#F8FAFC', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '20px', color: k.c }}>{k.val}</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>{k.label}</div>
+        {[{ label: 'Compliance Rate', val: '94%', c: 'var(--apas-gold)' }, { label: 'Inspections', val: '127', c: 'var(--apas-sapphire)' }, { label: 'Work Orders', val: '48', c: '#D97706' }, { label: 'Avg Resolution', val: '2.3d', c: '#7C3AED' }].map(k => (
+          <div key={k.label} style={{ background: 'var(--landing-warm)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: '20px', color: k.c }}>{k.val}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: '10px', color: 'var(--landing-muted)', marginTop: '2px' }}>{k.label}</div>
           </div>
         ))}
       </div>
-      {[{ name: 'Maria G.', role: 'Property Manager', color: '#2563EB' }, { name: 'James W.', role: 'Superintendent', color: '#059669' }, { name: 'David R.', role: 'Inspector', color: '#D97706' }].map(m => (
-        <div key={m.name} className="flex items-center gap-3 py-2" style={{ borderTop: '1px solid #F1F5F9' }}>
+      {[{ name: 'Maria G.', role: 'Property Manager', color: 'var(--apas-sapphire)' }, { name: 'James W.', role: 'Superintendent', color: '#059669' }, { name: 'David R.', role: 'Inspector', color: '#D97706' }].map(m => (
+        <div key={m.name} className="flex items-center gap-3 py-2" style={{ borderTop: '1px solid var(--landing-border)' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: m.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '12px', color: m.color }}>{m.name[0]}{m.name.split(' ')[1][0]}</span>
+            <span style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '12px', color: m.color }}>{m.name[0]}{m.name.split(' ')[1][0]}</span>
           </div>
           <div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: '13px', color: '#0F172A' }}>{m.name}</div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '11px', color: '#94A3B8' }}>{m.role}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: '13px', color: 'var(--landing-ink)' }}>{m.name}</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: '10px', color: 'var(--landing-muted)', letterSpacing: '0.03em' }}>{m.role}</div>
           </div>
         </div>
       ))}
@@ -178,7 +178,7 @@ const features: Feature[] = [
   },
   {
     eyebrow: 'Compliance & Risk',
-    eyebrowColor: '#2563EB',
+    eyebrowColor: 'var(--apas-sapphire)',
     title: 'Never miss a regulatory deadline again.',
     body: 'Every permit, certificate, and regulatory filing has its own record in APAS OS. Expiration dates are tracked automatically. You get alerts at 90, 60, 30, and 14 days before anything expires.',
     bullets: ['Track every permit, certificate, and license in one dashboard', 'Automatic alerts before expiration — at 90, 60, 30, and 14 days', 'Deliverable tracking with due dates and responsible parties', 'Overdue items automatically generate issues', '3-year audit trail — everything is logged, timestamped, retrievable'],
@@ -225,7 +225,7 @@ const features: Feature[] = [
 
 export function AltFeatures() {
   return (
-    <section id="projects" style={{ background: '#fff', padding: '96px 0' }}>
+    <section id="projects" style={{ padding: '96px 0' }}>
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -234,7 +234,8 @@ export function AltFeatures() {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 'clamp(28px, 4vw, 46px)', color: '#0F172A', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+          <div className="eyebrow mb-4" style={{ color: 'var(--apas-sapphire)' }}>Deep Dive</div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'clamp(28px, 4vw, 46px)', color: 'var(--landing-ink)', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
             Every feature built around a real problem.
           </h2>
         </motion.div>
@@ -248,16 +249,19 @@ export function AltFeatures() {
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               viewport={{ once: true, margin: '-60px' }}
               className={`flex flex-col lg:flex-row items-center gap-12 ${feat.flip ? 'lg:flex-row-reverse' : ''}`}
+              style={{
+                background: i % 2 === 0 ? 'var(--landing-cream)' : 'var(--landing-warm)',
+                borderRadius: '24px',
+                padding: '48px 40px',
+              }}
             >
               {/* Copy */}
               <div className="flex-1">
-                <span style={{
-                  fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700,
-                  fontSize: '12px', letterSpacing: '0.07em', textTransform: 'uppercase',
+                <span className="eyebrow" style={{
                   color: feat.eyebrowColor, display: 'block', marginBottom: '12px',
                 }}>{feat.eyebrow}</span>
-                <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 'clamp(22px, 3vw, 32px)', color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: '16px' }}>{feat.title}</h3>
-                <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '16px', color: '#475569', lineHeight: 1.75, marginBottom: '24px' }}>{feat.body}</p>
+                <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'clamp(22px, 3vw, 32px)', color: 'var(--landing-ink)', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: '16px' }}>{feat.title}</h3>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: '16px', color: 'var(--landing-slate)', lineHeight: 1.75, marginBottom: '24px' }}>{feat.body}</p>
                 <ul className="flex flex-col gap-2">
                   {feat.bullets.map(b => <F key={b}>{b}</F>)}
                 </ul>

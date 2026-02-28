@@ -33,7 +33,7 @@ export default function LandingPageAlt() {
   }
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", background: 'var(--apas-cream, #FDFAF4)', minHeight: '100vh' }}>
+    <div style={{ fontFamily: "var(--font-ui)", background: 'var(--landing-cream)', minHeight: '100vh' }}>
       <AltNav />
       <main>
         <AltHero />

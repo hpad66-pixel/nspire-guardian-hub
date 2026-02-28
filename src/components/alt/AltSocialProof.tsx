@@ -36,7 +36,7 @@ const testimonials = [
     author: 'Maria G.',
     role: 'Property Manager',
     initials: 'MG',
-    color: '#2563EB',
+    color: 'var(--apas-sapphire)',
   },
   {
     text: 'The voice agent paid for itself in the first month. My team was getting maintenance calls at 11pm. Now the AI handles them and sends us a clean work order by morning.',
@@ -56,7 +56,7 @@ const testimonials = [
 
 export function AltSocialProof() {
   return (
-    <section style={{ background: '#F8FAFC', padding: '96px 0' }}>
+    <section style={{ background: 'var(--landing-card)', padding: '96px 0' }}>
       <div className="max-w-[1200px] mx-auto px-6">
         {/* Header */}
         <motion.div
@@ -66,7 +66,8 @@ export function AltSocialProof() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 'clamp(24px, 4vw, 42px)', color: '#0F172A', letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+          <div className="eyebrow mb-4" style={{ color: 'var(--apas-sapphire)' }}>Trusted By</div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'clamp(24px, 4vw, 42px)', color: 'var(--landing-ink)', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
             Used by property managers, construction firms,<br className="hidden md:block" /> and compliance professionals.
           </h2>
         </motion.div>
@@ -82,10 +83,10 @@ export function AltSocialProof() {
               viewport={{ once: true }}
               className="text-center"
             >
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 'clamp(28px, 4vw, 40px)', color: '#2563EB', marginBottom: '6px' }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 'clamp(28px, 4vw, 40px)', color: 'var(--apas-sapphire)', marginBottom: '6px' }}>
                 {typeof s.value === 'number' ? <Counter target={s.value} suffix={s.suffix} /> : s.value}
               </div>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#94A3B8', lineHeight: 1.5 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: '14px', color: 'var(--landing-muted)', lineHeight: 1.5 }}>
                 {s.label1}<br />{s.label2}
               </div>
             </motion.div>
@@ -101,29 +102,29 @@ export function AltSocialProof() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
               viewport={{ once: true }}
-              whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(15,23,42,0.09)' }}
+              whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(26,22,16,0.07)' }}
               style={{
-                background: '#fff', borderRadius: '16px', padding: '28px 24px',
-                border: '1px solid #E2E8F0',
+                background: 'var(--landing-card)', borderRadius: '16px', padding: '28px 24px',
+                border: '1px solid var(--landing-border)',
                 transition: 'transform 0.2s, box-shadow 0.2s',
               }}
             >
               {/* Stars */}
               <div className="flex gap-0.5 mb-4">
                 {[...Array(5)].map((_, j) => (
-                  <span key={j} style={{ color: '#F59E0B', fontSize: '14px' }}>★</span>
+                  <span key={j} style={{ color: 'var(--apas-gold)', fontSize: '14px' }}>★</span>
                 ))}
               </div>
-              <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#475569', lineHeight: 1.75, marginBottom: '20px', fontStyle: 'italic' }}>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: '14px', color: 'var(--landing-slate)', lineHeight: 1.75, marginBottom: '20px', fontStyle: 'italic' }}>
                 "{t.text}"
               </p>
               <div className="flex items-center gap-3">
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: t.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '13px', color: t.color }}>{t.initials}</span>
+                  <span style={{ fontFamily: "var(--font-ui)", fontWeight: 800, fontSize: '13px', color: t.color }}>{t.initials}</span>
                 </div>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '14px', color: '#0F172A' }}>{t.author}</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: '#94A3B8' }}>{t.role}</div>
+                  <div style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '14px', color: 'var(--landing-ink)' }}>{t.author}</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: '10px', color: 'var(--landing-muted)', letterSpacing: '0.05em' }}>{t.role}</div>
                 </div>
               </div>
             </motion.div>
