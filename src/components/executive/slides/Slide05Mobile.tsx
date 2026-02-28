@@ -44,14 +44,19 @@ export function Slide05Mobile() {
           </motion.div>
         </motion.div>
 
-        <div className="flex gap-8 items-center justify-center flex-1 mt-4">
+        <div className="flex gap-12 items-end justify-center flex-1 mt-4 pb-4">
           {PHONES.map((phone, index) => (
             <motion.div
               key={phone.title}
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: index * 0.4 }}
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.5 }}
             >
-              <IPhoneMockup title={phone.title} cards={phone.cards} borderColor={phone.borderColor} />
+              <IPhoneMockup
+                title={phone.title}
+                cards={phone.cards}
+                borderColor={phone.borderColor}
+                scale={index === 1 ? 1.15 : 1.0}
+              />
             </motion.div>
           ))}
         </div>
