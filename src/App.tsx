@@ -85,6 +85,7 @@ const EscalationRulesPage = lazy(() => import('./pages/settings/EscalationRulesP
 const CorrectiveLoopPage = lazy(() => import('./pages/corrective-loop/CorrectiveLoopPage'));
 const PlatformDashboard = lazy(() => import('./pages/platform/PlatformDashboard'));
 const OwnerPortalPage = lazy(() => import('./pages/owner/OwnerPortalPage'));
+const RolesPage = lazy(() => import('./pages/settings/RolesPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -250,7 +251,7 @@ const App = () => (
                               <Route path="/settings" element={<SettingsPage />} />
                               <Route path="/settings/workspace" element={<WorkspaceProfilePage />} />
                               <Route path="/settings/escalation" element={<EscalationRulesPage />} />
-
+                              <Route path="/settings/roles" element={<RolesPage />} />
                               {/* Safety Module */}
                               <Route path="/safety" element={<SafetyDashboardPage />} />
 
