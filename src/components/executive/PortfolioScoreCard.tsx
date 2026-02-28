@@ -20,7 +20,7 @@ export function PortfolioScoreCard({ score, trend, breakdown, large = false }: P
       "shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
     )}>
       <div>
-        <div className="text-[10px] font-bold tracking-widest text-[#6B7A99] mb-2">
+        <div className="eyebrow text-[#6B7A99] mb-2">
           PORTFOLIO HEALTH SCORE
         </div>
         <div className="flex items-end gap-4">

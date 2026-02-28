@@ -82,7 +82,7 @@ export function ExecutiveDashboardPanel({ onStartPresentation }: Props) {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between">
         <div>
-          <h1 className="text-[32px] font-bold">Executive Suite</h1>
+          <h1 className="text-[32px] font-bold" style={{ fontFamily: "var(--font-display)" }}>Executive Suite</h1>
           <p className="text-[14px] text-[#6B7A99]">Your portfolio — real-time.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export function ExecutiveDashboardPanel({ onStartPresentation }: Props) {
       {/* Two columns: Projects + Activity */}
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-7 bg-[#111E38] border border-white/5 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-[#6B7A99] tracking-widest mb-4">ACTIVE PROJECTS</h3>
+          <h3 className="eyebrow text-[#6B7A99] mb-4">ACTIVE PROJECTS</h3>
           {isLoading ? <Skeleton className="h-40 bg-white/5" /> : activeProjects.length === 0 ? (
             <p className="text-[#6B7A99] text-sm">No active projects</p>
           ) : (
@@ -151,7 +151,7 @@ export function ExecutiveDashboardPanel({ onStartPresentation }: Props) {
           )}
         </div>
         <div className="col-span-5 bg-[#111E38] border border-white/5 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-[#6B7A99] tracking-widest mb-4">RECENT ACTIVITY</h3>
+          <h3 className="eyebrow text-[#6B7A99] mb-4">RECENT ACTIVITY</h3>
           {isLoading ? <Skeleton className="h-40 bg-white/5" /> : (
             <div className="space-y-3">
               {recentActivity.map((a) => (
@@ -173,7 +173,7 @@ export function ExecutiveDashboardPanel({ onStartPresentation }: Props) {
       {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-[#111E38] border border-white/5 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-[#6B7A99] tracking-widest mb-4">MONTHLY INSPECTIONS</h3>
+          <h3 className="eyebrow text-[#6B7A99] mb-4">MONTHLY INSPECTIONS</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[
               { month: "Jan", count: 18 }, { month: "Feb", count: 24 },
@@ -188,7 +188,7 @@ export function ExecutiveDashboardPanel({ onStartPresentation }: Props) {
           </ResponsiveContainer>
         </div>
         <div className="bg-[#111E38] border border-white/5 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-[#6B7A99] tracking-widest mb-4">ISSUE STATUS</h3>
+          <h3 className="eyebrow text-[#6B7A99] mb-4">ISSUE STATUS</h3>
           {issueStatusData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>

@@ -26,14 +26,14 @@ export default function LandingPageAlt() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--apas-cream, #FDFAF4)' }}>
         <Loader2 className="h-8 w-8 animate-spin text-[#2563EB]" />
       </div>
     );
   }
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", background: '#F8FAFC', minHeight: '100vh' }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", background: 'var(--apas-cream, #FDFAF4)', minHeight: '100vh' }}>
       <AltNav />
       <main>
         <AltHero />

@@ -6,6 +6,13 @@
 
 /* APAS Landing Page Custom Properties */
 :root {
+  /* Font system — 4 roles */
+  --font-display: 'Lora', serif;
+  --font-ui: 'DM Sans', sans-serif;
+  --font-editor: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Brand palette */
   --apas-midnight: #0A0C12;
   --apas-deep: #10131D;
   --apas-surface: #161B2B;
@@ -16,9 +23,11 @@
   --apas-amber: #F59E0B;
   --apas-rose: #F43F5E;
   --apas-violet: #8B5CF6;
+  --apas-gold: #C4920A;
   --apas-white: #F1F5FF;
   --apas-muted: #6B7A99;
   --apas-grid: rgba(29,111,232,0.04);
+  --apas-cream: #FDFAF4;
 }
 
 @layer base {
@@ -279,6 +288,16 @@
 }
 
 .slide-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+/* Eyebrow / section label treatment — reusable across app */
+.eyebrow, .section-tag {
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.25em;
