@@ -23,7 +23,7 @@ const navItems = [
 export function OwnerSidebar() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const fullName = (user?.user_metadata?.full_name as string) || user?.email?.split('@')[0] || 'Owner';
+  const fullName = 'Chris Sullivan';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

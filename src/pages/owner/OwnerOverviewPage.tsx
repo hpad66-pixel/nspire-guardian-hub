@@ -20,7 +20,7 @@ export default function OwnerOverviewPage() {
   const { data: projects = [] } = useOwnerProjects();
   const { data: compliance = [] } = useOwnerComplianceEvents();
 
-  const firstName = (user?.user_metadata?.full_name as string)?.split(' ')[0] || 'there';
+  const firstName = 'Chris';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 

@@ -21,6 +21,7 @@ import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermi
 import { cn } from '@/lib/utils';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 import { useUserRoles } from '@/hooks/useUserManagement';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { Database } from '@/integrations/supabase/types';
@@ -111,12 +112,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  // Block owners from main app — redirect to owner portal
+  // Block owners from main app — redirect to owner portal (skip if platform admin)
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
   useEffect(() => {
-    if (currentRole === 'owner') {
+    if (currentRole === 'owner' && isPlatformAdmin === false) {
       navigate('/owner-portal', { replace: true });
     }
-  }, [currentRole, navigate]);
+  }, [currentRole, isPlatformAdmin, navigate]);
 
   useEffect(() => {
     if (modulesLoading) return;

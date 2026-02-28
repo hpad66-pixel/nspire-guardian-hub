@@ -120,7 +120,7 @@ function RootRedirect() {
   }
 
   if (isPlatformAdmin) return <Navigate to="/dashboard" replace />;
-  if (currentRole === 'owner') return <Navigate to="/owner-portal" replace />;
+  if (currentRole === 'owner' && !isPlatformAdmin) return <Navigate to="/owner-portal" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
