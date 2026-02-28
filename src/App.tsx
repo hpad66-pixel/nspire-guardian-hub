@@ -79,6 +79,8 @@ const ExecutiveSuitePage = lazy(() => import('./pages/reports/ExecutiveSuitePage
 const ComplianceCalendarPage = lazy(() => import('./pages/compliance/ComplianceCalendarPage'));
 const RiskRegisterPage = lazy(() => import('./pages/risk/RiskRegisterPage'));
 const CorrectiveActionPage = lazy(() => import('./pages/compliance/CorrectiveActionPage'));
+const EscalationRulesPage = lazy(() => import('./pages/settings/EscalationRulesPage'));
+const CorrectiveLoopPage = lazy(() => import('./pages/corrective-loop/CorrectiveLoopPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -210,6 +212,7 @@ const App = () => (
                               <Route path="/compliance-calendar" element={<ComplianceCalendarPage />} />
                               <Route path="/risk-register" element={<RiskRegisterPage />} />
                               <Route path="/corrective-actions" element={<CorrectiveActionPage />} />
+                              <Route path="/corrective-loop" element={<CorrectiveLoopPage />} />
                               
                               {/* Profile */}
                               <Route path="/profile" element={<ProfilePage />} />
@@ -223,6 +226,7 @@ const App = () => (
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
                               <Route path="/settings/workspace" element={<WorkspaceProfilePage />} />
+                              <Route path="/settings/escalation" element={<EscalationRulesPage />} />
 
                               {/* Safety Module */}
                               <Route path="/safety" element={<SafetyDashboardPage />} />

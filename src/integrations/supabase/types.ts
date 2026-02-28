@@ -1716,6 +1716,148 @@ export type Database = {
           },
         ]
       }
+      escalation_log: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          entity_id: string
+          entity_title: string | null
+          entity_type: string
+          fired_at: string | null
+          id: string
+          notification_channels: string[] | null
+          notified_user_ids: string[] | null
+          resolved_at: string | null
+          rule_id: string | null
+          rule_name: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          entity_id: string
+          entity_title?: string | null
+          entity_type: string
+          fired_at?: string | null
+          id?: string
+          notification_channels?: string[] | null
+          notified_user_ids?: string[] | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          entity_id?: string
+          entity_title?: string | null
+          entity_type?: string
+          fired_at?: string | null
+          id?: string
+          notification_channels?: string[] | null
+          notified_user_ids?: string[] | null
+          resolved_at?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_log_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "escalation_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_rules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          delay_hours: number
+          description: string | null
+          id: string
+          is_active: boolean | null
+          message_template: string | null
+          name: string
+          notification_channel: string[] | null
+          notify_roles: string[] | null
+          notify_user_ids: string[] | null
+          resolution_condition: Json | null
+          trigger_condition: Json
+          trigger_entity: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          message_template?: string | null
+          name: string
+          notification_channel?: string[] | null
+          notify_roles?: string[] | null
+          notify_user_ids?: string[] | null
+          resolution_condition?: Json | null
+          trigger_condition: Json
+          trigger_entity: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          message_template?: string | null
+          name?: string
+          notification_channel?: string[] | null
+          notify_roles?: string[] | null
+          notify_user_ids?: string[] | null
+          resolution_condition?: Json | null
+          trigger_condition?: Json
+          trigger_entity?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "escalation_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_document_categories: {
         Row: {
           created_at: string
@@ -2058,6 +2200,10 @@ export type Database = {
         Row: {
           area: Database["public"]["Enums"]["inspection_area"] | null
           assigned_to: string | null
+          closure_photo_url: string | null
+          corrective_action_required: boolean | null
+          corrective_deadline: string | null
+          corrective_status: string | null
           created_at: string
           created_by: string | null
           daily_inspection_item_id: string | null
@@ -2065,6 +2211,7 @@ export type Database = {
           defect_id: string | null
           description: string | null
           id: string
+          linked_work_order_id: string | null
           maintenance_request_id: string | null
           proof_required: boolean | null
           property_id: string
@@ -2075,10 +2222,17 @@ export type Database = {
           title: string
           unit_id: string | null
           updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           area?: Database["public"]["Enums"]["inspection_area"] | null
           assigned_to?: string | null
+          closure_photo_url?: string | null
+          corrective_action_required?: boolean | null
+          corrective_deadline?: string | null
+          corrective_status?: string | null
           created_at?: string
           created_by?: string | null
           daily_inspection_item_id?: string | null
@@ -2086,6 +2240,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          linked_work_order_id?: string | null
           maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id: string
@@ -2096,10 +2251,17 @@ export type Database = {
           title: string
           unit_id?: string | null
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           area?: Database["public"]["Enums"]["inspection_area"] | null
           assigned_to?: string | null
+          closure_photo_url?: string | null
+          corrective_action_required?: boolean | null
+          corrective_deadline?: string | null
+          corrective_status?: string | null
           created_at?: string
           created_by?: string | null
           daily_inspection_item_id?: string | null
@@ -2107,6 +2269,7 @@ export type Database = {
           defect_id?: string | null
           description?: string | null
           id?: string
+          linked_work_order_id?: string | null
           maintenance_request_id?: string | null
           proof_required?: boolean | null
           property_id?: string
@@ -2117,6 +2280,9 @@ export type Database = {
           title?: string
           unit_id?: string | null
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -2131,6 +2297,13 @@ export type Database = {
             columns: ["defect_id"]
             isOneToOne: false
             referencedRelation: "defects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issues_linked_work_order_id_fkey"
+            columns: ["linked_work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
           {
@@ -6985,6 +7158,7 @@ export type Database = {
           assigned_to: string | null
           closed_at: string | null
           closed_by: string | null
+          closure_photos: string[] | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -7001,11 +7175,17 @@ export type Database = {
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
+          requires_verification: boolean | null
+          source_issue_id: string | null
+          source_regulatory_action_id: string | null
           status: Database["public"]["Enums"]["work_order_status"]
           submitted_at: string | null
           title: string
           unit_id: string | null
           updated_at: string
+          verification_notes: string | null
+          verified_at: string | null
+          verified_by: string | null
           work_order_number: number
         }
         Insert: {
@@ -7015,6 +7195,7 @@ export type Database = {
           assigned_to?: string | null
           closed_at?: string | null
           closed_by?: string | null
+          closure_photos?: string[] | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -7031,11 +7212,17 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          requires_verification?: boolean | null
+          source_issue_id?: string | null
+          source_regulatory_action_id?: string | null
           status?: Database["public"]["Enums"]["work_order_status"]
           submitted_at?: string | null
           title: string
           unit_id?: string | null
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           work_order_number?: number
         }
         Update: {
@@ -7045,6 +7232,7 @@ export type Database = {
           assigned_to?: string | null
           closed_at?: string | null
           closed_by?: string | null
+          closure_photos?: string[] | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -7061,11 +7249,17 @@ export type Database = {
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          requires_verification?: boolean | null
+          source_issue_id?: string | null
+          source_regulatory_action_id?: string | null
           status?: Database["public"]["Enums"]["work_order_status"]
           submitted_at?: string | null
           title?: string
           unit_id?: string | null
           updated_at?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           work_order_number?: number
         }
         Relationships: [
@@ -7088,6 +7282,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_source_issue_id_fkey"
+            columns: ["source_issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
             referencedColumns: ["id"]
           },
           {
