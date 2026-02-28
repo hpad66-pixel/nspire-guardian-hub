@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { type Tenant, useDeleteTenant } from '@/hooks/useTenants';
+import { type Tenant, useDeleteTenant, useUpdateTenant } from '@/hooks/useTenants';
 import { 
   User,
   Mail,
@@ -20,6 +20,8 @@ import {
   Pencil,
   Trash2,
   FileText,
+  AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import {
@@ -44,6 +46,17 @@ interface TenantDetailSheetProps {
 export function TenantDetailSheet({ open, onOpenChange, tenant, onEdit }: TenantDetailSheetProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const deleteTenant = useDeleteTenant();
+  const updateTenant = useUpdateTenant();
+
+  if (!tenant) return null;
+
+  const handleStatusChange = async (newStatus: string) => {
+    await updateTenant.mutateAsync({
+      id: tenant.id,
+      status: newStatus,
+      ...(newStatus === 'moved_out' ? { move_out_date: new Date().toISOString().split('T')[0] } : {}),
+    });
+  };
 
   if (!tenant) return null;
 
@@ -225,8 +238,43 @@ export function TenantDetailSheet({ open, onOpenChange, tenant, onEdit }: Tenant
               </>
             )}
 
-            {/* Actions */}
-            <div className="flex gap-2 pt-4">
+            {/* Quick Status Actions */}
+            {tenant.status === 'active' && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                  onClick={() => handleStatusChange('notice_given')}
+                  disabled={updateTenant.isPending}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Give Notice
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                  onClick={() => handleStatusChange('moved_out')}
+                  disabled={updateTenant.isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Mark Moved Out
+                </Button>
+              </div>
+            )}
+            {tenant.status === 'notice_given' && (
+              <Button
+                variant="outline"
+                className="w-full border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                onClick={() => handleStatusChange('moved_out')}
+                disabled={updateTenant.isPending}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Mark Moved Out
+              </Button>
+            )}
+
+            {/* Edit & Delete */}
+            <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 className="flex-1"
