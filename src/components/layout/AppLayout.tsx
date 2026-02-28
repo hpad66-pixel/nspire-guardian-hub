@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { MobileNav } from './MobileNav';
 import { useModules } from '@/contexts/ModuleContext';
+import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +31,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
+  const { data: currentRole } = useCurrentUserRole();
   const { isInstallable, install } = usePWAInstall();
   const isOnline = useOnlineStatus();
   const isMobile = useIsMobile(); // < 768px
@@ -108,6 +110,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
+
+  // Block owners from main app — redirect to owner portal
+  useEffect(() => {
+    if (currentRole === 'owner') {
+      navigate('/owner-portal', { replace: true });
+    }
+  }, [currentRole, navigate]);
 
   useEffect(() => {
     if (modulesLoading) return;
