@@ -5,8 +5,16 @@ import { cn } from "@/lib/utils";
 import { Slide01Hero } from "./slides/Slide01Hero";
 import { Slide02Problem } from "./slides/Slide02Problem";
 import { Slide03Solution } from "./slides/Slide03Solution";
-import { Slide04GlorietaCase } from "./slides/Slide04GlorietaCase";
+import { Slide04NspireInspections } from "./slides/Slide04NspireInspections";
+import { Slide05DailyGrounds } from "./slides/Slide05DailyGrounds";
+import { Slide06ConstructionProjects } from "./slides/Slide06ConstructionProjects";
+import { Slide07IssuesWorkOrders } from "./slides/Slide07IssuesWorkOrders";
+import { Slide08EquipmentFleet } from "./slides/Slide08EquipmentFleet";
+import { Slide09AssetInventory } from "./slides/Slide09AssetInventory";
+import { Slide10CredentialsSafety } from "./slides/Slide10CredentialsSafety";
+import { Slide11ClientPortalsCaseIQ } from "./slides/Slide11ClientPortalsCaseIQ";
 import { Slide05Mobile } from "./slides/Slide05Mobile";
+import { Slide04GlorietaCase } from "./slides/Slide04GlorietaCase";
 import { Slide06ValueCase } from "./slides/Slide06ValueCase";
 import { Slide07Compliance } from "./slides/Slide07Compliance";
 import { Slide08Architecture } from "./slides/Slide08Architecture";
@@ -14,16 +22,24 @@ import { Slide09Analytics } from "./slides/Slide09Analytics";
 import { Slide10CTA } from "./slides/Slide10CTA";
 
 const SLIDES = [
-  <Slide01Hero />,
-  <Slide02Problem />,
-  <Slide03Solution />,
-  <Slide04GlorietaCase />,
-  <Slide05Mobile />,
-  <Slide06ValueCase />,
-  <Slide07Compliance />,
-  <Slide08Architecture />,
-  <Slide09Analytics />,
-  <Slide10CTA />,
+  { element: <Slide01Hero />, title: "Hero" },
+  { element: <Slide02Problem />, title: "Problem" },
+  { element: <Slide03Solution />, title: "Platform Overview" },
+  { element: <Slide04NspireInspections />, title: "NSPIRE Inspections" },
+  { element: <Slide05DailyGrounds />, title: "Daily Grounds" },
+  { element: <Slide06ConstructionProjects />, title: "Construction" },
+  { element: <Slide07IssuesWorkOrders />, title: "Issues & WOs" },
+  { element: <Slide08EquipmentFleet />, title: "Equipment & Fleet" },
+  { element: <Slide09AssetInventory />, title: "Asset & Inventory" },
+  { element: <Slide10CredentialsSafety />, title: "Credentials & Safety" },
+  { element: <Slide11ClientPortalsCaseIQ />, title: "Client Portals & AI" },
+  { element: <Slide05Mobile />, title: "Mobile Access" },
+  { element: <Slide04GlorietaCase />, title: "Case Study" },
+  { element: <Slide06ValueCase />, title: "Value Case" },
+  { element: <Slide07Compliance />, title: "Compliance Engine" },
+  { element: <Slide08Architecture />, title: "Architecture" },
+  { element: <Slide09Analytics />, title: "Analytics" },
+  { element: <Slide10CTA />, title: "Call to Action" },
 ];
 const TOTAL = SLIDES.length;
 
@@ -59,11 +75,11 @@ export function ExecutivePresentationMode({ onExit }: Props) {
   return createPortal(
     <div className="fixed inset-0 z-[9999] bg-[#0B1629] flex flex-col">
       {/* Controls */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between px-8 py-3 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="text-white font-bold text-lg tracking-widest">APAS OS</div>
           <div className="h-4 w-px bg-white/20" />
-          <div className="text-[#6B7A99] text-sm">Executive Presentation</div>
+          <div className="text-[#6B7A99] text-xs truncate max-w-[200px]">{SLIDES[current].title}</div>
         </div>
         <div className="flex items-center gap-4">
           <button onClick={prev} disabled={current === 0}
@@ -95,17 +111,17 @@ export function ExecutivePresentationMode({ onExit }: Props) {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
             className="absolute inset-0"
           >
-            {SLIDES[current]}
+            {SLIDES[current].element}
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Indicators */}
-      <div className="flex justify-center gap-2 py-4 flex-shrink-0">
+      <div className="flex justify-center gap-1.5 py-3 flex-shrink-0">
         {Array.from({ length: TOTAL }).map((_, i) => (
           <button key={i} onClick={() => setCurrent(i)}
             className={cn("h-1.5 rounded-full transition-all duration-300",
-              i === current ? "w-8 bg-[#1D6FE8]" : "w-1.5 bg-white/20"
+              i === current ? "w-6 bg-[#1D6FE8]" : "w-1.5 bg-white/20 hover:bg-white/30"
             )} />
         ))}
       </div>
