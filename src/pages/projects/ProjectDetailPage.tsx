@@ -116,7 +116,7 @@ export default function ProjectDetailPage() {
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const updateProject = useUpdateProject();
 
   const today = new Date();
@@ -197,7 +197,7 @@ export default function ProjectDetailPage() {
     }).format(amount);
   };
 
-  if (projectLoading || projectPending) {
+  if (projectLoading || projectPending || permissionsLoading) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-10 w-64" />
