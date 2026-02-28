@@ -2893,6 +2893,7 @@ export type Database = {
           mime_type: string | null
           name: string
           previous_version_id: string | null
+          shared_with_owner: boolean | null
           subfolder: string | null
           tags: string[] | null
           updated_at: string | null
@@ -2912,6 +2913,7 @@ export type Database = {
           mime_type?: string | null
           name: string
           previous_version_id?: string | null
+          shared_with_owner?: boolean | null
           subfolder?: string | null
           tags?: string[] | null
           updated_at?: string | null
@@ -2931,6 +2933,7 @@ export type Database = {
           mime_type?: string | null
           name?: string
           previous_version_id?: string | null
+          shared_with_owner?: boolean | null
           subfolder?: string | null
           tags?: string[] | null
           updated_at?: string | null
@@ -3213,6 +3216,48 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          performed_by: string | null
+          target_workspace_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          target_workspace_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          target_workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "platform_audit_log_target_workspace_id_fkey"
+            columns: ["target_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -3504,6 +3549,7 @@ export type Database = {
           full_name: string | null
           hire_date: string | null
           id: string
+          is_platform_admin: boolean | null
           job_title: string | null
           last_active_at: string | null
           phone: string | null
@@ -3525,6 +3571,7 @@ export type Database = {
           full_name?: string | null
           hire_date?: string | null
           id?: string
+          is_platform_admin?: boolean | null
           job_title?: string | null
           last_active_at?: string | null
           phone?: string | null
@@ -3546,6 +3593,7 @@ export type Database = {
           full_name?: string | null
           hire_date?: string | null
           id?: string
+          is_platform_admin?: boolean | null
           job_title?: string | null
           last_active_at?: string | null
           phone?: string | null
@@ -7407,11 +7455,20 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          billing_contact_email: string | null
+          billing_cycle: string | null
+          client_company: string | null
+          client_contact_name: string | null
           created_at: string
           id: string
+          monthly_fee: number | null
           name: string
+          next_billing_date: string | null
+          notes: string | null
           owner_user_id: string | null
           plan: string
+          seat_limit: number | null
+          seats_used: number | null
           slug: string | null
           status: string
           stripe_customer_id: string | null
@@ -7420,11 +7477,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_contact_email?: string | null
+          billing_cycle?: string | null
+          client_company?: string | null
+          client_contact_name?: string | null
           created_at?: string
           id?: string
+          monthly_fee?: number | null
           name: string
+          next_billing_date?: string | null
+          notes?: string | null
           owner_user_id?: string | null
           plan?: string
+          seat_limit?: number | null
+          seats_used?: number | null
           slug?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -7433,11 +7499,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_contact_email?: string | null
+          billing_cycle?: string | null
+          client_company?: string | null
+          client_contact_name?: string | null
           created_at?: string
           id?: string
+          monthly_fee?: number | null
           name?: string
+          next_billing_date?: string | null
+          notes?: string | null
           owner_user_id?: string | null
           plan?: string
+          seat_limit?: number | null
+          seats_used?: number | null
           slug?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -7461,6 +7536,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_demo_property: { Args: { _user_id: string }; Returns: boolean }
+      get_all_workspaces_for_platform_admin: { Args: never; Returns: Json[] }
       get_invitation_by_token: {
         Args: { p_token: string }
         Returns: {

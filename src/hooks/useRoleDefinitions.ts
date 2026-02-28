@@ -35,6 +35,12 @@ export const MODULES = [
   'documents',
   'reports',
   'settings',
+  'compliance_calendar',
+  'risk_register',
+  'corrective_actions',
+  'corrective_loop',
+  'escalation_rules',
+  'executive_dashboard',
 ] as const;
 
 export const ACTIONS = [

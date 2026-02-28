@@ -11,6 +11,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from '@/hooks/useAuth';
+import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
@@ -99,9 +101,25 @@ const queryClient = new QueryClient({
 
 function RootRedirect() {
   const { user, loading } = useAuth();
+  const { data: currentRole, isLoading: roleLoading } = useCurrentUserRole();
+  const { data: isPlatformAdmin, isLoading: adminLoading } = useIsPlatformAdmin();
+
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <LandingPageAlt />;
+  if (!user) return <LandingPageAlt />;
+  if (roleLoading || adminLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPlatformAdmin) return <Navigate to="/dashboard" replace />;
+  if (currentRole === 'owner') return <Navigate to="/reports/executive" replace />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 /** Registers the offline queue flush handler on mount and on connectivity restore. */
