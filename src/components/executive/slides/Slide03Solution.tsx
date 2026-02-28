@@ -18,7 +18,7 @@ const MODULES = [
   { name: "HR Document Vault", sub: "Employee files, expiry tracking", color: "#F59E0B" },
   { name: "Utility Tracking", sub: "Bills, trends, cost-per-unit analytics", color: "#1D6FE8" },
   { name: "Executive Suite", sub: "Portfolio dashboards & presentations", color: "#10B981" },
-  { name: "Documents & CRM", sub: "Centralized records & contact management", color: "#6B7A99" },
+  { name: "Documents & CRM", sub: "Centralized records & contact mgmt", color: "#6B7A99" },
   { name: "Command Center", sub: "Unified dashboard — all modules", color: "#1D6FE8" },
 ];
 
@@ -27,26 +27,26 @@ export function Slide03Solution() {
     <div className="slide-container">
       <div className="slide-accent-bar" style={{ background: "#1D6FE8" }} />
       <div className="slide-content justify-between">
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-4">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-6">
           <motion.div variants={itemVariants} className="slide-tag" style={{ color: "#3B82F6" }}>THE PLATFORM</motion.div>
-          <motion.div variants={itemVariants} className="text-[18px] font-bold text-white">
+          <motion.div variants={itemVariants} className="text-[36px] font-bold text-white">
             18 integrated modules — one login, every property.
           </motion.div>
         </motion.div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-6 gap-2 flex-1 mt-6 content-start">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-6 gap-4 flex-1 mt-4 content-start">
           {MODULES.map((m) => (
-            <motion.div key={m.name} variants={itemVariants} className="flex rounded-lg overflow-hidden bg-[#111E38] border border-white/5 hover:border-[rgba(29,111,232,0.3)] transition-colors">
-              <div className="w-1 flex-shrink-0" style={{ background: m.color }} />
-              <div className="p-3 flex flex-col gap-0.5">
-                <div className="text-[10px] font-bold text-white leading-tight">{m.name}</div>
-                <div className="text-[8px] text-[#6B7A99] leading-tight">{m.sub}</div>
+            <motion.div key={m.name} variants={itemVariants} className="flex rounded-xl overflow-hidden bg-[#111E38] border border-white/5 hover:border-[rgba(29,111,232,0.3)] transition-colors">
+              <div className="w-[6px] flex-shrink-0" style={{ background: m.color }} />
+              <div className="p-5 flex flex-col gap-1">
+                <div className="text-[18px] font-bold text-white leading-tight">{m.name}</div>
+                <div className="text-[14px] text-[#6B7A99] leading-tight">{m.sub}</div>
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        <motion.div variants={itemVariants} initial="hidden" animate="visible" className="text-[11px] font-bold italic text-[#3B82F6] pt-3">
+        <motion.div variants={itemVariants} initial="hidden" animate="visible" className="text-[20px] font-bold italic text-[#3B82F6] pt-2">
           Dual-lock activation: Platform Gate + Workspace Toggle. Enable per property or workspace.
         </motion.div>
       </div>
