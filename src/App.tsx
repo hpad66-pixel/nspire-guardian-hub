@@ -76,6 +76,9 @@ const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'))
 const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
 const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
 const ExecutiveSuitePage = lazy(() => import('./pages/reports/ExecutiveSuitePage'));
+const ComplianceCalendarPage = lazy(() => import('./pages/compliance/ComplianceCalendarPage'));
+const RiskRegisterPage = lazy(() => import('./pages/risk/RiskRegisterPage'));
+const CorrectiveActionPage = lazy(() => import('./pages/compliance/CorrectiveActionPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -204,6 +207,9 @@ const App = () => (
                               {/* Permits & Compliance */}
                               <Route path="/permits" element={<PermitsDashboard />} />
                               <Route path="/permits/:id" element={<PermitDetailPage />} />
+                              <Route path="/compliance-calendar" element={<ComplianceCalendarPage />} />
+                              <Route path="/risk-register" element={<RiskRegisterPage />} />
+                              <Route path="/corrective-actions" element={<CorrectiveActionPage />} />
                               
                               {/* Profile */}
                               <Route path="/profile" element={<ProfilePage />} />

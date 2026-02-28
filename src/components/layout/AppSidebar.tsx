@@ -51,6 +51,8 @@ import {
   Share2,
   Gavel,
   Presentation,
+  CalendarDays,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -371,7 +373,8 @@ export function AppSidebar() {
   // ── Active section detection ──────────────────────────────────────────────
   const isPropertyOpsActive = [
     '/properties', '/units', '/assets', '/occupancy',
-    '/inspections', '/issues', '/work-orders', '/permits', '/voice-agent'
+    '/inspections', '/issues', '/work-orders', '/permits', '/voice-agent',
+    '/compliance-calendar', '/risk-register', '/corrective-actions'
   ].some(p => currentPath.startsWith(p));
 
   const isProjectsActive = currentPath.startsWith('/projects');
@@ -526,6 +529,9 @@ export function AppSidebar() {
               <>
                 <NavItem to="/work-orders" icon={<Wrench />} label="Work Orders" collapsed={collapsed} />
                 <NavItem to="/permits"     icon={<Shield />} label="Permits"     collapsed={collapsed} />
+                <NavItem to="/compliance-calendar" icon={<CalendarDays />} label="Compliance Calendar" collapsed={collapsed} />
+                <NavItem to="/risk-register" icon={<ShieldAlert />} label="Risk Register" collapsed={collapsed} />
+                <NavItem to="/corrective-actions" icon={<Gavel />} label="Corrective Actions" collapsed={collapsed} />
               </>
             )}
             <NavItem

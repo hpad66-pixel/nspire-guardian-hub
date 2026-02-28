@@ -670,6 +670,104 @@ export type Database = {
           },
         ]
       }
+      compliance_events: {
+        Row: {
+          agency: string | null
+          assigned_to: string | null
+          category: string
+          completed_at: string | null
+          completion_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          priority: string
+          property_id: string | null
+          reminder_days: number[] | null
+          source_id: string | null
+          source_type: string
+          status: string
+          title: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          agency?: string | null
+          assigned_to?: string | null
+          category?: string
+          completed_at?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id?: string | null
+          reminder_days?: number[] | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          title: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          agency?: string | null
+          assigned_to?: string | null
+          category?: string
+          completed_at?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id?: string | null
+          reminder_days?: number[] | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_events_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "compliance_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "compliance_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_progress: {
         Row: {
           completed_at: string | null
@@ -5096,6 +5194,278 @@ export type Database = {
         }
         Relationships: []
       }
+      regulatory_action_items: {
+        Row: {
+          acceptance_criteria: string | null
+          assigned_to: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completion_notes: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          item_number: string | null
+          linked_issue_id: string | null
+          linked_permit_id: string | null
+          linked_project_id: string | null
+          notes: string | null
+          regulatory_document_id: string | null
+          required_action: string | null
+          sort_order: number | null
+          status: string
+          title: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          acceptance_criteria?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          item_number?: string | null
+          linked_issue_id?: string | null
+          linked_permit_id?: string | null
+          linked_project_id?: string | null
+          notes?: string | null
+          regulatory_document_id?: string | null
+          required_action?: string | null
+          sort_order?: number | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          acceptance_criteria?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          item_number?: string | null
+          linked_issue_id?: string | null
+          linked_permit_id?: string | null
+          linked_project_id?: string | null
+          notes?: string | null
+          regulatory_document_id?: string | null
+          required_action?: string | null
+          sort_order?: number | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulatory_action_items_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "regulatory_action_items_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "regulatory_action_items_regulatory_document_id_fkey"
+            columns: ["regulatory_document_id"]
+            isOneToOne: false
+            referencedRelation: "regulatory_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regulatory_action_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regulatory_documents: {
+        Row: {
+          agency: string
+          agency_contact_email: string | null
+          agency_contact_name: string | null
+          agency_contact_phone: string | null
+          assigned_to: string | null
+          case_number: string | null
+          created_at: string | null
+          created_by: string | null
+          daily_fine: number | null
+          description: string | null
+          doc_number: string | null
+          doc_type: string
+          document_url: string | null
+          effective_date: string | null
+          final_compliance_date: string | null
+          id: string
+          issued_date: string | null
+          notes: string | null
+          penalty_amount: number | null
+          property_id: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          agency?: string
+          agency_contact_email?: string | null
+          agency_contact_name?: string | null
+          agency_contact_phone?: string | null
+          assigned_to?: string | null
+          case_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          daily_fine?: number | null
+          description?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          document_url?: string | null
+          effective_date?: string | null
+          final_compliance_date?: string | null
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          penalty_amount?: number | null
+          property_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          agency?: string
+          agency_contact_email?: string | null
+          agency_contact_name?: string | null
+          agency_contact_phone?: string | null
+          assigned_to?: string | null
+          case_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          daily_fine?: number | null
+          description?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          document_url?: string | null
+          effective_date?: string | null
+          final_compliance_date?: string | null
+          id?: string
+          issued_date?: string | null
+          notes?: string | null
+          penalty_amount?: number | null
+          property_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulatory_documents_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "regulatory_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "regulatory_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regulatory_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regulatory_evidence: {
+        Row: {
+          action_item_id: string | null
+          description: string | null
+          evidence_type: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          title: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          action_item_id?: string | null
+          description?: string | null
+          evidence_type?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          title: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          action_item_id?: string | null
+          description?: string | null
+          evidence_type?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          title?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulatory_evidence_action_item_id_fkey"
+            columns: ["action_item_id"]
+            isOneToOne: false
+            referencedRelation: "regulatory_action_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regulatory_evidence_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "regulatory_evidence_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_emails: {
         Row: {
           archived_at: string | null
@@ -5253,6 +5623,188 @@ export type Database = {
             columns: ["work_order_id"]
             isOneToOne: false
             referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_actions: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          completion_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          risk_id: string | null
+          status: string
+          title: string
+          workspace_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          risk_id?: string | null
+          status?: string
+          title: string
+          workspace_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completion_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          risk_id?: string | null
+          status?: string
+          title?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_actions_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "risk_actions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "risk_actions_risk_id_fkey"
+            columns: ["risk_id"]
+            isOneToOne: false
+            referencedRelation: "risks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risk_actions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risks: {
+        Row: {
+          category: string
+          closed_at: string | null
+          closed_by: string | null
+          closure_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          impact: number | null
+          mitigation_strategy: string | null
+          probability: number | null
+          property_id: string | null
+          review_date: string | null
+          risk_number: number
+          risk_owner: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          category?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          impact?: number | null
+          mitigation_strategy?: string | null
+          probability?: number | null
+          property_id?: string | null
+          review_date?: string | null
+          risk_number?: number
+          risk_owner?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          impact?: number | null
+          mitigation_strategy?: string | null
+          probability?: number | null
+          property_id?: string | null
+          review_date?: string | null
+          risk_number?: number
+          risk_owner?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risks_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "risks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "risks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "risks_risk_owner_fkey"
+            columns: ["risk_owner"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "risks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
