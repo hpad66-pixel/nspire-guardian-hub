@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,19 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.unit_id) {
+      toast.error('Please select a unit before saving.');
+      return;
+    }
+    if (!formData.first_name || !formData.last_name) {
+      toast.error('First name and last name are required.');
+      return;
+    }
+    if (!formData.lease_start) {
+      toast.error('Lease start date is required.');
+      return;
+    }
     
     try {
       const tenantData = {
