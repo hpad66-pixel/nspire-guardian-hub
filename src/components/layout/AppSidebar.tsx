@@ -227,14 +227,14 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
         'hover:bg-white/[0.06] hover:text-[hsl(var(--sidebar-foreground))]',
         collapsed && 'justify-center px-0 py-2'
       )}
-      activeClassName="!bg-[hsl(var(--sidebar-accent)/0.18)] !text-[hsl(var(--sidebar-accent))] !font-medium"
+      activeClassName="!bg-[hsl(var(--sidebar-primary)/0.15)] !text-[hsl(var(--sidebar-primary))] !font-medium"
     >
       <span className="relative flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4">
         {icon}
         {collapsed && hasBadge && (
           <span className={cn(
-            'absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]',
-            badgeVariant === 'urgent' ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--sidebar-accent))]'
+           'absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-[hsl(var(--sidebar-background))]',
+            badgeVariant === 'urgent' ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--sidebar-primary))]'
           )} />
         )}
       </span>
@@ -246,7 +246,7 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
               'ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums',
               badgeVariant === 'urgent'
                 ? 'bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]'
-                : 'bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]'
+                : 'bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))]'
             )}>
               {badgeNum > 99 ? '99+' : badgeNum}
             </span>
@@ -267,7 +267,7 @@ function NavItem({ to, icon, label, collapsed, end, badge, badgeVariant = 'defau
               'flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold',
               badgeVariant === 'urgent'
                 ? 'bg-[hsl(var(--destructive)/0.2)] text-[hsl(var(--destructive))]'
-                : 'bg-[hsl(var(--sidebar-accent)/0.2)] text-[hsl(var(--sidebar-accent))]'
+                : 'bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))]'
             )}>
               {badgeNum}
             </span>
@@ -752,7 +752,7 @@ export function AppSidebar() {
                 >
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile" />
-                    <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.25)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                    <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-[10px] font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -771,7 +771,7 @@ export function AppSidebar() {
               >
                 <Avatar className="h-7 w-7 flex-shrink-0">
                   <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile" />
-                  <AvatarFallback className="bg-[hsl(var(--sidebar-accent)/0.25)] text-[hsl(var(--sidebar-accent))] text-[10px] font-semibold">
+                  <AvatarFallback className="bg-[hsl(var(--sidebar-primary)/0.2)] text-[hsl(var(--sidebar-primary))] text-[10px] font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
