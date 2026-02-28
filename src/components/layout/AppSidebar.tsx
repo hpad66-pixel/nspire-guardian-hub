@@ -325,6 +325,7 @@ export function AppSidebar() {
   const { data: properties } = useProperties();
 
   const isAdmin = currentRole === 'admin';
+  const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
 
   const severeDefectCount = openDefects.filter(d => d.severity === 'severe').length;
   const openIssueCount = (issues as Array<{ status: string | null }>).filter(
@@ -708,7 +709,7 @@ export function AppSidebar() {
           {canView('reports') && (
             <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
           )}
-          {isAdmin && (
+          {isAdminOrOwner && (
             <NavItem to="/reports/executive" icon={<Presentation />} label="Executive Suite" collapsed={collapsed} tooltip="Executive Presentation" />
           )}
 
