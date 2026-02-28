@@ -28,7 +28,7 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
   const { data: properties } = useProperties();
   
   const [formData, setFormData] = useState({
-    property_id: '',
+    property_id: tenant?.unit?.property?.id || '',
     unit_id: tenant?.unit_id || '',
     first_name: tenant?.first_name || '',
     last_name: tenant?.last_name || '',
@@ -47,10 +47,24 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
 
-  // Initialize property_id from tenant's unit if editing
+  // Re-sync form when tenant prop changes (e.g. opening a different tenant for edit)
   useEffect(() => {
-    if (tenant?.unit?.property?.id) {
-      setFormData(prev => ({ ...prev, property_id: tenant.unit!.property!.id }));
+    if (tenant) {
+      setFormData({
+        property_id: tenant.unit?.property?.id || '',
+        unit_id: tenant.unit_id || '',
+        first_name: tenant.first_name || '',
+        last_name: tenant.last_name || '',
+        email: tenant.email || '',
+        phone: tenant.phone || '',
+        lease_start: tenant.lease_start || '',
+        lease_end: tenant.lease_end || '',
+        rent_amount: tenant.rent_amount?.toString() || '',
+        deposit_amount: tenant.deposit_amount?.toString() || '',
+        status: tenant.status || 'active',
+        move_in_date: tenant.move_in_date || '',
+        notes: tenant.notes || '',
+      });
     }
   }, [tenant]);
 
