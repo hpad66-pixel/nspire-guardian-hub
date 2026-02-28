@@ -120,7 +120,7 @@ function RootRedirect() {
   }
 
   if (isPlatformAdmin) return <Navigate to="/dashboard" replace />;
-  if (currentRole === 'owner') return <Navigate to="/reports/executive" replace />;
+  if (currentRole === 'owner') return <Navigate to="/owner-portal" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -180,7 +180,7 @@ const App = () => (
                      
                     {/* Platform Admin (standalone layout) */}
                     <Route path="/platform" element={<ProtectedRoute><PlatformDashboard /></ProtectedRoute>} />
-                    <Route path="/owner-portal" element={<ProtectedRoute><OwnerPortalPage /></ProtectedRoute>} />
+                    <Route path="/owner-portal/*" element={<ProtectedRoute><OwnerPortalPage /></ProtectedRoute>} />
 
                     {/* Protected Routes */}
                     <Route

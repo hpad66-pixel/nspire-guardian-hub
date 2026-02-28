@@ -4874,6 +4874,7 @@ export type Database = {
         Row: {
           address: string
           city: string
+          client_id: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -4903,6 +4904,7 @@ export type Database = {
         Insert: {
           address: string
           city: string
+          client_id?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -4932,6 +4934,7 @@ export type Database = {
         Update: {
           address?: string
           city?: string
+          client_id?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -4959,6 +4962,13 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "properties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "properties_workspace_id_fkey"
             columns: ["workspace_id"]
