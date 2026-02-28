@@ -53,6 +53,8 @@ import {
   Presentation,
   CalendarDays,
   ShieldAlert,
+  Bell,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -374,8 +376,10 @@ export function AppSidebar() {
   const isPropertyOpsActive = [
     '/properties', '/units', '/assets', '/occupancy',
     '/inspections', '/issues', '/work-orders', '/permits', '/voice-agent',
-    '/compliance-calendar', '/risk-register', '/corrective-actions'
+    '/compliance-calendar', '/risk-register', '/corrective-actions', '/corrective-loop',
   ].some(p => currentPath.startsWith(p));
+
+  const isSettingsActive = currentPath.startsWith('/settings');
 
   const isProjectsActive = currentPath.startsWith('/projects');
   const isPeopleActive = ['/people', '/contacts', '/training'].some(p => currentPath.startsWith(p));
@@ -532,6 +536,7 @@ export function AppSidebar() {
                 <NavItem to="/compliance-calendar" icon={<CalendarDays />} label="Compliance Calendar" collapsed={collapsed} />
                 <NavItem to="/risk-register" icon={<ShieldAlert />} label="Risk Register" collapsed={collapsed} />
                 <NavItem to="/corrective-actions" icon={<Gavel />} label="Corrective Actions" collapsed={collapsed} />
+                <NavItem to="/corrective-loop" icon={<RefreshCw />} label="Corrective Queue" collapsed={collapsed} />
               </>
             )}
             <NavItem
@@ -743,9 +748,11 @@ export function AppSidebar() {
             />
           )}
 
-          {/* Settings */}
           {canView('settings') && (
             <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
+          )}
+          {isAdmin && (
+            <NavItem to="/settings/escalation" icon={<Bell />} label="Escalation Rules" collapsed={collapsed} tooltip="SLA & Escalation Engine" />
           )}
 
           {/* User identity → /profile */}
