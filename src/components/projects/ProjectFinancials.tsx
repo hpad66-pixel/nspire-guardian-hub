@@ -9,8 +9,10 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
+import { useSOVLineItems } from '@/hooks/useSOV';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
@@ -49,6 +51,9 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
 
   const isOverBudget = remaining < 0;
   const isNearBudget = remaining >= 0 && remaining < adjustedBudget * 0.1;
+
+  const { data: sovItems = [] } = useSOVLineItems(project.id);
+  const sovTotal = sovItems.reduce((s, i) => s + Number(i.scheduled_value), 0);
 
   return (
     <div className="space-y-6">
@@ -179,6 +184,33 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
           </CardContent>
         </Card>
       </div>
+
+      {/* SOV Completion Card */}
+      {sovTotal > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              SOV Completion
+            </CardTitle>
+            <CardDescription>Contract value breakdown — {formatCurrency(sovTotal)} total</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {sovItems.map(item => (
+              <div key={item.id} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="truncate max-w-[280px]">
+                    <span className="font-mono text-xs text-muted-foreground mr-2">{item.item_number}</span>
+                    {item.description}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">{formatCurrency(Number(item.scheduled_value))}</span>
+                </div>
+                <Progress value={0} className="h-2" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Change Orders List */}
       <ChangeOrdersList projectId={project.id} changeOrders={changeOrders} projectName={projectName} />
