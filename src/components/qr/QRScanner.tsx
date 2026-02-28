@@ -58,7 +58,7 @@ export function QRScanner({ onScanSuccess, onScanError }: QRScannerProps) {
         
         // Use BarcodeDetector API if available (Chrome, Edge)
         if ('BarcodeDetector' in window) {
-          // @ts-ignore - BarcodeDetector is not in TypeScript's lib
+          // @ts-expect-error - BarcodeDetector is not in TypeScript's lib
           const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
           barcodeDetector.detect(video)
             .then((barcodes: any[]) => {
