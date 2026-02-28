@@ -50,6 +50,9 @@ export function useUserPermissions() {
     enabled: !!currentRole,
   });
 
+  // F03: Detect missing role and surface warning
+  const roleMissing = !roleLoading && !currentRole;
+
   const hasPermission = (module: ModuleType, action: ActionType): boolean => {
     // Admin has all permissions
     if (currentRole === 'admin') return true;
@@ -77,6 +80,7 @@ export function useUserPermissions() {
   return {
     isLoading: roleLoading || permissionsLoading,
     currentRole,
+    roleMissing,
     permissions,
     hasPermission,
     canView,

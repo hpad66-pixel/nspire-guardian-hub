@@ -46,7 +46,7 @@ export function usePendingReviews() {
       
       // Fetch inspector profiles
       const inspectorIds = [...new Set(inspections?.map(i => i.inspector_id).filter(Boolean) as string[])];
-      let profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
+      const profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
       
       if (inspectorIds.length > 0) {
         const { data: profiles } = await supabase
