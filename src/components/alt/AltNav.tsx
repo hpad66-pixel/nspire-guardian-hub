@@ -25,9 +25,9 @@ export function AltNav() {
       <nav
         className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
         style={{
-          background: scrolled ? 'rgba(248,250,252,0.92)' : 'transparent',
+          background: scrolled ? 'rgba(253,250,244,0.92)' : 'transparent',
           backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: scrolled ? '1px solid #E2E8F0' : 'none',
+          borderBottom: scrolled ? '1px solid var(--landing-border)' : 'none',
         }}
       >
         <div className="max-w-[1200px] mx-auto px-6 py-4">
@@ -36,12 +36,12 @@ export function AltNav() {
             <Link to="/home-alt" className="flex items-center gap-2.5">
               <div
                 className="w-7 h-7 rounded-md flex items-center justify-center"
-                style={{ background: '#2563EB' }}
+                style={{ background: 'var(--landing-ink)' }}
               >
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: '13px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>A</span>
+                <span style={{ color: 'var(--landing-cream)', fontWeight: 800, fontSize: '13px', fontFamily: "var(--font-display)" }}>A</span>
               </div>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F', letterSpacing: '-0.02em' }}>
-                APAS<span style={{ color: '#2563EB' }}>OS</span>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: '18px', color: 'var(--landing-ink)', letterSpacing: '-0.01em' }}>
+                APAS <span style={{ color: 'var(--apas-sapphire)' }}>OS</span>
               </span>
             </Link>
 
@@ -52,15 +52,15 @@ export function AltNav() {
                   key={link.label}
                   href={link.href}
                   style={{
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontFamily: "var(--font-ui)",
                     fontWeight: 600,
                     fontSize: '14px',
-                    color: '#475569',
+                    color: 'var(--landing-slate)',
                     textDecoration: 'none',
                     transition: 'color 0.2s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#1E3A5F')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--landing-ink)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--landing-slate)')}
                 >
                   {link.label}
                 </a>
@@ -72,16 +72,16 @@ export function AltNav() {
               <Link
                 to="/auth"
                 style={{
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "var(--font-ui)",
                   fontWeight: 600,
                   fontSize: '14px',
-                  color: '#475569',
+                  color: 'var(--landing-slate)',
                   padding: '8px 16px',
                   textDecoration: 'none',
                   transition: 'color 0.2s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#1E3A5F')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--landing-ink)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--landing-slate)')}
               >
                 Log In
               </Link>
@@ -89,26 +89,26 @@ export function AltNav() {
                 to="/auth"
                 className="flex items-center gap-1.5"
                 style={{
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "var(--font-ui)",
                   fontWeight: 600,
                   fontSize: '14px',
-                  background: '#2563EB',
-                  color: '#fff',
+                  background: 'var(--landing-ink)',
+                  color: 'var(--landing-cream)',
                   padding: '10px 20px',
                   borderRadius: '10px',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
+                  boxShadow: '0 4px 14px rgba(26,22,16,0.2)',
                   transition: 'background 0.2s, transform 0.2s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--apas-sapphire)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--landing-ink)'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
                 Start Free Trial <ArrowRight size={14} />
               </Link>
             </div>
 
             {/* Mobile hamburger */}
-            <button className="lg:hidden p-2" style={{ color: '#1E3A5F' }} onClick={() => setMobileOpen(true)}>
+            <button className="lg:hidden p-2" style={{ color: 'var(--landing-ink)' }} onClick={() => setMobileOpen(true)}>
               <Menu size={22} />
             </button>
           </div>
@@ -123,11 +123,11 @@ export function AltNav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex flex-col"
-            style={{ background: '#F8FAFC' }}
+            style={{ background: 'var(--landing-cream)' }}
           >
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #E2E8F0' }}>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F' }}>APAS<span style={{ color: '#2563EB' }}>OS</span></span>
-              <button onClick={() => setMobileOpen(false)} style={{ color: '#475569' }}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--landing-border)' }}>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: '18px', color: 'var(--landing-ink)' }}>APAS <span style={{ color: 'var(--apas-sapphire)' }}>OS</span></span>
+              <button onClick={() => setMobileOpen(false)} style={{ color: 'var(--landing-slate)' }}>
                 <X size={22} />
               </button>
             </div>
@@ -140,18 +140,18 @@ export function AltNav() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
                   onClick={() => setMobileOpen(false)}
-                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '26px', fontWeight: 700, color: '#1E3A5F', textDecoration: 'none' }}
+                  style={{ fontFamily: "var(--font-display)", fontSize: '26px', fontWeight: 700, color: 'var(--landing-ink)', textDecoration: 'none' }}
                 >
                   {link.label}
                 </motion.a>
               ))}
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="flex flex-col gap-3 pt-4">
                 <Link to="/auth" onClick={() => setMobileOpen(false)}
-                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: '16px', textAlign: 'center', background: '#2563EB', color: '#fff', padding: '16px', borderRadius: '10px', textDecoration: 'none' }}>
+                  style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: '16px', textAlign: 'center', background: 'var(--landing-ink)', color: 'var(--landing-cream)', padding: '16px', borderRadius: '10px', textDecoration: 'none' }}>
                   Start Free Trial
                 </Link>
                 <Link to="/auth" onClick={() => setMobileOpen(false)}
-                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: '16px', textAlign: 'center', border: '1px solid #E2E8F0', color: '#1E3A5F', padding: '16px', borderRadius: '10px', textDecoration: 'none' }}>
+                  style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: '16px', textAlign: 'center', border: '1px solid var(--landing-border)', color: 'var(--landing-ink)', padding: '16px', borderRadius: '10px', textDecoration: 'none' }}>
                   Log In
                 </Link>
               </motion.div>

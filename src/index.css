@@ -2,72 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
-/* APAS OS Design System */
-
-/* APAS Landing Page Custom Properties */
+/* ── APAS OS Design Tokens ── */
 :root {
   /* Font system — 4 roles */
-  --font-display: 'Lora', serif;
-  --font-ui: 'DM Sans', sans-serif;
-  --font-editor: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Lora', Georgia, serif;
+  --font-ui: 'DM Sans', system-ui, sans-serif;
+  --font-editor: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
-  /* Brand palette */
-  --apas-midnight: #0A0C12;
-  --apas-deep: #10131D;
-  --apas-surface: #161B2B;
-  --apas-border: rgba(255,255,255,0.08);
+  /* Instrument layer — app interior surfaces */
+  --apas-midnight: #090D17;
+  --apas-deep: #0B1629;
+  --apas-surface: #111E38;
+  --apas-surface-2: #162040;
+  --apas-border: rgba(255, 255, 255, 0.06);
+  --apas-border-hover: rgba(29, 111, 232, 0.25);
+
+  /* Primary accent — sapphire */
   --apas-sapphire: #1D6FE8;
-  --apas-sapphire-glow: rgba(29,111,232,0.2);
+  --apas-sapphire-dk: #1558C0;
+  --apas-sapphire-glow: rgba(29, 111, 232, 0.20);
+
+  /* Semantic status colors */
   --apas-emerald: #10B981;
   --apas-amber: #F59E0B;
   --apas-rose: #F43F5E;
   --apas-violet: #8B5CF6;
+
+  /* Gold — earned achievement ONLY */
   --apas-gold: #C4920A;
+  --apas-gold-warm: #D4A017;
+  --apas-gold-light: #F0C842;
+  --apas-gold-bg: rgba(196, 146, 10, 0.08);
+  --apas-gold-border: rgba(196, 146, 10, 0.22);
+
+  /* Text */
   --apas-white: #F1F5FF;
   --apas-muted: #6B7A99;
-  --apas-grid: rgba(29,111,232,0.04);
-  --apas-cream: #FDFAF4;
+  --apas-muted-2: #4A5568;
+
+  /* Landing layer — cream surfaces */
+  --landing-cream: #FDFAF4;
+  --landing-warm: #F9F5EC;
+  --landing-card: #FFFFFF;
+  --landing-ink: #1A1610;
+  --landing-ink-2: #3D3226;
+  --landing-slate: #6B5E4E;
+  --landing-muted: #9B8E7E;
+  --landing-border: #E8DDD0;
+
+  /* Background dot grid */
+  --apas-grid: rgba(29, 111, 232, 0.04);
+}
+
+body {
+  font-family: var(--font-ui);
+}
+
+/* ── Eyebrow label utility ── */
+.eyebrow, .section-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── Pull quote ── */
+.pull-quote {
+  border-left: 4px solid var(--apas-gold);
+  padding: 20px 28px;
+  background: var(--apas-gold-bg);
+  border-radius: 0 10px 10px 0;
+  margin: 32px 0;
+}
+.pull-quote p {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--landing-ink);
+}
+.pull-quote cite {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 10px;
+  display: block;
+  color: var(--apas-gold);
 }
 
 @layer base {
   :root {
-    /* Core backgrounds */
-    --background: 210 20% 98%;
+    /* Core App Backgrounds */
+    --background: 222 47% 98%;
     --foreground: 222 47% 11%;
-
-    /* Cards and surfaces */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary - Deep navy for trust and authority */
-    --primary: 222 47% 18%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary — Sapphire */
+    --primary: 217 83% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft slate */
+    /* Secondary */
     --secondary: 215 20% 94%;
     --secondary-foreground: 222 47% 18%;
 
-    /* Muted surfaces */
+    /* Muted */
     --muted: 215 20% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent - Professional blue */
-    --accent: 217 91% 60%;
+    /* Accent */
+    --accent: 217 83% 56%;
     --accent-foreground: 0 0% 100%;
 
-    /* Severity colors - Critical for NSPIRE */
-    --severity-severe: 0 84% 60%;
-    --severity-severe-foreground: 0 0% 100%;
-    --severity-moderate: 38 92% 50%;
-    --severity-moderate-foreground: 0 0% 100%;
-    --severity-low: 215 20% 65%;
-    --severity-low-foreground: 222 47% 11%;
-
-    /* Status colors */
+    /* Semantic Status */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
@@ -75,65 +128,72 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Module colors */
-    --module-inspections: 199 89% 48%;
-    --module-projects: 262 83% 58%;
-    --module-core: 215 20% 65%;
+    /* Gold — earned achievement */
+    --gold: 42 76% 40%;
+    --gold-warm: 42 85% 50%;
+    --gold-muted: 42 40% 32%;
+    --gold-bg: 42 76% 40% / 0.07;
+    --gold-border: 42 76% 40% / 0.25;
 
-    /* Borders and inputs */
-    --border: 215 20% 90%;
-    --input: 215 20% 90%;
-    --ring: 217 91% 60%;
+    /* Severity */
+    --severity-severe: 0 84% 60%;
+    --severity-severe-foreground: 0 0% 100%;
+    --severity-moderate: 38 92% 50%;
+    --severity-moderate-foreground: 0 0% 100%;
+    --severity-low: 215 20% 65%;
+    --severity-low-foreground: 222 47% 11%;
 
+    /* Borders + Inputs */
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 217 83% 56%;
     --radius: 0.5rem;
 
-    /* Sidebar - Dark professional */
+    /* Sidebar */
     --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 215 25% 92%;
-    --sidebar-primary: 217 91% 62%;
+    --sidebar-foreground: 215 25% 88%;
+    --sidebar-primary: 217 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 62%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 16%;
+    --sidebar-accent-foreground: 215 25% 88%;
     --sidebar-border: 222 30% 17%;
-    --sidebar-ring: 217 91% 62%;
-    --sidebar-muted: 215 15% 58%;
-    --sidebar-label: 215 12% 48%;
+    --sidebar-ring: 217 83% 58%;
+    --sidebar-muted: 215 15% 55%;
+    --sidebar-label: 215 12% 44%;
 
     /* Sidebar nav utility tokens */
     --sidebar-nav-active-bg: 217 91% 62%;
     --sidebar-nav-hover-bg: 222 47% 18%;
     --sidebar-zone-label: 215 12% 48%;
+
+    /* Module accent colors */
+    --module-inspections: 199 89% 48%;
+    --module-projects: 262 83% 58%;
+    --module-permits: 38 92% 50%;
+    --module-issues: 0 84% 60%;
+    --module-documents: 217 83% 56%;
+    --module-reports: 142 76% 36%;
+    --module-core: 215 20% 65%;
   }
 
   .dark {
     --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-
+    --foreground: 210 40% 96%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 83% 58%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 222 30% 18%;
-    --secondary-foreground: 210 40% 98%;
-
+    --secondary-foreground: 210 40% 96%;
     --muted: 222 30% 15%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 217 91% 60%;
+    --muted-foreground: 215 20% 62%;
+    --accent: 217 83% 58%;
     --accent-foreground: 0 0% 100%;
-
-    --severity-severe: 0 72% 51%;
-    --severity-moderate: 38 92% 50%;
-    --severity-low: 215 20% 55%;
-
     --border: 222 30% 20%;
     --input: 222 30% 20%;
-    --ring: 217 91% 60%;
+    --ring: 217 83% 58%;
 
     --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 215 20% 85%;
@@ -150,19 +210,15 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  /* Typography scale */
   h1 {
     @apply text-3xl font-bold tracking-tight;
   }
-
   h2 {
     @apply text-2xl font-semibold tracking-tight;
   }
-
   h3 {
     @apply text-xl font-semibold;
   }
-
   h4 {
     @apply text-lg font-medium;
   }
@@ -173,19 +229,15 @@
   .severity-severe {
     @apply bg-[hsl(var(--severity-severe))] text-[hsl(var(--severity-severe-foreground))];
   }
-
   .severity-severe-lt {
     @apply bg-[hsl(var(--severity-severe))] text-[hsl(var(--severity-severe-foreground))] ring-2 ring-[hsl(var(--severity-severe))]/30 font-bold;
   }
-
   .severity-moderate {
     @apply bg-[hsl(var(--severity-moderate))] text-[hsl(var(--severity-moderate-foreground))];
   }
-
   .severity-low {
     @apply bg-[hsl(var(--severity-low))] text-[hsl(var(--severity-low-foreground))];
   }
-
   .severity-unscored {
     @apply bg-[hsl(var(--module-inspections))]/15 text-[hsl(var(--module-inspections))] border border-[hsl(var(--module-inspections))]/30;
   }
@@ -194,7 +246,6 @@
   .module-inspections {
     @apply bg-[hsl(var(--module-inspections))];
   }
-
   .module-projects {
     @apply bg-[hsl(var(--module-projects))];
   }
@@ -203,7 +254,6 @@
   .card-elevated {
     @apply bg-card shadow-lg border border-border/50;
   }
-
   .card-interactive {
     @apply bg-card border border-border hover:border-accent/50 hover:shadow-md transition-all duration-200 cursor-pointer;
   }
@@ -217,51 +267,87 @@
   .area-outside {
     @apply border-l-4 border-l-emerald-500;
   }
-
   .area-inside {
     @apply border-l-4 border-l-blue-500;
   }
-
   .area-unit {
     @apply border-l-4 border-l-violet-500;
   }
 }
 
+/* ── APAS OS Status Badge System ── */
+.badge-open     { background: hsl(0 84% 60% / 0.12); color: hsl(0 84% 65%);    border: 1px solid hsl(0 84% 60% / 0.25); }
+.badge-active   { background: hsl(217 83% 56% / 0.12); color: hsl(217 83% 65%); border: 1px solid hsl(217 83% 56% / 0.25); }
+.badge-progress { background: hsl(38 92% 50% / 0.12); color: hsl(38 92% 55%);  border: 1px solid hsl(38 92% 50% / 0.25); }
+.badge-pending  { background: hsl(215 20% 65% / 0.12); color: hsl(215 20% 70%); border: 1px solid hsl(215 20% 65% / 0.25); }
+
+/* Achievement states — GOLD */
+.badge-approved  { background: var(--apas-gold-bg);     color: var(--apas-gold-warm);  border: 1px solid var(--apas-gold-border); }
+.badge-closed    { background: var(--apas-gold-bg);     color: var(--apas-gold-warm);  border: 1px solid var(--apas-gold-border); }
+.badge-verified  { background: var(--apas-gold-bg);     color: var(--apas-gold-warm);  border: 1px solid var(--apas-gold-border); }
+.badge-compliant { background: var(--apas-gold-bg);     color: var(--apas-gold-warm);  border: 1px solid var(--apas-gold-border); }
+.badge-passed    { background: var(--apas-gold-bg);     color: var(--apas-gold-warm);  border: 1px solid var(--apas-gold-border); }
+
+/* Apply JetBrains Mono to ALL badges */
+[class^="badge-"], [class*=" badge-"] {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
 @layer utilities {
-  /* Animations */
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
-
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
   }
-
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(-16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
   }
 }
 
+/* ── APAS OS Motion System ── */
+@keyframes gold-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--apas-gold-bg); }
+  50%       { box-shadow: 0 0 20px 4px var(--apas-gold-bg); }
+}
+.achievement-glow {
+  animation: gold-pulse 2.5s ease-in-out 1;
+}
+
+@keyframes sapphire-ring {
+  0%, 100% { box-shadow: 0 0 0 0 var(--apas-sapphire-glow); }
+  50%       { box-shadow: 0 0 0 6px rgba(29, 111, 232, 0); }
+}
+.primary-pulse {
+  animation: sapphire-ring 1.5s ease-out 1;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter 0.35s ease-out both;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+
 /* ── Executive Suite Slide Styles ── */
-/* All slides render at a fixed 1920×1080 canvas, then scale to fit */
 .slide-container {
   width: 1920px;
   height: 1080px;
@@ -291,15 +377,6 @@
 .slide-tag {
   font-family: var(--font-mono);
   font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-}
-
-/* Eyebrow / section label treatment — reusable across app */
-.eyebrow, .section-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
