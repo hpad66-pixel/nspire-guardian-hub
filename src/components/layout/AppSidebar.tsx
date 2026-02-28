@@ -56,6 +56,7 @@ import {
   Bell,
   RefreshCw,
   Globe,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
@@ -756,6 +757,9 @@ export function AppSidebar() {
           )}
           {isAdmin && (
             <NavItem to="/settings/escalation" icon={<Bell />} label="Escalation Rules" collapsed={collapsed} tooltip="SLA & Escalation Engine" />
+          )}
+          {isAdmin && (
+            <NavItem to="/settings/roles" icon={<ShieldCheck />} label="Roles & Access" collapsed={collapsed} />
           )}
 
           {isPlatformAdmin && (
