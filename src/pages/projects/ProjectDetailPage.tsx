@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,9 +62,10 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
+import { SOVEditor } from '@/components/projects/SOVEditor';
+import { PayAppList } from '@/components/projects/PayAppList';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-
 const statusConfig: Record<string, { label: string; class: string; dot: string }> = {
   planning:  { label: 'Planning',   class: 'bg-blue-500/10 text-blue-600 border-blue-500/20',   dot: 'bg-blue-500' },
   active:    { label: 'Active',     class: 'bg-success/10 text-success border-success/20',       dot: 'bg-success' },
@@ -118,6 +121,13 @@ export default function ProjectDetailPage() {
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
   const { isAdmin, isLoading: permissionsLoading } = useUserPermissions();
   const updateProject = useUpdateProject();
+  const { data: workspaceId } = useQuery({
+    queryKey: ['my-workspace-id'],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_my_workspace_id');
+      return data as string;
+    },
+  });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -247,6 +257,8 @@ export default function ProjectDetailPage() {
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
     { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
     { value: 'financials',   label: 'Financials',   shortLabel: 'Finance',  icon: Wallet,          group: 'core',       badge: null as number | null },
+    { value: 'sov',          label: 'Schedule of Values', shortLabel: 'SOV',   icon: FileSpreadsheet, group: 'core',       badge: null as number | null },
+    { value: 'pay-apps',     label: 'Pay Applications',   shortLabel: 'Pay Apps', icon: FileBarChart2, group: 'core',       badge: null as number | null },
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
     { value: 'punch-list',   label: 'Punch List',   shortLabel: 'Punch',    icon: ListChecks,      group: 'compliance', badge: ((punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)) > 0 ? (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) : null },
@@ -1080,6 +1092,8 @@ export default function ProjectDetailPage() {
                 />
               </TabsContent>
               <TabsContent value="financials"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
+              <TabsContent value="sov"><SOVEditor projectId={id!} workspaceId={workspaceId ?? ''} /></TabsContent>
+              <TabsContent value="pay-apps"><PayAppList projectId={id!} workspaceId={workspaceId ?? ''} /></TabsContent>
               <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>

@@ -2329,6 +2329,60 @@ export type Database = {
           },
         ]
       }
+      lien_waivers: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          pay_app_id: string
+          received_date: string | null
+          through_date: string | null
+          waiver_type: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          pay_app_id: string
+          received_date?: string | null
+          through_date?: string | null
+          waiver_type: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          pay_app_id?: string
+          received_date?: string | null
+          through_date?: string | null
+          waiver_type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lien_waivers_pay_app_id_fkey"
+            columns: ["pay_app_id"]
+            isOneToOne: false
+            referencedRelation: "pay_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_waivers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lw_courses: {
         Row: {
           category: string | null
@@ -2953,6 +3007,136 @@ export type Database = {
             columns: ["previous_version_id"]
             isOneToOne: false
             referencedRelation: "organization_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_app_line_items: {
+        Row: {
+          certified_this_period: number | null
+          created_at: string | null
+          id: string
+          materials_stored: number
+          pay_app_id: string
+          retainage_pct_override: number | null
+          sov_line_item_id: string
+          updated_at: string | null
+          work_completed_previous: number
+          work_completed_this_period: number
+        }
+        Insert: {
+          certified_this_period?: number | null
+          created_at?: string | null
+          id?: string
+          materials_stored?: number
+          pay_app_id: string
+          retainage_pct_override?: number | null
+          sov_line_item_id: string
+          updated_at?: string | null
+          work_completed_previous?: number
+          work_completed_this_period?: number
+        }
+        Update: {
+          certified_this_period?: number | null
+          created_at?: string | null
+          id?: string
+          materials_stored?: number
+          pay_app_id?: string
+          retainage_pct_override?: number | null
+          sov_line_item_id?: string
+          updated_at?: string | null
+          work_completed_previous?: number
+          work_completed_this_period?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_app_line_items_pay_app_id_fkey"
+            columns: ["pay_app_id"]
+            isOneToOne: false
+            referencedRelation: "pay_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_app_line_items_sov_line_item_id_fkey"
+            columns: ["sov_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "sov_line_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_applications: {
+        Row: {
+          certified_by: string | null
+          certified_date: string | null
+          contract_number: string | null
+          contractor_name: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          pay_app_number: number
+          period_from: string
+          period_to: string
+          project_id: string
+          status: string
+          submitted_date: string | null
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          certified_by?: string | null
+          certified_date?: string | null
+          contract_number?: string | null
+          contractor_name?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          pay_app_number: number
+          period_from: string
+          period_to: string
+          project_id: string
+          status?: string
+          submitted_date?: string | null
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          certified_by?: string | null
+          certified_date?: string | null
+          contract_number?: string | null
+          contractor_name?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          pay_app_number?: number
+          period_from?: string
+          period_to?: string
+          project_id?: string
+          status?: string
+          submitted_date?: string | null
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_applications_certified_by_fkey"
+            columns: ["certified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pay_applications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_applications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -6314,6 +6498,60 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      sov_line_items: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          item_number: string
+          project_id: string
+          retainage_pct: number
+          scheduled_value: number
+          sort_order: number
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          item_number: string
+          project_id: string
+          retainage_pct?: number
+          scheduled_value?: number
+          sort_order?: number
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          item_number?: string
+          project_id?: string
+          retainage_pct?: number
+          scheduled_value?: number
+          sort_order?: number
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sov_line_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sov_line_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
