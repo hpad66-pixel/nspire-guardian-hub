@@ -6022,6 +6022,54 @@ export type Database = {
           },
         ]
       }
+      report_delivery_log: {
+        Row: {
+          error_message: string | null
+          id: string
+          saved_report_id: string | null
+          schedule_id: string | null
+          sent_at: string | null
+          sent_to: string[]
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          saved_report_id?: string | null
+          schedule_id?: string | null
+          sent_at?: string | null
+          sent_to: string[]
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          saved_report_id?: string | null
+          schedule_id?: string | null
+          sent_at?: string | null
+          sent_to?: string[]
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_delivery_log_saved_report_id_fkey"
+            columns: ["saved_report_id"]
+            isOneToOne: false
+            referencedRelation: "saved_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_delivery_log_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_emails: {
         Row: {
           archived_at: string | null
@@ -6179,6 +6227,66 @@ export type Database = {
             columns: ["work_order_id"]
             isOneToOne: false
             referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          created_at: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          next_send_at: string | null
+          recipient_emails: string[]
+          saved_report_id: string
+          subject_template: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          recipient_emails?: string[]
+          saved_report_id: string
+          subject_template?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          recipient_emails?: string[]
+          saved_report_id?: string
+          subject_template?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_saved_report_id_fkey"
+            columns: ["saved_report_id"]
+            isOneToOne: false
+            referencedRelation: "saved_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_schedules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -6639,6 +6747,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      saved_reports: {
+        Row: {
+          config: Json
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_template: boolean | null
+          name: string
+          report_type: string
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          name: string
+          report_type: string
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          name?: string
+          report_type?: string
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
