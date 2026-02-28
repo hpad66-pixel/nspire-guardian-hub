@@ -33,52 +33,52 @@ export function Slide09Analytics() {
     <div className="slide-container">
       <div className="slide-accent-bar" style={{ background: "#1D6FE8" }} />
       <div className="slide-content justify-between">
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-4">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-6">
           <motion.div variants={itemVariants} className="slide-tag" style={{ color: "#1D6FE8" }}>REPORTING & ANALYTICS</motion.div>
-          <motion.div variants={itemVariants} className="text-[18px] font-bold text-white">
+          <motion.div variants={itemVariants} className="text-[36px] font-bold text-white">
             From inspection to executive decision — in seconds.
           </motion.div>
         </motion.div>
 
-        <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-2 gap-8 mt-4">
           <motion.div variants={itemVariants} initial="hidden" animate="visible"
-            className="rounded-xl bg-[#111E38] border border-white/5 p-5">
-            <div className="text-[10px] font-bold text-[#6B7A99] tracking-widest mb-3">MONTHLY INSPECTIONS</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={SAMPLE_BAR} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+            className="rounded-2xl bg-[#111E38] border border-white/5 p-8">
+            <div className="slide-tag text-[#6B7A99] mb-5">MONTHLY INSPECTIONS</div>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={SAMPLE_BAR} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: "#6B7A99", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#6B7A99", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Bar dataKey="count" fill="#1D6FE8" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="month" tick={{ fill: "#6B7A99", fontSize: 18 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#6B7A99", fontSize: 18 }} axisLine={false} tickLine={false} />
+                <Bar dataKey="count" fill="#1D6FE8" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </motion.div>
 
           <motion.div variants={itemVariants} initial="hidden" animate="visible"
-            className="rounded-xl bg-[#111E38] border border-white/5 p-5">
-            <div className="text-[10px] font-bold text-[#6B7A99] tracking-widest mb-3">COMPLIANCE STATUS</div>
-            <ResponsiveContainer width="100%" height={180}>
+            className="rounded-2xl bg-[#111E38] border border-white/5 p-8">
+            <div className="slide-tag text-[#6B7A99] mb-5">COMPLIANCE STATUS</div>
+            <ResponsiveContainer width="100%" height={320}>
               <PieChart>
-                <Pie data={DONUT} cx="50%" cy="50%" innerRadius={50} outerRadius={75}
+                <Pie data={DONUT} cx="50%" cy="50%" innerRadius={90} outerRadius={130}
                   paddingAngle={3} dataKey="value"
                   label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
                   labelLine={false}>
                   {DONUT.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Legend wrapperStyle={{ fontSize: "10px", color: "#6B7A99" }} />
+                <Legend wrapperStyle={{ fontSize: "18px", color: "#6B7A99" }} />
               </PieChart>
             </ResponsiveContainer>
           </motion.div>
         </div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-4 gap-3 mt-4">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-4 gap-5 mt-2">
           {KPIS.map((k) => (
             <motion.div key={k.label} variants={itemVariants}
-              className="rounded-xl bg-[#111E38] border border-white/5 p-4 text-center">
-              <div className="text-[24px] font-bold stat-number" style={{ color: k.color }}>
+              className="rounded-2xl bg-[#111E38] border border-white/5 p-6 text-center">
+              <div className="text-[48px] font-bold stat-number" style={{ color: k.color }}>
                 <AnimatedNumber value={k.n} suffix={k.suffix} />
               </div>
-              <div className="text-[10px] text-[#6B7A99] mt-1">{k.label}</div>
+              <div className="text-[20px] text-[#6B7A99] mt-2">{k.label}</div>
             </motion.div>
           ))}
         </motion.div>

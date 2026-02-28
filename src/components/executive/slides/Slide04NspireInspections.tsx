@@ -22,37 +22,37 @@ export function Slide04NspireInspections() {
     <div className="slide-container">
       <div className="slide-accent-bar" style={{ background: "#1D6FE8" }} />
       <div className="slide-content justify-between">
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-4">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-6">
           <motion.div variants={itemVariants} className="slide-tag" style={{ color: "#1D6FE8" }}>NSPIRE COMPLIANCE ENGINE</motion.div>
-          <motion.div variants={itemVariants} className="text-[18px] font-bold text-white">
+          <motion.div variants={itemVariants} className="text-[36px] font-bold text-white">
             HUD-grade inspection readiness — built into every property.
           </motion.div>
         </motion.div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-4 gap-4 mt-6">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-4 gap-6 mt-4">
           {NSPIRE_FEATURES.map((f) => (
             <motion.div key={f.label} variants={itemVariants}
-              className="rounded-xl bg-[#111E38] border border-white/5 p-5 flex flex-col gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${f.color}20` }}>
-                <f.icon className="h-5 w-5" style={{ color: f.color }} />
+              className="rounded-2xl bg-[#111E38] border border-white/5 p-8 flex flex-col gap-5">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `${f.color}20` }}>
+                <f.icon className="h-8 w-8" style={{ color: f.color }} />
               </div>
-              <div className="text-[12px] font-bold text-white">{f.label}</div>
-              <div className="text-[9px] text-[#6B7A99] leading-relaxed">{f.desc}</div>
+              <div className="text-[24px] font-bold text-white">{f.label}</div>
+              <div className="text-[18px] text-[#6B7A99] leading-relaxed">{f.desc}</div>
             </motion.div>
           ))}
         </motion.div>
 
         <motion.div variants={containerVariants} initial="hidden" animate="visible"
-          className="rounded-xl bg-[#111E38] border border-white/5 p-6 mt-4">
-          <div className="text-[10px] font-bold text-[#6B7A99] tracking-widest mb-4">NSPIRE SCORE BREAKDOWN</div>
-          <div className="grid grid-cols-4 gap-4">
+          className="rounded-2xl bg-[#111E38] border border-white/5 p-8 mt-2">
+          <div className="slide-tag text-[#6B7A99] mb-6">NSPIRE SCORE BREAKDOWN</div>
+          <div className="grid grid-cols-4 gap-8">
             {SCORE_AREAS.map((s) => (
-              <motion.div key={s.area} variants={itemVariants} className="flex flex-col gap-2">
-                <div className="flex justify-between text-[10px]">
+              <motion.div key={s.area} variants={itemVariants} className="flex flex-col gap-3">
+                <div className="flex justify-between text-[20px]">
                   <span className="text-[#6B7A99]">{s.area}</span>
                   <span className="text-white font-bold">{s.score}/{s.max}</span>
                 </div>
-                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-4 rounded-full bg-white/5 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ background: s.color }}
@@ -64,11 +64,11 @@ export function Slide04NspireInspections() {
               </motion.div>
             ))}
           </div>
-          <div className="flex items-center justify-center mt-4 gap-2">
-            <div className="text-[28px] font-bold text-[#10B981]">
+          <div className="flex items-center justify-center mt-6 gap-4">
+            <div className="text-[56px] font-bold text-[#10B981]">
               <AnimatedNumber value={87} suffix=" / 100" />
             </div>
-            <div className="text-[10px] text-[#6B7A99]">Overall NSPIRE Score</div>
+            <div className="text-[20px] text-[#6B7A99]">Overall NSPIRE Score</div>
           </div>
         </motion.div>
       </div>

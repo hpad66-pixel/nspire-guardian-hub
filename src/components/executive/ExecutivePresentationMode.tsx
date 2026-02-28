@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ScaledSlide } from "./ScaledSlide";
 import { Slide01Hero } from "./slides/Slide01Hero";
 import { Slide02Problem } from "./slides/Slide02Problem";
 import { Slide03Solution } from "./slides/Slide03Solution";
@@ -101,7 +102,7 @@ export function ExecutivePresentationMode({ onExit }: Props) {
       </div>
 
       {/* Slide area */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden bg-black">
         <AnimatePresence mode="wait">
           <motion.div
             key={current}
@@ -111,7 +112,9 @@ export function ExecutivePresentationMode({ onExit }: Props) {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
             className="absolute inset-0"
           >
-            {SLIDES[current].element}
+            <ScaledSlide>
+              {SLIDES[current].element}
+            </ScaledSlide>
           </motion.div>
         </AnimatePresence>
       </div>
