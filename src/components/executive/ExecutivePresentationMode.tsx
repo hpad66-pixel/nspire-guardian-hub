@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -51,6 +51,22 @@ interface Props {
 export function ExecutivePresentationMode({ onExit }: Props) {
   const [current, setCurrent] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   const prev = useCallback(() => setCurrent((c) => Math.max(0, c - 1)), []);
   const next = useCallback(() => setCurrent((c) => Math.min(TOTAL - 1, c + 1)), []);
@@ -67,14 +83,18 @@ export function ExecutivePresentationMode({ onExit }: Props) {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "ArrowRight") { e.preventDefault(); next(); }
       if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
-      if (e.key === "Escape") onExit();
+      if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
+      if (e.key === "Escape") {
+        if (document.fullscreenElement) { document.exitFullscreen(); }
+        else { onExit(); }
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [onExit, next, prev]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-[#0B1629] flex flex-col">
+    <div ref={containerRef} className="fixed inset-0 z-[9999] bg-[#0B1629] flex flex-col">
       {/* Controls */}
       <div className="flex items-center justify-between px-8 py-3 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -95,6 +115,12 @@ export function ExecutivePresentationMode({ onExit }: Props) {
               isAutoPlay ? "bg-[#1D6FE8] text-white" : "bg-white/5 text-[#6B7A99] hover:text-white"
             )}>
             {isAutoPlay ? "⏸ Pause" : "▶ Auto-Play"}
+          </button>
+          <button onClick={toggleFullscreen}
+            className={cn("px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              isFullscreen ? "bg-[#1D6FE8] text-white" : "bg-white/5 text-[#6B7A99] hover:text-white"
+            )}>
+            {isFullscreen ? "⛶ Exit Full" : "⛶ Fullscreen"}
           </button>
           <button onClick={onExit}
             className="px-4 py-2 rounded-lg text-sm text-[#6B7A99] hover:text-white hover:bg-white/5">✕ Exit</button>
