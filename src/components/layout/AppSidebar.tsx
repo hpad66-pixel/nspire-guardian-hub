@@ -55,8 +55,10 @@ import {
   ShieldAlert,
   Bell,
   RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import {
@@ -318,6 +320,7 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
   const { failedCount } = useOfflineSyncStatus();
 
   const { data: unreadCount = 0 } = useUnreadThreadCount();
@@ -753,6 +756,13 @@ export function AppSidebar() {
           )}
           {isAdmin && (
             <NavItem to="/settings/escalation" icon={<Bell />} label="Escalation Rules" collapsed={collapsed} tooltip="SLA & Escalation Engine" />
+          )}
+
+          {isPlatformAdmin && (
+            <>
+              <ZoneDivider />
+              <NavItem to="/platform" icon={<Globe />} label="Platform Admin" collapsed={collapsed} />
+            </>
           )}
 
           {/* User identity → /profile */}

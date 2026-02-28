@@ -83,7 +83,8 @@ const RiskRegisterPage = lazy(() => import('./pages/risk/RiskRegisterPage'));
 const CorrectiveActionPage = lazy(() => import('./pages/compliance/CorrectiveActionPage'));
 const EscalationRulesPage = lazy(() => import('./pages/settings/EscalationRulesPage'));
 const CorrectiveLoopPage = lazy(() => import('./pages/corrective-loop/CorrectiveLoopPage'));
-
+const PlatformDashboard = lazy(() => import('./pages/platform/PlatformDashboard'));
+const OwnerPortalPage = lazy(() => import('./pages/owner/OwnerPortalPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -176,6 +177,10 @@ const App = () => (
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      
+                    {/* Platform Admin (standalone layout) */}
+                    <Route path="/platform" element={<ProtectedRoute><PlatformDashboard /></ProtectedRoute>} />
+                    <Route path="/owner-portal" element={<ProtectedRoute><OwnerPortalPage /></ProtectedRoute>} />
+
                     {/* Protected Routes */}
                     <Route
                       path="/*"
