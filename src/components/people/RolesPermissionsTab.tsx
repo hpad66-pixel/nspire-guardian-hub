@@ -29,6 +29,12 @@ const MODULE_LABELS: Record<string, string> = {
   documents: 'Documents',
   reports: 'Reports',
   settings: 'Settings',
+  compliance_calendar: 'Compliance Calendar',
+  risk_register: 'Risk Register',
+  corrective_actions: 'Corrective Actions',
+  corrective_loop: 'Corrective Queue',
+  escalation_rules: 'Escalation Rules',
+  executive_dashboard: 'Executive Dashboard',
 };
 
 const ACTION_LABELS: Record<string, string> = {

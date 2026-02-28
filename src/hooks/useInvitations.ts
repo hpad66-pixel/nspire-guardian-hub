@@ -71,6 +71,20 @@ export function useCreateInvitation() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Seat limit check
+      if (invitation.workspace_id) {
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('seat_limit, seats_used')
+          .eq('id', invitation.workspace_id)
+          .single();
+        if (ws && ws.seats_used >= ws.seat_limit) {
+          throw new Error(
+            `Seat limit reached (${ws.seat_limit} seats). Deactivate a user or upgrade your plan.`
+          );
+        }
+      }
+
       const { data, error } = await supabase
         .from('user_invitations')
         .insert({
