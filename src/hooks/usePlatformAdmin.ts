@@ -89,6 +89,43 @@ export function useTogglePlatformModule() {
   });
 }
 
+export function useCreateWorkspace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      name: string;
+      client_company?: string;
+      client_contact_name?: string;
+      billing_contact_email?: string;
+      plan?: string;
+      monthly_fee?: number;
+      seat_limit?: number;
+      billing_cycle?: string;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('platform_create_workspace', {
+        p_name: params.name,
+        p_client_company: params.client_company || null,
+        p_client_contact_name: params.client_contact_name || null,
+        p_billing_contact_email: params.billing_contact_email || null,
+        p_plan: params.plan || 'trial',
+        p_monthly_fee: params.monthly_fee || 0,
+        p_seat_limit: params.seat_limit || 10,
+        p_billing_cycle: params.billing_cycle || 'monthly',
+        p_notes: params.notes || null,
+      });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-all-workspaces'] });
+      qc.invalidateQueries({ queryKey: ['platform-audit-log'] });
+      toast.success('Client workspace created');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function usePlatformAuditLog() {
   return useQuery({
     queryKey: ['platform-audit-log'],

@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useAllWorkspaces, usePlatformStats, usePlatformAuditLog } from '@/hooks/usePlatformAdmin';
+import { useAllWorkspaces, usePlatformStats, usePlatformAuditLog, useCreateWorkspace } from '@/hooks/usePlatformAdmin';
 import { WorkspaceDetailSheet } from '@/components/platform/WorkspaceDetailSheet';
 import { PlatformProtectedRoute } from '@/components/auth/PlatformProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { LogOut, ArrowLeft, Settings } from 'lucide-react';
+import { LogOut, ArrowLeft, Settings, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { format, isPast, parseISO } from 'date-fns';
 import type { PlatformWorkspace } from '@/hooks/usePlatformAdmin';
@@ -121,9 +126,39 @@ function PlatformDashboardContent() {
   const stats = usePlatformStats();
   const { data: workspaces = [], isLoading } = useAllWorkspaces();
   const { data: auditLog = [] } = usePlatformAuditLog();
+  const createWorkspace = useCreateWorkspace();
 
   const [selectedWs, setSelectedWs] = useState<PlatformWorkspace | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newClient, setNewClient] = useState({
+    name: '',
+    client_company: '',
+    client_contact_name: '',
+    billing_contact_email: '',
+    plan: 'trial',
+    monthly_fee: 0,
+    seat_limit: 10,
+    billing_cycle: 'monthly',
+    notes: '',
+  });
+
+  const handleCreateClient = async () => {
+    if (!newClient.name) return;
+    await createWorkspace.mutateAsync({
+      ...newClient,
+      client_company: newClient.client_company || undefined,
+      client_contact_name: newClient.client_contact_name || undefined,
+      billing_contact_email: newClient.billing_contact_email || undefined,
+      notes: newClient.notes || undefined,
+    });
+    setAddDialogOpen(false);
+    setNewClient({
+      name: '', client_company: '', client_contact_name: '',
+      billing_contact_email: '', plan: 'trial', monthly_fee: 0,
+      seat_limit: 10, billing_cycle: 'monthly', notes: '',
+    });
+  };
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Admin';
 
@@ -183,9 +218,17 @@ function PlatformDashboardContent() {
 
         {/* WORKSPACE GRID */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-[#94A3B8] mb-4" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-            Client Workspaces
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-[#94A3B8]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              Client Workspaces
+            </h2>
+            <Button
+              onClick={() => setAddDialogOpen(true)}
+              className="bg-[#C9A84C] hover:bg-[#C9A84C]/80 text-[#090D17] font-semibold text-xs h-8"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Client
+            </Button>
+          </div>
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map(i => (
@@ -252,6 +295,121 @@ function PlatformDashboardContent() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
+
+      {/* Add Client Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]" style={{ background: '#0F1923', borderColor: '#1E3A5F', color: '#fff' }}>
+          <DialogHeader>
+            <DialogTitle className="text-white">Onboard New Client</DialogTitle>
+            <DialogDescription className="text-[#94A3B8]">
+              Create a new workspace for a paying client. You can configure modules after creation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Workspace Name *</Label>
+                <Input
+                  value={newClient.name}
+                  onChange={e => setNewClient(f => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. R4 Capital"
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Client Company</Label>
+                <Input
+                  value={newClient.client_company}
+                  onChange={e => setNewClient(f => ({ ...f, client_company: e.target.value }))}
+                  placeholder="Legal entity name"
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Contact Name</Label>
+                <Input
+                  value={newClient.client_contact_name}
+                  onChange={e => setNewClient(f => ({ ...f, client_contact_name: e.target.value }))}
+                  placeholder="Primary contact"
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Billing Email</Label>
+                <Input
+                  type="email"
+                  value={newClient.billing_contact_email}
+                  onChange={e => setNewClient(f => ({ ...f, billing_contact_email: e.target.value }))}
+                  placeholder="billing@client.com"
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Plan</Label>
+                <Select value={newClient.plan} onValueChange={v => setNewClient(f => ({ ...f, plan: v }))}>
+                  <SelectTrigger className="bg-[#090D17] border-[#1E3A5F] text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Monthly Fee ($)</Label>
+                <Input
+                  type="number"
+                  value={newClient.monthly_fee}
+                  onChange={e => setNewClient(f => ({ ...f, monthly_fee: Number(e.target.value) }))}
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Seat Limit</Label>
+                <Input
+                  type="number"
+                  value={newClient.seat_limit}
+                  onChange={e => setNewClient(f => ({ ...f, seat_limit: Number(e.target.value) }))}
+                  className="bg-[#090D17] border-[#1E3A5F] text-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[#94A3B8] text-xs">Billing Cycle</Label>
+                <Select value={newClient.billing_cycle} onValueChange={v => setNewClient(f => ({ ...f, billing_cycle: v }))}>
+                  <SelectTrigger className="bg-[#090D17] border-[#1E3A5F] text-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="annual">Annual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[#94A3B8] text-xs">Notes</Label>
+              <Textarea
+                rows={3}
+                value={newClient.notes}
+                onChange={e => setNewClient(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Onboarding notes, special requirements..."
+                className="bg-[#090D17] border-[#1E3A5F] text-white resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddDialogOpen(false)} className="text-[#94A3B8] hover:text-white">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateClient}
+              disabled={!newClient.name || createWorkspace.isPending}
+              className="bg-[#C9A84C] hover:bg-[#C9A84C]/80 text-[#090D17] font-semibold"
+            >
+              {createWorkspace.isPending ? 'Creating...' : 'Create Workspace'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
