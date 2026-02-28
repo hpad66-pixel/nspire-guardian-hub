@@ -68,7 +68,7 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
     ...items.map(i => i.created_by).filter(Boolean),
   ])] as string[];
 
-  let profileMap: Record<string, ActionItemProfile> = {};
+  const profileMap: Record<string, ActionItemProfile> = {};
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -78,7 +78,7 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
   }
 
   // Count comments per item
-  let commentCounts: Record<string, number> = {};
+  const commentCounts: Record<string, number> = {};
   if (items.length > 0) {
     const { data: counts } = await supabase
       .from('action_item_comments')
@@ -115,7 +115,7 @@ async function fetchMyItems(): Promise<ActionItem[]> {
   const items = data || [];
 
   const userIds = [...new Set(items.map(i => i.created_by).filter(Boolean))] as string[];
-  let profileMap: Record<string, ActionItemProfile> = {};
+  const profileMap: Record<string, ActionItemProfile> = {};
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -152,7 +152,7 @@ async function fetchAssignedByMe(): Promise<ActionItem[]> {
 
   // Collect unique user IDs (assignees)
   const userIds = [...new Set(items.map(i => i.assigned_to).filter(Boolean))] as string[];
-  let profileMap: Record<string, ActionItemProfile> = {};
+  const profileMap: Record<string, ActionItemProfile> = {};
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -280,7 +280,7 @@ export function useActionItemComments(actionItemId: string | null) {
       const comments = data || [];
 
       const userIds = [...new Set(comments.map(c => c.created_by).filter(Boolean))] as string[];
-      let profileMap: Record<string, ActionItemProfile> = {};
+      const profileMap: Record<string, ActionItemProfile> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')

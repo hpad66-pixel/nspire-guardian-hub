@@ -29,7 +29,7 @@ export function useInspectionAddendums(inspectionId: string) {
       
       // Fetch profiles for addendum creators
       const creatorIds = [...new Set(addendums?.map(a => a.created_by).filter(Boolean) as string[])];
-      let profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
+      const profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
       
       if (creatorIds.length > 0) {
         const { data: profiles } = await supabase

@@ -151,8 +151,7 @@ export function CredentialPrintView({
     printWindow.document.write(html);
     printWindow.document.close();
     onClose();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [credLabel, holderName, jobTitle, department, statusConfig, credential, onClose]);
 
   return null;
 }

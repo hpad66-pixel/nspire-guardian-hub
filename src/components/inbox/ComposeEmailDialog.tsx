@@ -123,8 +123,7 @@ export function ComposeEmailDialog({ open, onOpenChange }: ComposeEmailDialogPro
         setDraftSavedAt(new Date(draft.savedAt));
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, form]);
 
   // Auto-save draft every 30 seconds
   useEffect(() => {
