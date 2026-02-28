@@ -8,7 +8,7 @@ export function Slide01Hero() {
       <div className="slide-accent-bar" style={{ background: "#1D6FE8" }} />
       <div className="slide-content">
         <div className="flex flex-1 items-center">
-          <div className="flex-[55] pr-8">
+          <div className="flex-[50] pr-12">
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col gap-6">
               <motion.div variants={itemVariants} className="text-[44px] font-bold text-white tracking-[0.12em]">
                 APAS OS
@@ -30,8 +30,8 @@ export function Slide01Hero() {
               </motion.div>
             </motion.div>
           </div>
-          <div className="flex-[45] flex items-center justify-center">
-            <IPhoneMockup />
+          <div className="flex-[50] flex items-center justify-center">
+            <IPhoneMockup scale={1.35} />
           </div>
         </div>
       </div>
