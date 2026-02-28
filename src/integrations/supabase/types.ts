@@ -768,6 +768,137 @@ export type Database = {
           },
         ]
       }
+      contractor_performance_snapshots: {
+        Row: {
+          avg_days_to_complete: number | null
+          completed_late: number | null
+          completed_on_time: number | null
+          contractor_id: string
+          created_at: string | null
+          defect_count: number | null
+          id: string
+          open_work_orders: number | null
+          pay_apps_disputed: number | null
+          punch_items_resolved: number | null
+          snapshot_date: string
+          total_certified_amount: number | null
+          total_pay_apps: number | null
+          total_punch_items: number | null
+          total_work_orders: number | null
+          workspace_id: string
+        }
+        Insert: {
+          avg_days_to_complete?: number | null
+          completed_late?: number | null
+          completed_on_time?: number | null
+          contractor_id: string
+          created_at?: string | null
+          defect_count?: number | null
+          id?: string
+          open_work_orders?: number | null
+          pay_apps_disputed?: number | null
+          punch_items_resolved?: number | null
+          snapshot_date?: string
+          total_certified_amount?: number | null
+          total_pay_apps?: number | null
+          total_punch_items?: number | null
+          total_work_orders?: number | null
+          workspace_id: string
+        }
+        Update: {
+          avg_days_to_complete?: number | null
+          completed_late?: number | null
+          completed_on_time?: number | null
+          contractor_id?: string
+          created_at?: string | null
+          defect_count?: number | null
+          id?: string
+          open_work_orders?: number | null
+          pay_apps_disputed?: number | null
+          punch_items_resolved?: number | null
+          snapshot_date?: string
+          total_certified_amount?: number | null
+          total_pay_apps?: number | null
+          total_punch_items?: number | null
+          total_work_orders?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_performance_snapshots_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_performance_snapshots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contractors: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          insurance_expiry: string | null
+          license_expiry: string | null
+          license_number: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          status: string
+          trade: string | null
+          updated_at: string | null
+          workspace_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          license_expiry?: string | null
+          license_number?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          trade?: string | null
+          updated_at?: string | null
+          workspace_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          insurance_expiry?: string | null
+          license_expiry?: string | null
+          license_number?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          trade?: string | null
+          updated_at?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractors_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_progress: {
         Row: {
           completed_at: string | null
@@ -3070,6 +3201,7 @@ export type Database = {
           certified_by: string | null
           certified_date: string | null
           contract_number: string | null
+          contractor_id: string | null
           contractor_name: string | null
           created_at: string | null
           id: string
@@ -3087,6 +3219,7 @@ export type Database = {
           certified_by?: string | null
           certified_date?: string | null
           contract_number?: string | null
+          contractor_id?: string | null
           contractor_name?: string | null
           created_at?: string | null
           id?: string
@@ -3104,6 +3237,7 @@ export type Database = {
           certified_by?: string | null
           certified_date?: string | null
           contract_number?: string | null
+          contractor_id?: string | null
           contractor_name?: string | null
           created_at?: string | null
           id?: string
@@ -3124,6 +3258,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pay_applications_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "pay_applications_project_id_fkey"
@@ -7456,6 +7597,7 @@ export type Database = {
           closed_by: string | null
           closure_photos: string[] | null
           completed_at: string | null
+          contractor_id: string | null
           created_at: string
           created_by: string | null
           defect_id: string | null
@@ -7493,6 +7635,7 @@ export type Database = {
           closed_by?: string | null
           closure_photos?: string[] | null
           completed_at?: string | null
+          contractor_id?: string | null
           created_at?: string
           created_by?: string | null
           defect_id?: string | null
@@ -7530,6 +7673,7 @@ export type Database = {
           closed_by?: string | null
           closure_photos?: string[] | null
           completed_at?: string | null
+          contractor_id?: string | null
           created_at?: string
           created_by?: string | null
           defect_id?: string | null
@@ -7559,6 +7703,13 @@ export type Database = {
           work_order_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "work_orders_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "work_orders_defect_id_fkey"
             columns: ["defect_id"]

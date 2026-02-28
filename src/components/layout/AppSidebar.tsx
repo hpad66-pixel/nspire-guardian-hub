@@ -39,6 +39,7 @@ import {
   Mail,
   Shield,
   QrCode,
+  HardHat,
   Home,
   GraduationCap,
   Contact,
@@ -595,6 +596,7 @@ export function AppSidebar() {
               {isAdmin && (
                 <NavItem to="/projects/proposals" icon={<FileText />} label="Proposals" collapsed={collapsed} />
               )}
+              <NavItem to="/projects/contractors" icon={<HardHat />} label="Contractors" collapsed={collapsed} />
             </WorkModuleButton>
           )}
 

@@ -86,6 +86,8 @@ const CorrectiveLoopPage = lazy(() => import('./pages/corrective-loop/Corrective
 const PlatformDashboard = lazy(() => import('./pages/platform/PlatformDashboard'));
 const OwnerPortalPage = lazy(() => import('./pages/owner/OwnerPortalPage'));
 const RolesPage = lazy(() => import('./pages/settings/RolesPage'));
+const ContractorsPage = lazy(() => import('./pages/projects/ContractorsPage'));
+const ContractorDetailPage = lazy(() => import('./pages/projects/ContractorDetailPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -228,6 +230,8 @@ const App = () => (
                               {/* Projects Module */}
                               <Route path="/projects" element={<ProjectsDashboard />} />
                               <Route path="/projects/proposals" element={<ProposalsPage />} />
+                              <Route path="/projects/contractors" element={<ContractorsPage />} />
+                              <Route path="/projects/contractors/:contractorId" element={<ContractorDetailPage />} />
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
                               
                               {/* Permits & Compliance */}
