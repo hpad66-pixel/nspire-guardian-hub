@@ -50,6 +50,7 @@ import {
   Truck,
   Share2,
   Gavel,
+  Presentation,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -706,6 +707,9 @@ export function AppSidebar() {
           {/* Reports */}
           {canView('reports') && (
             <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
+          )}
+          {isAdmin && (
+            <NavItem to="/reports/executive" icon={<Presentation />} label="Executive Suite" collapsed={collapsed} tooltip="Executive Presentation" />
           )}
 
           {/* Workspace Profile (admin only) */}

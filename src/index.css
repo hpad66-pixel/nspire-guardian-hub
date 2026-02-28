@@ -250,3 +250,63 @@
     }
   }
 }
+
+/* ── Executive Suite Slide Styles ── */
+.slide-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  background: #0B1629;
+}
+
+.slide-accent-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 0 3px 3px 0;
+}
+
+.slide-content {
+  flex: 1;
+  padding: 48px 56px 48px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.slide-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.slide-headline {
+  font-size: clamp(20px, 2.5vw, 34px);
+  font-weight: 700;
+  color: #F1F5FF;
+  line-height: 1.15;
+}
+
+.dot-grid-bg {
+  background-image: radial-gradient(circle, rgba(29,111,232,0.10) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(29,111,232,0.2); }
+  50% { box-shadow: 0 0 50px rgba(29,111,232,0.35); }
+}
+
+.animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.stat-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
