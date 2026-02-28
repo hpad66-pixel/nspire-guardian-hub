@@ -8125,6 +8125,20 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      platform_create_workspace: {
+        Args: {
+          p_billing_contact_email?: string
+          p_billing_cycle?: string
+          p_client_company?: string
+          p_client_contact_name?: string
+          p_monthly_fee?: number
+          p_name: string
+          p_notes?: string
+          p_plan?: string
+          p_seat_limit?: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role:
