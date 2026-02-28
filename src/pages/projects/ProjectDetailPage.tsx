@@ -105,7 +105,7 @@ export default function ProjectDetailPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: project, isLoading: projectLoading } = useProject(id ?? null);
+  const { data: project, isLoading: projectLoading, isPending: projectPending } = useProject(id ?? null);
   const { data: milestones } = useMilestonesByProject(id ?? null);
   const { data: dailyReports } = useDailyReportsByProject(id ?? null);
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
@@ -197,7 +197,7 @@ export default function ProjectDetailPage() {
     }).format(amount);
   };
 
-  if (projectLoading) {
+  if (projectLoading || projectPending) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-10 w-64" />
