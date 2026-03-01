@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -369,87 +370,129 @@ export default function ProjectDetailPage() {
             </Button>
 
             <div className="flex items-center gap-1.5">
-              {/* Activity — icon only on mobile */}
-              <Button
-                variant={activityFeedOpen ? 'secondary' : 'outline'}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setActivityFeedOpen(!activityFeedOpen);
-                  if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
-                  if (actionItemsOpen) setActionItemsOpen(false);
-                }}
-              >
-                <Activity className="h-4 w-4" />
-                <span className="hidden md:inline">Activity</span>
-              </Button>
+              {/* Timeline — project event history */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={activityFeedOpen ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setActivityFeedOpen(!activityFeedOpen);
+                      if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
+                      if (actionItemsOpen) setActionItemsOpen(false);
+                    }}
+                  >
+                    <Activity className="h-4 w-4" />
+                    <span className="hidden md:inline">Timeline</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  View project timeline — all updates, status changes, and milestones in chronological order
+                </TooltipContent>
+              </Tooltip>
 
-              {/* Discussions */}
-              <Button
-                variant={discussionsPanelOpen ? 'secondary' : 'outline'}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setDiscussionsPanelOpen(!discussionsPanelOpen);
-                  if (activityFeedOpen) setActivityFeedOpen(false);
-                  if (actionItemsOpen) setActionItemsOpen(false);
-                }}
-              >
-                <MessageSquareText className="h-4 w-4" />
-                <span className="hidden md:inline">Discuss</span>
-              </Button>
+              {/* Discussions — threaded project conversations */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={discussionsPanelOpen ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setDiscussionsPanelOpen(!discussionsPanelOpen);
+                      if (activityFeedOpen) setActivityFeedOpen(false);
+                      if (actionItemsOpen) setActionItemsOpen(false);
+                    }}
+                  >
+                    <MessageSquareText className="h-4 w-4" />
+                    <span className="hidden md:inline">Discussions</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  Start or join threaded conversations with your project team
+                </TooltipContent>
+              </Tooltip>
 
-              {/* Tasks */}
-              <Button
-                variant={actionItemsOpen ? 'secondary' : 'outline'}
-                size="sm"
-                className="gap-1.5 relative"
-                onClick={() => {
-                  setActionItemsOpen(!actionItemsOpen);
-                  if (activityFeedOpen) setActivityFeedOpen(false);
-                  if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
-                }}
-              >
-                <CheckSquare className="h-4 w-4" />
-                <span className="hidden md:inline">Tasks</span>
-                {openTaskCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold shadow-sm">
-                    {openTaskCount > 9 ? '9+' : openTaskCount}
-                  </span>
-                )}
-              </Button>
+              {/* Action Items — assigned tasks with owners and deadlines */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={actionItemsOpen ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="gap-1.5 relative"
+                    onClick={() => {
+                      setActionItemsOpen(!actionItemsOpen);
+                      if (activityFeedOpen) setActivityFeedOpen(false);
+                      if (discussionsPanelOpen) setDiscussionsPanelOpen(false);
+                    }}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                    <span className="hidden md:inline">Action Items</span>
+                    {openTaskCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold shadow-sm">
+                        {openTaskCount > 9 ? '9+' : openTaskCount}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  Track assigned action items — tasks with owners, deadlines, and status
+                </TooltipContent>
+              </Tooltip>
 
               {/* Reports */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setReportDialogOpen(true)}
-              >
-                <FileBarChart2 className="h-4 w-4" />
-                <span className="hidden md:inline">Reports</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setReportDialogOpen(true)}
+                  >
+                    <FileBarChart2 className="h-4 w-4" />
+                    <span className="hidden md:inline">Reports</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  Generate project reports — daily logs, progress summaries, and financial snapshots
+                </TooltipContent>
+              </Tooltip>
 
               {/* Edit */}
-              <Button
-                size="sm"
-                className="gap-1.5 bg-module-projects hover:bg-module-projects/90 text-white shadow-sm"
-                onClick={() => setEditDialogOpen(true)}
-              >
-                <Edit className="h-4 w-4" />
-                <span className="hidden sm:inline">Edit</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-module-projects hover:bg-module-projects/90 text-white shadow-sm"
+                    onClick={() => setEditDialogOpen(true)}
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span className="hidden sm:inline">Edit</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Edit project name, dates, budget, and other details
+                </TooltipContent>
+              </Tooltip>
 
               {/* Log Incident */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                onClick={() => setIncidentSheetOpen(true)}
-              >
-                <TriangleAlert className="h-4 w-4 text-amber-500" />
-                <span className="hidden sm:inline">Log Incident</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    onClick={() => setIncidentSheetOpen(true)}
+                  >
+                    <TriangleAlert className="h-4 w-4 text-amber-500" />
+                    <span className="hidden sm:inline">Log Incident</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  Report a safety incident, near-miss, or hazard tied to this project
+                </TooltipContent>
+              </Tooltip>
 
               {/* Overflow */}
               <DropdownMenu>
