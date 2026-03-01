@@ -401,6 +401,14 @@ export function AppSidebar() {
   const isProjectsActive = currentPath.startsWith('/projects');
   const isPeopleActive = ['/people', '/organizations', '/contacts', '/training'].some(p => currentPath.startsWith(p));
 
+  const isToolsActive = [
+    '/documents', '/reports', '/safety', '/equipment', '/case-review', '/credentials', '/qr-scanner',
+  ].some(p => currentPath.startsWith(p));
+
+  const isAdminSectionActive = [
+    '/settings', '/portals', '/admin/schools',
+  ].some(p => currentPath.startsWith(p));
+
   // Module accent colors (solid, vivid)
   const COLOR_PROPERTY_OPS = 'hsl(142 76% 36%)'; // emerald-600
   const COLOR_PROJECTS     = 'hsl(262 83% 58%)'; // violet-500
@@ -658,119 +666,161 @@ export function AppSidebar() {
             </CollapsibleNavGroup>
           </div>
 
+          {/* ══════════════════════════════════════════════
+               ZONE 2 — TOOLS & REPORTS
+               Docs, Reports, Safety, Equipment, CaseIQ, Credentials, QR
+          ══════════════════════════════════════════════ */}
+          <ZoneDivider />
+
+          <div className={cn('px-2', collapsed && 'px-1')}>
+            <CollapsibleNavGroup
+              title="Tools & Reports"
+              collapsed={collapsed}
+              defaultOpen={isToolsActive}
+              isActive={isToolsActive}
+            >
+              {canView('documents') && (
+                <NavItem to="/documents" icon={<FileText />} label="Documents" collapsed={collapsed} />
+              )}
+              {canView('reports') && (
+                <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
+              )}
+              {isAdminOrOwner && (
+                <NavItem
+                  to="/reports/executive"
+                  icon={<Presentation />}
+                  label="Executive Suite"
+                  collapsed={collapsed}
+                  tooltip="Executive Presentation"
+                />
+              )}
+              {isModuleEnabled('safetyModuleEnabled') && (
+                <NavItem
+                  to="/safety"
+                  icon={<TriangleAlert />}
+                  label="Safety"
+                  collapsed={collapsed}
+                  tooltip="Safety Incident Log"
+                />
+              )}
+              {isModuleEnabled('equipmentTrackerEnabled') && (
+                <NavItem
+                  to="/equipment"
+                  icon={<Truck />}
+                  label="Equipment"
+                  collapsed={collapsed}
+                  tooltip="Equipment & Fleet Tracker"
+                />
+              )}
+              {isAdmin && (
+                <NavItem
+                  to="/case-review"
+                  icon={<Gavel />}
+                  label="CaseIQ"
+                  collapsed={collapsed}
+                  tooltip="AI Regulatory Case Review"
+                />
+              )}
+              {isModuleEnabled('credentialWalletEnabled') && isAdmin && (
+                <NavItem
+                  to="/credentials"
+                  icon={<BadgeCheck />}
+                  label="Credentials"
+                  collapsed={collapsed}
+                  tooltip="Credential Compliance"
+                />
+              )}
+              {isModuleEnabled('qrScanningEnabled') && (
+                <NavItem to="/qr-scanner" icon={<QrCode />} label="QR Scanner" collapsed={collapsed} />
+              )}
+            </CollapsibleNavGroup>
+          </div>
+
+          {/* ══════════════════════════════════════════════
+               ZONE 3 — ADMIN (admin-only)
+               Workspace, Portals, LW Schools, Settings, Roles, Escalation
+          ══════════════════════════════════════════════ */}
+          {isAdmin && (
+            <>
+              <ZoneDivider />
+              <div className={cn('px-2', collapsed && 'px-1')}>
+                <CollapsibleNavGroup
+                  title="Admin"
+                  collapsed={collapsed}
+                  defaultOpen={isAdminSectionActive}
+                  isActive={isAdminSectionActive}
+                >
+                  <NavItem
+                    to="/settings/workspace"
+                    icon={<Building />}
+                    label="Workspace Profile"
+                    collapsed={collapsed}
+                    tooltip="Company Branding & Identity"
+                  />
+                  {isModuleEnabled('clientPortalEnabled') && (
+                    <NavItem
+                      to="/portals"
+                      icon={<Share2 />}
+                      label="Client Portals"
+                      collapsed={collapsed}
+                      tooltip="Client Portals"
+                    />
+                  )}
+                  <NavItem
+                    to="/admin/schools"
+                    icon={<GraduationCap />}
+                    label="LW Schools"
+                    collapsed={collapsed}
+                    tooltip="LearnWorlds School Management"
+                  />
+                  {canView('settings') && (
+                    <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
+                  )}
+                  <NavItem
+                    to="/settings/roles"
+                    icon={<ShieldCheck />}
+                    label="Roles & Access"
+                    collapsed={collapsed}
+                  />
+                  <NavItem
+                    to="/settings/escalation"
+                    icon={<Bell />}
+                    label="Escalation Rules"
+                    collapsed={collapsed}
+                    tooltip="SLA & Escalation Engine"
+                  />
+                </CollapsibleNavGroup>
+              </div>
+            </>
+          )}
+
+          {/* Non-admin settings access */}
+          {!isAdmin && canView('settings') && (
+            <>
+              <ZoneDivider />
+              <div className={cn('px-2', collapsed && 'px-1')}>
+                <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
+              </div>
+            </>
+          )}
+
+          {isPlatformAdmin && (
+            <>
+              <ZoneDivider />
+              <div className={cn('px-2', collapsed && 'px-1')}>
+                <NavItem to="/platform" icon={<Globe />} label="Platform Admin" collapsed={collapsed} />
+              </div>
+            </>
+          )}
+
         </SidebarContent>
 
         {/* Rail for drag-to-resize */}
         <SidebarRail />
 
-        {/* ────────────────── FOOTER ────────────────── */}
-        <SidebarFooter className="border-t border-[hsl(var(--sidebar-border))] p-2 overflow-y-auto overflow-x-hidden max-h-[42vh] space-y-0.5">
-          <FooterSectionLabel label="Intelligence" collapsed={collapsed} />
-          {canView('documents') && (
-            <NavItem to="/documents" icon={<FileText />} label="Documents" collapsed={collapsed} />
-          )}
-          {canView('reports') && (
-            <NavItem to="/reports" icon={<BarChart3 />} label="Reports" collapsed={collapsed} />
-          )}
-          {isAdminOrOwner && (
-            <NavItem
-              to="/reports/executive"
-              icon={<Presentation />}
-              label="Executive Suite"
-              collapsed={collapsed}
-              tooltip="Executive Presentation"
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              to="/case-review"
-              icon={<Gavel />}
-              label="CaseIQ"
-              collapsed={collapsed}
-              tooltip="AI Regulatory Case Review"
-            />
-          )}
-
-          <FooterSectionLabel label="Specialized Modules" collapsed={collapsed} />
-          {isModuleEnabled('qrScanningEnabled') && (
-            <NavItem to="/qr-scanner" icon={<QrCode />} label="QR Scanner" collapsed={collapsed} />
-          )}
-          {isModuleEnabled('credentialWalletEnabled') && isAdmin && (
-            <NavItem
-              to="/credentials"
-              icon={<BadgeCheck />}
-              label="Credentials"
-              collapsed={collapsed}
-              tooltip="Credential Compliance"
-            />
-          )}
-          {isModuleEnabled('safetyModuleEnabled') && (
-            <NavItem
-              to="/safety"
-              icon={<TriangleAlert />}
-              label="Safety"
-              collapsed={collapsed}
-              tooltip="Safety Incident Log"
-            />
-          )}
-          {isModuleEnabled('equipmentTrackerEnabled') && (
-            <NavItem
-              to="/equipment"
-              icon={<Truck />}
-              label="Equipment"
-              collapsed={collapsed}
-              tooltip="Equipment & Fleet Tracker"
-            />
-          )}
-          {isModuleEnabled('clientPortalEnabled') && isAdmin && (
-            <NavItem
-              to="/portals"
-              icon={<Share2 />}
-              label="Client Portals"
-              collapsed={collapsed}
-              tooltip="Client Portals"
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              to="/admin/schools"
-              icon={<GraduationCap />}
-              label="LW Schools"
-              collapsed={collapsed}
-              tooltip="LearnWorlds School Management"
-            />
-          )}
-
-          <FooterSectionLabel label="Administration" collapsed={collapsed} />
-          {isAdmin && (
-            <NavItem
-              to="/settings/workspace"
-              icon={<Building />}
-              label="Workspace Profile"
-              collapsed={collapsed}
-              tooltip="Company Branding & Identity"
-            />
-          )}
-          {canView('settings') && (
-            <NavItem to="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
-          )}
-          {isAdmin && (
-            <NavItem
-              to="/settings/roles"
-              icon={<ShieldCheck />}
-              label="Roles & Access"
-              collapsed={collapsed}
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              to="/settings/escalation"
-              icon={<Bell />}
-              label="Escalation Rules"
-              collapsed={collapsed}
-              tooltip="SLA & Escalation Engine"
-            />
-          )}
+        {/* ────────────────── FOOTER (ZONE 4) ────────────────── */}
+        {/* Only: Sync Issues (conditional), User Profile, Sign Out */}
+        <SidebarFooter className="border-t border-[hsl(var(--sidebar-border))] p-2 space-y-0.5">
           {failedCount > 0 && (
             <NavItem
               to="/settings"
@@ -781,13 +831,6 @@ export function AppSidebar() {
               badgeVariant="urgent"
               tooltip={`${failedCount} offline change${failedCount !== 1 ? 's' : ''} failed to sync`}
             />
-          )}
-
-          {isPlatformAdmin && (
-            <>
-              <ZoneDivider />
-              <NavItem to="/platform" icon={<Globe />} label="Platform Admin" collapsed={collapsed} />
-            </>
           )}
 
           {/* User identity → /profile */}
@@ -811,7 +854,7 @@ export function AppSidebar() {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <div className="flex items-center gap-2 mt-1 pl-1">
+            <div className="flex items-center gap-2 pl-1">
               <button
                 onClick={() => navigate('/profile')}
                 className="flex flex-1 min-w-0 items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-white/5 focus:outline-none text-left"
