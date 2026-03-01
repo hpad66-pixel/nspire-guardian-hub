@@ -79,7 +79,13 @@ export function ProposalSendDialog({
       proposal.recipient_email
     )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-    window.open(gmailUrl, "_blank");
+    const link = document.createElement("a");
+    link.href = gmailUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     toast.success("Gmail compose window opened");
   };
 
