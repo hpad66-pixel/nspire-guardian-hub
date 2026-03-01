@@ -92,6 +92,74 @@ const TAB_GROUPS = [
   { key: 'reports',    label: 'Reports',    color: 'text-purple-400' },
 ];
 
+// ── Inline editable Scope of Work card ──
+function ScopeOfWorkCard({ project, updateProject }: { project: any; updateProject: any }) {
+  const [editing, setEditing] = useState(false);
+  const [scope, setScope] = useState(project.scope || '');
+  const [description, setDescription] = useState(project.description || '');
+
+  const handleSave = async () => {
+    await updateProject.mutateAsync({ id: project.id, scope, description });
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setScope(project.scope || '');
+    setDescription(project.description || '');
+    setEditing(false);
+  };
+
+  return (
+    <div className="rounded-xl border bg-card p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><PenSquare className="h-3.5 w-3.5 text-module-projects" /></div>
+          <div><h3 className="font-semibold text-sm">Scope of Work</h3><p className="text-[10px] text-muted-foreground">Project description & scope</p></div>
+        </div>
+        {!editing && (
+          <button onClick={() => setEditing(true)} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <Edit className="h-3 w-3" /> Edit
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-3 pt-1">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1 block">Description</label>
+            <textarea
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[60px] resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Brief project description..."
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1 block">Scope Details</label>
+            <textarea
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[100px] resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+              value={scope}
+              onChange={e => setScope(e.target.value)}
+              placeholder="Detailed scope of work..."
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={handleCancel} className="px-3 py-1.5 text-xs rounded-md border hover:bg-muted transition-colors">Cancel</button>
+            <button onClick={handleSave} disabled={updateProject.isPending} className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {updateProject.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3 pt-1">
+          {project.description && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p></div>)}
+          {project.scope && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p></div>)}
+          {!project.description && !project.scope && (<p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet. Click "Edit" to add one.</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -732,22 +800,7 @@ export default function ProjectDetailPage() {
                   )}
                   <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
                   <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border bg-card p-5 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center">
-                          <PenSquare className="h-3.5 w-3.5 text-module-projects" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm">Scope of Work</h3>
-                          <p className="text-[10px] text-muted-foreground">Project description & scope</p>
-                        </div>
-                      </div>
-                      <div className="space-y-3 pt-1">
-                        {project.description && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p></div>)}
-                        {project.scope && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p></div>)}
-                        {!project.description && !project.scope && (<p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet.</p>)}
-                      </div>
-                    </div>
+                    <ScopeOfWorkCard project={project} updateProject={updateProject} />
                     <div className="rounded-xl border bg-card p-5 space-y-3">
                       <div className="flex items-center gap-2">
                         <div className="h-7 w-7 rounded-lg bg-accent/10 flex items-center justify-center"><CalendarDays className="h-3.5 w-3.5 text-accent" /></div>
@@ -1022,17 +1075,7 @@ export default function ProjectDetailPage() {
                 )}
                 <GanttChart milestones={milestones || []} projectStart={project.start_date} projectEnd={project.target_end_date} />
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-xl border bg-card p-5 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><PenSquare className="h-3.5 w-3.5 text-module-projects" /></div>
-                      <div><h3 className="font-semibold text-sm">Scope of Work</h3><p className="text-[10px] text-muted-foreground">Project description & scope</p></div>
-                    </div>
-                    <div className="space-y-3 pt-1">
-                      {project.description && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Description</p><p className="text-sm text-foreground/80 leading-relaxed">{project.description}</p></div>)}
-                      {project.scope && (<div><p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-1">Scope Details</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{project.scope}</p></div>)}
-                      {!project.description && !project.scope && (<p className="text-sm text-muted-foreground italic py-4 text-center">No scope defined yet.</p>)}
-                    </div>
-                  </div>
+                  <ScopeOfWorkCard project={project} updateProject={updateProject} />
                   <div className="rounded-xl border bg-card p-5 space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-lg bg-accent/10 flex items-center justify-center"><CalendarDays className="h-3.5 w-3.5 text-accent" /></div>
@@ -1112,21 +1155,9 @@ export default function ProjectDetailPage() {
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
         <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
         <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
-
-
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
-        <ReportGeneratorDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          projectId={id!}
-          projectName={project.name}
-        />
-        <ProjectTeamSheet
-          open={teamSheetOpen}
-          onOpenChange={setTeamSheetOpen}
-          projectId={id!}
-          projectName={project.name}
-        />
+        <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
+        <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
       </div>
 
       {/* ── Desktop overlay panels — slide in from right ─────────────── */}
