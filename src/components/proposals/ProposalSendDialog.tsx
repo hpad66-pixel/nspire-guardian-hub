@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfiles } from "@/hooks/useProfiles";
 import { generatePDFBase64 } from "@/lib/generatePDF";
 import type { CompanyBranding } from "@/hooks/useCompanyBranding";
-import { Loader2, Send, FileText } from "lucide-react";
+import { Loader2, Send, FileText, Mail } from "lucide-react";
 
 interface ProposalData {
   id?: string;
@@ -61,6 +61,27 @@ export function ProposalSendDialog({
 
   const project = projects?.find((p) => p.id === proposal.project_id);
   const userProfile = profiles?.find((p) => p.user_id === user?.id);
+
+  const handleOpenInGmail = () => {
+    if (!proposal.recipient_email) {
+      toast.error("Recipient email is required");
+      return;
+    }
+
+    const subject = `${proposal.title} - ${project?.name || "Project"}`;
+    // Convert HTML to plain text for Gmail compose
+    const plainContent = proposal.content_html.replace(/<[^>]*>/g, "");
+    const body = message
+      ? `${message}\n\n---\n\n${plainContent}`
+      : plainContent;
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+      proposal.recipient_email
+    )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    window.open(gmailUrl, "_blank");
+    toast.success("Gmail compose window opened");
+  };
 
   const handleSend = async () => {
     if (!proposal.recipient_email) {
@@ -205,9 +226,13 @@ export function ProposalSendDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
             Cancel
+          </Button>
+          <Button variant="outline" onClick={handleOpenInGmail} disabled={isSending}>
+            <Mail className="h-4 w-4 mr-2" />
+            Open in Gmail
           </Button>
           <Button onClick={handleSend} disabled={isSending}>
             {isSending ? (
@@ -218,7 +243,7 @@ export function ProposalSendDialog({
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Send Proposal
+                Send via APAS
               </>
             )}
           </Button>
