@@ -10,6 +10,7 @@ export interface ProjectTeamMember {
   project_id: string;
   user_id: string;
   role: AppRole;
+  status: string;
   added_by: string | null;
   created_at: string;
   profile: {
@@ -118,6 +119,31 @@ export function useUpdateProjectTeamMemberRole() {
     },
     onError: (err: Error) => {
       toast.error(`Failed to update role: ${err.message}`);
+    },
+  });
+}
+
+export function useUpdateProjectTeamMemberStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId, status }: { id: string; projectId: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('project_team_members')
+        .update({ status })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['project-team', projectId] });
+      const status = (_data as any)?.status;
+      const msg = status === 'active' ? 'Member reactivated' : status === 'suspended' ? 'Member suspended' : 'Member deactivated';
+      toast.success(msg);
+    },
+    onError: (err: Error) => {
+      toast.error(`Failed to update status: ${err.message}`);
     },
   });
 }

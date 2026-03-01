@@ -14,7 +14,6 @@ interface InvitationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -50,15 +49,69 @@ const handler = async (req: Request): Promise<Response> => {
 
     const inviterName = inviterProfile?.full_name || "A team member";
 
-    // Generate the accept URL - force production domain
-    const acceptUrl = `https://cm.apaslabs.org/accept-invite/${invitation.token}`;
+    // Fetch workspace details for dynamic branding
+    const workspaceId = invitation.workspace_id;
+    let orgName = "APAS OS";
+    let primaryColor = "#3b82f6";
+    let logoUrl: string | null = null;
+    let fromEmail = "admin@apas.ai";
+    let siteUrl = "https://apasos.ai";
+
+    if (workspaceId) {
+      const { data: workspace } = await supabase
+        .from("workspaces")
+        .select("name, client_company")
+        .eq("id", workspaceId)
+        .single();
+
+      if (workspace) {
+        orgName = workspace.client_company || workspace.name || orgName;
+      }
+
+      // Try to fetch company branding for this workspace
+      const { data: branding } = await supabase
+        .from("company_branding")
+        .select("company_name, primary_color, logo_url, email, website")
+        .eq("workspace_id", workspaceId)
+        .limit(1)
+        .single();
+
+      if (branding) {
+        orgName = branding.company_name || orgName;
+        primaryColor = branding.primary_color || primaryColor;
+        logoUrl = branding.logo_url || null;
+        if (branding.website) siteUrl = branding.website;
+      }
+    }
+
+    // Build accept URL using the site URL or fallback
+    const acceptUrl = `${siteUrl}/accept-invite/${invitation.token}`;
+
+    // Compute gradient colors
+    const gradientEnd = primaryColor; // Use primary as-is for gradient
 
     const roleLabels: Record<string, string> = {
       admin: "Administrator",
-      manager: "Property Manager",
+      owner: "Owner",
+      manager: "Manager",
+      administrator: "Administrator",
+      project_manager: "Project Manager",
+      superintendent: "Superintendent",
       inspector: "Inspector",
+      subcontractor: "Subcontractor",
+      clerk: "Clerk",
+      viewer: "Viewer",
       user: "Team Member",
     };
+
+    const logoBlock = logoUrl
+      ? `<img src="${logoUrl}" alt="${orgName}" style="max-height: 48px; max-width: 200px; margin-bottom: 12px;" />`
+      : `<div style="display: inline-block; padding: 16px; background: linear-gradient(135deg, ${primaryColor}, ${gradientEnd}); border-radius: 16px;">
+           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+             <polyline points="9 22 9 12 15 12 15 22"></polyline>
+           </svg>
+         </div>`;
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -69,24 +122,19 @@ const handler = async (req: Request): Promise<Response> => {
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 40px;">
-            <div style="display: inline-block; padding: 16px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px;">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </div>
-            <h1 style="margin: 16px 0 8px; font-size: 24px; font-weight: 600;">Glorieta Gardens Apartments</h1>
+            ${logoBlock}
+            <h1 style="margin: 16px 0 8px; font-size: 24px; font-weight: 600;">${orgName}</h1>
           </div>
 
           <div style="background: #f8fafc; border-radius: 12px; padding: 32px; margin-bottom: 24px;">
             <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">You're invited!</h2>
             <p style="margin: 0 0 16px; color: #64748b;">
-              ${inviterName} has invited you to join Glorieta Gardens Apartments as a <strong>${roleLabels[invitation.role] || invitation.role}</strong>.
+              ${inviterName} has invited you to join <strong>${orgName}</strong> as a <strong>${roleLabels[invitation.role] || invitation.role}</strong>.
             </p>
             <p style="margin: 0 0 24px; color: #64748b;">
               Click the button below to create your account and get started.
             </p>
-            <a href="${acceptUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            <a href="${acceptUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, ${primaryColor}, ${gradientEnd}); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
               Accept Invitation
             </a>
           </div>
@@ -109,9 +157,9 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Glorieta Gardens <admin@apas.ai>",
+        from: `${orgName} <${fromEmail}>`,
         to: [invitation.email],
-        subject: `${inviterName} invited you to Glorieta Gardens Apartments`,
+        subject: `${inviterName} invited you to ${orgName}`,
         html: emailHtml,
       }),
     });
