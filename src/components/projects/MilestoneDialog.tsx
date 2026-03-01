@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X, UserPlus, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -32,10 +32,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useCreateMilestone, useUpdateMilestone } from '@/hooks/useMilestones';
+import { useProjectTeamMembers, useAddProjectTeamMember } from '@/hooks/useProjectTeam';
+import { useSearchProfiles } from '@/hooks/useProfiles';
 import { ProjectTeamAssignSelect } from './ProjectTeamAssignSelect';
 import type { Database } from '@/integrations/supabase/types';
+import { toast } from 'sonner';
 
 type MilestoneRow = Database['public']['Tables']['project_milestones']['Row'];
 
@@ -60,6 +65,14 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
   const createMutation = useCreateMilestone();
   const updateMutation = useUpdateMilestone();
   const isEditing = !!milestone;
+  const { data: teamMembers = [] } = useProjectTeamMembers(projectId);
+  const addMember = useAddProjectTeamMember();
+
+  // Collaborator state (managed outside react-hook-form since it's a uuid[])
+  const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
+  const [showCollabSearch, setShowCollabSearch] = useState(false);
+  const [collabSearch, setCollabSearch] = useState('');
+  const { data: searchResults = [] } = useSearchProfiles(collabSearch);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -80,6 +93,7 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
         assigned_to: milestone.assigned_to || null,
         notes: milestone.notes || '',
       });
+      setCollaboratorIds((milestone as any).collaborator_ids || []);
     } else {
       form.reset({
         name: '',
@@ -87,15 +101,17 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
         assigned_to: null,
         notes: '',
       });
+      setCollaboratorIds([]);
     }
   }, [milestone, form]);
 
   const onSubmit = (data: FormData) => {
-    const payload = {
+    const payload: any = {
       name: data.name,
       due_date: format(data.due_date, 'yyyy-MM-dd'),
       status: data.status,
       assigned_to: data.assigned_to || null,
+      collaborator_ids: collaboratorIds,
       notes: data.notes || null,
       project_id: projectId,
     };
@@ -110,9 +126,48 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
     }
   };
 
+  // Build collaborator profile lookup
+  const existingUserIds = new Set(teamMembers.map(m => m.user_id));
+  const addableFromSearch = searchResults.filter(
+    p => !existingUserIds.has(p.user_id) && !collaboratorIds.includes(p.user_id)
+  );
+  const teamNotInCollabs = teamMembers.filter(
+    m => !collaboratorIds.includes(m.user_id) && m.user_id !== form.getValues('assigned_to')
+  );
+
+  const getProfile = (userId: string) => {
+    const member = teamMembers.find(m => m.user_id === userId);
+    return member?.profile ?? null;
+  };
+
+  const removeCollaborator = (userId: string) => {
+    setCollaboratorIds(prev => prev.filter(id => id !== userId));
+  };
+
+  const addCollaborator = (userId: string) => {
+    if (!collaboratorIds.includes(userId)) {
+      setCollaboratorIds(prev => [...prev, userId]);
+    }
+    setShowCollabSearch(false);
+    setCollabSearch('');
+  };
+
+  const handleAddExternalAndCollaborate = async (userId: string) => {
+    try {
+      await addMember.mutateAsync({ projectId, userId, role: 'subcontractor' });
+      addCollaborator(userId);
+      toast.success('Added to project team as collaborator');
+    } catch {
+      // handled by hook
+    }
+  };
+
+  const initials = (name: string | null | undefined) =>
+    (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Milestone' : 'Add Milestone'}</DialogTitle>
           <DialogDescription>
@@ -172,24 +227,160 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
               )}
             />
 
+            {/* Assignee (single owner) */}
             <FormField
               control={form.control}
               name="assigned_to"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign To</FormLabel>
+                  <FormLabel>Assignee</FormLabel>
                   <FormControl>
                     <ProjectTeamAssignSelect
                       projectId={projectId}
                       value={field.value}
                       onValueChange={(val) => field.onChange(val)}
                       useSentinel
+                      placeholder="Who owns this milestone?"
                     />
                   </FormControl>
+                  <p className="text-[11px] text-muted-foreground mt-1">Primary person responsible</p>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Collaborators (multi-select) */}
+            <div className="space-y-2">
+              <FormLabel>Collaborators</FormLabel>
+              <p className="text-[11px] text-muted-foreground">Others who should be tagged and notified</p>
+              
+              {/* Tags for selected collaborators */}
+              {collaboratorIds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {collaboratorIds.map(uid => {
+                    const profile = getProfile(uid);
+                    return (
+                      <Badge key={uid} variant="secondary" className="gap-1 pr-1 text-xs">
+                        <Avatar className="h-4 w-4">
+                          <AvatarImage src={profile?.avatar_url ?? undefined} />
+                          <AvatarFallback className="text-[8px]">{initials(profile?.full_name)}</AvatarFallback>
+                        </Avatar>
+                        {profile?.full_name || profile?.email || 'Unknown'}
+                        <button
+                          type="button"
+                          onClick={() => removeCollaborator(uid)}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add collaborator search */}
+              {showCollabSearch ? (
+                <div className="rounded-md border p-2 bg-background space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">Add collaborator</p>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setShowCollabSearch(false); setCollabSearch(''); }}>
+                      Done
+                    </Button>
+                  </div>
+
+                  {/* Quick-add from existing team */}
+                  {teamNotInCollabs.length > 0 && !collabSearch && (
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Project Team</p>
+                      {teamNotInCollabs.slice(0, 5).map(m => (
+                        <button
+                          key={m.user_id}
+                          type="button"
+                          onClick={() => addCollaborator(m.user_id)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors text-left"
+                        >
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={m.profile?.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[9px]">{initials(m.profile?.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Search for users outside team */}
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={collabSearch}
+                      onChange={e => setCollabSearch(e.target.value)}
+                      placeholder="Search by name or email..."
+                      className="h-8 pl-7 text-xs"
+                      autoFocus
+                    />
+                  </div>
+                  {collabSearch && (
+                    <div className="max-h-28 overflow-y-auto space-y-0.5">
+                      {/* Team members matching search */}
+                      {teamNotInCollabs
+                        .filter(m => {
+                          const s = collabSearch.toLowerCase();
+                          return (m.profile?.full_name?.toLowerCase().includes(s) || m.profile?.email?.toLowerCase().includes(s));
+                        })
+                        .map(m => (
+                          <button
+                            key={m.user_id}
+                            type="button"
+                            onClick={() => addCollaborator(m.user_id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors text-left"
+                          >
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={m.profile?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-[9px]">{initials(m.profile?.full_name)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{m.profile?.full_name || m.profile?.email}</span>
+                          </button>
+                        ))}
+                      {/* Users not on team */}
+                      {addableFromSearch.map(p => (
+                        <button
+                          key={p.user_id}
+                          type="button"
+                          onClick={() => handleAddExternalAndCollaborate(p.user_id)}
+                          disabled={addMember.isPending}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors text-left"
+                        >
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={p.avatar_url ?? undefined} />
+                            <AvatarFallback className="text-[9px]">{initials(p.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate">{p.full_name || p.email}</span>
+                          </div>
+                          <UserPlus className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </button>
+                      ))}
+                      {addableFromSearch.length === 0 && teamNotInCollabs.length === 0 && (
+                        <p className="text-xs text-muted-foreground py-2 text-center">No users found</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setShowCollabSearch(true)}
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Add Collaborator
+                </Button>
+              )}
+            </div>
 
             {isEditing && (
               <FormField
