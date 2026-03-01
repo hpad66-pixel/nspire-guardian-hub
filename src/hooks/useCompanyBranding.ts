@@ -70,6 +70,15 @@ export function useUpsertBranding() {
 
       const userId = sessionData.session.user.id;
 
+      // Get workspace_id from profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("workspace_id")
+        .eq("user_id", userId)
+        .single();
+
+      const workspaceId = profile?.workspace_id;
+
       // Check if branding exists
       const { data: existing } = await supabase
         .from("company_branding")
@@ -81,7 +90,7 @@ export function useUpsertBranding() {
         // Update
         const { data: updated, error } = await supabase
           .from("company_branding")
-          .update(data)
+          .update({ ...data, workspace_id: workspaceId })
           .eq("id", existing.id)
           .select()
           .single();
@@ -92,7 +101,7 @@ export function useUpsertBranding() {
         // Insert
         const { data: created, error } = await supabase
           .from("company_branding")
-          .insert({ ...data, user_id: userId })
+          .insert({ ...data, user_id: userId, workspace_id: workspaceId })
           .select()
           .single();
 
