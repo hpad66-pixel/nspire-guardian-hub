@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreatePunchItem, useUpdatePunchItem, type PunchItem } from '@/hooks/usePunchItems';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { useAuth } from '@/hooks/useAuth';
 
 interface PunchItemDialogProps {
@@ -32,7 +32,7 @@ const priorityOptions = [
 export function PunchItemDialog({ open, onOpenChange, projectId, punchItem }: PunchItemDialogProps) {
   const isEditing = !!punchItem;
   const { user } = useAuth();
-  const { data: profiles } = useProfiles();
+  const { data: teamMembers } = useProjectTeamMembers(projectId);
   const createPunchItem = useCreatePunchItem();
   const updatePunchItem = useUpdatePunchItem();
   
@@ -150,9 +150,9 @@ export function PunchItemDialog({ open, onOpenChange, projectId, punchItem }: Pu
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.user_id} value={profile.user_id}>
-                      {profile.full_name || profile.email || 'Unknown'}
+                  {(teamMembers ?? []).map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.profile?.full_name || member.profile?.email || 'Unknown'}
                     </SelectItem>
                   ))}
                 </SelectContent>

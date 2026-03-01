@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateRFI, useUpdateRFI, type RFI } from '@/hooks/useRFIs';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { useAuth } from '@/hooks/useAuth';
 
 interface RFIDialogProps {
@@ -26,7 +26,7 @@ interface RFIDialogProps {
 export function RFIDialog({ open, onOpenChange, projectId, rfi }: RFIDialogProps) {
   const isEditing = !!rfi;
   const { user } = useAuth();
-  const { data: profiles } = useProfiles();
+  const { data: teamMembers } = useProjectTeamMembers(projectId);
   const createRFI = useCreateRFI();
   const updateRFI = useUpdateRFI();
   
@@ -125,9 +125,9 @@ export function RFIDialog({ open, onOpenChange, projectId, rfi }: RFIDialogProps
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.user_id} value={profile.user_id}>
-                      {profile.full_name || profile.email || 'Unknown'}
+                  {(teamMembers ?? []).map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.profile?.full_name || member.profile?.email || 'Unknown'}
                     </SelectItem>
                   ))}
                 </SelectContent>

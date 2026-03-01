@@ -138,7 +138,7 @@ export function PersonDialog({ open, onOpenChange }: PersonDialogProps) {
 
       // 2. Project assignment
       if (data.assign_project && data.project_id && data.project_role) {
-        addProjectMember.mutate({
+        await addProjectMember.mutateAsync({
           projectId: data.project_id,
           userId: data.user_id,
           role: data.project_role as AppRole,
