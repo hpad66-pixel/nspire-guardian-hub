@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, UserPlus, UserMinus, Search, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ChevronDown, Ban, ShieldCheck, ShieldOff } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -21,10 +21,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   useProjectTeamMembers,
   useAddProjectTeamMember,
   useRemoveProjectTeamMember,
   useUpdateProjectTeamMemberRole,
+  useUpdateProjectTeamMemberStatus,
 } from '@/hooks/useProjectTeam';
 import { useUsers } from '@/hooks/useUserManagement';
 import type { Database } from '@/integrations/supabase/types';
@@ -52,6 +58,12 @@ const ROLE_COLORS: Record<string, string> = {
   owner:           'bg-amber-500/10 text-amber-600 border-amber-500/20',
 };
 
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  active:      { label: 'Active',      color: 'bg-success/10 text-success border-success/20' },
+  suspended:   { label: 'Suspended',   color: 'bg-warning/10 text-warning border-warning/20' },
+  deactivated: { label: 'Deactivated', color: 'bg-destructive/10 text-destructive border-destructive/20' },
+};
+
 function getInitials(name?: string | null, email?: string | null) {
   if (name) return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   if (email) return email.slice(0, 2).toUpperCase();
@@ -74,10 +86,13 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
   const addMember = useAddProjectTeamMember();
   const removeMember = useRemoveProjectTeamMember();
   const updateRole = useUpdateProjectTeamMemberRole();
+  const updateStatus = useUpdateProjectTeamMemberStatus();
 
   const memberUserIds = new Set(members.map(m => m.user_id));
 
-  // Users not yet on the project, filtered by search
+  const activeMembers = members.filter(m => (m.status || 'active') === 'active');
+  const inactiveMembers = members.filter(m => (m.status || 'active') !== 'active');
+
   const availableUsers = allUsers.filter(u => {
     if (memberUserIds.has(u.user_id)) return false;
     const q = searchQuery.toLowerCase();
@@ -90,6 +105,108 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
   const handleAdd = (userId: string) => {
     addMember.mutate({ projectId, userId, role: addRole });
     setSearchQuery('');
+  };
+
+  const renderMemberCard = (member: typeof members[0]) => {
+    const name = member.profile?.full_name;
+    const email = member.profile?.email;
+    const roleLabel = PROJECT_ROLES.find(r => r.value === member.role)?.label ?? member.role;
+    const roleColor = ROLE_COLORS[member.role] ?? ROLE_COLORS.viewer;
+    const status = member.status || 'active';
+    const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.active;
+    const isInactive = status !== 'active';
+
+    return (
+      <div key={member.id} className={`flex items-center gap-3 p-3 border rounded-lg bg-card ${isInactive ? 'opacity-60' : ''}`}>
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage src={member.profile?.avatar_url ?? undefined} />
+          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+            {getInitials(name, email)}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{name || 'Unnamed User'}</p>
+          <p className="text-xs text-muted-foreground truncate">{email}</p>
+        </div>
+
+        {/* Status badge */}
+        {isInactive && (
+          <Badge variant="outline" className={`text-[10px] ${statusCfg.color}`}>
+            {statusCfg.label}
+          </Badge>
+        )}
+
+        {/* Role badge + change */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="shrink-0">
+              <Badge variant="outline" className={`${roleColor} gap-1 cursor-pointer hover:opacity-80 transition-opacity`}>
+                {roleLabel}
+                <ChevronDown className="h-3 w-3" />
+              </Badge>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {PROJECT_ROLES.map(r => (
+              <DropdownMenuItem
+                key={r.value}
+                onClick={() => updateRole.mutate({ id: member.id, projectId, role: r.value })}
+                className={member.role === r.value ? 'bg-accent' : ''}
+              >
+                {r.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Status / Remove actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground">
+              <UserMinus className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Member Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {status === 'active' ? (
+              <>
+                <DropdownMenuItem
+                  onClick={() => updateStatus.mutate({ id: member.id, projectId, status: 'suspended' })}
+                >
+                  <Ban className="h-4 w-4 mr-2 text-warning" />
+                  Suspend
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => updateStatus.mutate({ id: member.id, projectId, status: 'deactivated' })}
+                >
+                  <ShieldOff className="h-4 w-4 mr-2 text-destructive" />
+                  Deactivate
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => updateStatus.mutate({ id: member.id, projectId, status: 'active' })}
+              >
+                <ShieldCheck className="h-4 w-4 mr-2 text-success" />
+                Reactivate
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => removeMember.mutate({ id: member.id, projectId })}
+              className="text-destructive focus:text-destructive"
+            >
+              <UserMinus className="h-4 w-4 mr-2" />
+              Remove from Project
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
   };
 
   return (
@@ -105,10 +222,10 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
 
-          {/* ── Current members ─────────────────────────────────────── */}
+          {/* ── Active members ─────────────────────────────────────── */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              Team Members ({members.length})
+              Active Members ({activeMembers.length})
             </h3>
 
             {membersLoading ? (
@@ -123,75 +240,30 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                   </div>
                 ))}
               </div>
-            ) : members.length === 0 ? (
+            ) : activeMembers.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground rounded-xl border border-dashed">
                 <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No team members yet</p>
+                <p className="text-sm">No active team members</p>
                 <p className="text-xs mt-1">Add people from the section below</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {members.map(member => {
-                  const name = member.profile?.full_name;
-                  const email = member.profile?.email;
-                  const roleLabel = PROJECT_ROLES.find(r => r.value === member.role)?.label ?? member.role;
-                  const roleColor = ROLE_COLORS[member.role] ?? ROLE_COLORS.viewer;
-                  return (
-                    <div key={member.id} className="flex items-center gap-3 p-3 border rounded-lg bg-card">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarImage src={member.profile?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {getInitials(name, email)}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{name || 'Unnamed User'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{email}</p>
-                      </div>
-
-                      {/* Role badge + change */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="shrink-0">
-                            <Badge variant="outline" className={`${roleColor} gap-1 cursor-pointer hover:opacity-80 transition-opacity`}>
-                              {roleLabel}
-                              <ChevronDown className="h-3 w-3" />
-                            </Badge>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {PROJECT_ROLES.map(r => (
-                            <DropdownMenuItem
-                              key={r.value}
-                              onClick={() => updateRole.mutate({ id: member.id, projectId, role: r.value })}
-                              className={member.role === r.value ? 'bg-accent' : ''}
-                            >
-                              {r.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Remove */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeMember.mutate({ id: member.id, projectId })}
-                        disabled={removeMember.isPending}
-                        title="Remove from project"
-                      >
-                        <UserMinus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
+                {activeMembers.map(renderMemberCard)}
               </div>
             )}
           </section>
+
+          {/* ── Inactive members ───────────────────────────────────── */}
+          {inactiveMembers.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                Suspended / Deactivated ({inactiveMembers.length})
+              </h3>
+              <div className="space-y-2">
+                {inactiveMembers.map(renderMemberCard)}
+              </div>
+            </section>
+          )}
 
           {/* ── Add people ──────────────────────────────────────────── */}
           <section>
@@ -200,7 +272,6 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
             </h3>
 
             <div className="flex gap-2 mb-3">
-              {/* Search */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
@@ -211,7 +282,6 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                 />
               </div>
 
-              {/* Role picker for adding */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1 shrink-0 h-9 text-xs">
