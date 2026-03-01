@@ -62,31 +62,36 @@ export function ProposalSendDialog({
   const project = projects?.find((p) => p.id === proposal.project_id);
   const userProfile = profiles?.find((p) => p.user_id === user?.id);
 
+  const buildGmailData = () => {
+    const subject = `${proposal.title} - ${project?.name || "Project"}`;
+    const plainContent = proposal.content_html.replace(/<[^>]*>/g, "");
+    const body = message
+      ? `${message}\n\n---\n\n${plainContent}`
+      : plainContent;
+    return { subject, body };
+  };
+
   const handleOpenInGmail = () => {
     if (!proposal.recipient_email) {
       toast.error("Recipient email is required");
       return;
     }
 
-    const subject = `${proposal.title} - ${project?.name || "Project"}`;
-    // Convert HTML to plain text for Gmail compose
-    const plainContent = proposal.content_html.replace(/<[^>]*>/g, "");
-    const body = message
-      ? `${message}\n\n---\n\n${plainContent}`
-      : plainContent;
-
+    const { subject, body } = buildGmailData();
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
       proposal.recipient_email
     )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-    const link = document.createElement("a");
-    link.href = gmailUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Gmail compose window opened");
+    // Copy the Gmail compose URL to clipboard and open mailto as fallback
+    navigator.clipboard.writeText(gmailUrl).then(() => {
+      toast.success("Gmail compose link copied to clipboard! Opening email client...");
+    }).catch(() => {
+      toast.success("Opening email client...");
+    });
+
+    // Use mailto as the reliable cross-environment fallback
+    const mailtoUrl = `mailto:${encodeURIComponent(proposal.recipient_email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
   };
 
   const handleSend = async () => {
@@ -238,7 +243,7 @@ export function ProposalSendDialog({
           </Button>
           <Button variant="outline" onClick={handleOpenInGmail} disabled={isSending}>
             <Mail className="h-4 w-4 mr-2" />
-            Open in Gmail
+            Open in Email
           </Button>
           <Button onClick={handleSend} disabled={isSending}>
             {isSending ? (
