@@ -203,27 +203,60 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
                           )}
                           {(() => {
                             const assignee = getAssigneeName(milestone.assigned_to);
-                            if (!assignee) return null;
-                            const initials = (assignee.full_name || assignee.email || '?')
-                              .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                            const collabIds: string[] = (milestone as any).collaborator_ids || [];
+                            const hasAssignee = !!assignee;
+                            const hasCollabs = collabIds.length > 0;
+                            if (!hasAssignee && !hasCollabs) return null;
+
                             return (
-                              <div className="flex items-center gap-1.5 mt-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1.5">
-                                      <Avatar className="h-5 w-5">
-                                        <AvatarImage src={assignee.avatar_url || undefined} />
-                                        <AvatarFallback className="text-[9px]">{initials}</AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-xs text-muted-foreground">
-                                        {assignee.full_name || assignee.email}
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                {hasAssignee && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1.5">
+                                        <Avatar className="h-5 w-5 ring-2 ring-primary/30">
+                                          <AvatarImage src={assignee.avatar_url || undefined} />
+                                          <AvatarFallback className="text-[9px]">
+                                            {(assignee.full_name || assignee.email || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs font-medium">
+                                          {assignee.full_name || assignee.email}
+                                        </span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="text-xs">
+                                      Assignee: {assignee.full_name || assignee.email}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {hasCollabs && (
+                                  <div className="flex items-center -space-x-1.5">
+                                    {collabIds.map(uid => {
+                                      const cp = getAssigneeName(uid);
+                                      const name = cp?.full_name || cp?.email || '?';
+                                      const ci = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                                      return (
+                                        <Tooltip key={uid}>
+                                          <TooltipTrigger asChild>
+                                            <Avatar className="h-5 w-5 border-2 border-background">
+                                              <AvatarImage src={cp?.avatar_url || undefined} />
+                                              <AvatarFallback className="text-[8px]">{ci}</AvatarFallback>
+                                            </Avatar>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="bottom" className="text-xs">
+                                            Collaborator: {name}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      );
+                                    })}
+                                    {collabIds.length > 0 && (
+                                      <span className="text-[10px] text-muted-foreground ml-2">
+                                        +{collabIds.length} collaborator{collabIds.length > 1 ? 's' : ''}
                                       </span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="text-xs">
-                                    Assigned to {assignee.full_name || assignee.email}
-                                  </TooltipContent>
-                                </Tooltip>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}

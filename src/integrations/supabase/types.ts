@@ -4432,6 +4432,7 @@ export type Database = {
       project_milestones: {
         Row: {
           assigned_to: string | null
+          collaborator_ids: string[] | null
           color: string | null
           completed_at: string | null
           created_at: string
@@ -4447,6 +4448,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          collaborator_ids?: string[] | null
           color?: string | null
           completed_at?: string | null
           created_at?: string
@@ -4462,6 +4464,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          collaborator_ids?: string[] | null
           color?: string | null
           completed_at?: string | null
           created_at?: string
