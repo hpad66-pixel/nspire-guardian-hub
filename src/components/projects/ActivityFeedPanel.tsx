@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone, MapPin, Mail, StickyNote, MoreHorizontal,
   X, Plus, Sparkles, Loader2, Mic, MicOff, Trash2, ChevronDown,
-  Search, Filter, Activity,
+  Search, Filter, Activity, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +36,7 @@ const TYPE_ICONS: Record<UICommType, React.ReactNode> = {
   call:          <Phone className="h-3.5 w-3.5" />,
   site_visit:    <MapPin className="h-3.5 w-3.5" />,
   email_summary: <Mail className="h-3.5 w-3.5" />,
+  meeting:       <Users className="h-3.5 w-3.5" />,
   note:          <StickyNote className="h-3.5 w-3.5" />,
   other:         <StickyNote className="h-3.5 w-3.5" />,
 };
@@ -44,11 +45,12 @@ const TYPE_COLORS: Record<UICommType, { badge: string; dot: string; timeline: st
   call:          { badge: "bg-blue-500/10 text-blue-600 border-blue-500/20",    dot: "bg-blue-500",   timeline: "border-blue-400/40" },
   site_visit:    { badge: "bg-success/10 text-success border-success/20",        dot: "bg-success",    timeline: "border-success/40" },
   email_summary: { badge: "bg-module-projects/10 text-module-projects border-module-projects/20", dot: "bg-module-projects", timeline: "border-module-projects/40" },
+  meeting:       { badge: "bg-purple-500/10 text-purple-600 border-purple-500/20", dot: "bg-purple-500", timeline: "border-purple-400/40" },
   note:          { badge: "bg-warning/10 text-warning border-warning/20",        dot: "bg-warning",    timeline: "border-warning/40" },
   other:         { badge: "bg-muted text-muted-foreground border-border",        dot: "bg-muted-foreground", timeline: "border-border" },
 };
 
-const ALL_TYPES: UICommType[] = ['call', 'site_visit', 'email_summary', 'note', 'other'];
+const ALL_TYPES: UICommType[] = ['call', 'site_visit', 'email_summary', 'meeting', 'note', 'other'];
 
 function groupByDay(comms: ProjectComm[]) {
   const groups: { label: string; date: string; items: ProjectComm[] }[] = [];

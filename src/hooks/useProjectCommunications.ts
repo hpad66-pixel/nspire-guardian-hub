@@ -5,13 +5,14 @@ import { useAuth } from '@/hooks/useAuth';
 
 // UI labels mapped to DB enum values (call | email | meeting | note)
 export type CommType = 'call' | 'email' | 'meeting' | 'note';
-export type UICommType = 'call' | 'site_visit' | 'email_summary' | 'note' | 'other';
+export type UICommType = 'call' | 'site_visit' | 'email_summary' | 'meeting' | 'note' | 'other';
 
 // Maps our UI type labels to DB-compatible enum values and stores UI label in subject prefix
 export const COMM_TYPE_LABELS: Record<UICommType, { label: string; dbType: CommType }> = {
   call:          { label: 'Phone Call',    dbType: 'call'    },
   site_visit:    { label: 'Site Visit',    dbType: 'note'    },
   email_summary: { label: 'Email Summary', dbType: 'email'   },
+  meeting:       { label: 'Meeting',       dbType: 'meeting' },
   note:          { label: 'General Note',  dbType: 'note'    },
   other:         { label: 'Other',         dbType: 'note'    },
 };
