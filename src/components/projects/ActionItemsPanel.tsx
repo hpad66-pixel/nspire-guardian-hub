@@ -3,7 +3,7 @@ import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, CheckSquare, ChevronDown, ChevronRight, MessageSquare,
-  Calendar, User, Flag, Trash2, Send, Loader2, Filter, Check,
+  Calendar, User, UserPlus, Flag, Trash2, Send, Loader2, Filter, Check,
   AlertCircle, Clock, Circle, MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,8 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { useProjectTeamMembers, useAddProjectTeamMember } from '@/hooks/useProjectTeam';
+import { useSearchProfiles } from '@/hooks/useProfiles';
 import {
   useActionItemsByProject,
   useCreateActionItem,
@@ -148,6 +149,56 @@ function CommentThread({ itemId, onClose }: { itemId: string; onClose: () => voi
           {createComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function AddMemberInlineDropdown({ projectId, existingUserIds, onAdded }: { projectId: string; existingUserIds: Set<string>; onAdded: (userId: string) => void }) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const { data: results = [] } = useSearchProfiles(search);
+  const addMember = useAddProjectTeamMember();
+  const addable = results.filter(p => !existingUserIds.has(p.user_id));
+
+  if (!open) {
+    return (
+      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setOpen(true); }} className="gap-2 text-xs text-primary">
+        <UserPlus className="h-3.5 w-3.5" /> Add team member...
+      </DropdownMenuItem>
+    );
+  }
+
+  return (
+    <div className="px-2 py-1 space-y-1" onClick={e => e.stopPropagation()}>
+      <Input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search users..."
+        className="h-7 text-xs"
+        autoFocus
+        onKeyDown={e => e.stopPropagation()}
+      />
+      {addable.slice(0, 5).map(p => (
+        <button
+          key={p.user_id}
+          type="button"
+          className="w-full flex items-center gap-2 px-1 py-1 rounded text-xs hover:bg-accent transition-colors text-left"
+          disabled={addMember.isPending}
+          onClick={async () => {
+            try {
+              await addMember.mutateAsync({ projectId, userId: p.user_id, role: 'subcontractor' });
+              onAdded(p.user_id);
+            } catch {}
+          }}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={p.avatar_url ?? undefined} />
+            <AvatarFallback className="text-[8px]">{(p.full_name || '?').charAt(0)}</AvatarFallback>
+          </Avatar>
+          <span className="truncate">{p.full_name || p.email}</span>
+        </button>
+      ))}
+      {addable.length === 0 && search && <p className="text-[10px] text-muted-foreground text-center py-1">No users found</p>}
     </div>
   );
 }
@@ -398,6 +449,11 @@ function TaskCard({
                         {item.assigned_to === p.user_id && <Check className="h-3 w-3 ml-auto" />}
                       </DropdownMenuItem>
                     ))}
+                    {profiles.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No team members yet</p>
+                    )}
+                    <DropdownMenuSeparator />
+                    <AddMemberInlineDropdown projectId={projectId} existingUserIds={new Set(profiles.map(p => p.user_id))} onAdded={handleAssign} />
                   </DropdownMenuContent>
                 </DropdownMenu>
 
