@@ -41,7 +41,6 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
     client_id: (project as any)?.client_id || '',
     name: project?.name || '',
     description: project?.description || '',
-    scope: project?.scope || '',
     budget: project?.budget ? Number(project.budget) : undefined as number | undefined,
     start_date: project?.start_date || '',
     target_end_date: project?.target_end_date || '',
@@ -69,7 +68,6 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
     const payload: any = {
       name: formData.name,
       description: formData.description,
-      scope: formData.scope,
       budget: formData.budget || null,
       start_date: formData.start_date || null,
       target_end_date: formData.target_end_date || null,
@@ -93,7 +91,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
   };
 
   const resetForm = () => {
-    setFormData({ property_id: '', client_id: '', name: '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
+    setFormData({ property_id: '', client_id: '', name: '', description: '', budget: undefined, start_date: '', target_end_date: '' });
     setProjectType('property');
     setShowAddClient(false);
     setNewClientName('');
@@ -230,19 +228,6 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
               placeholder="Brief description of the project..."
               rows={2}
               context="description"
-            />
-          </div>
-
-          {/* Scope */}
-          <div className="grid gap-2">
-            <Label htmlFor="scope">Scope</Label>
-            <VoiceDictationTextareaWithAI
-              id="scope"
-              value={formData.scope}
-              onValueChange={(val) => setFormData({ ...formData, scope: val })}
-              placeholder="Detailed scope of work..."
-              rows={3}
-              context="scope"
             />
           </div>
 
