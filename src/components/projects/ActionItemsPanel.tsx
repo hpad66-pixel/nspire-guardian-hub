@@ -20,7 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import {
   useActionItemsByProject,
   useCreateActionItem,
@@ -167,7 +167,13 @@ function TaskCard({
 }) {
   const updateItem = useUpdateActionItem(projectId);
   const deleteItem = useDeleteActionItem(projectId);
-  const { data: profiles = [] } = useProfiles();
+  const { data: teamMembers = [] } = useProjectTeamMembers(projectId);
+  const profiles = teamMembers.map(m => ({
+    user_id: m.user_id,
+    full_name: m.profile?.full_name ?? null,
+    email: m.profile?.email ?? null,
+    avatar_url: m.profile?.avatar_url ?? null,
+  }));
 
   const [editTitle, setEditTitle] = useState(item.title);
   const [editDesc, setEditDesc] = useState(item.description || '');
@@ -448,7 +454,13 @@ function TaskCard({
 
 function QuickAddBar({ projectId, onCreated }: { projectId: string; onCreated?: () => void }) {
   const createItem = useCreateActionItem(projectId);
-  const { data: profiles = [] } = useProfiles();
+  const { data: teamMembers = [] } = useProjectTeamMembers(projectId);
+  const profiles = teamMembers.map(m => ({
+    user_id: m.user_id,
+    full_name: m.profile?.full_name ?? null,
+    email: m.profile?.email ?? null,
+    avatar_url: m.profile?.avatar_url ?? null,
+  }));
   const [title, setTitle] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [priority, setPriority] = useState<ActionItem['priority']>('medium');
