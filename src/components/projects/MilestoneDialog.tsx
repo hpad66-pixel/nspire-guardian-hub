@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, UserCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useCreateMilestone, useUpdateMilestone } from '@/hooks/useMilestones';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import type { Database } from '@/integrations/supabase/types';
 
 type MilestoneRow = Database['public']['Tables']['project_milestones']['Row'];
@@ -42,6 +43,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Milestone name is required'),
   due_date: z.date({ required_error: 'Due date is required' }),
   status: z.string().default('pending'),
+  assigned_to: z.string().nullable().optional(),
   notes: z.string().optional(),
 });
 
@@ -58,12 +60,14 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
   const createMutation = useCreateMilestone();
   const updateMutation = useUpdateMilestone();
   const isEditing = !!milestone;
+  const { data: teamMembers } = useProjectTeamMembers(projectId);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       status: 'pending',
+      assigned_to: null,
       notes: '',
     },
   });
@@ -74,12 +78,14 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
         name: milestone.name,
         due_date: new Date(milestone.due_date),
         status: milestone.status,
+        assigned_to: milestone.assigned_to || null,
         notes: milestone.notes || '',
       });
     } else {
       form.reset({
         name: '',
         status: 'pending',
+        assigned_to: null,
         notes: '',
       });
     }
@@ -90,6 +96,7 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
       name: data.name,
       due_date: format(data.due_date, 'yyyy-MM-dd'),
       status: data.status,
+      assigned_to: data.assigned_to || null,
       notes: data.notes || null,
       project_id: projectId,
     };
@@ -161,6 +168,39 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="assigned_to"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assign To</FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === '_none_' ? null : val)}
+                    value={field.value || '_none_'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="_none_">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <UserCircle className="h-4 w-4" /> Unassigned
+                        </span>
+                      </SelectItem>
+                      {(teamMembers ?? []).map((member) => (
+                        <SelectItem key={member.user_id} value={member.user_id}>
+                          {member.profile?.full_name || member.profile?.email || 'Unknown'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
