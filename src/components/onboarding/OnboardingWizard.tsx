@@ -73,7 +73,16 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
       if (profileError) throw profileError;
 
-      // 3. Store in local state and advance
+      // 3. Promote user to 'owner' role (replaces default 'user' role)
+      const { error: promoteError } = await supabase
+        .rpc('promote_self_to_workspace_owner', { p_workspace_id: workspace.id });
+
+      if (promoteError) {
+        console.error('Failed to promote to owner:', promoteError);
+        // Non-blocking — workspace was created successfully
+      }
+
+      // 4. Store in local state and advance
       setData((prev) => ({
         ...prev,
         workspaceName: welcomeData.workspaceName,

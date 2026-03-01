@@ -8142,6 +8142,10 @@ export type Database = {
         }
         Returns: string
       }
+      promote_self_to_workspace_owner: {
+        Args: { p_workspace_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
