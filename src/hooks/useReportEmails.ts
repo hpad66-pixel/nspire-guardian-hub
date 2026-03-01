@@ -49,6 +49,9 @@ export interface SendReportEmailParams {
   inspectorName: string;
   inspectionDate: string;
   message?: string;
+  contentHtml?: string; // Full proposal/document content for email body
+  recipientName?: string; // Recipient name for personalized greeting
+  senderTitle?: string; // Sender's title/role
   pdfBase64: string;
   pdfFilename: string;
   sourceModule?: string;
