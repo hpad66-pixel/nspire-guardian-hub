@@ -104,7 +104,7 @@ export default function ProposalsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Proposals & Correspondence</h1>
-              <p className="text-muted-foreground">AI-powered document generation for projects</p>
+              <p className="text-muted-foreground">Document generation for projects</p>
             </div>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -190,21 +190,6 @@ export default function ProposalsPage() {
                   {proposals?.filter(p => p.status === 'sent').length || 0}
                 </p>
                 <p className="text-sm text-muted-foreground">Sent</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {proposals?.filter(p => p.ai_generated).length || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">AI Generated</p>
               </div>
             </div>
           </CardContent>
