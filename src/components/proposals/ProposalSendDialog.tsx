@@ -131,18 +131,22 @@ export function ProposalSendDialog({
       const pdfBase64 = await generatePDFBase64({ elementId: "proposal-pdf-temp" });
       document.body.removeChild(tempDiv);
 
-      // Send email
+      // Send email with proposal content in body
       await sendEmail.mutateAsync({
         recipients: [proposal.recipient_email],
         subject: `${proposal.title} - ${project?.name || "Project"}`,
-        reportType: "daily_report",
+        reportType: "proposal",
         reportId: proposalId,
         propertyName: project?.name || "Project",
         inspectorName: userProfile?.full_name || "Team",
         inspectionDate: today,
         message: message || undefined,
+        contentHtml: proposal.content_html,
+        recipientName: proposal.recipient_name || undefined,
         pdfBase64,
         pdfFilename: `${proposal.title.replace(/[^a-z0-9]/gi, "_")}.pdf`,
+        sourceModule: "proposals",
+        projectId: proposal.project_id,
       });
 
       // Update proposal status to sent
