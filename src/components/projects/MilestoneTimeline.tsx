@@ -21,8 +21,12 @@ import {
   Plus,
   Trash2,
   Edit,
+  UserCircle,
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCompleteMilestone, useUpdateMilestone, useDeleteMilestone } from '@/hooks/useMilestones';
+import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { MilestoneDialog } from './MilestoneDialog';
 import type { Database } from '@/integrations/supabase/types';
 import {
@@ -79,6 +83,13 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
   const completeMutation = useCompleteMilestone();
   const updateMutation = useUpdateMilestone();
   const deleteMutation = useDeleteMilestone();
+  const { data: teamMembers } = useProjectTeamMembers(projectId);
+
+  const getAssigneeName = (userId: string | null) => {
+    if (!userId || !teamMembers) return null;
+    const member = teamMembers.find(m => m.user_id === userId);
+    return member?.profile ?? null;
+  };
 
   const getMilestoneStatus = (milestone: MilestoneRow) => {
     if (milestone.status === 'completed') return 'completed';
@@ -190,6 +201,32 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
                           {milestone.notes && (
                             <p className="mt-2 text-sm text-muted-foreground">{milestone.notes}</p>
                           )}
+                          {(() => {
+                            const assignee = getAssigneeName(milestone.assigned_to);
+                            if (!assignee) return null;
+                            const initials = (assignee.full_name || assignee.email || '?')
+                              .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                            return (
+                              <div className="flex items-center gap-1.5 mt-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1.5">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={assignee.avatar_url || undefined} />
+                                        <AvatarFallback className="text-[9px]">{initials}</AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs text-muted-foreground">
+                                        {assignee.full_name || assignee.email}
+                                      </span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="text-xs">
+                                    Assigned to {assignee.full_name || assignee.email}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div className="flex items-center gap-2">
