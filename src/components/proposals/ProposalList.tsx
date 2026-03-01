@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { useProposalsByProject, useDeleteProposal, type Proposal, type ProposalStatus } from "@/hooks/useProposals";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,12 +35,18 @@ import {
   Mail,
   ExternalLink,
 } from "lucide-react";
-import { ProposalEditor } from "./ProposalEditor";
+import { ProposalEditor, type ProposalEditorInitialContext } from "./ProposalEditor";
 import { SendExternalEmailDialog } from "@/components/projects/SendExternalEmailDialog";
 
 interface ProposalListProps {
   projectId: string;
   projectName?: string;
+  /** Optional initial context to pre-populate the editor (e.g. from milestones) */
+  initialContext?: ProposalEditorInitialContext;
+  /** If true, auto-open the editor when the component mounts */
+  autoOpen?: boolean;
+  /** Callback when auto-open editor closes */
+  onAutoOpenClose?: () => void;
 }
 
 const statusConfig: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -61,7 +67,7 @@ const typeLabels: Record<string, string> = {
   correspondence: "Correspondence",
 };
 
-export function ProposalList({ projectId, projectName = '' }: ProposalListProps) {
+export function ProposalList({ projectId, projectName = '', initialContext, autoOpen, onAutoOpenClose }: ProposalListProps) {
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
   
@@ -69,6 +75,16 @@ export function ProposalList({ projectId, projectName = '' }: ProposalListProps)
   const deleteProposal = useDeleteProposal();
 
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editorInitialContext, setEditorInitialContext] = useState<ProposalEditorInitialContext | undefined>(undefined);
+
+  // Auto-open editor when initialContext is provided (e.g. from milestone)
+  useEffect(() => {
+    if (autoOpen && initialContext) {
+      setEditorInitialContext(initialContext);
+      setSelectedProposal(null);
+      setEditorOpen(true);
+    }
+  }, [autoOpen, initialContext]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
@@ -256,9 +272,16 @@ export function ProposalList({ projectId, projectName = '' }: ProposalListProps)
 
       <ProposalEditor
         open={editorOpen}
-        onOpenChange={setEditorOpen}
+        onOpenChange={(open) => {
+          setEditorOpen(open);
+          if (!open) {
+            setEditorInitialContext(undefined);
+            onAutoOpenClose?.();
+          }
+        }}
         projectId={projectId}
         proposal={selectedProposal}
+        initialContext={editorInitialContext}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
