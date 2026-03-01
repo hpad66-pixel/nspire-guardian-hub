@@ -26,7 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCompleteMilestone, useUpdateMilestone, useDeleteMilestone } from '@/hooks/useMilestones';
-import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { useAssignableProjectMembers } from '@/hooks/useProjectTeam';
 import { MilestoneDialog } from './MilestoneDialog';
 import type { Database } from '@/integrations/supabase/types';
 import {
@@ -83,7 +83,7 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
   const completeMutation = useCompleteMilestone();
   const updateMutation = useUpdateMilestone();
   const deleteMutation = useDeleteMilestone();
-  const { data: teamMembers } = useProjectTeamMembers(projectId);
+  const { data: teamMembers } = useAssignableProjectMembers(projectId);
 
   const getAssigneeName = (userId: string | null) => {
     if (!userId || !teamMembers) return null;

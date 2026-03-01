@@ -36,7 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useCreateMilestone, useUpdateMilestone } from '@/hooks/useMilestones';
-import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { useAssignableProjectMembers } from '@/hooks/useProjectTeam';
 import { ProjectTeamAssignSelect } from './ProjectTeamAssignSelect';
 import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
@@ -64,7 +64,7 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
   const createMutation = useCreateMilestone();
   const updateMutation = useUpdateMilestone();
   const isEditing = !!milestone;
-  const { data: teamMembers = [] } = useProjectTeamMembers(projectId);
+  const { data: teamMembers = [] } = useAssignableProjectMembers(projectId);
 
   // Collaborator state (managed outside react-hook-form since it's a uuid[])
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
