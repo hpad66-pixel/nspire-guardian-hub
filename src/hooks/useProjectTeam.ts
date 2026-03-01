@@ -53,6 +53,76 @@ export function useProjectTeamMembers(projectId: string | null) {
   });
 }
 
+export function useAssignableProjectMembers(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-assignable-team', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+
+      const { data: project } = await supabase
+        .from('projects')
+        .select('project_type, property_id')
+        .eq('id', projectId)
+        .maybeSingle();
+
+      if (project?.project_type === 'property' && project.property_id) {
+        const { data: propertyMembers, error: propertyMembersError } = await supabase
+          .from('property_team_members')
+          .select('id, user_id, role, status, added_by, created_at')
+          .eq('property_id', project.property_id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: true });
+
+        if (propertyMembersError) throw propertyMembersError;
+        if (!propertyMembers || propertyMembers.length === 0) return [];
+
+        const userIds = propertyMembers.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email, avatar_url')
+          .in('user_id', userIds);
+
+        const profileMap = new Map((profiles ?? []).map(p => [p.user_id, p]));
+
+        return propertyMembers.map(m => ({
+          id: m.id,
+          project_id: projectId,
+          user_id: m.user_id,
+          role: m.role as AppRole,
+          status: m.status,
+          added_by: m.added_by,
+          created_at: m.created_at,
+          profile: profileMap.get(m.user_id) ?? null,
+        })) as ProjectTeamMember[];
+      }
+
+      const { data: members, error } = await supabase
+        .from('project_team_members')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (!members || members.length === 0) return [];
+
+      const userIds = members.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, avatar_url')
+        .in('user_id', userIds);
+
+      const profileMap = new Map((profiles ?? []).map(p => [p.user_id, p]));
+
+      return members.map(m => ({
+        ...m,
+        profile: profileMap.get(m.user_id) ?? null,
+      })) as ProjectTeamMember[];
+    },
+    enabled: !!projectId,
+  });
+}
+
 export function useAddProjectTeamMember() {
   const queryClient = useQueryClient();
   return useMutation({

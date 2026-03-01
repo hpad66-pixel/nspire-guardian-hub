@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { useProjectTeamMembers, useAddProjectTeamMember } from '@/hooks/useProjectTeam';
+import { useAssignableProjectMembers, useAddProjectTeamMember } from '@/hooks/useProjectTeam';
 import { useSearchProfiles } from '@/hooks/useProfiles';
 import { toast } from 'sonner';
 
@@ -31,7 +31,7 @@ export function ProjectTeamAssignSelect({
   placeholder = 'Select person',
   useSentinel = false,
 }: ProjectTeamAssignSelectProps) {
-  const { data: teamMembers = [] } = useProjectTeamMembers(projectId);
+  const { data: teamMembers = [] } = useAssignableProjectMembers(projectId);
   const addMember = useAddProjectTeamMember();
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState('');
