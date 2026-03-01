@@ -191,11 +191,6 @@ export function ProposalList({ projectId, projectName = '', initialContext, auto
                         <Badge variant={status.variant} className="text-xs">
                           {status.label}
                         </Badge>
-                        {proposal.ai_generated && (
-                          <Badge variant="outline" className="text-xs">
-                            AI Generated
-                          </Badge>
-                        )}
                       </div>
                       <h3 className="font-medium truncate">{proposal.title}</h3>
                       <p className="text-sm text-muted-foreground">

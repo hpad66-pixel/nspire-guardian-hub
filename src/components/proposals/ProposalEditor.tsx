@@ -239,80 +239,16 @@ export function ProposalEditor({
 
           <ScrollArea className="flex-1">
             <div className="p-6 space-y-6">
-              {/* AI Generation Panel */}
+              {/* Branding button */}
               {!isSent && (
-                <div className="bg-muted/50 rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      <h3 className="font-medium">AI Assistant</h3>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBrandingDialogOpen(true)}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Branding
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Document Type</Label>
-                      <Select
-                        value={proposalType}
-                        onValueChange={(v) => setProposalType(v as ProposalType)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {proposalTypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Subject (optional)</Label>
-                      <Input
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        placeholder="e.g., Elevator Modernization"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Additional Context</Label>
-                    <VoiceDictationTextareaWithAI
-                      value={userNotes}
-                      onValueChange={setUserNotes}
-                      placeholder="Add any specific requirements, key points, or context for the AI to consider..."
-                      rows={3}
-                      context="notes"
-                    />
-                  </div>
-
+                <div className="flex justify-end">
                   <Button
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className="w-full"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBrandingDialogOpen(true)}
                   >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate with AI
-                      </>
-                    )}
+                    <Settings className="h-4 w-4 mr-2" />
+                    Branding
                   </Button>
                 </div>
               )}
