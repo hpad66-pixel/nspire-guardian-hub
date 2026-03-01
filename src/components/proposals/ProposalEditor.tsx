@@ -34,11 +34,24 @@ import { Sparkles, Save, Send, Loader2, Settings } from "lucide-react";
 import { ProposalSendDialog } from "./ProposalSendDialog";
 import { BrandingSettings } from "./BrandingSettings";
 
+export interface ProposalEditorInitialContext {
+  /** Pre-filled subject line from milestone(s) */
+  subject?: string;
+  /** Pre-filled additional context / scope text */
+  userNotes?: string;
+  /** Milestone IDs to include in the AI generation context */
+  milestoneIds?: string[];
+  /** Suggested proposal type */
+  proposalType?: ProposalType;
+}
+
 interface ProposalEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   proposal: Proposal | null;
+  /** Optional initial context from milestones or other sources */
+  initialContext?: ProposalEditorInitialContext;
 }
 
 const proposalTypes: { value: ProposalType; label: string }[] = [
@@ -56,6 +69,7 @@ export function ProposalEditor({
   onOpenChange,
   projectId,
   proposal,
+  initialContext,
 }: ProposalEditorProps) {
   const isEditing = !!proposal?.id;
   const isSent = proposal?.status === "sent";
@@ -99,10 +113,10 @@ export function ProposalEditor({
       setIncludeLogo(proposal.include_logo);
       setUserNotes(proposal.ai_prompt || "");
     } else {
-      // Reset for new proposal
-      setTitle("");
-      setProposalType("project_proposal");
-      setSubject("");
+      // Reset for new proposal, applying initialContext if provided
+      setTitle(initialContext?.subject ? `Proposal — ${initialContext.subject}` : "");
+      setProposalType(initialContext?.proposalType ?? "project_proposal");
+      setSubject(initialContext?.subject ?? "");
       setContent("");
       setRecipientName("");
       setRecipientEmail("");
@@ -110,9 +124,9 @@ export function ProposalEditor({
       setRecipientAddress("");
       setIncludeLetterhead(true);
       setIncludeLogo(true);
-      setUserNotes("");
+      setUserNotes(initialContext?.userNotes ?? "");
     }
-  }, [proposal, open]);
+  }, [proposal, open, initialContext]);
 
   const handleGenerate = async () => {
     if (!projectId) return;
@@ -125,6 +139,7 @@ export function ProposalEditor({
         proposalType,
         userNotes,
         subject,
+        milestoneIds: initialContext?.milestoneIds,
       },
       {
         onDelta: (chunk) => {

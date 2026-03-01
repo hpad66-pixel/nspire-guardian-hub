@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -22,12 +23,16 @@ import {
   Trash2,
   Edit,
   UserCircle,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCompleteMilestone, useUpdateMilestone, useDeleteMilestone } from '@/hooks/useMilestones';
 import { useAssignableProjectMembers } from '@/hooks/useProjectTeam';
 import { MilestoneDialog } from './MilestoneDialog';
+import { ProposalEditor, type ProposalEditorInitialContext } from '@/components/proposals/ProposalEditor';
 import type { Database } from '@/integrations/supabase/types';
 import {
   AlertDialog,
@@ -80,6 +85,12 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [milestoneToDelete, setMilestoneToDelete] = useState<string | null>(null);
 
+  // Proposal generation state
+  const [proposalEditorOpen, setProposalEditorOpen] = useState(false);
+  const [proposalContext, setProposalContext] = useState<ProposalEditorInitialContext | undefined>(undefined);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedMilestoneIds, setSelectedMilestoneIds] = useState<string[]>([]);
+
   const completeMutation = useCompleteMilestone();
   const updateMutation = useUpdateMilestone();
   const deleteMutation = useDeleteMilestone();
@@ -124,6 +135,48 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
     setDialogOpen(true);
   };
 
+  // Generate proposal from a single milestone
+  const handleGenerateFromMilestone = (milestone: MilestoneRow) => {
+    const scopeText = [
+      `Milestone: ${milestone.name}`,
+      `Status: ${milestone.status}`,
+      `Due: ${milestone.due_date}`,
+      milestone.notes ? `Scope/Notes: ${milestone.notes}` : '',
+    ].filter(Boolean).join('\n');
+
+    setProposalContext({
+      subject: milestone.name,
+      userNotes: scopeText,
+      milestoneIds: [milestone.id],
+      proposalType: 'scope_amendment',
+    });
+    setProposalEditorOpen(true);
+  };
+
+  // Generate proposal from selected milestones
+  const handleGenerateFromSelected = () => {
+    const selected = milestones.filter(m => selectedMilestoneIds.includes(m.id));
+    const scopeText = selected.map(m =>
+      `• ${m.name} — ${m.status}, Due: ${m.due_date}${m.notes ? ` | ${m.notes}` : ''}`
+    ).join('\n');
+
+    setProposalContext({
+      subject: selected.length === 1 ? selected[0].name : `${selected.length} Milestones`,
+      userNotes: `Generate a comprehensive proposal covering these milestones:\n\n${scopeText}`,
+      milestoneIds: selectedMilestoneIds,
+      proposalType: 'project_proposal',
+    });
+    setProposalEditorOpen(true);
+    setSelectMode(false);
+    setSelectedMilestoneIds([]);
+  };
+
+  const toggleMilestoneSelection = (id: string) => {
+    setSelectedMilestoneIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const sortedMilestones = [...milestones].sort(
     (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
   );
@@ -136,10 +189,40 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
             <CardTitle>Project Milestones</CardTitle>
             <CardDescription>Track project phases and deliverables</CardDescription>
           </div>
-          <Button onClick={() => { setEditingMilestone(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Milestone
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectMode ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSelectMode(false); setSelectedMilestoneIds([]); }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={selectedMilestoneIds.length === 0}
+                  onClick={handleGenerateFromSelected}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  Generate Proposal ({selectedMilestoneIds.length})
+                </Button>
+              </>
+            ) : (
+              <>
+                {milestones.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => setSelectMode(true)}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    Proposal from Milestones
+                  </Button>
+                )}
+                <Button onClick={() => { setEditingMilestone(null); setDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Milestone
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -171,6 +254,16 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
 
                 return (
                   <div key={milestone.id} className="relative flex gap-4">
+                    {/* Selection checkbox in select mode */}
+                    {selectMode && (
+                      <div className="flex items-center pt-3">
+                        <Checkbox
+                          checked={selectedMilestoneIds.includes(milestone.id)}
+                          onCheckedChange={() => toggleMilestoneSelection(milestone.id)}
+                        />
+                      </div>
+                    )}
+
                     {/* Status icon */}
                     <div
                       className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 ${config.bgColor} border-background`}
@@ -297,6 +390,11 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGenerateFromMilestone(milestone)}>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Generate Proposal
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => {
                                   setMilestoneToDelete(milestone.id);
@@ -349,6 +447,17 @@ export function MilestoneTimeline({ projectId, milestones }: MilestoneTimelinePr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProposalEditor
+        open={proposalEditorOpen}
+        onOpenChange={(open) => {
+          setProposalEditorOpen(open);
+          if (!open) setProposalContext(undefined);
+        }}
+        projectId={projectId}
+        proposal={null}
+        initialContext={proposalContext}
+      />
     </Card>
   );
 }

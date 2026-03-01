@@ -15,6 +15,7 @@ interface GenerateProposalRequest {
   templateId?: string;
   userNotes?: string;
   subject?: string;
+  milestoneIds?: string[];
 }
 
 serve(async (req) => {
@@ -52,7 +53,7 @@ serve(async (req) => {
     }
 
     const body: GenerateProposalRequest = await req.json();
-    const { projectId, proposalType, templateId, userNotes, subject } = body;
+    const { projectId, proposalType, templateId, userNotes, subject, milestoneIds } = body;
 
     if (!projectId || !proposalType) {
       return new Response(JSON.stringify({ error: "Missing required fields: projectId and proposalType" }), {
@@ -97,12 +98,87 @@ serve(async (req) => {
       });
     }
 
+    // ── Fetch comprehensive project context ──────────────────────────────────
+
+    // Milestones
+    let milestoneContext = "";
+    if (milestoneIds && milestoneIds.length > 0) {
+      const { data: milestones } = await supabase
+        .from("project_milestones")
+        .select("name, status, due_date, notes, assigned_to, completed_at")
+        .in("id", milestoneIds)
+        .order("due_date");
+      if (milestones && milestones.length > 0) {
+        milestoneContext = "\n\n## Selected Milestones\n" + milestones.map(m =>
+          `- **${m.name}** — Status: ${m.status}, Due: ${m.due_date || "TBD"}${m.notes ? `, Notes: ${m.notes}` : ""}${m.completed_at ? `, Completed: ${m.completed_at}` : ""}`
+        ).join("\n");
+      }
+    } else {
+      // Fetch all milestones for full project context
+      const { data: milestones } = await supabase
+        .from("project_milestones")
+        .select("name, status, due_date, notes")
+        .eq("project_id", projectId)
+        .order("due_date")
+        .limit(20);
+      if (milestones && milestones.length > 0) {
+        milestoneContext = "\n\n## All Project Milestones\n" + milestones.map(m =>
+          `- **${m.name}** — ${m.status}, Due: ${m.due_date || "TBD"}${m.notes ? ` (${m.notes})` : ""}`
+        ).join("\n");
+      }
+    }
+
+    // Recent daily reports (last 10)
+    let dailyReportsContext = "";
+    const { data: dailyReports } = await supabase
+      .from("daily_reports")
+      .select("report_date, work_performed, weather, workers_count, issues_encountered, delays")
+      .eq("project_id", projectId)
+      .order("report_date", { ascending: false })
+      .limit(10);
+    if (dailyReports && dailyReports.length > 0) {
+      dailyReportsContext = "\n\n## Recent Daily Reports\n" + dailyReports.map(r =>
+        `- **${r.report_date}**: ${r.work_performed?.substring(0, 200) || "N/A"}${r.workers_count ? ` (${r.workers_count} workers)` : ""}${r.issues_encountered ? ` | Issues: ${r.issues_encountered.substring(0, 100)}` : ""}${r.delays ? ` | Delays: ${r.delays.substring(0, 100)}` : ""}`
+      ).join("\n");
+    }
+
+    // Change orders
+    let changeOrdersContext = "";
+    const { data: changeOrders } = await supabase
+      .from("change_orders")
+      .select("title, description, amount, status")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (changeOrders && changeOrders.length > 0) {
+      const formatCurrency = (amt: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(amt);
+      changeOrdersContext = "\n\n## Change Orders\n" + changeOrders.map(co =>
+        `- **${co.title}** — ${co.status}, Amount: ${formatCurrency(co.amount)}${co.description ? ` — ${co.description.substring(0, 100)}` : ""}`
+      ).join("\n");
+    }
+
+    // RFIs
+    let rfisContext = "";
+    const { data: rfis } = await supabase
+      .from("project_rfis")
+      .select("title, status, priority, description")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (rfis && rfis.length > 0) {
+      rfisContext = "\n\n## RFIs (Requests for Information)\n" + rfis.map(rfi =>
+        `- **${rfi.title}** — ${rfi.status} (${rfi.priority})${rfi.description ? `: ${rfi.description.substring(0, 100)}` : ""}`
+      ).join("\n");
+    }
+
+    // ── Build prompt ─────────────────────────────────────────────────────────
+
     const formatBudget = (budget: number | null) => {
       if (!budget) return "TBD";
       return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(budget);
     };
 
-    const prompt = template.prompt_template
+    let prompt = template.prompt_template
       .replace(/\{\{project_name\}\}/g, project.name || "N/A")
       .replace(/\{\{property_name\}\}/g, project.property?.name || "N/A")
       .replace(/\{\{project_description\}\}/g, project.description || "N/A")
@@ -114,6 +190,16 @@ serve(async (req) => {
       .replace(/\{\{user_notes\}\}/g, userNotes || "")
       .replace(/\{\{subject\}\}/g, subject || "");
 
+    // Append comprehensive context
+    const fullContext = [milestoneContext, dailyReportsContext, changeOrdersContext, rfisContext]
+      .filter(Boolean)
+      .join("");
+
+    if (fullContext) {
+      prompt += "\n\n--- COMPREHENSIVE PROJECT CONTEXT ---" + fullContext +
+        "\n\n--- END CONTEXT ---\n\nUse the above context to create a thorough, data-backed proposal. Reference specific milestones, daily progress, change orders, and RFIs where relevant.";
+    }
+
     const systemPrompt = `You are a professional business consultant and proposal writer with expertise in construction, property management, and project management.
 
 Generate clear, professional, and persuasive business documents.
@@ -124,13 +210,11 @@ IMPORTANT FORMATTING RULES:
 - Do NOT include <html>, <head>, <body>, or <style> tags - just the content HTML
 - Use professional business language
 - Be specific and actionable
-- Include placeholders like [CLIENT NAME] or [SPECIFIC DATE] where appropriate for user to fill in`;
+- Include placeholders like [CLIENT NAME] or [SPECIFIC DATE] where appropriate for user to fill in
+- When milestone or project data is provided, weave it naturally into the proposal narrative — do not just list raw data`;
 
-    // Gemini doesn't support native SSE streaming the same way, so we use generateContent
-    // and stream the response back character by character for a smooth UX
     const aiResponse = await fetch(
       `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -158,11 +242,10 @@ IMPORTANT FORMATTING RULES:
     const result = await aiResponse.json();
     const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Stream back as SSE to match the client's streaming expectation
+    // Stream back as SSE
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {
-        // Emit content as a single SSE chunk
         const payload = JSON.stringify({ choices: [{ delta: { content } }] });
         controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));

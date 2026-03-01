@@ -7,6 +7,7 @@ interface GenerateProposalParams {
   templateId?: string;
   userNotes?: string;
   subject?: string;
+  milestoneIds?: string[];
 }
 
 interface UseProposalGenerationOptions {
