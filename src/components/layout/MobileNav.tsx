@@ -29,7 +29,9 @@ import {
   MoreHorizontal,
   FolderKanban,
   X,
+  Globe,
 } from 'lucide-react';
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -257,6 +259,7 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   const navigate = useNavigate();
   const { isModuleEnabled } = useModules();
   const { canView } = useUserPermissions();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
 
   const go = (path: string) => {
     onClose();
@@ -380,7 +383,7 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
           />
 
           {/* ORGANIZATION */}
-          <DrawerSectionLabel label="Organization" />
+          <DrawerSectionLabel label="People & Clients" />
           {canView('people') && (
             <DrawerTile
               icon={<Users className={iconClass} />}
@@ -390,6 +393,13 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
               onClick={() => go('/people')}
             />
           )}
+          <DrawerTile
+            icon={<Building className={iconClass} />}
+            iconBg={orgIconBg}
+            title="Organizations"
+            subtitle="Client organizations"
+            onClick={() => go('/organizations')}
+          />
           <DrawerTile
             icon={<Contact className={iconClass} />}
             iconBg={orgIconBg}
@@ -445,6 +455,19 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
                   onClick={() => go('/settings')}
                 />
               )}
+            </>
+          )}
+
+          {isPlatformAdmin && (
+            <>
+              <DrawerSectionLabel label="Platform" />
+              <DrawerTile
+                icon={<Globe className={iconClass} />}
+                iconBg={toolsIconBg}
+                title="Platform Admin"
+                subtitle="Workspace tenants & modules"
+                onClick={() => go('/platform')}
+              />
             </>
           )}
         </div>
