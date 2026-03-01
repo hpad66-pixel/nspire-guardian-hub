@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextarea } from '@/components/ui/voice-dictation-textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateRFI, useUpdateRFI, type RFI } from '@/hooks/useRFIs';
-import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { ProjectTeamAssignSelect } from './ProjectTeamAssignSelect';
 import { useAuth } from '@/hooks/useAuth';
 
 interface RFIDialogProps {
@@ -26,7 +26,6 @@ interface RFIDialogProps {
 export function RFIDialog({ open, onOpenChange, projectId, rfi }: RFIDialogProps) {
   const isEditing = !!rfi;
   const { user } = useAuth();
-  const { data: teamMembers } = useProjectTeamMembers(projectId);
   const createRFI = useCreateRFI();
   const updateRFI = useUpdateRFI();
   
@@ -116,22 +115,11 @@ export function RFIDialog({ open, onOpenChange, projectId, rfi }: RFIDialogProps
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Assign To</Label>
-              <Select
-                value={formData.assigned_to || 'unassigned'}
-                onValueChange={(value) => setFormData({ ...formData, assigned_to: value === 'unassigned' ? '' : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select person" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {(teamMembers ?? []).map((member) => (
-                    <SelectItem key={member.user_id} value={member.user_id}>
-                      {member.profile?.full_name || member.profile?.email || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProjectTeamAssignSelect
+                projectId={projectId}
+                value={formData.assigned_to || null}
+                onValueChange={(val) => setFormData({ ...formData, assigned_to: val || '' })}
+              />
             </div>
             
             <div className="space-y-2">

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, UserCircle } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useCreateMilestone, useUpdateMilestone } from '@/hooks/useMilestones';
-import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { ProjectTeamAssignSelect } from './ProjectTeamAssignSelect';
 import type { Database } from '@/integrations/supabase/types';
 
 type MilestoneRow = Database['public']['Tables']['project_milestones']['Row'];
@@ -60,7 +60,6 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
   const createMutation = useCreateMilestone();
   const updateMutation = useUpdateMilestone();
   const isEditing = !!milestone;
-  const { data: teamMembers } = useProjectTeamMembers(projectId);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -179,28 +178,14 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign To</FormLabel>
-                  <Select
-                    onValueChange={(val) => field.onChange(val === '_none_' ? null : val)}
-                    value={field.value || '_none_'}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Unassigned" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="_none_">
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                          <UserCircle className="h-4 w-4" /> Unassigned
-                        </span>
-                      </SelectItem>
-                      {(teamMembers ?? []).map((member) => (
-                        <SelectItem key={member.user_id} value={member.user_id}>
-                          {member.profile?.full_name || member.profile?.email || 'Unknown'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <ProjectTeamAssignSelect
+                      projectId={projectId}
+                      value={field.value}
+                      onValueChange={(val) => field.onChange(val)}
+                      useSentinel
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
