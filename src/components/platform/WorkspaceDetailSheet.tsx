@@ -45,6 +45,9 @@ export function WorkspaceDetailSheet({ workspace, open, onOpenChange }: Props) {
     notes: '',
   });
 
+  // Local optimistic state for module gates
+  const [localModules, setLocalModules] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (workspace) {
       setForm({
@@ -59,6 +62,14 @@ export function WorkspaceDetailSheet({ workspace, open, onOpenChange }: Props) {
         next_billing_date: workspace.next_billing_date || '',
         notes: workspace.notes || '',
       });
+      // Sync module state from server data
+      if (workspace.modules) {
+        const mods: Record<string, boolean> = {};
+        MODULE_GATES.forEach(mod => {
+          mods[mod.platformField] = workspace.modules?.[mod.platformField] ?? true;
+        });
+        setLocalModules(mods);
+      }
     }
   }, [workspace]);
 
@@ -173,22 +184,36 @@ export function WorkspaceDetailSheet({ workspace, open, onOpenChange }: Props) {
             </div>
             <div className="space-y-3">
               {MODULE_GATES.map(mod => {
-                const platformEnabled = workspace.modules?.[mod.platformField] ?? true;
+                const platformEnabled = localModules[mod.platformField] ?? workspace.modules?.[mod.platformField] ?? true;
                 const workspaceEnabled = workspace.modules?.[mod.workspaceField] ?? false;
                 return (
                   <div key={mod.platformField} className="flex items-center justify-between rounded-lg border border-[#1E3A5F] bg-[#090D17] px-4 py-3">
-                    <span className="text-sm text-white">{mod.label}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm text-white">{mod.label}</span>
+                      <span className={`text-[10px] font-medium ${platformEnabled ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                        {platformEnabled ? '● Available' : '● Blocked'}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-4">
                       <Switch
                         checked={platformEnabled}
-                        onCheckedChange={(checked) => toggleModule.mutate({
-                          workspaceId: workspace.id,
-                          field: mod.platformField,
-                          value: checked,
-                        })}
+                        onCheckedChange={(checked) => {
+                          // Optimistic update
+                          setLocalModules(prev => ({ ...prev, [mod.platformField]: checked }));
+                          toggleModule.mutate({
+                            workspaceId: workspace.id,
+                            field: mod.platformField,
+                            value: checked,
+                          }, {
+                            onError: () => {
+                              // Revert on failure
+                              setLocalModules(prev => ({ ...prev, [mod.platformField]: !checked }));
+                            },
+                          });
+                        }}
                       />
-                      <span className={`text-xs font-medium ${workspaceEnabled ? 'text-[#22C55E]' : 'text-[#94A3B8]'}`}>
-                        {workspaceEnabled ? 'Admin ON' : 'Admin OFF'}
+                      <span className={`text-xs font-medium min-w-[60px] text-right ${workspaceEnabled ? 'text-[#22C55E]' : 'text-[#94A3B8]'}`}>
+                        {workspaceEnabled ? 'WS ON' : 'WS OFF'}
                       </span>
                     </div>
                   </div>
