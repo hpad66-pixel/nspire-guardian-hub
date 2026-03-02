@@ -1206,6 +1206,21 @@ export default function ProjectDetailPage() {
       {/* ── Desktop overlay panels — slide in from right ─────────────── */}
       <div className="hidden md:block">
         <AnimatePresence>
+          {(activityFeedOpen || discussionsPanelOpen || actionItemsOpen) && (
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-10"
+              onClick={() => {
+                setActivityFeedOpen(false);
+                setDiscussionsPanelOpen(false);
+                setActionItemsOpen(false);
+              }}
+            />
+          )}
           {activityFeedOpen && id && (
             <motion.div
               key="activity"
