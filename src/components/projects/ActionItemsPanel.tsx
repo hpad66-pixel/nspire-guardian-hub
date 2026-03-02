@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, CheckSquare, ChevronDown, ChevronRight, MessageSquare,
   Calendar, User, UserPlus, Flag, Trash2, Send, Loader2, Filter, Check,
-  AlertCircle, Clock, Circle, MoreHorizontal, Mail,
+  AlertCircle, Clock, Circle, MoreHorizontal, Mail, FileText,
 } from 'lucide-react';
 import { SendExternalEmailDialog } from './SendExternalEmailDialog';
+import { ActionItemReportDialog } from './ActionItemReportDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -700,6 +701,7 @@ export function ActionItemsPanel({ projectId, projectName, open, onClose }: Acti
   const [showDone, setShowDone] = useState(false);
   const [filterPriority, setFilterPriority] = useState<ActionItem['priority'] | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<ActionItem['status'] | 'all'>('all');
+  const [reportOpen, setReportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return items.filter(i => {
@@ -767,6 +769,9 @@ export function ActionItemsPanel({ projectId, projectName, open, onClose }: Acti
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setReportOpen(true)} title="Generate Report">
+              <FileText className="h-3.5 w-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -881,6 +886,13 @@ export function ActionItemsPanel({ projectId, projectName, open, onClose }: Acti
           )}
         </div>
       </ScrollArea>
+
+      <ActionItemReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        defaultProjectId={projectId}
+        defaultProjectName={projectName}
+      />
     </div>
   );
 }
