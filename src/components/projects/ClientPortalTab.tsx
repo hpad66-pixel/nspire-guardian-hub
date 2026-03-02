@@ -18,8 +18,9 @@ import {
   Link2, Copy, CheckCheck, Send, MessageCircle, ClipboardList,
   AlertCircle, Clock, CheckSquare, DollarSign, Info, HelpCircle,
   Receipt, Eye, GitFork, Loader2, Plus, Camera, Image as ImageIcon,
-  ExternalLink, Users, ChevronDown, ChevronUp, Trash2, Check,
+  ExternalLink, Users, ChevronDown, ChevronUp, Trash2, Check, Mail,
 } from 'lucide-react';
+import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 import {
   useClientMessages,
   useClientMessagesRealtime,
@@ -571,15 +572,27 @@ function PostUpdateDialog({
 }
 
 // Action item row (PM view)
-function PMActionItemRow({ item, projectId }: { item: any; projectId: string }) {
+function PMActionItemRow({ item, projectId, projectName }: { item: any; projectId: string; projectName?: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const resolve = useResolveActionItem();
   const cfg = ACTION_TYPE_CONFIG[item.action_type as ActionItemType] ?? ACTION_TYPE_CONFIG.information;
   const TypeIcon = cfg.icon;
   const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
   const isResolved = item.status === 'resolved' || item.status === 'cancelled';
 
+  const emailContentHtml = buildActionItemEmailHtml({
+    type: item.action_type as ActionItemType,
+    title: item.title,
+    description: item.description || undefined,
+    priority: item.priority || 'normal',
+    dueDate: item.due_date || undefined,
+    amount: item.amount ? Number(item.amount) : undefined,
+    options: item.options || undefined,
+  });
+
   return (
+    <>
     <div className={cn(
       'rounded-xl border transition-all',
       isResolved ? 'opacity-60 bg-muted/20' : 'bg-card'
@@ -657,18 +670,30 @@ function PMActionItemRow({ item, projectId }: { item: any; projectId: string }) 
                   )}
                 </div>
               )}
-              {!isResolved && (
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {!isResolved && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-muted-foreground"
+                    onClick={() => resolve.mutate({ itemId: item.id, projectId })}
+                    disabled={resolve.isPending}
+                  >
+                    {resolve.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckSquare className="h-3.5 w-3.5" />}
+                    <span className="ml-1.5">Mark Resolved</span>
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-muted-foreground"
-                  onClick={() => resolve.mutate({ itemId: item.id, projectId })}
-                  disabled={resolve.isPending}
+                  className="gap-1.5"
+                  onClick={() => setEmailOpen(true)}
                 >
-                  {resolve.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckSquare className="h-3.5 w-3.5" />}
-                  <span className="ml-1.5">Mark Resolved</span>
+                  <Mail className="h-3.5 w-3.5" />
+                  Send via Email
                 </Button>
-              )}
+              </div>
               {isResolved && item.resolved_at && (
                 <p className="text-[11px] text-muted-foreground">
                   Resolved {format(new Date(item.resolved_at), 'MMM d, yyyy')}
@@ -679,6 +704,18 @@ function PMActionItemRow({ item, projectId }: { item: any; projectId: string }) 
         )}
       </AnimatePresence>
     </div>
+
+    <SendExternalEmailDialog
+      open={emailOpen}
+      onOpenChange={setEmailOpen}
+      documentType="action_item"
+      documentTitle={item.title}
+      documentId={item.id}
+      projectName={projectName || 'Project'}
+      defaultSubject={`Action Required: ${item.title} — ${cfg.label}`}
+      contentHtml={emailContentHtml}
+    />
+    </>
   );
 }
 
@@ -727,12 +764,13 @@ function PMUpdatesFeed({ projectId }: { projectId: string }) {
 
 interface ClientPortalTabProps {
   projectId: string;
+  projectName?: string;
   accentColor?: string;
 }
 
 type PMView = 'overview' | 'messages' | 'action-items' | 'updates';
 
-export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' }: ClientPortalTabProps) {
+export function ClientPortalTab({ projectId, projectName, accentColor = 'hsl(217, 91%, 60%)' }: ClientPortalTabProps) {
   const [activeView, setActiveView] = useState<PMView>('overview');
   const [createActionOpen, setCreateActionOpen] = useState(false);
   const [postUpdateOpen, setPostUpdateOpen] = useState(false);
@@ -825,7 +863,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
               </div>
               <div className="space-y-2">
                 {pendingItems.slice(0, 3).map(item => (
-                  <PMActionItemRow key={item.id} item={item} projectId={projectId} />
+                  <PMActionItemRow key={item.id} item={item} projectId={projectId} projectName={projectName} />
                 ))}
                 {pendingItems.length > 3 && (
                   <button
@@ -870,13 +908,13 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
           {pendingItems.length > 0 && (
             <div className="space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Awaiting Response</p>
-              {pendingItems.map(item => <PMActionItemRow key={item.id} item={item} projectId={projectId} />)}
+              {pendingItems.map(item => <PMActionItemRow key={item.id} item={item} projectId={projectId} projectName={projectName} />)}
             </div>
           )}
           {resolvedItems.length > 0 && (
             <div className="space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Completed</p>
-              {resolvedItems.map(item => <PMActionItemRow key={item.id} item={item} projectId={projectId} />)}
+              {resolvedItems.map(item => <PMActionItemRow key={item.id} item={item} projectId={projectId} projectName={projectName} />)}
             </div>
           )}
         </div>

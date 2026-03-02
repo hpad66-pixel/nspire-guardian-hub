@@ -49,7 +49,8 @@ export type ExternalEmailDocType =
   | 'submittal'
   | 'change_order'
   | 'progress_report'
-  | 'proposal';
+  | 'proposal'
+  | 'action_item';
 
 export interface SendExternalEmailDialogProps {
   open: boolean;
@@ -97,6 +98,12 @@ const DOC_CONFIG: Record<
     color: 'text-primary',
     bg: 'bg-primary/10',
     Icon: FileText,
+  },
+  action_item: {
+    label: 'Action Item',
+    color: 'text-rose-500',
+    bg: 'bg-rose-500/10',
+    Icon: ClipboardList,
   },
 };
 
