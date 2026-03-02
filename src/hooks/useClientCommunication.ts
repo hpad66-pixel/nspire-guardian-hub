@@ -484,7 +484,69 @@ export function useResolveActionItem() {
         .single();
 
       if (error) throw error;
-      return data as ClientActionItem;
+
+      const item = data as ClientActionItem;
+
+      // Send email notification to the person who created the action item
+      if (item.created_by && item.created_by !== sessionData.session.user.id) {
+        try {
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('user_id', item.created_by)
+            .single();
+
+          const { data: resolverProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', sessionData.session.user.id)
+            .single();
+
+          if (creatorProfile?.email) {
+            const resolverName = resolverProfile?.full_name || 'A team member';
+            const resolvedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            await supabase.functions.invoke('send-email', {
+              body: {
+                recipients: [creatorProfile.email],
+                subject: `✅ Action Item Completed: ${item.title}`,
+                bodyHtml: `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #E5E7EB;">
+  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:24px 32px;">
+    <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.7);">Action Item Completed</p>
+    <h1 style="margin:0;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${item.title}</h1>
+  </div>
+  <div style="padding:24px 32px;">
+    <p style="font-size:15px;color:#374151;margin:0 0 16px;line-height:1.6;">
+      <strong>${resolverName}</strong> has marked this action item as completed.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <tr>
+        <td style="padding:8px 12px;background:#F0FDF4;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Status</td>
+        <td style="padding:8px 12px;background:#F0FDF4;border-radius:0 6px 6px 0;font-size:14px;color:#059669;font-weight:600;">✅ Resolved</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Resolved On</td>
+        <td style="padding:8px 12px;font-size:14px;color:#111827;">${resolvedDate}</td>
+      </tr>
+      ${item.client_response ? `<tr><td style="padding:8px 12px;background:#F9FAFB;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Response</td><td style="padding:8px 12px;background:#F9FAFB;border-radius:0 6px 6px 0;font-size:14px;color:#111827;">${item.client_response}</td></tr>` : ''}
+    </table>
+    ${item.description ? `<p style="font-size:14px;color:#6B7280;margin:0;line-height:1.5;border-top:1px solid #E5E7EB;padding-top:16px;">${item.description}</p>` : ''}
+  </div>
+  <div style="background:#F8FAFC;padding:14px 32px;border-top:1px solid #E5E7EB;">
+    <p style="margin:0;font-size:11px;color:#94A3B8;">Sent via APAS — Project Management Platform</p>
+  </div>
+</div>`,
+              },
+            });
+          }
+        } catch (emailErr) {
+          console.error('Failed to send resolution email:', emailErr);
+          // Don't block the resolve action if email fails
+        }
+      }
+
+      return item;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['client-action-items', variables.projectId] });
