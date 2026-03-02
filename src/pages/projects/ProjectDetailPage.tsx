@@ -23,7 +23,7 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2, TriangleAlert,
+  MoreHorizontal, Archive, Trash2, TriangleAlert, Mail,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images,
 } from 'lucide-react';
@@ -67,6 +67,7 @@ import { SOVEditor } from '@/components/projects/SOVEditor';
 import { PayAppList } from '@/components/projects/PayAppList';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SentItemsTab } from '@/components/projects/SentItemsTab';
 const statusConfig: Record<string, { label: string; class: string; dot: string }> = {
   planning:  { label: 'Planning',   class: 'bg-blue-500/10 text-blue-600 border-blue-500/20',   dot: 'bg-blue-500' },
   active:    { label: 'Active',     class: 'bg-success/10 text-success border-success/20',       dot: 'bg-success' },
@@ -337,6 +338,7 @@ export default function ProjectDetailPage() {
     { value: 'meetings',     label: 'Meetings',     shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
+    { value: 'sent-items',   label: 'Sent Items',   shortLabel: 'Sent',     icon: Mail,            group: 'reports',    badge: null as number | null },
     { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
   ];
 
@@ -912,6 +914,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="sent-items" className="mt-0"><SentItemsTab projectId={id!} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} projectName={project.name} /></TabsContent>
               </div>
             </div>
@@ -1189,6 +1192,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="sent-items"><SentItemsTab projectId={id!} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} projectName={project.name} /></TabsContent>
             </div>
 
