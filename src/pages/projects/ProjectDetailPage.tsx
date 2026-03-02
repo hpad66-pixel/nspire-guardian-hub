@@ -1239,7 +1239,7 @@ export default function ProjectDetailPage() {
               transition={{ type: 'spring', damping: 28, stiffness: 320 }}
               className="absolute right-0 top-0 h-full w-[420px] z-20 shadow-2xl"
             >
-              <ActionItemsPanel projectId={id} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />
+              <ActionItemsPanel projectId={id} projectName={project?.name} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1260,7 +1260,7 @@ export default function ProjectDetailPage() {
 
       <Sheet open={isMobile && actionItemsOpen} onOpenChange={open => { if (!open) setActionItemsOpen(false); }}>
         <SheetContent side="bottom" className="h-[90vh] p-0">
-          {id && <ActionItemsPanel projectId={id} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />}
+          {id && <ActionItemsPanel projectId={id} projectName={project?.name} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />}
         </SheetContent>
       </Sheet>
 
