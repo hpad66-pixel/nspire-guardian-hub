@@ -344,6 +344,7 @@ export function SendExternalEmailDialog({
       bccRecipients: bccEmails.length > 0 ? bccEmails : undefined,
       subject,
       bodyHtml: buildEmailBody(),
+      actionItemId: documentType === 'action_item' ? documentId : undefined,
     });
     handleOpenChange(false);
     onSent?.();

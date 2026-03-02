@@ -16,14 +16,9 @@ function normalizeReplyDomain(rawDomain: string | null): string | null {
 
 function parseAddressList(value: unknown): string[] {
   if (!value) return [];
-
   if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((part) => extractEmail(part))
-      .filter(Boolean) as string[];
+    return value.split(",").map((part) => extractEmail(part)).filter(Boolean) as string[];
   }
-
   if (Array.isArray(value)) {
     const results: string[] = [];
     for (const item of value) {
@@ -40,50 +35,34 @@ function parseAddressList(value: unknown): string[] {
     }
     return results;
   }
-
   return [];
 }
 
 function extractEmail(raw: string | null | undefined): string | null {
   if (!raw) return null;
-
   const angleMatch = raw.match(/<([^>]+)>/);
   const candidate = (angleMatch?.[1] || raw).trim().toLowerCase();
-
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate)) {
-    return candidate;
-  }
-
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate)) return candidate;
   return null;
 }
 
 function extractThreadId(toRecipients: string[], replyDomain: string | null): string | null {
   const domainConstraint = replyDomain ? `@${replyDomain}` : "";
-
   for (const recipient of toRecipients) {
-    if (domainConstraint && !recipient.endsWith(domainConstraint)) {
-      continue;
-    }
-
+    if (domainConstraint && !recipient.endsWith(domainConstraint)) continue;
     const match = recipient.match(/^thread\+([a-f0-9-]{32,36})@/i);
     if (!match) continue;
-
     const token = match[1];
-    if (token.length === 36) {
-      return token.toLowerCase();
-    }
-
+    if (token.length === 36) return token.toLowerCase();
     if (token.length === 32) {
       return `${token.slice(0, 8)}-${token.slice(8, 12)}-${token.slice(12, 16)}-${token.slice(16, 20)}-${token.slice(20)}`.toLowerCase();
     }
   }
-
   return null;
 }
 
 function extractThreadIdFromUnknown(value: unknown, replyDomain: string | null): string | null {
   if (!value) return null;
-
   const domainPattern = replyDomain
     ? `(?:@${replyDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})?`
     : "(?:@[a-z0-9.-]+)?";
@@ -100,34 +79,47 @@ function extractThreadIdFromUnknown(value: unknown, replyDomain: string | null):
     return null;
   };
 
-  if (typeof value === "string") {
-    return tryMatch(value);
-  }
-
+  if (typeof value === "string") return tryMatch(value);
   if (Array.isArray(value)) {
     for (const item of value) {
       const parsed = extractThreadIdFromUnknown(item, replyDomain);
       if (parsed) return parsed;
     }
   }
-
   if (typeof value === "object") {
     for (const v of Object.values(value as Record<string, unknown>)) {
       const parsed = extractThreadIdFromUnknown(v, replyDomain);
       if (parsed) return parsed;
     }
   }
-
   return null;
 }
 
 function firstString(...values: unknown[]): string | null {
   for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
+    if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+// Strip quoted/forwarded content to get only the new reply text
+function extractReplyBody(text: string): string {
+  // Common reply markers
+  const markers = [
+    /^[-]+\s*Original Message\s*[-]+/im,
+    /^On .+ wrote:$/im,
+    /^>+ /m,
+    /^From: /m,
+    /^Sent via APAS/im,
+  ];
+  let cleanText = text;
+  for (const marker of markers) {
+    const idx = cleanText.search(marker);
+    if (idx > 0) {
+      cleanText = cleanText.substring(0, idx);
+    }
+  }
+  return cleanText.trim();
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -147,10 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (expectedSecret) {
       const headerSecret = req.headers.get("x-inbound-webhook-secret");
       const authHeader = req.headers.get("authorization");
-      const bearerSecret = authHeader?.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : null;
-
+      const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
       if (headerSecret !== expectedSecret && bearerSecret !== expectedSecret) {
         return new Response(JSON.stringify({ error: "Unauthorized webhook" }), {
           status: 401,
@@ -161,7 +150,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const contentType = req.headers.get("content-type") || "";
     let payload: Record<string, unknown> = {};
-
     if (contentType.includes("application/json")) {
       payload = (await req.json()) as Record<string, unknown>;
     } else {
@@ -206,22 +194,14 @@ const handler = async (req: Request): Promise<Response> => {
     if (!threadId) {
       return new Response(
         JSON.stringify({ error: "No thread alias found in recipients", recipients: toRecipients }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const subject = firstString(payload.subject, payload["Subject"]) || "(no subject)";
     const bodyHtml = firstString(payload.html, payload["body_html"], payload["html_body"]);
     const bodyText =
-      firstString(
-        payload.text,
-        payload["body_text"],
-        payload["text_body"],
-        payload["stripped_text"],
-      ) || "";
+      firstString(payload.text, payload["body_text"], payload["text_body"], payload["stripped_text"]) || "";
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -230,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: threadRows, error: threadRowsError } = await supabaseAdmin
       .from("report_emails")
-      .select("id, thread_id, sent_by, from_user_id, recipient_user_ids, source_module, report_type, property_id, project_id, work_order_id, report_id, daily_inspection_id, proposal_id")
+      .select("id, thread_id, sent_by, from_user_id, recipient_user_ids, source_module, report_type, property_id, project_id, work_order_id, report_id, daily_inspection_id, proposal_id, action_item_id")
       .or(`id.eq.${threadId},thread_id.eq.${threadId}`)
       .order("sent_at", { ascending: true });
 
@@ -266,14 +246,17 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    const insertPayload = {
+    // Resolve action_item_id from any email in the thread
+    const actionItemId = threadRows.find((r) => r.action_item_id)?.action_item_id || null;
+
+    const insertPayload: Record<string, unknown> = {
       recipients: [fromEmail],
       subject,
       status: "sent",
       body_html: bodyHtml,
       body_text: bodyText,
       is_read: false,
-      message_type: "external" as const,
+      message_type: "external",
       source_module: root.source_module || "mailbox",
       report_type: root.report_type || "general",
       sent_by: null,
@@ -288,6 +271,7 @@ const handler = async (req: Request): Promise<Response> => {
       report_id: root.report_id || null,
       daily_inspection_id: root.daily_inspection_id || null,
       proposal_id: root.proposal_id || null,
+      action_item_id: actionItemId,
     };
 
     const { data: insertedEmail, error: insertError } = await supabaseAdmin
@@ -304,6 +288,29 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // ── ACTION ITEM COMMENT SYNC ──────────────────────────────────────────
+    // If this thread is linked to an action item, auto-create a comment on it
+    if (actionItemId) {
+      const replyContent = extractReplyBody(bodyText) || "(email reply – see mailbox for full content)";
+      const commentContent = `📧 Email reply from ${fromRaw}:\n\n${replyContent}`;
+
+      const { error: commentErr } = await supabaseAdmin
+        .from("action_item_comments")
+        .insert({
+          action_item_id: actionItemId,
+          content: commentContent,
+          created_by: root.sent_by || participantUserIds[0] || "00000000-0000-0000-0000-000000000000",
+        });
+
+      if (commentErr) {
+        console.warn("Failed to create action item comment:", commentErr.message);
+      } else {
+        console.log("Action item comment created for:", actionItemId);
+      }
+    }
+
+    // ── FORWARD TO SENDER'S EMAIL ─────────────────────────────────────────
+    // Always forward inbound replies to the original sender so they see it in their inbox
     const forwardEnabled =
       (Deno.env.get("INBOUND_FORWARD_TO_USER") || "false").toLowerCase() === "true";
 
@@ -326,29 +333,39 @@ const handler = async (req: Request): Promise<Response> => {
           ? `<div>${bodyHtml}</div>`
           : `<pre style="white-space:pre-wrap;font-family:inherit;">${bodyText}</pre>`;
 
+        const replyToAlias = replyDomain
+          ? `thread+${root.thread_id || root.id}@${replyDomain}`
+          : undefined;
+
         const forwardPayload: Record<string, unknown> = {
-          from: "Inbox Forwarder <admin@apas.ai>",
+          from: `${fromRaw} via APAS <admin@apas.ai>`,
           to: forwardRecipients,
-          subject: `Fwd: ${subject}`,
+          subject: `Re: ${subject}`,
+          reply_to: replyToAlias,
           html: `
             <div style="font-family:Arial,sans-serif;line-height:1.5;">
-              <p><strong>Inbound reply captured for thread ${root.thread_id || root.id}</strong></p>
-              <p><strong>From:</strong> ${fromRaw}</p>
-              <p><strong>Original recipients:</strong> ${toRecipients.join(", ") || "n/a"}</p>
-              <hr />
+              <p style="color:#6B7280;font-size:13px;margin:0 0 12px;">
+                <strong>${fromRaw}</strong> replied${actionItemId ? ' to an action item' : ''} — you can reply to this email to continue the conversation.
+              </p>
+              <hr style="border:none;border-top:1px solid #E5E7EB;margin:12px 0;" />
               ${forwardHtml}
             </div>
           `,
         };
 
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(forwardPayload),
-        });
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(forwardPayload),
+          });
+          console.log("Forwarded inbound reply to:", forwardRecipients);
+        } catch (fwdErr) {
+          console.warn("Forward failed:", fwdErr);
+        }
       }
     }
 
@@ -357,6 +374,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         threadId: root.thread_id || root.id,
         emailId: insertedEmail.id,
+        actionItemCommentCreated: !!actionItemId,
       }),
       {
         status: 200,
@@ -366,7 +384,6 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error in inbound-email-webhook:", error);
-
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
