@@ -18,6 +18,7 @@ interface SendEmailRequest {
   bodyText?: string;
   threadId?: string;
   replyToId?: string;
+  actionItemId?: string;
 }
 
 function normalizeReplyDomain(rawDomain: string | null): string | null {
@@ -26,13 +27,11 @@ function normalizeReplyDomain(rawDomain: string | null): string | null {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       console.error("Missing or invalid authorization header");
@@ -48,7 +47,6 @@ const handler = async (req: Request): Promise<Response> => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get user from token
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData?.user) {
       console.error("Auth validation failed:", userError);
@@ -71,6 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
       bodyText,
       threadId,
       replyToId,
+      actionItemId,
     } = body;
 
     let resolvedThreadId = threadId || crypto.randomUUID();
@@ -96,7 +95,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Get user's profile for auto-BCC if not provided
     let finalBccRecipients = bccRecipients || [];
     
-    // Fetch user's profile to get their email for auto-BCC
     const { data: profile } = await supabase
       .from("profiles")
       .select("email, work_email, auto_bcc_enabled, full_name")
@@ -114,7 +112,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Validate required fields
     if (!recipients?.length || !subject || !bodyHtml) {
       console.error("Missing required fields:", { recipients: !!recipients, subject: !!subject, bodyHtml: !!bodyHtml });
       return new Response(
@@ -123,7 +120,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Validate email addresses
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const invalidEmails = recipients.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
@@ -148,18 +144,15 @@ const handler = async (req: Request): Promise<Response> => {
       emailPayload.reply_to = replyToAlias;
     }
 
-    // Add CC if any
     if (ccRecipients && ccRecipients.length > 0) {
       emailPayload.cc = ccRecipients;
     }
 
-    // Add BCC recipients if any
     if (finalBccRecipients.length > 0) {
       emailPayload.bcc = finalBccRecipients;
       console.log("Sending with BCC to:", finalBccRecipients);
     }
 
-    // Send email using Resend API
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -180,22 +173,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Log the email to database using service role for insert
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     // ── AUTO-CONTACT EXTRACTION ─────────────────────────────────────────────
-    // For every external recipient (To + CC), auto-create a CRM contact if one
-    // doesn't already exist for that email address in this workspace.
     const autoContactEmails = [
       ...(recipients || []),
       ...(ccRecipients || []),
     ].filter(Boolean);
 
     if (autoContactEmails.length > 0) {
-      // Fetch sender's workspace_id
       const { data: senderProfile } = await supabaseAdmin
         .from("profiles")
         .select("workspace_id")
@@ -205,11 +194,9 @@ const handler = async (req: Request): Promise<Response> => {
       const workspaceId = senderProfile?.workspace_id;
 
       for (const email of autoContactEmails) {
-        // Skip if same as sender's own email
         const senderEmail = profile?.work_email || profile?.email;
         if (senderEmail && email.toLowerCase() === senderEmail.toLowerCase()) continue;
 
-        // Check if contact already exists in this workspace
         const { data: existing } = await supabaseAdmin
           .from("crm_contacts")
           .select("id")
@@ -218,7 +205,6 @@ const handler = async (req: Request): Promise<Response> => {
           .maybeSingle();
 
         if (!existing) {
-          // Parse a best-guess first name from the email local part
           const localPart = email.split("@")[0] ?? "";
           const nameParts = localPart.replace(/[._\-+]/g, " ").split(" ").filter(Boolean);
           const firstName = nameParts[0]
@@ -251,7 +237,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
     // ── END AUTO-CONTACT EXTRACTION ─────────────────────────────────────────
 
-    const emailRecord = {
+    const emailRecord: Record<string, unknown> = {
       recipients,
       bcc_recipients: finalBccRecipients,
       subject,
@@ -266,13 +252,18 @@ const handler = async (req: Request): Promise<Response> => {
       reply_to_id: replyToId || null,
     };
 
+    // Link to action item if provided
+    if (actionItemId) {
+      emailRecord.action_item_id = actionItemId;
+      emailRecord.source_module = "action_items";
+    }
+
     const { error: insertError } = await supabaseAdmin
       .from("report_emails")
       .insert(emailRecord);
 
     if (insertError) {
       console.error("Failed to log email to database:", insertError);
-      // Don't fail the request if logging fails
     }
 
     return new Response(

@@ -1,0 +1,1 @@
+ALTER TABLE public.report_emails ADD COLUMN IF NOT EXISTS action_item_id UUID REFERENCES public.project_action_items(id) ON DELETE SET NULL;

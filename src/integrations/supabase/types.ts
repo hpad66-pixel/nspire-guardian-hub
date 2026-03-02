@@ -6078,6 +6078,7 @@ export type Database = {
       }
       report_emails: {
         Row: {
+          action_item_id: string | null
           archived_at: string | null
           archived_by_user_ids: string[] | null
           attachment_filename: string | null
@@ -6114,6 +6115,7 @@ export type Database = {
           work_order_id: string | null
         }
         Insert: {
+          action_item_id?: string | null
           archived_at?: string | null
           archived_by_user_ids?: string[] | null
           attachment_filename?: string | null
@@ -6150,6 +6152,7 @@ export type Database = {
           work_order_id?: string | null
         }
         Update: {
+          action_item_id?: string | null
           archived_at?: string | null
           archived_by_user_ids?: string[] | null
           attachment_filename?: string | null
@@ -6186,6 +6189,13 @@ export type Database = {
           work_order_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "report_emails_action_item_id_fkey"
+            columns: ["action_item_id"]
+            isOneToOne: false
+            referencedRelation: "project_action_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "report_emails_daily_inspection_id_fkey"
             columns: ["daily_inspection_id"]

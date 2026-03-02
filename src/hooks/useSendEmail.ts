@@ -19,6 +19,7 @@ export interface SendEmailParams {
   attachments?: EmailAttachment[];
   threadId?: string;
   replyToId?: string;
+  actionItemId?: string;
 }
 
 export function useSendEmail() {
