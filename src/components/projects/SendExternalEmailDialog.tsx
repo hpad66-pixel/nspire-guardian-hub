@@ -17,16 +17,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { ContactPicker } from '@/components/crm/ContactPicker';
 import { useSendEmail } from '@/hooks/useSendEmail';
-import { useCreateCRMContact, type ContactType, CONTACT_TYPE_LABELS } from '@/hooks/useCRMContacts';
+import { useCreateCRMContact } from '@/hooks/useCRMContacts';
 import {
   Mail,
   X,
@@ -108,34 +101,52 @@ const DOC_CONFIG: Record<
 };
 
 // ── Save-to-Contacts mini popover shown on each email tag ─────────────────────
+function deriveNameFromEmail(email: string) {
+  const local = email.split('@')[0] ?? '';
+  const cleaned = local
+    .replace(/[._-]+/g, ' ')
+    .replace(/\d+/g, ' ')
+    .trim();
+
+  if (!cleaned) return '';
+
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
 function SaveContactPopover({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [company, setCompany] = useState('');
-  const [contactType, setContactType] = useState<ContactType>('other');
+  const [name, setName] = useState(() => deriveNameFromEmail(email));
   const createContact = useCreateCRMContact();
 
   const handleSave = async () => {
-    if (!firstName.trim()) {
-      toast.error('First name is required');
+    const fullName = name.trim();
+    if (!fullName) {
+      toast.error('Name is required');
       return;
     }
+
+    const [firstName, ...rest] = fullName.split(/\s+/);
+    const lastName = rest.join(' ').trim();
+
     await createContact.mutateAsync({
-      first_name: firstName.trim(),
-      last_name: lastName.trim() || undefined,
-      company_name: company.trim() || undefined,
+      first_name: firstName,
+      last_name: lastName || undefined,
       email,
-      contact_type: contactType,
+      contact_type: 'other',
     });
+
     setSaved(true);
     setOpen(false);
   };
 
   if (saved) {
     return (
-      <span title="Saved to Contacts" className="text-green-600 dark:text-green-400">
+      <span title="Saved to Contacts" className="text-primary">
         <Check className="h-3 w-3" />
       </span>
     );
@@ -157,59 +168,23 @@ function SaveContactPopover({ email }: { email: string }) {
         <p className="text-xs text-muted-foreground mb-3">{email}</p>
 
         <div className="space-y-2.5">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">First name *</Label>
-              <Input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Jane"
-                className="h-8 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Last name</Label>
-              <Input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Smith"
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-
           <div className="space-y-1">
-            <Label className="text-xs">Company</Label>
+            <Label className="text-xs">Name *</Label>
             <Input
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Acme Corp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Jane Smith"
               className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Contact type</Label>
-            <Select value={contactType} onValueChange={(v) => setContactType(v as ContactType)}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(CONTACT_TYPE_LABELS) as ContactType[]).map((t) => (
-                  <SelectItem key={t} value={t} className="text-sm">
-                    {CONTACT_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <Button
             size="sm"
             className="w-full gap-1.5 mt-1"
             onClick={handleSave}
-            disabled={createContact.isPending || !firstName.trim()}
+            disabled={createContact.isPending || !name.trim()}
           >
             <Check className="h-3.5 w-3.5" />
             {createContact.isPending ? 'Saving...' : 'Save Contact'}
