@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, CheckSquare, ChevronDown, ChevronRight, MessageSquare,
   Calendar, User, UserPlus, Flag, Trash2, Send, Loader2, Filter, Check,
-  AlertCircle, Clock, Circle, MoreHorizontal,
+  AlertCircle, Clock, Circle, MoreHorizontal, Mail,
 } from 'lucide-react';
+import { SendExternalEmailDialog } from './SendExternalEmailDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -206,12 +207,14 @@ function AddMemberInlineDropdown({ projectId, existingUserIds, onAdded }: { proj
 function TaskCard({
   item,
   projectId,
+  projectName,
   currentUserId,
   expanded,
   onToggleExpand,
 }: {
   item: ActionItem;
   projectId: string;
+  projectName?: string;
   currentUserId: string;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -229,7 +232,7 @@ function TaskCard({
   const [editTitle, setEditTitle] = useState(item.title);
   const [editDesc, setEditDesc] = useState(item.description || '');
   const [editingTitle, setEditingTitle] = useState(false);
-
+  const [emailOpen, setEmailOpen] = useState(false);
   const pri = PRIORITY_CONFIG[item.priority];
   const sta = STATUS_CONFIG[item.status];
   const dueInfo = getDueDateLabel(item.due_date);
@@ -474,8 +477,17 @@ function TaskCard({
                   </PopoverContent>
                 </Popover>
 
-                {/* Spacer + delete */}
+                {/* Spacer + email + delete */}
                 <div className="flex-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] gap-1.5"
+                  onClick={() => setEmailOpen(true)}
+                >
+                  <Mail className="h-3 w-3" />
+                  Email
+                </Button>
                 {isCreator && (
                   <Button
                     variant="ghost"
@@ -502,6 +514,33 @@ function TaskCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SendExternalEmailDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        documentType="action_item"
+        documentTitle={item.title}
+        documentId={item.id}
+        projectName={projectName || 'Project'}
+        defaultSubject={`Action Item: ${item.title}`}
+        contentHtml={`
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;">
+            <div style="border-left:4px solid ${PRIORITY_CONFIG[item.priority].dot === 'bg-red-500' ? '#EF4444' : PRIORITY_CONFIG[item.priority].dot === 'bg-orange-500' ? '#F97316' : PRIORITY_CONFIG[item.priority].dot === 'bg-blue-500' ? '#3B82F6' : '#94A3B8'};padding-left:16px;margin-bottom:20px;">
+              <p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;margin:0 0 4px;">Action Item · ${PRIORITY_CONFIG[item.priority].label} Priority</p>
+              <h2 style="font-size:20px;font-weight:700;color:#111827;margin:0;">${item.title}</h2>
+            </div>
+            ${item.description ? `<p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 16px;">${item.description}</p>` : ''}
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:8px 12px;background:#F9FAFB;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;">Status</td><td style="padding:8px 12px;background:#F9FAFB;border-radius:0 6px 6px 0;font-size:14px;color:#111827;">${STATUS_CONFIG[item.status].label}</td></tr>
+              ${item.due_date ? `<tr><td style="padding:8px 12px;font-size:12px;color:#6B7280;font-weight:600;">Due Date</td><td style="padding:8px 12px;font-size:14px;color:#111827;">${format(new Date(item.due_date + 'T00:00:00'), 'MMMM d, yyyy')}</td></tr>` : ''}
+              ${item.assignee?.full_name ? `<tr><td style="padding:8px 12px;background:#F9FAFB;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;">Assigned To</td><td style="padding:8px 12px;background:#F9FAFB;border-radius:0 6px 6px 0;font-size:14px;color:#111827;">${item.assignee.full_name}</td></tr>` : ''}
+            </table>
+            <div style="border-top:1px solid #E5E7EB;padding-top:16px;margin-top:16px;">
+              <p style="font-size:14px;color:#374151;"><strong>To respond:</strong> Simply reply to this email. Your response will be logged automatically.</p>
+            </div>
+          </div>
+        `}
+      />
     </motion.div>
   );
 }
@@ -648,11 +687,12 @@ function QuickAddBar({ projectId, onCreated }: { projectId: string; onCreated?: 
 
 interface ActionItemsPanelProps {
   projectId: string;
+  projectName?: string;
   open: boolean;
   onClose: () => void;
 }
 
-export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelProps) {
+export function ActionItemsPanel({ projectId, projectName, open, onClose }: ActionItemsPanelProps) {
   const { user } = useAuth();
   const { data: items = [], isLoading } = useActionItemsByProject(open ? projectId : null);
   const [tab, setTab] = useState<'all' | 'mine'>('all');
@@ -792,6 +832,7 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
                           key={item.id}
                           item={item}
                           projectId={projectId}
+                          projectName={projectName}
                           currentUserId={user?.id || ''}
                           expanded={expandedId === item.id}
                           onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
@@ -825,6 +866,7 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
                             key={item.id}
                             item={item}
                             projectId={projectId}
+                            projectName={projectName}
                             currentUserId={user?.id || ''}
                             expanded={expandedId === item.id}
                             onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
