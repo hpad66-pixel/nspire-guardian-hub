@@ -912,7 +912,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-                <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
+                <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} projectName={project.name} /></TabsContent>
               </div>
             </div>
 
@@ -1189,7 +1189,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-              <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
+              <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} projectName={project.name} /></TabsContent>
             </div>
 
           </Tabs>
