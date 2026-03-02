@@ -283,6 +283,49 @@ function PMMessageThread({ projectId, accentColor }: { projectId: string; accent
 }
 
 // Create action item dialog
+function buildActionItemEmailHtml({
+  type, title, description, priority, dueDate, amount, options,
+}: {
+  type: ActionItemType; title: string; description?: string;
+  priority: string; dueDate?: string; amount?: number; options?: string[];
+}) {
+  const typeLabel = ACTION_TYPE_CONFIG[type]?.label ?? type;
+  const priorityColors: Record<string, string> = {
+    urgent: '#EF4444', normal: '#3B82F6', low: '#6B7280',
+  };
+  const priorityColor = priorityColors[priority] ?? '#3B82F6';
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
+
+  return `
+  <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#ffffff;">
+    <div style="border-left:4px solid ${priorityColor};padding-left:16px;margin-bottom:24px;">
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;margin:0 0 4px 0;">${typeLabel}</p>
+      <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;line-height:1.3;">${title}</h1>
+    </div>
+    ${description ? `<p style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 20px 0;">${description}</p>` : ''}
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+      <tr>
+        <td style="padding:8px 12px;background:#F9FAFB;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Priority</td>
+        <td style="padding:8px 12px;background:#F9FAFB;border-radius:0 6px 6px 0;font-size:14px;color:${priorityColor};font-weight:600;">${priority.charAt(0).toUpperCase() + priority.slice(1)}</td>
+      </tr>
+      ${dueDateStr ? `<tr><td style="padding:8px 12px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Due Date</td><td style="padding:8px 12px;font-size:14px;color:#111827;">${dueDateStr}</td></tr>` : ''}
+      ${amount ? `<tr><td style="padding:8px 12px;background:#F9FAFB;border-radius:6px 0 0 6px;font-size:12px;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Amount</td><td style="padding:8px 12px;background:#F9FAFB;border-radius:0 6px 6px 0;font-size:14px;color:#111827;font-weight:600;">$${amount.toLocaleString()}</td></tr>` : ''}
+    </table>
+    ${options && options.length > 0 ? `
+      <div style="margin-bottom:20px;">
+        <p style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#6B7280;font-weight:600;margin:0 0 8px 0;">Options</p>
+        ${options.map(o => `<div style="display:inline-block;padding:6px 14px;margin:0 6px 6px 0;background:#EFF6FF;color:#1D4ED8;border-radius:20px;font-size:13px;font-weight:500;">${o}</div>`).join('')}
+      </div>
+    ` : ''}
+    <div style="border-top:1px solid #E5E7EB;padding-top:20px;margin-top:8px;">
+      <p style="font-size:14px;color:#374151;line-height:1.6;margin:0;">
+        <strong>To respond:</strong> Simply reply to this email with your answer or selection. Your response will be automatically logged and the team will be notified.
+      </p>
+    </div>
+    <p style="font-size:11px;color:#9CA3AF;margin:24px 0 0 0;">Sent via APAS — Project Management Platform</p>
+  </div>`;
+}
+
 function CreateActionItemDialog({
   projectId, open, onOpenChange,
 }: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -294,35 +337,81 @@ function CreateActionItemDialog({
   const [dueDate, setDueDate] = useState('');
   const [amount, setAmount] = useState('');
   const [options, setOptions] = useState('');
+  const [sendExternal, setSendExternal] = useState(false);
+  const [externalEmail, setExternalEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   function reset() {
     setType('information'); setTitle(''); setDescription('');
     setPriority('normal'); setDueDate(''); setAmount(''); setOptions('');
+    setSendExternal(false); setExternalEmail(''); setIsSending(false);
   }
 
   async function handleSubmit() {
     if (!title.trim()) { toast.error('Title is required'); return; }
-    await createItem.mutateAsync({
-      projectId,
-      actionType: type,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      priority,
-      dueDate: dueDate || undefined,
-      amount: amount ? Number(amount) : undefined,
-      options: type === 'decision' && options.trim()
-        ? options.split(',').map(o => o.trim()).filter(Boolean)
-        : undefined,
-    });
-    reset();
-    onOpenChange(false);
+    if (sendExternal && !externalEmail.trim()) { toast.error('Recipient email is required'); return; }
+
+    setIsSending(true);
+    try {
+      // Create in DB
+      await createItem.mutateAsync({
+        projectId,
+        actionType: type,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        priority,
+        dueDate: dueDate || undefined,
+        amount: amount ? Number(amount) : undefined,
+        options: type === 'decision' && options.trim()
+          ? options.split(',').map(o => o.trim()).filter(Boolean)
+          : undefined,
+      });
+
+      // Send external email if toggled
+      if (sendExternal && externalEmail.trim()) {
+        const parsedOptions = type === 'decision' && options.trim()
+          ? options.split(',').map(o => o.trim()).filter(Boolean) : undefined;
+
+        const bodyHtml = buildActionItemEmailHtml({
+          type, title: title.trim(), description: description.trim() || undefined,
+          priority, dueDate: dueDate || undefined,
+          amount: amount ? Number(amount) : undefined, options: parsedOptions,
+        });
+
+        const typeLabel = ACTION_TYPE_CONFIG[type]?.label ?? type;
+        const { error } = await supabase.functions.invoke('send-email', {
+          body: {
+            recipients: externalEmail.split(',').map(e => e.trim()).filter(Boolean),
+            subject: `Action Required: ${title.trim()} — ${typeLabel}`,
+            bodyHtml,
+            bodyText: `${typeLabel}: ${title.trim()}\n\n${description || ''}\n\nPriority: ${priority}\n${dueDate ? `Due: ${dueDate}` : ''}\n\nPlease reply to this email with your response.`,
+          },
+        });
+
+        if (error) {
+          console.error('External email failed:', error);
+          toast.error('Action item created, but email delivery failed');
+        } else {
+          toast.success('Action item created & email sent!');
+        }
+      }
+
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      // createItem already toasts on error
+    } finally {
+      setIsSending(false);
+    }
   }
+
+  const isPending = createItem.isPending || isSending;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Send Action Item to Client</DialogTitle>
+          <DialogTitle>Send Action Item</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           {/* Type */}
@@ -381,12 +470,40 @@ function CreateActionItemDialog({
               <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
           </div>
+
+          {/* ── External Email Toggle ─────────────────────────────── */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={sendExternal}
+                onChange={e => setSendExternal(e.target.checked)}
+                className="h-4 w-4 rounded border-input accent-primary"
+              />
+              <div>
+                <span className="text-sm font-medium">Also email externally</span>
+                <p className="text-[11px] text-muted-foreground">Send a formatted email to contractors outside the system. They can reply directly by email.</p>
+              </div>
+            </label>
+            {sendExternal && (
+              <div className="space-y-1.5">
+                <Label>Recipient Email(s)</Label>
+                <Input
+                  type="email"
+                  value={externalEmail}
+                  onChange={e => setExternalEmail(e.target.value)}
+                  placeholder="contractor@example.com, another@example.com"
+                />
+                <p className="text-[10px] text-muted-foreground">Separate multiple emails with commas. Replies sync back to your dashboard.</p>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={createItem.isPending || !title.trim()}>
-            {createItem.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-            Send to Client
+          <Button onClick={handleSubmit} disabled={isPending || !title.trim()}>
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+            {sendExternal ? 'Send & Email' : 'Send to Client'}
           </Button>
         </DialogFooter>
       </DialogContent>
