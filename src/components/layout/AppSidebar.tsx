@@ -591,7 +591,10 @@ export function AppSidebar() {
                 tooltip={activeProjectCount > 0 ? `${activeProjectCount} active` : 'Projects'}
               />
               {!collapsed && recentProjects.length > 0 && (
-                <div className="pl-3 space-y-0.5 pb-0.5">
+                <div className="pl-3 space-y-0.5 pb-1">
+                  <span className="block px-2 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-[hsl(var(--sidebar-muted))]/60 select-none">
+                    Recently Viewed
+                  </span>
                   {recentProjects.map(p => {
                     const health = computeHealth(p);
                     const hc = HEALTH_CONFIG[health];
@@ -611,6 +614,12 @@ export function AppSidebar() {
                       </button>
                     );
                   })}
+                  <button
+                    onClick={() => navigate('/projects')}
+                    className="flex items-center gap-1 w-full px-2 py-1 text-[10px] font-medium text-[hsl(var(--sidebar-muted))]/70 hover:text-[hsl(var(--sidebar-foreground))] transition-colors"
+                  >
+                    View All Projects →
+                  </button>
                 </div>
               )}
               {isAdmin && (
