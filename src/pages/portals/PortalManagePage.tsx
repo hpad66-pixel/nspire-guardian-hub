@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ExternalLink, Copy, Settings, Archive, Loader2, Users, FileText,
-  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle
+  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, Mail, CalendarDays
 } from 'lucide-react';
 import {
   usePortal, usePortalAccess, usePortalRequests, usePortalActivity,
