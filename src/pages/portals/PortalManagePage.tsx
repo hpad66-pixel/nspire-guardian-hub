@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -68,13 +68,39 @@ export default function PortalManagePage() {
   const [inviteCompany, setInviteCompany] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [requestFilter, setRequestFilter] = useState('all');
+  const [hydratedContactIds, setHydratedContactIds] = useState<Record<string, boolean>>({});
+
+  const PROD_DOMAIN = 'https://build.apas.ai';
+
+  function hasValidMagicLink(contact: PortalAccess) {
+    if (!contact.magic_link_token || !contact.magic_link_expires_at) return false;
+    return new Date(contact.magic_link_expires_at).getTime() > Date.now();
+  }
+
+  useEffect(() => {
+    const contactsNeedingTokens = contacts.filter(
+      (contact) => !hasValidMagicLink(contact) && !hydratedContactIds[contact.id]
+    );
+
+    if (contactsNeedingTokens.length === 0) return;
+
+    setHydratedContactIds((prev) => ({
+      ...prev,
+      ...Object.fromEntries(contactsNeedingTokens.map((contact) => [contact.id, true])),
+    }));
+
+    void Promise.allSettled(
+      contactsNeedingTokens.map((contact) =>
+        regeneratePortalToken.mutateAsync({ accessId: contact.id })
+      )
+    );
+  }, [contacts, hydratedContactIds, regeneratePortalToken]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
   if (!portal) return <Navigate to="/portals" replace />;
 
-  const PROD_DOMAIN = 'https://build.apas.ai';
   const portalUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}`;
   const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}/schedule`;
   const hasSchedule = portal.shared_modules.includes('schedule');
@@ -92,11 +118,6 @@ export default function PortalManagePage() {
     inviteContact.mutate({ email: inviteEmail.trim(), name: inviteName || undefined, company: inviteCompany || undefined }, {
       onSuccess: () => { setInviteEmail(''); setInviteName(''); setInviteCompany(''); setShowInviteForm(false); }
     });
-  }
-
-  function hasValidMagicLink(contact: PortalAccess) {
-    if (!contact.magic_link_token || !contact.magic_link_expires_at) return false;
-    return new Date(contact.magic_link_expires_at).getTime() > Date.now();
   }
 
   function buildMagicLink(token: string, target: 'portal' | 'schedule') {
@@ -132,7 +153,7 @@ export default function PortalManagePage() {
       const url = await ensureMagicLink(contact, target);
       const subject = target === 'schedule' ? 'Your Project Schedule' : 'Your Client Portal';
       const body = `Hi ${contact.name ?? ''},\n\nHere is your ${target} link:\n${url}\n\nBest regards`;
-      window.location.href = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.assign(`mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to generate email link');
     }
@@ -333,61 +354,112 @@ export default function PortalManagePage() {
             <p className="text-sm text-muted-foreground text-center py-10">No contacts invited yet.</p>
           ) : (
             <div className="space-y-2">
-              {contacts.map(c => (
-                <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {(c.name ?? c.email).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{c.name ?? c.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {c.name ? c.email : null}
-                          {c.last_login_at
-                            ? ` · Last login ${formatDistanceToNow(new Date(c.last_login_at), { addSuffix: true })}`
-                            : ' · Never logged in'}
-                        </p>
+              {contacts.map(c => {
+                const isMagicLinkReady = hasValidMagicLink(c) && !!c.magic_link_token;
+                const contactPortalUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'portal') : null;
+                const contactScheduleUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'schedule') : null;
+                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${contactPortalUrl ?? portalUrl}\n\nBest regards`;
+                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${contactScheduleUrl ?? scheduleUrl}\n\nBest regards`;
+
+                return (
+                  <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {(c.name ?? c.email).charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{c.name ?? c.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {c.name ? c.email : null}
+                            {c.last_login_at
+                              ? ` · Last login ${formatDistanceToNow(new Date(c.last_login_at), { addSuffix: true })}`
+                              : ' · Never logged in'}
+                          </p>
+                        </div>
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => revokeAccess.mutate({ id: c.id, portalId: portal.id })}
+                            className="text-destructive"
+                          >
+                            Revoke Access
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-3.5 w-3.5" />
+                    <div className="flex flex-wrap gap-1.5 pl-11">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => {
+                          if (contactPortalUrl) {
+                            navigator.clipboard.writeText(contactPortalUrl);
+                            toast.success('Portal link copied');
+                            return;
+                          }
+                          void handleCopyLink(c, 'portal');
+                        }}
+                      >
+                        <Copy className="h-3 w-3" /> Portal Link
+                      </Button>
+
+                      {contactPortalUrl ? (
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                          <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Client Portal')}&body=${encodeURIComponent(emailPortalBody)}`}>
+                            <Mail className="h-3 w-3" /> Email Portal
+                          </a>
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => revokeAccess.mutate({ id: c.id, portalId: portal.id })}
-                          className="text-destructive"
-                        >
-                          Revoke Access
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      ) : (
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'portal')}>
+                          <Mail className="h-3 w-3" /> Email Portal
+                        </Button>
+                      )}
+
+                      {hasSchedule && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            onClick={() => {
+                              if (contactScheduleUrl) {
+                                navigator.clipboard.writeText(contactScheduleUrl);
+                                toast.success('Schedule link copied');
+                                return;
+                              }
+                              void handleCopyLink(c, 'schedule');
+                            }}
+                          >
+                            <Copy className="h-3 w-3" /> Schedule Link
+                          </Button>
+
+                          {contactScheduleUrl ? (
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                              <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Project Schedule')}&body=${encodeURIComponent(emailScheduleBody)}`}>
+                                <CalendarDays className="h-3 w-3" /> Email Schedule
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'schedule')}>
+                              <CalendarDays className="h-3 w-3" /> Email Schedule
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 pl-11">
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleCopyLink(c, 'portal')}>
-                      <Copy className="h-3 w-3" /> Portal Link
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'portal')}>
-                      <Mail className="h-3 w-3" /> Email Portal
-                    </Button>
-                    {hasSchedule && (
-                      <>
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleCopyLink(c, 'schedule')}>
-                          <Copy className="h-3 w-3" /> Schedule Link
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'schedule')}>
-                          <CalendarDays className="h-3 w-3" /> Email Schedule
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
