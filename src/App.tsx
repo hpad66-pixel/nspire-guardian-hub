@@ -127,7 +127,7 @@ const App = () => (
                   <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPageAlt />} />
-                    {/* Dashboard is protected but outside AppLayout for now — redirect into protected routes */}
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/install" element={<InstallPage />} />
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
@@ -149,8 +149,7 @@ const App = () => (
                         <ProtectedRoute>
                           <AppLayout>
                             <Routes>
-                              {/* Dashboard / Command Center */}
-                              <Route path="/dashboard" element={<Dashboard />} />
+                              {/* Core Platform */}
                               {/* Core Platform */}
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
