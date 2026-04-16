@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function AssetsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,11 +53,17 @@ export default function AssetsPage() {
 
   const { data: lowStockCount } = useLowStockCount(selectedPropertyId);
 
+  // If the URL has ?propertyId=, prefer it; otherwise pick the first property.
   useEffect(() => {
+    const urlPropertyId = searchParams.get('propertyId');
+    if (urlPropertyId && properties.some((p) => p.id === urlPropertyId)) {
+      if (selectedPropertyId !== urlPropertyId) setSelectedPropertyId(urlPropertyId);
+      return;
+    }
     if (!selectedPropertyId && properties.length > 0) {
       setSelectedPropertyId(properties[0].id);
     }
-  }, [properties, selectedPropertyId]);
+  }, [properties, selectedPropertyId, searchParams]);
 
   const { data: assets = [], isLoading } = useAssets(
     selectedPropertyId || undefined

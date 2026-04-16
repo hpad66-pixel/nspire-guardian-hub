@@ -5,22 +5,25 @@ import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  ClipboardCheck, 
-  AlertTriangle, 
-  CheckCircle2, 
+import {
+  ClipboardCheck,
+  AlertTriangle,
+  CheckCircle2,
   Clock,
   Calendar,
   TreePine,
   Building,
+  Building2,
   DoorOpen,
   Plus,
   ArrowRight,
   ShieldCheck,
+  X,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
 import { useInspectionStats, useAnnualInspectionProgress } from '@/hooks/useInspectionStats';
+import { useProperties } from '@/hooks/useProperties';
 import { InspectionWizard } from '@/components/inspections/InspectionWizard';
 import { ComplianceDashboard } from '@/components/inspections/ComplianceDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,15 +31,31 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function InspectionsDashboard() {
   const [wizardOpen, setWizardOpen] = useState(false);
-  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const propertyFilterId = searchParams.get('propertyId');
+
   const { data: defectStats, isLoading: loadingDefects } = useDefectStats();
   const { data: openDefects } = useOpenDefects();
   const { data: inspectionStats } = useInspectionStats();
   const { data: annualProgress } = useAnnualInspectionProgress();
+  const { data: properties } = useProperties();
   const { canCreate } = useUserPermissions();
   const canCreateInspections = canCreate('inspections');
 
-  const urgentDefects = openDefects?.slice(0, 5) || [];
+  const filteredProperty = propertyFilterId
+    ? properties?.find((p) => p.id === propertyFilterId) ?? null
+    : null;
+
+  const clearPropertyFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('propertyId');
+    setSearchParams(next, { replace: true });
+  };
+
+  const scopedDefects = propertyFilterId
+    ? (openDefects ?? []).filter((d: any) => d.property_id === propertyFilterId)
+    : (openDefects ?? []);
+  const urgentDefects = scopedDefects.slice(0, 5);
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -60,6 +79,27 @@ export default function InspectionsDashboard() {
           </Button>
         )}
       </div>
+
+      {/* Property filter banner */}
+      {filteredProperty && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Urgent defects filtered to</span>
+            <span className="font-semibold text-foreground">{filteredProperty.name}</span>
+            <span className="text-xs text-muted-foreground">(stat totals remain workspace-wide)</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearPropertyFilter}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Tabs: Overview vs Compliance Analytics */}
       <Tabs defaultValue="overview" className="space-y-6">

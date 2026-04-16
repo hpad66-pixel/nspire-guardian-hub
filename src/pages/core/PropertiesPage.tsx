@@ -291,7 +291,7 @@ export default function PropertiesPage() {
                     label="Documents"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/documents?propertyId=${property.id}`);
+                      navigate(`/documents/archives?propertyId=${property.id}`);
                     }}
                   />
                 </>
