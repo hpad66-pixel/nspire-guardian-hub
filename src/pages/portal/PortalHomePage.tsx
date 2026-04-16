@@ -18,9 +18,19 @@ function ComplianceDot({ expiry }: { expiry?: string | null }) {
 
 export default function PortalHomePage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { data: portal, isLoading } = usePortalBySlug(slug);
   const { session, isAuthenticated } = usePortalSession();
   const [activeTab, setActiveTab] = useState<PortalTab>('home');
+
+  // Redirect to standalone schedule page when schedule tab is clicked
+  const handleTabChange = (tab: string) => {
+    if (tab === 'schedule') {
+      navigate(`/portal/${slug}/schedule`);
+      return;
+    }
+    setActiveTab(tab as PortalTab);
+  };
 
   const { data: credentials = [] } = useAllCredentials();
 
