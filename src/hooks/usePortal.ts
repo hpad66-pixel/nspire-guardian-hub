@@ -338,6 +338,38 @@ export function useInviteContact(portalId: string) {
   });
 }
 
+export function useRegeneratePortalAccessToken(portalId: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ accessId }: { accessId: string }) => {
+      const token = crypto.randomUUID();
+      const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from('portal_access')
+        .update({
+          magic_link_token: token,
+          magic_link_expires_at: expires,
+          is_active: true,
+        })
+        .eq('id', accessId)
+        .eq('portal_id', portalId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as PortalAccess;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['portal-access', portalId] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to refresh magic link');
+    },
+  });
+}
+
 export function useRevokeAccess() {
   const qc = useQueryClient();
 
