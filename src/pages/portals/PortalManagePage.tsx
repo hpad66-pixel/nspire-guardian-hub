@@ -463,17 +463,15 @@ export default function PortalManagePage() {
                             <Copy className="h-3 w-3" /> Schedule Link
                           </Button>
 
-                          {contactScheduleUrl ? (
-                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-                              <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Project Schedule')}&body=${encodeURIComponent(emailScheduleBody)}`}>
-                                <CalendarDays className="h-3 w-3" /> Email Schedule
-                              </a>
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'schedule')}>
-                              <CalendarDays className="h-3 w-3" /> Email Schedule
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            disabled={sendEmail.isPending}
+                            onClick={() => void handleEmailLink(c, 'schedule')}
+                          >
+                            <CalendarDays className="h-3 w-3" /> Email Schedule
+                          </Button>
                         </>
                       )}
                     </div>
