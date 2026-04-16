@@ -9,6 +9,7 @@ export default function PortalAuthPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  const redirect = searchParams.get('redirect');
   const { data: portal } = usePortalBySlug(slug);
 
   useEffect(() => {
@@ -35,8 +36,6 @@ export default function PortalAuthPage() {
       await supabase
         .from('portal_access')
         .update({
-          magic_link_token: null,
-          magic_link_expires_at: null,
           last_login_at: new Date().toISOString(),
           login_count: (access.login_count ?? 0) + 1,
         })
@@ -51,7 +50,10 @@ export default function PortalAuthPage() {
         portalSlug: slug!,
       });
 
-      if (isFirstLogin) {
+      // Support deep-link redirect (e.g. ?redirect=schedule)
+      if (redirect) {
+        navigate(`/portal/${slug}/${redirect}`);
+      } else if (isFirstLogin) {
         navigate(`/portal/${slug}/welcome`);
       } else {
         navigate(`/portal/${slug}/home`);
@@ -59,7 +61,7 @@ export default function PortalAuthPage() {
     }
 
     authenticate();
-  }, [token, portal, slug, navigate]);
+  }, [token, portal, slug, navigate, redirect]);
 
   if (!token) {
     return (
