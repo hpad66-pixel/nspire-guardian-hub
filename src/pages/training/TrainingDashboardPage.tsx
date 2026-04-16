@@ -22,8 +22,8 @@ export default function TrainingDashboardPage() {
 
   const [assignSheetOpen, setAssignSheetOpen] = useState(false);
 
-  if (!isModuleEnabled('trainingHubEnabled')) return <Navigate to="/dashboard" replace />;
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isModuleEnabled('trainingHubEnabled')) return <Navigate to="/portals" replace />;
+  if (!isAdmin) return <Navigate to="/portals" replace />;
 
   const now = new Date();
   const overdue = assignments.filter(a => a.due_date && isAfter(now, parseISO(a.due_date)));

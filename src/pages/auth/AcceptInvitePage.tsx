@@ -109,7 +109,7 @@ export default function AcceptInvitePage() {
 
       // Redirect after a short delay
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/portals');
       }, 2000);
     } catch (error: any) {
       if (error.message?.includes('already registered')) {
@@ -163,7 +163,7 @@ export default function AcceptInvitePage() {
               <div>
                 <p className="font-medium">Account Created!</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Redirecting you to the dashboard...
+                  Redirecting you to your workspace...
                 </p>
               </div>
             </div>

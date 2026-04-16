@@ -69,7 +69,7 @@ export default function CredentialsDashboardPage() {
   const [addForMember, setAddForMember] = useState<string | null>(null);
 
   if (!isModuleEnabled('credentialWalletEnabled') || !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/portals" replace />;
   }
 
   // Aggregate stats

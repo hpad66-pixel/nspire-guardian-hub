@@ -136,7 +136,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     })() as keyof ModuleConfig | null;
 
     if (moduleForPath && !isModuleEnabled(moduleForPath)) {
-      navigate('/dashboard', { replace: true });
+      navigate('/portals', { replace: true });
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 

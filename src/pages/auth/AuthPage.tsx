@@ -16,7 +16,7 @@ const features = [
   { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Project Management',          desc: 'Full project lifecycle from proposal to closeout, fully traced' },
   { icon: Wrench,       color: 'hsl(var(--warning))',            label: 'Maintenance & Work Orders',   desc: 'Issue tracking from request to resolution, fully traced' },
   { icon: BarChart3,    color: 'hsl(var(--severity-severe))',    label: 'Operations Intelligence',     desc: 'Cross-module dashboards for every role in your org' },
-  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from a single command center' },
+  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from one workspace' },
 ];
 
 export default function AuthPage() {
@@ -28,7 +28,7 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState('');
 
   useEffect(() => {
-    if (user && !loading) navigate('/dashboard');
+    if (user && !loading) navigate('/portals');
   }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,7 +46,7 @@ export default function AuthPage() {
       toast.error(error.message.includes('Invalid login credentials') ? 'Invalid email or password. Please try again.' : error.message);
     } else {
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate('/portals');
     }
   };
 
@@ -230,7 +230,7 @@ export default function AuthPage() {
                 Welcome back
               </h1>
               <p className="text-sm text-muted-foreground">
-                Sign in to access your APAS OS dashboard
+                Sign in to access your APAS OS workspace
               </p>
             </div>
 

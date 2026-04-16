@@ -10,12 +10,9 @@ import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useAuth } from '@/hooks/useAuth';
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
@@ -89,13 +86,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function RootRedirect() {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
-  return <LandingPageAlt />;
-}
-
 /** Registers the offline queue flush handler on mount and on connectivity restore. */
 function OfflineQueueManager() {
   useEffect(() => {
@@ -135,10 +125,11 @@ const App = () => (
                 }>
                   <Routes>
                     {/* Public Routes */}
-                    <Route path="/" element={<RootRedirect />} />
+                    <Route path="/" element={<LandingPageAlt />} />
+                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/install" element={<InstallPage />} />
-                    <Route path="/home-alt" element={<LandingPage />} />
+                    <Route path="/home-alt" element={<Navigate to="/" replace />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -157,9 +148,6 @@ const App = () => (
                         <ProtectedRoute>
                           <AppLayout>
                             <Routes>
-                              {/* Dashboard */}
-                              <Route path="/dashboard" element={<Dashboard />} />
-                              
                               {/* Core Platform */}
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
