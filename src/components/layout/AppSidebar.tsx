@@ -35,6 +35,7 @@ import {
   Contact,
   GraduationCap,
   Mail,
+  Globe,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
