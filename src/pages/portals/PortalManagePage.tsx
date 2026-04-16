@@ -435,17 +435,15 @@ export default function PortalManagePage() {
                         <Copy className="h-3 w-3" /> Portal Link
                       </Button>
 
-                      {contactPortalUrl ? (
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-                          <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Client Portal')}&body=${encodeURIComponent(emailPortalBody)}`}>
-                            <Mail className="h-3 w-3" /> Email Portal
-                          </a>
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'portal')}>
-                          <Mail className="h-3 w-3" /> Email Portal
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        disabled={sendEmail.isPending}
+                        onClick={() => void handleEmailLink(c, 'portal')}
+                      >
+                        <Mail className="h-3 w-3" /> Email Portal
+                      </Button>
 
                       {hasSchedule && (
                         <>
