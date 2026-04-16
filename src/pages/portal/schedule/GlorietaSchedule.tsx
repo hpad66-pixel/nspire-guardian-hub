@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Sun, Moon, ChevronDown, Send, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, Loader2, Lock, Quote } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getPortalSession } from '@/hooks/usePortal';
-import { DEFAULT_AREAS, type Area } from './milestoneData';
+import { DEFAULT_AREAS } from './milestoneData';
+import { PortalQAPanel, type PortalQaMessage } from '@/components/portal/PortalQAPanel';
 import { cn } from '@/lib/utils';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -23,6 +23,42 @@ interface QuestionDef {
   sort_order: number;
 }
 
+interface ScheduleContent {
+  navBrand?: string;
+  navBadge?: string;
+  navPowered?: string;
+  heroTitle?: string;
+  heroBody?: string;
+  heroTags?: string[];
+  commitDate?: string;
+  commitSub?: string;
+  commitNote?: string;
+  pullQuoteText?: string;
+  pullQuoteSub?: string;
+  footerBrand?: string;
+  footerTag?: string;
+  footerMeta?: string;
+  areaCards?: Array<{
+    letter: string;
+    title: string;
+    stat?: string;
+    body?: string;
+    units?: string;
+  }>;
+}
+
+interface MilestoneRecord {
+  area: string;
+  milestone_id: string;
+  name: string;
+  owner: string;
+  priority_label: string;
+  priority_class: string;
+  sort_order: number;
+  is_locked: boolean;
+  target_date: string | null;
+}
+
 const DEFAULT_QUESTIONS: QuestionDef[] = [
   { question_key: 'timeline', label: 'Are you comfortable with the current timeline?', input_type: 'radio', options: ['Yes', 'No', 'Need Discussion'], placeholder: null, is_full_width: false, sort_order: 1 },
   { question_key: 'budget', label: 'Any budget concerns?', input_type: 'radio', options: ['On Track', 'Needs Review', 'Over Budget'], placeholder: null, is_full_width: false, sort_order: 2 },
@@ -32,392 +68,459 @@ const DEFAULT_QUESTIONS: QuestionDef[] = [
   { question_key: 'comments', label: 'Additional comments for the team', input_type: 'textarea', options: null, placeholder: 'Any other feedback...', is_full_width: true, sort_order: 6 },
 ];
 
-export function GlorietaSchedule({ portalId, portalName, accentColor = '#D4A017' }: GlorietaScheduleProps) {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [milestoneChecks, setMilestoneChecks] = useState<Record<string, boolean>>({});
-  const [responses, setResponses] = useState<Record<string, string>>({});
-  const [areas] = useState<Area[]>(DEFAULT_AREAS);
-  const [questions, setQuestions] = useState<QuestionDef[]>(DEFAULT_QUESTIONS);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [expandedArea, setExpandedArea] = useState<string | null>('A');
+const DEFAULT_CONTENT: ScheduleContent = {
+  navPowered: 'APAS',
+  heroTitle: 'Three areas. Eight steps. One readout.',
+  heroBody: 'Track every area, milestone, certification step, and handover note from one interactive schedule.',
+  heroTags: ['Construction', 'Client Portal', 'Interactive Schedule'],
+  commitSub: 'Current Commitment',
+  commitNote: 'Milestones, notes, and questions on this page stay visible to the project team and portal users.',
+};
+
+const AREA_LABELS = DEFAULT_AREAS.reduce<Record<string, string>>((acc, area) => {
+  acc[area.key] = area.label;
+  return acc;
+}, {});
+
+function fallbackMilestones(): MilestoneRecord[] {
+  return DEFAULT_AREAS.flatMap((area) =>
+    area.milestones.map((milestone, index) => ({
+      area: area.key,
+      milestone_id: milestone.id,
+      name: milestone.name,
+      owner: milestone.owner,
+      priority_label: milestone.priorityLabel,
+      priority_class: milestone.priorityClass,
+      sort_order: index + 1,
+      is_locked: false,
+      target_date: milestone.targetDate ?? null,
+    })),
+  );
+}
+
+export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F' }: GlorietaScheduleProps) {
+  const session = getPortalSession();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const session = getPortalSession();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sendingQa, setSendingQa] = useState(false);
+  const [content, setContent] = useState<ScheduleContent>(DEFAULT_CONTENT);
+  const [milestones, setMilestones] = useState<MilestoneRecord[]>([]);
+  const [milestoneChecks, setMilestoneChecks] = useState<Record<string, boolean>>({});
+  const [questions, setQuestions] = useState<QuestionDef[]>(DEFAULT_QUESTIONS);
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [qaMessages, setQaMessages] = useState<PortalQaMessage[]>([]);
 
-  // Load data
+  const loadQaMessages = useCallback(async () => {
+    const { data } = await supabase
+      .from('portal_qa_messages')
+      .select('*')
+      .eq('portal_id', portalId)
+      .order('created_at', { ascending: true });
+
+    setQaMessages(((data ?? []) as PortalQaMessage[]));
+  }, [portalId]);
+
   useEffect(() => {
+    let active = true;
+
     async function load() {
       setLoading(true);
-      // Load milestone state
-      const { data: state } = await supabase
-        .from('portal_schedule_state')
-        .select('milestone_checks')
-        .eq('portal_id', portalId)
-        .maybeSingle();
-      if (state?.milestone_checks) {
-        setMilestoneChecks(state.milestone_checks as Record<string, boolean>);
-      }
 
-      // Load questions
-      const { data: qs } = await supabase
-        .from('portal_schedule_questions')
-        .select('*')
-        .eq('portal_id', portalId)
-        .order('sort_order');
-      if (qs && qs.length > 0) {
-        setQuestions(qs.map(q => ({
-          ...q,
-          options: q.options ? (q.options as string[]) : null,
-        })));
-      }
+      const [
+        contentResult,
+        milestonesResult,
+        stateResult,
+        questionsResult,
+        responsesResult,
+        qaResult,
+      ] = await Promise.all([
+        supabase.from('portal_schedule_content').select('content').eq('portal_id', portalId).maybeSingle(),
+        supabase.from('portal_schedule_milestones').select('*').eq('portal_id', portalId).order('area').order('sort_order'),
+        supabase.from('portal_schedule_state').select('milestone_checks').eq('portal_id', portalId).maybeSingle(),
+        supabase.from('portal_schedule_questions').select('*').eq('portal_id', portalId).order('sort_order'),
+        session?.accessId
+          ? supabase
+              .from('portal_questionnaire_responses')
+              .select('responses')
+              .eq('portal_id', portalId)
+              .eq('access_id', session.accessId)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from('portal_qa_messages').select('*').eq('portal_id', portalId).order('created_at', { ascending: true }),
+      ]);
 
-      // Load existing responses
-      const { data: resp } = await supabase
-        .from('portal_questionnaire_responses')
-        .select('responses')
-        .eq('portal_id', portalId)
-        .eq('access_id', session?.accessId ?? '')
-        .maybeSingle();
-      if (resp?.responses) {
-        setResponses(resp.responses as Record<string, string>);
-      }
+      if (!active) return;
 
+      setContent((contentResult.data?.content as ScheduleContent) ?? DEFAULT_CONTENT);
+      setMilestones(((milestonesResult.data ?? []) as MilestoneRecord[]));
+      setMilestoneChecks((stateResult.data?.milestone_checks as Record<string, boolean>) ?? {});
+      setQuestions(
+        questionsResult.data && questionsResult.data.length > 0
+          ? questionsResult.data.map((question) => ({
+              ...question,
+              options: question.options ? (question.options as string[]) : null,
+            }))
+          : DEFAULT_QUESTIONS,
+      );
+      setResponses((responsesResult as { data: { responses?: Json } | null }).data?.responses as Record<string, string> ?? {});
+      setQaMessages(((qaResult.data ?? []) as PortalQaMessage[]));
       setLoading(false);
     }
+
     load();
+
+    return () => {
+      active = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [portalId, session?.accessId]);
 
-  // Auto-save responses with debounce
-  const saveResponses = useCallback(async (newResponses: Record<string, string>) => {
-    if (!session?.accessId) return;
-    setSaving(true);
-    await supabase
-      .from('portal_questionnaire_responses')
-      .upsert({
-        portal_id: portalId,
-        access_id: session.accessId,
-        respondent_email: session.email,
-        respondent_name: session.name,
-        responses: newResponses as unknown as Json,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'portal_id,access_id' });
-    setSaving(false);
-  }, [portalId, session]);
+  useEffect(() => {
+    const channel = supabase
+      .channel(`portal-qa-${portalId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'portal_qa_messages', filter: `portal_id=eq.${portalId}` },
+        () => {
+          loadQaMessages();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadQaMessages, portalId]);
+
+  const saveResponses = useCallback(
+    async (nextResponses: Record<string, string>) => {
+      if (!session?.accessId) return;
+      setSaving(true);
+      await supabase.from('portal_questionnaire_responses').upsert(
+        {
+          portal_id: portalId,
+          access_id: session.accessId,
+          respondent_email: session.email,
+          respondent_name: session.name,
+          responses: nextResponses as unknown as Json,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'portal_id,access_id' },
+      );
+      setSaving(false);
+    },
+    [portalId, session],
+  );
 
   function handleResponseChange(key: string, value: string) {
-    const updated = { ...responses, [key]: value };
-    setResponses(updated);
+    const nextResponses = { ...responses, [key]: value };
+    setResponses(nextResponses);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => saveResponses(updated), 1500);
+    debounceRef.current = setTimeout(() => saveResponses(nextResponses), 1200);
   }
 
-  // Calculate progress
-  const totalMilestones = areas.reduce((sum, a) => sum + a.milestones.length, 0);
-  const completedMilestones = Object.values(milestoneChecks).filter(Boolean).length;
-  const progressPercent = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+  async function handleSendQa(body: string) {
+    if (!session?.accessId) return;
+    setSendingQa(true);
+    const { error } = await supabase.from('portal_qa_messages').insert({
+      portal_id: portalId,
+      access_id: session.accessId,
+      sender_email: session.email,
+      sender_name: session.name ?? session.email,
+      sender_role: 'client',
+      body,
+    });
+    setSendingQa(false);
+    if (error) throw error;
+    await loadQaMessages();
+  }
 
-  const isDark = theme === 'dark';
+  const groupedMilestones = useMemo(() => {
+    const source = milestones.length > 0 ? milestones : fallbackMilestones();
+    return ['A', 'B', 'C']
+      .map((key) => ({
+        key,
+        label: AREA_LABELS[key] ?? `Area ${key}`,
+        milestones: source.filter((milestone) => milestone.area === key).sort((a, b) => a.sort_order - b.sort_order),
+      }))
+      .filter((group) => group.milestones.length > 0);
+  }, [milestones]);
 
-  const priorityColors: Record<string, string> = {
-    critical: '#FF5252',
-    high: '#FFAB40',
-    medium: '#448AFF',
-    low: '#69F0AE',
-    milestone: accentColor,
-  };
+  const totalMilestones = groupedMilestones.reduce((sum, group) => sum + group.milestones.length, 0);
+  const completedMilestones = groupedMilestones.reduce(
+    (sum, group) =>
+      sum + group.milestones.filter((milestone) => milestone.is_locked || milestoneChecks[milestone.milestone_id]).length,
+    0,
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: isDark ? '#030303' : '#FFFFFF' }}>
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: accentColor }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{
-      background: isDark ? '#030303' : '#FFFFFF',
-      color: isDark ? '#FFFFFF' : '#050505',
-      fontFamily: "'Inter', 'Barlow', sans-serif",
-    }}>
-      {/* ── NAV ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-[60px] flex items-center justify-between px-6 md:px-12 backdrop-blur-xl border-b"
-        style={{
-          background: isDark ? 'rgba(3,3,3,0.96)' : 'rgba(255,255,255,0.96)',
-          borderColor: isDark ? `${accentColor}45` : `${accentColor}35`,
-        }}>
-        <div className="flex items-center gap-3">
-          <span className="text-xl font-bold" style={{ color: accentColor, fontFamily: "'Libre Baskerville', serif", fontStyle: 'italic' }}>
-            {portalName}
-          </span>
-          <span className="hidden md:inline text-xs tracking-[2px] uppercase opacity-50" style={{ fontFamily: "'Space Mono', monospace" }}>
-            Interactive Schedule
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs font-bold tracking-[1.5px] uppercase px-3 py-1.5" style={{
-            background: accentColor,
-            color: isDark ? '#030303' : '#FFFFFF',
-            fontFamily: "'Space Mono', monospace",
-          }}>
-            {progressPercent}% Complete
-          </span>
-          <button
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-bold tracking-[2px] uppercase cursor-pointer transition-all"
-            style={{
-              background: isDark ? accentColor : '#030303',
-              color: isDark ? '#030303' : accentColor,
-              fontFamily: "'Space Mono', monospace",
-              boxShadow: `3px 3px 0 ${accentColor}45`,
-            }}
-          >
-            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            <span className="hidden md:inline">{isDark ? 'Light' : 'Dark'}</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* ── HERO ── */}
-      <section className="pt-[60px] min-h-[60vh] flex items-center" style={{
-        background: isDark
-          ? `linear-gradient(160deg, #030303 0%, ${accentColor}08 50%, #030303 100%)`
-          : `linear-gradient(160deg, #FFFFFF 0%, ${accentColor}08 50%, #FFFFFF 100%)`,
-      }}>
-        <div className="max-w-5xl mx-auto px-6 md:px-12 py-20">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xs font-bold tracking-[3px] uppercase mb-6"
-            style={{ color: accentColor, fontFamily: "'Space Mono', monospace" }}
-          >
-            Master Interactive Schedule
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-6xl font-bold leading-tight mb-6"
-            style={{ fontFamily: "'Libre Baskerville', serif" }}
-          >
-            Project Milestones
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg max-w-xl opacity-60"
-          >
-            Track every phase of construction — from pre-design to handover. Your milestones are updated in real-time by the project team.
-          </motion.p>
-
-          {/* Progress bar */}
-          <motion.div
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-            className="mt-10 max-w-md"
-          >
-            <div className="flex items-center justify-between text-xs mb-2 opacity-60">
-              <span>{completedMilestones} of {totalMilestones} milestones</span>
-              <span>{progressPercent}%</span>
-            </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: isDark ? '#1C1C1C' : '#E0E0E0' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}CC)` }}
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ delay: 0.6, duration: 1.2, ease: 'easeOut' }}
-              />
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── MILESTONES ── */}
-      <section className="py-20" style={{ background: isDark ? '#0A0A0A' : '#F7F4EC' }}>
-        <div className="max-w-5xl mx-auto px-6 md:px-12">
-          <h2 className="text-2xl font-bold mb-12" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-            Milestone Tracker
-          </h2>
-
-          <div className="space-y-4">
-            {areas.map((area, areaIdx) => {
-              const areaCompleted = area.milestones.filter(m => milestoneChecks[m.id]).length;
-              const areaTotal = area.milestones.length;
-              const isExpanded = expandedArea === area.key;
-
-              return (
-                <motion.div
-                  key={area.key}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: areaIdx * 0.1 }}
-                  className="rounded-lg overflow-hidden border"
-                  style={{
-                    background: isDark ? '#111111' : '#FFFFFF',
-                    borderColor: isDark ? '#2A2A2A' : '#E0DCCC',
-                  }}
-                >
-                  {/* Area header */}
-                  <button
-                    onClick={() => setExpandedArea(isExpanded ? null : area.key)}
-                    className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                    style={{ background: isExpanded ? (isDark ? '#1C1C1C' : '#FAF5E5') : 'transparent' }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl font-bold" style={{ color: accentColor, fontFamily: "'Space Mono', monospace" }}>
-                        {area.key}
-                      </span>
-                      <div>
-                        <p className="font-semibold text-sm">{area.label}</p>
-                        <p className="text-xs opacity-50 mt-0.5">{areaCompleted}/{areaTotal} completed</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? '#2A2A2A' : '#E0E0E0' }}>
-                        <div className="h-full rounded-full transition-all duration-500" style={{
-                          width: `${areaTotal > 0 ? (areaCompleted / areaTotal) * 100 : 0}%`,
-                          background: accentColor,
-                        }} />
-                      </div>
-                      <ChevronDown className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')} style={{ color: accentColor }} />
-                    </div>
-                  </button>
-
-                  {/* Milestones */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-5 pb-5 space-y-1">
-                          {area.milestones.map((ms) => {
-                            const isChecked = milestoneChecks[ms.id] ?? false;
-                            return (
-                              <div
-                                key={ms.id}
-                                className={cn(
-                                  'flex items-center gap-4 px-4 py-3 rounded-lg transition-all',
-                                  isChecked ? 'opacity-60' : '',
-                                )}
-                                style={{ background: isDark ? '#0A0A0A' : '#F7F4EC' }}
-                              >
-                                {/* Check indicator (read-only) */}
-                                <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all" style={{
-                                  borderColor: isChecked ? '#00E676' : (isDark ? '#2A2A2A' : '#CCC'),
-                                  background: isChecked ? '#00E67618' : 'transparent',
-                                }}>
-                                  {isChecked && <Check className="h-3.5 w-3.5" style={{ color: '#00E676' }} />}
-                                </div>
-
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                  <p className={cn('text-sm font-medium', isChecked && 'line-through')}>{ms.id} — {ms.name}</p>
-                                  <p className="text-xs opacity-40 mt-0.5">{ms.owner}</p>
-                                </div>
-
-                                {/* Priority */}
-                                <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded shrink-0" style={{
-                                  color: priorityColors[ms.priorityClass] ?? accentColor,
-                                  background: `${priorityColors[ms.priorityClass] ?? accentColor}15`,
-                                }}>
-                                  {ms.priorityLabel}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })}
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              {content.navPowered || 'APAS'}
+            </p>
+            <h1 className="text-lg font-semibold tracking-tight">{content.navBrand || portalName}</h1>
           </div>
-        </div>
-      </section>
-
-      {/* ── QUESTIONNAIRE ── */}
-      <section className="py-20" style={{ background: isDark ? '#030303' : '#FFFFFF' }}>
-        <div className="max-w-5xl mx-auto px-6 md:px-12">
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <h2 className="text-2xl font-bold" style={{ fontFamily: "'Libre Baskerville', serif" }}>
-                Owner Questionnaire
-              </h2>
-              <p className="text-sm opacity-50 mt-1">Your responses auto-save and are visible to the project team.</p>
-            </div>
-            {saving && (
-              <span className="flex items-center gap-2 text-xs" style={{ color: accentColor }}>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Saving...
+          <div className="flex flex-wrap items-center gap-2">
+            {content.navBadge ? (
+              <span
+                className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
+              >
+                {content.navBadge}
               </span>
-            )}
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            {questions.map((q) => (
-              <div key={q.question_key} className={cn(q.is_full_width && 'md:col-span-2')}>
-                <label className="block text-sm font-medium mb-3">{q.label}</label>
-
-                {q.input_type === 'radio' && q.options && (
-                  <div className="flex flex-wrap gap-2">
-                    {q.options.map((opt) => {
-                      const selected = responses[q.question_key] === opt;
-                      return (
-                        <button
-                          key={opt}
-                          onClick={() => handleResponseChange(q.question_key, opt)}
-                          className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
-                          style={{
-                            borderColor: selected ? accentColor : (isDark ? '#2A2A2A' : '#DDD'),
-                            background: selected ? `${accentColor}20` : 'transparent',
-                            color: selected ? accentColor : (isDark ? '#BBB' : '#555'),
-                          }}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {q.input_type === 'textarea' && (
-                  <textarea
-                    value={responses[q.question_key] ?? ''}
-                    onChange={(e) => handleResponseChange(q.question_key, e.target.value)}
-                    placeholder={q.placeholder ?? ''}
-                    rows={4}
-                    className="w-full rounded-lg border px-4 py-3 text-sm resize-none outline-none transition-colors"
-                    style={{
-                      background: isDark ? '#0A0A0A' : '#F7F4EC',
-                      borderColor: isDark ? '#2A2A2A' : '#E0DCCC',
-                      color: isDark ? '#E8E8E8' : '#1A1A1A',
-                    }}
-                  />
-                )}
-              </div>
-            ))}
+            ) : null}
+            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+              {completedMilestones}/{totalMilestones} milestones closed
+            </span>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── FOOTER ── */}
-      <footer className="py-8 border-t text-center" style={{
-        borderColor: isDark ? '#1C1C1C' : '#E0DCCC',
-        background: isDark ? '#030303' : '#FFFFFF',
-      }}>
-        <p className="text-xs opacity-30" style={{ fontFamily: "'Space Mono', monospace" }}>
-          Powered by APAS · Construction Intelligence Platform
-        </p>
-      </footer>
+      <div className="mx-auto max-w-7xl px-6 py-8 lg:py-10">
+        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.15fr)_380px]">
+          <div className="space-y-8">
+            <section className="overflow-hidden rounded-[32px] border border-border bg-card">
+              <div className="grid gap-8 p-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:p-10">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.26em]" style={{ color: accentColor }}>
+                    Master Interactive Schedule
+                  </p>
+                  <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+                    {content.heroTitle || DEFAULT_CONTENT.heroTitle}
+                  </h2>
+                  <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
+                    {content.heroBody || DEFAULT_CONTENT.heroBody}
+                  </p>
+
+                  {content.heroTags && content.heroTags.length > 0 ? (
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {content.heroTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border px-3 py-1 text-xs font-medium"
+                          style={{ borderColor: `${accentColor}35`, color: accentColor, backgroundColor: `${accentColor}10` }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="rounded-[28px] border border-border bg-background/70 p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    {content.commitSub || 'Current Commitment'}
+                  </p>
+                  {content.commitDate ? (
+                    <p className="mt-3 text-3xl font-semibold tracking-tight" style={{ color: accentColor }}>
+                      {content.commitDate}
+                    </p>
+                  ) : null}
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {content.commitNote || DEFAULT_CONTENT.commitNote}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {content.areaCards && content.areaCards.length > 0 ? (
+              <section className="grid gap-4 md:grid-cols-3">
+                {content.areaCards.map((card) => (
+                  <article key={card.letter} className="rounded-[28px] border border-border bg-card p-6 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-semibold"
+                        style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
+                      >
+                        {card.letter}
+                      </span>
+                      {card.stat ? (
+                        <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                          {card.stat}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground">{card.title}</h3>
+                    {card.units ? <p className="mt-1 text-xs text-muted-foreground">{card.units}</p> : null}
+                    {card.body ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p> : null}
+                  </article>
+                ))}
+              </section>
+            ) : null}
+
+            {content.pullQuoteText ? (
+              <section className="rounded-[28px] border border-border bg-card p-6 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
+                  >
+                    <Quote className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-medium leading-8 text-foreground">{content.pullQuoteText}</p>
+                    {content.pullQuoteSub ? (
+                      <p className="mt-3 text-sm text-muted-foreground">{content.pullQuoteSub}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            <section className="rounded-[32px] border border-border bg-card p-6 shadow-sm lg:p-8">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Area schedule</p>
+                  <h3 className="mt-2 text-2xl font-semibold tracking-tight">Interactive milestone board</h3>
+                </div>
+                <span
+                  className="rounded-full px-4 py-2 text-sm font-semibold"
+                  style={{ backgroundColor: `${accentColor}14`, color: accentColor }}
+                >
+                  {completedMilestones}/{totalMilestones} complete
+                </span>
+              </div>
+
+              <div className="mt-6 space-y-6">
+                {groupedMilestones.map((group) => (
+                  <section key={group.key} className="overflow-hidden rounded-[24px] border border-border bg-background/70">
+                    <div className="border-b border-border px-5 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl text-base font-semibold"
+                            style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
+                          >
+                            {group.key}
+                          </span>
+                          <div>
+                            <h4 className="text-base font-semibold text-foreground">{group.label}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {group.milestones.filter((milestone) => milestone.is_locked || milestoneChecks[milestone.milestone_id]).length}/{group.milestones.length} closed
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-border">
+                      {group.milestones.map((milestone) => {
+                        const isDone = milestone.is_locked || Boolean(milestoneChecks[milestone.milestone_id]);
+                        return (
+                          <div key={milestone.milestone_id} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start md:justify-between">
+                            <div className="flex min-w-0 gap-3">
+                              <div className="mt-0.5 shrink-0">
+                                {isDone ? (
+                                  <CheckCircle2 className="h-5 w-5" style={{ color: accentColor }} />
+                                ) : (
+                                  <div className="h-5 w-5 rounded-full border border-border" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className={cn('text-sm font-medium text-foreground', isDone && 'opacity-70')}>
+                                  {milestone.milestone_id} · {milestone.name}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">{milestone.owner}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                              <span
+                                className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                                style={{ backgroundColor: `${accentColor}14`, color: accentColor }}
+                              >
+                                {milestone.priority_label}
+                              </span>
+                              {milestone.is_locked ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                                  <Lock className="h-3 w-3" /> Locked
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[32px] border border-border bg-card p-6 shadow-sm lg:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Client responses</p>
+                  <h3 className="mt-2 text-2xl font-semibold tracking-tight">Questionnaire</h3>
+                </div>
+                {saving ? <span className="text-xs text-muted-foreground">Saving…</span> : null}
+              </div>
+
+              <div className="mt-6 grid gap-6 md:grid-cols-2">
+                {questions.map((question) => (
+                  <div key={question.question_key} className={cn(question.is_full_width && 'md:col-span-2')}>
+                    <label className="block text-sm font-medium text-foreground">{question.label}</label>
+
+                    {question.input_type === 'radio' && question.options ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {question.options.map((option) => {
+                          const selected = responses[question.question_key] === option;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => handleResponseChange(question.question_key, option)}
+                              className="rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+                              style={{
+                                borderColor: selected ? accentColor : undefined,
+                                backgroundColor: selected ? `${accentColor}14` : undefined,
+                                color: selected ? accentColor : undefined,
+                              }}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+
+                    {question.input_type === 'textarea' ? (
+                      <textarea
+                        value={responses[question.question_key] ?? ''}
+                        onChange={(event) => handleResponseChange(question.question_key, event.target.value)}
+                        placeholder={question.placeholder ?? ''}
+                        rows={4}
+                        className="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {(content.footerTag || content.footerMeta) ? (
+              <footer className="rounded-[28px] border border-border bg-card px-6 py-5 shadow-sm">
+                {content.footerTag ? <p className="text-sm font-medium text-foreground">{content.footerTag}</p> : null}
+                {content.footerMeta ? <p className="mt-2 whitespace-pre-line text-xs leading-6 text-muted-foreground">{content.footerMeta}</p> : null}
+              </footer>
+            ) : null}
+          </div>
+
+          <PortalQAPanel accentColor={accentColor} messages={qaMessages} onSend={handleSendQa} sending={sendingQa} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -75,7 +75,7 @@ export default function PortalManagePage() {
 
   const PROD_DOMAIN = 'https://build.apas.ai';
   const portalUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}`;
-  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}?redirect=schedule`;
+  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}/schedule`;
   const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
