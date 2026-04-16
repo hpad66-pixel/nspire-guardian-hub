@@ -6,7 +6,6 @@ import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useT
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
-  LayoutDashboard,
   ClipboardCheck,
   AlertTriangle,
   Wrench,
@@ -33,12 +32,12 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ActiveSection = 'dashboard' | 'daily' | 'compliance' | 'projects' | 'more';
+type ActiveSection = 'portals' | 'daily' | 'compliance' | 'projects' | 'more';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getActiveSection(pathname: string): ActiveSection {
-  if (pathname === '/dashboard' || pathname === '/') return 'dashboard';
+  if (pathname === '/dashboard' || pathname.startsWith('/portals')) return 'portals';
   if (
     pathname.startsWith('/inspections/daily') ||
     pathname.startsWith('/inspections/history') ||
@@ -145,7 +144,7 @@ function SecondaryBarItem({
 function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
   const { pathname } = useLocation();
 
-  if (activeSection === 'dashboard' || activeSection === 'more') return null;
+  if (activeSection === 'portals' || activeSection === 'more') return null;
 
   let items: { to: string; label: string }[] = [];
   let accentColor = MODULE_COLORS.daily;
@@ -485,12 +484,12 @@ export function MobileNav() {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Dashboard — always visible */}
+        {/* Portals — always visible */}
         <PrimaryItem
-          icon={<LayoutDashboard className="h-5 w-5" />}
-          label="Command"
-          isActive={activeSection === 'dashboard'}
-          onClick={() => navigate('/dashboard')}
+          icon={<Home className="h-5 w-5" />}
+          label="Portals"
+          isActive={activeSection === 'portals'}
+          onClick={() => navigate('/portals')}
         />
 
         {/* Daily Grounds — module gated */}

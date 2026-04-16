@@ -164,7 +164,7 @@ export default function WorkspaceProfilePage() {
     // Actually it maps to nothing — let's skip pre-fill (no column exists)
   }, [branding]);
 
-  if (!isLoading && !isAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isLoading && !isAdmin) return <Navigate to="/portals" replace />;
 
   const handleLogoClick = () => fileInputRef.current?.click();
 

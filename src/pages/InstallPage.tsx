@@ -41,7 +41,7 @@ export default function InstallPage() {
           <p className="text-muted-foreground max-w-sm mx-auto">
             Add APAS OS to your home screen for fast, offline-capable access — no app store required.
           </p>
-          <Link to="/dashboard">
+          <Link to="/portals">
             <Button className="gap-2">
               Already Installed? Open App
               <ArrowRight className="h-4 w-4" />

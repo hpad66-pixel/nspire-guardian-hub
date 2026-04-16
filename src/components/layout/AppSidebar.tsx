@@ -29,7 +29,6 @@ import {
   Users,
   FileText,
   Box,
-  LayoutDashboard,
   Building,
   DoorOpen,
   LogOut,
@@ -386,7 +385,7 @@ export function AppSidebar() {
         {/* ────────────────── HEADER ────────────────── */}
         <SidebarHeader className="border-b border-[hsl(var(--sidebar-border))] px-3 py-3">
           <NavLink
-            to="/"
+            to="/portals"
             className={cn('flex items-center gap-2.5 outline-none rounded-md', collapsed && 'justify-center')}
           >
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))]">
@@ -413,8 +412,8 @@ export function AppSidebar() {
         <SidebarContent className="flex flex-col gap-0 overflow-y-auto overflow-x-hidden py-2">
 
           {/* ══════════════════════════════════════════════
-               ZONE 0 — COMMAND RAIL
-               Dashboard · Inbox · Messages — always visible, never collapsible
+               ZONE 0 — CORE RAIL
+               Inbox · Messages — always visible, never collapsible
           ══════════════════════════════════════════════ */}
           {!collapsed && (
             <div className="px-3 pb-1 pt-1">
@@ -425,14 +424,6 @@ export function AppSidebar() {
           )}
 
           <div className={cn('px-2 pb-1', collapsed && 'px-1')}>
-            <NavItem
-              to="/dashboard"
-              icon={<LayoutDashboard />}
-              label="Command Center"
-              collapsed={collapsed}
-              end
-              tooltip="Command Center"
-            />
             <NavItem
               to="/inbox"
               icon={<Mail />}
