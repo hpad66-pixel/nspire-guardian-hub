@@ -154,10 +154,30 @@ export default function PortalManagePage() {
     try {
       const url = await ensureMagicLink(contact, target);
       const subject = target === 'schedule' ? 'Your Project Schedule' : 'Your Client Portal';
-      const body = `Hi ${contact.name ?? ''},\n\nHere is your ${target} link:\n${url}\n\nBest regards`;
-      window.location.assign(`mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      const bodyHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0F172A;">Your ${target === 'schedule' ? 'Project Schedule' : 'Client Portal'} is Ready</h2>
+          <p>Hi ${contact.name ?? 'there'},</p>
+          <p>You've been granted access to the ${portal.name} ${target}. Click the button below to access it securely:</p>
+          <div style="margin: 24px 0;">
+            <a href="${url}" style="background-color: #F9B233; color: #0F172A; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
+              Open ${target === 'schedule' ? 'Schedule' : 'Portal'}
+            </a>
+          </div>
+          <p style="color: #64748B; font-size: 13px;">This link is unique to you and will expire in 7 days. Do not share it with others.</p>
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+          <p style="color: #94A3B8; font-size: 12px;">Sent by APAS OS on behalf of ${portal.client_name ?? portal.name}</p>
+        </div>
+      `;
+      await sendEmail.mutateAsync({
+        recipients: [contact.email],
+        subject,
+        bodyHtml,
+        bodyText: `Hi ${contact.name ?? 'there'}, access your ${target} here: ${url}`,
+      });
+      toast.success(`${target === 'schedule' ? 'Schedule' : 'Portal'} link emailed to ${contact.email}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to generate email link');
+      toast.error(error instanceof Error ? error.message : 'Failed to send email');
     }
   }
 
