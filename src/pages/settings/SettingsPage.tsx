@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
+import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
 import { format } from 'date-fns';
