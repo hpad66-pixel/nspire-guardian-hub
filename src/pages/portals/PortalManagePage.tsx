@@ -60,6 +60,7 @@ export default function PortalManagePage() {
   const updatePortal = useUpdatePortal();
   const inviteContact = useInviteContact(id!);
   const revokeAccess = useRevokeAccess();
+  const sendEmail = useSendEmail();
   const regeneratePortalToken = useRegeneratePortalAccessToken(id!);
 
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
