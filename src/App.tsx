@@ -57,6 +57,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
 const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
@@ -126,7 +127,7 @@ const App = () => (
                   <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPageAlt />} />
-                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                    {/* Dashboard is protected but outside AppLayout for now — redirect into protected routes */}
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/install" element={<InstallPage />} />
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
