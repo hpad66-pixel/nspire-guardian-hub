@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertTriangle, Mic, Wrench, FolderKanban, Users, Shield, Smartphone } from 'lucide-react';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease = [0.16, 1, 0.3, 1] as const;
 
 /* ── Feature Mockup Cards ── */
 
