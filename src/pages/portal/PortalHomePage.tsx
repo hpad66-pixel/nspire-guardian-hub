@@ -3,10 +3,11 @@ import { useParams, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession } from '@/hooks/usePortal';
 import { PortalLayout } from '@/components/portal/PortalLayout';
+import { PortalMessages } from '@/components/portal/PortalMessages';
 import { useAllCredentials } from '@/hooks/useCredentials';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 
-type PortalTab = 'home' | 'credentials' | 'training' | 'safety' | 'equipment';
+type PortalTab = 'home' | 'messages' | 'credentials' | 'training' | 'safety' | 'equipment';
 
 function ComplianceDot({ expiry }: { expiry?: string | null }) {
   if (!expiry) return null;
