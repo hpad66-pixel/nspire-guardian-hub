@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ArrowRight } from 'lucide-react';
+import { LoginModal } from '@/components/auth/LoginModal';
+import { LOGIN_EVENT } from '@/lib/loginModal';
 
 const navLinks = [
   { label: 'Platform', href: '#platform' },
@@ -13,11 +15,27 @@ const navLinks = [
 export function HomeNav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const openLogin = () => {
+    setMobileOpen(false);
+    setLoginOpen(true);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Listen for global login-open requests from Hero / CTA / Pricing.
+  useEffect(() => {
+    const handler = () => {
+      setMobileOpen(false);
+      setLoginOpen(true);
+    };
+    window.addEventListener(LOGIN_EVENT, handler);
+    return () => window.removeEventListener(LOGIN_EVENT, handler);
   }, []);
 
   return (
@@ -58,20 +76,20 @@ export function HomeNav() {
 
           {/* Desktop CTAs */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              to="/auth"
+            <button
+              onClick={openLogin}
               className="text-[13px] font-medium text-white/60 hover:text-white px-4 py-2 transition-colors"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Log In
-            </Link>
-            <Link
-              to="/auth"
+            </button>
+            <button
+              onClick={openLogin}
               className="text-[13px] font-semibold text-white bg-white/10 hover:bg-white/15 px-5 py-2.5 rounded-full transition-all duration-200 flex items-center gap-2 border border-white/10 hover:border-white/20"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Get Started <ArrowRight size={13} />
-            </Link>
+            </button>
           </div>
 
           {/* Mobile hamburger */}
@@ -115,27 +133,28 @@ export function HomeNav() {
                 </motion.a>
               ))}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex flex-col gap-3 pt-8">
-                <Link
-                  to="/auth"
-                  onClick={() => setMobileOpen(false)}
+                <button
+                  onClick={openLogin}
                   className="text-center font-semibold text-[15px] bg-white text-black py-4 rounded-xl"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Get Started Free
-                </Link>
-                <Link
-                  to="/auth"
-                  onClick={() => setMobileOpen(false)}
+                </button>
+                <button
+                  onClick={openLogin}
                   className="text-center font-medium text-[15px] border border-white/15 text-white/80 py-4 rounded-xl"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Log In
-                </Link>
+                </button>
               </motion.div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Login modal — opens in place, no page navigation */}
+      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
     </>
   );
 }

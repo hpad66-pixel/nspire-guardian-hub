@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play } from 'lucide-react';
+import { triggerLogin } from '@/lib/loginModal';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -75,14 +75,14 @@ export function HomeHero() {
             transition={{ duration: 0.6, delay: 0.4, ease }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
           >
-            <Link
-              to="/auth"
+            <button
+              onClick={triggerLogin}
               className="group flex items-center gap-2.5 bg-white text-black font-semibold text-[15px] px-8 py-4 rounded-full hover:bg-white/90 transition-all duration-200 shadow-[0_0_40px_rgba(255,255,255,0.08)]"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Start Free — No Card Required
               <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            </button>
             <button
               className="flex items-center gap-2.5 text-white/50 hover:text-white/80 font-medium text-[15px] px-6 py-4 transition-colors"
               style={{ fontFamily: 'Inter, sans-serif' }}

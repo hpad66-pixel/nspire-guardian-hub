@@ -22,113 +22,131 @@
 }
 
 @layer base {
+  /*
+   * APAS OS palette — aligned to the marketing homepage (#0A0B0D base,
+   * sapphire + violet accents, Inter typography). Dark-first by design;
+   * the .light block below is available if a toggle is ever needed.
+   */
   :root {
-    /* Core backgrounds */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Core backgrounds — near-black blue-black matching the landing */
+    --background: 225 13% 5%;          /* ~#0A0B0D */
+    --foreground: 215 30% 96%;         /* ~#F1F5FF */
 
-    /* Cards and surfaces */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Cards & surfaces — translucent-feeling solid neutrals */
+    --card: 222 18% 7%;
+    --card-foreground: 215 30% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 222 18% 8%;
+    --popover-foreground: 215 30% 96%;
 
-    /* Primary - Deep navy for trust and authority */
-    --primary: 222 47% 18%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary — sapphire (matches homepage CTA & accent gradients) */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft slate */
-    --secondary: 215 20% 94%;
-    --secondary-foreground: 222 47% 18%;
+    /* Secondary — muted slate for chips and surfaces */
+    --secondary: 222 18% 13%;
+    --secondary-foreground: 215 30% 96%;
 
-    /* Muted surfaces */
-    --muted: 215 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* Muted surfaces & text */
+    --muted: 222 15% 11%;
+    --muted-foreground: 215 16% 60%;
 
-    /* Accent - Professional blue */
+    /* Accent — same sapphire (used in active states, focus rings) */
     --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    /* Severity colors - Critical for NSPIRE */
-    --severity-severe: 0 84% 60%;
+    /* Severity colors — NSPIRE-critical, tuned for dark background */
+    --severity-severe: 0 84% 62%;
     --severity-severe-foreground: 0 0% 100%;
-    --severity-moderate: 38 92% 50%;
+    --severity-moderate: 38 92% 55%;
     --severity-moderate-foreground: 0 0% 100%;
     --severity-low: 215 20% 65%;
     --severity-low-foreground: 222 47% 11%;
 
     /* Status colors */
-    --success: 142 76% 36%;
+    --success: 152 66% 46%;            /* emerald */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    --warning: 38 92% 55%;             /* amber (reserved for warnings only) */
+    --warning-foreground: 0 0% 0%;
+    --destructive: 0 84% 62%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Module colors */
-    --module-inspections: 199 89% 48%;
-    --module-projects: 262 83% 58%;
+    /* Module accents — match the homepage module grid colors */
+    --module-inspections: 199 89% 55%;
+    --module-projects: 262 83% 65%;
     --module-core: 215 20% 65%;
 
-    /* Borders and inputs */
-    --border: 215 20% 90%;
-    --input: 215 20% 90%;
+    /* Borders & inputs — subtle, never harsh on dark bg */
+    --border: 222 15% 14%;
+    --input: 222 15% 14%;
     --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    /* Sidebar - Precision Tactical Obsidian */
-    --sidebar-background: 240 6% 5%;
-    --sidebar-foreground: 240 5% 85%;
-    --sidebar-primary: 43 90% 59%;
-    --sidebar-primary-foreground: 240 6% 5%;
-    --sidebar-accent: 43 90% 59%;
-    --sidebar-accent-foreground: 240 6% 5%;
-    --sidebar-border: 240 4% 13%;
-    --sidebar-ring: 43 90% 59%;
-    --sidebar-muted: 240 3% 55%;
-    --sidebar-label: 240 3% 40%;
+    /*
+     * Sidebar — unified with homepage dark theme.
+     * No more amber obsidian; sapphire is the single accent color.
+     */
+    --sidebar-background: 225 14% 4%;  /* marginally deeper than main bg */
+    --sidebar-foreground: 215 20% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 91% 60%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 15% 11%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 215 15% 58%;
+    --sidebar-label: 215 12% 40%;
 
     /* Sidebar nav utility tokens */
-    --sidebar-nav-active-bg: 240 5% 15%;
-    --sidebar-nav-hover-bg: 240 5% 10%;
-    --sidebar-zone-label: 240 3% 40%;
+    --sidebar-nav-active-bg: 217 91% 18%;
+    --sidebar-nav-hover-bg: 222 20% 10%;
+    --sidebar-zone-label: 215 12% 40%;
   }
 
+  /*
+   * .dark mirrors :root for forwards compatibility with any code that
+   * expects the class. In practice, APAS OS is dark-by-default.
+   */
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-
+    --background: 225 13% 5%;
+    --foreground: 215 30% 96%;
+    --card: 222 18% 7%;
+    --card-foreground: 215 30% 96%;
+    --popover: 222 18% 8%;
+    --popover-foreground: 215 30% 96%;
     --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-
-    --secondary: 222 30% 18%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 222 30% 15%;
-    --muted-foreground: 215 20% 65%;
-
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 18% 13%;
+    --secondary-foreground: 215 30% 96%;
+    --muted: 222 15% 11%;
+    --muted-foreground: 215 16% 60%;
     --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
-
-    --severity-severe: 0 72% 51%;
-    --severity-moderate: 38 92% 50%;
-    --severity-low: 215 20% 55%;
-
-    --border: 222 30% 20%;
-    --input: 222 30% 20%;
+    --border: 222 15% 14%;
+    --input: 222 15% 14%;
     --ring: 217 91% 60%;
+  }
 
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 215 20% 85%;
-    --sidebar-border: 222 30% 15%;
+  /*
+   * .light — optional opt-in inverse palette. Not used by default;
+   * provided so a theme toggle can be added later without refactoring tokens.
+   */
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 18%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 20% 94%;
+    --secondary-foreground: 222 47% 18%;
+    --muted: 215 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --border: 215 20% 90%;
+    --input: 215 20% 90%;
   }
 }
 

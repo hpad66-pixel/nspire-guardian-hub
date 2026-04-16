@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronDown, Star } from 'lucide-react';
+import { triggerLogin } from '@/lib/loginModal';
 
 const starterFeatures = ['Up to 3 properties / 100 units', 'Up to 10 team members', 'Unlimited photos & documents', 'Daily inspections + photo documentation', 'NSPIRE compliance engine (full catalog)', 'Work order pipeline', 'Unlimited permit tracking', 'Team messaging', 'Reports & CSV export', 'Progressive Web App (offline capable)', 'Email support (48-hr response)'];
 const proFeatures = ['Everything in Starter, plus:', 'Up to 10 properties / unlimited units', 'Up to 25 team members', 'AI Voice Agent — 24/7 tenant call center', 'Full project management (Gantt, RFIs, COs)', 'AI proposal & report generation', 'Training & certification module', 'Email integration', 'QR code asset management', 'Priority support (4-hour response)'];
@@ -83,9 +83,9 @@ export function HomePricing() {
                 </li>
               ))}
             </ul>
-            <Link to="/auth" className="block text-center text-[14px] font-semibold bg-[#F4F4F5] text-[#0A0B0D] py-3.5 rounded-xl hover:bg-[#E4E4E7] transition-colors" style={{ fontFamily: 'Inter' }}>
+            <button onClick={triggerLogin} className="block w-full text-center text-[14px] font-semibold bg-[#F4F4F5] text-[#0A0B0D] py-3.5 rounded-xl hover:bg-[#E4E4E7] transition-colors" style={{ fontFamily: 'Inter' }}>
               Start Free Trial
-            </Link>
+            </button>
           </motion.div>
 
           {/* Professional */}
@@ -109,9 +109,9 @@ export function HomePricing() {
                 </li>
               ))}
             </ul>
-            <Link to="/auth" className="block text-center text-[14px] font-semibold bg-blue-500 text-white py-3.5 rounded-xl hover:bg-blue-600 transition-colors shadow-[0_4px_14px_rgba(59,130,246,0.3)]" style={{ fontFamily: 'Inter' }}>
+            <button onClick={triggerLogin} className="block w-full text-center text-[14px] font-semibold bg-blue-500 text-white py-3.5 rounded-xl hover:bg-blue-600 transition-colors shadow-[0_4px_14px_rgba(59,130,246,0.3)]" style={{ fontFamily: 'Inter' }}>
               Start Free Trial
-            </Link>
+            </button>
           </motion.div>
 
           {/* Enterprise */}
