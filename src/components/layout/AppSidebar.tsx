@@ -231,6 +231,7 @@ export function AppSidebar() {
             <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
             <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
             <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
+            <NavItem to="/qr-scanner" icon={QrCode} label="QR Scanner" collapsed={collapsed} />
             <NavItem to="/portals" icon={Globe} label="Portals" collapsed={collapsed} />
           </div>
 
