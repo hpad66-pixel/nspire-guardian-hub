@@ -149,6 +149,8 @@ const App = () => (
                         <ProtectedRoute>
                           <AppLayout>
                             <Routes>
+                              {/* Dashboard / Command Center */}
+                              <Route path="/dashboard" element={<Dashboard />} />
                               {/* Core Platform */}
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
