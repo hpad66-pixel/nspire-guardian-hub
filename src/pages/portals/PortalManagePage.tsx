@@ -74,6 +74,8 @@ export default function PortalManagePage() {
   if (!portal) return <Navigate to="/portals" replace />;
 
   const portalUrl = `${window.location.origin}/portal/${portal.portal_slug}`;
+  const scheduleUrl = `${window.location.origin}/portal/${portal.portal_slug}/schedule`;
+  const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
   function toggleSharedModule(module: string, enabled: boolean) {
@@ -117,16 +119,33 @@ export default function PortalManagePage() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted-foreground font-mono">{portalUrl}</span>
-              <button onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success('Link copied'); }} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success('Portal link copied'); }} className="text-muted-foreground hover:text-foreground">
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
+            {hasSchedule && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Schedule</span>
+                <span className="text-xs text-muted-foreground font-mono">{scheduleUrl}</span>
+                <button onClick={() => { navigator.clipboard.writeText(scheduleUrl); toast.success('Schedule link copied'); }} className="text-muted-foreground hover:text-foreground">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.open(portalUrl, '_blank')}>
-          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-          Open Portal
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.open(portalUrl, '_blank')}>
+            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+            Portal
+          </Button>
+          {hasSchedule && (
+            <Button variant="outline" size="sm" onClick={() => window.open(scheduleUrl, '_blank')}>
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              Schedule
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
