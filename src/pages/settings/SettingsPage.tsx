@@ -131,6 +131,7 @@ export default function SettingsPage() {
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="demo">Demo Mode</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="modules" className="space-y-6">
