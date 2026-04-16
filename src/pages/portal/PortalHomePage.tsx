@@ -35,6 +35,7 @@ export default function PortalHomePage() {
   const accent = portal.brand_accent_color ?? '#0F172A';
 
   const MODULE_ICONS: Record<string, string> = {
+    messages: '💬',
     credentials: '🏆',
     training: '🎓',
     safety: '⚠️',
