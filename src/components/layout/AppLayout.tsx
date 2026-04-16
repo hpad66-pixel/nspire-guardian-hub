@@ -145,8 +145,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       <PWAUpdateBanner />
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          {/* Desktop sidebar — hidden on mobile/tablet */}
-          <div className="hidden lg:block">
+          {/* Desktop sidebar — hidden on mobile/tablet and on /dashboard */}
+          <div className={cn('hidden', location.pathname !== '/dashboard' && 'lg:block')}>
             <AppSidebar />
           </div>
 

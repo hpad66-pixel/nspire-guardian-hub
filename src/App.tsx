@@ -127,7 +127,7 @@ const App = () => (
                   <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPageAlt />} />
-                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/install" element={<InstallPage />} />
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
@@ -149,7 +149,8 @@ const App = () => (
                         <ProtectedRoute>
                           <AppLayout>
                             <Routes>
-                              {/* Core Platform */}
+                              {/* Dashboard */}
+                              <Route path="/dashboard" element={<Dashboard />} />
                               {/* Core Platform */}
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
