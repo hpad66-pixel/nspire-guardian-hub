@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,10 @@ import {
   FolderKanban, Plus, Calendar, DollarSign, FileText, Building2, Briefcase,
   LayoutGrid, List, Table2, Search, ArrowUpDown, ArrowUp, ArrowDown,
   CheckCircle, AlertTriangle, XCircle, PauseCircle, MoreHorizontal,
-  Edit, Archive, Trash2, Filter,
+  Edit, Archive, Trash2, Filter, X,
 } from 'lucide-react';
 import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
+import { useProperties } from '@/hooks/useProperties';
 import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOrders';
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
@@ -65,6 +66,8 @@ const HEALTH_ORDER: Record<HealthStatus, number> = { overdue: 0, at_risk: 1, sta
 
 export default function ProjectsDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const propertyFilterId = searchParams.get('propertyId');
 
   // --- UI state ---
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -82,9 +85,20 @@ export default function ProjectsDashboard() {
   const { data: stats } = useProjectStats();
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
+  const { data: properties } = useProperties();
   const { canCreate, isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
   const canCreateProjects = canCreate('projects');
+
+  const filteredProperty = propertyFilterId
+    ? properties?.find((p) => p.id === propertyFilterId) ?? null
+    : null;
+
+  const clearPropertyFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('propertyId');
+    setSearchParams(next, { replace: true });
+  };
 
   // Persist view preference
   const handleViewChange = (v: string) => {
@@ -108,6 +122,11 @@ export default function ProjectsDashboard() {
   const displayProjects = useMemo(() => {
     if (!projects) return [];
     let filtered = [...projects];
+
+    // Property filter (from URL ?propertyId=…)
+    if (propertyFilterId) {
+      filtered = filtered.filter((p: any) => p.property_id === propertyFilterId);
+    }
 
     // Search
     if (search.trim()) {
@@ -145,7 +164,7 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, search, statusFilter, healthFilter, sortBy, sortDir]);
+  }, [projects, propertyFilterId, search, statusFilter, healthFilter, sortBy, sortDir]);
 
   const handleArchive = (project: Project) => {
     updateProject.mutate({ id: project.id, status: 'closed' });
@@ -270,6 +289,26 @@ export default function ProjectsDashboard() {
           </Button>
         )}
       </div>
+
+      {/* ── Property filter banner ── */}
+      {filteredProperty && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Filtered to property</span>
+            <span className="font-semibold text-foreground">{filteredProperty.name}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearPropertyFilter}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* ── Stats ── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
