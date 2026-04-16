@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,7 +35,12 @@ import {
   GraduationCap,
   Mail,
   Globe,
-  ChevronDown,
+  BadgeCheck,
+  ShieldAlert,
+  Truck,
+  Briefcase,
+  Search as SearchIcon,
+  QrCode,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,9 +53,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NavItem — clean, single-line link
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── NavItem ────────────────────────────────────────────────────────────────
 interface NavItemProps {
   to: string;
   icon: LucideIcon;
@@ -59,9 +61,10 @@ interface NavItemProps {
   collapsed: boolean;
   end?: boolean;
   badge?: number;
+  accent?: boolean;
 }
 
-function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps) {
+function NavItem({ to, icon: Icon, label, collapsed, end, badge, accent }: NavItemProps) {
   const hasBadge = badge !== undefined && badge > 0;
 
   const content = (
@@ -69,19 +72,20 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
       to={to}
       end={end}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium',
-        'text-sidebar-foreground/60 transition-all duration-150',
-        'hover:bg-sidebar-accent/8 hover:text-sidebar-foreground',
+        'group flex w-full items-center gap-3 rounded px-3 py-[7px] text-[13px] font-medium',
+        'text-sidebar-foreground/50 transition-all duration-150',
+        'hover:bg-sidebar-accent/8 hover:text-sidebar-foreground/90',
+        accent && 'text-sidebar-primary/80 italic',
         collapsed && 'justify-center px-0 py-2.5'
       )}
-      activeClassName="!bg-sidebar-accent/12 !text-sidebar-foreground"
+      activeClassName="!bg-sidebar-accent/10 !text-sidebar-foreground border-l-2 !border-sidebar-primary !pl-2.5"
     >
-      <Icon className={cn('h-[18px] w-[18px] shrink-0', collapsed && 'h-5 w-5')} />
+      <Icon className={cn('h-4 w-4 shrink-0', collapsed && 'h-5 w-5')} />
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>
           {hasBadge && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive/15 px-1.5 text-[10px] font-semibold tabular-nums text-destructive">
+            <span className="font-mono text-[10px] tabular-nums text-sidebar-primary">
               {(badge ?? 0) > 99 ? '99+' : badge}
             </span>
           )}
@@ -96,7 +100,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="right" className="text-xs font-medium">
           {label}
-          {hasBadge && <span className="ml-1.5 text-destructive">({badge})</span>}
+          {hasBadge && <span className="ml-1.5 text-sidebar-primary">({badge})</span>}
         </TooltipContent>
       </Tooltip>
     );
@@ -105,23 +109,18 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
   return content;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Section label
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Section Label ──────────────────────────────────────────────────────────
 function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
-  if (collapsed) return <div className="mx-auto my-2 h-px w-5 bg-sidebar-border" />;
+  if (collapsed) return <div className="mx-auto my-3 h-px w-5 bg-sidebar-border" />;
   return (
-    <p className="px-3 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/30">
+    <p className="px-3 pt-6 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/25">
       {label}
     </p>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AppSidebar
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── AppSidebar ─────────────────────────────────────────────────────────────
 export function AppSidebar() {
-  const location = useLocation();
   const navigate = useNavigate();
   const { isModuleEnabled } = useModules();
   const { user, signOut } = useAuth();
@@ -151,22 +150,21 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
 
         {/* ── HEADER ── */}
         <SidebarHeader className="px-3 py-4">
           <NavLink
             to="/dashboard"
-            className={cn('flex items-center gap-3 rounded-lg', collapsed && 'justify-center')}
+            className={cn('flex items-center gap-2.5 rounded-lg px-2', collapsed && 'justify-center px-0')}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary">
-              <Building2 className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-sidebar-primary">
+              <div className="h-2.5 w-2.5 rotate-45 border-2 border-sidebar-primary-foreground" />
             </div>
             {!collapsed && (
-              <div className="min-w-0">
-                <p className="text-sm font-bold tracking-tight text-sidebar-foreground">APAS</p>
-                <p className="text-[10px] text-sidebar-foreground/40">Construction OS</p>
-              </div>
+              <span className="text-base font-semibold tracking-tighter text-sidebar-foreground">
+                APAS<span className="text-sidebar-primary">OS</span>
+              </span>
             )}
           </NavLink>
         </SidebarHeader>
@@ -174,9 +172,10 @@ export function AppSidebar() {
         {/* ── CONTENT ── */}
         <SidebarContent className="overflow-y-auto overflow-x-hidden px-2 py-1">
 
-          {/* MAIN */}
+          {/* SYSTEMS */}
+          <SectionLabel label="Systems" collapsed={collapsed} />
           <div className="space-y-0.5">
-            <NavItem to="/dashboard" icon={Home} label="Home" collapsed={collapsed} end />
+            <NavItem to="/dashboard" icon={Home} label="Dashboard" collapsed={collapsed} end />
             <NavItem to="/messages" icon={MessageCircle} label="Messages" collapsed={collapsed} badge={unreadCount} />
             <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
           </div>
@@ -189,8 +188,8 @@ export function AppSidebar() {
             <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
           </div>
 
-          {/* OPERATIONS */}
-          <SectionLabel label="Operations" collapsed={collapsed} />
+          {/* OPS ENGINE */}
+          <SectionLabel label="Ops Engine" collapsed={collapsed} />
           <div className="space-y-0.5">
             {canView('issues') && (
               <NavItem to="/issues" icon={AlertTriangle} label="Issues" collapsed={collapsed} badge={openIssueCount} />
@@ -207,40 +206,45 @@ export function AppSidebar() {
             {isModuleEnabled('nspireEnabled') && canView('inspections') && (
               <NavItem to="/inspections" icon={ClipboardCheck} label="Compliance" collapsed={collapsed} />
             )}
-            <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
+            <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} accent />
           </div>
 
-          {/* PROJECTS */}
+          {/* EXECUTION */}
           {isModuleEnabled('projectsEnabled') && canView('projects') && (
             <>
-              <SectionLabel label="Projects" collapsed={collapsed} />
+              <SectionLabel label="Execution" collapsed={collapsed} />
               <div className="space-y-0.5">
                 <NavItem to="/projects" icon={FolderKanban} label="Projects" collapsed={collapsed} end />
               </div>
             </>
           )}
 
-          {/* TEAM */}
-          <SectionLabel label="Team" collapsed={collapsed} />
+          {/* HUMAN CAPITAL */}
+          <SectionLabel label="Human Capital" collapsed={collapsed} />
           <div className="space-y-0.5">
             {canView('people') && (
               <NavItem to="/people" icon={Users} label="People" collapsed={collapsed} />
             )}
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
+            <NavItem to="/organizations" icon={Briefcase} label="Organizations" collapsed={collapsed} />
             <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
+            <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
+            <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
+            <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
             <NavItem to="/portals" icon={Globe} label="Portals" collapsed={collapsed} />
           </div>
 
-          {/* INSIGHTS */}
+          {/* INTELLIGENCE */}
           {(canView('documents') || canView('reports')) && (
             <>
-              <SectionLabel label="Insights" collapsed={collapsed} />
+              <SectionLabel label="Intelligence" collapsed={collapsed} />
               <div className="space-y-0.5">
-                {canView('documents') && (
-                  <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />
-                )}
+                <NavItem to="/case-review" icon={SearchIcon} label="CaseIQ" collapsed={collapsed} accent />
                 {canView('reports') && (
                   <NavItem to="/reports" icon={BarChart3} label="Reports" collapsed={collapsed} />
+                )}
+                {canView('documents') && (
+                  <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />
                 )}
               </div>
             </>
@@ -251,7 +255,7 @@ export function AppSidebar() {
         <SidebarRail />
 
         {/* ── FOOTER ── */}
-        <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarFooter className="border-t border-sidebar-border bg-sidebar p-2">
           {canView('settings') && (
             <NavItem to="/settings" icon={Settings} label="Settings" collapsed={collapsed} />
           )}
@@ -266,7 +270,7 @@ export function AppSidebar() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={myProfile?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-primary/15 text-primary text-[11px] font-semibold">
+                    <AvatarFallback className="bg-sidebar-primary/15 text-sidebar-primary text-[11px] font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -282,13 +286,13 @@ export function AppSidebar() {
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src={myProfile?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/15 text-primary text-[11px] font-semibold">
+                  <AvatarFallback className="bg-sidebar-primary/15 text-sidebar-primary text-[11px] font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-sidebar-foreground">{userName}</p>
-                  <p className="truncate text-[11px] text-sidebar-foreground/40">{userRole}</p>
+                  <p className="truncate text-xs font-semibold text-sidebar-foreground">{userName}</p>
+                  <p className="truncate text-[10px] font-bold tracking-widest uppercase text-sidebar-primary/70">{userRole}</p>
                 </div>
               </button>
               <button
