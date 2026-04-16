@@ -890,6 +890,12 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         )}
+
+        {isAdmin && (
+          <TabsContent value="demo" className="space-y-4">
+            <DemoModeButton />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
