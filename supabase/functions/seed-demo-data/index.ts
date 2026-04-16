@@ -272,7 +272,47 @@ serve(async (req) => {
     }).select("id").single();
     console.log("Client portal seeded:", portalData?.id);
 
-    // ── 16. Update workspace to enterprise ──
+    // ── 16. Seed portal schedule content + milestones ──
+    if (portalData?.id) {
+      await supabaseAdmin.from("portal_schedule_content").upsert({
+        portal_id: portalData.id,
+        content: {
+          navBrand: "APAS Enterprises",
+          navBadge: "Active",
+          navPowered: "APAS",
+          heroTitle: "Three areas. Eight steps. One readout.",
+          heroBody: "Track every area, milestone, certification step, and handover note from one interactive schedule.",
+          heroTags: ["Construction", "Client Portal", "Interactive Schedule"],
+          commitDate: "Q3 2026",
+          commitSub: "Current Commitment",
+          commitNote: "Milestones, notes, and questions on this page stay visible to the project team and portal users.",
+          pullQuoteText: "This project is on track and the team is performing exceptionally well.",
+          pullQuoteSub: "— Project Director, APAS Enterprises",
+          areaCards: [
+            { letter: "A", title: "Pre-Construction & Design", stat: "10 milestones", body: "Site survey through owner approval", units: "Permits, engineering, bid packages" },
+            { letter: "B", title: "Construction Execution", stat: "10 milestones", body: "Foundation through punch list", units: "Structural, MEP, finishes" },
+            { letter: "C", title: "Closeout & Handover", stat: "10 milestones", body: "CO through retention release", units: "Docs, training, warranties" },
+          ],
+        },
+      }, { onConflict: "portal_id" });
+
+      // Add portal access for demo
+      const accessToken = crypto.randomUUID();
+      await supabaseAdmin.from("portal_access").upsert({
+        portal_id: portalData.id,
+        email: "hardeep@apas.ai",
+        name: "Hardeep Anand",
+        company: "APAS Enterprises",
+        magic_link_token: accessToken,
+        magic_link_expires_at: new Date(Date.now() + 72 * 3600000).toISOString(),
+        invited_by: userId,
+        is_active: true,
+      }, { onConflict: "portal_id,email" });
+
+      console.log("Portal schedule content + access seeded");
+    }
+
+    // ── 17. Update workspace to enterprise ──
     await supabaseAdmin.from("workspaces").update({
       plan: "enterprise",
       status: "active",
