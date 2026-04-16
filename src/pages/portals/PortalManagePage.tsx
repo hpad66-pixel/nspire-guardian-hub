@@ -17,6 +17,7 @@ import {
 } from '@/hooks/usePortal';
 import { RespondToRequestDrawer } from '@/components/portals/RespondToRequestDrawer';
 import { ManageExclusionsDrawer } from '@/components/portals/ManageExclusionsDrawer';
+import { useSendEmail } from '@/hooks/useSendEmail';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
