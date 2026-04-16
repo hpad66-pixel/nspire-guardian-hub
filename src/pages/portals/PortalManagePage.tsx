@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ExternalLink, Copy, Settings, Archive, Loader2, Users, FileText,
-  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle
+  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, Mail, CalendarDays
 } from 'lucide-react';
 import {
   usePortal, usePortalAccess, usePortalRequests, usePortalActivity,
@@ -73,8 +73,9 @@ export default function PortalManagePage() {
   }
   if (!portal) return <Navigate to="/portals" replace />;
 
-  const portalUrl = `${window.location.origin}/portal/${portal.portal_slug}`;
-  const scheduleUrl = `${window.location.origin}/portal/${portal.portal_slug}/schedule`;
+  const PROD_DOMAIN = 'https://build.apas.ai';
+  const portalUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}`;
+  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}/schedule`;
   const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
@@ -295,41 +296,70 @@ export default function PortalManagePage() {
             <p className="text-sm text-muted-foreground text-center py-10">No contacts invited yet.</p>
           ) : (
             <div className="space-y-2">
-              {contacts.map(c => (
-                <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {(c.name ?? c.email).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{c.name ?? c.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.name ? c.email : null}
-                        {c.last_login_at
-                          ? ` · Last login ${formatDistanceToNow(new Date(c.last_login_at), { addSuffix: true })}`
-                          : ' · Never logged in'}
-                      </p>
+              {contacts.map(c => {
+                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${portalUrl}\n\nBest regards`;
+                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${scheduleUrl}\n\nBest regards`;
+                return (
+                  <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {(c.name ?? c.email).charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{c.name ?? c.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {c.name ? c.email : null}
+                            {c.last_login_at
+                              ? ` · Last login ${formatDistanceToNow(new Date(c.last_login_at), { addSuffix: true })}`
+                              : ' · Never logged in'}
+                          </p>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => revokeAccess.mutate({ id: c.id, portalId: portal.id })}
+                            className="text-destructive"
+                          >
+                            Revoke Access
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    {/* Quick action buttons */}
+                    <div className="flex flex-wrap gap-1.5 pl-11">
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success('Portal link copied'); }}>
+                        <Copy className="h-3 w-3" /> Portal Link
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                        <a href={`mailto:${c.email}?subject=Your Client Portal&body=${encodeURIComponent(emailPortalBody)}`}>
+                          <Mail className="h-3 w-3" /> Email Portal
+                        </a>
+                      </Button>
+                      {hasSchedule && (
+                        <>
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(scheduleUrl); toast.success('Schedule link copied'); }}>
+                            <Copy className="h-3 w-3" /> Schedule Link
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                            <a href={`mailto:${c.email}?subject=Your Project Schedule&body=${encodeURIComponent(emailScheduleBody)}`}>
+                              <CalendarDays className="h-3 w-3" /> Email Schedule
+                            </a>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => revokeAccess.mutate({ id: c.id, portalId: portal.id })}
-                        className="text-destructive"
-                      >
-                        Revoke Access
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
