@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
+const HomePage = lazy(() => import('./pages/HomePage'));
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
@@ -126,8 +127,8 @@ const App = () => (
                 }>
                   <Routes>
                     {/* Public Routes */}
-                    <Route path="/" element={<LandingPageAlt />} />
-                    
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/home-legacy" element={<LandingPageAlt />} />
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/install" element={<InstallPage />} />
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
