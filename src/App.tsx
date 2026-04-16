@@ -141,6 +141,7 @@ const App = () => (
                      <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
                      <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
                      <Route path="/portal/:slug/home" element={<PortalHomePage />} />
+                     <Route path="/portal/:slug/schedule" element={<PortalSchedulePage />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      
