@@ -78,22 +78,22 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar - Dark professional */
-    --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 215 25% 92%;
-    --sidebar-primary: 217 91% 62%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 62%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 30% 17%;
-    --sidebar-ring: 217 91% 62%;
-    --sidebar-muted: 215 15% 58%;
-    --sidebar-label: 215 12% 48%;
+    /* Sidebar - Precision Tactical Obsidian */
+    --sidebar-background: 240 6% 5%;
+    --sidebar-foreground: 240 5% 85%;
+    --sidebar-primary: 43 90% 59%;
+    --sidebar-primary-foreground: 240 6% 5%;
+    --sidebar-accent: 43 90% 59%;
+    --sidebar-accent-foreground: 240 6% 5%;
+    --sidebar-border: 240 4% 13%;
+    --sidebar-ring: 43 90% 59%;
+    --sidebar-muted: 240 3% 55%;
+    --sidebar-label: 240 3% 40%;
 
     /* Sidebar nav utility tokens */
-    --sidebar-nav-active-bg: 217 91% 62%;
-    --sidebar-nav-hover-bg: 222 47% 18%;
-    --sidebar-zone-label: 215 12% 48%;
+    --sidebar-nav-active-bg: 240 5% 15%;
+    --sidebar-nav-hover-bg: 240 5% 10%;
+    --sidebar-zone-label: 240 3% 40%;
   }
 
   .dark {
