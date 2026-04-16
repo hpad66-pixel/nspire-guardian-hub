@@ -53,7 +53,7 @@ export default function PortalHomePage() {
   };
 
   return (
-    <PortalLayout portal={portal} activeTab={activeTab} onTabChange={tab => setActiveTab(tab as PortalTab)}>
+    <PortalLayout portal={portal} activeTab={activeTab} onTabChange={handleTabChange}>
       {/* HOME TAB */}
       {activeTab === 'home' && (
         <div className="space-y-6">
