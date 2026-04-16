@@ -35,6 +35,7 @@ import {
   Contact,
   GraduationCap,
   Mail,
+  Globe,
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
@@ -227,6 +228,7 @@ export function AppSidebar() {
             )}
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
             <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
+            <NavItem to="/portals" icon={Globe} label="Portals" collapsed={collapsed} />
           </div>
 
           {/* INSIGHTS */}

@@ -71,6 +71,7 @@ const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
 const PortalAuthPage = lazy(() => import('./pages/portal/PortalAuthPage'));
 const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'));
 const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
+const PortalSchedulePage = lazy(() => import('./pages/portal/PortalSchedulePage'));
 const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
 
 const queryClient = new QueryClient({
@@ -140,6 +141,7 @@ const App = () => (
                      <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
                      <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
                      <Route path="/portal/:slug/home" element={<PortalHomePage />} />
+                     <Route path="/portal/:slug/schedule" element={<PortalSchedulePage />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      

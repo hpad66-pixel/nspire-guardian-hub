@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession } from '@/hooks/usePortal';
 import { PortalLayout } from '@/components/portal/PortalLayout';
@@ -7,7 +7,7 @@ import { PortalMessages } from '@/components/portal/PortalMessages';
 import { useAllCredentials } from '@/hooks/useCredentials';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 
-type PortalTab = 'home' | 'messages' | 'credentials' | 'training' | 'safety' | 'equipment';
+type PortalTab = 'home' | 'messages' | 'schedule' | 'credentials' | 'training' | 'safety' | 'equipment';
 
 function ComplianceDot({ expiry }: { expiry?: string | null }) {
   if (!expiry) return null;
@@ -18,9 +18,19 @@ function ComplianceDot({ expiry }: { expiry?: string | null }) {
 
 export default function PortalHomePage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { data: portal, isLoading } = usePortalBySlug(slug);
   const { session, isAuthenticated } = usePortalSession();
   const [activeTab, setActiveTab] = useState<PortalTab>('home');
+
+  // Redirect to standalone schedule page when schedule tab is clicked
+  const handleTabChange = (tab: string) => {
+    if (tab === 'schedule') {
+      navigate(`/portal/${slug}/schedule`);
+      return;
+    }
+    setActiveTab(tab as PortalTab);
+  };
 
   const { data: credentials = [] } = useAllCredentials();
 
@@ -43,7 +53,7 @@ export default function PortalHomePage() {
   };
 
   return (
-    <PortalLayout portal={portal} activeTab={activeTab} onTabChange={tab => setActiveTab(tab as PortalTab)}>
+    <PortalLayout portal={portal} activeTab={activeTab} onTabChange={handleTabChange}>
       {/* HOME TAB */}
       {activeTab === 'home' && (
         <div className="space-y-6">

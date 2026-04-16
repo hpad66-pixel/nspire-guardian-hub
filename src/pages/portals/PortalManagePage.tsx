@@ -33,6 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const MODULE_CONFIG = [
   { key: 'messages', label: 'Messages', icon: '💬' },
+  { key: 'schedule', label: 'Interactive Schedule', icon: '📅' },
   { key: 'credentials', label: 'Credentials & Licenses', icon: '🏆' },
   { key: 'training', label: 'Training Records', icon: '🎓' },
   { key: 'safety', label: 'Safety Records', icon: '⚠️' },

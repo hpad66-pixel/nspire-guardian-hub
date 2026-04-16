@@ -14,6 +14,7 @@ interface PortalLayoutProps {
 const TAB_LABELS: Record<string, string> = {
   home: 'Home',
   messages: 'Messages',
+  schedule: 'Schedule',
   credentials: 'Credentials',
   training: 'Training',
   safety: 'Safety',
@@ -30,7 +31,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
   }
 
   const tabs = ['home', ...portal.shared_modules.filter(m =>
-    ['messages', 'credentials', 'training', 'safety', 'equipment'].includes(m)
+    ['messages', 'schedule', 'credentials', 'training', 'safety', 'equipment'].includes(m)
   )];
 
   return (
