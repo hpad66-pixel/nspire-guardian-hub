@@ -2,9 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Build Space OS Design System */
+/* Build OS Design System */
 
-/* Build Space landing page custom properties */
+/* Build landing page custom properties */
 :root {
   --apas-midnight: #0A0C12;
   --apas-deep: #10131D;
@@ -23,91 +23,73 @@
 
 @layer base {
   /*
-   * Build Space OS palette — aligned to the marketing homepage (#0A0B0D base,
-   * sapphire + violet accents, Inter typography). Dark-first by design;
-   * the .light block below is available if a toggle is ever needed.
+   * Build OS — warm cream light palette matching the marketing landing.
+   * Warm off-white backgrounds, near-black text, gold/amber accent.
    */
   :root {
-    /* Core backgrounds — near-black blue-black matching the landing */
-    --background: 225 13% 5%;          /* ~#0A0B0D */
-    --foreground: 215 30% 96%;         /* ~#F1F5FF */
+    --background: 40 33% 99%;          /* warm cream ~#FDFCF9 */
+    --foreground: 30 10% 10%;          /* warm near-black ~#1A1714 */
 
-    /* Cards & surfaces — translucent-feeling solid neutrals */
-    --card: 222 18% 7%;
-    --card-foreground: 215 30% 96%;
+    --card: 38 25% 98%;
+    --card-foreground: 30 10% 10%;
 
-    --popover: 222 18% 8%;
-    --popover-foreground: 215 30% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 10% 10%;
 
-    /* Primary — sapphire (matches homepage CTA & accent gradients) */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 30 10% 10%;             /* near-black for CTAs */
+    --primary-foreground: 40 33% 99%;
 
-    /* Secondary — muted slate for chips and surfaces */
-    --secondary: 222 18% 13%;
-    --secondary-foreground: 215 30% 96%;
+    --secondary: 35 12% 95%;
+    --secondary-foreground: 30 10% 20%;
 
-    /* Muted surfaces & text */
-    --muted: 222 15% 11%;
-    --muted-foreground: 215 16% 60%;
+    --muted: 35 10% 96%;
+    --muted-foreground: 35 8% 50%;
 
-    /* Accent — same sapphire (used in active states, focus rings) */
-    --accent: 217 91% 60%;
+    --accent: 40 50% 55%;              /* warm gold ~#C4A35A */
     --accent-foreground: 0 0% 100%;
 
-    /* Severity colors — NSPIRE-critical, tuned for dark background */
-    --severity-severe: 0 84% 62%;
+    --severity-severe: 0 84% 60%;
     --severity-severe-foreground: 0 0% 100%;
-    --severity-moderate: 38 92% 55%;
+    --severity-moderate: 38 92% 50%;
     --severity-moderate-foreground: 0 0% 100%;
     --severity-low: 215 20% 65%;
-    --severity-low-foreground: 222 47% 11%;
+    --severity-low-foreground: 30 10% 10%;
 
-    /* Status colors */
-    --success: 152 66% 46%;            /* emerald */
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;             /* amber (reserved for warnings only) */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
-    --destructive: 0 84% 62%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Module accents — match the homepage module grid colors */
-    --module-inspections: 199 89% 55%;
-    --module-projects: 262 83% 65%;
+    --module-inspections: 199 89% 48%;
+    --module-projects: 262 83% 58%;
     --module-core: 215 20% 65%;
 
-    /* Borders & inputs — subtle, never harsh on dark bg */
-    --border: 222 15% 14%;
-    --input: 222 15% 14%;
-    --ring: 217 91% 60%;
+    --border: 35 15% 90%;
+    --input: 35 15% 90%;
+    --ring: 40 50% 55%;
 
     --radius: 0.625rem;
 
-    /*
-     * Sidebar — unified with homepage dark theme.
-     * No more amber obsidian; sapphire is the single accent color.
-     */
-    --sidebar-background: 225 14% 4%;  /* marginally deeper than main bg */
-    --sidebar-foreground: 215 20% 90%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 60%;
+    /* Sidebar — light, warm, consistent with the app */
+    --sidebar-background: 38 20% 97%;
+    --sidebar-foreground: 30 10% 15%;
+    --sidebar-primary: 30 10% 10%;
+    --sidebar-primary-foreground: 40 33% 99%;
+    --sidebar-accent: 40 50% 55%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 15% 11%;
-    --sidebar-ring: 217 91% 60%;
-    --sidebar-muted: 215 15% 58%;
-    --sidebar-label: 215 12% 40%;
+    --sidebar-border: 35 12% 91%;
+    --sidebar-ring: 40 50% 55%;
+    --sidebar-muted: 35 8% 55%;
+    --sidebar-label: 35 8% 45%;
 
-    /* Sidebar nav utility tokens */
-    --sidebar-nav-active-bg: 217 91% 18%;
-    --sidebar-nav-hover-bg: 222 20% 10%;
-    --sidebar-zone-label: 215 12% 40%;
+    --sidebar-nav-active-bg: 40 30% 95%;
+    --sidebar-nav-hover-bg: 38 20% 96%;
+    --sidebar-zone-label: 35 8% 45%;
   }
 
-  /*
-   * .dark mirrors :root for forwards compatibility with any code that
-   * expects the class. In practice, Build Space OS is dark-by-default.
-   */
+  /* .dark reserved for future dark-mode toggle */
   .dark {
     --background: 225 13% 5%;
     --foreground: 215 30% 96%;
@@ -126,27 +108,6 @@
     --border: 222 15% 14%;
     --input: 222 15% 14%;
     --ring: 217 91% 60%;
-  }
-
-  /*
-   * .light — optional opt-in inverse palette. Not used by default;
-   * provided so a theme toggle can be added later without refactoring tokens.
-   */
-  .light {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 222 47% 18%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 215 20% 94%;
-    --secondary-foreground: 222 47% 18%;
-    --muted: 215 20% 96%;
-    --muted-foreground: 215 16% 47%;
-    --border: 215 20% 90%;
-    --input: 215 20% 90%;
   }
 }
 

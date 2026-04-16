@@ -345,7 +345,7 @@ export function SendExternalEmailDialog({
   </div>
   <div style="background:#F8FAFC; padding:16px 32px; border-top:1px solid #E5E7EB;">
     <p style="margin:0; font-size:11px; color:#94A3B8;">
-      Sent via Build Space OS Project Management Platform &bull; This email was sent on behalf of your project team.
+      Sent via Build OS Project Management Platform &bull; This email was sent on behalf of your project team.
     </p>
   </div>
 </div>`;

@@ -36,7 +36,7 @@ export function LandingNav() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.02em' }}>Build Space</span>
+                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.02em' }}>Build</span>
                 <span style={{ width: '5px', height: '5px', background: 'var(--apas-sapphire)', borderRadius: '1px', transform: 'rotate(45deg)', display: 'inline-block', margin: '0 1px' }} />
                 <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.02em' }}>OS</span>
               </div>
@@ -109,7 +109,7 @@ export function LandingNav() {
             style={{ background: 'var(--apas-midnight)' }}
           >
             <div className="flex items-center justify-between px-6 py-4">
-              <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>Build Space OS</span>
+              <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>Build OS</span>
               <button onClick={() => setMobileOpen(false)} style={{ color: 'var(--apas-muted)' }}>
                 <X size={22} />
               </button>

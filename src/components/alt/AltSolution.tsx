@@ -26,7 +26,7 @@ export function AltSolution() {
             One platform. Every workflow.<br /><span style={{ color: '#2563EB' }}>All connected.</span>
           </h2>
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '18px', color: '#475569', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>
-            Build Space OS is not another point solution. It's the operating layer for your entire property and construction operation — where every action is linked, every record is searchable, and nothing falls through the cracks.
+            Build OS is not another point solution. It's the operating layer for your entire property and construction operation — where every action is linked, every record is searchable, and nothing falls through the cracks.
           </p>
         </motion.div>
 

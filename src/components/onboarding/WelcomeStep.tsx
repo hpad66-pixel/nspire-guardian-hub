@@ -39,7 +39,7 @@ export function WelcomeStep({ onNext, isLoading: externalLoading }: WelcomeStepP
         </div>
         <div className="space-y-2">
           <CardTitle className="text-3xl font-bold">
-            Welcome to Build Space OS!
+            Welcome to Build OS!
           </CardTitle>
           <CardDescription className="text-lg">
             Let's set up your workspace in just a few steps.

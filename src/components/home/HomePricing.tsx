@@ -10,7 +10,7 @@ const enterpriseFeatures = ['Everything in Professional, plus:', 'Unlimited prop
 const faqs = [
   { q: 'Do I need separate plans for multiple properties?', a: 'No. Each plan covers multiple properties up to the stated limit. One account, one dashboard, one subscription.' },
   { q: 'Is the AI Voice Agent included?', a: 'Yes, in Professional and Enterprise. Unlimited calls, no per-minute fees for standard usage.' },
-  { q: 'Can my inspectors use it offline?', a: 'Yes. Build Space OS is a PWA. Install from any browser. Inspections, photos, and voice notes work offline and sync automatically.' },
+  { q: 'Can my inspectors use it offline?', a: 'Yes. Build OS is a PWA. Install from any browser. Inspections, photos, and voice notes work offline and sync automatically.' },
   { q: 'What happens after the trial?', a: 'Choose a plan or your account pauses — data stays intact for 30 days. No surprise charges.' },
 ];
 

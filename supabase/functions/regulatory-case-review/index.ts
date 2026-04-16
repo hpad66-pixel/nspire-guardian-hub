@@ -150,7 +150,7 @@ REGULATORY_DOMAIN: [detected domain, e.g. "Environmental/Petroleum - FDEP/DERM U
 // ─────────────────────────────────────────────────────────────────────────────
 // AURUM DARK REPORT PROMPT
 // ─────────────────────────────────────────────────────────────────────────────
-const AURUM_REPORT_PROMPT = `Format your complete analysis as a self-contained HTML document using the Build Space AURUM design system. Output ONLY the HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after.
+const AURUM_REPORT_PROMPT = `Format your complete analysis as a self-contained HTML document using the Build AURUM design system. Output ONLY the HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after.
 
 CRITICAL RULE: Every fact, date, name, case number, and regulatory citation in the HTML MUST come from the analysis you just produced. Do not add, invent, or assume any information.
 
@@ -161,7 +161,7 @@ Use this exact HTML structure and CSS:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[FACILITY NAME] — Regulatory Case Review | Build Space</title>
+<title>[FACILITY NAME] — Regulatory Case Review | Build</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700;900&display=swap');
 :root{--gold:#C8962E;--gold-light:#E8C875;--gold-bg:rgba(200,150,46,0.08);--dark:#0D0D1A;--dark2:#141428;--dark3:#1C1C35;--slate:#8B8FA3;--text:#C8CAD4;--white:#EEEEF2;--blue:#2E6BA6;--blue-light:#4A9FD9;--green:#2E8B57;--green-light:#3CB371;--red:#C0392B;--red-light:#E74C3C;--orange:#D4782F;}
@@ -267,7 +267,7 @@ body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;l
 
 11. SECTION: Path to Closure & Budget (use narrative div from Sections 9 and 12)
 
-12. FOOTER: Build Space branding, regulatory domain detected, case reference, date, confidential notice.
+12. FOOTER: Build branding, regulatory domain detected, case reference, date, confidential notice.
 
 When information is missing from the files, use the .gap-notice div to flag it.
 
@@ -287,7 +287,7 @@ Use this exact structure and CSS:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[FACILITY NAME] — Regulatory Case Review | Build Space</title>
+<title>[FACILITY NAME] — Regulatory Case Review | Build</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Open+Sans:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 :root{--navy:#1E3A5F;--gold:#C8962E;--black:#111111;--body:#2C2C2C;--muted:#5A5A5A;--light:#F7F7F5;--border:#D8D8D4;--white:#FFFFFF;--red:#8B0000;--green:#1B5E20;--amber:#7A4F00;}
@@ -385,14 +385,14 @@ body{background:var(--white);color:var(--body);font-family:'Merriweather',Georgi
 
 <div class="letterhead">
   <div class="lh-firm">
-    <div class="firm-name">Build Space<span>.AI</span> Consulting</div>
+    <div class="firm-name">Build<span>.AI</span> Consulting</div>
     <div class="firm-tag">Regulatory Compliance · Environmental Intelligence · Technical Advisory</div>
   </div>
   <div class="lh-meta">
     <strong>REGULATORY CASE REVIEW REPORT</strong>
     Date: [Report Date]<br>
     Report No.: CIQ-[YYYY]-[NNN]<br>
-    Prepared by: Build Space<br>
+    Prepared by: Build<br>
     Status: Privileged & Confidential
   </div>
 </div>
@@ -410,7 +410,7 @@ For record gaps: Use .gap-notice div.
 
 [FOOTER]:
 <div class="wp-footer">
-  <div class="firm">Build Space Consulting</div>
+  <div class="firm">Build Consulting</div>
   <div>[FACILITY NAME] | [CASE NUMBER] | [DATE]</div>
   <div>Privileged & Confidential</div>
 </div>

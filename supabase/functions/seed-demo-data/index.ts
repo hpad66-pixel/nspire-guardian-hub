@@ -294,7 +294,7 @@ serve(async (req) => {
         content: {
           navBrand: "Riverside Enterprises",
           navBadge: "Active",
-          navPowered: "Build Space",
+          navPowered: "Build",
           heroTitle: "Three areas. Eight steps. One readout.",
           heroBody: "Track every area, milestone, certification step, and handover note from one interactive schedule.",
           heroTags: ["Construction", "Client Portal", "Interactive Schedule"],

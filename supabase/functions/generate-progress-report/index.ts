@@ -167,7 +167,7 @@ serve(async (req) => {
     const meetings = meetingsRes.data || [];
     const branding = brandingRes.data;
 
-    const companyName = branding?.company_name || "Build Space";
+    const companyName = branding?.company_name || "Build";
     const companyPhone = branding?.phone || "";
     const companyEmail = branding?.email || "";
     const companyAddress = [branding?.address_line1, branding?.address_line2].filter(Boolean).join(", ") || "";

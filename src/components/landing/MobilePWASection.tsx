@@ -33,7 +33,7 @@ export function MobilePWASection() {
                 {/* Status bar */}
                 <div className="flex items-center justify-between px-4 py-2.5" style={{ background: 'rgba(0,0,0,0.3)' }}>
                   <span style={{ fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--apas-white)' }}>9:41</span>
-                  <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '9px', color: 'var(--apas-sapphire)' }}>Build Space OS</span>
+                  <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '9px', color: 'var(--apas-sapphire)' }}>Build OS</span>
                   <span style={{ fontFamily: 'JetBrains Mono', fontSize: '9px', color: 'var(--apas-muted)' }}>●●● 100%</span>
                 </div>
 

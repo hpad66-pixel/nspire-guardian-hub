@@ -31,7 +31,7 @@ export function HomeMobile() {
                 <div className="w-full h-full bg-[#FAFAF9] rounded-[24px] overflow-hidden flex flex-col">
                   <div className="flex items-center justify-between px-3 pt-5 pb-2" style={{ background: '#0A0B0D' }}>
                     <span className="text-[9px] text-white/60" style={{ fontFamily: "'JetBrains Mono'" }}>9:41</span>
-                    <span className="text-[10px] font-bold text-white" style={{ fontFamily: 'Inter' }}>Build Space <span className="text-blue-400">OS</span></span>
+                    <span className="text-[10px] font-bold text-white" style={{ fontFamily: 'Inter' }}>Build <span className="text-blue-400">OS</span></span>
                     <span className="text-[9px] text-white/60">●●●</span>
                   </div>
                   <div className="flex-1 p-3 space-y-2.5">

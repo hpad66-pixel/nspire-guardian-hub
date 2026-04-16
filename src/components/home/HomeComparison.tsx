@@ -133,7 +133,7 @@ export function HomeComparison() {
             className="mx-auto max-w-xl leading-relaxed text-white/40"
             style={{ fontFamily: 'Inter, sans-serif', fontSize: '17px' }}
           >
-            See how Build Space OS compares to legacy property software and the
+            See how Build OS compares to legacy property software and the
             spreadsheet-plus-point-solutions stack most teams run today.
           </p>
         </motion.div>
@@ -154,13 +154,13 @@ export function HomeComparison() {
             <div className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-white/30 md:block">
               Capability
             </div>
-            {/* Build Space OS — highlighted column */}
+            {/* Build OS — highlighted column */}
             <div className="relative rounded-lg bg-gradient-to-br from-blue-500/15 to-violet-500/10 px-3 py-2 text-center ring-1 ring-blue-400/30">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-300">
                 Recommended
               </p>
               <p className="mt-0.5 text-[15px] font-semibold text-white tracking-tight">
-                Build Space OS
+                Build OS
               </p>
             </div>
             <div className="text-center">

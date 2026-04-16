@@ -83,7 +83,7 @@ function buildBrandedHtml(
   branding: { company_name?: string; logo_url?: string | null; address_line1?: string | null; phone?: string | null; email?: string | null; website?: string | null; footer_text?: string | null } | null,
   preparedBy: string
 ): string {
-  const company = branding?.company_name || "Build Space";
+  const company = branding?.company_name || "Build";
   const primaryColor = "#1e3a5f";
   const accentColor = "#2563eb";
 
@@ -191,7 +191,7 @@ async function exportToWord(content: string, title: string) {
 
   const doc = new Document({
     sections: [{ children }],
-    creator: "Build Space",
+    creator: "Build",
     title,
   });
 
@@ -252,7 +252,7 @@ export function ReportGeneratorDialog({
   const reportTitle = `${config.reportType === "weekly" ? "Weekly Progress Summary" : "Monthly Invoice Report"} — ${projectName} — ${format(new Date(config.periodStart), "MMM d")} to ${format(new Date(config.periodEnd), "MMM d, yyyy")}`;
 
   const currentHtml = editMode ? editedHtml : generatedHtml;
-  const brandedFull = buildBrandedHtml(currentHtml, config, projectName, branding || null, branding?.company_name || "Build Space");
+  const brandedFull = buildBrandedHtml(currentHtml, config, projectName, branding || null, branding?.company_name || "Build");
 
   // ── Apply date presets ─────────────────────────────────────────────────────
   const applyPreset = (preset: "week" | "month" | "prev_month") => {

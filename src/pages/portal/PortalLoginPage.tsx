@@ -228,7 +228,7 @@ export default function PortalLoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">Powered by Build Space OS · apasos.ai</p>
+        <p className="text-center text-xs text-muted-foreground">Powered by Build OS · apasos.ai</p>
       </div>
     </div>
   );

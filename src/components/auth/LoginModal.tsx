@@ -113,7 +113,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
               className="text-[28px] font-black leading-none tracking-tight text-white"
               style={{ letterSpacing: '-0.04em' }}
             >
-              Build Space
+              Build
             </span>
             <span
               className="text-[28px] font-black leading-none tracking-tight"
@@ -138,7 +138,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
             Welcome back
           </h2>
           <p className="mb-6 text-[13.5px] text-white/50">
-            Sign in to your Build Space OS workspace.
+            Sign in to your Build OS workspace.
           </p>
 
           {/* Google */}

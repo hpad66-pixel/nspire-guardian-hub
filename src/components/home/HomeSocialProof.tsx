@@ -23,7 +23,7 @@ function Counter({ target, suffix = '' }: { target: number | string; suffix?: st
 }
 
 const stats = [
-  { value: 500, suffix: '+', label: 'Teams using Build Space OS' },
+  { value: 500, suffix: '+', label: 'Teams using Build OS' },
   { value: '3.2M+', label: 'Documents managed' },
   { value: 99.7, suffix: '%', label: 'Uptime SLA' },
   { value: 48, suffix: ' hrs', label: 'Average onboarding' },
@@ -31,7 +31,7 @@ const stats = [
 
 const testimonials = [
   {
-    text: 'We manage 6 properties across 3 cities. Build Space OS replaced four different tools and gave us a compliance dashboard we can show any HUD inspector.',
+    text: 'We manage 6 properties across 3 cities. Build OS replaced four different tools and gave us a compliance dashboard we can show any HUD inspector.',
     author: 'Maria G.', role: 'Property Manager', color: '#3B82F6',
   },
   {
@@ -39,7 +39,7 @@ const testimonials = [
     author: 'James W.', role: 'Superintendent', color: '#10B981',
   },
   {
-    text: 'We run capital projects between $500K and $3M. Tracking RFIs and change orders in Build Space OS is cleaner than Procore at a fraction of the price.',
+    text: 'We run capital projects between $500K and $3M. Tracking RFIs and change orders in Build OS is cleaner than Procore at a fraction of the price.',
     author: 'David R.', role: 'Construction Manager', color: '#F59E0B',
   },
 ];

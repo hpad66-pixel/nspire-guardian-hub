@@ -49,8 +49,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icons/*.png", "robots.txt"],
       manifest: {
-        name: "Build Space OS",
-        short_name: "Build Space OS",
+        name: "Build OS",
+        short_name: "Build OS",
         description: "One platform to run everything.",
         theme_color: "#1e2d4f",
         background_color: "#0f1624",

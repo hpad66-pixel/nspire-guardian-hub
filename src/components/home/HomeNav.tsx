@@ -56,7 +56,7 @@ export function HomeNav() {
               <span className="text-white font-extrabold text-sm tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>A</span>
             </div>
             <span className="text-[17px] font-bold tracking-tight text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
-              Build Space <span className="text-blue-400">OS</span>
+              Build <span className="text-blue-400">OS</span>
             </span>
           </Link>
 
@@ -111,7 +111,7 @@ export function HomeNav() {
           >
             <div className="flex items-center justify-between px-6 h-16" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <span className="text-[17px] font-bold text-white tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
-                Build Space <span className="text-blue-400">OS</span>
+                Build <span className="text-blue-400">OS</span>
               </span>
               <button onClick={() => setMobileOpen(false)} className="text-white/60 hover:text-white p-2">
                 <X size={20} />

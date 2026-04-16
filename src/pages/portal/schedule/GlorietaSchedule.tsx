@@ -69,7 +69,7 @@ const DEFAULT_QUESTIONS: QuestionDef[] = [
 ];
 
 const DEFAULT_CONTENT: ScheduleContent = {
-  navPowered: 'Build Space',
+  navPowered: 'Build',
   heroTitle: 'Three areas. Eight steps. One readout.',
   heroBody: 'Track every area, milestone, certification step, and handover note from one interactive schedule.',
   heroTags: ['Construction', 'Client Portal', 'Interactive Schedule'],
@@ -269,7 +269,7 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              {content.navPowered || 'Build Space'}
+              {content.navPowered || 'Build'}
             </p>
             <h1 className="text-lg font-semibold tracking-tight">{content.navBrand || portalName}</h1>
           </div>
