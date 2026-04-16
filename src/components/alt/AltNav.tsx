@@ -33,7 +33,7 @@ export function AltNav() {
         <div className="max-w-[1200px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/home-alt" className="flex items-center gap-2.5">
+            <Link to="/" className="flex items-center gap-2.5">
               <div
                 className="w-7 h-7 rounded-md flex items-center justify-center"
                 style={{ background: '#2563EB' }}
