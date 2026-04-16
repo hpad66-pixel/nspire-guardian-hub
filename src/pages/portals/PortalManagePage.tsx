@@ -17,6 +17,7 @@ import {
 } from '@/hooks/usePortal';
 import { RespondToRequestDrawer } from '@/components/portals/RespondToRequestDrawer';
 import { ManageExclusionsDrawer } from '@/components/portals/ManageExclusionsDrawer';
+import { useSendEmail } from '@/hooks/useSendEmail';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -59,6 +60,7 @@ export default function PortalManagePage() {
   const updatePortal = useUpdatePortal();
   const inviteContact = useInviteContact(id!);
   const revokeAccess = useRevokeAccess();
+  const sendEmail = useSendEmail();
   const regeneratePortalToken = useRegeneratePortalAccessToken(id!);
 
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
@@ -152,10 +154,30 @@ export default function PortalManagePage() {
     try {
       const url = await ensureMagicLink(contact, target);
       const subject = target === 'schedule' ? 'Your Project Schedule' : 'Your Client Portal';
-      const body = `Hi ${contact.name ?? ''},\n\nHere is your ${target} link:\n${url}\n\nBest regards`;
-      window.location.assign(`mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      const bodyHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0F172A;">Your ${target === 'schedule' ? 'Project Schedule' : 'Client Portal'} is Ready</h2>
+          <p>Hi ${contact.name ?? 'there'},</p>
+          <p>You've been granted access to the ${portal.name} ${target}. Click the button below to access it securely:</p>
+          <div style="margin: 24px 0;">
+            <a href="${url}" style="background-color: #F9B233; color: #0F172A; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
+              Open ${target === 'schedule' ? 'Schedule' : 'Portal'}
+            </a>
+          </div>
+          <p style="color: #64748B; font-size: 13px;">This link is unique to you and will expire in 7 days. Do not share it with others.</p>
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+          <p style="color: #94A3B8; font-size: 12px;">Sent by APAS OS on behalf of ${portal.client_name ?? portal.name}</p>
+        </div>
+      `;
+      await sendEmail.mutateAsync({
+        recipients: [contact.email],
+        subject,
+        bodyHtml,
+        bodyText: `Hi ${contact.name ?? 'there'}, access your ${target} here: ${url}`,
+      });
+      toast.success(`${target === 'schedule' ? 'Schedule' : 'Portal'} link emailed to ${contact.email}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to generate email link');
+      toast.error(error instanceof Error ? error.message : 'Failed to send email');
     }
   }
 
@@ -358,8 +380,6 @@ export default function PortalManagePage() {
                 const isMagicLinkReady = hasValidMagicLink(c) && !!c.magic_link_token;
                 const contactPortalUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'portal') : null;
                 const contactScheduleUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'schedule') : null;
-                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${contactPortalUrl ?? portalUrl}\n\nBest regards`;
-                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${contactScheduleUrl ?? scheduleUrl}\n\nBest regards`;
 
                 return (
                   <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
@@ -413,17 +433,15 @@ export default function PortalManagePage() {
                         <Copy className="h-3 w-3" /> Portal Link
                       </Button>
 
-                      {contactPortalUrl ? (
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-                          <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Client Portal')}&body=${encodeURIComponent(emailPortalBody)}`}>
-                            <Mail className="h-3 w-3" /> Email Portal
-                          </a>
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'portal')}>
-                          <Mail className="h-3 w-3" /> Email Portal
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        disabled={sendEmail.isPending}
+                        onClick={() => void handleEmailLink(c, 'portal')}
+                      >
+                        <Mail className="h-3 w-3" /> Email Portal
+                      </Button>
 
                       {hasSchedule && (
                         <>
@@ -443,17 +461,15 @@ export default function PortalManagePage() {
                             <Copy className="h-3 w-3" /> Schedule Link
                           </Button>
 
-                          {contactScheduleUrl ? (
-                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-                              <a href={`mailto:${c.email}?subject=${encodeURIComponent('Your Project Schedule')}&body=${encodeURIComponent(emailScheduleBody)}`}>
-                                <CalendarDays className="h-3 w-3" /> Email Schedule
-                              </a>
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => void handleEmailLink(c, 'schedule')}>
-                              <CalendarDays className="h-3 w-3" /> Email Schedule
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            disabled={sendEmail.isPending}
+                            onClick={() => void handleEmailLink(c, 'schedule')}
+                          >
+                            <CalendarDays className="h-3 w-3" /> Email Schedule
+                          </Button>
                         </>
                       )}
                     </div>

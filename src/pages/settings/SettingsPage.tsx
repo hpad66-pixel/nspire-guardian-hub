@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
+import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
 import { format } from 'date-fns';
@@ -130,6 +131,7 @@ export default function SettingsPage() {
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="demo">Demo Mode</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="modules" className="space-y-6">
@@ -886,6 +888,12 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="demo" className="space-y-4">
+            <DemoModeButton />
           </TabsContent>
         )}
       </Tabs>
