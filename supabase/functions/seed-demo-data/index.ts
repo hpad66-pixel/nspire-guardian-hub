@@ -82,20 +82,35 @@ serve(async (req) => {
     }, { onConflict: "workspace_id" });
 
     // ── 2. Properties ──
-    const properties = [
-      { name: "Riverside Towers", address: "1200 River Drive", city: "Austin", state: "TX", zip_code: "78701", property_type: "multifamily", total_units: 120, workspace_id: workspaceId },
-      { name: "Oakmont Gardens", address: "450 Oak Street", city: "Austin", state: "TX", zip_code: "78704", property_type: "multifamily", total_units: 85, workspace_id: workspaceId },
-      { name: "Summit Place Apartments", address: "789 Summit Blvd", city: "Austin", state: "TX", zip_code: "78745", property_type: "multifamily", total_units: 200, workspace_id: workspaceId },
-      { name: "Cedar Creek Senior Living", address: "2100 Cedar Lane", city: "Round Rock", state: "TX", zip_code: "78664", property_type: "multifamily", total_units: 60, workspace_id: workspaceId },
-      { name: "The Metropolitan", address: "555 Congress Ave", city: "Austin", state: "TX", zip_code: "78701", property_type: "multifamily", total_units: 150, workspace_id: workspaceId },
+    const propertyNames = [
+      { name: "Riverside Towers", address: "1200 River Drive", city: "Austin", state: "TX", zip_code: "78701", total_units: 120, workspace_id: workspaceId, created_by: userId, is_managed_property: true },
+      { name: "Oakmont Gardens", address: "450 Oak Street", city: "Austin", state: "TX", zip_code: "78704", total_units: 85, workspace_id: workspaceId, created_by: userId, is_managed_property: true },
+      { name: "Summit Place Apartments", address: "789 Summit Blvd", city: "Austin", state: "TX", zip_code: "78745", total_units: 200, workspace_id: workspaceId, created_by: userId, is_managed_property: true },
+      { name: "Cedar Creek Senior Living", address: "2100 Cedar Lane", city: "Round Rock", state: "TX", zip_code: "78664", total_units: 60, workspace_id: workspaceId, created_by: userId, is_managed_property: true },
+      { name: "The Metropolitan", address: "555 Congress Ave", city: "Austin", state: "TX", zip_code: "78701", total_units: 150, workspace_id: workspaceId, created_by: userId, is_managed_property: true },
     ];
 
-    const { data: insertedProperties } = await supabaseAdmin
-      .from("properties")
-      .upsert(properties, { onConflict: "name,workspace_id", ignoreDuplicates: true })
-      .select("id, name, total_units");
+    // Insert only properties that don't already exist by name
+    for (const prop of propertyNames) {
+      const { data: existing } = await supabaseAdmin
+        .from("properties")
+        .select("id")
+        .eq("name", prop.name)
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+      if (!existing) {
+        await supabaseAdmin.from("properties").insert(prop);
+      }
+    }
 
-    const propIds = insertedProperties?.map((p: any) => p.id) ?? [];
+    // Fetch all properties for this workspace to get IDs
+    const { data: allProps } = await supabaseAdmin
+      .from("properties")
+      .select("id, name, total_units")
+      .eq("workspace_id", workspaceId)
+      .order("name");
+
+    const propIds = allProps?.map((p: any) => p.id) ?? [];
     console.log("Properties seeded:", propIds.length);
 
     // ── 3. Units for first 2 properties ──
