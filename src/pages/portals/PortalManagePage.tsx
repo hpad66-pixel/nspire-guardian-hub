@@ -75,7 +75,7 @@ export default function PortalManagePage() {
 
   const PROD_DOMAIN = 'https://build.apas.ai';
   const portalUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}`;
-  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}/schedule`;
+  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}?redirect=schedule`;
   const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
@@ -297,8 +297,14 @@ export default function PortalManagePage() {
           ) : (
             <div className="space-y-2">
               {contacts.map(c => {
-                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${portalUrl}\n\nBest regards`;
-                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${scheduleUrl}\n\nBest regards`;
+                const contactPortalUrl = c.magic_link_token
+                  ? `${PROD_DOMAIN}/portal/${portal.portal_slug}/auth?token=${encodeURIComponent(c.magic_link_token)}`
+                  : portalUrl;
+                const contactScheduleUrl = c.magic_link_token
+                  ? `${PROD_DOMAIN}/portal/${portal.portal_slug}/auth?token=${encodeURIComponent(c.magic_link_token)}&redirect=schedule`
+                  : scheduleUrl;
+                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${contactPortalUrl}\n\nBest regards`;
+                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${contactScheduleUrl}\n\nBest regards`;
                 return (
                   <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
                     <div className="flex items-center justify-between gap-3">
@@ -336,7 +342,7 @@ export default function PortalManagePage() {
                     </div>
                     {/* Quick action buttons */}
                     <div className="flex flex-wrap gap-1.5 pl-11">
-                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success('Portal link copied'); }}>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(contactPortalUrl); toast.success('Portal link copied'); }}>
                         <Copy className="h-3 w-3" /> Portal Link
                       </Button>
                       <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
@@ -346,7 +352,7 @@ export default function PortalManagePage() {
                       </Button>
                       {hasSchedule && (
                         <>
-                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(scheduleUrl); toast.success('Schedule link copied'); }}>
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => { navigator.clipboard.writeText(contactScheduleUrl); toast.success('Schedule link copied'); }}>
                             <Copy className="h-3 w-3" /> Schedule Link
                           </Button>
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>

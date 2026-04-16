@@ -17,7 +17,7 @@ export default function PortalSchedulePage() {
   }
 
   if (!isAuthenticated || !portal) {
-    return <Navigate to={`/portal/${slug}`} replace />;
+    return <Navigate to={`/portal/${slug}?redirect=schedule`} replace />;
   }
 
   return (
