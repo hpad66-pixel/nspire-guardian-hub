@@ -28,7 +28,7 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState('');
 
   useEffect(() => {
-    if (user && !loading) navigate('/portals');
+    if (user && !loading) navigate('/dashboard');
   }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,7 +46,7 @@ export default function AuthPage() {
       toast.error(error.message.includes('Invalid login credentials') ? 'Invalid email or password. Please try again.' : error.message);
     } else {
       toast.success('Welcome back!');
-      navigate('/portals');
+      navigate('/dashboard');
     }
   };
 

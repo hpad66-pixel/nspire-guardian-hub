@@ -489,7 +489,7 @@ export function MobileNav() {
           icon={<Home className="h-5 w-5" />}
           label="Portals"
           isActive={activeSection === 'portals'}
-          onClick={() => navigate('/portals')}
+          onClick={() => navigate('/dashboard')}
         />
 
         {/* Daily Grounds — module gated */}

@@ -385,7 +385,7 @@ export function AppSidebar() {
         {/* ────────────────── HEADER ────────────────── */}
         <SidebarHeader className="border-b border-[hsl(var(--sidebar-border))] px-3 py-3">
           <NavLink
-            to="/portals"
+            to="/dashboard"
             className={cn('flex items-center gap-2.5 outline-none rounded-md', collapsed && 'justify-center')}
           >
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-accent))]">
@@ -659,7 +659,7 @@ export function AppSidebar() {
           {/* Client Portals (admin/manager only, if module enabled) */}
           {isModuleEnabled('clientPortalEnabled') && isAdmin && (
             <NavItem
-              to="/portals"
+              to="/dashboard"
               icon={<Share2 />}
               label="Portals"
               collapsed={collapsed}
