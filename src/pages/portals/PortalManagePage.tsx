@@ -74,6 +74,8 @@ export default function PortalManagePage() {
   if (!portal) return <Navigate to="/portals" replace />;
 
   const portalUrl = `${window.location.origin}/portal/${portal.portal_slug}`;
+  const scheduleUrl = `${window.location.origin}/portal/${portal.portal_slug}/schedule`;
+  const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
   function toggleSharedModule(module: string, enabled: boolean) {
