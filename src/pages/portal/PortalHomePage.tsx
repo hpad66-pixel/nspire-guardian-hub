@@ -74,6 +74,15 @@ export default function PortalHomePage() {
         </div>
       )}
 
+      {/* MESSAGES TAB */}
+      {activeTab === 'messages' && portal.project_id && (
+        <PortalMessages
+          projectId={portal.project_id}
+          companyName={portal.client_name ?? portal.name}
+          accentColor={accent}
+        />
+      )}
+
       {/* CREDENTIALS TAB */}
       {activeTab === 'credentials' && (
         <div className="space-y-4">
