@@ -50,6 +50,8 @@ import {
 } from 'lucide-react';
 import { useUsers, useAddUserRole, useRemoveUserRole, type UserWithRole } from '@/hooks/useUserManagement';
 import { useUserPermissions, getAssignableRoles, canRoleManage } from '@/hooks/usePermissions';
+import { InviteUserDialog } from '@/components/people/InviteUserDialog';
+import { UserPlus } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -91,6 +93,7 @@ export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<AppRole>('user');
 
   const canManageRoles = isAdmin || isOwner || isPropertyManager;
@@ -179,6 +182,12 @@ export function UserManagement() {
               Manage user roles and permissions ({filteredUsers.length} users)
             </CardDescription>
           </div>
+          {canManageRoles && (
+            <Button onClick={() => setInviteDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite User
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -326,6 +335,9 @@ export function UserManagement() {
           </div>
         </div>
       </CardContent>
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen} />
 
       {/* Add Role Dialog */}
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>

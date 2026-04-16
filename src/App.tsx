@@ -51,7 +51,6 @@ const PermitDetailPage = lazy(() => import('./pages/permits/PermitDetailPage'));
 const PeoplePage = lazy(() => import('./pages/people/PeoplePage'));
 const OccupancyPage = lazy(() => import('./pages/occupancy/OccupancyPage'));
 const QRScannerPage = lazy(() => import('./pages/qr/QRScannerPage'));
-const TrainingPage = lazy(() => import('./pages/training/TrainingPage'));
 const TrainingDashboardPage = lazy(() => import('./pages/training/TrainingDashboardPage'));
 const CertificateSharePage = lazy(() => import('./pages/training/CertificateSharePage'));
 const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
@@ -59,7 +58,6 @@ const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDas
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const ClientPortalPage = lazy(() => import('./pages/portal/ClientPortalPage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
 const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));

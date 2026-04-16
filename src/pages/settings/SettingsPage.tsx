@@ -14,12 +14,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Settings, 
-  ClipboardCheck, 
-  FolderKanban, 
-  Users, 
-  Mail, 
+import {
+  Settings,
+  ClipboardCheck,
+  FolderKanban,
+  Users,
+  Mail,
   QrCode,
   CreditCard,
   Building2,
@@ -35,9 +35,13 @@ import {
   Truck,
   Share2,
   Lock,
+  History,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
+import { useActivityLogStats } from '@/hooks/useActivityLog';
+import { useUsers } from '@/hooks/useUserManagement';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -47,12 +51,14 @@ export default function SettingsPage() {
   const { data: organizations } = useClientsWithCounts();
   const updateProperty = useUpdateProperty();
   const navigate = useNavigate();
-  const { workspace, isLoading: workspaceLoading } = useWorkspaceContext();
+  const { workspace, isLoading: workspaceLoading, isTrialing, trialDaysLeft } = useWorkspaceContext();
   const { data: wsModules, isLoading: wsModulesLoading } = useWorkspaceModules();
+  const { data: workspaceUsers } = useUsers();
   const toggleWsModule = useToggleWorkspaceModule();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
+  const { data: activityStats } = useActivityLogStats();
 
   // Helper: toggle a workspace-level module field
   const handleWsToggle = async (
@@ -123,6 +129,7 @@ export default function SettingsPage() {
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
+          {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="modules" className="space-y-6">
@@ -568,7 +575,31 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        <TabsContent value="billing">
+        <TabsContent value="billing" className="space-y-4">
+          {/* Trial banner */}
+          {isTrialing && (
+            <Card className="border-amber-500/40 bg-amber-500/5">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">
+                      Trial ends in {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {workspace?.trial_ends_at && (
+                        <>Trial period expires on {format(new Date(workspace.trial_ends_at), 'MMMM d, yyyy')}. </>
+                      )}
+                      Contact support to activate a paid subscription.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Billing Info */}
           <Card>
             <CardHeader>
@@ -578,46 +609,113 @@ export default function SettingsPage() {
                     <CreditCard className="h-5 w-5" />
                     Billing & Subscription
                   </CardTitle>
-                  <CardDescription>Current plan and module subscriptions</CardDescription>
+                  <CardDescription>Current plan, seats, and module subscriptions</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Current plan summary */}
                 <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
                   <div>
                     <p className="font-medium">Current Plan</p>
-                    <p className="text-sm text-muted-foreground">Enterprise • {properties?.length || 0} properties</p>
+                    <p className="text-sm text-muted-foreground">
+                      {workspaceLoading ? (
+                        <Skeleton className="h-4 w-40 inline-block" />
+                      ) : workspace ? (
+                        <>
+                          <span className="capitalize">{workspace.plan}</span>
+                          {' • '}
+                          {workspaceUsers?.length ?? 0} {(workspaceUsers?.length ?? 0) === 1 ? 'seat' : 'seats'}
+                          {' • '}
+                          {properties?.length || 0} {(properties?.length || 0) === 1 ? 'property' : 'properties'}
+                        </>
+                      ) : (
+                        'No workspace'
+                      )}
+                    </p>
                   </div>
-                  <Badge>Active</Badge>
+                  {workspace && (
+                    <Badge
+                      variant={workspace.status === 'active' ? 'default' : 'secondary'}
+                      className="capitalize"
+                    >
+                      {workspace.status}
+                    </Badge>
+                  )}
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sun className="h-4 w-4 text-emerald-500" />
-                      <span className="font-medium">Daily Grounds</span>
+
+                {/* Plan metadata */}
+                {workspace && (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="p-3 rounded-lg border bg-card">
+                      <p className="text-xs text-muted-foreground">Workspace ID</p>
+                      <p className="text-sm font-mono truncate" title={workspace.id}>{workspace.slug || workspace.id.slice(0, 8)}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {modules.dailyGroundsEnabled ? 'Enabled' : 'Disabled'}
-                    </p>
+                    <div className="p-3 rounded-lg border bg-card">
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="text-sm">{format(new Date(workspace.created_at), 'MMM d, yyyy')}</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-card">
+                      <p className="text-xs text-muted-foreground">Billing Customer</p>
+                      <p className="text-sm">{workspace.stripe_customer_id ? 'Linked to Stripe' : 'Not linked'}</p>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ClipboardCheck className="h-4 w-4 text-module-inspections" />
-                      <span className="font-medium">NSPIRE Compliance</span>
+                )}
+
+                {/* Manage subscription placeholder */}
+                {isAdmin && (
+                  <div className="p-4 rounded-lg border border-dashed bg-muted/30">
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Change plan or update payment method</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Self-serve subscription management is coming soon. Contact support to upgrade, downgrade, or update billing details.
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" disabled title="Self-serve billing not yet enabled">
+                        Manage Subscription
+                      </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {modules.nspireEnabled ? 'Enabled' : 'Disabled'}
-                    </p>
                   </div>
-                  <div className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FolderKanban className="h-4 w-4 text-module-projects" />
-                      <span className="font-medium">Projects</span>
+                )}
+
+                {/* Active modules */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2 mb-3">
+                    Core Modules
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sun className="h-4 w-4 text-emerald-500" />
+                        <span className="font-medium">Daily Grounds</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {modules.dailyGroundsEnabled ? 'Enabled' : 'Disabled'}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {modules.projectsEnabled ? 'Enabled' : 'Disabled'}
-                    </p>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ClipboardCheck className="h-4 w-4 text-module-inspections" />
+                        <span className="font-medium">NSPIRE Compliance</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {modules.nspireEnabled ? 'Enabled' : 'Disabled'}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FolderKanban className="h-4 w-4 text-module-projects" />
+                        <span className="font-medium">Projects</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {modules.projectsEnabled ? 'Enabled' : 'Disabled'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -738,6 +836,58 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="audit" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Audit Log
+                    </CardTitle>
+                    <CardDescription>
+                      Review who changed what across the workspace
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => navigate('/settings/activity-log')}>
+                    Open Activity Log
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="p-3 rounded-lg border bg-card">
+                    <p className="text-xs text-muted-foreground">Recent Events</p>
+                    <p className="text-2xl font-bold leading-tight">
+                      {activityStats?.total ?? 0}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-card">
+                    <p className="text-xs text-muted-foreground">Creates</p>
+                    <p className="text-2xl font-bold leading-tight">
+                      {activityStats?.actions?.create ?? 0}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-card">
+                    <p className="text-xs text-muted-foreground">Updates</p>
+                    <p className="text-2xl font-bold leading-tight">
+                      {activityStats?.actions?.update ?? 0}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-card">
+                    <p className="text-xs text-muted-foreground">Deletes</p>
+                    <p className="text-2xl font-bold leading-tight">
+                      {activityStats?.actions?.delete ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
