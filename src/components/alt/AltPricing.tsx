@@ -10,7 +10,7 @@ const enterpriseFeatures = ['Everything in Professional, plus:', 'Unlimited prop
 const faqs = [
   { q: 'Do I need separate plans for multiple properties?', a: 'No. Each plan covers multiple properties up to the stated limit. You have one account, one dashboard, one subscription — all your properties inside.' },
   { q: 'Is the AI Voice Agent really included with no per-call fees?', a: 'The Voice Agent is included in Professional and Enterprise plans. Unlimited calls, no per-minute fees for standard usage. High-volume call centers (10,000+ calls/month) are covered under Enterprise.' },
-  { q: 'Can my inspectors use it offline in the field?', a: 'Yes. APAS OS is a Progressive Web App. Install it from your browser on any phone. Inspections, photos, and voice notes work offline and sync automatically when you\'re back online.' },
+  { q: 'Can my inspectors use it offline in the field?', a: 'Yes. Build Space OS is a Progressive Web App. Install it from your browser on any phone. Inspections, photos, and voice notes work offline and sync automatically when you\'re back online.' },
   { q: 'How do I move my existing data in?', a: 'CSV imports for units, tenants, and contacts. Document bulk upload for existing files. Our onboarding team assists Professional and Enterprise customers. Most firms are operational within 48 hours.' },
   { q: 'What happens at the end of my trial?', a: 'You choose a plan or your account pauses — your data stays intact for 30 days. No surprise charges. No locked exports. You can download everything at any time.' },
 ];

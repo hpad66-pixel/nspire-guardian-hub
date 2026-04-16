@@ -222,7 +222,7 @@ serve(async (req) => {
       { name: "Ford F-250 Work Truck", category_slug: catSlugs[0] ?? "vehicles", make: "Ford", model: "F-250 Super Duty", year: 2024, status: "available", condition: "good", serial_number: "1FTBF2B6XRED12345", workspace_id: workspaceId, created_by: userId },
       { name: "Kubota Mini Excavator", category_slug: catSlugs.includes("heavy-equipment") ? "heavy-equipment" : catSlugs[0], make: "Kubota", model: "KX040-4", year: 2023, status: "checked_out", condition: "good", serial_number: "KUB-KX040-78901", workspace_id: workspaceId, created_by: userId },
       { name: "Hilti Rotary Hammer", category_slug: catSlugs.includes("tools") ? "tools" : catSlugs[0], make: "Hilti", model: "TE 60-ATC", year: 2025, status: "available", condition: "excellent", serial_number: "HILTI-TE60-4521", workspace_id: workspaceId, created_by: userId },
-      { name: "Chevy Colorado Fleet Van", category_slug: catSlugs[0] ?? "vehicles", make: "Chevrolet", model: "Colorado", year: 2025, status: "available", condition: "excellent", license_plate: "TX-APAS-01", workspace_id: workspaceId, created_by: userId },
+      { name: "Chevy Colorado Fleet Van", category_slug: catSlugs[0] ?? "vehicles", make: "Chevrolet", model: "Colorado", year: 2025, status: "available", condition: "excellent", license_plate: "TX-BSO-01", workspace_id: workspaceId, created_by: userId },
     ];
     await supabaseAdmin.from("equipment_assets").insert(equipment);
     console.log("Equipment seeded:", equipment.length);
@@ -273,9 +273,9 @@ serve(async (req) => {
     const portalSlug = `apas-demo-${Date.now().toString(36)}`;
     const { data: portalData } = await supabaseAdmin.from("client_portals").insert({
       workspace_id: workspaceId,
-      name: "APAS Enterprises Client Portal",
+      name: "Riverside Enterprises Client Portal",
       portal_type: "client",
-      client_name: "APAS Enterprises",
+      client_name: "Riverside Enterprises",
       client_contact_name: "Hardeep Anand",
       client_contact_email: "hardeep@apas.ai",
       brand_accent_color: "#F9B233",
@@ -292,9 +292,9 @@ serve(async (req) => {
       await supabaseAdmin.from("portal_schedule_content").upsert({
         portal_id: portalData.id,
         content: {
-          navBrand: "APAS Enterprises",
+          navBrand: "Riverside Enterprises",
           navBadge: "Active",
-          navPowered: "APAS",
+          navPowered: "Build Space",
           heroTitle: "Three areas. Eight steps. One readout.",
           heroBody: "Track every area, milestone, certification step, and handover note from one interactive schedule.",
           heroTags: ["Construction", "Client Portal", "Interactive Schedule"],
@@ -302,7 +302,7 @@ serve(async (req) => {
           commitSub: "Current Commitment",
           commitNote: "Milestones, notes, and questions on this page stay visible to the project team and portal users.",
           pullQuoteText: "This project is on track and the team is performing exceptionally well.",
-          pullQuoteSub: "— Project Director, APAS Enterprises",
+          pullQuoteSub: "— Project Director, Riverside Enterprises",
           areaCards: [
             { letter: "A", title: "Pre-Construction & Design", stat: "10 milestones", body: "Site survey through owner approval", units: "Permits, engineering, bid packages" },
             { letter: "B", title: "Construction Execution", stat: "10 milestones", body: "Foundation through punch list", units: "Structural, MEP, finishes" },
@@ -317,7 +317,7 @@ serve(async (req) => {
         portal_id: portalData.id,
         email: "hardeep@apas.ai",
         name: "Hardeep Anand",
-        company: "APAS Enterprises",
+        company: "Riverside Enterprises",
         magic_link_token: accessToken,
         magic_link_expires_at: new Date(Date.now() + 72 * 3600000).toISOString(),
         invited_by: userId,
@@ -331,7 +331,7 @@ serve(async (req) => {
     await supabaseAdmin.from("workspaces").update({
       plan: "enterprise",
       status: "active",
-      client_company: "APAS Enterprises",
+      client_company: "Riverside Enterprises",
       client_contact_name: "Hardeep Anand",
       billing_contact_email: "hardeep@apas.ai",
     }).eq("id", workspaceId);

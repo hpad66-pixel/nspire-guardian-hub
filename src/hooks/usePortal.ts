@@ -123,7 +123,7 @@ function useCurrentWorkspaceId() {
   });
 }
 
-// ─── Hooks: Inside APAS OS ────────────────────────────────────────────────────
+// ─── Hooks: Inside Build Space OS ────────────────────────────────────────────────────
 
 export function usePortals() {
   const { data: workspaceId } = useCurrentWorkspaceId();

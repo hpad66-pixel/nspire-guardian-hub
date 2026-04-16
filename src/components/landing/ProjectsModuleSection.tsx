@@ -134,7 +134,7 @@ export function ProjectsModuleSection() {
               lineHeight: 1.8,
             }}
           >
-            Most PMs manage construction and compliance on the same day. APAS OS is the only platform that connects both — one login, one dashboard, complete visibility.
+            Most PMs manage construction and compliance on the same day. Build Space OS is the only platform that connects both — one login, one dashboard, complete visibility.
           </p>
         </motion.div>
 

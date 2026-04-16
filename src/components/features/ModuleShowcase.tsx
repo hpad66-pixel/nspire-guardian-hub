@@ -418,7 +418,7 @@ const modules: ModuleProps[] = [
     eyebrow: 'Permit Center',
     eyebrowColor: '#8B5CF6',
     headline: 'Never Miss a Regulatory Deadline. Ever.',
-    description: 'Fire safety certificates. Elevator inspections. Stormwater permits. One missed deadline can mean shutdown, fines, or liability. APAS OS tracks every one.',
+    description: 'Fire safety certificates. Elevator inspections. Stormwater permits. One missed deadline can mean shutdown, fines, or liability. Build Space OS tracks every one.',
     points: [
       { icon: FileCheck, text: 'Expiration tracking for every permit, license, certificate, and insurance document' },
       { icon: Bell, text: 'Automated alerts at 90, 60, 30, 14, and 7 days before expiration' },

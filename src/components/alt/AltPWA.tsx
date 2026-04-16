@@ -34,7 +34,7 @@ export function AltPWA() {
                 {/* Status bar */}
                 <div className="flex items-center justify-between px-4 pt-5 pb-2" style={{ background: '#1E3A5F' }}>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'rgba(255,255,255,0.8)' }}>9:41</span>
-                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '11px', color: '#fff' }}>APAS<span style={{ color: '#60A5FA' }}>OS</span></span>
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '11px', color: '#fff' }}>Build Space <span style={{ color: '#60A5FA' }}>OS</span></span>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)' }}>●●●</span>
                 </div>
 
@@ -92,7 +92,7 @@ export function AltPWA() {
               Works on every device.<br />No app store required.
             </h2>
             <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '16px', color: '#475569', lineHeight: 1.75, marginBottom: '28px' }}>
-              APAS OS is a Progressive Web App. Install it in 10 seconds from any browser on iPhone, Android, tablet, or desktop. Works offline when you're in the field — syncs when you're back in range. Camera, GPS, voice — all available. No app to update, no version mismatches.
+              Build Space OS is a Progressive Web App. Install it in 10 seconds from any browser on iPhone, Android, tablet, or desktop. Works offline when you're in the field — syncs when you're back in range. Camera, GPS, voice — all available. No app to update, no version mismatches.
             </p>
 
             <div className="flex flex-col gap-3 mb-8">

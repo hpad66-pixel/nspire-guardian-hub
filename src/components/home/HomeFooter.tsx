@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const cols = [
   { title: 'Platform', links: ['Features', 'Compliance', 'Projects', 'Pricing', 'AI Voice Agent', 'Security'] },
   { title: 'For Teams', links: ['Property Managers', 'Owners', 'Superintendents', 'Inspectors', 'Project Managers'] },
-  { title: 'Company', links: ['About APAS.AI', 'Contact Us', 'Privacy Policy', 'Terms of Service'] },
+  { title: 'Company', links: ['About Build Space', 'Contact Us', 'Privacy Policy', 'Terms of Service'] },
 ];
 
 export function HomeFooter() {
@@ -17,7 +17,7 @@ export function HomeFooter() {
                 <span className="text-white font-extrabold text-[12px]" style={{ fontFamily: 'Inter' }}>A</span>
               </div>
               <span className="text-[17px] font-bold text-white tracking-tight" style={{ fontFamily: 'Inter' }}>
-                APAS<span className="text-blue-400">OS</span>
+                Build Space <span className="text-blue-400">OS</span>
               </span>
             </div>
             <p className="text-[13px] text-white/30 leading-relaxed mb-3" style={{ fontFamily: 'Inter' }}>
@@ -41,8 +41,8 @@ export function HomeFooter() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8 border-t border-white/[0.04]">
-          <p className="text-[12px] text-white/20" style={{ fontFamily: 'Inter' }}>© 2026 APAS.AI · All rights reserved</p>
-          <p className="text-[11px] text-white/10" style={{ fontFamily: "'JetBrains Mono'" }}>Built by APAS Labs</p>
+          <p className="text-[12px] text-white/20" style={{ fontFamily: 'Inter' }}>© 2026 Build Space · All rights reserved</p>
+          <p className="text-[11px] text-white/10" style={{ fontFamily: "'JetBrains Mono'" }}>Built by Build Space</p>
         </div>
       </div>
     </footer>

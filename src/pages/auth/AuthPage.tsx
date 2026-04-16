@@ -98,13 +98,13 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* APAS OS wordmark */}
+          {/* Build Space OS wordmark */}
           <div className="flex items-end gap-0 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
               style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
-              APAS
+              Build Space
             </span>
             <span
               className="font-black leading-none tracking-tight ml-2"
@@ -187,7 +187,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2025 APAS OS · apasos.ai · All rights reserved
+            © 2025 Build Space OS · apasos.ai · All rights reserved
           </p>
         </div>
       </div>
@@ -204,7 +204,7 @@ export default function AuthPage() {
           <div className="lg:hidden flex flex-col items-center mb-10">
             <div className="flex items-end gap-1 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                APAS
+                Build Space
               </span>
               <span
                 className="font-black text-4xl tracking-tight ml-1"
@@ -230,7 +230,7 @@ export default function AuthPage() {
                 Welcome back
               </h1>
               <p className="text-sm text-muted-foreground">
-                Sign in to access your APAS OS workspace
+                Sign in to access your Build Space OS workspace
               </p>
             </div>
 
@@ -302,7 +302,7 @@ export default function AuthPage() {
                 {isSubmitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>
                 ) : (
-                  'Sign In to APAS OS'
+                  'Sign In to Build Space OS'
                 )}
               </button>
             </form>

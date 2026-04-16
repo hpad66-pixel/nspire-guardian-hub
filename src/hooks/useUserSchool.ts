@@ -4,7 +4,7 @@
 // Resolution order (highest priority wins):
 //   Priority 3 — individual user assignment
 //   Priority 2 — organization (workspace) assignment
-//   Priority 1 — platform default (APAS Labs, is_default = true)
+//   Priority 1 — platform default (Build Space, is_default = true)
 //
 // Multiple schools are possible. One is always marked primary.
 // ─────────────────────────────────────────────────────────────────────────────

@@ -2,9 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* APAS OS Design System */
+/* Build Space OS Design System */
 
-/* APAS Landing Page Custom Properties */
+/* Build Space landing page custom properties */
 :root {
   --apas-midnight: #0A0C12;
   --apas-deep: #10131D;
@@ -23,7 +23,7 @@
 
 @layer base {
   /*
-   * APAS OS palette — aligned to the marketing homepage (#0A0B0D base,
+   * Build Space OS palette — aligned to the marketing homepage (#0A0B0D base,
    * sapphire + violet accents, Inter typography). Dark-first by design;
    * the .light block below is available if a toggle is ever needed.
    */
@@ -106,7 +106,7 @@
 
   /*
    * .dark mirrors :root for forwards compatibility with any code that
-   * expects the class. In practice, APAS OS is dark-by-default.
+   * expects the class. In practice, Build Space OS is dark-by-default.
    */
   .dark {
     --background: 225 13% 5%;

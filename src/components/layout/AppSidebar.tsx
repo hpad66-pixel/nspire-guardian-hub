@@ -163,7 +163,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <span className="text-base font-semibold tracking-tighter text-sidebar-foreground">
-                APAS<span className="text-sidebar-primary">OS</span>
+                Build Space <span className="text-sidebar-primary">OS</span>
               </span>
             )}
           </NavLink>

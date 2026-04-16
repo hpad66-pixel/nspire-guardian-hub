@@ -108,12 +108,12 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
           className="relative z-10 px-7 pb-7 pt-8"
         >
           {/* Wordmark */}
-          <div className="mb-6 flex items-end gap-1 select-none">
+          <div className="mb-6 flex items-end gap-1.5 select-none">
             <span
               className="text-[28px] font-black leading-none tracking-tight text-white"
               style={{ letterSpacing: '-0.04em' }}
             >
-              APAS
+              Build Space
             </span>
             <span
               className="text-[28px] font-black leading-none tracking-tight"
@@ -138,7 +138,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
             Welcome back
           </h2>
           <p className="mb-6 text-[13.5px] text-white/50">
-            Sign in to your APAS OS workspace.
+            Sign in to your Build Space OS workspace.
           </p>
 
           {/* Google */}

@@ -11,7 +11,7 @@ const cols = [
   },
   {
     title: 'Company',
-    links: ['About APAS.AI', 'The Systems Lens', 'Contact Us', 'Privacy Policy', 'Terms of Service'],
+    links: ['About Build Space', 'The Systems Lens', 'Contact Us', 'Privacy Policy', 'Terms of Service'],
   },
 ];
 
@@ -27,7 +27,7 @@ export function AltFooter() {
                 <span style={{ color: '#fff', fontWeight: 800, fontSize: '13px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>A</span>
               </div>
               <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F', letterSpacing: '-0.02em' }}>
-                APAS<span style={{ color: '#2563EB' }}>OS</span>
+                Build Space <span style={{ color: '#2563EB' }}>OS</span>
               </span>
             </div>
             <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#64748B', lineHeight: 1.65, marginBottom: '8px' }}>Property operations, built right.</p>
@@ -59,10 +59,10 @@ export function AltFooter() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8" style={{ borderTop: '1px solid #E2E8F0' }}>
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8' }}>
-            © 2026 APAS.AI · All rights reserved · apasos.ai
+            © 2026 Build Space · All rights reserved · apasos.ai
           </p>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#CBD5E1' }}>
-            Built by APAS Labs
+            Built by Build Space
           </p>
         </div>
       </div>

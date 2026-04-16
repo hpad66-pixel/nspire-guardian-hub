@@ -174,7 +174,7 @@ export function LandingHero() {
           style={{ fontFamily: 'DM Sans', fontSize: 'clamp(16px, 2.2vw, 21px)', color: 'var(--apas-muted)', maxWidth: '680px', margin: '0 auto 40px', lineHeight: 1.8 }}
         >
           You're managing projects, running inspections, chasing permits, and tracking work orders — on the same day.{' '}
-          <span style={{ color: 'var(--apas-white)', fontWeight: 600 }}>APAS OS connects every piece so nothing slips through the cracks.</span>
+          <span style={{ color: 'var(--apas-white)', fontWeight: 600 }}>Build Space OS connects every piece so nothing slips through the cracks.</span>
         </motion.p>
 
         {/* CTA Row */}

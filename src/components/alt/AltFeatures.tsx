@@ -96,7 +96,7 @@ function VoiceMock() {
       <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px' }}>
         <div className="mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Tenant</div>
         <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#E9D5FF', marginBottom: '10px' }}>"Leak under my kitchen sink, Unit 204B"</div>
-        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>APAS AI</div>
+        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Build Space AI</div>
         <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#86EFAC' }}>"Got it. Ticket created, your team has been notified."</div>
       </div>
       <div className="flex gap-2 mt-3 flex-wrap">
@@ -180,7 +180,7 @@ const features: Feature[] = [
     eyebrow: 'Compliance & Risk',
     eyebrowColor: '#2563EB',
     title: 'Never miss a regulatory deadline again.',
-    body: 'Every permit, certificate, and regulatory filing has its own record in APAS OS. Expiration dates are tracked automatically. You get alerts at 90, 60, 30, and 14 days before anything expires.',
+    body: 'Every permit, certificate, and regulatory filing has its own record in Build Space OS. Expiration dates are tracked automatically. You get alerts at 90, 60, 30, and 14 days before anything expires.',
     bullets: ['Track every permit, certificate, and license in one dashboard', 'Automatic alerts before expiration — at 90, 60, 30, and 14 days', 'Deliverable tracking with due dates and responsible parties', 'Overdue items automatically generate issues', '3-year audit trail — everything is logged, timestamped, retrievable'],
     mockup: <PermitMock />,
     flip: true,
@@ -189,7 +189,7 @@ const features: Feature[] = [
     eyebrow: 'Project Management',
     eyebrowColor: '#7C3AED',
     title: 'Capital projects. Total visibility. From bid to closeout.',
-    body: 'APAS OS manages construction and renovation projects end to end. Milestones, daily site reports, formal RFI tracking, submittal logs, change order approvals, punch lists, safety logs, and final closeout documentation.',
+    body: 'Build Space OS manages construction and renovation projects end to end. Milestones, daily site reports, formal RFI tracking, submittal logs, change order approvals, punch lists, safety logs, and final closeout documentation.',
     bullets: ['Gantt charts and milestone timeline views', 'Daily reports with photo documentation and voice dictation', 'Formal RFI workflow: create, number, assign, track, resolve', 'Change order approvals with budget tracking', 'Punch list with digital sign-off for closeout', 'AI-powered proposal generation for new scopes'],
     mockup: <ProjectMock />,
     flip: false,

@@ -5,7 +5,7 @@ import { ArrowRight, Mail } from 'lucide-react';
 const footerLinks = {
   Platform: ['Features', 'Pricing', 'Security', 'AI Voice Agent', 'Roadmap'],
   'For Your Team': ['Property Managers', 'Owners', 'Superintendents', 'Inspectors', 'Subcontractors'],
-  Company: ['About APAS.AI', 'The Systems Lens', 'Contact', 'Privacy Policy', 'Terms of Service'],
+  Company: ['About Build Space', 'The Systems Lens', 'Contact', 'Privacy Policy', 'Terms of Service'],
 };
 
 export function LandingFooter() {
@@ -33,7 +33,7 @@ export function LandingFooter() {
               The Last Platform You'll Ever Evaluate.
             </h2>
             <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '680px', margin: '0 auto 16px', lineHeight: 1.8 }}>
-              You've seen what APAS OS can do. The question isn't whether you need it. The question is how long you'll keep paying the cost of not having it — in compliance risk, in wasted time, in enforcement actions you could have prevented, in liability you don't need.
+              You've seen what Build Space OS can do. The question isn't whether you need it. The question is how long you'll keep paying the cost of not having it — in compliance risk, in wasted time, in enforcement actions you could have prevented, in liability you don't need.
             </p>
             <p style={{ fontFamily: 'DM Sans', fontSize: '16px', color: 'var(--apas-muted)', maxWidth: '560px', margin: '0 auto 40px', lineHeight: 1.8 }}>
               Start your free trial today. No credit card. No commitment. Setup in under 60 minutes.
@@ -75,12 +75,12 @@ export function LandingFooter() {
             {/* Brand column */}
             <div>
               <div className="flex items-center gap-1.5 mb-4">
-                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>APAS</span>
+                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>Build Space</span>
                 <span style={{ width: '5px', height: '5px', background: 'var(--apas-sapphire)', borderRadius: '1px', transform: 'rotate(45deg)', display: 'inline-block' }} />
                 <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '22px', color: 'var(--apas-white)' }}>OS</span>
               </div>
               <p style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', lineHeight: 1.7, marginBottom: '8px' }}>Property Operations. Engineered.</p>
-              <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginBottom: '4px' }}>Built on APAS.AI infrastructure intelligence</p>
+              <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginBottom: '4px' }}>Built on Build Space infrastructure intelligence</p>
               <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-sapphire)' }}>apasos.ai</p>
             </div>
 
@@ -109,10 +109,10 @@ export function LandingFooter() {
           {/* Bottom bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: '1px solid var(--apas-border)' }}>
             <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)' }}>
-              © 2026 APAS.AI · apasos.ai · All rights reserved
+              © 2026 Build Space · apasos.ai · All rights reserved
             </p>
             <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>
-              Powered by APAS Labs
+              Powered by Build Space
             </p>
           </div>
         </div>

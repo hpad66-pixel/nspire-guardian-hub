@@ -51,7 +51,7 @@ function VoiceAgentMockup() {
       <div className="rounded-xl bg-white/[0.08] p-3 space-y-2">
         <p className="text-[11px] text-white/40" style={{ fontFamily: 'Inter' }}>Tenant</p>
         <p className="text-[13px] text-purple-200" style={{ fontFamily: 'Inter' }}>"Leak under my kitchen sink, Unit 204B"</p>
-        <p className="text-[11px] text-white/40 mt-2" style={{ fontFamily: 'Inter' }}>APAS AI</p>
+        <p className="text-[11px] text-white/40 mt-2" style={{ fontFamily: 'Inter' }}>Build Space AI</p>
         <p className="text-[13px] text-emerald-300" style={{ fontFamily: 'Inter' }}>"Got it. Ticket created, your team has been notified."</p>
       </div>
       <div className="flex gap-2 mt-3">

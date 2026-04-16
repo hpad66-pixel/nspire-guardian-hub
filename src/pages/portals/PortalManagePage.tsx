@@ -166,7 +166,7 @@ export default function PortalManagePage() {
           </div>
           <p style="color: #64748B; font-size: 13px;">This link is unique to you and will expire in 7 days. Do not share it with others.</p>
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
-          <p style="color: #94A3B8; font-size: 12px;">Sent by APAS OS on behalf of ${portal.client_name ?? portal.name}</p>
+          <p style="color: #94A3B8; font-size: 12px;">Sent by Build Space OS on behalf of ${portal.client_name ?? portal.name}</p>
         </div>
       `;
       await sendEmail.mutateAsync({

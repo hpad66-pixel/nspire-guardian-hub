@@ -47,7 +47,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 // ─── Letterhead HTML builder (for email/Word/PDF) ────────────────────────────
-function buildMinutesHtml(meeting: ProjectMeeting, polishedHtml: string, companyName = 'APAS Consulting'): string {
+function buildMinutesHtml(meeting: ProjectMeeting, polishedHtml: string, companyName = 'Build Space'): string {
   const attendeeRows = (meeting.attendees || []).map(a =>
     `<tr>
       <td style="padding:8px 12px;border:1px solid #E2E8F0;font-size:13px;">${a.name}</td>
@@ -116,7 +116,7 @@ async function exportToWord(meeting: ProjectMeeting, htmlContent: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const children: any[] = [
     new Paragraph({
-      children: [new TextRun({ text: 'APAS Consulting', bold: true, size: 40, color: '1e3a5f' })],
+      children: [new TextRun({ text: 'Build Space', bold: true, size: 40, color: '1e3a5f' })],
       alignment: AlignmentType.LEFT,
       border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' } },
     }),
@@ -170,7 +170,7 @@ async function exportToWord(meeting: ProjectMeeting, htmlContent: string) {
   children.push(
     new Paragraph({ text: '' }),
     new Paragraph({
-      children: [new TextRun({ text: `APAS Consulting  ·  Generated ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, color: '94A3B8', italics: true, size: 16 })],
+      children: [new TextRun({ text: `Build Space  ·  Generated ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, color: '94A3B8', italics: true, size: 16 })],
     })
   );
 
@@ -205,7 +205,7 @@ async function exportToPDF(meeting: ProjectMeeting, htmlContent: string) {
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('APAS Consulting', margin + 2, 14);
+  doc.text('Build Space', margin + 2, 14);
 
   // Hairline rule
   doc.setDrawColor(226, 232, 240);
@@ -291,7 +291,7 @@ async function exportToPDF(meeting: ProjectMeeting, htmlContent: string) {
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(148, 163, 184);
-  doc.text(`APAS Consulting  ·  ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, pageW / 2, 291, { align: 'center' });
+  doc.text(`Build Space  ·  ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, pageW / 2, 291, { align: 'center' });
 
   doc.save(`${meeting.title.replace(/\s+/g, '_')}_Minutes.pdf`);
 }
@@ -360,7 +360,7 @@ function MinutesViewer({ meeting, polishedHtml }: { meeting: ProjectMeeting; pol
       <div className="border-l-4 border-[#1e3a5f] pl-6 pr-8 py-6 bg-muted/30 border-b border-border">
         <div className="flex items-baseline gap-2 mb-2">
           <Building2 className="h-4 w-4 text-[#1e3a5f] shrink-0 mt-0.5" />
-          <span className="text-xl font-extrabold tracking-tight text-foreground">APAS Consulting</span>
+          <span className="text-xl font-extrabold tracking-tight text-foreground">Build Space</span>
         </div>
         <div className="h-px bg-border mb-4" />
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-2">
@@ -433,7 +433,7 @@ function MinutesViewer({ meeting, polishedHtml }: { meeting: ProjectMeeting; pol
 
       {/* Footer */}
       <div className="border-t border-border bg-muted/20 px-8 py-3 flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground">APAS Consulting &nbsp;·&nbsp; Confidential</p>
+        <p className="text-[10px] text-muted-foreground">Build Space &nbsp;·&nbsp; Confidential</p>
         <p className="text-[10px] text-muted-foreground">{format(new Date(), 'MMMM d, yyyy')}</p>
       </div>
     </div>
@@ -643,7 +643,7 @@ function MeetingEditorInner({
         <div className="flex items-center gap-3 min-w-0">
           <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">APAS Consulting</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Build Space</p>
             <p className="text-sm font-semibold text-foreground truncate">{title || 'New Meeting'}</p>
           </div>
           {meeting && (

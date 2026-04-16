@@ -89,7 +89,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
 
       {/* Footer */}
       <footer className="py-4 text-center">
-        <p className="text-xs text-muted-foreground">Powered by APAS OS · apasos.ai</p>
+        <p className="text-xs text-muted-foreground">Powered by Build Space OS · apasos.ai</p>
       </footer>
     </div>
   );
