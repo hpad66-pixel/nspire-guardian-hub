@@ -3,10 +3,11 @@ import { useParams, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession } from '@/hooks/usePortal';
 import { PortalLayout } from '@/components/portal/PortalLayout';
+import { PortalMessages } from '@/components/portal/PortalMessages';
 import { useAllCredentials } from '@/hooks/useCredentials';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 
-type PortalTab = 'home' | 'credentials' | 'training' | 'safety' | 'equipment';
+type PortalTab = 'home' | 'messages' | 'credentials' | 'training' | 'safety' | 'equipment';
 
 function ComplianceDot({ expiry }: { expiry?: string | null }) {
   if (!expiry) return null;
@@ -34,6 +35,7 @@ export default function PortalHomePage() {
   const accent = portal.brand_accent_color ?? '#0F172A';
 
   const MODULE_ICONS: Record<string, string> = {
+    messages: '💬',
     credentials: '🏆',
     training: '🎓',
     safety: '⚠️',
@@ -70,6 +72,15 @@ export default function PortalHomePage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* MESSAGES TAB */}
+      {activeTab === 'messages' && portal.project_id && (
+        <PortalMessages
+          projectId={portal.project_id}
+          companyName={portal.client_name ?? portal.name}
+          accentColor={accent}
+        />
       )}
 
       {/* CREDENTIALS TAB */}
