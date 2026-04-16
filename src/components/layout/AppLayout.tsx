@@ -152,7 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex flex-1 flex-col min-w-0">
             {/* Header */}
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border bg-background px-3 md:px-4">
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border/80 bg-background/80 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 md:px-5">
 
               {/* Desktop only: sidebar trigger */}
               <div className="hidden lg:block">
@@ -173,13 +173,13 @@ export function AppLayout({ children }: AppLayoutProps) {
               <Button
                 variant="outline"
                 className={cn(
-                  'relative h-9 w-64 justify-start text-sm text-muted-foreground hidden lg:flex'
+                  'relative hidden h-9 w-72 justify-start gap-2 rounded-lg border-border/70 bg-muted/30 px-3 text-[13px] font-medium text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground lg:flex'
                 )}
                 onClick={() => setSearchOpen(true)}
               >
-                <Search className="mr-2 h-4 w-4" />
-                Search...
-                <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                <Search className="h-[15px] w-[15px] stroke-[2]" />
+                <span className="tracking-tight">Search properties, units, issues…</span>
+                <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border border-border/60 bg-background/80 px-1.5 font-mono text-[10px] font-semibold text-muted-foreground sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </Button>
@@ -192,15 +192,18 @@ export function AppLayout({ children }: AppLayoutProps) {
                     variant="outline"
                     size="sm"
                     onClick={install}
-                    className="hidden sm:flex items-center gap-2"
+                    className="hidden h-9 items-center gap-2 rounded-lg border-border/70 text-[13px] font-medium sm:flex"
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-[15px] w-[15px]" />
                     Install App
                   </Button>
                 )}
                 <NotificationCenter />
                 {/* Role badge — hidden on mobile to save space */}
-                <Badge variant="outline" className="text-xs hidden sm:inline-flex">
+                <Badge
+                  variant="outline"
+                  className="hidden h-7 rounded-md border-border/60 px-2 text-[11px] font-semibold uppercase tracking-[0.05em] sm:inline-flex"
+                >
                   {displayRoles.length > 0 ? displayRoles[0] : 'User'}
                 </Badge>
                 {/* Profile avatar — clickable */}
@@ -208,12 +211,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate('/profile')}
-                      className="rounded-full ring-2 ring-transparent hover:ring-primary/30 transition-all duration-200 focus:outline-none focus:ring-primary/50"
+                      className="rounded-full ring-2 ring-transparent transition-all duration-200 hover:ring-primary/30 focus:outline-none focus:ring-primary/50"
                       aria-label="My Profile"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={myProfile?.avatar_url ?? undefined} alt="Profile photo" />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                        <AvatarFallback className="bg-primary text-[11px] font-semibold text-primary-foreground">
                           {initials}
                         </AvatarFallback>
                       </Avatar>

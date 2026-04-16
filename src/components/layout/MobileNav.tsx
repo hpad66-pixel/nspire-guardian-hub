@@ -71,17 +71,17 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
   const pillColor = isActive && accentColor ? accentColor : 'hsl(217 91% 62%)';
   const textColor = isActive
     ? accentColor ?? 'hsl(217 91% 62%)'
-    : 'hsl(215 20% 50%)';
+    : 'hsl(215 20% 55%)';
 
   return (
     <button
       onClick={onClick}
-      className="flex flex-1 flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 cursor-pointer select-none"
+      className="flex flex-1 flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 cursor-pointer select-none active:scale-[0.96] transition-transform"
     >
       {/* Active pill indicator */}
       <div
         className={cn(
-          'h-[3px] w-4 rounded-full mb-1 transition-all duration-150',
+          'h-[2.5px] w-5 rounded-full mb-1 transition-all duration-200',
           isActive ? 'opacity-100' : 'opacity-0'
         )}
         style={{ background: pillColor }}
@@ -89,19 +89,19 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
       {/* Icon + optional badge dot */}
       <div className="relative">
         <span
-          className="transition-colors duration-150"
+          className="transition-colors duration-200 [&_svg]:stroke-[1.85]"
           style={{ color: textColor }}
         >
           {icon}
         </span>
         {badge && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[hsl(0,84%,60%)]" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[hsl(0,84%,60%)] ring-[1.5px] ring-[hsl(222,47%,9%)]" />
         )}
       </div>
       {/* Label */}
       <span
-        className="text-[10px] font-medium leading-none tracking-wide transition-colors duration-150"
-        style={{ color: textColor }}
+        className="text-[10.5px] font-semibold leading-none tracking-tight transition-colors duration-200"
+        style={{ color: textColor, letterSpacing: isActive ? '-0.01em' : '0' }}
       >
         {label}
       </span>
@@ -216,19 +216,21 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-start gap-2 rounded-xl border border-white/5 bg-white/5 p-4 text-left transition-colors duration-150 active:bg-white/10"
+      className="flex flex-col items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.04] p-3.5 text-left transition-colors duration-150 active:bg-white/10"
     >
       <div className={cn('relative flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[hsl(217,91%,62%)] px-1 text-[9px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[hsl(217,91%,62%)] px-1 text-[9px] font-bold text-white tabular-nums">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
-      <div>
-        <p className="text-sm font-medium text-[hsl(215,25%,92%)]">{title}</p>
-        <p className="text-[11px] leading-tight text-[hsl(215,16%,50%)]">{subtitle}</p>
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-semibold tracking-tight text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.012em' }}>
+          {title}
+        </p>
+        <p className="text-[11px] font-medium leading-tight text-[hsl(215,16%,55%)] mt-0.5">{subtitle}</p>
       </div>
     </button>
   );
@@ -238,7 +240,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
 
 function DrawerSectionLabel({ label }: { label: string }) {
   return (
-    <p className="col-span-2 mb-1 mt-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[hsl(215,16%,40%)]">
+    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(215,16%,50%)]">
       {label}
     </p>
   );
@@ -284,7 +286,9 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3">
-          <span className="text-base font-semibold text-[hsl(215,25%,92%)]">More</span>
+          <span className="text-[17px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.018em' }}>
+            More
+          </span>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-[hsl(215,20%,55%)] transition-colors hover:text-white"
@@ -478,10 +482,11 @@ export function MobileNav() {
 
       {/* Primary bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,9%)]"
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,8%)] backdrop-blur-xl"
         style={{
           height: 64,
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          backgroundColor: 'hsl(222 47% 8% / 0.92)',
         }}
       >
         {/* Portals — always visible */}
