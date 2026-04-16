@@ -380,8 +380,6 @@ export default function PortalManagePage() {
                 const isMagicLinkReady = hasValidMagicLink(c) && !!c.magic_link_token;
                 const contactPortalUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'portal') : null;
                 const contactScheduleUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'schedule') : null;
-                const emailPortalBody = `Hi ${c.name ?? ''},\n\nHere is your portal link:\n${contactPortalUrl ?? portalUrl}\n\nBest regards`;
-                const emailScheduleBody = `Hi ${c.name ?? ''},\n\nHere is your schedule link:\n${contactScheduleUrl ?? scheduleUrl}\n\nBest regards`;
 
                 return (
                   <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
