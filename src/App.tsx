@@ -61,6 +61,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
+const FeatureRegistryPage = lazy(() => import('./pages/admin/FeatureRegistryPage'));
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
 const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
 const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
@@ -203,6 +204,7 @@ const App = () => (
 
                               {/* Admin */}
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
+                              <Route path="/admin/registry" element={<FeatureRegistryPage />} />
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
