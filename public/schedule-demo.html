@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Build OS — Interactive Schedule Preview</title>
+<meta name="description" content="Three areas. Eight steps. One readout. Interactive schedule preview — Build OS by APAS." />
+<link rel="icon" href="/favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#fbf7f0;
+    --surface:#ffffff;
+    --surface-muted:#f6efe3;
+    --text:#1b2230;
+    --text-muted:#6b7280;
+    --border:#e6decf;
+    --accent:#1e3a5f;
+    --accent-soft:#1e3a5f18;
+    --accent-softer:#1e3a5f0e;
+    --critical:#b91c1c;
+    --critical-bg:#fee2e2;
+    --high:#c2410c;
+    --high-bg:#ffedd5;
+    --medium:#9a6a00;
+    --medium-bg:#fff4d6;
+    --low:#166534;
+    --low-bg:#dcfce7;
+    --milestone:#5b21b6;
+    --milestone-bg:#ede9fe;
+    --shadow:0 1px 2px rgba(17,24,39,.04),0 12px 32px -18px rgba(17,24,39,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  a{color:inherit}
+  .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+  @media (max-width:960px){.layout{grid-template-columns:1fr}}
+
+  /* Sidebar */
+  aside{
+    position:sticky;top:0;align-self:start;
+    height:100vh;overflow-y:auto;
+    background:var(--surface);
+    border-right:1px solid var(--border);
+    padding:24px 20px;
+  }
+  @media (max-width:960px){aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border)}}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+  .brand-mark{
+    width:36px;height:36px;border-radius:10px;
+    background:linear-gradient(135deg,#1e3a5f,#345a8a);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:14px;letter-spacing:.04em;
+  }
+  .brand-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
+  .brand-tag{font-size:11px;color:var(--text-muted);letter-spacing:.16em;text-transform:uppercase}
+  .nav-title{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);margin:24px 0 8px}
+  .nav a{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 12px;border-radius:10px;
+    font-size:13.5px;font-weight:500;color:var(--text);
+    text-decoration:none;margin-bottom:2px;
+    transition:background .15s ease;
+  }
+  .nav a:hover{background:var(--surface-muted)}
+  .nav a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .nav .dot{width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
+  .side-card{
+    margin-top:20px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-muted);
+  }
+  .side-card h4{margin:0 0 6px;font-size:13px}
+  .side-card p{margin:0;font-size:12px;color:var(--text-muted);line-height:1.55}
+  .progress{height:6px;border-radius:999px;background:#eadfc7;overflow:hidden;margin-top:10px}
+  .progress > i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .3s ease}
+
+  /* Main */
+  main{padding:32px 40px 80px;max-width:1100px}
+  @media (max-width:720px){main{padding:24px 20px 60px}}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    box-shadow:var(--shadow);margin-bottom:28px;
+  }
+  .topbar .left{display:flex;align-items:center;gap:12px}
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;
+    font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    background:var(--accent-soft);color:var(--accent);
+  }
+  .pill{padding:5px 11px;border-radius:999px;background:var(--surface-muted);color:var(--text-muted);font-size:12px;font-weight:500}
+
+  h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
+  .hero{
+    background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:36px;
+    box-shadow:var(--shadow);margin-bottom:24px;
+  }
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .hero h1{font-size:clamp(28px,3.6vw,44px);line-height:1.1;margin:14px 0 12px}
+  .hero p{color:var(--text-muted);font-size:15.5px;max-width:60ch}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .tag{border:1px solid var(--accent-soft);color:var(--accent);background:var(--accent-softer);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:500}
+
+  .area-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+  @media (max-width:880px){.area-grid{grid-template-columns:1fr}}
+  .area-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;
+    box-shadow:var(--shadow);
+  }
+  .area-card .letter{
+    width:42px;height:42px;border-radius:12px;background:var(--accent-soft);color:var(--accent);
+    display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;
+  }
+  .area-card h3{margin-top:14px;font-size:17px}
+  .area-card .stat{float:right;font-size:12px;color:var(--text-muted);font-weight:500}
+  .area-card p{color:var(--text-muted);font-size:13.5px;margin-top:8px}
+
+  .section{
+    background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px;
+    box-shadow:var(--shadow);margin-bottom:24px;scroll-margin-top:20px;
+  }
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .section-head .eyebrow{letter-spacing:.2em}
+  .section-head h2{font-size:22px}
+  .count-pill{background:var(--accent-soft);color:var(--accent);padding:7px 14px;border-radius:999px;font-weight:600;font-size:13px}
+
+  .area-block{border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:14px;background:var(--surface)}
+  .area-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface-muted)}
+  .area-head .left{display:flex;align-items:center;gap:12px}
+  .area-head .letter{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+  .area-head h4{font-size:15px}
+  .area-head small{color:var(--text-muted);font-size:12px;display:block;margin-top:2px}
+
+  .milestone{display:grid;grid-template-columns:28px 1fr auto;gap:14px;align-items:start;padding:14px 18px;border-top:1px solid var(--border);cursor:pointer;transition:background .12s ease}
+  .milestone:first-of-type{border-top:0}
+  .milestone:hover{background:var(--surface-muted)}
+  .check{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--border);
+    display:inline-flex;align-items:center;justify-content:center;flex:none;
+    transition:all .15s ease;
+  }
+  .milestone.done .check{background:var(--accent);border-color:var(--accent);color:#fff}
+  .milestone.done .name{opacity:.6;text-decoration:line-through}
+  .name{font-size:14.5px;font-weight:500}
+  .owner{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .chip{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+  .chip.critical{background:var(--critical-bg);color:var(--critical)}
+  .chip.high{background:var(--high-bg);color:var(--high)}
+  .chip.medium{background:var(--medium-bg);color:var(--medium)}
+  .chip.low{background:var(--low-bg);color:var(--low)}
+  .chip.milestone{background:var(--milestone-bg);color:var(--milestone)}
+
+  /* Questionnaire */
+  .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media (max-width:720px){.q-grid{grid-template-columns:1fr}}
+  .q label{display:block;font-size:14px;font-weight:500;margin-bottom:10px}
+  .q .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:13px;cursor:pointer;transition:all .15s ease}
+  .opt:hover{background:var(--surface-muted)}
+  .opt.selected{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  textarea{width:100%;min-height:96px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);font-family:inherit;font-size:14px;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .full{grid-column:1/-1}
+
+  footer.end{margin-top:24px;padding:20px 24px;border:1px solid var(--border);border-radius:20px;background:var(--surface);box-shadow:var(--shadow)}
+  footer.end strong{font-size:13.5px}
+  footer.end p{margin:6px 0 0;color:var(--text-muted);font-size:12.5px;line-height:1.7;white-space:pre-line}
+
+  .saved-chip{position:fixed;right:22px;bottom:22px;padding:9px 14px;background:var(--accent);color:#fff;border-radius:999px;font-size:12.5px;font-weight:600;box-shadow:0 10px 30px -10px rgba(30,58,95,.5);opacity:0;transform:translateY(8px);transition:all .2s ease;pointer-events:none}
+  .saved-chip.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside>
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div>
+        <div class="brand-name">Build OS</div>
+        <div class="brand-tag">By APAS</div>
+      </div>
+    </div>
+
+    <div class="nav-title">Schedule</div>
+    <nav class="nav">
+      <a href="#overview" class="active"><span class="dot">◎</span> Overview</a>
+      <a href="#area-a"><span class="dot">A</span> Area A — Pre-Construction</a>
+      <a href="#area-b"><span class="dot">B</span> Area B — Construction</a>
+      <a href="#area-c"><span class="dot">C</span> Area C — Closeout</a>
+      <a href="#questionnaire"><span class="dot">Q</span> Client Questionnaire</a>
+    </nav>
+
+    <div class="side-card">
+      <h4>Progress</h4>
+      <p><span id="doneCount">0</span>/<span id="totalCount">30</span> milestones closed</p>
+      <div class="progress"><i id="progressBar" style="width:0%"></i></div>
+    </div>
+
+    <div class="side-card" style="margin-top:14px">
+      <h4>Shareable preview</h4>
+      <p>This is a standalone, read-only demo of the interactive schedule. Share the link — no login required.</p>
+    </div>
+  </aside>
+
+  <main id="overview">
+    <div class="topbar">
+      <div class="left">
+        <span class="badge">Master Interactive Schedule</span>
+        <span class="pill" id="topCounter">0/30 complete</span>
+      </div>
+      <div>
+        <button class="opt" onclick="copyLink()" style="cursor:pointer">Copy link</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="eyebrow">Build OS · Client Preview</div>
+      <h1>Three areas. Eight steps. One readout.</h1>
+      <p>Track every area, milestone, certification step, and handover note from one interactive schedule. This is a shareable demo — tick milestones to see progress update live.</p>
+      <div class="tags">
+        <span class="tag">Construction</span>
+        <span class="tag">Client Portal</span>
+        <span class="tag">Interactive Schedule</span>
+      </div>
+    </section>
+
+    <div class="area-grid">
+      <article class="area-card">
+        <span class="letter">A</span><span class="stat">10 steps</span>
+        <h3>Pre-Construction &amp; Design</h3>
+        <p>Design, permits, and mobilization. Everything locked before the first shovel hits dirt.</p>
+      </article>
+      <article class="area-card">
+        <span class="letter">B</span><span class="stat">10 steps</span>
+        <h3>Construction Execution</h3>
+        <p>From site prep through punch list — owners, GCs, and subs on one readout.</p>
+      </article>
+      <article class="area-card">
+        <span class="letter">C</span><span class="stat">10 steps</span>
+        <h3>Closeout &amp; Handover</h3>
+        <p>C of O, as-builts, warranties, and the 11-month walkthrough. Wrap it clean.</p>
+      </article>
+    </div>
+
+    <section class="section" id="milestones">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Area schedule</div>
+          <h2 style="margin-top:6px">Interactive milestone board</h2>
+        </div>
+        <span class="count-pill" id="countPill">0/30 complete</span>
+      </div>
+
+      <div id="areaA" class="area-block"></div>
+      <div id="areaB" class="area-block"></div>
+      <div id="areaC" class="area-block"></div>
+    </section>
+
+    <section class="section" id="questionnaire">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Client responses</div>
+          <h2 style="margin-top:6px">Questionnaire</h2>
+        </div>
+      </div>
+      <div class="q-grid" id="qGrid"></div>
+    </section>
+
+    <footer class="end">
+      <strong>Build OS · Powered by APAS</strong>
+      <p>This interactive schedule is a preview. Your production portal at build.apas.ai connects this view to live project data, owner sign-offs, and the Q&amp;A thread with the team.</p>
+    </footer>
+  </main>
+</div>
+
+<div class="saved-chip" id="savedChip">Saved to this browser</div>
+
+<script>
+const AREAS = [
+  {
+    key:'A', id:'area-a', label:'Area A — Pre-Construction & Design',
+    milestones:[
+      {id:'A-01', name:'Site Survey & Geotechnical Report', owner:'Engineer', priority:'critical'},
+      {id:'A-02', name:'Architectural Design Finalization', owner:'Architect', priority:'critical'},
+      {id:'A-03', name:'Structural Engineering Review', owner:'Engineer', priority:'high'},
+      {id:'A-04', name:'Permit Application Submission', owner:'PM', priority:'critical'},
+      {id:'A-05', name:'Environmental & Utility Clearances', owner:'PM', priority:'high'},
+      {id:'A-06', name:'Value Engineering Workshop', owner:'PM', priority:'medium'},
+      {id:'A-07', name:'Contractor Pre-Qualification', owner:'PM', priority:'high'},
+      {id:'A-08', name:'Bid Package Preparation', owner:'PM', priority:'medium'},
+      {id:'A-09', name:'Owner Approval — Final Plans', owner:'Owner', priority:'critical'},
+      {id:'A-10', name:'Mobilization Notice to Proceed', owner:'PM', priority:'critical'},
+    ]
+  },
+  {
+    key:'B', id:'area-b', label:'Area B — Construction Execution',
+    milestones:[
+      {id:'B-01', name:'Site Preparation & Demolition', owner:'GC', priority:'high'},
+      {id:'B-02', name:'Foundation & Underground Utilities', owner:'GC', priority:'critical'},
+      {id:'B-03', name:'Structural Framing', owner:'GC', priority:'critical'},
+      {id:'B-04', name:'MEP Rough-In (Mechanical, Electrical, Plumbing)', owner:'Sub', priority:'high'},
+      {id:'B-05', name:'Roofing & Exterior Envelope', owner:'GC', priority:'high'},
+      {id:'B-06', name:'Interior Framing & Drywall', owner:'GC', priority:'medium'},
+      {id:'B-07', name:'Finish Trades (Paint, Tile, Flooring)', owner:'Sub', priority:'medium'},
+      {id:'B-08', name:'MEP Trim-Out & Testing', owner:'Sub', priority:'high'},
+      {id:'B-09', name:'Landscape & Hardscape', owner:'Sub', priority:'medium'},
+      {id:'B-10', name:'Punch List & Final Inspection', owner:'PM', priority:'critical'},
+    ]
+  },
+  {
+    key:'C', id:'area-c', label:'Area C — Closeout & Handover',
+    milestones:[
+      {id:'C-01', name:'Certificate of Occupancy', owner:'PM', priority:'critical'},
+      {id:'C-02', name:'As-Built Documentation', owner:'Architect', priority:'high'},
+      {id:'C-03', name:'Warranty & O&M Manuals Delivered', owner:'GC', priority:'high'},
+      {id:'C-04', name:'Systems Training for Owner', owner:'GC', priority:'medium'},
+      {id:'C-05', name:'Final Payment & Lien Releases', owner:'PM', priority:'critical'},
+      {id:'C-06', name:'Owner Walk-Through & Acceptance', owner:'Owner', priority:'critical'},
+      {id:'C-07', name:'Project Archive & Lessons Learned', owner:'PM', priority:'low'},
+      {id:'C-08', name:'Retention Release', owner:'PM', priority:'high'},
+      {id:'C-09', name:'11-Month Warranty Walkthrough', owner:'PM', priority:'medium'},
+      {id:'C-10', name:'Project Complete — Celebration', owner:'All', priority:'milestone'},
+    ]
+  }
+];
+
+const QUESTIONS = [
+  {key:'timeline', label:'Are you comfortable with the current timeline?', type:'radio', options:['Yes','No','Need Discussion']},
+  {key:'budget', label:'Any budget concerns?', type:'radio', options:['On Track','Needs Review','Over Budget']},
+  {key:'quality', label:'Quality satisfaction so far?', type:'radio', options:['Excellent','Good','Needs Improvement']},
+  {key:'communication', label:'How is communication?', type:'radio', options:['Great','Adequate','Needs Improvement']},
+  {key:'concerns', label:'Any specific concerns or change requests?', type:'textarea', full:true, placeholder:'Type your concerns here…'},
+  {key:'comments', label:'Additional comments for the team', type:'textarea', full:true, placeholder:'Any other feedback…'},
+];
+
+const STORE_KEY = 'build-os-schedule-demo-v1';
+const state = JSON.parse(localStorage.getItem(STORE_KEY) || '{"checks":{},"responses":{}}');
+
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); showSaved(); }
+
+let savedTimer;
+function showSaved(){
+  const chip = document.getElementById('savedChip');
+  chip.classList.add('show');
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(()=>chip.classList.remove('show'), 1200);
+}
+
+function priorityLabel(p){
+  return p === 'milestone' ? 'Milestone' : p.charAt(0).toUpperCase() + p.slice(1);
+}
+
+function render(){
+  const total = AREAS.reduce((a,x)=>a+x.milestones.length,0);
+  let done = 0;
+  AREAS.forEach(area => {
+    const el = document.getElementById('area'+area.key);
+    const closed = area.milestones.filter(m => state.checks[m.id]).length;
+    done += closed;
+    el.innerHTML = `
+      <div class="area-head" id="${area.id}">
+        <div class="left">
+          <span class="letter">${area.key}</span>
+          <div>
+            <h4>${area.label}</h4>
+            <small>${closed}/${area.milestones.length} closed</small>
+          </div>
+        </div>
+        <span class="pill">${area.milestones.length} steps</span>
+      </div>
+      ${area.milestones.map(m => `
+        <div class="milestone ${state.checks[m.id]?'done':''}" data-id="${m.id}">
+          <div class="check">${state.checks[m.id]?'✓':''}</div>
+          <div>
+            <div class="name">${m.id} · ${m.name}</div>
+            <div class="owner">${m.owner}</div>
+          </div>
+          <div class="chips"><span class="chip ${m.priority}">${priorityLabel(m.priority)}</span></div>
+        </div>`).join('')}
+    `;
+  });
+
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('topCounter').textContent = `${done}/${total} complete`;
+  document.getElementById('countPill').textContent = `${done}/${total} complete`;
+  document.getElementById('progressBar').style.width = ((done/total)*100).toFixed(1) + '%';
+
+  document.querySelectorAll('.milestone').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.id;
+      state.checks[id] = !state.checks[id];
+      save();
+      render();
+    });
+  });
+}
+
+function renderQuestions(){
+  const grid = document.getElementById('qGrid');
+  grid.innerHTML = QUESTIONS.map(q => `
+    <div class="q ${q.full?'full':''}">
+      <label>${q.label}</label>
+      ${q.type === 'radio' ? `
+        <div class="opts">
+          ${q.options.map(opt => `
+            <button class="opt ${state.responses[q.key]===opt?'selected':''}" data-q="${q.key}" data-v="${opt}">${opt}</button>
+          `).join('')}
+        </div>
+      ` : `
+        <textarea data-q="${q.key}" placeholder="${q.placeholder||''}">${state.responses[q.key]||''}</textarea>
+      `}
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('button.opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.responses[btn.dataset.q] = btn.dataset.v;
+      save();
+      renderQuestions();
+    });
+  });
+  let t;
+  grid.querySelectorAll('textarea').forEach(ta => {
+    ta.addEventListener('input', e => {
+      state.responses[ta.dataset.q] = ta.value;
+      clearTimeout(t);
+      t = setTimeout(save, 500);
+    });
+  });
+}
+
+function copyLink(){
+  const url = window.location.origin + '/schedule-demo';
+  navigator.clipboard.writeText(url).then(() => {
+    const chip = document.getElementById('savedChip');
+    chip.textContent = 'Link copied';
+    chip.classList.add('show');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(()=>{chip.classList.remove('show');chip.textContent='Saved to this browser';}, 1500);
+  });
+}
+
+// Nav active state on scroll
+const navLinks = document.querySelectorAll('.nav a');
+document.querySelectorAll('main section, main #overview').forEach(()=>{});
+window.addEventListener('scroll', () => {
+  const ids = ['overview','area-a','area-b','area-c','questionnaire'];
+  let current = 'overview';
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < 140) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+render();
+renderQuestions();
+</script>
+</body>
+</html>

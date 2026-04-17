@@ -36,6 +36,9 @@ import {
   Share2,
   Lock,
   History,
+  Link2,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
@@ -803,6 +806,54 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Shareable Schedule Preview */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    Shareable Schedule Preview
+                  </CardTitle>
+                  <CardDescription>
+                    Hard-coded, standalone A/B/C schedule demo. No login required — safe to email
+                    prospects. This is separate from the authenticated client portal.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="shrink-0">Public</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <code className="text-sm break-all flex-1">https://build.apas.ai/schedule-demo</code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText('https://build.apas.ai/schedule-demo');
+                    toast.success('Link copied');
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Copy
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => window.open('/schedule-demo', '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Open preview
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Served as a static page at <code>/schedule-demo</code> on the published site. Check
+                milestones, answer the questionnaire — state persists per browser. Customize the
+                content directly in <code>public/schedule-demo.html</code>.
+              </p>
             </CardContent>
           </Card>
 
