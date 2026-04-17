@@ -188,6 +188,26 @@ export function usePortalCount() {
   return { count, limit, canCreate, isLoading };
 }
 
+export function usePortalByProject(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['portal-by-project', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      const { data, error } = await supabase
+        .from('client_portals')
+        .select('*')
+        .eq('project_id', projectId)
+        .neq('status', 'archived')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientPortal | null;
+    },
+    enabled: !!projectId,
+  });
+}
+
 export function useTotalPendingRequests() {
   const { data: portals = [] } = usePortals();
   return portals.reduce((sum, p) => sum + (p.pending_requests_count ?? 0), 0);
