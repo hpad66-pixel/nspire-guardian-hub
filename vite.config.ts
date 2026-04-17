@@ -81,11 +81,15 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         // Allow large vendor chunks up to 6 MB in the precache manifest
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // CRITICAL: Never intercept OAuth, auth callbacks, or Supabase redirects
+        // CRITICAL: Never intercept OAuth, auth callbacks, or Supabase redirects.
+        // Also exclude the public /schedule-demo preview so the SW passes the
+        // request straight to the network static file — the SPA fallback would
+        // otherwise hijack it into a protected route.
         navigateFallbackDenylist: [
           /^\/~oauth/,
           /^\/auth\/callback/,
           /^\/auth\//,
+          /^\/schedule-demo($|\/|\.)/,
         ],
         // Use index.html as the SPA shell for all navigation — NOT offline.html
         // This ensures the React router handles routing when online
