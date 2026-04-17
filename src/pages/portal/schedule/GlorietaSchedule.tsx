@@ -336,31 +336,6 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
               </div>
             </section>
 
-            {content.areaCards && content.areaCards.length > 0 ? (
-              <section className="grid gap-4 md:grid-cols-3">
-                {content.areaCards.map((card) => (
-                  <article key={card.letter} className="rounded-[28px] border border-border bg-card p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <span
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-semibold"
-                        style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
-                      >
-                        {card.letter}
-                      </span>
-                      {card.stat ? (
-                        <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                          {card.stat}
-                        </span>
-                      ) : null}
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground">{card.title}</h3>
-                    {card.units ? <p className="mt-1 text-xs text-muted-foreground">{card.units}</p> : null}
-                    {card.body ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p> : null}
-                  </article>
-                ))}
-              </section>
-            ) : null}
-
             {content.pullQuoteText ? (
               <section className="rounded-[28px] border border-border bg-card p-6 shadow-sm">
                 <div className="flex items-start gap-4">
