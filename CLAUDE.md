@@ -78,15 +78,19 @@ e2e/                   ← Playwright specs, one file per prompt-id
 These rules apply to every prompt. If a prompt conflicts, the prompt loses — flag it and ask.
 
 ### 1. Multi-tenant isolation is absolute
+
+**Naming note:** in this codebase the SaaS tenant concept is `public.workspaces`. The table `public.tenants` is the *residential-leasing* table (occupants of rental units, unrelated). Every Procore Lite `tenant_id` column therefore references `workspaces(id)`, not `tenants(id)` — the prompts in `Procore_Lite_Lovable_Prompts.html` use `tenants(id)` in their DDL; translate to `workspaces(id)` on ingest.
+
 Every user-data table has:
 ```sql
-tenant_id UUID NOT NULL REFERENCES tenants(id)
+tenant_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE
 ```
-…and an RLS policy:
+…and an RLS policy (uses helper `public.current_tenant_id()` from A1):
 ```sql
 CREATE POLICY <table>_tenant_isolation ON <table>
 FOR ALL TO authenticated
-USING (tenant_id = current_setting('app.tenant_id')::UUID);
+USING (tenant_id = public.current_tenant_id() OR public.is_super_admin())
+WITH CHECK (tenant_id = public.current_tenant_id() OR public.is_super_admin());
 ```
 No exceptions. Not for lookup tables that reference tenant data. Not for "read-only" tables. If it has anything tenant-scoped in it, it gets `tenant_id` + RLS.
 

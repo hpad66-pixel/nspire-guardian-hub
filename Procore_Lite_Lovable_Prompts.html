@@ -1,0 +1,2742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procore Lite — Lovable Build Prompts (Phase 3) · APAS.AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#C8962E;--gold-light:#E8C875;--gold-bg:rgba(200,150,46,0.08);
+  --dark:#0D0D1A;--dark2:#141428;--dark3:#1C1C35;--dark4:#22223F;
+  --slate:#8B8FA3;--text:#C8CAD4;--white:#EEEEF2;
+  --blue:#2E6BA6;--blue-light:#4A9FD9;
+  --green:#2E8B57;--green-light:#3CB371;
+  --red:#C0392B;--red-light:#E74C3C;
+  --purple:#7B4FBF;--purple-light:#9B6FDF;
+  --cyan:#17A2B8;--orange:#D4782F;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.page{max-width:1600px;margin:0 auto;padding:40px 60px}
+
+.header{text-align:center;padding:60px 0 40px;border-bottom:1px solid rgba(200,150,46,0.2);margin-bottom:60px}
+.header-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);letter-spacing:4px;text-transform:uppercase;margin-bottom:20px}
+.header h1{font-family:'Playfair Display',serif;font-weight:900;font-size:54px;color:var(--white);letter-spacing:-1px;margin-bottom:14px;line-height:1.1}
+.header h1 .brand{color:var(--gold)}
+.header-subtitle{font-size:17px;color:var(--slate);max-width:900px;margin:0 auto 20px;line-height:1.5}
+.header-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--slate);letter-spacing:2px;text-transform:uppercase}
+
+.group{margin-bottom:100px}
+.group-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.group-heading{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;color:var(--white);margin-bottom:14px;line-height:1.2}
+.group-desc{font-size:15px;color:var(--slate);max-width:1000px;line-height:1.7;margin-bottom:40px}
+
+.guide{background:var(--dark2);border:1px solid rgba(200,150,46,0.15);border-radius:14px;padding:32px;margin-bottom:40px}
+.guide h3{font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--gold-light);margin-bottom:16px}
+.guide p{font-size:14px;color:var(--text);line-height:1.75;margin-bottom:12px}
+.guide ul{list-style:none;padding:0;margin-top:12px}
+.guide li{padding:6px 0 6px 20px;position:relative;font-size:13px;color:var(--text)}
+.guide li::before{content:'◆';position:absolute;left:0;top:6px;color:var(--gold);font-size:10px}
+.guide code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold-light);background:rgba(200,150,46,0.08);padding:2px 6px;border-radius:4px}
+.guide strong{color:var(--gold-light);font-weight:500}
+
+.prompt-card{background:var(--dark2);border:1px solid rgba(200,150,46,0.12);border-radius:14px;margin-bottom:28px;overflow:hidden}
+.prompt-header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 28px;background:var(--dark3);border-bottom:1px solid rgba(200,150,46,0.15)}
+.prompt-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.prompt-title{font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--white);line-height:1.2}
+.prompt-badges{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:5px 10px;border-radius:14px;border:1px solid;white-space:nowrap}
+.badge.p1{background:rgba(192,57,43,0.12);border-color:rgba(192,57,43,0.5);color:var(--red-light)}
+.badge.p2{background:rgba(212,120,47,0.12);border-color:rgba(212,120,47,0.5);color:var(--orange)}
+.badge.p3{background:rgba(46,107,166,0.12);border-color:rgba(46,107,166,0.5);color:var(--blue-light)}
+.badge.p4{background:rgba(123,79,191,0.12);border-color:rgba(123,79,191,0.5);color:var(--purple-light)}
+.badge.copy{background:rgba(200,150,46,0.15);border-color:rgba(200,150,46,0.5);color:var(--gold-light)}
+
+.prompt-note{padding:14px 28px 0;font-size:13px;color:var(--slate);line-height:1.6;border-bottom:1px dashed rgba(200,150,46,0.1);padding-bottom:14px}
+.prompt-note strong{color:var(--gold-light);font-weight:500}
+
+.prompt-body{padding:0}
+.prompt-body pre{margin:0;padding:28px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.65;color:var(--text);overflow-x:auto;white-space:pre-wrap;word-wrap:break-word;background:transparent}
+.prompt-body pre .hd{color:var(--gold);font-weight:700;letter-spacing:1.5px}
+.prompt-body pre .cmt{color:var(--slate);font-style:italic}
+.prompt-body pre .kw{color:var(--gold-light)}
+.prompt-body pre .str{color:var(--green-light)}
+.prompt-body pre .tbl{color:var(--blue-light)}
+.prompt-body pre .col{color:var(--purple-light)}
+
+.divider{height:1px;background:linear-gradient(to right,transparent,rgba(200,150,46,0.3),transparent);margin:80px 0 60px;position:relative}
+.divider::after{content:'◆';position:absolute;left:50%;top:-6px;transform:translateX(-50%);color:var(--gold);background:var(--dark);padding:0 12px;font-size:12px}
+
+footer{margin-top:100px;padding:40px 0;border-top:1px solid rgba(200,150,46,0.2);text-align:center}
+footer .fbrand{font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--gold);margin-bottom:8px}
+footer .fmeta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--slate);letter-spacing:2px;text-transform:uppercase}
+
+@media print{
+  body{background:white;color:#1a1a1a}
+  .page{max-width:none;padding:20px}
+  .header h1,.group-heading,.prompt-title{color:#000}
+  .prompt-card,.guide{background:#f8f8f8;border-color:#ccc;break-inside:avoid}
+  .prompt-header{background:#eee}
+  .prompt-body pre{color:#1a1a1a}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="header">
+<div class="header-label">APAS.AI · Product Engineering · Phase 3 Deliverable</div>
+<h1>Procore <span class="brand">Lite</span> — Lovable Build Prompts</h1>
+<p class="header-subtitle">Twenty-nine copy-paste-ready prompts, one per spec. Each prompt is self-contained: table DDL with RLS, components with file paths, routes, business rules, and acceptance tests. Paste prompts into Lovable in the order shown — dependencies are gated.</p>
+<div class="header-meta">APAS.AI · nspire-guardian-hub-staging · v3.0 · Apr 19, 2026</div>
+</header>
+
+<!-- HOW TO USE -->
+<div class="guide">
+<h3>How to use these prompts</h3>
+<p><strong>Step 1 — Prime Lovable once.</strong> Before any module prompt, paste the Context Primer below into Lovable as a single message. It establishes the stack, conventions, naming rules, and the tenant-id pattern so every subsequent prompt inherits them.</p>
+<p><strong>Step 2 — Run prompts in order.</strong> The 29 prompts are grouped by build phase. Do not skip ahead — Phase 2 prompts assume Phase 1 tables exist, Phase 3 prompts assume Cost Codes exist, and so on. The <code>DEPENDS ON</code> line at the top of each prompt is the gate.</p>
+<p><strong>Step 3 — One prompt per Lovable turn.</strong> Paste a full prompt, wait for Lovable to scaffold files + migrations, review the diff, run tests, then commit. Move to the next.</p>
+<p><strong>Step 4 — Seed data after each Phase.</strong> At the end of each phase there's a Seed prompt that inserts demo data so you can QA the UI in a live tenant.</p>
+<ul>
+<li><code>TABLES</code> — the Postgres DDL Lovable should add as a Supabase migration, including RLS.</li>
+<li><code>COMPONENTS</code> — file paths + purposes. Match existing <code>src/components/...</code> folder conventions.</li>
+<li><code>ROUTES</code> — React Router paths to register in <code>src/App.tsx</code>.</li>
+<li><code>BUSINESS RULES</code> — trigger functions, workflow assertions, derived fields.</li>
+<li><code>ACCEPTANCE TESTS</code> — what must pass before moving on.</li>
+</ul>
+</div>
+
+<!-- CONTEXT PRIMER -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div>
+<div class="prompt-id">Prompt P0 · Context Primer · run once</div>
+<div class="prompt-title">Lovable Stack &amp; Convention Primer</div>
+</div>
+<div class="prompt-badges"><span class="badge copy">copy &amp; paste first</span></div>
+</div>
+<div class="prompt-note">Paste this as a single message at the start of the build. It makes every downstream prompt shorter and more consistent.</div>
+<div class="prompt-body">
+<pre>You are working on the nspire-guardian-hub-staging app, which I am extending into a
+multi-tenant Procore Lite construction management SaaS.
+
+STACK (already in place):
+- Vite + React 18 + TypeScript
+- Tailwind CSS + shadcn/ui components
+- Supabase (Postgres + RLS + Storage + Edge Functions)
+- TanStack Query v5 for data
+- React Router v6
+- react-hook-form + zod for forms
+- jspdf + html2canvas for PDF export
+
+CONVENTIONS:
+- Every user-data table has `tenant_id uuid NOT NULL` + RLS policy
+  `tenant_id = (auth.jwt() ->> 'tenant_id')::uuid`
+- Foreign keys cascade on delete where child is owned by parent
+- Monetary amounts stored as `bigint` cents (not decimal) and named `*_cents`
+- Dates: `timestamptz` for instants, `date` for calendar dates
+- Use snake_case for DB columns, camelCase in TS, auto-generated types via
+  `supabase gen types typescript`
+- Component files: `src/components/&lt;module&gt;/&lt;ComponentName&gt;.tsx`
+- Page files:      `src/pages/&lt;module&gt;/&lt;PageName&gt;.tsx`
+- Queries/mutations live in `src/hooks/use&lt;Module&gt;.ts`
+- RLS helpers live in `supabase/migrations/_shared/rls.sql`
+
+WORKFLOW ENGINE (Spec A4) is a cross-cutting service: every RFI, Submittal,
+Change Order, Punch Item, etc. creates a `workflow_instances` row. Ball-in-Court
+logic is centralized. Do not duplicate per-module.
+
+COST CODE (Spec A5) is the financial spine: every financial object has a
+`cost_code_id` FK. When prompts mention "cost code picker" they mean the
+shared `<CostCodePicker />` component.
+
+DISTRIBUTION LISTS (Spec A3) are reused by every workflow. When prompts
+mention "Distribution picker" they mean `<DistributionPicker />`.
+
+For every prompt I send, please:
+1. Create Supabase migration(s) with DDL + RLS + indexes
+2. Generate shadcn-styled React components with TanStack Query
+3. Register routes in src/App.tsx under the ProtectedRoute wrapper
+4. Add Zod schemas matching the DB schema
+5. Write vitest unit tests for any business rule functions
+6. Run `supabase gen types typescript` after migrations
+
+Acknowledge you have this context, then wait for the first module prompt.</pre>
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ========================================== -->
+<!-- PHASE 1: FOUNDATION -->
+<!-- ========================================== -->
+<div class="group">
+<div class="group-label">Phase 1 · 7 prompts · Foundation</div>
+<h2 class="group-heading">Phase 1 Prompts — Foundation</h2>
+<p class="group-desc">Build these before anything else. Multi-tenant isolation, RBAC templates, Distribution, Ball-in-Court, Cost Codes, Billing, SSO. Every downstream module assumes these exist.</p>
+
+<!-- A1 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A1 · Phase 1</div><div class="prompt-title">Multi-Tenant Isolation Hardening</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> existing tenants/workspaces tables. <strong>Run first in Phase 1 — every other prompt assumes this is enforced.</strong></div>
+<div class="prompt-body">
+<pre>GOAL: Harden multi-tenant isolation so no tenant can ever read another tenant's data.
+
+TABLES:
+-- 1. Ensure every user-data table has tenant_id NOT NULL
+-- Audit existing tables; for any missing tenant_id, add with backfill.
+
+-- 2. Tenant settings (per-tenant feature flags, defaults)
+CREATE TABLE tenant_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  key text NOT NULL,
+  value jsonb NOT NULL,
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(tenant_id, key)
+);
+ALTER TABLE tenant_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ts_read ON tenant_settings FOR SELECT
+  USING (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
+CREATE POLICY ts_write ON tenant_settings FOR ALL
+  USING (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid)
+  WITH CHECK (tenant_id = (auth.jwt() ->> 'tenant_id')::uuid);
+
+-- 3. API keys per tenant
+CREATE TABLE tenant_api_keys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  hashed_key text NOT NULL UNIQUE,
+  scopes text[] NOT NULL DEFAULT '{}',
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz DEFAULT now(),
+  revoked_at timestamptz
+);
+-- + RLS
+
+-- 4. Shared helpers
+CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid LANGUAGE sql STABLE AS $$
+  SELECT (auth.jwt() ->> 'tenant_id')::uuid;
+$$;
+CREATE OR REPLACE FUNCTION is_super_admin() RETURNS boolean LANGUAGE sql STABLE AS $$
+  SELECT (auth.jwt() ->> 'role') = 'super_admin';
+$$;
+
+-- 5. Storage buckets: enforce path prefix {tenant_id}/{workspace_id}/...
+-- Add a Supabase storage policy for bucket 'tenant-files':
+-- USING ((storage.foldername(name))[1] = current_tenant_id()::text)
+
+BUSINESS RULES:
+- Update Supabase JWT hook to inject `tenant_id` and `workspace_ids` claims
+- Add TypeScript helper `useTenantId()` that reads claim
+- Every new table created from here on MUST include tenant_id + RLS
+
+ACCEPTANCE TESTS:
+- tests/multi-tenant.spec.ts:
+  - Create 2 tenants, 1 user in each
+  - Tenant A user inserts rows into projects, rfis, punch_items
+  - Tenant B user queries same tables — must return 0 rows
+  - Tenant B user attempts INSERT with tenant_id=A — must fail with RLS
+- Storage: upload file as tenant A, attempt download as tenant B — 403</pre>
+</div>
+</div>
+
+<!-- A2 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A2 · Phase 1</div><div class="prompt-title">RBAC Permission Templates</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1 (Multi-tenant). <strong>Blocks:</strong> every module with permission gating.</div>
+<div class="prompt-body">
+<pre>GOAL: Add per-tenant Permission Templates that Owners can clone, customize, and assign.
+
+TABLES:
+CREATE TABLE permission_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  is_system boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE permission_template_grants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id uuid NOT NULL REFERENCES permission_templates(id) ON DELETE CASCADE,
+  module text NOT NULL,            -- 'rfis' | 'submittals' | 'budget' | ...
+  action text NOT NULL,            -- 'view' | 'create' | 'edit' | 'delete' | 'approve'
+  level text NOT NULL,             -- 'none' | 'read' | 'standard' | 'admin'
+  UNIQUE(template_id, module, action)
+);
+CREATE TABLE user_template_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  template_id uuid NOT NULL REFERENCES permission_templates(id) ON DELETE CASCADE,
+  workspace_id uuid REFERENCES workspaces(id),
+  project_id uuid REFERENCES projects(id),
+  created_at timestamptz DEFAULT now()
+);
+-- + tenant_id RLS on all three
+
+COMPONENTS:
+- src/pages/admin/PermissionTemplatesPage.tsx     — list view
+- src/components/admin/PermissionTemplateEditor.tsx — matrix editor
+- src/components/admin/TemplateAssignmentDialog.tsx — assign to user
+- src/hooks/usePermissionTemplates.ts              — CRUD hooks
+- src/lib/permissions.ts                           — `can(userId, action, resource)`
+
+ROUTES:
+- /admin/permission-templates
+- /admin/permission-templates/:id
+
+BUSINESS RULES:
+- Seed system templates: Super Admin, Owner, Administrator, Project Manager,
+  Superintendent, Inspector, Clerk, Subcontractor, Viewer, Standard User
+  (match existing 11-tier hierarchy)
+- System templates: is_system=true, read-only UI
+- User effective permissions = union of all user_template_assignments
+- `can()` helper: SELECT max level across user's templates for given module+action
+- Log every template change to activity_log
+
+ACCEPTANCE TESTS:
+- Owner creates template "Finance Lead", grants budget.view/edit/approve=admin
+- Assign template to user Bob
+- Bob can view Budget; Bob cannot view RFIs (no grant)
+- Clone "Project Manager" to "Senior PM", rename, verify isolation
+- Attempt to delete system template — blocked</pre>
+</div>
+</div>
+
+<!-- A3 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A3 · Phase 1</div><div class="prompt-title">Distribution Lists</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. <strong>Blocks:</strong> RFIs, Submittals, Meetings, Change Orders, Daily Reports.</div>
+<div class="prompt-body">
+<pre>GOAL: Named, reusable recipient groups that attach to every workflow.
+
+TABLES:
+CREATE TABLE distribution_lists (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  workspace_id uuid REFERENCES workspaces(id),
+  project_id uuid REFERENCES projects(id),
+  name text NOT NULL,
+  description text,
+  scope text NOT NULL CHECK (scope IN ('tenant','workspace','project')),
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE distribution_list_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_id uuid NOT NULL REFERENCES distribution_lists(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id),
+  contact_id uuid REFERENCES crm_contacts(id),
+  email_override text,
+  role_label text,
+  CHECK (user_id IS NOT NULL OR contact_id IS NOT NULL OR email_override IS NOT NULL)
+);
+CREATE TABLE workflow_distributions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  record_id uuid NOT NULL,
+  record_type text NOT NULL,        -- 'rfi' | 'submittal' | 'change_order' | ...
+  list_id uuid REFERENCES distribution_lists(id),
+  user_id uuid REFERENCES auth.users(id),
+  reason text CHECK (reason IN ('fyi','response','approve'))
+);
+-- + RLS tenant_id scoping
+
+COMPONENTS:
+- src/components/shared/DistributionPicker.tsx — used by every workflow form
+- src/pages/settings/DistributionListsPage.tsx — manage lists
+- src/components/settings/DistributionListEditor.tsx
+- src/hooks/useDistributionLists.ts
+
+ROUTES:
+- /settings/distribution-lists
+- /settings/distribution-lists/:id
+
+BUSINESS RULES:
+- Function `resolve_distribution(list_ids[], user_ids[]) RETURNS set of recipients`
+  that returns unique (user|contact|email) rows
+- When sending notifications, always dedupe by email
+- Write workflow_distributions rows at time of send so audit trail is immutable
+
+ACCEPTANCE TESTS:
+- Create list "OAC Meeting", add 3 users + 2 external emails
+- Reuse in RFI form — confirms picker loads the list
+- Send RFI notify — 5 unique emails fire
+- Add same user to two lists attached to same RFI — still 1 notification
+- Tenant A's list invisible to tenant B</pre>
+</div>
+</div>
+
+<!-- A4 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A4 · Phase 1</div><div class="prompt-title">Ball-in-Court Workflow Engine</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1, A2. <strong>Blocks:</strong> every workflow module (RFI, Submittal, Punch, CO, Meeting).</div>
+<div class="prompt-body">
+<pre>GOAL: Generic workflow engine. Every workflow-bearing module creates a
+workflow_instances row. User dashboard shows "My Court" across all modules.
+
+TABLES:
+CREATE TABLE workflow_definitions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  module text NOT NULL,                 -- 'rfi' | 'submittal' | ...
+  name text NOT NULL,
+  version int NOT NULL DEFAULT 1,
+  is_default boolean DEFAULT false,
+  UNIQUE(tenant_id, module, version)
+);
+CREATE TABLE workflow_steps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  definition_id uuid NOT NULL REFERENCES workflow_definitions(id) ON DELETE CASCADE,
+  sequence int NOT NULL,
+  state_name text NOT NULL,
+  assignee_rule text NOT NULL,           -- 'role:PM' | 'field:responsible_contractor_id' | 'explicit'
+  due_offset_days int,
+  auto_actions jsonb DEFAULT '{}'::jsonb,
+  UNIQUE(definition_id, sequence)
+);
+CREATE TABLE workflow_instances (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  definition_id uuid NOT NULL REFERENCES workflow_definitions(id),
+  record_id uuid NOT NULL,
+  record_type text NOT NULL,
+  project_id uuid REFERENCES projects(id),
+  current_step int NOT NULL,
+  current_assignee_id uuid REFERENCES auth.users(id),
+  due_at timestamptz,
+  state text NOT NULL,                   -- 'open' | 'approved' | 'closed' | 'rejected'
+  created_at timestamptz DEFAULT now(),
+  closed_at timestamptz,
+  INDEX idx_court (current_assignee_id, state) WHERE state = 'open'
+);
+CREATE TABLE workflow_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  instance_id uuid NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
+  from_step int,
+  to_step int,
+  actor_id uuid REFERENCES auth.users(id),
+  action text NOT NULL,                  -- 'submit' | 'approve' | 'reject' | 'return' | 'close'
+  comment text,
+  occurred_at timestamptz DEFAULT now()
+);
+-- + RLS tenant_id
+
+COMPONENTS:
+- src/pages/dashboard/MyCourtPage.tsx — all open instances assigned to me
+- src/components/workflow/BallInCourtBadge.tsx — shows current assignee + due
+- src/components/workflow/WorkflowHistoryTimeline.tsx — events chronology
+- src/components/admin/WorkflowEditor.tsx — Owner customizes steps per module
+- src/hooks/useWorkflow.ts — create instance, advance, my-court query
+- src/lib/workflow-engine.ts — state transition functions
+
+ROUTES:
+- /dashboard/my-court
+- /admin/workflows
+
+BUSINESS RULES:
+- Seed default definitions for: rfi, submittal, punch_item, change_order,
+  potential_change_order, prime_change_order, commitment_change_order,
+  prime_pay_application, commitment_pay_application, inspection
+- When a workflow-bearing record is created, call
+  `create_workflow_instance(record_id, record_type, definition_id)`
+- On user action, call `advance_workflow(instance_id, action, comment)` which
+  writes event row and updates current_step + current_assignee_id + due_at
+- Nightly job: escalate overdue instances (configurable per tenant)
+
+ACCEPTANCE TESTS:
+- Create RFI — workflow_instance created with current_step=1 assigned to RFI Manager
+- Dashboard "My Court" shows the RFI for the assigned user
+- Assignee submits response — instance advances to step 2
+- Second approver closes — instance state='closed', closed_at set
+- Reject action at step 2 — instance returns to step 1 with event logged</pre>
+</div>
+</div>
+
+<!-- A5 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A5 · Phase 1</div><div class="prompt-title">Cost Code Library (WBS)</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. <strong>Blocks:</strong> every financial module (Budget, Commitments, Change Events, Change Orders, Direct Costs).</div>
+<div class="prompt-body">
+<pre>GOAL: Canonical Cost Code library (CSI MasterFormat default), per-tenant clonable,
+per-project customizable. Every financial object has cost_code_id + cost_type_id.
+
+TABLES:
+CREATE TABLE cost_code_libraries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  source text NOT NULL CHECK (source IN ('csi','custom','imported')),
+  is_default boolean DEFAULT false
+);
+CREATE TABLE cost_codes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  library_id uuid NOT NULL REFERENCES cost_code_libraries(id) ON DELETE CASCADE,
+  code text NOT NULL,                   -- '03 30 00'
+  description text NOT NULL,
+  parent_id uuid REFERENCES cost_codes(id),
+  level int NOT NULL,                   -- 1=division, 2=section, 3=subsection
+  is_active boolean DEFAULT true,
+  UNIQUE(library_id, code)
+);
+CREATE TABLE cost_types (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  code text NOT NULL,                   -- 'L' | 'M' | 'E' | 'S' | 'O' | 'OTH'
+  name text NOT NULL,                   -- 'Labor' | 'Material' | ...
+  UNIQUE(tenant_id, code)
+);
+CREATE TABLE project_cost_code_overrides (
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  cost_code_id uuid NOT NULL REFERENCES cost_codes(id) ON DELETE CASCADE,
+  alias text,
+  is_enabled boolean DEFAULT true,
+  PRIMARY KEY (project_id, cost_code_id)
+);
+CREATE INDEX ON cost_codes (library_id, parent_id);
+
+COMPONENTS:
+- src/components/shared/CostCodePicker.tsx     — virtualized, used everywhere
+- src/components/shared/CostTypePicker.tsx
+- src/pages/admin/CostCodeLibrariesPage.tsx    — list
+- src/pages/admin/CostCodeLibraryEditor.tsx    — tree editor + CSV import
+- src/pages/projects/ProjectCostCodesPage.tsx  — per-project picker
+- src/hooks/useCostCodes.ts
+- src/lib/csi-masterformat-2018.ts             — seed data
+
+ROUTES:
+- /admin/cost-codes
+- /admin/cost-codes/:libraryId
+- /projects/:projectId/settings/cost-codes
+
+BUSINESS RULES:
+- On tenant creation, clone "CSI MasterFormat 2018 (System)" into tenant's library
+- Seed cost_types: L/M/E/S/O/OTH
+- CSV import columns: code, description, parent_code
+- CostCodePicker uses react-window for 5000+ rows, <100ms filter
+- Prevent delete of cost_code if referenced in any financial table
+
+ACCEPTANCE TESTS:
+- Tenant seeded with CSI library on creation
+- Owner clones library, edits, renames; original intact
+- Upload CSV of 200 custom codes — all inserted with parents resolved
+- CostCodePicker loads under 100ms with 5000 rows
+- Cannot delete cost code that has budget line using it</pre>
+</div>
+</div>
+
+<!-- A6 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A6 · Phase 1</div><div class="prompt-title">Stripe Billing &amp; Plans</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. <strong>Blocks:</strong> feature gating, self-serve onboarding.</div>
+<div class="prompt-body">
+<pre>GOAL: Plan-based billing. Tenants subscribe to Starter/Pro/Enterprise via Stripe
+Customer Portal. Seat limits enforced at invite time. Plan features gate modules.
+
+TABLES:
+CREATE TABLE plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,            -- 'starter' | 'pro' | 'enterprise'
+  name text NOT NULL,
+  stripe_price_id text NOT NULL,
+  seat_limit int,                        -- null = unlimited
+  features jsonb NOT NULL DEFAULT '{}', -- { api: false, sso: false, ... }
+  price_cents int NOT NULL,
+  is_public boolean DEFAULT true
+);
+CREATE TABLE tenant_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  plan_id uuid NOT NULL REFERENCES plans(id),
+  stripe_subscription_id text UNIQUE,
+  status text NOT NULL,                 -- 'trialing' | 'active' | 'past_due' | 'canceled'
+  current_period_end timestamptz,
+  seats int NOT NULL DEFAULT 1,
+  trial_end timestamptz
+);
+CREATE TABLE usage_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  metric text NOT NULL,                 -- 'api_call' | 'storage_gb' | 'active_project'
+  quantity numeric NOT NULL,
+  occurred_at timestamptz DEFAULT now()
+);
+CREATE TABLE invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  stripe_invoice_id text UNIQUE,
+  amount_cents int NOT NULL,
+  status text NOT NULL,
+  pdf_url text,
+  created_at timestamptz DEFAULT now()
+);
+
+COMPONENTS:
+- src/pages/admin/BillingPage.tsx               — plan, seats, invoices, portal link
+- src/pages/marketing/PricingPage.tsx           — public pricing
+- src/components/billing/PlanCard.tsx
+- src/components/billing/SeatUsageBanner.tsx
+- src/hooks/useSubscription.ts                  — features, seat check
+- supabase/functions/stripe-webhook/index.ts    — idempotent event handler
+- supabase/functions/create-checkout/index.ts   — returns Stripe checkout URL
+
+ROUTES:
+- /admin/billing
+- /pricing (public)
+
+BUSINESS RULES:
+- Seed plans: starter ($49/seat/mo), pro ($99/seat/mo), enterprise (contact sales)
+- features jsonb keys: { sso, scim, api, webhooks, subcontractor_portal,
+  owner_portal, reporting_advanced, custom_workflows }
+- Invite flow checks current_seats < seat_limit; block with upgrade modal
+- useFeature('sso') hook reads plan.features to gate UI
+- Webhook handles: customer.subscription.created|updated|deleted, invoice.paid,
+  invoice.payment_failed — idempotent via stripe event_id dedup
+
+ACCEPTANCE TESTS:
+- New tenant starts on starter trial (14 days)
+- Seat limit 5; inviting 6th user blocks with upgrade CTA
+- Test webhook: flip status to past_due → login shows banner + limited features
+- Checkout from /admin/billing → Stripe portal → success → local status updates
+- SSO UI hidden on starter plan, visible on enterprise</pre>
+</div>
+</div>
+
+<!-- A7 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec A7 · Phase 1</div><div class="prompt-title">SSO / SAML / SCIM</div></div>
+<div class="prompt-badges"><span class="badge p1">Phase 1</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1, A6 (feature gate). Enterprise-only, ship behind feature flag.</div>
+<div class="prompt-body">
+<pre>GOAL: Enterprise SSO via SAML 2.0 + automatic provisioning via SCIM 2.0.
+
+TABLES:
+CREATE TABLE tenant_sso_configs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
+  provider text NOT NULL CHECK (provider IN ('saml','oidc')),
+  idp_metadata_xml text,
+  idp_sso_url text,
+  idp_entity_id text,
+  acs_url text NOT NULL,
+  sp_entity_id text NOT NULL,
+  certificate text,
+  is_enforced boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE tenant_scim_tokens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  hashed_token text NOT NULL UNIQUE,
+  created_at timestamptz DEFAULT now(),
+  revoked_at timestamptz
+);
+CREATE TABLE sso_login_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  user_id uuid REFERENCES auth.users(id),
+  provider text,
+  ip inet,
+  success boolean,
+  error text,
+  occurred_at timestamptz DEFAULT now()
+);
+
+COMPONENTS:
+- src/pages/admin/SSOConfigPage.tsx            — upload IdP metadata, test SAML
+- src/pages/admin/SCIMConfigPage.tsx           — generate tokens, endpoints
+- supabase/functions/saml-acs/index.ts         — SAML assertion consumer
+- supabase/functions/scim-users/index.ts       — /Users endpoint
+- supabase/functions/scim-groups/index.ts      — /Groups endpoint
+- src/hooks/useSSO.ts
+
+ROUTES:
+- /admin/sso
+- /admin/scim
+- /auth/sso/:tenantSlug (public redirect)
+
+BUSINESS RULES:
+- Use samlify or @node-saml/node-saml in Edge Function
+- SCIM endpoints: GET/POST/PATCH/DELETE /Users, /Groups per RFC 7644
+- SAML assertion maps email → user; auto-provision if SCIM disabled
+- is_enforced=true blocks password login tenant-wide
+- All SSO errors logged to sso_login_events with error reason
+
+ACCEPTANCE TESTS:
+- Upload Okta metadata → SAML test login succeeds and creates user
+- Enforce SSO → password login blocked for that tenant
+- SCIM: POST /Users with Okta payload → user created
+- SCIM: PATCH /Users/{id} disable=true → user deactivated in tenant
+- Failed SAML assertion logged with cleartext reason</pre>
+</div>
+</div>
+
+</div>
+<!-- END PHASE 1 -->
+
+<div class="divider"></div>
+
+<!-- ========================================== -->
+<!-- PHASE 2: FIELD PARITY -->
+<!-- ========================================== -->
+<div class="group">
+<div class="group-label">Phase 2 · 12 prompts · Field Parity</div>
+<h2 class="group-heading">Phase 2 Prompts — Field Parity</h2>
+<p class="group-desc">The daily tools. Directory, Drawings, Specs, Photos, Documents, then the workflow modules: RFIs, Submittals, Punch, Daily Log, Meetings, Schedule, Incidents.</p>
+
+<!-- B1 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec B1 · Phase 2</div><div class="prompt-title">Project Directory</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1, A2. Enhance existing organizations + project_team_members + crm_contacts.</div>
+<div class="prompt-body">
+<pre>GOAL: Unified People + Companies Directory per project. Every workflow picker
+(Responsible Contractor, RFI Manager, etc.) draws from this.
+
+TABLES:
+ALTER TABLE organizations
+  ADD COLUMN vendor_number text,
+  ADD COLUMN tax_id text,
+  ADD COLUMN dbe_mbe_flags jsonb DEFAULT '{}',
+  ADD COLUMN insurance_expiry date,
+  ADD COLUMN bonding_capacity_cents bigint;
+
+CREATE TABLE project_directory_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id),
+  contact_id uuid REFERENCES crm_contacts(id),
+  organization_id uuid NOT NULL REFERENCES organizations(id),
+  role_label text,
+  is_key_contact boolean DEFAULT false,
+  permission_template_id uuid REFERENCES permission_templates(id),
+  created_at timestamptz DEFAULT now(),
+  CHECK (user_id IS NOT NULL OR contact_id IS NOT NULL)
+);
+CREATE TABLE organization_trades (
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  cost_code_id uuid NOT NULL REFERENCES cost_codes(id),
+  PRIMARY KEY (organization_id, cost_code_id)
+);
+
+COMPONENTS:
+- src/pages/projects/ProjectDirectoryPage.tsx    — tabs: People, Companies
+- src/components/directory/AddPersonDialog.tsx   — search existing OR create new
+- src/components/directory/CompanyDrawer.tsx     — vendor details, insurance, trades
+- src/components/shared/PersonPicker.tsx         — key-contact-first; used everywhere
+- src/components/shared/OrgPicker.tsx            — filtered by trade (cost code)
+- src/hooks/useDirectory.ts
+
+ROUTES:
+- /projects/:projectId/directory
+
+BUSINESS RULES:
+- Dedup on email for people, on tax_id or name+city for companies
+- CSV import with preview + mapping
+- "Key Contact" toggle promotes person to top of pickers
+- Removing from directory doesn't delete user/contact — only the entry
+
+ACCEPTANCE TESTS:
+- Add 3 orgs with trade codes (cost_codes 03 30 00, 16 00 00, 23 00 00)
+- OrgPicker filter by trade = Electrical only shows the one with 16 00 00
+- Invite person from Directory — creates user if not exists
+- Import CSV of 50 subs — all inserted, duplicates flagged, no duplicates created</pre>
+</div>
+</div>
+
+<!-- B2 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec B2 · Phase 2</div><div class="prompt-title">Drawings</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. <strong>Blocks:</strong> RFI drawing links, Punch pin-drop, markup-based workflows.</div>
+<div class="prompt-body">
+<pre>GOAL: Versioned drawing sheet index with PDF viewer, markup, pin-drop, and
+revision comparison. Mobile-friendly for field use.
+
+TABLES:
+CREATE TABLE drawing_sets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  set_date date,
+  discipline text,
+  uploaded_by uuid REFERENCES auth.users(id),
+  status text DEFAULT 'processing',      -- processing | active | archived
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE drawings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  set_id uuid REFERENCES drawing_sets(id),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  sheet_number text NOT NULL,
+  title text,
+  discipline text,
+  current_revision_id uuid,
+  thumbnail_url text,
+  UNIQUE(project_id, sheet_number)
+);
+CREATE TABLE drawing_revisions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  drawing_id uuid NOT NULL REFERENCES drawings(id) ON DELETE CASCADE,
+  rev_number text NOT NULL,
+  pdf_path text NOT NULL,
+  uploaded_at timestamptz DEFAULT now(),
+  uploaded_by uuid REFERENCES auth.users(id),
+  supersedes_id uuid REFERENCES drawing_revisions(id),
+  is_current boolean DEFAULT true
+);
+CREATE TABLE drawing_markups (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  revision_id uuid NOT NULL REFERENCES drawing_revisions(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id),
+  geometry jsonb NOT NULL,              -- { type: 'pin'|'rect'|'arrow', x, y, w, h, path }
+  color text DEFAULT '#C8962E',
+  text text,
+  linked_record_id uuid,
+  linked_record_type text,
+  is_published boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+COMPONENTS:
+- src/pages/projects/DrawingsPage.tsx              — sheet index grid
+- src/pages/projects/DrawingViewerPage.tsx         — pan/zoom PDF viewer
+- src/components/drawings/DrawingUploadDialog.tsx  — bulk PDF upload
+- src/components/drawings/MarkupToolbar.tsx        — pin, rect, arrow, text, measure
+- src/components/drawings/RevisionSlider.tsx       — compare current vs previous
+- src/components/drawings/PinLinkDialog.tsx        — link pin to RFI/Punch/Photo
+- src/hooks/useDrawings.ts
+- src/lib/pdf-viewer.ts                            — react-pdf or pdf.js wrapper
+
+ROUTES:
+- /projects/:projectId/drawings
+- /projects/:projectId/drawings/:drawingId
+
+BUSINESS RULES:
+- On set upload, Edge Function splits PDF into per-sheet PDFs; OCR sheet number
+  from title block region (configurable regex per tenant)
+- New revision detected when sheet_number matches existing drawing in same project
+- Set supersedes_id and flip is_current booleans in same transaction
+- Storage path: {tenant_id}/{project_id}/drawings/{revision_id}.pdf
+- Markups default is_published=false (private); "Publish" button toggles
+
+ACCEPTANCE TESTS:
+- Upload 20-sheet PDF → 20 drawing rows created with sheet numbers extracted
+- Upload new PDF with same sheet number → creates new revision, flips is_current
+- Viewer loads 50MB sheet under 2s with pdf.js lazy loading
+- Drop pin → links to RFI; RFI detail page shows "Drawing A-101 pin"
+- Mobile viewport: drawings list accessible, viewer renders</pre>
+</div>
+</div>
+
+<!-- B3 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec B3 · Phase 2</div><div class="prompt-title">Specifications</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A5 (Cost Codes). <strong>Blocks:</strong> RFI spec refs, Submittal Register auto-generation.</div>
+<div class="prompt-body">
+<pre>GOAL: CSI-divisioned spec book. Section is the canonical reference used by
+RFIs, Submittals, Punch, Meetings. Register auto-generates submittals.
+
+TABLES:
+CREATE TABLE specification_sets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  set_date date,
+  status text DEFAULT 'active',
+  pdf_path text
+);
+CREATE TABLE specification_sections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  set_id uuid NOT NULL REFERENCES specification_sets(id) ON DELETE CASCADE,
+  division text NOT NULL,                -- '03 Concrete'
+  section_number text NOT NULL,          -- '03 30 00'
+  title text NOT NULL,
+  pdf_page_start int,
+  pdf_page_end int,
+  revision text DEFAULT 'A',
+  cost_code_id uuid REFERENCES cost_codes(id)
+);
+CREATE TABLE spec_submittal_requirements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  section_id uuid NOT NULL REFERENCES specification_sections(id) ON DELETE CASCADE,
+  requirement_text text NOT NULL,
+  submittal_type text,                   -- 'shop_drawing' | 'product_data' | 'sample' | ...
+  is_generated boolean DEFAULT false
+);
+
+COMPONENTS:
+- src/pages/projects/SpecificationsPage.tsx       — division/section index
+- src/components/specs/SpecSectionViewer.tsx      — pdf page range viewer
+- src/components/specs/SpecUploadDialog.tsx       — upload + section extraction
+- src/components/shared/SpecSectionPicker.tsx     — reused across workflows
+- src/components/specs/GenerateRegisterButton.tsx — auto-create draft submittals
+- src/hooks/useSpecs.ts
+
+ROUTES:
+- /projects/:projectId/specifications
+- /projects/:projectId/specifications/:sectionId
+
+BUSINESS RULES:
+- Upload combined spec PDF → Edge Function runs heuristic: split on lines
+  matching /^SECTION \d{2} \d{2} \d{2}/ or table of contents lines
+- Link cost_code by first 6 digits of section number (CSI maps 1:1)
+- "Generate submittal register" action reads spec_submittal_requirements
+  and creates project_submittals in Draft state with spec_section FK
+
+ACCEPTANCE TESTS:
+- Upload 500-page spec PDF → Division/Section rows extracted, page ranges set
+- Edit section manually when OCR misses a line
+- Generate register → 25 draft submittals created, each with spec_section link
+- SpecSectionPicker in RFI form finds sections by number prefix search</pre>
+</div>
+</div>
+
+<!-- B4 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec B4 · Phase 2</div><div class="prompt-title">Photos</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. Enhance existing Documents/attachments model.</div>
+<div class="prompt-body">
+<pre>GOAL: Geo+date-stamped photo library with album grouping and inline links from
+Daily Log, RFI, Punch, Observation.
+
+TABLES:
+CREATE TABLE photos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  uploader_id uuid REFERENCES auth.users(id),
+  storage_path text NOT NULL,
+  thumb_path text,
+  taken_at timestamptz,
+  lat numeric,
+  lng numeric,
+  exif jsonb,
+  caption text,
+  is_private boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE photo_albums (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  created_by uuid REFERENCES auth.users(id)
+);
+CREATE TABLE photo_album_items (
+  album_id uuid NOT NULL REFERENCES photo_albums(id) ON DELETE CASCADE,
+  photo_id uuid NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  sort_order int DEFAULT 0,
+  PRIMARY KEY (album_id, photo_id)
+);
+CREATE TABLE photo_links (
+  photo_id uuid NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  linked_record_id uuid NOT NULL,
+  linked_record_type text NOT NULL,
+  PRIMARY KEY (photo_id, linked_record_id, linked_record_type)
+);
+CREATE TABLE photo_tags (
+  photo_id uuid NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  tag text NOT NULL,
+  PRIMARY KEY (photo_id, tag)
+);
+
+COMPONENTS:
+- src/pages/projects/PhotosPage.tsx               — timeline + grid views
+- src/components/photos/PhotoUploader.tsx         — bulk drop + mobile camera
+- src/components/photos/PhotoLightbox.tsx
+- src/components/photos/AlbumDialog.tsx
+- src/components/shared/PhotoAttachPanel.tsx      — inline on RFI/Punch/Daily
+- src/hooks/usePhotos.ts
+- supabase/functions/photo-process/index.ts       — EXIF extract + thumbnail
+
+ROUTES:
+- /projects/:projectId/photos
+- /projects/:projectId/photos/albums/:albumId
+
+BUSINESS RULES:
+- On upload, Edge Function extracts EXIF (taken_at, lat, lng, camera),
+  generates 400px webp thumbnail, stores under thumbs/
+- Timeline view groups by day (taken_at or created_at fallback)
+- photo_links is the canonical link table; any module can attach photos
+
+ACCEPTANCE TESTS:
+- Upload 20 JPGs with EXIF → taken_at + GPS populated
+- Upload photo from mobile camera with location permission → lat/lng set
+- Create album with 10 photos → album page renders lightbox
+- RFI detail page shows attached photos inline
+- Private photos hidden from subcontractor portal view</pre>
+</div>
+</div>
+
+<!-- B5 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec B5 · Phase 2</div><div class="prompt-title">Documents + Transmittals</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A3 (Distribution). Enhance existing document_folders + organization_documents.</div>
+<div class="prompt-body">
+<pre>GOAL: Folder tree + versioning + transmittals. Folder-level permissions. Inline
+preview for PDF / Office docs.
+
+TABLES:
+ALTER TABLE document_folders
+  ADD COLUMN permissions jsonb DEFAULT '{}',
+  ADD COLUMN is_private boolean DEFAULT false,
+  ADD COLUMN parent_id uuid REFERENCES document_folders(id);
+
+CREATE TABLE documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid REFERENCES projects(id) ON DELETE CASCADE,
+  folder_id uuid REFERENCES document_folders(id),
+  name text NOT NULL,
+  current_version int NOT NULL DEFAULT 1,
+  mime text,
+  size_bytes bigint,
+  checked_out_by uuid REFERENCES auth.users(id),
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE document_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id uuid NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  version int NOT NULL,
+  storage_path text NOT NULL,
+  uploaded_by uuid REFERENCES auth.users(id),
+  note text,
+  uploaded_at timestamptz DEFAULT now(),
+  UNIQUE(document_id, version)
+);
+CREATE TABLE transmittals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id),
+  number text NOT NULL,
+  subject text NOT NULL,
+  from_user_id uuid REFERENCES auth.users(id),
+  distribution_list_id uuid REFERENCES distribution_lists(id),
+  sent_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE transmittal_items (
+  transmittal_id uuid NOT NULL REFERENCES transmittals(id) ON DELETE CASCADE,
+  document_id uuid NOT NULL REFERENCES documents(id),
+  version int NOT NULL,
+  PRIMARY KEY (transmittal_id, document_id)
+);
+
+COMPONENTS:
+- src/pages/projects/DocumentsPage.tsx           — folder tree + drag-drop
+- src/components/documents/DocumentPreviewer.tsx — PDF/Office preview
+- src/components/documents/NewVersionDialog.tsx
+- src/components/documents/TransmittalDialog.tsx
+- src/hooks/useDocuments.ts
+
+ROUTES:
+- /projects/:projectId/documents
+- /projects/:projectId/transmittals
+- /projects/:projectId/transmittals/:id
+
+BUSINESS RULES:
+- folder.permissions jsonb: { template_id: level } overlay on top of user templates
+- New version upload writes new document_versions row, bumps documents.current_version
+- Transmittal number auto-increments per project with prefix TRN-
+- Office preview via Supabase signed URL + office-web-viewer
+- Activity log entry for every version upload, transmittal send
+
+ACCEPTANCE TESTS:
+- Create folder tree 3 levels deep; drag-drop rearrange
+- Upload doc v1, then v2; history shows both, v2 marked current
+- Create transmittal with 3 docs to a distribution list — emails fire once each
+- Private folder invisible to users without view permission</pre>
+</div>
+</div>
+
+<!-- C1 RFI -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec C1 · Phase 2</div><div class="prompt-title">RFIs (field parity)</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A3, A4, A5, B2, B3. Enhance existing project_rfis + RFIDialog.</div>
+<div class="prompt-body">
+<pre>GOAL: Bring RFIs to full Procore parity — spec/drawing anchors, cost/schedule
+impact, multi-response, ball-in-court, distribution, PDF export.
+
+TABLES:
+ALTER TABLE project_rfis
+  ADD COLUMN rfi_number text,            -- auto-incremented per project, RFI-NNNN
+  ADD COLUMN rfi_manager_id uuid REFERENCES auth.users(id),
+  ADD COLUMN responsible_contractor_org_id uuid REFERENCES organizations(id),
+  ADD COLUMN received_from text,
+  ADD COLUMN specification_section_id uuid REFERENCES specification_sections(id),
+  ADD COLUMN drawing_number text,
+  ADD COLUMN schedule_impact_days int DEFAULT 0,
+  ADD COLUMN cost_impact_cents bigint DEFAULT 0,
+  ADD COLUMN cost_code_id uuid REFERENCES cost_codes(id),
+  ADD COLUMN location_path text,
+  ADD COLUMN reference text,
+  ADD COLUMN stage text DEFAULT 'draft',
+  ADD COLUMN date_initiated date DEFAULT current_date;
+
+CREATE TABLE rfi_responses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  rfi_id uuid NOT NULL REFERENCES project_rfis(id) ON DELETE CASCADE,
+  responder_id uuid REFERENCES auth.users(id),
+  body text NOT NULL,
+  is_official boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE TABLE rfi_attachments (
+  rfi_id uuid NOT NULL REFERENCES project_rfis(id) ON DELETE CASCADE,
+  document_id uuid REFERENCES documents(id),
+  photo_id uuid REFERENCES photos(id),
+  drawing_markup_id uuid REFERENCES drawing_markups(id)
+);
+
+COMPONENTS:
+- src/components/projects/RFIDialog.tsx  (refactor) — full Procore form layout
+- src/components/projects/RFIList.tsx    (refactor) — columns match Procore
+- src/components/projects/RFIDetailSheet.tsx (refactor) — thread view
+- src/components/projects/RFIResponseDialog.tsx
+- src/components/projects/RFIPDFExport.tsx
+- src/hooks/useRFIs.ts                   (extend)
+
+BUSINESS RULES:
+- On create, call create_workflow_instance(rfi.id, 'rfi', default_def_id)
+- rfi_number auto-generated via sequence per project_id
+- Only user with can('rfi','approve') can set response is_official=true
+- Closing RFI: set stage='closed', advance workflow to final step
+- PDF export concatenates question + all responses + attachments
+
+ACCEPTANCE TESTS:
+- New RFI form matches Procore: all 17 fields present
+- Ball-in-Court badge shows current assignee
+- Second response without official flag is still visible; only official=true
+  response triggers workflow advance
+- PDF matches thread with cover page
+- Linked drawing markup renders on RFI detail</pre>
+</div>
+</div>
+
+<!-- C2 Submittals -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec C2 · Phase 2</div><div class="prompt-title">Submittals (multi-step workflow)</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A3, A4, A5, B3, B5. Enhance existing project_submittals.</div>
+<div class="prompt-body">
+<pre>GOAL: Multi-step approver workflow with packages and spec-register generation.
+
+TABLES:
+ALTER TABLE project_submittals
+  ADD COLUMN submittal_number text,
+  ADD COLUMN submittal_type text,         -- shop_drawing | product_data | sample | mockup
+  ADD COLUMN specification_section_id uuid REFERENCES specification_sections(id),
+  ADD COLUMN responsible_contractor_org_id uuid REFERENCES organizations(id),
+  ADD COLUMN submittal_manager_id uuid REFERENCES auth.users(id),
+  ADD COLUMN final_due_date date,
+  ADD COLUMN anticipated_delivery_date date,
+  ADD COLUMN confirmed_delivery_date date,
+  ADD COLUMN actual_delivery_date date,
+  ADD COLUMN cost_code_id uuid REFERENCES cost_codes(id),
+  ADD COLUMN is_private boolean DEFAULT false,
+  ADD COLUMN package_id uuid;
+
+CREATE TABLE submittal_workflow_steps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  submittal_id uuid NOT NULL REFERENCES project_submittals(id) ON DELETE CASCADE,
+  sequence int NOT NULL,
+  approver_id uuid NOT NULL REFERENCES auth.users(id),
+  due_date date,
+  response text,       -- approved | approved_as_noted | revise | rejected | fyi
+  responded_at timestamptz,
+  comment text,
+  UNIQUE(submittal_id, sequence)
+);
+CREATE TABLE submittal_packages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  number text NOT NULL,
+  title text,
+  status text DEFAULT 'draft'
+);
+CREATE TABLE submittal_register_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id),
+  specification_section_id uuid REFERENCES specification_sections(id),
+  required_type text,
+  submittal_id uuid REFERENCES project_submittals(id),
+  status text DEFAULT 'required'   -- required | draft | in_progress | approved
+);
+
+COMPONENTS:
+- src/components/projects/SubmittalsTab.tsx (refactor)
+- src/components/projects/SubmittalDialog.tsx — includes workflow builder
+- src/components/projects/SubmittalWorkflowEditor.tsx — add ordered approvers
+- src/components/projects/SubmittalPackagesPage.tsx
+- src/components/projects/SubmittalRegisterPage.tsx
+- src/hooks/useSubmittals.ts
+
+BUSINESS RULES:
+- On approver response, advance to next step; if all responses received,
+  close workflow with final response being the most severe
+  (rejected > revise > approved_as_noted > approved)
+- Register auto-populates when Spec is uploaded (B3 cross-call)
+- Package rolls up multiple submittals; submit as package sends to distribution
+
+ACCEPTANCE TESTS:
+- Create submittal with 3 ordered approvers; ball-in-court always latest pending
+- Approver 1 approves → Approver 2 gets ball-in-court
+- Approver 2 rejects → submittal status = rejected
+- Register shows section 03 30 00 requires 4 submittals
+- Private submittal hidden from subcontractor portal</pre>
+</div>
+</div>
+
+<!-- C3 Punch -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec C3 · Phase 2</div><div class="prompt-title">Punch List</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A4, B2 (drawings), B4 (photos). Enhance existing punch_items.</div>
+<div class="prompt-body">
+<pre>GOAL: Location-aware defect tracking with drawing pin-drop and evidence-required
+close-out.
+
+TABLES:
+ALTER TABLE punch_items
+  ADD COLUMN location_id uuid,
+  ADD COLUMN item_type text,
+  ADD COLUMN assignee_id uuid REFERENCES auth.users(id),
+  ADD COLUMN final_approver_id uuid REFERENCES auth.users(id),
+  ADD COLUMN priority text DEFAULT 'medium',
+  ADD COLUMN due_date date,
+  ADD COLUMN drawing_markup_id uuid REFERENCES drawing_markups(id),
+  ADD COLUMN evidence_required boolean DEFAULT false,
+  ADD COLUMN closed_at timestamptz,
+  ADD COLUMN closed_by uuid REFERENCES auth.users(id);
+
+CREATE TABLE project_locations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  parent_id uuid REFERENCES project_locations(id),
+  level int DEFAULT 1
+);
+CREATE TABLE punch_item_types (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  name text NOT NULL,
+  default_priority text
+);
+
+COMPONENTS:
+- src/components/projects/PunchListTab.tsx  (refactor)
+- src/components/projects/PunchItemDialog.tsx (refactor)
+- src/components/projects/PunchItemCard.tsx (refactor)
+- src/components/shared/LocationPicker.tsx  — tree picker
+- src/components/projects/PunchPinDrop.tsx  — drawing-based creation
+- src/hooks/usePunchList.ts
+
+BUSINESS RULES:
+- Assignee marks "Ready for Review" → workflow advances to approver
+- Approver either closes (+ closed_at/closed_by) or reopens
+- evidence_required=true blocks close without photo attachment
+- Filter by trade (org linked by assignee) + status + priority + age
+- Bulk actions: reassign, export to PDF
+
+ACCEPTANCE TESTS:
+- Drop pin on drawing → punch item created with location auto-set
+- Submitter sets evidence_required; approver tries close without photo → blocked
+- Bulk reassign 10 items to new sub
+- PDF export of all open items per location</pre>
+</div>
+</div>
+
+<!-- C4 Daily Log -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec C4 · Phase 2</div><div class="prompt-title">Daily Log (14 categories)</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A5 (cost codes), B4 (photos), E2 (incidents).</div>
+<div class="prompt-body">
+<pre>GOAL: Full Procore Daily Log with 14 categories, auto-weather, carryover
+defaults, and PDF export.
+
+TABLES:
+-- Restructure: one parent row per project per date; child tables per category
+ALTER TABLE daily_reports
+  ADD COLUMN report_date date,
+  ADD COLUMN superintendent_id uuid REFERENCES auth.users(id),
+  ADD COLUMN submitted_at timestamptz,
+  ADD COLUMN pdf_path text,
+  ADD CONSTRAINT daily_reports_unique UNIQUE (project_id, report_date);
+
+CREATE TABLE daily_weather (
+  daily_report_id uuid PRIMARY KEY REFERENCES daily_reports(id) ON DELETE CASCADE,
+  low_temp_f int, high_temp_f int,
+  precipitation_in numeric, wind_mph int,
+  conditions text, source text DEFAULT 'openweather'
+);
+CREATE TABLE daily_manpower (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  organization_id uuid REFERENCES organizations(id),
+  trade text, workers int, hours numeric, notes text
+);
+CREATE TABLE daily_equipment (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  equipment_name text, hours_used numeric,
+  organization_id uuid REFERENCES organizations(id)
+);
+CREATE TABLE daily_deliveries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  from_vendor text, description text, received_by text, time_received time
+);
+CREATE TABLE daily_safety_violations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  description text, severity text, corrective_action text
+);
+CREATE TABLE daily_accidents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  brief text, incident_id uuid REFERENCES incidents(id)
+);
+CREATE TABLE daily_quantities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  cost_code_id uuid REFERENCES cost_codes(id), qty numeric, uom text
+);
+CREATE TABLE daily_productivity (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  daily_report_id uuid NOT NULL REFERENCES daily_reports(id) ON DELETE CASCADE,
+  cost_code_id uuid REFERENCES cost_codes(id),
+  actual_qty numeric, actual_hours numeric
+);
+-- Plus simple tables: daily_visitors, daily_calls, daily_notes,
+--   daily_dumpster, daily_scheduled_work
+
+COMPONENTS:
+- src/components/projects/EnhancedDailyReportDialog.tsx (refactor to tabs)
+- src/components/projects/DailyLog/*Tab.tsx            — 14 category sub-tabs
+- src/hooks/useDailyLog.ts
+- supabase/functions/daily-weather/index.ts            — nightly OpenWeather pull
+- src/components/projects/DailyLogPDFExport.tsx
+
+BUSINESS RULES:
+- Weather auto-pulled at 18:00 project-local time using project.site_lat/lng
+- "Copy yesterday" clones manpower, equipment, scheduled_work rows
+- Safety violation "Create Incident" button creates linked incidents draft
+- PDF export is single-page summary with all categories
+
+ACCEPTANCE TESTS:
+- Create daily report for today; weather pulls within 30s
+- Copy yesterday reduces entry time to < 30s
+- PDF matches Procore daily layout
+- Mobile entry works for Superintendent role</pre>
+</div>
+</div>
+
+<!-- C5 Meetings -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec C5 · Phase 2</div><div class="prompt-title">Meetings</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A3, A4. Enhance existing project_meetings + MeetingsTab.</div>
+<div class="prompt-body">
+<pre>GOAL: Template-driven meetings with agendas, attendee sign-in, action items, and
+auto-carryover of open items.
+
+TABLES:
+CREATE TABLE meeting_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  name text NOT NULL,
+  default_agenda jsonb DEFAULT '[]'
+);
+
+ALTER TABLE project_meetings
+  ADD COLUMN template_id uuid REFERENCES meeting_templates(id),
+  ADD COLUMN meeting_type text,
+  ADD COLUMN series_id uuid,
+  ADD COLUMN distribution_list_id uuid REFERENCES distribution_lists(id),
+  ADD COLUMN status text DEFAULT 'scheduled';
+
+CREATE TABLE meeting_agenda_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  meeting_id uuid NOT NULL REFERENCES project_meetings(id) ON DELETE CASCADE,
+  sort_order int NOT NULL,
+  title text NOT NULL,
+  category text,
+  discussion text,
+  decision text,
+  presenter_id uuid REFERENCES auth.users(id),
+  is_carryover boolean DEFAULT false,
+  resolved_at timestamptz
+);
+CREATE TABLE meeting_attendees (
+  meeting_id uuid NOT NULL REFERENCES project_meetings(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id),
+  contact_id uuid REFERENCES crm_contacts(id),
+  attended boolean DEFAULT false,
+  sign_in_at timestamptz,
+  PRIMARY KEY (meeting_id, COALESCE(user_id, contact_id))
+);
+CREATE TABLE meeting_action_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agenda_item_id uuid NOT NULL REFERENCES meeting_agenda_items(id) ON DELETE CASCADE,
+  description text NOT NULL,
+  assignee_id uuid REFERENCES auth.users(id),
+  due_date date,
+  status text DEFAULT 'open'
+);
+
+COMPONENTS:
+- src/components/projects/MeetingsTab.tsx (refactor)
+- src/components/projects/MeetingDialog.tsx
+- src/components/projects/MeetingRunPage.tsx      — live meeting mode
+- src/components/projects/MeetingMinutesPDF.tsx
+- src/components/admin/MeetingTemplatesPage.tsx
+- src/hooks/useMeetings.ts
+
+BUSINESS RULES:
+- New meeting in series auto-includes open action items from prior meeting as
+  carryover agenda items (is_carryover=true)
+- Attendee sign-in via shared public link /meetings/:id/signin
+- Status=published triggers distribution send with PDF minutes
+- Open action items visible in Ball-in-Court
+
+ACCEPTANCE TESTS:
+- Create series "Weekly OAC" with OAC template; agenda populated
+- Attendees sign in from tablet; attended=true
+- Open action items at meeting 1 appear at meeting 2 as carryover
+- Publish sends PDF to distribution list</pre>
+</div>
+</div>
+
+<!-- E1 Schedule -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec E1 · Phase 2</div><div class="prompt-title">Schedule (Gantt + P6/MSP Import)</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A1. Enhance existing project_milestones + GanttChart.</div>
+<div class="prompt-body">
+<pre>GOAL: Full task schedule with predecessors, critical path, and P6/MSP import.
+
+TABLES:
+CREATE TABLE schedules (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  source text CHECK (source IN ('native','p6','msp')),
+  imported_at timestamptz,
+  is_current boolean DEFAULT true
+);
+CREATE TABLE schedule_tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id uuid NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+  task_code text,
+  name text NOT NULL,
+  start_date date,
+  finish_date date,
+  duration_days int,
+  pct_complete numeric DEFAULT 0,
+  is_milestone boolean DEFAULT false,
+  is_critical boolean DEFAULT false,
+  parent_task_id uuid REFERENCES schedule_tasks(id),
+  wbs_path text
+);
+CREATE TABLE schedule_predecessors (
+  task_id uuid NOT NULL REFERENCES schedule_tasks(id) ON DELETE CASCADE,
+  predecessor_task_id uuid NOT NULL REFERENCES schedule_tasks(id),
+  relation text NOT NULL CHECK (relation IN ('FS','SS','FF','SF')),
+  lag_days int DEFAULT 0,
+  PRIMARY KEY (task_id, predecessor_task_id)
+);
+CREATE TABLE schedule_baselines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id uuid NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+  name text, captured_at timestamptz DEFAULT now(),
+  tasks_snapshot jsonb NOT NULL
+);
+
+COMPONENTS:
+- src/pages/projects/SchedulePage.tsx           — Gantt + list toggle
+- src/components/schedule/GanttChart.tsx (refactor) — use gantt-task-react
+- src/components/schedule/ScheduleImportDialog.tsx
+- src/components/schedule/LookAheadFilter.tsx
+- src/components/schedule/BaselineCompare.tsx
+- supabase/functions/parse-p6-xer/index.ts       — XER parser
+- supabase/functions/parse-msp-xml/index.ts      — MS Project XML parser
+- src/hooks/useSchedule.ts
+
+BUSINESS RULES:
+- XER parser maps: TASK → schedule_tasks, TASKPRED → schedule_predecessors
+- Recompute critical path on save using longest-path algorithm
+- 2/4-week look-ahead filter clips tasks to window
+- Schedule tasks link to Daily Log scheduled_work
+
+ACCEPTANCE TESTS:
+- Import sample.xer (500 tasks) — schedule created, predecessors intact
+- Gantt renders with dependencies shown
+- Look-ahead filter reduces visible tasks to next 14 days
+- Capture baseline, shift 5 tasks, compare view shows variance</pre>
+</div>
+</div>
+
+<!-- E2 Incidents -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Spec E2 · Phase 2</div><div class="prompt-title">Incidents (OSHA 300/301)</div></div>
+<div class="prompt-badges"><span class="badge p2">Phase 2</span></div>
+</div>
+<div class="prompt-note"><strong>Depends on:</strong> A4 (workflow), B4 (photos). Enhance existing safety_incidents.</div>
+<div class="prompt-body">
+<pre>GOAL: Structured safety incident capture with OSHA 300/301 PDF generation.
+
+TABLES:
+ALTER TABLE incidents
+  ADD COLUMN incident_type text CHECK (incident_type IN
+    ('injury','illness','near_miss','env','property','theft')),
+  ADD COLUMN severity text,
+  ADD COLUMN osha_recordable boolean DEFAULT false,
+  ADD COLUMN osha_days_away int DEFAULT 0,
+  ADD COLUMN osha_restricted_days int DEFAULT 0,
+  ADD COLUMN osha_case_number text,
+  ADD COLUMN witness_user_ids uuid[];
+
+CREATE TABLE incident_persons (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_id uuid NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id),
+  contact_id uuid REFERENCES crm_contacts(id),
+  role text CHECK (role IN ('injured','witness','first_responder')),
+  injury_description text,
+  body_part text
+);
+CREATE TABLE incident_root_causes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_id uuid NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  category text, description text
+);
+CREATE TABLE incident_corrective_actions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_id uuid NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  description text,
+  assignee_id uuid REFERENCES auth.users(id),
+  due_date date,
+  status text DEFAULT 'open'
+);
+
+COMPONENTS:
+- src/pages/projects/IncidentsPage.tsx
+- src/components/safety/IncidentDialog.tsx     — full form
+- src/components/safety/OSHA300LogPDF.tsx
+- src/components/safety/OSHA301ReportPDF.tsx
+- src/components/safety/RootCauseEditor.tsx
+- src/hooks/useIncidents.ts
+
+BUSINESS RULES:
+- When osha_recordable=true, incident surfaces on OSHA 300 Log
+- Corrective action creates workflow instance (ball-in-court to assignee)
+- Near-miss flow sends thank-you email to reporter
+
+ACCEPTANCE TESTS:
+- Record injury incident with OSHA details; 301 PDF matches form exactly
+- OSHA 300 log annually generated with all recordables
+- Corrective action assigned to super; shows in My Court
+- Near-miss reporter gets thanks email</pre>
+</div>
+</div>
+
+<!-- Seed Phase 2 -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Phase 2 Seed</div><div class="prompt-title">Phase 2 Demo Seed Data</div></div>
+<div class="prompt-badges"><span class="badge copy">optional QA helper</span></div>
+</div>
+<div class="prompt-note">Run after all Phase 2 migrations to have browsable demo data in the tenant.</div>
+<div class="prompt-body">
+<pre>GOAL: Seed demo data for a sandbox project so QA can browse UI immediately.
+
+SQL (wrap in transaction):
+-- 1 org per trade (10 orgs)
+-- 30 people across those orgs
+-- 1 drawing set with 20 sheets
+-- 1 spec set with 15 sections
+-- 10 RFIs in various workflow states
+-- 25 submittals (5 per approver bucket)
+-- 50 punch items across 3 locations
+-- 14 daily reports (last two weeks)
+-- 3 meetings including a series
+-- 1 schedule with 100 tasks + predecessors
+-- 2 incidents (1 recordable, 1 near miss)
+
+Reuse `create_workflow_instance` for every workflow-bearing row so Ball-in-Court
+screen has traffic.
+
+ACCEPTANCE TESTS:
+- Login as PM → dashboard My Court shows 8-12 items
+- Every module index page has rows
+- PDF exports render</pre>
+</div>
+</div>
+
+</div>
+<!-- END PHASE 2 -->
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- PHASE 3 — FINANCIAL CASCADE                                   -->
+<!-- ============================================================ -->
+<div class="group">
+<div class="group-label">Phase 3 · Financial Cascade · ~10 weeks</div>
+<h2 class="group-heading">Phase 3 — The money spine</h2>
+<p class="group-desc">This is where Procore Lite graduates from a collaboration app to a construction-financial system. Every dollar on the project must be traceable through a single cascade: Prime Contract → Commitments (Subs + POs) → Change Events → Change Orders (PCO/CO/CCO) → Direct Costs → Budget. Every row in every module below carries a <code>cost_code_id</code> so the Budget tool can aggregate without joins-of-doom. Run these prompts in order — each one depends on the one before it.</p>
+
+<!-- D1 Prime Contract -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D1</div><div class="prompt-title">Prime Contract (Owner ↔ GC)</div></div>
+<div class="prompt-badges"><span class="badge p3">P0</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">The root of the cascade. Every downstream financial number reconciles back to this one contract value. <strong>Depends on</strong> A1, A5 (cost codes), B5 (documents).</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Prime Contract module — the Owner↔GC contract that anchors
+the entire financial cascade. Must support original contract value, Schedule
+of Values (SOV) broken down by cost code, executed owner change orders,
+approved/pending CO buckets, and billed-to-date tracking from progress
+billings (Pay Apps). Everything rolls up to `revised_contract_value`.
+
+TABLES:
+CREATE TABLE prime_contracts (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id),
+  project_id    UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  contract_no   TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  owner_org_id  UUID NOT NULL REFERENCES directory_orgs(id),
+  gc_org_id     UUID NOT NULL REFERENCES directory_orgs(id),
+  executed_date DATE,
+  original_value NUMERIC(14,2) NOT NULL DEFAULT 0,
+  status        TEXT NOT NULL DEFAULT 'draft'
+                CHECK (status IN ('draft','out_for_signature','executed','closed','terminated')),
+  retainage_pct NUMERIC(5,2) DEFAULT 10.00,
+  workflow_instance_id UUID REFERENCES workflow_instances(id),
+  created_by    UUID NOT NULL REFERENCES auth.users(id),
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (project_id, contract_no)
+);
+
+CREATE TABLE prime_contract_sov_lines (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id          UUID NOT NULL REFERENCES tenants(id),
+  prime_contract_id  UUID NOT NULL REFERENCES prime_contracts(id) ON DELETE CASCADE,
+  line_no            INT NOT NULL,
+  cost_code_id       UUID NOT NULL REFERENCES cost_codes(id),
+  description        TEXT NOT NULL,
+  scheduled_value    NUMERIC(14,2) NOT NULL,
+  UNIQUE (prime_contract_id, line_no)
+);
+
+CREATE TABLE prime_contract_pay_apps (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  prime_contract_id UUID NOT NULL REFERENCES prime_contracts(id),
+  pay_app_no        INT NOT NULL,
+  period_end        DATE NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft','submitted','approved','paid','rejected')),
+  submitted_amount  NUMERIC(14,2),
+  approved_amount   NUMERIC(14,2),
+  retainage_held    NUMERIC(14,2),
+  workflow_instance_id UUID REFERENCES workflow_instances(id),
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (prime_contract_id, pay_app_no)
+);
+
+CREATE TABLE prime_contract_pay_app_lines (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pay_app_id    UUID NOT NULL REFERENCES prime_contract_pay_apps(id) ON DELETE CASCADE,
+  sov_line_id   UUID NOT NULL REFERENCES prime_contract_sov_lines(id),
+  work_this_period NUMERIC(14,2) NOT NULL DEFAULT 0,
+  materials_stored NUMERIC(14,2) NOT NULL DEFAULT 0,
+  pct_complete     NUMERIC(5,2)
+);
+
+-- Derived view
+CREATE OR REPLACE VIEW prime_contract_totals AS
+SELECT pc.id AS prime_contract_id,
+       pc.original_value,
+       COALESCE(SUM(CASE WHEN oco.status='executed' THEN oco.amount END),0) AS executed_co_value,
+       pc.original_value + COALESCE(SUM(CASE WHEN oco.status='executed' THEN oco.amount END),0) AS revised_contract_value,
+       COALESCE(SUM(CASE WHEN pa.status='approved' THEN pa.approved_amount END),0) AS billed_to_date
+FROM prime_contracts pc
+LEFT JOIN change_orders oco ON oco.prime_contract_id = pc.id AND oco.co_type='OCO'
+LEFT JOIN prime_contract_pay_apps pa ON pa.prime_contract_id = pc.id
+GROUP BY pc.id, pc.original_value;
+
+-- RLS on all tables (tenant_id = current_setting('app.tenant_id')::UUID)
+
+COMPONENTS:
+- src/pages/projects/financial/PrimeContractPage.tsx          (tabs: General, SOV, Pay Apps, Change Orders, Documents)
+- src/components/financial/SovTable.tsx                        (editable grid, cost-code lookup)
+- src/components/financial/PayAppBuilder.tsx                   (per-line % complete + materials stored)
+- src/components/financial/PayAppPDFExport.tsx                 (G702/G703-style output)
+- src/hooks/usePrimeContract.ts
+- src/hooks/usePayApp.ts
+- supabase/migrations/xxxx_prime_contract.sql
+
+ROUTES:
+- /projects/:projectId/financials/prime-contract
+- /projects/:projectId/financials/prime-contract/pay-apps/:payAppId
+
+BUSINESS RULES:
+- Prime contract SOV scheduled_value total MUST equal original_value (validator on save)
+- Pay app is locked once status='approved' — no line edits
+- Executed OCOs automatically lift revised_contract_value via view
+- Only one prime_contract per project (enforce via partial unique index)
+- Retainage computed = approved_amount * (retainage_pct / 100); stored on pay_app row
+- PDF export uses G702/G703 column layout and must include company letterhead
+- Ball-in-Court: pay_app goes Submitted → Architect Review → Owner Review → Paid
+- Every pay_app creates a workflow_instance via Prompt A4's service
+
+ACCEPTANCE TESTS:
+- Create prime contract, add SOV totalling original_value → save succeeds
+- Save with mismatched SOV total → blocked with clear error
+- Create pay app 1, enter work_this_period → submitted_amount auto-computes
+- Approve executed OCO $50k → revised_contract_value increases by $50k
+- Reject pay app → status returns to 'draft', editable again
+- Export pay app PDF → opens clean G702/G703 layout</pre>
+</div>
+</div>
+
+<!-- D2 Commitments -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D2</div><div class="prompt-title">Commitments (Subcontracts + POs)</div></div>
+<div class="prompt-badges"><span class="badge p3">P0</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Commitments are how you spend the budget — subs and POs. Every commitment has a cost-code-level SOV and its own Schedule of Values for invoices. <strong>Depends on</strong> B1 (directory), A5 (cost codes), D1 (prime for context).</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Commitments module covering both Subcontracts and Purchase
+Orders. Each commitment has its own SOV broken down by cost code, its own
+invoice stream (sub pay apps / PO invoices), and flows billed-to-date plus
+commitment-change-orders back up to the budget.
+
+TABLES:
+CREATE TABLE commitments (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  commitment_type   TEXT NOT NULL CHECK (commitment_type IN ('subcontract','purchase_order')),
+  commitment_no     TEXT NOT NULL,
+  title             TEXT NOT NULL,
+  vendor_org_id     UUID NOT NULL REFERENCES directory_orgs(id),
+  executed_date     DATE,
+  original_value    NUMERIC(14,2) NOT NULL DEFAULT 0,
+  retainage_pct     NUMERIC(5,2) DEFAULT 10.00,
+  status            TEXT NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft','out_for_signature','executed','closed','terminated','void')),
+  workflow_instance_id UUID REFERENCES workflow_instances(id),
+  created_by        UUID NOT NULL REFERENCES auth.users(id),
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (project_id, commitment_no)
+);
+
+CREATE TABLE commitment_sov_lines (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id),
+  commitment_id UUID NOT NULL REFERENCES commitments(id) ON DELETE CASCADE,
+  line_no       INT NOT NULL,
+  cost_code_id  UUID NOT NULL REFERENCES cost_codes(id),
+  description   TEXT NOT NULL,
+  scheduled_value NUMERIC(14,2) NOT NULL,
+  UNIQUE (commitment_id, line_no)
+);
+
+CREATE TABLE commitment_invoices (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  commitment_id  UUID NOT NULL REFERENCES commitments(id) ON DELETE CASCADE,
+  invoice_no     TEXT NOT NULL,
+  period_end     DATE NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'draft'
+                 CHECK (status IN ('draft','submitted','approved','paid','rejected')),
+  submitted_amount NUMERIC(14,2),
+  approved_amount  NUMERIC(14,2),
+  retainage_held   NUMERIC(14,2),
+  workflow_instance_id UUID REFERENCES workflow_instances(id),
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (commitment_id, invoice_no)
+);
+
+CREATE TABLE commitment_invoice_lines (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id       UUID NOT NULL REFERENCES commitment_invoices(id) ON DELETE CASCADE,
+  sov_line_id      UUID NOT NULL REFERENCES commitment_sov_lines(id),
+  work_this_period NUMERIC(14,2) DEFAULT 0,
+  materials_stored NUMERIC(14,2) DEFAULT 0,
+  pct_complete     NUMERIC(5,2)
+);
+
+-- Derived view — commitment total = original + executed CCOs
+CREATE OR REPLACE VIEW commitment_totals AS
+SELECT c.id AS commitment_id,
+       c.original_value,
+       COALESCE(SUM(CASE WHEN cco.status='executed' THEN cco.amount END),0) AS executed_cco_value,
+       c.original_value + COALESCE(SUM(CASE WHEN cco.status='executed' THEN cco.amount END),0) AS revised_commitment_value,
+       COALESCE(SUM(CASE WHEN ci.status='approved' THEN ci.approved_amount END),0) AS billed_to_date
+FROM commitments c
+LEFT JOIN change_orders cco ON cco.commitment_id = c.id AND cco.co_type='CCO'
+LEFT JOIN commitment_invoices ci ON ci.commitment_id = c.id
+GROUP BY c.id, c.original_value;
+
+COMPONENTS:
+- src/pages/projects/financial/CommitmentsPage.tsx             (list + filters: type, status, vendor)
+- src/pages/projects/financial/CommitmentDetailPage.tsx        (tabs: General, SOV, Invoices, Change Orders, Documents)
+- src/components/financial/CommitmentSovTable.tsx
+- src/components/financial/InvoiceBuilder.tsx
+- src/components/financial/InvoicePDFExport.tsx
+- src/hooks/useCommitments.ts
+- src/hooks/useInvoices.ts
+- supabase/migrations/xxxx_commitments.sql
+
+ROUTES:
+- /projects/:projectId/financials/commitments
+- /projects/:projectId/financials/commitments/:commitmentId
+- /projects/:projectId/financials/commitments/:commitmentId/invoices/:invoiceId
+
+BUSINESS RULES:
+- Subcontract SOV total MUST equal original_value
+- PO SOV optional for single-line POs — skip validator if line_count = 1 and scheduled_value=original_value
+- Commitment status transitions via Ball-in-Court: Draft → Out for Signature → Executed → Closed
+- Once executed, original_value is locked — changes only via CCO (Prompt D4)
+- Invoice submitted_amount = SUM(line.work_this_period + line.materials_stored) − retainage_held
+- Sub portal (Prompt F1) consumes this schema for vendor self-service invoice submission
+- Invoice rejection routes back to vendor with reviewer comment
+
+ACCEPTANCE TESTS:
+- Create subcontract $100k with 5 SOV lines totalling $100k → save
+- Create invoice 1, enter work this period → submitted_amount auto-computes, retainage holds 10%
+- Approve invoice 1 → commitment.billed_to_date = approved_amount
+- Add executed CCO $10k → revised_commitment_value = $110k
+- Void commitment → status=void; invoices and CCOs become read-only
+- Export invoice PDF → vendor name, remit address, line breakdown all present</pre>
+</div>
+</div>
+
+<!-- D3 Change Events -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D3</div><div class="prompt-title">Change Events (Early-warning forecasting)</div></div>
+<div class="prompt-badges"><span class="badge p3">P0</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Change Events track cost exposures BEFORE anything is approved — pending / ROM / estimated. They feed the Forecast-to-Complete column on the Budget tool. <strong>Depends on</strong> D1 prime contract, D2 commitments.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Change Events module — the early-warning ledger that captures
+every potential cost-impact event before it hardens into a change order. A
+change event has a ROM (rough order of magnitude) and optionally one or more
+line items, each with an estimated cost and a status bucket. When a Change
+Event converts to a PCO/CO/CCO, the linkage is preserved so Budget can show
+"where did this number come from".
+
+TABLES:
+CREATE TABLE change_events (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID NOT NULL REFERENCES tenants(id),
+  project_id       UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  event_no         INT NOT NULL,
+  title            TEXT NOT NULL,
+  description      TEXT,
+  originator_id    UUID NOT NULL REFERENCES auth.users(id),
+  reason_code      TEXT CHECK (reason_code IN
+                   ('owner_request','design_change','field_condition','code_change','rfi_response','other')),
+  status           TEXT NOT NULL DEFAULT 'open'
+                   CHECK (status IN ('open','in_review','pending','void','closed')),
+  rom_value        NUMERIC(14,2),
+  event_date       DATE DEFAULT CURRENT_DATE,
+  rfi_id           UUID REFERENCES rfis(id),
+  created_at       TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (project_id, event_no)
+);
+
+CREATE TABLE change_event_lines (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES tenants(id),
+  change_event_id UUID NOT NULL REFERENCES change_events(id) ON DELETE CASCADE,
+  cost_code_id    UUID NOT NULL REFERENCES cost_codes(id),
+  description     TEXT NOT NULL,
+  estimated_cost  NUMERIC(14,2) NOT NULL DEFAULT 0,
+  status_bucket   TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status_bucket IN ('pending','approved','not_included','void')),
+  pco_id          UUID REFERENCES change_orders(id), -- link once promoted
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- Auto-increment event_no per project
+CREATE OR REPLACE FUNCTION assign_change_event_no()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.event_no := COALESCE((SELECT MAX(event_no) FROM change_events WHERE project_id=NEW.project_id), 0) + 1;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_change_event_no BEFORE INSERT ON change_events
+FOR EACH ROW WHEN (NEW.event_no IS NULL) EXECUTE FUNCTION assign_change_event_no();
+
+COMPONENTS:
+- src/pages/projects/financial/ChangeEventsPage.tsx          (list view + create dialog)
+- src/pages/projects/financial/ChangeEventDetailPage.tsx     (lines grid + "Promote to PCO" action)
+- src/components/financial/ChangeEventLineGrid.tsx
+- src/components/financial/PromoteToPcoDialog.tsx            (multi-select lines → one PCO)
+- src/hooks/useChangeEvents.ts
+- supabase/migrations/xxxx_change_events.sql
+
+ROUTES:
+- /projects/:projectId/financials/change-events
+- /projects/:projectId/financials/change-events/:eventId
+
+BUSINESS RULES:
+- event_no auto-increments per project (trigger)
+- ROM = rough estimate, used before lines are itemised — shown on Budget as "Pending"
+- status_bucket='pending' → exposure counted in Budget "Forecast to Complete"
+- status_bucket='not_included' → hidden from Budget
+- Promote to PCO: select ≥1 line → creates a change_orders row (D4) with co_type='PCO'; lines mark pco_id
+- Once all lines in an event have status_bucket IN ('approved','not_included','void'), event auto-closes
+- Link to originating RFI optional — if set, RFI shows a "Change Event created" badge
+- Reason codes drive the Exposure Heatmap report (E3)
+
+ACCEPTANCE TESTS:
+- Create change event with ROM $25k → appears in Budget Forecast column
+- Add 3 lines totalling $30k → ROM auto-updated to $30k on save
+- Promote 2 of 3 lines to PCO → new change_orders row created, 2 lines link, 1 stays pending
+- Mark last line "not_included" → event auto-closes
+- Filter list by reason_code=field_condition → only matching events returned
+- Create event linked to RFI → RFI detail shows "Change Event #X created" banner</pre>
+</div>
+</div>
+
+<!-- D4 Change Orders -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D4</div><div class="prompt-title">Change Orders — PCO / OCO / CCO</div></div>
+<div class="prompt-badges"><span class="badge p3">P0</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Three flavours: Prime Contract CO (PCO/OCO between GC and Owner) and Commitment CO (CCO between GC and Sub). The CO is the point where money is locked in. <strong>Depends on</strong> D1 prime, D2 commitments, D3 change events, A4 workflow engine.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Change Order module covering the three CO types:
+- PCO = Potential CO (GC → Owner, draft/pending)
+- OCO = Owner CO (executed between Owner and GC, lifts prime contract value)
+- CCO = Commitment CO (executed between GC and Sub/Vendor, lifts commitment value)
+A PCO converts to an OCO once signed by Owner. OCO and CCO are typically
+peer-paired (Owner gives us +$100k, we give Sub +$85k).
+
+TABLES:
+CREATE TABLE change_orders (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  co_no             INT NOT NULL,
+  co_type           TEXT NOT NULL CHECK (co_type IN ('PCO','OCO','CCO')),
+  prime_contract_id UUID REFERENCES prime_contracts(id),  -- PCO/OCO
+  commitment_id     UUID REFERENCES commitments(id),      -- CCO
+  title             TEXT NOT NULL,
+  description       TEXT,
+  amount            NUMERIC(14,2) NOT NULL DEFAULT 0,
+  days_impact       INT DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft','pending','out_for_signature','executed','rejected','void')),
+  reason_code       TEXT,
+  parent_pco_id     UUID REFERENCES change_orders(id),    -- OCO links back to its originating PCO
+  peer_co_id        UUID REFERENCES change_orders(id),    -- OCO ↔ CCO pairing
+  executed_date     DATE,
+  workflow_instance_id UUID REFERENCES workflow_instances(id),
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (project_id, co_type, co_no),
+  CHECK (
+    (co_type IN ('PCO','OCO') AND prime_contract_id IS NOT NULL AND commitment_id IS NULL) OR
+    (co_type = 'CCO'          AND commitment_id     IS NOT NULL AND prime_contract_id IS NULL)
+  )
+);
+
+CREATE TABLE change_order_lines (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  change_order_id   UUID NOT NULL REFERENCES change_orders(id) ON DELETE CASCADE,
+  cost_code_id      UUID NOT NULL REFERENCES cost_codes(id),
+  description       TEXT NOT NULL,
+  amount            NUMERIC(14,2) NOT NULL
+);
+
+-- Auto-increment co_no per (project, co_type)
+CREATE OR REPLACE FUNCTION assign_co_no() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.co_no := COALESCE((SELECT MAX(co_no) FROM change_orders
+                         WHERE project_id=NEW.project_id AND co_type=NEW.co_type), 0) + 1;
+  RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_co_no BEFORE INSERT ON change_orders
+FOR EACH ROW WHEN (NEW.co_no IS NULL) EXECUTE FUNCTION assign_co_no();
+
+COMPONENTS:
+- src/pages/projects/financial/ChangeOrdersPage.tsx             (tabbed: Prime COs | Commitment COs)
+- src/pages/projects/financial/ChangeOrderDetailPage.tsx        (header + line grid + peer panel)
+- src/components/financial/ChangeOrderLineGrid.tsx
+- src/components/financial/PromoteToOcoDialog.tsx               (PCO → OCO conversion)
+- src/components/financial/CoPdfExport.tsx                      (AIA G701 layout)
+- src/hooks/useChangeOrders.ts
+- supabase/migrations/xxxx_change_orders.sql
+
+ROUTES:
+- /projects/:projectId/financials/prime-contract/cos
+- /projects/:projectId/financials/commitments/:commitmentId/cos
+- /projects/:projectId/financials/cos/:coId
+
+BUSINESS RULES:
+- PCO → OCO: only allowed if PCO.status='executed-by-owner'; creates OCO with same amount and parent_pco_id set
+- OCO with peer_co_id → CCO must be ≤ OCO amount (validator on save)
+- Executed OCO lifts prime_contract revised_contract_value via view
+- Executed CCO lifts commitment revised_commitment_value via view
+- Ball-in-Court workflow: Draft → GC Review → Sent to Owner/Sub → Executed
+- Line total MUST equal header amount (validator)
+- Void only allowed if status != 'executed' (once executed, use a reversing CO)
+- AIA G701 PDF: project info, description, reason code, amount, signature blocks
+
+ACCEPTANCE TESTS:
+- Create PCO with 3 lines totalling $15k → header amount auto-sums to $15k
+- Promote to OCO → new executed OCO exists; prime contract revised value increases
+- Link OCO peer to CCO with amount $12k → validates ≤ $15k
+- Attempt CCO > OCO → blocked with error
+- Void draft PCO → status=void, lines read-only
+- Export CO PDF → G701 layout renders correctly</pre>
+</div>
+</div>
+
+<!-- D5 Direct Costs -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D5</div><div class="prompt-title">Direct Costs (Invoices, Timecards, Expenses)</div></div>
+<div class="prompt-badges"><span class="badge p3">P1</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Non-commitment costs — one-off vendor invoices, self-perform labour, field expenses. Everything tagged to a cost code so Budget Actual-Cost rolls up cleanly. <strong>Depends on</strong> A5 cost codes, B1 directory.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Direct Costs module — a ledger of costs that are NOT tied to
+a commitment SOV but still hit the project budget. Three kinds: one-off
+vendor invoices, self-perform timecards (labour hours × rate), and field
+expenses (reimbursables, petty cash). Each row is cost-coded and shown in
+the Budget Actual-Cost column.
+
+TABLES:
+CREATE TABLE direct_costs (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  project_id     UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  cost_type      TEXT NOT NULL CHECK (cost_type IN ('invoice','timecard','expense')),
+  reference_no   TEXT,                              -- invoice number, timecard id, receipt id
+  vendor_org_id  UUID REFERENCES directory_orgs(id),-- for invoices & expenses
+  employee_id    UUID REFERENCES auth.users(id),    -- for timecards
+  cost_date      DATE NOT NULL,
+  amount         NUMERIC(14,2) NOT NULL,
+  description    TEXT,
+  status         TEXT NOT NULL DEFAULT 'open'
+                 CHECK (status IN ('open','approved','paid','void')),
+  attachment_doc_id UUID REFERENCES documents(id),
+  created_by     UUID NOT NULL REFERENCES auth.users(id),
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE direct_cost_lines (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID NOT NULL REFERENCES tenants(id),
+  direct_cost_id  UUID NOT NULL REFERENCES direct_costs(id) ON DELETE CASCADE,
+  cost_code_id    UUID NOT NULL REFERENCES cost_codes(id),
+  amount          NUMERIC(14,2) NOT NULL,
+  hours           NUMERIC(6,2),  -- only when cost_type='timecard'
+  rate            NUMERIC(8,2)   -- only when cost_type='timecard'
+);
+
+COMPONENTS:
+- src/pages/projects/financial/DirectCostsPage.tsx       (tabs: Invoices | Timecards | Expenses)
+- src/components/financial/InvoiceEntryForm.tsx
+- src/components/financial/TimecardEntryForm.tsx
+- src/components/financial/ExpenseEntryForm.tsx
+- src/hooks/useDirectCosts.ts
+- supabase/migrations/xxxx_direct_costs.sql
+
+ROUTES:
+- /projects/:projectId/financials/direct-costs
+
+BUSINESS RULES:
+- Invoice requires vendor_org_id; timecard requires employee_id; expense requires either
+- Timecard line: hours * rate = amount (auto-computed, locked field)
+- Attachment required for invoice & expense (attachment_doc_id from B5 Documents)
+- Status flow: Open → Approved → Paid (Ball-in-Court, owner = Project Accountant)
+- Void flips status but preserves row for audit
+- Lines total MUST equal header amount
+- Exported CSV for AP integration: reference_no, cost_date, vendor, amount, cost_code, description
+
+ACCEPTANCE TESTS:
+- Create timecard 40h × $65/hr → lines auto-calculate $2,600
+- Create invoice with attachment → approval workflow triggers
+- Create expense without attachment → blocked
+- Approve invoice → Budget Actual-Cost column reflects amount
+- CSV export yields 1 row per direct_cost_line with all required columns</pre>
+</div>
+</div>
+
+<!-- D6 Budget -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt D6</div><div class="prompt-title">Budget — The single source of truth</div></div>
+<div class="prompt-badges"><span class="badge p3">P0</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">The Budget tool is a materialised view over everything above. Users see columns per cost code: Original → Approved Changes → Revised → Committed → Direct Costs → Forecast → Variance. <strong>Depends on</strong> D1, D2, D3, D4, D5 all in place.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Budget tool — a cost-code-keyed matrix that is the single
+source of truth on where the money is. Every row is a cost code; every
+column is a derived metric. Must update in near-real-time as upstream rows
+change. Supports Budget Modifications (formal budget transfers between
+cost codes), snapshots for month-end, and drill-down from any cell into the
+originating record.
+
+TABLES:
+CREATE TABLE project_budgets (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID NOT NULL REFERENCES tenants(id),
+  project_id       UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name             TEXT NOT NULL DEFAULT 'Primary Budget',
+  is_active        BOOLEAN DEFAULT TRUE,
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE budget_lines (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID NOT NULL REFERENCES tenants(id),
+  project_budget_id UUID NOT NULL REFERENCES project_budgets(id) ON DELETE CASCADE,
+  cost_code_id     UUID NOT NULL REFERENCES cost_codes(id),
+  original_budget  NUMERIC(14,2) NOT NULL DEFAULT 0,
+  UNIQUE (project_budget_id, cost_code_id)
+);
+
+CREATE TABLE budget_modifications (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID NOT NULL REFERENCES tenants(id),
+  project_budget_id UUID NOT NULL REFERENCES project_budgets(id),
+  mod_no           INT NOT NULL,
+  title            TEXT NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'draft'
+                   CHECK (status IN ('draft','approved','void')),
+  approved_at      TIMESTAMPTZ,
+  approved_by      UUID REFERENCES auth.users(id),
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE budget_modification_lines (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  budget_modification_id UUID NOT NULL REFERENCES budget_modifications(id) ON DELETE CASCADE,
+  from_cost_code_id   UUID NOT NULL REFERENCES cost_codes(id),
+  to_cost_code_id     UUID NOT NULL REFERENCES cost_codes(id),
+  amount              NUMERIC(14,2) NOT NULL CHECK (amount > 0)
+);
+
+CREATE TABLE budget_snapshots (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id        UUID NOT NULL REFERENCES tenants(id),
+  project_budget_id UUID NOT NULL REFERENCES project_budgets(id),
+  period_end       DATE NOT NULL,
+  payload          JSONB NOT NULL, -- full matrix at time of snapshot
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+-- The matrix view
+CREATE OR REPLACE VIEW budget_matrix AS
+SELECT bl.project_budget_id,
+       bl.cost_code_id,
+       cc.code AS cost_code,
+       cc.description AS cost_code_desc,
+       bl.original_budget,
+       COALESCE(bm_net.net_transfer, 0) AS approved_budget_mods,
+       bl.original_budget + COALESCE(bm_net.net_transfer, 0) AS revised_budget,
+       COALESCE(cs.committed_cost, 0) AS committed_cost,
+       COALESCE(cs.executed_cco, 0) AS executed_cco,
+       COALESCE(dc.direct_cost, 0) AS direct_cost,
+       COALESCE(cev.pending_exposure, 0) AS pending_exposure,
+       (COALESCE(cs.committed_cost,0) + COALESCE(cs.executed_cco,0)
+        + COALESCE(dc.direct_cost,0) + COALESCE(cev.pending_exposure,0)) AS forecast_to_complete,
+       (bl.original_budget + COALESCE(bm_net.net_transfer, 0))
+        - (COALESCE(cs.committed_cost,0) + COALESCE(cs.executed_cco,0)
+           + COALESCE(dc.direct_cost,0) + COALESCE(cev.pending_exposure,0)) AS variance
+FROM budget_lines bl
+JOIN cost_codes cc ON cc.id = bl.cost_code_id
+LEFT JOIN LATERAL (
+  SELECT
+    SUM(CASE WHEN bml.to_cost_code_id=bl.cost_code_id   THEN bml.amount ELSE 0 END) -
+    SUM(CASE WHEN bml.from_cost_code_id=bl.cost_code_id THEN bml.amount ELSE 0 END) AS net_transfer
+  FROM budget_modification_lines bml
+  JOIN budget_modifications bm ON bm.id=bml.budget_modification_id
+  WHERE bm.status='approved'
+) bm_net ON true
+LEFT JOIN LATERAL (
+  SELECT
+    SUM(csl.scheduled_value) AS committed_cost,
+    SUM(col.amount) FILTER (WHERE co.status='executed' AND co.co_type='CCO') AS executed_cco
+  FROM commitment_sov_lines csl
+  LEFT JOIN commitments c ON c.id=csl.commitment_id AND c.status='executed'
+  LEFT JOIN change_order_lines col ON col.cost_code_id=bl.cost_code_id
+  LEFT JOIN change_orders co ON co.id=col.change_order_id
+  WHERE csl.cost_code_id=bl.cost_code_id
+) cs ON true
+LEFT JOIN LATERAL (
+  SELECT SUM(dcl.amount) AS direct_cost
+  FROM direct_cost_lines dcl
+  JOIN direct_costs dc ON dc.id=dcl.direct_cost_id AND dc.status IN ('approved','paid')
+  WHERE dcl.cost_code_id=bl.cost_code_id
+) dc ON true
+LEFT JOIN LATERAL (
+  SELECT SUM(cel.estimated_cost) AS pending_exposure
+  FROM change_event_lines cel
+  WHERE cel.cost_code_id=bl.cost_code_id AND cel.status_bucket='pending'
+) cev ON true;
+
+COMPONENTS:
+- src/pages/projects/financial/BudgetPage.tsx                  (matrix grid + toolbar)
+- src/components/financial/BudgetMatrixGrid.tsx                (AG Grid or custom, sticky first column)
+- src/components/financial/BudgetModificationDialog.tsx
+- src/components/financial/BudgetSnapshotDialog.tsx
+- src/components/financial/CellDrillDown.tsx                   (click committed_cost → list of commitments)
+- src/hooks/useBudgetMatrix.ts
+- supabase/migrations/xxxx_budget.sql
+
+ROUTES:
+- /projects/:projectId/financials/budget
+- /projects/:projectId/financials/budget/mods/:modId
+- /projects/:projectId/financials/budget/snapshots
+
+BUSINESS RULES:
+- Only one active project_budget per project
+- Budget Modifications MUST net to zero across from/to — validator on save
+- Approved mods immediately affect revised_budget column (no refresh)
+- Snapshots capture the full matrix JSON; immutable after creation
+- Drill-down: click cell → panel shows source rows with links (opens in new tab)
+- Red highlighting when variance < 0 (over-budget warning)
+- CSV export: cost_code, all columns, one row per cost code
+
+ACCEPTANCE TESTS:
+- Import original budget $1M across 20 cost codes → matrix shows 20 rows summing $1M
+- Create subcontract $100k (cc 03-30-00) → committed_cost column updates
+- Add executed CCO +$10k → executed_cco column updates, revised_budget unchanged
+- Create change event line ROM $5k pending → pending_exposure column shows $5k, forecast increases
+- Create budget mod moving $20k from cc 03-30-00 to cc 03-35-00 → validator passes
+- Approve mod → from-row revised_budget −$20k, to-row +$20k
+- Create snapshot → snapshot row stored with full matrix JSON
+- Over-budget cost code (variance < 0) → row renders with red accent</pre>
+</div>
+</div>
+
+</div>
+<!-- END PHASE 3 -->
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- PHASE 4 — REPORTING, PORTALS & API                           -->
+<!-- ============================================================ -->
+<div class="group">
+<div class="group-label">Phase 4 · Reporting, Portals & API · ~10 weeks</div>
+<h2 class="group-heading">Phase 4 — Open the platform</h2>
+<p class="group-desc">Phases 1-3 built the system for GC users. Phase 4 opens it up: a 360-degree reporting layer for execs, a Subcontractor portal (Sub's view of their commitments, invoices, RFIs), an Owner portal (read-mostly window with pay-app approval), and a public REST API with OAuth2 + webhook events. This is how Procore Lite becomes a platform.</p>
+
+<!-- E3 360 Reporting -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt E3</div><div class="prompt-title">360 Reporting (Dashboards + Report Builder)</div></div>
+<div class="prompt-badges"><span class="badge p4">P1</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Pre-built dashboards for execs + a configurable report builder for anything else. Reports export to PDF, XLSX, CSV and can be scheduled + emailed. <strong>Depends on</strong> all Phase 3 tables.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the 360 Reporting module — two things combined: (1) a curated
+set of role-based dashboards (Exec / PM / Super / Accountant), and (2) a
+report builder that lets users pick a data source, columns, filters, and
+group-by, then save + schedule the report.
+
+TABLES:
+CREATE TABLE reports (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  owner_user_id  UUID NOT NULL REFERENCES auth.users(id),
+  name           TEXT NOT NULL,
+  data_source    TEXT NOT NULL CHECK (data_source IN
+                 ('rfis','submittals','punch','daily_logs','meetings','schedule_tasks',
+                  'incidents','budget_matrix','commitments','change_orders','direct_costs','pay_apps')),
+  config         JSONB NOT NULL, -- columns, filters, group_by, sort
+  scope          TEXT NOT NULL DEFAULT 'private' CHECK (scope IN ('private','project','tenant')),
+  project_id     UUID REFERENCES projects(id),
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE report_schedules (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id),
+  report_id   UUID NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+  cron        TEXT NOT NULL,              -- '0 8 * * 1' = Monday 8am
+  recipients  JSONB NOT NULL,             -- { user_ids:[], emails:[], distribution_list_ids:[] }
+  format      TEXT NOT NULL CHECK (format IN ('pdf','xlsx','csv')),
+  last_run_at TIMESTAMPTZ,
+  next_run_at TIMESTAMPTZ,
+  is_active   BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE dashboards (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id),
+  owner_user_id UUID REFERENCES auth.users(id),
+  name          TEXT NOT NULL,
+  role_preset   TEXT CHECK (role_preset IN ('exec','pm','super','accountant','safety','custom')),
+  tiles         JSONB NOT NULL,  -- array of { kind, title, query, size }
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+COMPONENTS:
+- src/pages/reports/ReportsPage.tsx                (list + New Report)
+- src/pages/reports/ReportBuilderPage.tsx          (drag columns, filter rules, group/sort)
+- src/pages/reports/ReportRunPage.tsx              (results + export buttons)
+- src/pages/dashboards/DashboardsPage.tsx
+- src/pages/dashboards/DashboardViewPage.tsx       (tile grid, live-refresh)
+- src/components/reports/FilterRuleBuilder.tsx
+- src/components/reports/ScheduleDialog.tsx
+- src/components/dashboards/Tile.tsx               (kpi | chart | table | map)
+- src/hooks/useReports.ts
+- src/hooks/useDashboards.ts
+- supabase/functions/run-report                    (edge function for rendering + email delivery)
+- supabase/migrations/xxxx_reporting.sql
+
+ROUTES:
+- /reports
+- /reports/new
+- /reports/:reportId
+- /reports/:reportId/run
+- /dashboards
+- /dashboards/:dashboardId
+
+BUSINESS RULES:
+- Report access governed by scope: private = owner only; project = project members; tenant = all tenant users
+- Report runs respect RLS (results reflect runner's permissions, not owner's)
+- Schedules execute via Supabase Cron → run-report edge function → store rendered file in Storage → email via distribution list
+- 4 preset dashboards seeded per tenant: Exec, PM, Super, Accountant
+- Tile kinds: kpi (single number), chart (recharts), table, map (Google Maps of projects)
+- XLSX export preserves types (money → currency, dates → date)
+- PDF export includes header with tenant logo + footer with "Generated on [date]"
+
+ACCEPTANCE TESTS:
+- Build report: data_source=rfis, columns=[rfi_no,title,status,days_open], filter=status=open, group=assignee
+- Save report scope=tenant → visible to other users with view permission
+- Schedule report → 'Every Monday 8am → PDF → PM distribution list'
+- Force-run schedule → file generated in Storage, email drafted with attachment
+- Exec dashboard tile: Open RFIs count — click drills to filtered RFI list
+- Dashboard tile chart: Budget variance by cost code — recharts bar chart renders</pre>
+</div>
+</div>
+
+<!-- F1 Sub Portal -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt F1</div><div class="prompt-title">Subcontractor Portal</div></div>
+<div class="prompt-badges"><span class="badge p4">P1</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">A restricted UI for sub vendors to self-serve: see their commitments, submit invoices, respond to RFIs, upload submittals. Same auth as main app, different navigation and heavy row-level scoping. <strong>Depends on</strong> D2 commitments, B1 directory, C1 RFIs, C2 submittals.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Subcontractor Portal — a restricted view of the main app
+that vendors log into. They see ONLY their own org's commitments, their
+open RFIs where they're Ball-in-Court, and their submittals. They can
+submit invoices, upload documents, and respond to RFIs/submittals. They
+cannot see other subs' data, budgets, change events, or tenant admin tools.
+
+TABLES (additions):
+ALTER TABLE users ADD COLUMN IF NOT EXISTS portal_kind TEXT
+  CHECK (portal_kind IN ('main','sub','owner')) DEFAULT 'main';
+
+CREATE TABLE portal_invitations (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  email          TEXT NOT NULL,
+  directory_org_id UUID NOT NULL REFERENCES directory_orgs(id),
+  portal_kind    TEXT NOT NULL CHECK (portal_kind IN ('sub','owner')),
+  role           TEXT NOT NULL,
+  invited_by     UUID REFERENCES auth.users(id),
+  invited_at     TIMESTAMPTZ DEFAULT now(),
+  accepted_at    TIMESTAMPTZ,
+  token          TEXT NOT NULL UNIQUE
+);
+
+-- RLS on commitments: sub users see only commitments where vendor_org_id
+-- matches their directory_orgs membership
+CREATE POLICY commitments_sub_portal ON commitments
+FOR SELECT TO authenticated
+USING (
+  (current_setting('app.portal_kind', true) = 'sub'
+   AND vendor_org_id IN (
+     SELECT org_id FROM directory_people WHERE user_id = auth.uid()
+   ))
+  OR current_setting('app.portal_kind', true) = 'main'
+);
+-- repeat for: rfis (assignee scope), submittals (responsible_contractor_org_id),
+--            documents (only linked to their commitments), invoices (their own)
+
+COMPONENTS:
+- src/pages/portal/sub/SubDashboardPage.tsx              (my court, my commitments, my invoices)
+- src/pages/portal/sub/SubCommitmentsPage.tsx
+- src/pages/portal/sub/SubCommitmentDetailPage.tsx       (SOV read-only, invoices, docs)
+- src/pages/portal/sub/SubInvoiceBuilderPage.tsx         (line-level % complete + materials)
+- src/pages/portal/sub/SubRfisPage.tsx
+- src/pages/portal/sub/SubSubmittalsPage.tsx
+- src/components/portal/PortalLayout.tsx                 (separate header; shows org logo + tenant brand)
+- src/components/portal/InviteSubDialog.tsx              (main-app side, GC invites sub)
+- supabase/functions/accept-portal-invitation
+- supabase/migrations/xxxx_sub_portal.sql
+
+ROUTES:
+- /portal/sub                    (dashboard)
+- /portal/sub/commitments
+- /portal/sub/commitments/:id
+- /portal/sub/invoices/new
+- /portal/sub/rfis
+- /portal/sub/submittals
+- /portal/invite/:token          (public acceptance page)
+
+BUSINESS RULES:
+- Every API call from portal sets app.portal_kind session GUC → RLS enforces scope
+- Sub users have auto-assigned role 'subcontractor_portal' with permissions:
+  commitment: view-own, invoice: create/edit-own, rfi: respond-when-ball-in-court,
+  submittal: upload-when-responsible, document: view-commitment-only, budget: none
+- Invitation email: link to /portal/invite/:token; acceptance creates auth.user, links to directory_org
+- Invoice submission triggers Ball-in-Court workflow back to GC Project Accountant
+- Sub cannot delete commitments, invoices (once submitted), or change orders — read-only after submission
+- Portal brand: tenant brand header retained; footer adds 'Powered by Procore Lite'
+- Rate-limit portal API: 60 req/min per user (edge function middleware)
+
+ACCEPTANCE TESTS:
+- GC invites test sub → invitation email sent, token stored
+- Sub accepts invite → auth.user created, linked to directory_org, portal_kind='sub'
+- Sub logs in → lands on /portal/sub dashboard (NOT main app)
+- Sub navigates to commitments → sees only their org's 2 subcontracts (not other subs')
+- Sub creates invoice with SOV line values → submitted; GC's Ball-in-Court shows it
+- Sub tries /admin route → 403 Forbidden
+- Sub API rate limit test → 61st request in a minute is throttled</pre>
+</div>
+</div>
+
+<!-- F2 Owner Portal -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt F2</div><div class="prompt-title">Owner Portal</div></div>
+<div class="prompt-badges"><span class="badge p4">P1</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">Read-mostly window for the owner. They see prime contract, OCOs for approval, pay apps for approval, schedule, key reports. No direct access to subs, commitments, or internal budget. <strong>Depends on</strong> D1 prime, D4 change orders, E3 reporting, F1 portal plumbing.</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Owner Portal — a read-mostly window for the project owner
+with two write-capable workflows: approve/reject OCOs, and approve/reject
+Pay Apps. Owner sees prime contract, executed OCOs, pending OCOs awaiting
+their signature, pay apps, schedule summary, and exec-level reports. Owner
+cannot see individual subcontracts, commitments, or internal exposure
+(change events).
+
+TABLES: Reuses portal_invitations from F1. Extend with portal_kind='owner'.
+
+-- RLS policies for owner portal (a sample; repeat pattern)
+CREATE POLICY prime_contract_owner_portal ON prime_contracts
+FOR SELECT TO authenticated
+USING (
+  (current_setting('app.portal_kind',true)='owner'
+   AND owner_org_id IN (
+     SELECT org_id FROM directory_people WHERE user_id=auth.uid()
+   ))
+  OR current_setting('app.portal_kind',true)='main'
+);
+-- repeat for: change_orders (co_type IN ('PCO','OCO') AND prime.owner_org_id match),
+--            pay_apps (prime.owner_org_id match), schedule_tasks (read),
+--            reports (scope='project' AND project visible)
+
+COMPONENTS:
+- src/pages/portal/owner/OwnerDashboardPage.tsx           (contract status, next-up approvals)
+- src/pages/portal/owner/OwnerContractPage.tsx            (prime contract summary + OCO list)
+- src/pages/portal/owner/OwnerOcoApprovalPage.tsx         (accept/reject OCO with e-signature)
+- src/pages/portal/owner/OwnerPayAppApprovalPage.tsx      (G702/G703 view, approve/adjust/reject)
+- src/pages/portal/owner/OwnerSchedulePage.tsx            (gantt read-only)
+- src/pages/portal/owner/OwnerReportsPage.tsx             (pre-built exec reports)
+- src/components/portal/ESignaturePad.tsx                 (canvas signature → image in Storage)
+- supabase/migrations/xxxx_owner_portal.sql
+
+ROUTES:
+- /portal/owner
+- /portal/owner/contract
+- /portal/owner/cos/:coId
+- /portal/owner/pay-apps/:payAppId
+- /portal/owner/schedule
+- /portal/owner/reports
+
+BUSINESS RULES:
+- Owner role 'owner_portal' with permissions: prime_contract: view, oco: approve,
+  pay_app: approve/reject, schedule: view, reports: view (exec scope only)
+- OCO approval via e-signature pad → stores signature image in Storage, updates
+  co.status='executed', executed_date=now(), executed_by=owner_user_id
+- Pay app approval: owner can adjust approved_amount per line (e.g. reduce % complete);
+  adjustments require reason_code + comment
+- Pay app reject routes back to GC with reviewer comment, status='rejected'
+- Owner portal cannot see: change_events, commitments, CCOs, direct_costs, budget tool
+- Owner dashboard "Next Up" card: pending OCOs and pending pay apps awaiting their action
+- All owner actions audited in a dedicated owner_audit_log (user, action, object, timestamp, ip)
+
+ACCEPTANCE TESTS:
+- GC invites owner → owner accepts, lands on /portal/owner
+- Dashboard shows 2 pending OCOs, 1 pending pay app
+- Owner opens OCO → clicks Approve → signs → OCO status=executed, prime revised value updates
+- Owner opens pay app → reduces line % complete → approved_amount recalculates → Approve
+- Owner clicks /portal/owner/budget → 403 (not in menu anyway)
+- Owner tries to view another tenant's project → RLS blocks
+- Pending OCO from GC appears in owner's "Next Up" card within 5 seconds of submission</pre>
+</div>
+</div>
+
+<!-- F3 Public API -->
+<div class="prompt-card">
+<div class="prompt-header">
+<div><div class="prompt-id">Prompt F3</div><div class="prompt-title">Public REST API + Webhooks</div></div>
+<div class="prompt-badges"><span class="badge p4">P1</span><span class="badge copy">copy-paste</span></div>
+</div>
+<div class="prompt-note">OAuth2-protected public API for ERP/accounting integrations (Sage, Viewpoint, QuickBooks) and webhook events for real-time downstream consumers. <strong>Depends on</strong> all prior modules; ties into A6 (billing plan-gating of API).</div>
+<div class="prompt-body">
+<pre>GOAL: Build the Public REST API + Webhooks layer. Supports OAuth2 client-
+credentials for machine-to-machine integrations (ERP, accounting) and
+authorization-code flow for partner apps. Every write emits a webhook event
+if the tenant has matching subscriptions. API usage is metered for billing.
+
+TABLES:
+CREATE TABLE api_clients (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  name           TEXT NOT NULL,
+  client_id      TEXT NOT NULL UNIQUE,
+  client_secret_hash TEXT NOT NULL,
+  scopes         TEXT[] NOT NULL,           -- e.g. {'read:commitments','write:direct_costs'}
+  rate_limit     INT NOT NULL DEFAULT 600,  -- req/min
+  is_active      BOOLEAN DEFAULT TRUE,
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE api_tokens (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  api_client_id  UUID NOT NULL REFERENCES api_clients(id) ON DELETE CASCADE,
+  access_token_hash TEXT NOT NULL,
+  expires_at     TIMESTAMPTZ NOT NULL,
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE webhook_subscriptions (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id      UUID NOT NULL REFERENCES tenants(id),
+  url            TEXT NOT NULL,
+  events         TEXT[] NOT NULL,    -- ['commitment.executed','pay_app.approved','rfi.responded']
+  secret         TEXT NOT NULL,      -- for HMAC signing
+  is_active      BOOLEAN DEFAULT TRUE,
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE webhook_deliveries (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id              UUID NOT NULL,
+  webhook_subscription_id UUID NOT NULL REFERENCES webhook_subscriptions(id) ON DELETE CASCADE,
+  event_type             TEXT NOT NULL,
+  payload                JSONB NOT NULL,
+  response_status        INT,
+  response_body          TEXT,
+  attempt_no             INT NOT NULL DEFAULT 1,
+  next_retry_at          TIMESTAMPTZ,
+  delivered_at           TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE api_usage_daily (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL,
+  api_client_id UUID,
+  date        DATE NOT NULL,
+  req_count   BIGINT NOT NULL DEFAULT 0,
+  UNIQUE (tenant_id, api_client_id, date)
+);
+
+COMPONENTS (edge functions):
+- supabase/functions/oauth-token          (POST /oauth/token — issue access tokens)
+- supabase/functions/api-v1               (ALL /api/v1/* — thin auth+meter wrapper over PostgREST)
+- supabase/functions/webhook-dispatch     (pg_net / edge cron — delivers events with HMAC-SHA256 sig)
+- supabase/functions/webhook-retry        (exponential backoff: 1m, 5m, 30m, 2h, 12h, then dead-letter)
+
+FRONTEND:
+- src/pages/settings/api/ApiClientsPage.tsx          (create client, rotate secret, view scopes)
+- src/pages/settings/api/WebhooksPage.tsx            (subscribe, test-send, delivery log)
+- src/pages/settings/api/ApiUsagePage.tsx            (chart: requests per day per client)
+- src/pages/developer/ApiDocsPage.tsx                (rendered OpenAPI 3.1 spec via Redoc)
+- public/openapi.yaml                                (authored spec)
+
+ENDPOINTS (api-v1 surface — all JSON, all paginated):
+  GET    /api/v1/projects
+  GET    /api/v1/projects/:id
+  GET    /api/v1/commitments?project_id=
+  POST   /api/v1/commitments
+  GET    /api/v1/commitments/:id
+  PATCH  /api/v1/commitments/:id
+  GET    /api/v1/change-orders?project_id=
+  POST   /api/v1/direct-costs
+  GET    /api/v1/budget?project_id=          (returns matrix view)
+  GET    /api/v1/rfis?project_id=
+  POST   /api/v1/webhooks
+  (extend as needed; map scope → endpoints)
+
+BUSINESS RULES:
+- Plan gating (via A6): Team plan → no API; Business plan → 600 req/min; Enterprise → 6000 req/min + SSO
+- All responses include tenant_id stripped; scopes enforced by token introspection + RLS
+- Webhook events emitted on: *.created, *.updated, *.status_changed for all financial + field modules
+- HMAC signing: header `X-Signature: sha256=<hex>`; receivers verify
+- Retries with jitter on 5xx/connection errors; 4xx is treated as permanent failure
+- Every request logged → api_usage_daily counter (upsert) for billing + analytics
+- Rate limiting: sliding window, 429 Retry-After response
+- OpenAPI spec versioned; breaking changes require /api/v2/ namespace
+
+ACCEPTANCE TESTS:
+- Create API client with scopes read:commitments → secret shown once
+- POST /oauth/token with client credentials → valid access_token
+- GET /api/v1/commitments with token → returns only this tenant's commitments
+- Request without `read:commitments` scope → 403
+- Subscribe webhook to 'commitment.executed' → approve a commitment → delivery logged with HMAC
+- Test-send webhook → simulated event payload, status recorded
+- Exceed rate limit → 429 Too Many Requests with Retry-After header
+- Revoke client → existing tokens return 401 on next use
+- ApiUsagePage renders daily request chart from api_usage_daily</pre>
+</div>
+</div>
+
+</div>
+<!-- END PHASE 4 -->
+
+<div class="divider"></div>
+
+<!-- ============================================================ -->
+<!-- CLOSING — HOW THIS HANDS OFF                                  -->
+<!-- ============================================================ -->
+<div class="group">
+<div class="group-label">Handoff · Operating instructions</div>
+<h2 class="group-heading">How to run these prompts</h2>
+
+<div class="guide">
+<h3>The sequencing rules</h3>
+<p>These prompts are intentionally ordered to match the dependency graph. <strong>Run them in file order.</strong> Skipping ahead will fail — Phase 2's RFI prompt references <code>workflow_instances</code> from A4; Phase 3's Budget prompt references every Phase 3 table; Phase 4's portals reuse the directory and RLS patterns from Phases 1-2.</p>
+<ul>
+<li>Always run the <strong>P0 Context Primer</strong> once at the very start of a Lovable session. Re-run after a long break so conventions stay fresh.</li>
+<li>For each prompt: paste → let Lovable apply → spot-check the generated migration → accept/iterate.</li>
+<li>Between phases, run the <strong>Seed</strong> prompt at the end of the phase to populate demo data for QA.</li>
+<li>If Lovable produces something off-spec, push back with "re-read the GOAL section, the ACCEPTANCE TESTS are the spec" — don't re-paste the whole prompt.</li>
+</ul>
+</div>
+
+<div class="guide">
+<h3>Dependencies cheat-sheet</h3>
+<p>A one-line reminder of what each prompt's critical upstreams are. If a prompt fails on a missing reference, check this list first.</p>
+<ul>
+<li><strong>Phase 1 (A1–A7)</strong>: Sequential. Each depends on A1 (tenant isolation).</li>
+<li><strong>B1 Directory</strong> → B2–B5, C1–C5, D2, F1, F2 (every org/person reference)</li>
+<li><strong>A4 Ball-in-Court</strong> → every workflow-bearing module in Phases 2–4</li>
+<li><strong>A5 Cost Codes</strong> → D1, D2, D3, D4, D5, D6 (the financial cascade spine)</li>
+<li><strong>D1 Prime Contract</strong> → D4 (PCO/OCO), D6 (Budget revised value)</li>
+<li><strong>D2 Commitments</strong> → D4 (CCO), D6 (Budget committed_cost)</li>
+<li><strong>D3 Change Events</strong> → D4 (promote), D6 (Budget pending_exposure)</li>
+<li><strong>D6 Budget</strong> → E3 (Budget reports), F2 (Owner reports)</li>
+<li><strong>F1 Sub Portal</strong> scaffolding → F2 Owner Portal reuses it</li>
+<li><strong>F3 Public API</strong> → gated on A6 (Stripe plan)</li>
+</ul>
+</div>
+
+<div class="guide">
+<h3>What Claude Co-Work does next</h3>
+<p>After Lovable builds each module, hand the PR back to Co-Work for a <strong>acceptance-test pass</strong>. Co-Work runs the tests listed in each prompt against the live preview URL, screenshots failures, and generates a punchlist of deviations. Then back to Lovable for fixes, then Co-Work re-validates. Ship when the punchlist is empty.</p>
+<ul>
+<li>Keep each Lovable session scoped to one prompt. Multi-prompt sessions drift.</li>
+<li>Commit after every accepted prompt — never batch an entire phase.</li>
+<li>Run <code>npm run typecheck</code> between prompts. If it fails, fix before proceeding.</li>
+<li>Tag the repo at phase boundaries: <code>v0.1-phase1</code>, <code>v0.2-phase2</code>, etc.</li>
+</ul>
+</div>
+
+<div class="guide">
+<h3>When you finish Phase 4</h3>
+<p>You have a multi-tenant construction-management SaaS with the financial cascade intact, dual portals, a public API, and SSO. At that point, the work shifts from "build" to "differentiate" — the features that will separate Procore Lite from incumbent Procore are the ones the gap analysis flagged as <strong>ENHANCE</strong>: AI-assisted RFI drafting, Budget forecast ML, photo-to-daily-log OCR, and conversational reporting. Those are Phase 5, and the prompts for them will be written against a live system, not a spec — which is why they aren't here.</p>
+</div>
+</div>
+
+<footer>
+<div class="fbrand">APAS.AI · Procore Lite · Phase 3 Deliverable</div>
+<div class="fmeta">Lovable Build Prompts · Generated 2026-04-19 · v1.0</div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,135 @@
+name: Deploy to Supabase
+
+# Real deploy. Runs on pushes to main (production) and staging (preview env).
+# Pushes all pending migrations and deploys every edge function directory.
+# Requires CI.yml to be green on the same SHA before it runs.
+
+on:
+  push:
+    branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: "Skip migration push (deploy functions only)"
+        type: boolean
+        default: false
+      skip_functions:
+        description: "Skip edge function deploy (migrations only)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Wait for ci.yml on the same SHA. If CI failed, deploy never runs.
+  wait-for-ci:
+    name: Wait for CI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait for CI workflow
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-regexp: "^(TypeScript|Unit Tests.*|Production Build|Supabase Migration Dry-Run)$"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 15
+          allowed-conclusions: success
+
+  deploy-migrations:
+    name: Push Supabase Migrations
+    runs-on: ubuntu-latest
+    needs: [wait-for-ci]
+    if: |
+      always() &&
+      (needs.wait-for-ci.result == 'success' || needs.wait-for-ci.result == 'skipped') &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_migrations != 'true')
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+
+      - name: Show migration plan
+        run: supabase db push --dry-run
+
+      - name: Push migrations
+        run: supabase db push
+
+  deploy-functions:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    needs: [wait-for-ci, deploy-migrations]
+    if: |
+      always() &&
+      (needs.wait-for-ci.result == 'success' || needs.wait-for-ci.result == 'skipped') &&
+      (needs.deploy-migrations.result == 'success' || needs.deploy-migrations.result == 'skipped') &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_functions != 'true')
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+
+      - name: Deploy every function in supabase/functions/
+        # Walks every directory under supabase/functions/ and deploys it.
+        # Respects verify_jwt flags from supabase/config.toml.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          deployed=0
+          for fn_dir in supabase/functions/*/; do
+            fn_name="$(basename "$fn_dir")"
+            # Skip shared helper directories (convention: prefix with _)
+            case "$fn_name" in
+              _*) echo "Skipping helper dir: $fn_name"; continue ;;
+            esac
+            echo "::group::Deploying $fn_name"
+            supabase functions deploy "$fn_name" \
+              --project-ref "${{ secrets.VITE_SUPABASE_PROJECT_ID }}"
+            echo "::endgroup::"
+            deployed=$((deployed + 1))
+          done
+          echo "Deployed $deployed function(s)."
+
+  build-frontend:
+    name: Build Frontend Artifact
+    runs-on: ubuntu-latest
+    needs: [wait-for-ci]
+    if: always() && (needs.wait-for-ci.result == 'success' || needs.wait-for-ci.result == 'skipped')
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.ref_name }}-${{ github.sha }}
+          path: dist/
+          retention-days: 30
