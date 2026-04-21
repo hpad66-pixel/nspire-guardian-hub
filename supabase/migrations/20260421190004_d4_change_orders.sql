@@ -3,6 +3,36 @@
 -- ALTERs existing public.change_orders to add Procore Lite columns.
 -- ============================================================
 
+-- The existing change_orders.status column uses the `change_order_status` enum
+-- which only has draft/pending/approved/rejected. Procore Lite needs
+-- executed, out_for_signature, void. Convert the column to text so
+-- we can use the full spec status set via a CHECK constraint.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'change_orders'
+      AND column_name = 'status' AND udt_name = 'change_order_status'
+  ) THEN
+    ALTER TABLE public.change_orders
+      ALTER COLUMN status DROP DEFAULT,
+      ALTER COLUMN status TYPE text USING status::text,
+      ALTER COLUMN status SET DEFAULT 'draft';
+  END IF;
+END $$;
+
+-- Add the expanded status CHECK constraint (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'change_orders_status_check_v2'
+  ) THEN
+    ALTER TABLE public.change_orders
+      ADD CONSTRAINT change_orders_status_check_v2
+      CHECK (status IN ('draft','pending','out_for_signature','executed','approved','rejected','void'));
+  END IF;
+END $$;
+
 -- Extend the existing change_orders table
 ALTER TABLE public.change_orders
   ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES public.workspaces(id) ON DELETE CASCADE,
