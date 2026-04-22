@@ -35,122 +35,59 @@ ALTER TABLE public.document_folders
 -- ================================================================
 -- STEP 4: Enable RLS on ALL tables
 -- ================================================================
-ALTER TABLE public.action_item_comments           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.activity_log                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ai_skill_prompts               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.asset_type_definitions         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.assets                         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.change_orders                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.client_action_items            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.client_messages                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.client_portals                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.clients                        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.company_branding               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.course_progress                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.credential_alerts              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.credential_share_links         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.credentials                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crm_contacts                   ENABLE ROW LEVEL SECURITY;
--- Table created by a later migration; skip RLS enable here if absent.
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'daily_inspection_addendums' AND relnamespace = 'public'::regnamespace) THEN
-    ALTER TABLE public.daily_inspection_addendums ENABLE ROW LEVEL SECURITY;
-  END IF;
+-- ---------------------------------------------------------------
+-- Enable RLS on every table listed below — but only if the table
+-- actually exists. Some tables referenced in this migration were
+-- added later (or manually in the dashboard in the original env)
+-- and aren't present in the migration history. The DO loop makes
+-- this migration replay cleanly on any DB state.
+-- (Defensive fix applied 2026-04-21.)
+-- ---------------------------------------------------------------
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN
+    SELECT unnest(ARRAY[
+      'action_item_comments','activity_log','ai_skill_prompts','asset_type_definitions',
+      'assets','change_orders','client_action_items','client_messages','client_portals',
+      'clients','company_branding','course_progress','credential_alerts','credential_share_links',
+      'credentials','crm_contacts','daily_inspection_addendums','daily_inspection_items',
+      'daily_inspections','daily_reports','defects','document_folders','equipment_assets',
+      'equipment_categories','equipment_checkouts','equipment_documents','hud_sample_sizes',
+      'inspections','inventory_transactions','issue_comments','issue_mentions','issues',
+      'lw_courses','lw_school_assignments','lw_schools','lw_sso_sessions',
+      'maintenance_request_activity','maintenance_requests','meeting_unlock_requests',
+      'message_threads','notifications','nspire_scoring_weights','onboarding_status',
+      'organization_documents','permit_deliverables','permit_requirements','permits',
+      'photo_gallery','portal_access','portal_activity','portal_client_uploads',
+      'portal_document_requests','portal_exclusions','profiles','project_action_items',
+      'project_client_updates','project_closeout_items','project_communications',
+      'project_discussion_replies','project_discussions','project_documents',
+      'project_lessons_learned','project_meetings','project_milestones',
+      'project_progress_entries','project_progress_reports','project_proposals',
+      'project_purchase_orders','project_rfis','project_safety_incidents',
+      'project_submittals','project_team_members','project_toolbox_talks',
+      'project_warranties','projects','properties','property_archives',
+      'property_inventory_items','property_module_overrides','property_team_members',
+      'property_utility_bills','proposal_templates','punch_items','push_subscriptions',
+      'report_emails','role_definitions','role_permissions','safety_incident_attachments',
+      'safety_incidents','tenants','thread_messages','thread_read_status',
+      'training_assignments','training_completions','training_courses','training_progress',
+      'training_requests','training_resources','training_share_links','units',
+      'user_invitations','user_module_access','user_roles','user_status_history',
+      'voice_agent_config','work_order_activity','work_order_comments','work_orders',
+      'workspace_equipment_config','workspace_modules','workspaces'
+    ])
+  LOOP
+    IF EXISTS (SELECT 1 FROM pg_class
+               WHERE relname = t AND relnamespace = 'public'::regnamespace) THEN
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    ELSE
+      RAISE NOTICE 'RLS enable skipped: public.% not present', t;
+    END IF;
+  END LOOP;
 END $$;
-ALTER TABLE public.daily_inspection_items         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.daily_inspections              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.daily_reports                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.defects                        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.document_folders               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.equipment_assets               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.equipment_categories           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.equipment_checkouts            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.equipment_documents            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.hud_sample_sizes               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inspections                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inventory_transactions         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.issue_comments                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.issue_mentions                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.issues                         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lw_courses                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lw_school_assignments          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lw_schools                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lw_sso_sessions                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.maintenance_request_activity   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.maintenance_requests           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.meeting_unlock_requests        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.message_threads                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.nspire_scoring_weights         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.onboarding_status              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.organization_documents         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permit_deliverables            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permit_requirements            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permits                        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.photo_gallery                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.portal_access                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.portal_activity                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.portal_client_uploads          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.portal_document_requests       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.portal_exclusions              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles                       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_action_items           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_client_updates         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_closeout_items         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_communications         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_discussion_replies     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_discussions            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_documents              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_lessons_learned        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_meetings               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_milestones             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_progress_entries       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_progress_reports       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_proposals              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_purchase_orders        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_rfis                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_safety_incidents       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_submittals             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_team_members           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_toolbox_talks          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_warranties             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.projects                       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.properties                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.property_archives              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.property_inventory_items       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.property_module_overrides      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.property_team_members          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.property_utility_bills         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.proposal_templates             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.punch_items                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.push_subscriptions             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.report_emails                  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.role_definitions               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.role_permissions               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.safety_incident_attachments    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.safety_incidents               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tenants                        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.thread_messages                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.thread_read_status             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_assignments           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_completions           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_courses               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_progress              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_requests              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_resources             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.training_share_links           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.units                          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_invitations               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_module_access             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_roles                     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_status_history            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.voice_agent_config             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.work_order_activity            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.work_order_comments            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.work_orders                    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.workspace_equipment_config     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.workspace_modules              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.workspaces                     ENABLE ROW LEVEL SECURITY;
 
 -- ================================================================
 -- STEP 5: CREATE ALL POLICIES
@@ -296,10 +233,14 @@ CREATE POLICY "photo_gallery_insert" ON public.photo_gallery FOR INSERT TO authe
 CREATE POLICY "photo_gallery_update" ON public.photo_gallery FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = photo_gallery.property_id AND workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = photo_gallery.property_id AND workspace_id = public.get_my_workspace_id()));
 CREATE POLICY "photo_gallery_delete" ON public.photo_gallery FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = photo_gallery.property_id AND workspace_id = public.get_my_workspace_id()));
 
-CREATE POLICY "property_archives_select" ON public.property_archives FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "property_archives_insert" ON public.property_archives FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "property_archives_update" ON public.property_archives FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "property_archives_delete" ON public.property_archives FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()));
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'property_archives' AND relnamespace = 'public'::regnamespace) THEN
+    EXECUTE 'CREATE POLICY "property_archives_select" ON public.property_archives FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "property_archives_insert" ON public.property_archives FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "property_archives_update" ON public.property_archives FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "property_archives_delete" ON public.property_archives FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_archives.property_id AND workspace_id = public.get_my_workspace_id()))';
+  END IF;
+END $$;
 
 CREATE POLICY "property_inventory_items_select" ON public.property_inventory_items FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.properties WHERE id = property_inventory_items.property_id AND workspace_id = public.get_my_workspace_id()));
 CREATE POLICY "property_inventory_items_insert" ON public.property_inventory_items FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.properties WHERE id = property_inventory_items.property_id AND workspace_id = public.get_my_workspace_id()));
