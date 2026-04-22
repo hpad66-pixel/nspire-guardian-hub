@@ -51,7 +51,12 @@ ALTER TABLE public.credential_alerts              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credential_share_links         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credentials                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crm_contacts                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.daily_inspection_addendums     ENABLE ROW LEVEL SECURITY;
+-- Table created by a later migration; skip RLS enable here if absent.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'daily_inspection_addendums' AND relnamespace = 'public'::regnamespace) THEN
+    ALTER TABLE public.daily_inspection_addendums ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 ALTER TABLE public.daily_inspection_items         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_inspections              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_reports                  ENABLE ROW LEVEL SECURITY;
@@ -615,10 +620,15 @@ CREATE POLICY "daily_inspection_items_insert" ON public.daily_inspection_items F
 CREATE POLICY "daily_inspection_items_update" ON public.daily_inspection_items FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_items.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_items.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
 CREATE POLICY "daily_inspection_items_delete" ON public.daily_inspection_items FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_items.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
 
-CREATE POLICY "daily_inspection_addendums_select" ON public.daily_inspection_addendums FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "daily_inspection_addendums_insert" ON public.daily_inspection_addendums FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "daily_inspection_addendums_update" ON public.daily_inspection_addendums FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
-CREATE POLICY "daily_inspection_addendums_delete" ON public.daily_inspection_addendums FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()));
+-- Skip daily_inspection_addendums policies if the table isn't present yet.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'daily_inspection_addendums' AND relnamespace = 'public'::regnamespace) THEN
+    EXECUTE 'CREATE POLICY "daily_inspection_addendums_select" ON public.daily_inspection_addendums FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "daily_inspection_addendums_insert" ON public.daily_inspection_addendums FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "daily_inspection_addendums_update" ON public.daily_inspection_addendums FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id())) WITH CHECK (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()))';
+    EXECUTE 'CREATE POLICY "daily_inspection_addendums_delete" ON public.daily_inspection_addendums FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.daily_inspections di JOIN public.properties p ON p.id = di.property_id WHERE di.id = daily_inspection_addendums.daily_inspection_id AND p.workspace_id = public.get_my_workspace_id()))';
+  END IF;
+END $$;
 
 CREATE POLICY "defects_select" ON public.defects FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.inspections i JOIN public.properties p ON p.id = i.property_id WHERE i.id = defects.inspection_id AND p.workspace_id = public.get_my_workspace_id()));
 CREATE POLICY "defects_insert" ON public.defects FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.inspections i JOIN public.properties p ON p.id = i.property_id WHERE i.id = defects.inspection_id AND p.workspace_id = public.get_my_workspace_id()));
