@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.drawing_markups (
   revision_id uuid NOT NULL REFERENCES public.drawing_revisions(id) ON DELETE CASCADE,
   user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   geometry jsonb NOT NULL,
-  color text DEFAULT '#C8962E',
+  color text DEFAULT '#1D6FE8',  -- Build OS sapphire; users can override per markup
   text text,
   linked_record_id uuid,
   linked_record_type text,

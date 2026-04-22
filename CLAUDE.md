@@ -203,19 +203,26 @@ Environment variables live in `.env.local` (gitignored). Reference `.env.example
 
 ---
 
-## AURUM design tokens (UI)
+## Build OS design tokens (UI)
 
-These are the project's canonical brand colors. Surface them through Tailwind config; don't inline hex in components.
+**Source of truth:** `src/index.css`. The table below is just a reference — if it ever drifts from the CSS file, trust the CSS.
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `--gold` | `#C8962E` | Primary accent, CTAs, active states |
-| `--gold-light` | `#E8C875` | Hover states, secondary accents |
-| `--dark` | `#0D0D1A` | Page background |
-| `--dark-2` | `#141428` | Card background |
-| `--dark-3` | `#1C1C35` | Elevated surfaces |
-| `--slate` | `#8B8FA3` | Secondary text |
-| `--text` | `#C8CAD4` | Body text |
+The app uses a warm cream light palette with blue + gold accents (the Build OS brand). NOT the "gold on obsidian" AURUM palette older versions of this doc claimed.
+
+| Token / CSS var | Value | Use |
+|-----------------|-------|-----|
+| `--background` | `#FDFCF9` (warm cream) | Page background |
+| `--foreground` | `#1A1714` (warm near-black) | Body text |
+| `--card` | `#FAF8F4` | Card background |
+| `--primary` | `#1A1714` | CTA buttons, active states |
+| `--accent` | `#C4A35A` (warm gold) | Secondary accent, hover highlights |
+| `--apas-sapphire` | `#1D6FE8` | Brand blue — "Start Free Trial" buttons, link text, gradient headings |
+| `--apas-emerald` | `#10B981` | Success states |
+| `--apas-amber` | `#F59E0B` | Warnings |
+| `--apas-rose` | `#F43F5E` | Errors / overdue |
+| `--muted-foreground` | `#878581` | Secondary text |
+
+Use Tailwind utility classes (`bg-background`, `text-foreground`, `bg-primary`, `text-accent-foreground`, etc.) rather than hex values. The `--apas-*` variables are available as Tailwind arbitrary values (`bg-[var(--apas-sapphire)]`) when you need the brand blue for marketing / CTA work.
 
 **Typography:**
 - Display / headings: `Playfair Display` (weights 700, 900)
