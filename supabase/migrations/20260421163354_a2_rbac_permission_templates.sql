@@ -135,7 +135,7 @@ AS $$
       AND ptg.action = p_action
   )
   SELECT COALESCE(
-    (SELECT level FROM user_levels ul
+    (SELECT ul.level FROM user_levels ul
       JOIN lvl ON lvl.level = ul.level
       ORDER BY lvl.rank DESC LIMIT 1),
     'none'
