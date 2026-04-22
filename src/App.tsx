@@ -14,6 +14,7 @@ import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
 // Pages — lazy loaded for code splitting
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
+const RootRedirect = lazy(() => import('./pages/RootRedirect'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
 const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
@@ -171,7 +172,8 @@ const App = () => (
                 }>
                   <Routes>
                     {/* Public Routes */}
-                    <Route path="/" element={<LandingPageAlt />} />
+                    <Route path="/" element={<RootRedirect />} />
+                    <Route path="/landing" element={<LandingPageAlt />} />
                     <Route path="/features" element={<FeaturesPage />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/install" element={<InstallPage />} />
