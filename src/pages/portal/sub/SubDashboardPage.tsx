@@ -3,6 +3,8 @@ import { useMyCourt } from "@/hooks/useWorkflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FileText, ClipboardList, Inbox } from "lucide-react";
 
 export default function SubDashboardPage() {
   const { data, isLoading } = useSubPortalData();
@@ -20,6 +22,18 @@ export default function SubDashboardPage() {
           <CardContent className="text-3xl font-bold">{data?.invoices.length ?? 0}</CardContent></Card>
         <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">In my court</CardTitle></CardHeader>
           <CardContent className="text-3xl font-bold">{court.length}</CardContent></Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-6">
+        <Button asChild variant="outline">
+          <Link to="/portal/sub/commitments"><FileText className="h-4 w-4 mr-1" /> Commitments</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/portal/sub/rfis"><Inbox className="h-4 w-4 mr-1" /> RFIs</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/portal/sub/submittals"><ClipboardList className="h-4 w-4 mr-1" /> Submittals</Link>
+        </Button>
       </div>
 
       <Card>

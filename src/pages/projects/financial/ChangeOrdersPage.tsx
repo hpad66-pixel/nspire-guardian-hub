@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { useChangeOrdersByType } from "@/hooks/useProcoreChangeOrders";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,21 +16,23 @@ function CoList({ projectId, coType }: { projectId: string; coType: "PCO"|"OCO"|
   return (
     <div className="grid gap-2">
       {rows.map((co) => (
-        <Card key={co.id}>
-          <CardContent className="flex items-center justify-between p-3">
-            <div>
-              <div className="font-medium">
-                <span className="font-mono text-muted-foreground mr-2">{coType}-{co.co_no}</span>
-                {co.title}
+        <Link key={co.id} to={`/projects/${projectId}/financials/cos/${co.id}`}>
+          <Card className="hover:border-primary transition">
+            <CardContent className="flex items-center justify-between p-3">
+              <div>
+                <div className="font-medium">
+                  <span className="font-mono text-muted-foreground mr-2">{coType}-{co.co_no}</span>
+                  {co.title}
+                </div>
+                {co.reason_code && <div className="text-xs text-muted-foreground">{co.reason_code}</div>}
               </div>
-              {co.reason_code && <div className="text-xs text-muted-foreground">{co.reason_code}</div>}
-            </div>
-            <div className="flex gap-2 items-center">
-              <span className="font-mono">{fmt(co.amount)}</span>
-              <Badge variant="outline" className="capitalize">{co.status.replace("_", " ")}</Badge>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex gap-2 items-center">
+                <span className="font-mono">{fmt(co.amount)}</span>
+                <Badge variant="outline" className="capitalize">{co.status.replace("_", " ")}</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );

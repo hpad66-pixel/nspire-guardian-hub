@@ -6,9 +6,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
 
-const SEVERITY_RANK: Record<string, number> = {
+/**
+ * Severity ordering used when rolling up step responses to a single submittal
+ * status. Worst-of-all wins — if any step is "rejected", the submittal is
+ * rejected; if none is rejected but any is "revise", it's revise-and-resubmit;
+ * etc. `fyi` is the no-op that doesn't block approval.
+ */
+export const SEVERITY_RANK: Record<string, number> = {
   rejected: 4, revise: 3, approved_as_noted: 2, approved: 1, fyi: 0,
 };
+
+/** Pure function — pick the worst response across an array of step responses. */
+export function pickWorstResponse(
+  responses: Array<string | null | undefined>,
+): string | null {
+  const filtered = responses.filter((r): r is string => Boolean(r));
+  if (filtered.length === 0) return null;
+  return filtered.sort(
+    (a, b) => (SEVERITY_RANK[b] ?? 0) - (SEVERITY_RANK[a] ?? 0),
+  )[0];
+}
 
 export interface SubmittalStep {
   id: string; submittal_id: string; sequence: number; approver_id: string;

@@ -91,3 +91,21 @@ verify_jwt = true
 # Portal invitation acceptance — public (token is the auth)
 [functions.accept-portal-invitation]
 verify_jwt = false
+
+# ───── Phase 2 · B4 / C4 post-processors ─────
+# Photo-process — generates thumbnails + EXIF patch; callable by authenticated client
+[functions.photo-process]
+verify_jwt = true
+
+# Daily weather — fills daily_reports forecast fields from Open-Meteo
+[functions.daily-weather]
+verify_jwt = true
+
+# ───── Phase 2 · E1 schedule importers ─────
+# Primavera P6 XER parser — authenticated; RLS keeps writes tenant-scoped.
+[functions.parse-p6-xer]
+verify_jwt = true
+
+# Microsoft Project XML parser — authenticated; same RLS contract as P6.
+[functions.parse-msp-xml]
+verify_jwt = true

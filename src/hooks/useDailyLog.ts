@@ -97,5 +97,24 @@ export function useDailyCategory<T = Record<string, unknown>>(
     onSuccess: () => qc.invalidateQueries({ queryKey: [table, dailyReportId] }),
   });
 
-  return { ...list, add };
+  const update = useMutation({
+    mutationFn: async (input: { id: string; patch: Partial<T> }) => {
+      const { data, error } = await supabase.from(table as any)
+        .update(input.patch as any).eq("id", input.id)
+        .select().single();
+      if (error) throw error;
+      return data as T;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [table, dailyReportId] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from(table as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [table, dailyReportId] }),
+  });
+
+  return { ...list, add, update, remove };
 }

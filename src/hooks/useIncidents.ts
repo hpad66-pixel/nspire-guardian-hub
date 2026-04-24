@@ -101,3 +101,54 @@ export function useCorrectiveActions(incidentId: string | null) {
 
   return { ...list, add };
 }
+
+export interface IncidentRootCause {
+  id: string;
+  incident_id: string;
+  category: string | null;
+  description: string | null;
+}
+
+export function useIncidentRootCauses(incidentId: string | null) {
+  const qc = useQueryClient();
+
+  const list = useQuery<IncidentRootCause[]>({
+    queryKey: ["incident-root-causes", incidentId],
+    enabled: Boolean(incidentId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("incident_root_causes" as any).select("*")
+        .eq("incident_id", incidentId!)
+        .order("id");
+      if (error) throw error;
+      return (data ?? []) as IncidentRootCause[];
+    },
+  });
+
+  const add = useMutation({
+    mutationFn: async (input: { category: string; description: string }) => {
+      if (!incidentId) throw new Error("No incident");
+      const { data, error } = await supabase
+        .from("incident_root_causes" as any)
+        .insert({
+          incident_id: incidentId,
+          category: input.category,
+          description: input.description,
+        } as any).select().single();
+      if (error) throw error;
+      return data as IncidentRootCause;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["incident-root-causes", incidentId] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("incident_root_causes" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["incident-root-causes", incidentId] }),
+  });
+
+  return { ...list, add, remove };
+}

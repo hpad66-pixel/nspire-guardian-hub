@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useChangeEvents } from "@/hooks/useChangeEvents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,23 +22,25 @@ export default function ChangeEventsPage() {
       ) : (
         <div className="grid gap-2">
           {events.map((e) => (
-            <Card key={e.id}>
-              <CardContent className="flex items-center justify-between p-3">
-                <div>
-                  <div className="font-medium">
-                    <span className="font-mono text-muted-foreground mr-2">CE-{e.event_no}</span>
-                    {e.title}
+            <Link key={e.id} to={`/projects/${projectId}/financials/change-events/${e.id}`}>
+              <Card className="hover:border-primary transition">
+                <CardContent className="flex items-center justify-between p-3">
+                  <div>
+                    <div className="font-medium">
+                      <span className="font-mono text-muted-foreground mr-2">CE-{e.event_no}</span>
+                      {e.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {e.reason_code ?? "other"} · {e.event_date}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {e.reason_code ?? "other"} · {e.event_date}
+                  <div className="flex gap-2 items-center">
+                    <span className="font-mono">{fmt(e.rom_value)}</span>
+                    <Badge variant="outline" className="capitalize">{e.status}</Badge>
                   </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="font-mono">{fmt(e.rom_value)}</span>
-                  <Badge variant="outline" className="capitalize">{e.status}</Badge>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

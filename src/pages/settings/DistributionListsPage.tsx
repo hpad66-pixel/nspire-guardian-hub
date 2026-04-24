@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDistributionLists, useDistributionListMembers } from "@/hooks/useDistributionLists";
+import { useDistributionLists } from "@/hooks/useDistributionLists";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { DistributionListEditor } from "@/components/settings/DistributionListEditor";
 import { toast } from "sonner";
 
 export default function DistributionListsPage() {
@@ -16,9 +16,7 @@ export default function DistributionListsPage() {
   const [name, setName] = useState("");
   const [scope, setScope] = useState<"tenant" | "workspace" | "project">("tenant");
 
-  const { data: members = [], addMember, removeMember } =
-    useDistributionListMembers(selectedId);
-  const [emailDraft, setEmailDraft] = useState("");
+  const selectedList = lists.find((l) => l.id === selectedId) ?? null;
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -29,17 +27,6 @@ export default function DistributionListsPage() {
       toast.success("List created");
     } catch (e: any) {
       toast.error(e.message);
-    }
-  }
-
-  async function handleAddEmail() {
-    const e = emailDraft.trim();
-    if (!e) return;
-    try {
-      await addMember.mutateAsync({ email_override: e } as any);
-      setEmailDraft("");
-    } catch (err: any) {
-      toast.error(err.message);
     }
   }
 
@@ -99,7 +86,7 @@ export default function DistributionListsPage() {
       </div>
 
       <div className="lg:col-span-2">
-        {!selectedId ? (
+        {!selectedList ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               Select a list to manage its members.
@@ -107,51 +94,13 @@ export default function DistributionListsPage() {
           </Card>
         ) : (
           <Card>
-            <CardHeader>
-              <CardTitle>Members</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="person@example.com"
-                  value={emailDraft}
-                  onChange={(e) => setEmailDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddEmail()}
-                />
-                <Button onClick={handleAddEmail}>Add</Button>
-              </div>
-
-              <div className="space-y-2">
-                {members.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No members yet.</div>
-                ) : (
-                  members.map((m) => (
-                    <div
-                      key={m.id}
-                      className="flex items-center justify-between rounded-md border p-3"
-                    >
-                      <div className="text-sm">
-                        {m.email_override ?? m.user_id ?? m.contact_id}
-                        {m.role_label && (
-                          <Badge variant="secondary" className="ml-2">{m.role_label}</Badge>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => removeMember.mutateAsync(m.id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
+            <CardContent className="p-4 space-y-4">
+              <DistributionListEditor list={selectedList} />
               <Button
                 variant="destructive"
                 onClick={async () => {
                   if (!confirm("Delete this list?")) return;
-                  await remove.mutateAsync(selectedId);
+                  await remove.mutateAsync(selectedList.id);
                   setSelectedId(null);
                 }}
               >

@@ -81,6 +81,11 @@ const PermissionTemplateDetailPage = lazy(() => import('./pages/admin/Permission
 const DistributionListsPage = lazy(() => import('./pages/settings/DistributionListsPage'));
 const MyCourtPage = lazy(() => import('./pages/dashboard/MyCourtPage'));
 const CostCodeLibrariesPage = lazy(() => import('./pages/admin/CostCodeLibrariesPage'));
+const CostCodeLibraryEditor = lazy(() => import('./pages/admin/CostCodeLibraryEditor'));
+const WorkflowsPage = lazy(() => import('./pages/admin/WorkflowsPage'));
+const ProjectCostCodesPage = lazy(() => import('./pages/projects/ProjectCostCodesPage'));
+const SubmittalPackagesPage = lazy(() => import('./pages/projects/SubmittalPackagesPage'));
+const SubmittalRegisterPage = lazy(() => import('./pages/projects/SubmittalRegisterPage'));
 
 // ───────── Procore Lite · Phase 1 (A6) ─────────
 const BillingPage = lazy(() => import('./pages/admin/BillingPage'));
@@ -95,6 +100,16 @@ const ProcoreReportsPage = lazy(() => import('./pages/reports/ProcoreReportsPage
 const ProcoreDashboardsPage = lazy(() => import('./pages/dashboards/DashboardsPage'));
 const SubDashboardPage = lazy(() => import('./pages/portal/sub/SubDashboardPage'));
 const OwnerDashboardPage = lazy(() => import('./pages/portal/owner/OwnerDashboardPage'));
+const SubCommitmentsPage = lazy(() => import('./pages/portal/sub/SubCommitmentsPage'));
+const SubCommitmentDetailPage = lazy(() => import('./pages/portal/sub/SubCommitmentDetailPage'));
+const SubInvoiceBuilderPage = lazy(() => import('./pages/portal/sub/SubInvoiceBuilderPage'));
+const SubRfisPage = lazy(() => import('./pages/portal/sub/SubRfisPage'));
+const SubSubmittalsPage = lazy(() => import('./pages/portal/sub/SubSubmittalsPage'));
+const OwnerContractPage = lazy(() => import('./pages/portal/owner/OwnerContractPage'));
+const OwnerOcoApprovalPage = lazy(() => import('./pages/portal/owner/OwnerOcoApprovalPage'));
+const OwnerPayAppApprovalPage = lazy(() => import('./pages/portal/owner/OwnerPayAppApprovalPage'));
+const OwnerSchedulePage = lazy(() => import('./pages/portal/owner/OwnerSchedulePage'));
+const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
 const WebhooksPage = lazy(() => import('./pages/settings/api/WebhooksPage'));
 const ApiDocsPage = lazy(() => import('./pages/developer/ApiDocsPage'));
@@ -110,16 +125,22 @@ const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCost
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
+const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
+const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/ChangeOrderDetailPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
 const ProjectDirectoryPage = lazy(() => import('./pages/projects/ProjectDirectoryPage'));
 const DrawingsPage = lazy(() => import('./pages/projects/DrawingsPage'));
+const DrawingViewerPage = lazy(() => import('./pages/projects/DrawingViewerPage'));
 const SpecificationsPage = lazy(() => import('./pages/projects/SpecificationsPage'));
 const PhotosPage = lazy(() => import('./pages/projects/PhotosPage'));
+const ProjectDocumentsPage = lazy(() => import('./pages/projects/ProjectDocumentsPage'));
 const TransmittalsPage = lazy(() => import('./pages/projects/TransmittalsPage'));
 const PunchListPage = lazy(() => import('./pages/projects/PunchListPage'));
 const DailyLogPage = lazy(() => import('./pages/projects/DailyLogPage'));
 const MeetingsProcorePage = lazy(() => import('./pages/projects/MeetingsProcorePage'));
+const MeetingRunPage = lazy(() => import('./pages/projects/MeetingRunPage'));
+const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplatesPage'));
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
 
@@ -281,6 +302,11 @@ const App = () => (
                               <Route path="/admin/permission-templates/:id" element={<PermissionTemplateDetailPage />} />
                               <Route path="/settings/distribution-lists" element={<DistributionListsPage />} />
                               <Route path="/admin/cost-codes" element={<CostCodeLibrariesPage />} />
+                              <Route path="/admin/cost-codes/editor" element={<CostCodeLibraryEditor />} />
+                              <Route path="/admin/workflows" element={<WorkflowsPage />} />
+                              <Route path="/projects/:projectId/cost-codes" element={<ProjectCostCodesPage />} />
+                              <Route path="/projects/:projectId/submittals/packages" element={<SubmittalPackagesPage />} />
+                              <Route path="/projects/:projectId/submittals/register" element={<SubmittalRegisterPage />} />
                               <Route path="/admin/billing" element={<BillingPage />} />
                               <Route path="/admin/sso" element={<SSOConfigPage />} />
                               <Route path="/admin/scim" element={<SCIMConfigPage />} />
@@ -288,12 +314,16 @@ const App = () => (
                               {/* ───── Procore Lite · Phase 2 ───── */}
                               <Route path="/projects/:projectId/directory" element={<ProjectDirectoryPage />} />
                               <Route path="/projects/:projectId/drawings" element={<DrawingsPage />} />
+                              <Route path="/projects/:projectId/drawings/:drawingId" element={<DrawingViewerPage />} />
                               <Route path="/projects/:projectId/specifications" element={<SpecificationsPage />} />
                               <Route path="/projects/:projectId/photos" element={<PhotosPage />} />
+                              <Route path="/projects/:projectId/documents" element={<ProjectDocumentsPage />} />
                               <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
                               <Route path="/projects/:projectId/punch" element={<PunchListPage />} />
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
+                              <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
+                              <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
                               <Route path="/projects/:projectId/incidents" element={<IncidentsPage />} />
 
@@ -306,12 +336,24 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
+                              <Route path="/projects/:projectId/financials/change-events/:eventId" element={<ChangeEventDetailPage />} />
+                              <Route path="/projects/:projectId/financials/cos/:coId" element={<ChangeOrderDetailPage />} />
 
                               {/* ───── Procore Lite · Phase 4 ───── */}
                               <Route path="/reports/procore" element={<ProcoreReportsPage />} />
                               <Route path="/dashboards/procore" element={<ProcoreDashboardsPage />} />
                               <Route path="/portal/sub" element={<SubDashboardPage />} />
+                              <Route path="/portal/sub/commitments" element={<SubCommitmentsPage />} />
+                              <Route path="/portal/sub/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
+                              <Route path="/portal/sub/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                              <Route path="/portal/sub/rfis" element={<SubRfisPage />} />
+                              <Route path="/portal/sub/submittals" element={<SubSubmittalsPage />} />
                               <Route path="/portal/owner" element={<OwnerDashboardPage />} />
+                              <Route path="/portal/owner/contract" element={<OwnerContractPage />} />
+                              <Route path="/portal/owner/cos/:coId" element={<OwnerOcoApprovalPage />} />
+                              <Route path="/portal/owner/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
+                              <Route path="/portal/owner/schedule" element={<OwnerSchedulePage />} />
+                              <Route path="/portal/owner/reports" element={<OwnerReportsPage />} />
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />
                               <Route path="/developer/api" element={<ApiDocsPage />} />
