@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useCommitments } from "@/hooks/useCommitments";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,23 +22,25 @@ export default function CommitmentsPage() {
       ) : (
         <div className="grid gap-2">
           {commitments.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="flex items-center justify-between p-3">
-                <div>
-                  <div className="font-medium">
-                    <span className="font-mono text-muted-foreground mr-2">{c.commitment_no}</span>
-                    {c.title}
+            <Link key={c.id} to={`/projects/${projectId}/financials/commitments/${c.id}`}>
+              <Card className="hover:border-primary transition">
+                <CardContent className="flex items-center justify-between p-3">
+                  <div>
+                    <div className="font-medium">
+                      <span className="font-mono text-muted-foreground mr-2">{c.commitment_no}</span>
+                      {c.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground capitalize">
+                      {c.commitment_type.replace("_", " ")}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground capitalize">
-                    {c.commitment_type.replace("_", " ")}
+                  <div className="flex gap-2 items-center">
+                    <span className="font-mono">{fmt(c.original_value)}</span>
+                    <Badge variant="outline" className="capitalize">{c.status.replace("_", " ")}</Badge>
                   </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="font-mono">{fmt(c.original_value)}</span>
-                  <Badge variant="outline" className="capitalize">{c.status.replace("_", " ")}</Badge>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

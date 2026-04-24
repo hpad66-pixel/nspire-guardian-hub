@@ -1,7 +1,10 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { usePrimeContract, usePrimeContractSov, usePrimeContractTotals, usePayApps } from "@/hooks/usePrimeContract";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
 
 function fmt(n: number | null | undefined) {
   return `$${((n ?? 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -76,7 +79,11 @@ export default function PrimeContractPage() {
           ) : (
             <div className="divide-y text-sm">
               {payApps.map((pa: any) => (
-                <div key={pa.id} className="flex items-center justify-between py-2">
+                <Link
+                  key={pa.id}
+                  to={`/projects/${projectId}/financials/prime-contract/pay-apps/${pa.id}`}
+                  className="flex items-center justify-between py-2 hover:bg-muted px-2 rounded -mx-2"
+                >
                   <div>
                     <span className="font-mono mr-2">#{pa.pay_app_no}</span>
                     <span className="text-muted-foreground">period end {pa.period_end}</span>
@@ -85,7 +92,7 @@ export default function PrimeContractPage() {
                     <span className="font-mono">{fmt(pa.approved_amount ?? pa.submitted_amount)}</span>
                     <Badge variant="outline" className="capitalize">{pa.status}</Badge>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
