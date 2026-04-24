@@ -97,6 +97,9 @@ const SubDashboardPage = lazy(() => import('./pages/portal/sub/SubDashboardPage'
 const OwnerDashboardPage = lazy(() => import('./pages/portal/owner/OwnerDashboardPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
 const WebhooksPage = lazy(() => import('./pages/settings/api/WebhooksPage'));
+const ApiDocsPage = lazy(() => import('./pages/developer/ApiDocsPage'));
+const DashboardViewPage = lazy(() => import('./pages/dashboards/DashboardViewPage'));
+const ReportBuilderPage = lazy(() => import('./pages/reports/ReportBuilderPage'));
 
 // ───────── Procore Lite · Phase 3 (D1–D6 Financial Cascade) ─────────
 const PrimeContractPage = lazy(() => import('./pages/projects/financial/PrimeContractPage'));
@@ -307,6 +310,9 @@ const App = () => (
                               <Route path="/portal/owner" element={<OwnerDashboardPage />} />
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />
+                              <Route path="/developer/api" element={<ApiDocsPage />} />
+                              <Route path="/dashboards/:dashboardId" element={<DashboardViewPage />} />
+                              <Route path="/reports/new" element={<ReportBuilderPage />} />
 
                               {/* 404 */}
                               <Route path="*" element={<NotFound />} />

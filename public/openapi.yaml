@@ -1,0 +1,342 @@
+openapi: 3.1.0
+info:
+  title: Procore Lite Public API
+  version: "1.0.0"
+  description: |
+    OAuth2-protected REST API for integrating Procore Lite with ERP, accounting,
+    and partner systems. All requests require a Bearer access token from
+    `/oauth/token`. Rate limits and scopes are per `api_clients.rate_limit`.
+
+    **Plan gating:** Business plan → 600 req/min. Enterprise → 6000 req/min.
+  contact: { name: APAS.AI }
+servers:
+  - url: https://xlfwzqpixlrnntzqhvcm.supabase.co/functions/v1
+    description: Production API gateway (api-v1 edge function)
+  - url: http://localhost:54321/functions/v1
+    description: Local Supabase CLI
+security:
+  - bearerAuth: []
+tags:
+  - name: auth
+  - name: projects
+  - name: commitments
+  - name: change-orders
+  - name: budget
+  - name: rfis
+  - name: direct-costs
+  - name: webhooks
+
+paths:
+  /oauth-token:
+    post:
+      tags: [auth]
+      summary: Exchange client credentials for an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [grant_type, client_id, client_secret]
+              properties:
+                grant_type: { type: string, enum: [client_credentials] }
+                client_id: { type: string }
+                client_secret: { type: string }
+                scope: { type: string, description: "Space-separated scopes" }
+      responses:
+        "200":
+          description: Access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type:   { type: string, enum: [Bearer] }
+                  expires_in:   { type: integer, description: "seconds until expiry" }
+                  scope:        { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api-v1/projects:
+    get:
+      tags: [projects]
+      summary: List projects
+      responses:
+        "200":
+          description: Projects array (RLS scoped)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api-v1/commitments:
+    get:
+      tags: [commitments]
+      summary: List commitments
+      parameters:
+        - { in: query, name: project_id, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Commitments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Commitment" }
+    post:
+      tags: [commitments]
+      summary: Create a commitment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommitmentCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Commitment" }
+
+  /api-v1/commitments/{id}:
+    patch:
+      tags: [commitments]
+      summary: Update a commitment
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommitmentUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Commitment" }
+
+  /api-v1/change-orders:
+    get:
+      tags: [change-orders]
+      summary: List change orders
+      parameters:
+        - { in: query, name: project_id, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Change orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChangeOrder" }
+
+  /api-v1/budget:
+    get:
+      tags: [budget]
+      summary: Get the cost-code budget matrix for a project
+      parameters:
+        - { in: query, name: project_id, required: true,
+            schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Budget matrix rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/BudgetMatrixRow" }
+
+  /api-v1/rfis:
+    get:
+      tags: [rfis]
+      summary: List RFIs
+      parameters:
+        - { in: query, name: project_id, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: RFIs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Rfi" }
+
+  /api-v1/direct-costs:
+    post:
+      tags: [direct-costs]
+      summary: Create a direct cost (invoice / timecard / expense)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DirectCostCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DirectCost" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: "invalid_token" }
+    Forbidden:
+      description: Token is valid but lacks required scope
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: "insufficient_scope" }
+              required: { type: string, example: "read:commitments" }
+    RateLimited:
+      description: Per-client rate limit exceeded
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: "rate_limit_exceeded" }
+
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        name:        { type: string }
+        status:      { type: string }
+        created_at:  { type: string, format: date-time }
+
+    Commitment:
+      type: object
+      properties:
+        id:              { type: string, format: uuid }
+        project_id:      { type: string, format: uuid }
+        commitment_type: { type: string, enum: [subcontract, purchase_order] }
+        commitment_no:   { type: string }
+        title:           { type: string }
+        vendor_org_id:   { type: string, format: uuid, nullable: true }
+        executed_date:   { type: string, format: date, nullable: true }
+        original_value:  { type: number }
+        retainage_pct:   { type: number }
+        status:          { type: string, enum: [draft, out_for_signature, executed, closed, terminated, void] }
+
+    CommitmentCreate:
+      type: object
+      required: [project_id, commitment_type, commitment_no, title, original_value]
+      properties:
+        project_id:      { type: string, format: uuid }
+        commitment_type: { type: string, enum: [subcontract, purchase_order] }
+        commitment_no:   { type: string }
+        title:           { type: string }
+        vendor_org_id:   { type: string, format: uuid }
+        original_value:  { type: number }
+        retainage_pct:   { type: number }
+
+    CommitmentUpdate:
+      type: object
+      properties:
+        title:           { type: string }
+        status:          { type: string }
+        executed_date:   { type: string, format: date }
+
+    ChangeOrder:
+      type: object
+      properties:
+        id:        { type: string, format: uuid }
+        co_type:   { type: string, enum: [PCO, OCO, CCO] }
+        co_no:     { type: integer }
+        title:     { type: string }
+        amount:    { type: number }
+        status:    { type: string }
+
+    BudgetMatrixRow:
+      type: object
+      properties:
+        cost_code:             { type: string }
+        cost_code_desc:        { type: string }
+        original_budget:       { type: number }
+        approved_budget_mods:  { type: number }
+        revised_budget:        { type: number }
+        committed_cost:        { type: number }
+        executed_cco:          { type: number }
+        direct_cost:           { type: number }
+        pending_exposure:      { type: number }
+        forecast_to_complete:  { type: number }
+        variance:              { type: number }
+
+    Rfi:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        rfi_number:  { type: string }
+        question:    { type: string }
+        stage:       { type: string }
+        cost_impact_cents:     { type: integer }
+        schedule_impact_days:  { type: integer }
+
+    DirectCost:
+      type: object
+      properties:
+        id:            { type: string, format: uuid }
+        cost_type:     { type: string, enum: [invoice, timecard, expense] }
+        cost_date:     { type: string, format: date }
+        amount:        { type: number }
+        status:        { type: string }
+
+    DirectCostCreate:
+      type: object
+      required: [cost_type, cost_date, amount]
+      properties:
+        project_id:    { type: string, format: uuid }
+        cost_type:     { type: string, enum: [invoice, timecard, expense] }
+        cost_date:     { type: string, format: date }
+        amount:        { type: number }
+        vendor_org_id: { type: string, format: uuid }
+        employee_id:   { type: string, format: uuid }
+        description:   { type: string }

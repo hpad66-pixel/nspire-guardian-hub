@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { lovable } from '@/integrations/lovable';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ShieldCheck, ClipboardList, Wrench, HardHat, BarChart3, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -53,7 +53,10 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/dashboard` },
+      });
       if (error) toast.error('Failed to sign in with Google. Please try again.');
     } catch {
       toast.error('An unexpected error occurred. Please try again.');
