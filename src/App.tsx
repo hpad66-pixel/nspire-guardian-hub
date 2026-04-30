@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
@@ -112,6 +113,7 @@ const OwnerSchedulePage = lazy(() => import('./pages/portal/owner/OwnerScheduleP
 const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
 const WebhooksPage = lazy(() => import('./pages/settings/api/WebhooksPage'));
+const WebhookDeliveriesPage = lazy(() => import('./pages/settings/api/WebhookDeliveriesPage'));
 const ApiDocsPage = lazy(() => import('./pages/developer/ApiDocsPage'));
 const DashboardViewPage = lazy(() => import('./pages/dashboards/DashboardViewPage'));
 const ReportBuilderPage = lazy(() => import('./pages/reports/ReportBuilderPage'));
@@ -342,20 +344,27 @@ const App = () => (
                               {/* ───── Procore Lite · Phase 4 ───── */}
                               <Route path="/reports/procore" element={<ProcoreReportsPage />} />
                               <Route path="/dashboards/procore" element={<ProcoreDashboardsPage />} />
-                              <Route path="/portal/sub" element={<SubDashboardPage />} />
-                              <Route path="/portal/sub/commitments" element={<SubCommitmentsPage />} />
-                              <Route path="/portal/sub/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
-                              <Route path="/portal/sub/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
-                              <Route path="/portal/sub/rfis" element={<SubRfisPage />} />
-                              <Route path="/portal/sub/submittals" element={<SubSubmittalsPage />} />
-                              <Route path="/portal/owner" element={<OwnerDashboardPage />} />
-                              <Route path="/portal/owner/contract" element={<OwnerContractPage />} />
-                              <Route path="/portal/owner/cos/:coId" element={<OwnerOcoApprovalPage />} />
-                              <Route path="/portal/owner/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
-                              <Route path="/portal/owner/schedule" element={<OwnerSchedulePage />} />
-                              <Route path="/portal/owner/reports" element={<OwnerReportsPage />} />
+                              {/* G3 · Subcontractor portal — auth + role + plan gated */}
+                              <Route element={<PortalProtectedRoute role="subcontractor" feature="sub_portal" />}>
+                                <Route path="/portal/sub" element={<SubDashboardPage />} />
+                                <Route path="/portal/sub/commitments" element={<SubCommitmentsPage />} />
+                                <Route path="/portal/sub/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
+                                <Route path="/portal/sub/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                                <Route path="/portal/sub/rfis" element={<SubRfisPage />} />
+                                <Route path="/portal/sub/submittals" element={<SubSubmittalsPage />} />
+                              </Route>
+                              {/* G3 · Owner portal — auth + role + plan gated */}
+                              <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
+                                <Route path="/portal/owner" element={<OwnerDashboardPage />} />
+                                <Route path="/portal/owner/contract" element={<OwnerContractPage />} />
+                                <Route path="/portal/owner/cos/:coId" element={<OwnerOcoApprovalPage />} />
+                                <Route path="/portal/owner/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
+                                <Route path="/portal/owner/schedule" element={<OwnerSchedulePage />} />
+                                <Route path="/portal/owner/reports" element={<OwnerReportsPage />} />
+                              </Route>
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />
+                              <Route path="/settings/api/webhooks/:id/deliveries" element={<WebhookDeliveriesPage />} />
                               <Route path="/developer/api" element={<ApiDocsPage />} />
                               <Route path="/dashboards/:dashboardId" element={<DashboardViewPage />} />
                               <Route path="/reports/new" element={<ReportBuilderPage />} />

@@ -51,8 +51,11 @@ describe("Procore Lite hook modules", () => {
     const names = Object.keys(mod);
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) {
-      const fn = (mod as any)[name];
-      expect(typeof fn === "function" || typeof fn === "object").toBe(true);
+      const value = (mod as any)[name];
+      // Hooks export functions; types/interfaces vanish at runtime; some
+      // modules also export primitive constants (e.g. DOCS_BUCKET in
+      // useProjectDocuments). Just assert the export is defined.
+      expect(value).toBeDefined();
     }
   });
 });

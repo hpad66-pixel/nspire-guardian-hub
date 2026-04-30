@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const APP_ORIGIN = Deno.env.get("APP_ORIGIN");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,15 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const requestOrigin = req.headers.get("origin");
+    const referer = req.headers.get("referer");
+    const refererOrigin = referer ? new URL(referer).origin : null;
+    const appOrigin = (APP_ORIGIN || requestOrigin || refererOrigin || "").replace(/\/$/, "");
+
+    if (!appOrigin) {
+      throw new Error("APP_ORIGIN is not configured and no request origin was provided");
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -50,8 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const inviterName = inviterProfile?.full_name || "A team member";
 
-    // Generate the accept URL - force production domain
-    const acceptUrl = `https://cm.apaslabs.org/accept-invite/${invitation.token}`;
+    const acceptUrl = `${appOrigin}/accept-invite/${invitation.token}`;
 
     const roleLabels: Record<string, string> = {
       admin: "Administrator",

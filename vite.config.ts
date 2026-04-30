@@ -79,6 +79,13 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        // Take over immediately on update so users don't get stuck on a
+        // stale SPA shell (the dark-landing build) until they close every
+        // tab. Without these the autoUpdate SW lingers in "waiting" and a
+        // hard-reload is the only way to see the new index.html.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Allow large vendor chunks up to 6 MB in the precache manifest
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // CRITICAL: Never intercept OAuth, auth callbacks, or Supabase redirects.
