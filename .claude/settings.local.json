@@ -6,7 +6,24 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(ls *.config.*)",
       "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(json.dumps\\(p.get\\('devDependencies',{}\\), indent=2\\)\\)\")",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(supabase --version)",
+      "Bash(supabase status *)",
+      "Bash(npx --version)",
+      "Bash(npx supabase *)",
+      "Bash(docker network *)",
+      "Bash(xargs -r docker rm -f)",
+      "Bash(tasklist)",
+      "Read(//c/Users/dhrum/AppData/Local/Temp/claude/C--Users-dhrum-nspire-guardian-hub/c1721d5d-9bd0-4830-b27e-082c65534ad5/tasks/**)",
+      "Read(//c/Users/dhrum/nspire-guardian-hub/**)",
+      "Bash(docker info *)",
+      "Bash(taskkill //PID 23820 //F)",
+      "Bash(taskkill //PID 31496 //F)",
+      "PowerShell(Tee-Object *)",
+      "Bash(docker exec supabase_db_xlfwzqpixlrnntzqhvcm *)",
+      "Bash(docker cp *)",
+      "Bash(docker exec *)",
+      "Bash(grep -E '\\\\.\\(sql|ts|tsx\\)$')"
     ]
   }
 }

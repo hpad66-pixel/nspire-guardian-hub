@@ -2,28 +2,46 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Bump when another forced SW eviction is needed (e.g. a future cache split).
+const SW_CLEANUP_VERSION = "2026-04-28-dark-landing";
+const SW_CLEANUP_KEY = "build-os-sw-cleanup";
 
-// Register service worker update handler
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const { registerSW } = await import('virtual:pwa-register');
-      registerSW({
-        onNeedRefresh() {
-          const shouldUpdate = window.confirm(
-            'A new version of NSpire is available. Click OK to update now.'
-          );
-          if (shouldUpdate) {
-            window.location.reload();
-          }
-        },
-        onOfflineReady() {
-          console.log('NSpire is ready to work offline.');
-        },
-      });
-    } catch (e) {
-      // PWA registration not available in dev mode
-    }
-  });
+async function evictStaleServiceWorkers(): Promise<boolean> {
+  if (!("serviceWorker" in navigator)) return false;
+  const regs = await navigator.serviceWorker.getRegistrations();
+  const names = "caches" in window ? await caches.keys() : [];
+  if (regs.length === 0 && names.length === 0) return false;
+  await Promise.all(regs.map((r) => r.unregister()));
+  await Promise.all(names.map((n) => caches.delete(n)));
+  return true;
+}
+
+if (typeof window !== "undefined") {
+  const last = window.localStorage.getItem(SW_CLEANUP_KEY);
+  if (last !== SW_CLEANUP_VERSION) {
+    window.localStorage.setItem(SW_CLEANUP_KEY, SW_CLEANUP_VERSION);
+    evictStaleServiceWorkers()
+      .then((evicted) => {
+        if (evicted) window.location.reload();
+        else mountApp();
+      })
+      .catch(() => mountApp());
+  } else {
+    mountApp();
+  }
+}
+
+function mountApp() {
+  createRoot(document.getElementById("root")!).render(<App />);
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        const { registerSW } = await import("virtual:pwa-register");
+        registerSW({ immediate: true });
+      } catch {
+        // PWA registration unavailable in dev mode — expected.
+      }
+    });
+  }
 }

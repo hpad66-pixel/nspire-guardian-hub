@@ -123,6 +123,26 @@ if (!canUseFeature(tenant, 'api_access')) throw new PlanLimitError()
 ### 7. Only touch files in COMPONENTS
 When a prompt lists a `COMPONENTS:` block, those are the only files you create or modify. If a dependency forces a change elsewhere, flag it in the PR description — do not silently refactor adjacent code.
 
+### 8. Polymorphic FKs need a tenant-boundary trigger
+Any table that can reference one of N parent tables via nullable FKs (e.g. `rfi_attachments` referencing one of `documents | photos | drawing_markups`) must enforce same-tenant linkage with a `BEFORE INSERT OR UPDATE` trigger. RLS alone is not enough — RLS prevents reading the foreign row, but a malicious or buggy insert can still write a UUID belonging to another tenant. The trigger function:
+- Looks up the parent row's `tenant_id`.
+- Compares to `NEW.tenant_id`.
+- Raises if they differ.
+- Is `SECURITY DEFINER` with `SET search_path = public`.
+
+Also enforce that exactly one of the polymorphic FK columns is non-null via a CHECK constraint or the same trigger.
+
+### 9. Portals are role + plan gated, not just auth gated
+The subcontractor portal (`/portal/sub/*`) and owner portal (`/portal/owner/*`) wrap their routes with `<PortalProtectedRoute role="..." feature="..." />` (`src/components/portal/PortalProtectedRoute.tsx`). The component checks (a) auth, (b) RBAC role for the active project via `can()`, and (c) plan feature via `canUseFeature()`. Plan-locked workspaces see an upgrade page, wrong-role users get redirected to `/dashboard` with a toast, unauthenticated users get redirected to `/login?next=...`. Never mount a portal route without this wrapper.
+
+### 10. Secrets are revealed once, never stored
+API keys, webhook signing secrets, OAuth client secrets, and any other generated credential follow the same pattern:
+- Generated server-side in an edge function (e.g. `supabase/functions/api-key-mint/`).
+- Plaintext returned to the client exactly once in the response body.
+- Only the hash is persisted (`bcrypt` or `argon2id`) in a `*_hash` column.
+- Revocation is non-destructive — set `revoked_at`, never `DELETE`.
+- The UI shows the plaintext in a `RevealSecretOnceDialog`; reload and it's gone.
+
 ---
 
 ## Coding conventions
@@ -231,6 +251,41 @@ Use Tailwind utility classes (`bg-background`, `text-foreground`, `bg-primary`, 
 
 ---
 
+## Phase sign-off checklist
+
+Before tagging a phase complete, every item below must be green. This is the rubric the audit uses.
+
+**Foundation hygiene**
+- [ ] Every new table has `tenant_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE`.
+- [ ] Every new table has an RLS policy using `public.current_tenant_id()`.
+- [ ] Polymorphic-FK tables have a `BEFORE INSERT OR UPDATE` tenant-boundary trigger.
+- [ ] No migration references `public.tenants(id)` for SaaS tenancy — only `public.workspaces(id)`.
+
+**Shared services**
+- [ ] No hand-rolled state machines — all workflow modules call `createWorkflowInstance` / `advanceWorkflow`.
+- [ ] No hardcoded recipient arrays — all email goes through `resolveDistribution()`.
+- [ ] No `user.role === '...'` checks — all permission gates go through `can()`.
+- [ ] All plan-gated features call `canUseFeature()`; non-passing tenants see the upgrade page, not a 403.
+- [ ] All financial tables carry `cost_code_id` so the D6 Budget matrix aggregates correctly.
+
+**Portals**
+- [ ] Every `/portal/sub/*` and `/portal/owner/*` route is wrapped in `<PortalProtectedRoute>`.
+
+**Secrets**
+- [ ] No plaintext secret is persisted anywhere — only `*_hash` columns.
+- [ ] Every secret-issuing flow uses an edge function and the once-only-reveal dialog.
+
+**Routing**
+- [ ] Every page in `src/pages/` is either mounted in `App.tsx` or is a sub-component used by a routed parent.
+- [ ] No 404 routes pointing to missing components.
+
+**Tests**
+- [ ] One `e2e/<prompt-id>.spec.ts` per prompt, covering each ACCEPTANCE TEST bullet.
+- [ ] Each `use<Resource>` hook has a Vitest file in `src/hooks/__tests__/` covering happy / validation / permission paths.
+- [ ] `npm run test -- --coverage` reports ≥70% on `src/hooks/`, ≥80% on `src/lib/workflow/` and the financial services.
+
+---
+
 ## When you finish a prompt
 
 1. `npm run typecheck && npm run test` — must be green.
@@ -266,7 +321,8 @@ If the prompt wins, update CLAUDE.md in the same PR.
 - `Procore_Lite_Module_Specs.html` — 29 PRD-style specs
 - `Procore_Lite_Lovable_Prompts.html` — 30 copy-paste prompts (the source of all work)
 - `Procore_Lite_ClaudeCode_Primer.md` — how to run those prompts through Claude Code
+- `Procore_Lite_Gap_Closure_Prompts.md` — G-series gap-closure prompts (G1–G6) bringing the build from the Phase 4 audit score to 100/100
 
 ---
 
-*Last updated: 2026-04-19 · v1.0*
+*Last updated: 2026-04-26 · v1.1 (added rules 8–10, phase sign-off checklist, G-series companion artifact)*
