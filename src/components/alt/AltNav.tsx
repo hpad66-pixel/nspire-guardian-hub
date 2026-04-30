@@ -33,7 +33,7 @@ export function AltNav() {
         <div className="max-w-[1200px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/home-alt" className="flex items-center gap-2.5">
+            <Link to="/" className="flex items-center gap-2.5">
               <div
                 className="w-7 h-7 rounded-md flex items-center justify-center"
                 style={{ background: '#2563EB' }}
@@ -41,7 +41,7 @@ export function AltNav() {
                 <span style={{ color: '#fff', fontWeight: 800, fontSize: '13px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>A</span>
               </div>
               <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F', letterSpacing: '-0.02em' }}>
-                APAS<span style={{ color: '#2563EB' }}>OS</span>
+                Build <span style={{ color: '#2563EB' }}>OS</span>
               </span>
             </Link>
 
@@ -126,7 +126,7 @@ export function AltNav() {
             style={{ background: '#F8FAFC' }}
           >
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #E2E8F0' }}>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F' }}>APAS<span style={{ color: '#2563EB' }}>OS</span></span>
+              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F' }}>Build <span style={{ color: '#2563EB' }}>OS</span></span>
               <button onClick={() => setMobileOpen(false)} style={{ color: '#475569' }}>
                 <X size={22} />
               </button>

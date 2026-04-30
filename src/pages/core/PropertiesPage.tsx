@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Building, Plus, MapPin, DoorOpen, Calendar, Pencil, Trash2, MoreVertical,
-  BarChart2, Zap, Images, Briefcase, ChevronRight,
+  BarChart2, Zap, Images, Briefcase,
+  ClipboardCheck, FolderKanban, AlertTriangle, Wrench, Box, FileText,
 } from 'lucide-react';
 import { useProperties, useDeleteProperty, type Property } from '@/hooks/useProperties';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +28,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// Small chip for quick-jumping from a property card to its filtered section view.
+function PropertyLinkChip({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/10 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
 export default function PropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -186,70 +209,134 @@ export default function PropertiesPage() {
               </div>
             )}
 
-            {/* Module badges + action buttons */}
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2 flex-wrap">
-                {isManaged && property.nspire_enabled && (
-                  <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
-                    NSPIRE
-                  </Badge>
-                )}
-                {isManaged && property.projects_enabled && (
-                  <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
-                    Projects
-                  </Badge>
-                )}
-                {!isManaged && (
-                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-300">
-                    Commercial / Project Site
-                  </Badge>
-                )}
-              </div>
-              <div className="flex gap-1.5">
-                {isManaged && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/properties/${property.id}/gallery`);
-                      }}
-                    >
-                      <Images className="h-3 w-3" />
-                      Gallery
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/properties/${property.id}/analytics`);
-                      }}
-                    >
-                      <BarChart2 className="h-3 w-3" />
-                      Utilities & Inventory
-                    </Button>
-                  </>
-                )}
-                {!isManaged && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1.5"
+            {/* Module badges */}
+            <div className="flex flex-wrap gap-2">
+              {isManaged && property.nspire_enabled && (
+                <Badge variant="outline" className="text-xs bg-module-inspections/10 text-cyan-700 border-module-inspections/30">
+                  NSPIRE
+                </Badge>
+              )}
+              {isManaged && property.projects_enabled && (
+                <Badge variant="outline" className="text-xs bg-module-projects/10 text-violet-700 border-module-projects/30">
+                  Projects
+                </Badge>
+              )}
+              {!isManaged && (
+                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-300">
+                  Commercial / Project Site
+                </Badge>
+              )}
+            </div>
+
+            {/* Quick-link chips — all filter by this property */}
+            <div className="flex flex-wrap gap-1.5 border-t pt-3">
+              {isManaged && (
+                <PropertyLinkChip
+                  icon={<DoorOpen className="h-3 w-3" />}
+                  label="Units"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/units?propertyId=${property.id}`);
+                  }}
+                />
+              )}
+              {isManaged && property.projects_enabled && (
+                <PropertyLinkChip
+                  icon={<FolderKanban className="h-3 w-3" />}
+                  label="Projects"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/projects?propertyId=${property.id}`);
+                  }}
+                />
+              )}
+              {isManaged && property.nspire_enabled && (
+                <PropertyLinkChip
+                  icon={<ClipboardCheck className="h-3 w-3" />}
+                  label="NSPIRE"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/inspections?propertyId=${property.id}`);
+                  }}
+                />
+              )}
+              {isManaged && (
+                <>
+                  <PropertyLinkChip
+                    icon={<AlertTriangle className="h-3 w-3" />}
+                    label="Issues"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/projects`);
+                      navigate(`/issues?propertyId=${property.id}`);
                     }}
-                  >
-                    <ChevronRight className="h-3 w-3" />
-                    Go to Projects
-                  </Button>
-                )}
-              </div>
+                  />
+                  <PropertyLinkChip
+                    icon={<Wrench className="h-3 w-3" />}
+                    label="Work Orders"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/work-orders?propertyId=${property.id}`);
+                    }}
+                  />
+                  <PropertyLinkChip
+                    icon={<Box className="h-3 w-3" />}
+                    label="Assets"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/assets?propertyId=${property.id}`);
+                    }}
+                  />
+                  <PropertyLinkChip
+                    icon={<FileText className="h-3 w-3" />}
+                    label="Documents"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/documents/archives?propertyId=${property.id}`);
+                    }}
+                  />
+                </>
+              )}
+              {!isManaged && (
+                <PropertyLinkChip
+                  icon={<FolderKanban className="h-3 w-3" />}
+                  label="Projects"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/projects?propertyId=${property.id}`);
+                  }}
+                />
+              )}
             </div>
+
+            {/* Property-specific tool buttons */}
+            {isManaged && (
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/properties/${property.id}/gallery`);
+                  }}
+                >
+                  <Images className="h-3 w-3" />
+                  Gallery
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/properties/${property.id}/analytics`);
+                  }}
+                >
+                  <BarChart2 className="h-3 w-3" />
+                  Utilities & Inventory
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

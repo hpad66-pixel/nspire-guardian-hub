@@ -24,7 +24,7 @@ function Counter({ target, suffix = '' }: { target: number | string; suffix?: st
 }
 
 const stats = [
-  { value: 500, suffix: '+', label1: 'Teams using', label2: 'APAS OS' },
+  { value: 500, suffix: '+', label1: 'Teams using', label2: 'Build OS' },
   { value: '3.2M+', label1: 'Documents', label2: 'managed' },
   { value: 99.7, suffix: '%', label1: 'Uptime', label2: 'SLA' },
   { value: 48, suffix: ' hrs', label1: 'Average', label2: 'onboarding time' },
@@ -32,7 +32,7 @@ const stats = [
 
 const testimonials = [
   {
-    text: 'We manage 6 properties across 3 cities. APAS OS replaced four different tools we were paying for and gave us a compliance dashboard I can show any HUD inspector without preparation.',
+    text: 'We manage 6 properties across 3 cities. Build OS replaced four different tools we were paying for and gave us a compliance dashboard I can show any HUD inspector without preparation.',
     author: 'Maria G.',
     role: 'Property Manager',
     initials: 'MG',
@@ -46,7 +46,7 @@ const testimonials = [
     color: '#059669',
   },
   {
-    text: 'We run capital improvement projects between $500K and $3M. Tracking RFIs and change orders in APAS OS is cleaner than Procore and costs a fraction of the price.',
+    text: 'We run capital improvement projects between $500K and $3M. Tracking RFIs and change orders in Build OS is cleaner than Procore and costs a fraction of the price.',
     author: 'David R.',
     role: 'Construction Manager',
     initials: 'DR',

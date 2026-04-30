@@ -5,6 +5,26 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  const msg =
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. ' +
+    'Copy .env.example to .env.local and fill in your Supabase project values.';
+  // Fail loud instead of white-screening. Visible in console, in Playwright traces, and in CI logs.
+  console.error('[supabase/client]', msg);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const root = document.getElementById('root');
+      if (root && !root.hasChildNodes()) {
+        root.innerHTML =
+          `<div style="font-family:system-ui;padding:40px;max-width:640px;margin:auto">` +
+          `<h1 style="color:#c0392b">Supabase not configured</h1>` +
+          `<p>${msg}</p></div>`;
+      }
+    });
+  }
+  throw new Error(msg);
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

@@ -1,0 +1,84 @@
+import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
+import { useChangeEvents } from "@/hooks/useChangeEvents";
+import { ChangeEventLineGrid } from "@/components/financial/ChangeEventLineGrid";
+import { PromoteToPcoDialog } from "@/components/financial/PromoteToPcoDialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+export default function ChangeEventDetailPage() {
+  const { projectId, eventId } = useParams<{ projectId: string; eventId: string }>();
+  const { data: events = [] } = useChangeEvents(projectId ?? null);
+  const event = events.find((e) => e.id === eventId);
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [promoteOpen, setPromoteOpen] = useState(false);
+
+  function toggle(id: string) {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  if (!event) return <div className="p-6 text-muted-foreground">Loading…</div>;
+
+  return (
+    <div className="container mx-auto p-6 max-w-5xl space-y-6">
+      <div>
+        <Link
+          to={`/projects/${projectId}/financials/change-events`}
+          className="text-sm text-muted-foreground hover:underline"
+        >← Change Events</Link>
+        <div className="flex items-start justify-between mt-2">
+          <div>
+            <h1 className="text-3xl font-bold">
+              <span className="font-mono text-muted-foreground mr-2">CE-{event.event_no}</span>
+              {event.title}
+            </h1>
+            {event.description && (
+              <div className="text-muted-foreground mt-1 max-w-3xl">{event.description}</div>
+            )}
+            <div className="text-xs text-muted-foreground mt-1">
+              {event.reason_code ?? "other"} · {event.event_date}
+            </div>
+          </div>
+          <Badge variant="outline" className="capitalize">{event.status}</Badge>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Lines</CardTitle>
+          <Button
+            onClick={() => setPromoteOpen(true)}
+            disabled={selected.size === 0}
+          >
+            Promote {selected.size > 0 && `(${selected.size})`} to PCO
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <ChangeEventLineGrid
+            eventId={event.id}
+            selected={selected}
+            onToggleSelect={toggle}
+            readOnly={event.status === "closed" || event.status === "void"}
+          />
+        </CardContent>
+      </Card>
+
+      {projectId && (
+        <PromoteToPcoDialog
+          open={promoteOpen}
+          onOpenChange={setPromoteOpen}
+          eventId={event.id}
+          projectId={projectId}
+          selectedLineIds={[...selected]}
+          onPromoted={() => setSelected(new Set())}
+        />
+      )}
+    </div>
+  );
+}

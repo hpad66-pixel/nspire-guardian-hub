@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Search, FileText } from 'lucide-react';
+import { ArrowLeft, Search, FileText, Building2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import {
   ARCHIVE_CATEGORIES,
   PropertyArchive,
 } from '@/hooks/usePropertyArchives';
+import { useProperties } from '@/hooks/useProperties';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { getSignedUrlForBucket } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -28,21 +29,37 @@ export default function PropertyArchivesPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [viewerDocument, setViewerDocument] = useState<PropertyArchive | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const propertyFilterId = searchParams.get('propertyId');
 
   const { data: archives, isLoading } = usePropertyArchives(selectedCategory || undefined);
   const { data: categoryStats } = useArchiveCategoryStats();
   const { data: totalCount } = useTotalArchiveCount();
+  const { data: properties } = useProperties();
   const { canCreate, canUpdate } = useUserPermissions();
   const canUpload = canCreate('documents');
   const canEdit = canUpdate('documents');
 
-  const filteredArchives = archives?.filter(
-    (doc) =>
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.document_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.received_from?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProperty = propertyFilterId
+    ? properties?.find((p) => p.id === propertyFilterId) ?? null
+    : null;
+
+  const clearPropertyFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('propertyId');
+    setSearchParams(next, { replace: true });
+  };
+
+  const filteredArchives = archives?.filter((doc) => {
+    if (propertyFilterId && doc.property_id !== propertyFilterId) return false;
+    const q = searchQuery.toLowerCase();
+    return (
+      doc.name.toLowerCase().includes(q) ||
+      doc.description?.toLowerCase().includes(q) ||
+      doc.document_number?.toLowerCase().includes(q) ||
+      doc.received_from?.toLowerCase().includes(q)
+    );
+  });
 
   const handleView = (doc: PropertyArchive) => {
     setViewerDocument(doc);
@@ -84,6 +101,26 @@ export default function PropertyArchivesPage() {
         onUpload={() => setUploadDialogOpen(true)}
         totalCount={totalCount || 0}
       />
+
+      {/* Property filter banner */}
+      {filteredProperty && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Filtered to property</span>
+            <span className="font-semibold text-foreground">{filteredProperty.name}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearPropertyFilter}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Category Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

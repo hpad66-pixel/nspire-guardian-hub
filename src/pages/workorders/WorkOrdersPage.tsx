@@ -38,11 +38,17 @@ export default function WorkOrdersPage() {
   const { data: workOrders = [], isLoading } = useWorkOrdersByProperty(selectedPropertyId || null);
   const { exportToCSV } = useDataExport();
 
+  // If the URL has ?propertyId=, prefer it; otherwise pick the first property.
   useEffect(() => {
+    const urlPropertyId = searchParams.get('propertyId');
+    if (urlPropertyId && properties.some((p) => p.id === urlPropertyId)) {
+      if (selectedPropertyId !== urlPropertyId) setSelectedPropertyId(urlPropertyId);
+      return;
+    }
     if (!selectedPropertyId && properties.length > 0) {
       setSelectedPropertyId(properties[0].id);
     }
-  }, [properties, selectedPropertyId]);
+  }, [properties, selectedPropertyId, searchParams]);
 
   const filteredWorkOrders = workOrders?.filter(wo => {
     const matchesStatus = statusFilter === 'all' || wo.status === statusFilter;

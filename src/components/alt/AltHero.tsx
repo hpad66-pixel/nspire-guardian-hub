@@ -208,7 +208,7 @@ export function AltHero() {
               transition={{ delay: 0.55, duration: 0.5 }}
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '18px', color: '#475569', lineHeight: 1.7, maxWidth: '480px', marginBottom: '36px' }}
             >
-              APAS OS replaces the spreadsheets, the email chains, the paper checklists, and the filing cabinets that most firms still use. Inspections, compliance, work orders, projects, permits, and team communication — all in one platform.
+              Build OS replaces the spreadsheets, the email chains, the paper checklists, and the filing cabinets that most firms still use. Inspections, compliance, work orders, projects, permits, and team communication — all in one platform.
             </motion.p>
 
             {/* CTAs */}

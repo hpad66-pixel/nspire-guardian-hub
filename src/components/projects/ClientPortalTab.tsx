@@ -32,6 +32,10 @@ import {
   type ActionItemPriority,
 } from '@/hooks/useClientCommunication';
 import { useAuth } from '@/hooks/useAuth';
+import { usePortalByProject, usePortalAccess, useInviteContact, type PortalAccess } from '@/hooks/usePortal';
+import { useSendEmail } from '@/hooks/useSendEmail';
+import { useNavigate } from 'react-router-dom';
+import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,6 +115,200 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string }> = {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 // Copy-able portal link
+// ─── Schedule & Access Section ────────────────────────────────────────────────
+
+function ScheduleAccessSection({ projectId }: { projectId: string }) {
+  const navigate = useNavigate();
+  const { data: portal, isLoading: portalLoading } = usePortalByProject(projectId);
+  const { data: accessList = [] } = usePortalAccess(portal?.id);
+  const inviteContact = useInviteContact(portal?.id ?? '');
+  const sendEmail = useSendEmail();
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteCompany, setInviteCompany] = useState('');
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  if (portalLoading) return null;
+  if (!portal) {
+    return (
+      <div className="rounded-xl border border-dashed bg-muted/30 p-5 text-center">
+        <CalendarRange className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+        <p className="text-sm font-medium">No portal linked to this project</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-3">
+          Create a client portal from the Portals page to enable the interactive schedule and magic-link sharing.
+        </p>
+        <Button size="sm" variant="outline" onClick={() => navigate('/portals')}>
+          Go to Portals
+        </Button>
+      </div>
+    );
+  }
+
+  const scheduleUrl = `${window.location.origin}/portal/${portal.portal_slug}/schedule`;
+  const activeAccess = accessList.filter((a) => a.is_active);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    const access = await inviteContact.mutateAsync({
+      email: inviteEmail.trim(),
+      name: inviteName.trim() || undefined,
+      company: inviteCompany.trim() || undefined,
+    });
+
+    if (access?.magic_link_token) {
+      const magicUrl = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${access.magic_link_token}&redirect=schedule`;
+      await sendEmail.mutateAsync({
+        to: inviteEmail.trim(),
+        subject: `You've been invited to view the project schedule — ${portal.name}`,
+        html: `
+          <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 0">
+            <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">Project Schedule Access</h2>
+            <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px">
+              ${inviteName.trim() ? `Hi ${inviteName.trim()},` : 'Hi,'}<br/>
+              You've been invited to view the interactive schedule for <strong>${portal.name}</strong>.
+              Click below to access the project milestones, timeline, and Q&A.
+            </p>
+            <a href="${magicUrl}" style="display:inline-block;background:#1A1714;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">
+              Open Schedule →
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:24px">
+              This link expires in 72 hours. If it expires, request a new one from your project team.
+            </p>
+          </div>
+        `,
+      });
+    }
+
+    setInviteName('');
+    setInviteEmail('');
+    setInviteCompany('');
+    setInviteOpen(false);
+  };
+
+  const copyLink = (token: string) => {
+    const url = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${token}&redirect=schedule`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(token);
+    setTimeout(() => setCopiedLink(null), 2000);
+  };
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-accent/15 flex items-center justify-center">
+            <CalendarRange className="h-4 w-4 text-accent" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Interactive Schedule</h3>
+            <p className="text-[11px] text-muted-foreground">Share the project timeline via magic link — no login required</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.open(scheduleUrl, '_blank')} className="text-xs gap-1.5">
+            <ExternalLink className="h-3 w-3" />
+            Preview
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate(`/portals/${portal.id}`)} className="text-xs gap-1.5">
+            <Settings className="h-3 w-3" />
+            Manage Portal
+          </Button>
+          <Button size="sm" onClick={() => setInviteOpen(true)} className="text-xs gap-1.5">
+            <UserPlus className="h-3 w-3" />
+            Invite
+          </Button>
+        </div>
+      </div>
+
+      {/* Access list */}
+      {activeAccess.length > 0 ? (
+        <div className="divide-y">
+          {activeAccess.map((a) => (
+            <div key={a.id} className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+                  {(a.name || a.email).charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{a.name || a.email}</p>
+                  {a.name && <p className="text-[11px] text-muted-foreground truncate">{a.email}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {a.login_count > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-5">
+                    {a.login_count} visit{a.login_count !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {a.magic_link_token && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyLink(a.magic_link_token!)}
+                    className="h-7 text-[11px] gap-1 px-2"
+                  >
+                    {copiedLink === a.magic_link_token ? (
+                      <><CheckCheck className="h-3 w-3 text-green-500" /> Copied</>
+                    ) : (
+                      <><Copy className="h-3 w-3" /> Link</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="px-4 py-5 text-center">
+          <p className="text-xs text-muted-foreground">No one invited yet. Click "Invite" to add recipients and send them a magic link via email.</p>
+        </div>
+      )}
+
+      {/* Invite dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite to Schedule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs font-medium">Name</Label>
+              <Input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium">Email *</Label>
+              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@example.com" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium">Company</Label>
+              <Input value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)} placeholder="Acme Corp" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleInvite}
+              disabled={!inviteEmail.trim() || inviteContact.isPending || sendEmail.isPending}
+              className="gap-1.5"
+            >
+              {(inviteContact.isPending || sendEmail.isPending) ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+              ) : (
+                <><MailIcon className="h-3.5 w-3.5" /> Send Invite</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── Portal Link ──────────────────────────────────────────────────────────────
+
 function PortalLink({ projectId }: { projectId: string }) {
   const [copied, setCopied] = useState(false);
   const url = `${window.location.origin}/portal/${projectId}`;
@@ -683,6 +881,9 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
         <div className="space-y-5">
           {/* Portal link */}
           <PortalLink projectId={projectId} />
+
+          {/* Interactive Schedule & Access */}
+          <ScheduleAccessSection projectId={projectId} />
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">

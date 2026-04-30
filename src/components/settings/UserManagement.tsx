@@ -47,9 +47,16 @@ import {
   User,
   Plus,
   Trash2,
+  Mail,
+  Crown,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useUsers, useAddUserRole, useRemoveUserRole, type UserWithRole } from '@/hooks/useUserManagement';
 import { useUserPermissions, getAssignableRoles, canRoleManage } from '@/hooks/usePermissions';
+import { useSendEmail } from '@/hooks/useSendEmail';
+import { InviteUserDialog } from '@/components/people/InviteUserDialog';
+import { UserPlus } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -91,7 +98,13 @@ export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<AppRole>('user');
+
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const sendEmail = useSendEmail();
 
   const canManageRoles = isAdmin || isOwner || isPropertyManager;
   const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
@@ -118,6 +131,37 @@ export function UserManagement() {
       return; // Keep at least one role
     }
     removeRoleMutation.mutate({ userId: user.user_id, role });
+  };
+
+  const handleMakeSuperAdmin = (user: UserWithRole) => {
+    if (user.roles.some(r => r.role === 'admin')) return;
+    addRoleMutation.mutate({ userId: user.user_id, role: 'admin' as AppRole });
+  };
+
+  const openEmailDialog = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setEmailSubject('');
+    setEmailBody('');
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = () => {
+    if (!selectedUser?.email || !emailSubject.trim() || !emailBody.trim()) return;
+    const safeBody = emailBody
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br />');
+    const html = `<div style="font-family:Inter,Arial,sans-serif;color:#1b2230;line-height:1.6;font-size:15px">${safeBody}</div>`;
+    sendEmail.mutate(
+      {
+        recipients: [selectedUser.email],
+        subject: emailSubject.trim(),
+        bodyHtml: html,
+        bodyText: emailBody,
+      },
+      { onSuccess: () => setEmailDialogOpen(false) },
+    );
   };
 
   const getInitials = (name?: string | null, email?: string | null) => {
@@ -179,6 +223,12 @@ export function UserManagement() {
               Manage user roles and permissions ({filteredUsers.length} users)
             </CardDescription>
           </div>
+          {canManageRoles && (
+            <Button onClick={() => setInviteDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite User
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -203,7 +253,7 @@ export function UserManagement() {
                 <TableHead>User</TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead className="w-[60px]"></TableHead>
+                <TableHead className="w-[140px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -263,29 +313,58 @@ export function UserManagement() {
                         {format(new Date(user.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell>
-                        {canManageRoles && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setNewRole((assignableRoles[0] || 'user') as AppRole);
-                                  setRoleDialogOpen(true);
-                                }}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Role
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={user.email ? `Email ${user.email}` : 'No email on file'}
+                            disabled={!user.email}
+                            onClick={() => openEmailDialog(user)}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          {canManageRoles && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  disabled={!user.email}
+                                  onClick={() => openEmailDialog(user)}
+                                >
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Email
+                                </DropdownMenuItem>
+                                {assignableRoles.includes('admin' as AppRole) && (
+                                  <DropdownMenuItem
+                                    disabled={user.roles.some(r => r.role === 'admin')}
+                                    onClick={() => handleMakeSuperAdmin(user)}
+                                  >
+                                    <Crown className="h-4 w-4 mr-2" />
+                                    {user.roles.some(r => r.role === 'admin')
+                                      ? 'Already Super Admin'
+                                      : 'Make Super Admin'}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setNewRole((assignableRoles[0] || 'user') as AppRole);
+                                    setRoleDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Role
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -327,6 +406,9 @@ export function UserManagement() {
         </div>
       </CardContent>
 
+      {/* Invite User Dialog */}
+      <InviteUserDialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen} />
+
       {/* Add Role Dialog */}
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
         <DialogContent>
@@ -364,6 +446,62 @@ export function UserManagement() {
             </Button>
             <Button onClick={handleAddRole} disabled={addRoleMutation.isPending}>
               {addRoleMutation.isPending ? 'Adding...' : 'Add Role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email {selectedUser?.full_name || selectedUser?.email}
+            </DialogTitle>
+            <DialogDescription>
+              Sent from admin@apas.ai via Resend. Your workspace email is automatically BCC'd.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>To</Label>
+              <Input value={selectedUser?.email || ''} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Quick note from the Build OS team"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-body">Message</Label>
+              <Textarea
+                id="email-body"
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Write your message…"
+                rows={8}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={
+                sendEmail.isPending ||
+                !emailSubject.trim() ||
+                !emailBody.trim() ||
+                !selectedUser?.email
+              }
+            >
+              {sendEmail.isPending ? 'Sending…' : 'Send Email'}
             </Button>
           </DialogFooter>
         </DialogContent>

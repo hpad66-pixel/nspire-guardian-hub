@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { requireTenantId } from '@/lib/tenant';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -71,6 +72,46 @@ export function useCreateInvitation() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Invitations are workspace-scoped by RLS. Prefer the JWT tenant claim,
+      // which is the app's current source of truth, and fall back to the
+      // legacy profiles.workspace_id link for older sessions.
+      let workspaceId = invitation.workspace_id ?? null;
+      if (!workspaceId) {
+        try {
+          workspaceId = await requireTenantId();
+        } catch {
+          const { data: membership, error: membershipError } = await supabase
+            .from('portal_memberships')
+            .select('tenant_id, portal_kind')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('portal_kind', { ascending: true });
+
+          if (membershipError) throw membershipError;
+
+          workspaceId =
+            membership?.find((row) => row.portal_kind === 'main')?.tenant_id ??
+            membership?.find((row) => row.portal_kind === 'owner')?.tenant_id ??
+            membership?.find((row) => row.portal_kind === 'sub')?.tenant_id ??
+            null;
+
+          if (!workspaceId) {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('workspace_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (profileError) throw profileError;
+            workspaceId = profile?.workspace_id ?? null;
+          }
+        }
+      }
+
+      if (!workspaceId) {
+        throw new Error('No active workspace found for your account');
+      }
+
       const { data, error } = await supabase
         .from('user_invitations')
         .insert({
@@ -78,7 +119,7 @@ export function useCreateInvitation() {
           role: invitation.role,
           property_id: invitation.property_id || null,
           client_id: invitation.client_id || null,
-          workspace_id: invitation.workspace_id || null,
+          workspace_id: workspaceId,
           invited_by: user.id,
           token,
           expires_at: expires_at.toISOString(),

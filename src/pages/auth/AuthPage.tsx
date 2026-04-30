@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { lovable } from '@/integrations/lovable';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ShieldCheck, ClipboardList, Wrench, HardHat, BarChart3, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ const features = [
   { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Project Management',          desc: 'Full project lifecycle from proposal to closeout, fully traced' },
   { icon: Wrench,       color: 'hsl(var(--warning))',            label: 'Maintenance & Work Orders',   desc: 'Issue tracking from request to resolution, fully traced' },
   { icon: BarChart3,    color: 'hsl(var(--severity-severe))',    label: 'Operations Intelligence',     desc: 'Cross-module dashboards for every role in your org' },
-  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from a single command center' },
+  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from one workspace' },
 ];
 
 export default function AuthPage() {
@@ -53,7 +53,10 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/dashboard` },
+      });
       if (error) toast.error('Failed to sign in with Google. Please try again.');
     } catch {
       toast.error('An unexpected error occurred. Please try again.');
@@ -98,13 +101,13 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* APAS OS wordmark */}
+          {/* Build OS wordmark */}
           <div className="flex items-end gap-0 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
               style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
-              APAS
+              Build
             </span>
             <span
               className="font-black leading-none tracking-tight ml-2"
@@ -187,7 +190,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2025 APAS OS · apasos.ai · All rights reserved
+            © 2025 Build OS · apasos.ai · All rights reserved
           </p>
         </div>
       </div>
@@ -204,7 +207,7 @@ export default function AuthPage() {
           <div className="lg:hidden flex flex-col items-center mb-10">
             <div className="flex items-end gap-1 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                APAS
+                Build
               </span>
               <span
                 className="font-black text-4xl tracking-tight ml-1"
@@ -230,7 +233,7 @@ export default function AuthPage() {
                 Welcome back
               </h1>
               <p className="text-sm text-muted-foreground">
-                Sign in to access your APAS OS dashboard
+                Sign in to access your Build OS workspace
               </p>
             </div>
 
@@ -302,7 +305,7 @@ export default function AuthPage() {
                 {isSubmitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>
                 ) : (
-                  'Sign In to APAS OS'
+                  'Sign In to Build OS'
                 )}
               </button>
             </form>

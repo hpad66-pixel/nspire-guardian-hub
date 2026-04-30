@@ -143,7 +143,7 @@ export function SchoolAssignmentDrawer({ school, open, onClose }: SchoolAssignme
           <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground leading-relaxed">
             Individual assignments always take priority over organization assignments. Users with no
-            assignment see the default school (APAS Labs). Users can belong to multiple schools and
+            assignment see the default school (Build). Users can belong to multiple schools and
             switch between them.
           </p>
         </div>

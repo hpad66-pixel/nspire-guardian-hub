@@ -348,7 +348,7 @@ export function DailyInspectionWizard({
     }
   };
 
-  const handleGoToDashboard = () => { onComplete(); navigate('/dashboard'); };
+  const handleGoToDashboard = () => { onComplete(); navigate('/inspections/daily'); };
 
   const inspectorName = user?.user_metadata?.full_name || user?.email || 'Inspector';
   const inspectorInitials = inspectorName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);

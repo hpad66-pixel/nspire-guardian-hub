@@ -1,4 +1,4 @@
-project_id = "qbbubmlpjoghsbnjztyc"
+project_id = "xlfwzqpixlrnntzqhvcm"
 
 [functions.ai-transcribe]
 verify_jwt = false
@@ -47,3 +47,65 @@ verify_jwt = false
 
 [functions.regulatory-case-review]
 verify_jwt = false
+
+# ───── A6 · Stripe Billing & Plans ─────
+# Webhook must NOT verify JWT — Stripe signs the body with STRIPE_WEBHOOK_SECRET
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.stripe-billing-portal]
+verify_jwt = true
+
+# ───── A7 · SSO / SCIM ─────
+# SAML ACS is the IdP callback — no JWT, signature-verified via IdP certificate
+[functions.saml-acs]
+verify_jwt = false
+
+# SCIM endpoints use their own Bearer token (hashed in tenant_scim_tokens)
+[functions.scim-users]
+verify_jwt = false
+
+[functions.scim-groups]
+verify_jwt = false
+
+# ───── Phase 4 · E3 / F1-F2 / F3 ─────
+# OAuth token endpoint — public, validates client_id/secret inside
+[functions.oauth-token]
+verify_jwt = false
+
+# Public REST API — validates its own Bearer token via api_tokens table
+[functions.api-v1]
+verify_jwt = false
+
+# Webhook dispatcher — invoked by Supabase cron only
+[functions.webhook-dispatch]
+verify_jwt = false
+
+# Report runner — invoked via supabase.functions.invoke (needs JWT for RLS on reports)
+[functions.run-report]
+verify_jwt = true
+
+# Portal invitation acceptance — public (token is the auth)
+[functions.accept-portal-invitation]
+verify_jwt = false
+
+# ───── Phase 2 · B4 / C4 post-processors ─────
+# Photo-process — generates thumbnails + EXIF patch; callable by authenticated client
+[functions.photo-process]
+verify_jwt = true
+
+# Daily weather — fills daily_reports forecast fields from Open-Meteo
+[functions.daily-weather]
+verify_jwt = true
+
+# ───── Phase 2 · E1 schedule importers ─────
+# Primavera P6 XER parser — authenticated; RLS keeps writes tenant-scoped.
+[functions.parse-p6-xer]
+verify_jwt = true
+
+# Microsoft Project XML parser — authenticated; same RLS contract as P6.
+[functions.parse-msp-xml]
+verify_jwt = true

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { School, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { School } from 'lucide-react';
 import { SchoolCard } from '@/components/admin/SchoolCard';
 import { SchoolAssignmentDrawer } from '@/components/admin/SchoolAssignmentDrawer';
 import { useAllSchools } from '@/hooks/useUserSchool';
@@ -23,14 +22,11 @@ export default function SchoolManagementPage() {
             <div>
               <h1 className="text-xl font-bold text-foreground">LearnWorlds Schools</h1>
               <p className="text-sm text-muted-foreground">
-                Connect schools to organizations and individual subscribers
+                Connect schools to organizations and individual subscribers.{' '}
+                <span className="text-xs">New school connections are provisioned by Build OS support.</span>
               </p>
             </div>
           </div>
-          <Button size="sm" variant="outline" className="h-8 text-xs flex-shrink-0" disabled>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Add School
-          </Button>
         </div>
 
         {/* ── Schools grid ────────────────────────────────────────────────── */}
@@ -45,7 +41,7 @@ export default function SchoolManagementPage() {
             <School className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm font-medium text-foreground">No schools configured</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Contact APAS support to add LearnWorlds school connections.
+              Contact Build OS support to add LearnWorlds school connections.
             </p>
           </div>
         ) : (

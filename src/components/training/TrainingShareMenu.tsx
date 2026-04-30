@@ -53,7 +53,7 @@ function openCertificatePrintView(certificate: LWCertificate, holderName: string
 </head>
 <body>
   <div class="header">
-    <span class="brand">APAS OS</span>
+    <span class="brand">Build OS</span>
     <span class="date">Generated ${format(now, 'MMMM d, yyyy')}</span>
   </div>
   <div class="holder-name">${holderName}</div>
@@ -65,7 +65,7 @@ function openCertificatePrintView(certificate: LWCertificate, holderName: string
   </div>
   <div class="row">
     <div class="field-label">Issued by</div>
-    <div class="field-value">LearnWorlds / APAS OS</div>
+    <div class="field-value">LearnWorlds / Build OS</div>
   </div>
   <div class="row">
     <div class="field-label">Certificate ID</div>
@@ -85,7 +85,7 @@ function openCertificatePrintView(certificate: LWCertificate, holderName: string
     <span class="status-badge">${statusLabel}</span>
   </div>
   <div class="footer">
-    Verified via APAS OS · apasos.ai
+    Verified via Build OS · apasos.ai
   </div>
   <script>window.print();<\/script>
 </body>

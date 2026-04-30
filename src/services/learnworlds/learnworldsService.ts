@@ -23,7 +23,7 @@ const simulateLatency = (ms = 400) =>
  * authenticated with no second login required.
  *
  * schoolUrl — the school's base URL (from useUserSchool().primarySchool.school_url)
- *             Falls back to VITE_LW_SCHOOL_URL / APAS Labs if not provided.
+ *             Falls back to VITE_LW_SCHOOL_URL / Build if not provided.
  *
  * REAL implementation (implement when credentials are ready):
  *   1. Create JWT with { sub: userId, email, name, iat, exp }

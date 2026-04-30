@@ -20,9 +20,11 @@ function uint8ArrayToBase64Url(arr: Uint8Array): string {
 }
 
 async function importVapidPrivateKey(rawPrivate: Uint8Array): Promise<CryptoKey> {
+  const keyData = new Uint8Array(rawPrivate).buffer;
+
   return await crypto.subtle.importKey(
     'pkcs8',
-    rawPrivate,
+    keyData,
     { name: 'ECDSA', namedCurve: 'P-256' },
     false,
     ['sign'],

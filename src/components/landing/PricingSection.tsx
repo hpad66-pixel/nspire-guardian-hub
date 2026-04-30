@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     q: 'Can my field team use this offline at job sites?',
-    a: "Yes. APAS OS is a Progressive Web App — install it from any browser on iPhone or Android. Inspections, photos, voice notes, and work orders all work offline. Data syncs automatically when you're back online. No app store required.",
+    a: "Yes. Build OS is a Progressive Web App — install it from any browser on iPhone or Android. Inspections, photos, voice notes, and work orders all work offline. Data syncs automatically when you're back online. No app store required.",
   },
   {
     q: 'How fast can we get operational?',

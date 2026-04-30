@@ -1,7 +1,15 @@
 -- Replace demo-based property access with assignment-based access
 
--- Drop demo access function if present
-DROP FUNCTION IF EXISTS public.can_view_demo_property(uuid);
+-- Drop dependent policies FIRST so the function drop below can proceed.
+-- (Fixed 2026-04-21: original version hit "cannot drop function because other
+--  objects depend on it" when applied against a clean DB where the policy still
+--  existed. Dropping the policy ahead of the function, or using CASCADE, resolves it.)
+DROP POLICY IF EXISTS "Users can view appropriate properties" ON public.properties;
+DROP POLICY IF EXISTS "Authenticated users can view properties" ON public.properties;
+
+-- Drop demo access function if present (CASCADE as defence-in-depth against any
+-- other dependents that may have been introduced across different environments)
+DROP FUNCTION IF EXISTS public.can_view_demo_property(uuid) CASCADE;
 
 -- Property access helper: admin/owner see all, otherwise must be active team member
 CREATE OR REPLACE FUNCTION public.can_access_property(_user_id uuid, _property_id uuid)

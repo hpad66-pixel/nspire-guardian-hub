@@ -92,7 +92,7 @@ export function CourseLauncher({ courseId, courseTitle, onClose }: CourseLaunche
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
       {/* Top bar */}
       <div className="flex items-center justify-between bg-[#0f0f0f] px-4 py-2.5 border-b border-white/10 flex-shrink-0">
-        <span className="text-xs font-semibold text-white/50 uppercase tracking-widest">APAS OS</span>
+        <span className="text-xs font-semibold text-white/50 uppercase tracking-widest">Build OS</span>
         <span className="text-sm font-medium text-white truncate max-w-md">{courseTitle}</span>
         <button
           onClick={onClose}

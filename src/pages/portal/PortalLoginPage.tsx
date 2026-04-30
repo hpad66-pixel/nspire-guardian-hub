@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession, setPortalSession } from '@/hooks/usePortal';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 
 export default function PortalLoginPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
   const { data: portal, isLoading } = usePortalBySlug(slug);
   const { isAuthenticated } = usePortalSession();
 
@@ -39,7 +41,7 @@ export default function PortalLoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={`/portal/${slug}/home`} replace />;
+    return <Navigate to={redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`} replace />;
   }
 
   const accent = portal.brand_accent_color ?? '#0F172A';
@@ -122,7 +124,7 @@ export default function PortalLoginPage() {
         portalSlug: slug!,
       });
 
-      window.location.href = `/portal/${slug}/home`;
+      window.location.href = redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`;
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -226,7 +228,7 @@ export default function PortalLoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">Powered by APAS OS · apasos.ai</p>
+        <p className="text-center text-xs text-muted-foreground">Powered by Build OS · apasos.ai</p>
       </div>
     </div>
   );

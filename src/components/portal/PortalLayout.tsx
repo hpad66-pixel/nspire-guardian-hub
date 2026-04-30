@@ -13,6 +13,8 @@ interface PortalLayoutProps {
 
 const TAB_LABELS: Record<string, string> = {
   home: 'Home',
+  messages: 'Messages',
+  schedule: 'Schedule',
   credentials: 'Credentials',
   training: 'Training',
   safety: 'Safety',
@@ -29,7 +31,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
   }
 
   const tabs = ['home', ...portal.shared_modules.filter(m =>
-    ['credentials', 'training', 'safety', 'equipment'].includes(m)
+    ['messages', 'schedule', 'credentials', 'training', 'safety', 'equipment'].includes(m)
   )];
 
   return (
@@ -87,7 +89,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
 
       {/* Footer */}
       <footer className="py-4 text-center">
-        <p className="text-xs text-muted-foreground">Powered by APAS OS · apasos.ai</p>
+        <p className="text-xs text-muted-foreground">Powered by Build OS · apasos.ai</p>
       </footer>
     </div>
   );
