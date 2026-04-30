@@ -1,8 +1,8 @@
 # Procore Lite — Browser Test Prompts
 
 Single source-of-truth playbook for testing every feature shipped through Phase 4 + the G-series gap closures. Each block below is a self-contained prompt to paste into Claude in Chrome (one at a time). Claude operates the running app, records the result against the report template at the bottom, and at the end you compile the whole thing to PDF.
-
-**Stack assumed:** local dev server at `http://localhost:8080` (run `npm run dev`) backed by local Supabase at `http://127.0.0.1:54321` / Postgres `127.0.0.1:54322`. Swap to your staging URL if testing the deployed build.
+    
+**Stacks assumed:** local dev server at `http://localhost:8080` (run `npm run dev`) backed by local Supabase at `http://127.0.0.1:54321` / Postgres `127.0.0.1:54322`. Swap to your staging URL if testing the deployed build.
 
 **Prerequisite seeds you must have available** — record their UUIDs in the SETUP block:
 - Two workspaces: `wsA` (paid plan with `subcontractor_portal` + `owner_portal` + `api_access`) and `wsB` (Starter plan, no portal/api features).
