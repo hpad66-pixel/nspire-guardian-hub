@@ -344,23 +344,25 @@ const App = () => (
                               {/* ───── Procore Lite · Phase 4 ───── */}
                               <Route path="/reports/procore" element={<ProcoreReportsPage />} />
                               <Route path="/dashboards/procore" element={<ProcoreDashboardsPage />} />
-                              {/* G3 · Subcontractor portal — auth + role + plan gated */}
+                              {/* G3 · Subcontractor portal — auth + role + plan gated.
+                                   Path prefix `/sub-portal/*` avoids conflict with the
+                                   legacy customer-facing `/portal/:slug` magic-link login. */}
                               <Route element={<PortalProtectedRoute role="subcontractor" feature="sub_portal" />}>
-                                <Route path="/portal/sub" element={<SubDashboardPage />} />
-                                <Route path="/portal/sub/commitments" element={<SubCommitmentsPage />} />
-                                <Route path="/portal/sub/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
-                                <Route path="/portal/sub/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
-                                <Route path="/portal/sub/rfis" element={<SubRfisPage />} />
-                                <Route path="/portal/sub/submittals" element={<SubSubmittalsPage />} />
+                                <Route path="/sub-portal" element={<SubDashboardPage />} />
+                                <Route path="/sub-portal/commitments" element={<SubCommitmentsPage />} />
+                                <Route path="/sub-portal/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
+                                <Route path="/sub-portal/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                                <Route path="/sub-portal/rfis" element={<SubRfisPage />} />
+                                <Route path="/sub-portal/submittals" element={<SubSubmittalsPage />} />
                               </Route>
-                              {/* G3 · Owner portal — auth + role + plan gated */}
+                              {/* G3 · Owner portal — auth + role + plan gated. */}
                               <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
-                                <Route path="/portal/owner" element={<OwnerDashboardPage />} />
-                                <Route path="/portal/owner/contract" element={<OwnerContractPage />} />
-                                <Route path="/portal/owner/cos/:coId" element={<OwnerOcoApprovalPage />} />
-                                <Route path="/portal/owner/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
-                                <Route path="/portal/owner/schedule" element={<OwnerSchedulePage />} />
-                                <Route path="/portal/owner/reports" element={<OwnerReportsPage />} />
+                                <Route path="/owner-portal" element={<OwnerDashboardPage />} />
+                                <Route path="/owner-portal/contract" element={<OwnerContractPage />} />
+                                <Route path="/owner-portal/cos/:coId" element={<OwnerOcoApprovalPage />} />
+                                <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
+                                <Route path="/owner-portal/schedule" element={<OwnerSchedulePage />} />
+                                <Route path="/owner-portal/reports" element={<OwnerReportsPage />} />
                               </Route>
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />
