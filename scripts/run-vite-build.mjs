@@ -1,5 +1,9 @@
 import { spawnSync } from "node:child_process";
 
+function hasBuildEnv(name) {
+  return typeof process.env[name] === "string" && process.env[name].trim() !== "";
+}
+
 function run(command, args) {
   return spawnSync(command, args, {
     stdio: "inherit",
@@ -50,6 +54,15 @@ const firstBuild = spawnSync("npx", ["vite", "build"], {
   encoding: "utf8",
   shell: process.platform === "win32",
 });
+
+console.log(
+  [
+    "[build-shell-env]",
+    `VITE_SUPABASE_URL=${hasBuildEnv("VITE_SUPABASE_URL") ? "present" : "missing"}`,
+    `VITE_SUPABASE_PUBLISHABLE_KEY=${hasBuildEnv("VITE_SUPABASE_PUBLISHABLE_KEY") ? "present" : "missing"}`,
+    `VITE_SUPABASE_PROJECT_ID=${hasBuildEnv("VITE_SUPABASE_PROJECT_ID") ? "present" : "missing"}`,
+  ].join(" "),
+);
 
 if (firstBuild.status === 0) {
   process.stdout.write(firstBuild.stdout ?? "");
