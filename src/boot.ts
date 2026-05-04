@@ -18,5 +18,7 @@ async function loadRuntimeConfig() {
   }
 }
 
-await loadRuntimeConfig();
-await import("./main.tsx");
+void (async () => {
+  await loadRuntimeConfig();
+  await import("./main.tsx");
+})();
