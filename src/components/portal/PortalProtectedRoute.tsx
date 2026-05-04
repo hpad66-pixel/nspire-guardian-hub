@@ -74,26 +74,50 @@ export function PortalProtectedRoute({
     let cancelled = false;
 
     (async () => {
-      const [hasRole, hasFeature] = await Promise.all([
-        can({
-          userId: user.id,
-          module: ROLE_MODULE[role],
-          action: 'view',
-        }),
-        canUseFeature(FEATURE_MAP[feature]),
-      ]);
+      // Super-admin bypass: read app_metadata.role from the JWT.
+      // Plan still applies even for super admin so the upgrade
+      // page is testable from a super-admin account.
+      const isSuper =
+        (user as any)?.app_metadata?.role === 'super_admin' ||
+        (user as any)?.user_metadata?.role === 'super_admin';
 
-      if (cancelled) return;
+      try {
+        if (isSuper) {
+          const hasFeature = await canUseFeature(FEATURE_MAP[feature]);
+          if (cancelled) return;
+          setGate({ status: hasFeature ? 'allowed' : 'plan-locked' });
+          return;
+        }
 
-      if (!hasRole) {
+        const [hasRole, hasFeature] = await Promise.all([
+          can({
+            userId: user.id,
+            module: ROLE_MODULE[role],
+            action: 'view',
+          }),
+          canUseFeature(FEATURE_MAP[feature]),
+        ]);
+
+        if (cancelled) return;
+
+        if (!hasRole) {
+          setGate({ status: 'forbidden' });
+          return;
+        }
+        if (!hasFeature) {
+          setGate({ status: 'plan-locked' });
+          return;
+        }
+        setGate({ status: 'allowed' });
+      } catch (err) {
+        // Network or RLS rejection -- never hang the spinner. Default
+        // to forbidden so the user gets a clear bounce instead of
+        // staring at an infinite loader.
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('[PortalProtectedRoute] gate evaluation failed:', err);
         setGate({ status: 'forbidden' });
-        return;
       }
-      if (!hasFeature) {
-        setGate({ status: 'plan-locked' });
-        return;
-      }
-      setGate({ status: 'allowed' });
     })();
 
     return () => {

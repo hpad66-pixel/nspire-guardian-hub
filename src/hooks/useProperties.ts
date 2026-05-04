@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
 import { getAssignedPropertyIds } from './propertyAccess';
+import { resolveCurrentWorkspaceId } from '@/lib/tenant';
 
 export interface Property {
   id: string;
@@ -114,10 +115,19 @@ export function useCreateProperty() {
       qr_scanning_enabled?: boolean | null;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const workspaceId = await resolveCurrentWorkspaceId(user.id);
+
+      if (!workspaceId) {
+        throw new Error('No active workspace found for your account');
+      }
       
       const { data, error } = await supabase
         .from('properties')
-        .insert({ ...property, created_by: user?.id })
+        .insert({ ...property, created_by: user.id, workspace_id: workspaceId })
         .select()
         .single();
       

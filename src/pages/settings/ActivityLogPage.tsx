@@ -35,13 +35,16 @@ const actionIcons: Record<string, React.ReactNode> = {
 };
 
 export default function ActivityLogPage() {
-  const [entityFilter, setEntityFilter] = useState<string>('');
-  const [actionFilter, setActionFilter] = useState<string>('');
+  // Radix <Select.Item> rejects empty-string values. We use the
+  // sentinel "__all__" to mean "no filter applied" and translate it
+  // back to undefined when calling the data hook.
+  const [entityFilter, setEntityFilter] = useState<string>('__all__');
+  const [actionFilter, setActionFilter] = useState<string>('__all__');
   const [limit, setLimit] = useState(50);
   
   const { data: logs, isLoading, refetch } = useActivityLog({
-    entityType: entityFilter || undefined,
-    action: actionFilter || undefined,
+    entityType: entityFilter === '__all__' ? undefined : entityFilter,
+    action: actionFilter === '__all__' ? undefined : actionFilter,
     limit,
   });
   const { data: stats } = useActivityLogStats();
@@ -109,7 +112,7 @@ export default function ActivityLogPage() {
                   <SelectValue placeholder="All entities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All entities</SelectItem>
+                  <SelectItem value="__all__">All entities</SelectItem>
                   {Object.entries(ENTITY_TYPE_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -126,7 +129,7 @@ export default function ActivityLogPage() {
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All actions</SelectItem>
+                  <SelectItem value="__all__">All actions</SelectItem>
                   {Object.entries(ACTION_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -180,7 +183,7 @@ export default function ActivityLogPage() {
               <History className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-1">No activity found</h3>
               <p className="text-muted-foreground">
-                {entityFilter || actionFilter
+                {entityFilter !== '__all__' || actionFilter !== '__all__'
                   ? 'Try adjusting your filters'
                   : 'Activity will appear here as changes are made'}
               </p>

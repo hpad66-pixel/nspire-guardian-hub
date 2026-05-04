@@ -68,3 +68,41 @@ export async function requireTenantId(): Promise<string> {
   }
   return ctx.tenant_id;
 }
+
+/** Resolve the current workspace id across JWT, portal membership, and legacy profile linkage. */
+export async function resolveCurrentWorkspaceId(userId?: string | null): Promise<string | null> {
+  const ctx = await getTenantContext();
+  if (ctx.tenant_id) return ctx.tenant_id;
+
+  const resolvedUserId =
+    userId ??
+    (await supabase.auth.getUser()).data.user?.id ??
+    null;
+
+  if (!resolvedUserId) return null;
+
+  const { data: memberships, error: membershipError } = await supabase
+    .from("portal_memberships")
+    .select("tenant_id, portal_kind")
+    .eq("user_id", resolvedUserId)
+    .eq("is_active", true);
+
+  if (membershipError) throw membershipError;
+
+  const membershipWorkspaceId =
+    memberships?.find((row) => row.portal_kind === "main")?.tenant_id ??
+    memberships?.find((row) => row.portal_kind === "owner")?.tenant_id ??
+    memberships?.find((row) => row.portal_kind === "sub")?.tenant_id ??
+    null;
+
+  if (membershipWorkspaceId) return membershipWorkspaceId;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("workspace_id")
+    .eq("user_id", resolvedUserId)
+    .maybeSingle();
+
+  if (profileError) throw profileError;
+  return profile?.workspace_id ?? null;
+}

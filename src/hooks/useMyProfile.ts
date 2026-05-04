@@ -66,17 +66,26 @@ export function useUpdateMyProfile() {
 
   return useMutation({
     mutationFn: async (updates: Partial<Omit<MyProfile, 'id' | 'user_id' | 'updated_at'>>) => {
+      // Upsert so the first save creates the profile row if it doesn't
+      // exist yet. The previous UPDATE-only path crashed with PGRST116
+      // ("Cannot coerce result to single JSON object") when the user
+      // had no profile row -- which is the default for fresh accounts.
       const { data, error } = await supabase
         .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user!.id)
+        .upsert(
+          {
+            user_id: user!.id,
+            email: user?.email ?? null,
+            ...updates,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        )
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Profile save returned no row');
 
       // Sync full_name to Supabase Auth metadata so header initials update immediately
       if (updates.full_name) {
