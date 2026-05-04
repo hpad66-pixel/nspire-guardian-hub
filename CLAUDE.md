@@ -2,7 +2,7 @@
 
 > Standing context for every Claude Code session in this repo.
 > Read this before you touch code. Re-read it when a prompt conflicts with it.
-
+    
 ---
 
 ## What this project is
