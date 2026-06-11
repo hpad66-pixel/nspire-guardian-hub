@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Form,
   FormControl,
@@ -62,6 +64,7 @@ interface EnhancedDailyReportDialogProps {
 
 export function EnhancedDailyReportDialog({ open, onOpenChange, projectId }: EnhancedDailyReportDialogProps) {
   const createMutation = useCreateDailyReport();
+  const isMobile = useIsMobile();
   const [photos, setPhotos] = useState<PhotoData[]>([]);
   const [workPerformedHtml, setWorkPerformedHtml] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -130,16 +133,16 @@ export function EnhancedDailyReportDialog({ open, onOpenChange, projectId }: Enh
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Submit Daily Report</DialogTitle>
-          <DialogDescription>
-            Record construction progress with rich text, photos, and voice dictation
-          </DialogDescription>
-        </DialogHeader>
+  const header = (
+    <DialogHeader>
+      <DialogTitle>Submit Daily Report</DialogTitle>
+      <DialogDescription>
+        Record construction progress with rich text, photos, and voice dictation
+      </DialogDescription>
+    </DialogHeader>
+  );
 
+  const formBody = (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Basic Info Row */}
@@ -357,6 +360,26 @@ export function EnhancedDailyReportDialog({ open, onOpenChange, projectId }: Enh
             </DialogFooter>
           </form>
         </Form>
+  );
+
+  // #16: a 700px Dialog is cramped for this rich form on desktop and worse
+  // on phones. Desktop → wide Dialog; mobile → full-height bottom Sheet.
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto">
+          {header}
+          {formBody}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        {header}
+        {formBody}
       </DialogContent>
     </Dialog>
   );

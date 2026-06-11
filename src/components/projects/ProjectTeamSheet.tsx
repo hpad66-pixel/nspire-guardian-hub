@@ -21,6 +21,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   useProjectTeamMembers,
   useAddProjectTeamMember,
   useRemoveProjectTeamMember,
@@ -175,17 +186,38 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      {/* Remove */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeMember.mutate({ id: member.id, projectId })}
-                        disabled={removeMember.isPending}
-                        title="Remove from project"
-                      >
-                        <UserMinus className="h-4 w-4" />
-                      </Button>
+                      {/* Remove — confirmed (#15) */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                            disabled={removeMember.isPending}
+                            title="Remove from project"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove team member</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Remove {name || email || 'this user'} from {projectName}? They will
+                              lose access to this project. You can add them back later.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeMember.mutate({ id: member.id, projectId })}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   );
                 })}
