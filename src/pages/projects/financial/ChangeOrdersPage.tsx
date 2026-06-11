@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useChangeOrdersByType } from "@/hooks/useProcoreChangeOrders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ export default function ChangeOrdersPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
+      <FinancialSubNav />
       <h1 className="text-3xl font-bold mb-1">Change Orders</h1>
       <p className="text-muted-foreground mb-6">PCO → OCO → CCO cascade.</p>
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
