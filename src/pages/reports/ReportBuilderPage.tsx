@@ -26,6 +26,8 @@ const DATA_SOURCES: Array<[ReportDataSource, string, string[]]> = [
   ["pay_apps",        "Pay apps",         ["pay_app_no","status","period_end","submitted_amount","approved_amount"]],
 ];
 
+const EMPTY_SELECT_VALUE = "__none__";
+
 export default function ReportBuilderPage() {
   const navigate = useNavigate();
   const { create } = useProcoreReports();
@@ -52,6 +54,8 @@ export default function ReportBuilderPage() {
       toast.error("Name is required");
       return;
     }
+    const normalizedGroupBy = groupBy === EMPTY_SELECT_VALUE ? null : groupBy || null;
+    const normalizedSort = sort === EMPTY_SELECT_VALUE ? null : sort || null;
     try {
       await create.mutateAsync({
         name: name.trim(),
@@ -62,8 +66,8 @@ export default function ReportBuilderPage() {
         config: {
           columns: columns.length > 0 ? columns : undefined,
           filters: filters.map((f) => ({ op: f.op, column: f.column, value: f.value })),
-          group_by: groupBy || undefined,
-          sort: sort || undefined,
+          group_by: normalizedGroupBy ?? undefined,
+          sort: normalizedSort ?? undefined,
           limit: typeof limit === "number" ? limit : undefined,
         },
       });
@@ -163,20 +167,20 @@ export default function ReportBuilderPage() {
         <CardContent className="grid grid-cols-3 gap-3">
           <div>
             <Label>Group by</Label>
-            <Select value={groupBy} onValueChange={setGroupBy}>
+            <Select value={groupBy || EMPTY_SELECT_VALUE} onValueChange={setGroupBy}>
               <SelectTrigger><SelectValue placeholder="none" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">—</SelectItem>
+                <SelectItem value={EMPTY_SELECT_VALUE}>—</SelectItem>
                 {availableColumns.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Sort by</Label>
-            <Select value={sort} onValueChange={setSort}>
+            <Select value={sort || EMPTY_SELECT_VALUE} onValueChange={setSort}>
               <SelectTrigger><SelectValue placeholder="default" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">—</SelectItem>
+                <SelectItem value={EMPTY_SELECT_VALUE}>—</SelectItem>
                 {availableColumns.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
