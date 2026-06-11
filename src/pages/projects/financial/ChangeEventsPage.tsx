@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useChangeEvents } from "@/hooks/useChangeEvents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ export default function ChangeEventsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
+      <FinancialSubNav />
       <h1 className="text-3xl font-bold mb-1">Change Events</h1>
       <p className="text-muted-foreground mb-6">Early-warning exposure ledger — feeds Budget forecast.</p>
       {isLoading ? (

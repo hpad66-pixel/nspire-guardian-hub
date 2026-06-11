@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import {
   useActiveBudget, useBudgetMatrix, useBudgetModifications, buildBudgetMatrixCsv,
 } from "@/hooks/useBudget";
@@ -77,6 +78,7 @@ export default function BudgetPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
+      <FinancialSubNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Budget</h1>

@@ -124,6 +124,7 @@ const PhaseThreeCommitmentsPage = lazy(() => import('./pages/projects/financial/
 const ChangeEventsPage = lazy(() => import('./pages/projects/financial/ChangeEventsPage'));
 const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial/ChangeOrdersPage'));
 const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCostsPage'));
+const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
@@ -145,6 +146,7 @@ const MeetingRunPage = lazy(() => import('./pages/projects/MeetingRunPage'));
 const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplatesPage'));
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
+const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -324,6 +326,7 @@ const App = () => (
                               <Route path="/projects/:projectId/punch" element={<PunchListPage />} />
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
+                              <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
@@ -335,6 +338,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
                               <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
                               <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
+                              <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />

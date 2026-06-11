@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useDirectCosts } from "@/hooks/useDirectCosts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,7 @@ export default function DirectCostsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
+      <FinancialSubNav />
       <h1 className="text-3xl font-bold mb-1">Direct Costs</h1>
       <p className="text-muted-foreground mb-6">
         Non-commitment costs: invoices, timecards, expenses. Each is cost-code-keyed and flows into Budget Actual-Cost.

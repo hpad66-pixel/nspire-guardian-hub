@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract, usePrimeContractSov, usePrimeContractTotals, usePayApps } from "@/hooks/usePrimeContract";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function PrimeContractPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
+      <FinancialSubNav />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">{pc.title}</h1>
