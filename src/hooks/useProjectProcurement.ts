@@ -31,7 +31,12 @@ export function useCreatePurchaseOrder() {
       if (error) throw error;
       return row;
     },
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['purchase-orders', d.project_id] }); toast.success('Purchase order created'); },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders', d.project_id] });
+      // #12: stat tiles read ['procurement-stats', id]; keep them fresh.
+      qc.invalidateQueries({ queryKey: ['procurement-stats', d.project_id] });
+      toast.success('Purchase order created');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -44,7 +49,11 @@ export function useUpdatePurchaseOrder() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['purchase-orders', d.project_id] }); toast.success('Purchase order updated'); },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders', d.project_id] });
+      qc.invalidateQueries({ queryKey: ['procurement-stats', d.project_id] });
+      toast.success('Purchase order updated');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -57,7 +66,11 @@ export function useDeletePurchaseOrder() {
       if (error) throw error;
       return { projectId };
     },
-    onSuccess: ({ projectId }) => { qc.invalidateQueries({ queryKey: ['purchase-orders', projectId] }); toast.success('Purchase order deleted'); },
+    onSuccess: ({ projectId }) => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
+      qc.invalidateQueries({ queryKey: ['procurement-stats', projectId] });
+      toast.success('Purchase order deleted');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }

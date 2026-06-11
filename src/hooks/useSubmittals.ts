@@ -50,11 +50,25 @@ export function useUpdateSubmittal() {
       if (error) throw error;
       return data as SubmittalRow;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ['submittals', d.project_id] });
+    // #10: optimistic status — the badge/select flips instantly, rolls back on error.
+    onMutate: async ({ id, ...updates }) => {
+      await qc.cancelQueries({ queryKey: ['submittals'] });
+      const prev = qc.getQueriesData<SubmittalRow[]>({ queryKey: ['submittals'] });
+      qc.setQueriesData<SubmittalRow[]>({ queryKey: ['submittals'] }, (old) =>
+        Array.isArray(old) ? old.map((s) => (s.id === id ? { ...s, ...updates } : s)) : old,
+      );
+      return { prev };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.prev?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(e.message);
+    },
+    onSuccess: () => {
       toast.success('Submittal updated');
     },
-    onError: (e: Error) => toast.error(e.message),
+    onSettled: (d) => {
+      qc.invalidateQueries({ queryKey: ['submittals', d?.project_id] });
+    },
   });
 }
 

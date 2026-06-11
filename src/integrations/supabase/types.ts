@@ -231,6 +231,8 @@ export type Database = {
           status: Database["public"]["Enums"]["change_order_status"]
           title: string
           updated_at: string
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount?: number
@@ -244,6 +246,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["change_order_status"]
           title: string
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -257,6 +261,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["change_order_status"]
           title?: string
           updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
