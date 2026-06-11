@@ -146,6 +146,7 @@ const MeetingRunPage = lazy(() => import('./pages/projects/MeetingRunPage'));
 const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplatesPage'));
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
+const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -325,6 +326,7 @@ const App = () => (
                               <Route path="/projects/:projectId/punch" element={<PunchListPage />} />
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
+                              <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />

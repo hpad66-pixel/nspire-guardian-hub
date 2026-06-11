@@ -22,7 +22,7 @@ import {
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
   MoreHorizontal, Archive, Trash2, TriangleAlert,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
-  FileSpreadsheet, ChevronDown, ChevronRight, Users, Images,
+  FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -60,6 +60,7 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
+import { RepositoryTab } from '@/components/projects/RepositoryTab';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -256,6 +257,7 @@ export default function ProjectDetailPage() {
     { value: 'meetings',     label: 'Meetings',     shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
+    { value: 'repository',   label: 'Repository',   shortLabel: 'Repo',     icon: Brain,           group: 'core',       badge: null as number | null },
     { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
   ];
 
@@ -804,6 +806,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="repository" className="mt-0"><RepositoryTab projectId={id!} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
             </div>
@@ -1089,6 +1092,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="repository"><RepositoryTab projectId={id!} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
             </div>
 
