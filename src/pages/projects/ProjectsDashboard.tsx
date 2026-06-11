@@ -1,3 +1,4 @@
+import { isActiveProject } from '@/lib/projects';
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatCard } from '@/components/ui/stat-card';
@@ -111,7 +112,7 @@ export default function ProjectsDashboard() {
   // --- Computed health counts ---
   const healthCounts = useMemo(() => {
     if (!projects) return { on_track: 0, at_risk: 0, overdue: 0, stalled: 0 };
-    const activeProjects = projects.filter(p => p.status !== 'completed' && p.status !== 'closed');
+    const activeProjects = projects.filter(isActiveProject);
     return activeProjects.reduce((acc, p) => {
       acc[computeHealth(p)]++;
       return acc;
@@ -138,8 +139,8 @@ export default function ProjectsDashboard() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(p => p.status === statusFilter);
     } else {
-      // Default: hide completed/closed unless explicitly filtering
-      filtered = filtered.filter(p => p.status !== 'completed' && p.status !== 'closed');
+      // Default: show only active projects (shared selector — see lib/projects).
+      filtered = filtered.filter(isActiveProject);
     }
 
     // Health filter

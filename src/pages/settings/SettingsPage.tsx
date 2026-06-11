@@ -48,21 +48,60 @@ import { useUsers } from '@/hooks/useUserManagement';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+// #18: these read-heavy queries are deferred into the tab bodies. Radix
+// only mounts the active <TabsContent>, so each hook fires only when its
+// tab is opened — the Settings shell paints immediately.
+function AuditStats() {
+  const { data: activityStats } = useActivityLogStats();
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="p-3 rounded-lg border bg-card">
+        <p className="text-xs text-muted-foreground">Recent Events</p>
+        <p className="text-2xl font-bold leading-tight">{activityStats?.total ?? 0}</p>
+      </div>
+      <div className="p-3 rounded-lg border bg-card">
+        <p className="text-xs text-muted-foreground">Creates</p>
+        <p className="text-2xl font-bold leading-tight">{activityStats?.actions?.create ?? 0}</p>
+      </div>
+      <div className="p-3 rounded-lg border bg-card">
+        <p className="text-xs text-muted-foreground">Updates</p>
+        <p className="text-2xl font-bold leading-tight">{activityStats?.actions?.update ?? 0}</p>
+      </div>
+      <div className="p-3 rounded-lg border bg-card">
+        <p className="text-xs text-muted-foreground">Deletes</p>
+        <p className="text-2xl font-bold leading-tight">{activityStats?.actions?.delete ?? 0}</p>
+      </div>
+    </div>
+  );
+}
+
+function SeatCount() {
+  const { data: workspaceUsers } = useUsers();
+  const n = workspaceUsers?.length ?? 0;
+  return <>{n} {n === 1 ? 'seat' : 'seats'}</>;
+}
+
+function DeferredOrganizations({
+  children,
+}: {
+  children: (organizations: ReturnType<typeof useClientsWithCounts>['data']) => React.ReactNode;
+}) {
+  const { data: organizations } = useClientsWithCounts();
+  return <>{children(organizations)}</>;
+}
+
 export default function SettingsPage() {
   const { modules, toggleModule, isLoading: modulesLoading, refetchModules } = useModules();
   const { data: properties, isLoading: propertiesLoading } = useProperties();
   const { data: currentUserRole } = useCurrentUserRole();
-  const { data: organizations } = useClientsWithCounts();
   const updateProperty = useUpdateProperty();
   const navigate = useNavigate();
   const { workspace, isLoading: workspaceLoading, isTrialing, trialDaysLeft } = useWorkspaceContext();
   const { data: wsModules, isLoading: wsModulesLoading } = useWorkspaceModules();
-  const { data: workspaceUsers } = useUsers();
   const toggleWsModule = useToggleWorkspaceModule();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
-  const { data: activityStats } = useActivityLogStats();
 
   // Helper: toggle a workspace-level module field
   const handleWsToggle = async (
@@ -631,7 +670,7 @@ export default function SettingsPage() {
                         <>
                           <span className="capitalize">{workspace.plan}</span>
                           {' • '}
-                          {workspaceUsers?.length ?? 0} {(workspaceUsers?.length ?? 0) === 1 ? 'seat' : 'seats'}
+                          <SeatCount />
                           {' • '}
                           {properties?.length || 0} {(properties?.length || 0) === 1 ? 'property' : 'properties'}
                         </>
@@ -729,6 +768,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="organization" className="space-y-4">
+          <DeferredOrganizations>{(organizations) => (<>
           {/* Summary */}
           <Card>
             <CardHeader>
@@ -888,6 +928,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+          </>)}</DeferredOrganizations>
         </TabsContent>
 
         {isAdmin && (
@@ -911,32 +952,7 @@ export default function SettingsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="p-3 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground">Recent Events</p>
-                    <p className="text-2xl font-bold leading-tight">
-                      {activityStats?.total ?? 0}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground">Creates</p>
-                    <p className="text-2xl font-bold leading-tight">
-                      {activityStats?.actions?.create ?? 0}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground">Updates</p>
-                    <p className="text-2xl font-bold leading-tight">
-                      {activityStats?.actions?.update ?? 0}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground">Deletes</p>
-                    <p className="text-2xl font-bold leading-tight">
-                      {activityStats?.actions?.delete ?? 0}
-                    </p>
-                  </div>
-                </div>
+                <AuditStats />
               </CardContent>
             </Card>
           </TabsContent>
