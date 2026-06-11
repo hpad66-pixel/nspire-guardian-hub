@@ -30,7 +30,12 @@ export function useCreateProgressEntry() {
       if (error) throw error;
       return row;
     },
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['progress-entries', d.project_id] }); toast.success('Progress entry added'); },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ['progress-entries', d.project_id] });
+      // #4: EV metric tiles read from ['ev-metrics', id]; invalidate it too.
+      qc.invalidateQueries({ queryKey: ['ev-metrics', d.project_id] });
+      toast.success('Progress entry added');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -43,7 +48,11 @@ export function useUpdateProgressEntry() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['progress-entries', d.project_id] }); toast.success('Progress updated'); },
+    onSuccess: (d) => {
+      qc.invalidateQueries({ queryKey: ['progress-entries', d.project_id] });
+      qc.invalidateQueries({ queryKey: ['ev-metrics', d.project_id] });
+      toast.success('Progress updated');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }
@@ -56,7 +65,11 @@ export function useDeleteProgressEntry() {
       if (error) throw error;
       return { projectId };
     },
-    onSuccess: ({ projectId }) => { qc.invalidateQueries({ queryKey: ['progress-entries', projectId] }); toast.success('Entry deleted'); },
+    onSuccess: ({ projectId }) => {
+      qc.invalidateQueries({ queryKey: ['progress-entries', projectId] });
+      qc.invalidateQueries({ queryKey: ['ev-metrics', projectId] });
+      toast.success('Entry deleted');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 }

@@ -9,8 +9,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ShieldAlert, AlertTriangle, HardHat, Users } from 'lucide-react';
-import { useSafetyIncidents, useCreateSafetyIncident, useToolboxTalks, useCreateToolboxTalk } from '@/hooks/useProjectSafety';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, ShieldAlert, AlertTriangle, HardHat, Users, MoreHorizontal, Trash2 } from 'lucide-react';
+import { useSafetyIncidents, useCreateSafetyIncident, useDeleteSafetyIncident, useToolboxTalks, useCreateToolboxTalk } from '@/hooks/useProjectSafety';
+import { useUserPermissions } from '@/hooks/usePermissions';
 
 const severityColors: Record<string, string> = {
   minor: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -32,8 +49,11 @@ export function SafetyTab({ projectId }: { projectId: string }) {
   const { data: incidents } = useSafetyIncidents(projectId);
   const { data: talks } = useToolboxTalks(projectId);
   const createIncident = useCreateSafetyIncident();
+  const deleteIncident = useDeleteSafetyIncident();
   const createTalk = useCreateToolboxTalk();
+  const { canDelete } = useUserPermissions();
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const [talkDialogOpen, setTalkDialogOpen] = useState(false);
   const [incidentForm, setIncidentForm] = useState({ title: '', incident_type: 'near_miss', severity: 'minor', description: '', location: '' });
   const [talkForm, setTalkForm] = useState({ topic: '', presenter: '', description: '', duration_minutes: 15 });
@@ -139,6 +159,24 @@ export function SafetyTab({ projectId }: { projectId: string }) {
                           </Badge>
                           <Badge variant="secondary">{incidentTypes[i.incident_type] || i.incident_type}</Badge>
                           {i.osha_recordable && <Badge variant="destructive">OSHA</Badge>}
+                          {canDelete('projects') && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setPendingDelete({ id: i.id, title: i.title })}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -243,6 +281,32 @@ export function SafetyTab({ projectId }: { projectId: string }) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete incident confirmation */}
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Incident</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the incident “{pendingDelete?.title}”. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingDelete) {
+                  await deleteIncident.mutateAsync({ id: pendingDelete.id, projectId });
+                  setPendingDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Toolbox Talk Dialog */}
       <Dialog open={talkDialogOpen} onOpenChange={setTalkDialogOpen}>

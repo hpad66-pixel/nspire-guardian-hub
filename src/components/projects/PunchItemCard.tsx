@@ -25,9 +25,14 @@ import {
   MoreHorizontal,
   Camera,
   User,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { type PunchItem, useUpdatePunchItem, useCompletePunchItem, useVerifyPunchItem } from '@/hooks/usePunchItems';
+import { useState } from 'react';
+import { type PunchItem, useUpdatePunchItem, useCompletePunchItem, useVerifyPunchItem, useDeletePunchItem } from '@/hooks/usePunchItems';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { PunchItemDialog } from '@/components/projects/PunchItemDialog';
 import { cn } from '@/lib/utils';
 
 interface PunchItemCardProps {
@@ -52,7 +57,10 @@ export function PunchItemCard({ item }: PunchItemCardProps) {
   const updatePunchItem = useUpdatePunchItem();
   const completePunchItem = useCompletePunchItem();
   const verifyPunchItem = useVerifyPunchItem();
-  
+  const deletePunchItem = useDeletePunchItem();
+  const { canUpdate, canDelete } = useUserPermissions();
+  const [editOpen, setEditOpen] = useState(false);
+
   const statusInfo = statusConfig[item.status];
   const priorityInfo = priorityConfig[item.priority as keyof typeof priorityConfig] || priorityConfig.medium;
   const StatusIcon = statusInfo.icon;
@@ -72,7 +80,11 @@ export function PunchItemCard({ item }: PunchItemCardProps) {
     if (!user) return;
     await verifyPunchItem.mutateAsync({ id: item.id, verifiedBy: user.id });
   };
-  
+
+  const handleDelete = async () => {
+    await deletePunchItem.mutateAsync(item.id);
+  };
+
   return (
     <div className={cn(
       "p-4 rounded-lg border bg-card border-l-4",
@@ -217,9 +229,54 @@ export function PunchItemCard({ item }: PunchItemCardProps) {
                 </AlertDialogContent>
               </AlertDialog>
             )}
+
+            {canUpdate('projects') && (
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+            )}
+
+            {canDelete('projects') && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Punch Item</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes the punch item. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <PunchItemDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        projectId={item.project_id}
+        punchItem={item}
+      />
     </div>
   );
 }

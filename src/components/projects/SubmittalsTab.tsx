@@ -4,13 +4,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, FileCheck, Clock, CheckCircle2, XCircle, RotateCcw, Mail } from 'lucide-react';
-import { useSubmittalsByProject, useCreateSubmittal, useUpdateSubmittal } from '@/hooks/useSubmittals';
+import { Plus, FileCheck, Clock, CheckCircle2, XCircle, RotateCcw, Mail, Pencil, Trash2 } from 'lucide-react';
+import { useSubmittalsByProject, useCreateSubmittal, useUpdateSubmittal, useDeleteSubmittal } from '@/hooks/useSubmittals';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { SendExternalEmailDialog } from './SendExternalEmailDialog';
+import type { Database } from '@/integrations/supabase/types';
+
+type SubmittalRow = Database['public']['Tables']['project_submittals']['Row'];
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: typeof CheckCircle2 }> = {
   pending: { label: 'Pending', variant: 'secondary', icon: Clock },
@@ -19,20 +40,45 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   revise: { label: 'Revise & Resubmit', variant: 'outline', icon: RotateCcw },
 };
 
+const emptyForm = { title: '', description: '', due_date: '' };
+
 export function SubmittalsTab({ projectId, projectName = '' }: { projectId: string; projectName?: string }) {
   const { data: submittals, isLoading } = useSubmittalsByProject(projectId);
   const createMutation = useCreateSubmittal();
   const updateMutation = useUpdateSubmittal();
+  const deleteMutation = useDeleteSubmittal();
+  const { canUpdate, canDelete } = useUserPermissions();
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', due_date: '' });
-  const [emailSubmittal, setEmailSubmittal] = useState<{ id: string; title: string; submittal_number: number; status: string; due_date: string | null } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [detail, setDetail] = useState<SubmittalRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<SubmittalRow | null>(null);
+  const [emailSubmittal, setEmailSubmittal] = useState<SubmittalRow | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (s: SubmittalRow) => {
+    setEditingId(s.id);
+    setForm({ title: s.title, description: s.description ?? '', due_date: s.due_date ?? '' });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createMutation.mutateAsync({ project_id: projectId, ...form });
+    if (editingId) {
+      await updateMutation.mutateAsync({ id: editingId, ...form, due_date: form.due_date || null });
+    } else {
+      await createMutation.mutateAsync({ project_id: projectId, ...form });
+    }
     setDialogOpen(false);
-    setForm({ title: '', description: '', due_date: '' });
+    setEditingId(null);
+    setForm(emptyForm);
   };
 
   const handleStatusChange = (id: string, status: string) => {
@@ -41,6 +87,13 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
       status: status as 'pending' | 'approved' | 'rejected' | 'revise',
       reviewed_at: new Date().toISOString(),
     });
+  };
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    await deleteMutation.mutateAsync({ id: pendingDelete.id, projectId });
+    setPendingDelete(null);
+    setDetail(null);
   };
 
   return (
@@ -54,7 +107,7 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
             </CardTitle>
             <CardDescription>Track material and shop drawing submittals</CardDescription>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             New Submittal
           </Button>
@@ -75,18 +128,22 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
               const Icon = cfg.icon;
               return (
                 <div key={s.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                  <button
+                    type="button"
+                    className="flex items-center gap-3 text-left flex-1 min-w-0"
+                    onClick={() => setDetail(s)}
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                       <span className="text-sm font-bold text-muted-foreground">#{s.submittal_number}</span>
                     </div>
-                    <div>
-                      <p className="font-medium">{s.title}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate hover:underline">{s.title}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {s.due_date && <span>Due {format(new Date(s.due_date), 'MMM d, yyyy')}</span>}
                         {s.revision && s.revision > 1 && <span>Rev {s.revision}</span>}
                       </div>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2">
                     <Badge variant={cfg.variant}>
                       <Icon className="h-3 w-3 mr-1" />
@@ -126,12 +183,13 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
         )}
       </CardContent>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Create / Edit dialog (shared form) */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Submittal</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit Submittal' : 'New Submittal'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-2">
               <Label>Title *</Label>
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
@@ -146,11 +204,91 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMutation.isPending}>Create</Button>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                {editingId ? 'Save Changes' : 'Create'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Detail sheet */}
+      <Sheet open={!!detail} onOpenChange={(o) => { if (!o) setDetail(null); }}>
+        <SheetContent className="sm:max-w-lg">
+          {detail && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <span className="text-muted-foreground">#{detail.submittal_number}</span>
+                  {detail.title}
+                </SheetTitle>
+                <SheetDescription>Submittal details</SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground w-28">Status</span>
+                  <Badge variant={(statusConfig[detail.status] || statusConfig.pending).variant}>
+                    {(statusConfig[detail.status] || statusConfig.pending).label}
+                  </Badge>
+                </div>
+                {detail.due_date && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-28">Due date</span>
+                    <span>{format(new Date(detail.due_date), 'MMM d, yyyy')}</span>
+                  </div>
+                )}
+                {detail.revision != null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-28">Revision</span>
+                    <span>{detail.revision}</span>
+                  </div>
+                )}
+                {detail.description && (
+                  <div>
+                    <p className="text-muted-foreground mb-1">Description</p>
+                    <p className="whitespace-pre-wrap">{detail.description}</p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-8 flex gap-2">
+                {canUpdate('projects') && (
+                  <Button variant="outline" onClick={() => { const d = detail; setDetail(null); openEdit(d); }}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+                {canDelete('projects') && (
+                  <Button variant="destructive" onClick={() => setPendingDelete(detail)}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Submittal</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes submittal #{pendingDelete?.submittal_number} — {pendingDelete?.title}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {emailSubmittal && (
         <SendExternalEmailDialog

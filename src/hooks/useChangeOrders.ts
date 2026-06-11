@@ -188,6 +188,34 @@ export function useUpdateChangeOrder() {
   });
 }
 
+// #19: change orders are financial records — void (non-destructive),
+// never hard DELETE. Sets voided_at/voided_by; the list filters voided.
+export function useVoidChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from('change_orders')
+        .update({ voided_at: new Date().toISOString(), voided_by: user?.id })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      toast.success('Change order voided');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to void change order: ${error.message}`);
+    },
+  });
+}
+
 export function useApproveChangeOrder() {
   const queryClient = useQueryClient();
   

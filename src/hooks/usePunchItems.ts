@@ -102,6 +102,25 @@ export function useUpdatePunchItem() {
   });
 }
 
+export function useDeletePunchItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('punch_items').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['punch-items'] });
+      toast.success('Punch item deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete punch item: ${error.message}`);
+    },
+  });
+}
+
 export function useCompletePunchItem() {
   const queryClient = useQueryClient();
   

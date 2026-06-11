@@ -14,9 +14,22 @@ import {
   XCircle,
   Edit,
   Mail,
+  Ban,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { SendExternalEmailDialog } from './SendExternalEmailDialog';
-import { useApproveChangeOrder, useRejectChangeOrder } from '@/hooks/useChangeOrders';
+import { useApproveChangeOrder, useRejectChangeOrder, useVoidChangeOrder } from '@/hooks/useChangeOrders';
+import { useUserPermissions } from '@/hooks/usePermissions';
 import { ChangeOrderDialog } from './ChangeOrderDialog';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -63,6 +76,8 @@ export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: 
 
   const approveMutation = useApproveChangeOrder();
   const rejectMutation = useRejectChangeOrder();
+  const voidMutation = useVoidChangeOrder();
+  const { canDelete } = useUserPermissions();
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
@@ -74,9 +89,9 @@ export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: 
     }).format(amount);
   };
 
-  const sortedOrders = [...changeOrders].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const sortedOrders = [...changeOrders]
+    .filter((co) => !co.voided_at)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const totalApproved = changeOrders
     .filter((co) => co.status === 'approved')
@@ -216,6 +231,38 @@ export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: 
                             <Edit className="h-4 w-4 mr-1" />
                             Edit
                           </Button>
+                        )}
+                        {canDelete('projects') && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                              >
+                                <Ban className="h-3.5 w-3.5" />
+                                Void
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Void Change Order</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Void “{co.title}”? It will be removed from the active list but
+                                  retained for audit. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => voidMutation.mutate(co.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Void
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </div>

@@ -27,6 +27,17 @@ import { useTextPolish } from '@/hooks/useTextPolish';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 // ---------- helpers ----------
@@ -1124,6 +1135,7 @@ function CalendarCell({ day, isCurrentMonth, meetings, today, onSelect }: {
 // ─── Main MeetingsTab ─────────────────────────────────────────────────────────
 export function MeetingsTab({ projectId }: { projectId: string }) {
   const { meetings, isLoading, createMeeting, updateMeeting, deleteMeeting, finalizeMeeting } = useProjectMeetings(projectId);
+  const { canDelete } = useUserPermissions();
   const [view, setView] = useState<'calendar' | 'list'>('list');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedMeeting, setSelectedMeeting] = useState<ProjectMeeting | null>(null);
@@ -1309,6 +1321,37 @@ export function MeetingsTab({ projectId }: { projectId: string }) {
                                 </TooltipTrigger>
                                 <TooltipContent>Open</TooltipContent>
                               </Tooltip>
+                              {canDelete('projects') && (
+                                <AlertDialog>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => e.stopPropagation()}>
+                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Delete</TooltipContent>
+                                  </Tooltip>
+                                  <AlertDialogContent onClick={e => e.stopPropagation()}>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This permanently removes “{m.title}” and its minutes. This cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteMeeting.mutate(m.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
                             </div>
                           </div>
                         </CardContent>
