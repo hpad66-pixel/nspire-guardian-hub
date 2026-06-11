@@ -98,3 +98,23 @@ jobs:
         run: supabase link --project-ref ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
       - name: Migration dry-run
         run: supabase db push --dry-run
+
+  db-tests:
+    name: Supabase DB Tests (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Applies every migration to a local Postgres, then runs the pgTAP
+      # tests in supabase/tests/. Guards the current_tenant_id() /
+      # get_my_workspace_id() recursion fix (WS-5 #5) against real Postgres,
+      # which the mocked Vitest suite cannot catch.
+      - name: Start local Supabase
+        run: supabase start
+      - name: Run pgTAP tests
+        run: supabase test db
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
