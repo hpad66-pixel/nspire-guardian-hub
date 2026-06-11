@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,7 @@ const TAB_GROUPS = [
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
@@ -101,7 +102,8 @@ export default function ProjectDetailPage() {
   const [actionItemsOpen, setActionItemsOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [teamSheetOpen, setTeamSheetOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  // Honor a ?tab= deep link (e.g. global search → /projects/:id?tab=rfis).
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
