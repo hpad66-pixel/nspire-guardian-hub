@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -150,7 +151,7 @@ export function useCreateDefect() {
         .from('defects')
         .insert({
           ...defect,
-          repair_deadline: deadline.toISOString().split('T')[0],
+          repair_deadline: toDateOnly(deadline),
         })
         .select()
         .single();

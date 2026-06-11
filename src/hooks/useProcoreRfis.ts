@@ -2,6 +2,7 @@
  * C1 · RFIs (Procore Lite enhancements).
  * Named useProcoreRfis to coexist with the pre-existing useRFIs.ts.
  */
+import { toDateOnly } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createWorkflowInstance, advanceWorkflow } from "@/lib/workflow";
@@ -75,7 +76,7 @@ export function useCreateProcoreRfi() {
         schedule_impact_days: input.scheduleImpactDays ?? 0,
         cost_impact_cents: input.costImpactCents ?? 0,
         stage: "open",
-        date_initiated: new Date().toISOString().split("T")[0],
+        date_initiated: toDateOnly(new Date()),
       } as any).select().single();
       if (error) throw error;
 

@@ -11,8 +11,23 @@ import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
 import { useActiveClients, useCreateClient } from '@/hooks/useClients';
 import type { Database } from '@/integrations/supabase/types';
+import { z } from 'zod';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
+
+// #7: a bare <input type="date"> happily accepts a mistyped 2-digit year
+// (e.g. "0025"), which Postgres stores as ISO year 0025. Refine the year
+// to a sane 1900-2100 window. Empty string is allowed (date is optional).
+const projectDateSchema = z
+  .string()
+  .refine(
+    (s) => {
+      if (!s) return true;
+      const year = Number(s.slice(0, 4));
+      return Number.isInteger(year) && year >= 1900 && year <= 2100;
+    },
+    { message: 'Dates must fall between the years 1900 and 2100.' },
+  );
 
 interface ProjectDialogProps {
   open: boolean;
@@ -35,6 +50,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
   const [projectType, setProjectType] = useState<ProjectType>(initialType);
   const [showAddClient, setShowAddClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     property_id: project?.property_id || '',
@@ -65,6 +81,16 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const startCheck = projectDateSchema.safeParse(formData.start_date);
+    const endCheck = projectDateSchema.safeParse(formData.target_end_date);
+    if (!startCheck.success || !endCheck.success) {
+      setDateError(
+        (startCheck.success ? endCheck : startCheck).error.issues[0].message,
+      );
+      return;
+    }
+    setDateError(null);
 
     const payload: any = {
       name: formData.name,
@@ -97,6 +123,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
     setProjectType('property');
     setShowAddClient(false);
     setNewClientName('');
+    setDateError(null);
   };
 
   const isPropertyValid = projectType === 'property' ? !!formData.property_id : true;
@@ -272,6 +299,8 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
               <Label>Start Date</Label>
               <Input
                 type="date"
+                min="1900-01-01"
+                max="2100-12-31"
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
               />
@@ -280,11 +309,16 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
               <Label>Target End Date</Label>
               <Input
                 type="date"
+                min="1900-01-01"
+                max="2100-12-31"
                 value={formData.target_end_date}
                 onChange={(e) => setFormData({ ...formData, target_end_date: e.target.value })}
               />
             </div>
           </div>
+          {dateError && (
+            <p className="text-sm text-[var(--apas-rose)]">{dateError}</p>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -12,6 +12,7 @@
  *
  * Multi-page PDF auto-splitting is deferred to an edge function (separate task).
  */
+import { toDateOnly } from "@/lib/date";
 import { useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -45,7 +46,7 @@ export function DrawingUploadDialog({
 }) {
   const [setName, setSetName] = useState("");
   const [discipline, setDiscipline] = useState("");
-  const [setDate, setSetDate] = useState(new Date().toISOString().split("T")[0]);
+  const [setDate, setSetDate] = useState(toDateOnly(new Date()));
   const [drafts, setDrafts] = useState<SheetDraft[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);

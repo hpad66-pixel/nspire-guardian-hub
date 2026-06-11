@@ -2,6 +2,7 @@
  * D4 · Change Orders (PCO/OCO/CCO).
  * Named useProcoreChangeOrders to coexist with pre-existing useChangeOrders.ts.
  */
+import { toDateOnly } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
@@ -95,7 +96,7 @@ export function usePromoteToOco() {
         amount: (pco as any).amount,
         status: "executed",
         parent_pco_id: pcoId,
-        executed_date: new Date().toISOString().split("T")[0],
+        executed_date: toDateOnly(new Date()),
       } as any).select().single();
       if (e2) throw e2;
 

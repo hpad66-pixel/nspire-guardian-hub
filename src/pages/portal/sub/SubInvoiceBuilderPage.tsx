@@ -9,6 +9,7 @@
  * RLS (ci_sub_portal_insert in F1 migration) enforces that the sub can only
  * insert rows on commitments belonging to orgs they're a member of.
  */
+import { toDateOnly } from "@/lib/date";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { useCommitmentInvoices } from "@/hooks/useCommitments";
@@ -28,7 +29,7 @@ export default function SubInvoiceBuilderPage() {
 
   const [draftId, setDraftId] = useState<string | null>(null);
   const [invoiceNo, setInvoiceNo] = useState("");
-  const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().split("T")[0]);
+  const [periodEnd, setPeriodEnd] = useState(toDateOnly(new Date()));
 
   const { detail, submit } = useInvoice(draftId);
 
