@@ -15,6 +15,7 @@
  * submittal-requirement extraction. Those are edge-function concerns; a later
  * enhancement can call the edge fn and populate requirements automatically.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -38,7 +39,7 @@ export function SpecUploadDialog({
 }) {
   const qc = useQueryClient();
   const [setName, setSetName] = useState("");
-  const [setDate, setSetDate] = useState(new Date().toISOString().split("T")[0]);
+  const [setDate, setSetDate] = useState(toDateOnly(new Date()));
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [sectionsText, setSectionsText] = useState("");
   const [uploading, setUploading] = useState(false);

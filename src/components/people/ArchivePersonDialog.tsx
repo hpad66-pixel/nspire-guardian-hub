@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useState } from 'react';
 import { Archive, AlertTriangle } from 'lucide-react';
 import {
@@ -42,7 +43,7 @@ type DepartureReason = typeof DEPARTURE_REASONS[number]['value'];
 export function ArchivePersonDialog({ assignment, open, onOpenChange }: ArchivePersonDialogProps) {
   const [departureReason, setDepartureReason] = useState<DepartureReason | ''>('');
   const [departureNotes, setDepartureNotes] = useState('');
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(toDateOnly(new Date()));
 
   const archiveTeamMember = useArchiveTeamMember();
 

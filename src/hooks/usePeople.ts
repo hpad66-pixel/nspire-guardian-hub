@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -274,7 +275,7 @@ export function useAddPropertyAssignment() {
           role: data.role,
           title: data.title,
           department: data.department,
-          start_date: data.start_date || new Date().toISOString().split('T')[0],
+          start_date: data.start_date || toDateOnly(new Date()),
           added_by: user?.id,
         })
         .select()
@@ -353,7 +354,7 @@ export function useArchiveTeamMember() {
           status: 'archived',
           departure_reason,
           departure_notes,
-          end_date: end_date || new Date().toISOString().split('T')[0],
+          end_date: end_date || toDateOnly(new Date()),
           archived_by: user?.id,
           archived_at: new Date().toISOString(),
         })

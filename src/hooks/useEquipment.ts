@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -596,7 +597,7 @@ export function useExpiringDocuments(days = 60) {
         `)
         .eq('status', 'active')
         .not('expiry_date', 'is', null)
-        .lte('expiry_date', cutoff.toISOString().split('T')[0])
+        .lte('expiry_date', toDateOnly(cutoff))
         .order('expiry_date');
       if (error) throw error;
       // Filter to this workspace

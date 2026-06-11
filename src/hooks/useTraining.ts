@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -201,7 +202,7 @@ interface AssignCoursePayload {
 
 function calcNextDueDate(dueDate: string | undefined, intervalDays: number | undefined): string | null {
   if (!dueDate || !intervalDays) return null;
-  return addDays(new Date(dueDate), intervalDays).toISOString().split('T')[0];
+  return toDateOnly(addDays(new Date(dueDate), intervalDays));
 }
 
 export function useAssignCourse() {

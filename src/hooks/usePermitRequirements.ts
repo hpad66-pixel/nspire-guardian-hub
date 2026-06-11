@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,8 +41,8 @@ export function useUpcomingRequirements(days: number = 30) {
           *,
           permits:permit_id(id, name, property_id, properties:property_id(id, name))
         `)
-        .lte('next_due_date', futureDate.toISOString().split('T')[0])
-        .gte('next_due_date', new Date().toISOString().split('T')[0])
+        .lte('next_due_date', toDateOnly(futureDate))
+        .gte('next_due_date', toDateOnly(new Date()))
         .neq('status', 'waived')
         .order('next_due_date', { ascending: true });
 
@@ -131,7 +132,7 @@ export function useCompleteRequirement() {
     mutationFn: async ({ id, nextDueDate }: { id: string; nextDueDate?: string }) => {
       const updates: PermitRequirementUpdate = {
         status: 'compliant',
-        last_completed_date: new Date().toISOString().split('T')[0],
+        last_completed_date: toDateOnly(new Date()),
       };
 
       if (nextDueDate) {

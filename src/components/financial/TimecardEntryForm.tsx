@@ -2,6 +2,7 @@
  * D5 · Timecard entry form (cost_type = 'timecard').
  * Employee required. Per-line hours × rate auto-computes amount.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState, useMemo } from "react";
 import { useDirectCosts, useDirectCostLines } from "@/hooks/useDirectCosts";
 import { DirectCostLinesEditor, type DirectCostLineDraft } from "./DirectCostLinesEditor";
@@ -29,7 +30,7 @@ export function TimecardEntryForm({
   const { create } = useDirectCosts(projectId, "timecard");
   const [refNo, setRefNo] = useState("");
   const [employeeId, setEmployeeId] = useState(defaultEmployeeId ?? "");
-  const [costDate, setCostDate] = useState(new Date().toISOString().split("T")[0]);
+  const [costDate, setCostDate] = useState(toDateOnly(new Date()));
   const [description, setDescription] = useState("");
   const [lines, setLines] = useState<DirectCostLineDraft[]>([]);
   const [saving, setSaving] = useState(false);

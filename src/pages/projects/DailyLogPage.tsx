@@ -1,6 +1,7 @@
 /**
  * C4 · DailyLogPage — date-picker + 14 category sub-tabs + PDF download.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ import { toast } from "sonner";
 export default function DailyLogPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const qc = useQueryClient();
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split("T")[0]);
+  const [reportDate, setReportDate] = useState(toDateOnly(new Date()));
 
   const { data: report, ensure, copyYesterday } = useDailyReport(projectId ?? null, reportDate);
   const reportId = (report as any)?.id ?? null;
