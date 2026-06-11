@@ -23,7 +23,11 @@
       "Bash(docker exec supabase_db_xlfwzqpixlrnntzqhvcm *)",
       "Bash(docker cp *)",
       "Bash(docker exec *)",
-      "Bash(grep -E '\\\\.\\(sql|ts|tsx\\)$')"
+      "Bash(grep -E '\\\\.\\(sql|ts|tsx\\)$')",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git rebase *)"
     ]
   }
 }
