@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export interface DocumentFolder {
   id: string;
@@ -54,6 +55,7 @@ export function useDocumentFolders() {
 
 export function useCreateDocumentFolder() {
   const queryClient = useQueryClient();
+  const { workspaceId } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -68,6 +70,7 @@ export function useCreateDocumentFolder() {
         .insert({
           name: name.trim(),
           parent_id: parentId || null,
+          workspace_id: workspaceId ?? undefined,
         })
         .select()
         .single();

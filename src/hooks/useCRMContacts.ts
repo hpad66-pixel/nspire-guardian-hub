@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 export type ContactType = 
   | "vendor"
@@ -154,6 +155,7 @@ export function useCRMContact(id: string | null) {
 export function useCreateCRMContact() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { workspaceId } = useWorkspace();
 
   return useMutation({
     mutationFn: async (contact: CRMContactFormData) => {
@@ -163,6 +165,7 @@ export function useCreateCRMContact() {
         ...contact,
         user_id: contact.property_id ? null : user.id, // Personal if no property_id
         created_by: user.id,
+        workspace_id: workspaceId ?? undefined,
       };
 
       const { data, error } = await supabase
