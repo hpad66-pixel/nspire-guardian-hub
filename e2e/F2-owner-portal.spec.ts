@@ -3,35 +3,35 @@ import { test as authTest } from "./fixtures/auth";
 
 baseTest.describe("F2 Owner Portal — unauth", () => {
   baseTest("root owner route requires auth", async ({ page }) => {
-    await page.goto("/portal/owner");
+    await page.goto("/owner-portal");
     await expect(page).toHaveURL(/\/auth/);
   });
 
   baseTest("contracts page requires auth", async ({ page }) => {
-    await page.goto("/portal/owner/contract");
+    await page.goto("/owner-portal/contract");
     await expect(page).toHaveURL(/\/auth/);
   });
 
   baseTest("OCO approval page requires auth", async ({ page }) => {
-    await page.goto("/portal/owner/cos/abc");
+    await page.goto("/owner-portal/cos/abc");
     await expect(page).toHaveURL(/\/auth/);
   });
 
   baseTest("pay-app approval page requires auth", async ({ page }) => {
-    await page.goto("/portal/owner/pay-apps/abc");
+    await page.goto("/owner-portal/pay-apps/abc");
     await expect(page).toHaveURL(/\/auth/);
   });
 });
 
 authTest.describe("F2 Owner Portal — authed", () => {
   authTest("dashboard lists pending OCOs and pay apps", async ({ authed }) => {
-    await authed.goto("/portal/owner");
+    await authed.goto("/owner-portal");
     await expect(authed.getByText(/owner|pending|review|portal/i).first()).toBeVisible();
   });
 
   authTest("OCO approval requires e-signature before Approve enables", async ({ authed, seeds }) => {
     authTest.skip(!seeds.ocoId, "E2E_SEEDED_OCO_ID required");
-    await authed.goto(`/portal/owner/cos/${seeds.ocoId}`);
+    await authed.goto(`/owner-portal/cos/${seeds.ocoId}`);
     const approve = authed.getByRole("button", { name: /^approve$/i });
     if (!(await approve.isVisible().catch(() => false))) return;
     expect(await approve.isDisabled()).toBeTruthy();
@@ -50,7 +50,7 @@ authTest.describe("F2 Owner Portal — authed", () => {
 
   authTest("pay-app approval surfaces per-line max attribute", async ({ authed, seeds }) => {
     authTest.skip(!seeds.payAppId, "E2E_SEEDED_PAY_APP_ID required");
-    await authed.goto(`/portal/owner/pay-apps/${seeds.payAppId}`);
+    await authed.goto(`/owner-portal/pay-apps/${seeds.payAppId}`);
     const firstAdjust = authed.locator("table >> input[type='number']").first();
     if (!(await firstAdjust.isVisible().catch(() => false))) return;
     await expect(firstAdjust).toHaveAttribute("max", /\d/);
@@ -58,7 +58,7 @@ authTest.describe("F2 Owner Portal — authed", () => {
 
   authTest("pay-app reject without a reason code is prevented", async ({ authed, seeds }) => {
     authTest.skip(!seeds.payAppId, "E2E_SEEDED_PAY_APP_ID required");
-    await authed.goto(`/portal/owner/pay-apps/${seeds.payAppId}`);
+    await authed.goto(`/owner-portal/pay-apps/${seeds.payAppId}`);
     const rejectBtn = authed.getByRole("button", { name: /reject.*reason|reject/i }).first();
     if (!(await rejectBtn.isVisible().catch(() => false))) return;
     authed.once("dialog", (d) => d.dismiss());
@@ -69,7 +69,7 @@ authTest.describe("F2 Owner Portal — authed", () => {
   });
 
   authTest("owner reports page lists tenant-scope exec reports", async ({ authed }) => {
-    await authed.goto("/portal/owner/reports");
+    await authed.goto("/owner-portal/reports");
     await expect(authed.getByText(/executive|reports|owner/i).first()).toBeVisible();
   });
 });
