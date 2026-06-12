@@ -132,18 +132,19 @@ export function useUploadAvatar() {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(fileName);
 
-      // Use UPDATE instead of upsert so we don't need INSERT permission here
+      // Append cache-buster so the browser fetches the new image immediately
+      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+        .upsert(
+          { user_id: user.id, avatar_url: cacheBustedUrl, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        );
 
       if (profileError) throw profileError;
 
-      return publicUrl;
+      return cacheBustedUrl;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });

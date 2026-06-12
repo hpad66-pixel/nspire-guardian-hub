@@ -102,7 +102,12 @@ export default function ProfilePage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadAvatar.mutateAsync(file);
+    try {
+      await uploadAvatar.mutateAsync(file);
+      toast.success('Profile photo updated.');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to upload photo. Check your Supabase storage bucket permissions.');
+    }
     e.target.value = '';
   };
 
