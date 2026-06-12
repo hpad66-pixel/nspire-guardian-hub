@@ -8,9 +8,30 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadDailyLogPdf } from "@/lib/pdf/dailyLog";
+import type { DailyPhotoRow } from "@/lib/pdf/dailyLog";
+import { useLinkedPhotos } from "@/hooks/usePhotos";
+import type { Photo } from "@/hooks/usePhotos";
+import { signedUrlFor } from "@/lib/pdf-viewer";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
 import { toast } from "sonner";
+
+/** Fetch a stored photo and inline it as a data URL so jsPDF can embed it. */
+async function photoToDataUrl(photo: Photo): Promise<DailyPhotoRow | null> {
+  try {
+    const url = await signedUrlFor("project-photos", photo.storage_path, 600);
+    const blob = await (await fetch(url)).blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, caption: photo.caption };
+  } catch {
+    return null;
+  }
+}
 
 export function DailyLogPDFExport({
   dailyReportId, variant = "outline", size = "default", disabled,
@@ -21,6 +42,8 @@ export function DailyLogPDFExport({
   disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  // Photos attached to this daily report via photo_links (recordType "daily").
+  const { data: linkedPhotos = [] } = useLinkedPhotos(dailyReportId, "daily");
 
   async function handleClick() {
     if (!dailyReportId) return;
@@ -67,7 +90,13 @@ export function DailyLogPDFExport({
         submitted_at: (parent as any).submitted_at ?? null,
       };
 
+      // Inline the attached photos as data URLs (signed against project-photos).
+      const photos = (
+        await Promise.all(linkedPhotos.map(photoToDataUrl))
+      ).filter(Boolean) as DailyPhotoRow[];
+
       downloadDailyLogPdf(report, {
+        photos,
         labor: ((manpower as any[]) ?? []).map((m) => ({
           company: m.organization_id ?? "—",
           trade: m.trade ?? "—",

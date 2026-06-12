@@ -27,6 +27,8 @@ export interface DailyLaborRow { company: string; trade: string; workers: number
 export interface DailyEquipmentRow { equipment: string; hours: number; idle_hours?: number | null; }
 export interface DailyDeliveryRow { time?: string | null; vendor: string; items: string; }
 export interface DailyEventRow { time?: string | null; description: string; severity?: string | null; }
+/** A photo attached to the daily report, pre-resolved to an embeddable data URL. */
+export interface DailyPhotoRow { dataUrl: string; caption?: string | null; }
 
 export function generateDailyLogPdf(
   report: DailyReportForPdf,
@@ -36,6 +38,7 @@ export function generateDailyLogPdf(
     deliveries?: DailyDeliveryRow[];
     quality?: DailyEventRow[];
     safety?: DailyEventRow[];
+    photos?: DailyPhotoRow[];
     tenantName?: string;
     logoDataUrl?: string;
   } = {},
@@ -154,6 +157,52 @@ export function generateDailyLogPdf(
       ],
       rows: opts.safety,
     }) + 12;
+  }
+
+  if (opts.photos && opts.photos.length > 0) {
+    section("Photos");
+    y += 6;
+
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const cols = 3;
+    const gap = 12;
+    const cellW = (pageW - 80 - gap * (cols - 1)) / cols; // 40pt margins each side
+    const imgH = cellW * 0.7;
+    const capH = 12;
+    const rowH = imgH + capH + gap;
+
+    opts.photos.forEach((photo, i) => {
+      const col = i % cols;
+      if (col === 0) {
+        // New row — page-break if it won't fit.
+        if (y + rowH > pageH - 60) {
+          doc.addPage();
+          y = 60;
+        }
+      }
+      const x = 40 + col * (cellW + gap);
+      // jsPDF infers the format from the data-URL prefix; default to JPEG.
+      const fmt = photo.dataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+      try {
+        doc.addImage(photo.dataUrl, fmt, x, y, cellW, imgH);
+      } catch {
+        // Unreadable image — draw a placeholder box rather than aborting.
+        doc.setDrawColor(220);
+        doc.rect(x, y, cellW, imgH);
+      }
+      if (photo.caption) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        const cap = doc.splitTextToSize(photo.caption, cellW)[0] ?? "";
+        doc.text(cap, x, y + imgH + 9);
+        doc.setTextColor(0);
+      }
+      if (col === cols - 1) y += rowH;
+    });
+    // Advance past a partially-filled final row.
+    if (opts.photos.length % cols !== 0) y += rowH;
   }
 
   drawFooter(doc);
