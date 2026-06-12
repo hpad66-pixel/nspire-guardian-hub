@@ -10,6 +10,10 @@
 import { test, expect } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ESM ("type":"module") has no __dirname — derive it from import.meta.url.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const APP_TSX = path.resolve(__dirname, "../src/App.tsx");
 const COMPONENT = path.resolve(
@@ -55,17 +59,17 @@ test.describe("G3 wiring", () => {
 });
 
 test.describe("G3 browser smoke (no seeded session)", () => {
-  test("guest hitting /portal/sub/commitments lands on auth flow", async ({ page }) => {
-    await page.goto("/portal/sub/commitments");
+  test("guest hitting /sub-portal/commitments lands on auth flow", async ({ page }) => {
+    await page.goto("/sub-portal/commitments");
     // No portal session in default test profile, so we expect
     // either the login redirect (/login or /auth) or an
     // unauthenticated landing -- not the portal commitments
     // page itself.
-    await expect(page).not.toHaveURL(/\/portal\/sub\/commitments$/);
+    await expect(page).not.toHaveURL(/\/sub-portal\/commitments$/);
   });
 
-  test("guest hitting /portal/owner lands on auth flow", async ({ page }) => {
-    await page.goto("/portal/owner");
-    await expect(page).not.toHaveURL(/\/portal\/owner$/);
+  test("guest hitting /owner-portal lands on auth flow", async ({ page }) => {
+    await page.goto("/owner-portal");
+    await expect(page).not.toHaveURL(/\/owner-portal$/);
   });
 });
