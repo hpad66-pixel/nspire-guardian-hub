@@ -279,7 +279,7 @@ export default function ProfilePage() {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1.5">
-                        Click your photo to upload a new one · JPG, PNG, WebP · max 5 MB
+                        Click your photo to upload a new one · JPG, PNG, WebP
                       </p>
                     </div>
                   </div>

@@ -116,8 +116,7 @@ export function useUploadAvatar() {
     mutationFn: async (file: File) => {
       if (!user) throw new Error('Not authenticated');
 
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) throw new Error('Image must be smaller than 5MB');
+
       if (!file.type.startsWith('image/')) throw new Error('File must be an image');
 
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
