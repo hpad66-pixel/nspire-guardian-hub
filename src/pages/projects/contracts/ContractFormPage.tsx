@@ -10,6 +10,7 @@ import {
   type ContractUpsert,
   type SovItemUpsert,
 } from '@/hooks/useProjectContracts';
+import { useDefaultLibrary, useCostCodes } from '@/hooks/useCostCodes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +60,7 @@ const contractSchema = z.object({
     id: z.string().optional(),
     item_number: z.coerce.number(),
     budget_code: z.string().optional(),
+    cost_code_id: z.string().nullable().optional(),
     description: z.string().min(1),
     quantity: z.coerce.number().optional(),
     unit: z.string().optional(),
@@ -110,6 +112,7 @@ function toFormValues(data: Omit<ContractUpsert, 'project_id'>, items: SovItemUp
       ...i,
       id: (i as any).id,
       budget_code: i.budget_code ?? '',
+      cost_code_id: i.cost_code_id ?? null,
       unit: i.unit ?? '',
       quantity: i.quantity ?? 0,
       unit_cost: i.unit_cost ?? 0,
@@ -126,6 +129,8 @@ export default function ContractFormPage() {
   const { projectId, contractId } = useParams<{ projectId: string; contractId?: string }>();
   const navigate = useNavigate();
   const { data: contracts = [], upsert } = useProjectContracts(projectId!);
+  const { data: defaultLibrary } = useDefaultLibrary();
+  const { data: costCodes = [] } = useCostCodes(defaultLibrary?.id ?? null);
   const existing = contracts.find((c) => c.id === contractId);
   const isEdit = !!contractId;
 
@@ -318,6 +323,7 @@ export default function ContractFormPage() {
                     <th className="text-left p-2 w-8">#</th>
                     <th className="text-left p-2">Description</th>
                     <th className="text-left p-2 w-20">Code</th>
+                    <th className="text-left p-2 w-36">Cost Code</th>
                     <th className="text-right p-2 w-20">Qty</th>
                     <th className="text-left p-2 w-16">Unit</th>
                     <th className="text-right p-2 w-24">Unit Cost</th>
@@ -336,6 +342,24 @@ export default function ContractFormPage() {
                       </td>
                       <td className="p-1">
                         <Input className="h-7 text-xs font-mono" {...form.register(`sov_items.${idx}.budget_code`)} />
+                      </td>
+                      <td className="p-1">
+                        <Select
+                          value={form.watch(`sov_items.${idx}.cost_code_id`) ?? ''}
+                          onValueChange={(v) => form.setValue(`sov_items.${idx}.cost_code_id`, v || null)}
+                        >
+                          <SelectTrigger className="h-7 w-36 text-xs">
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {costCodes.map((cc) => (
+                              <SelectItem key={cc.id} value={cc.id} className="text-xs">
+                                <span className="font-mono">{cc.code}</span>
+                                <span className="text-muted-foreground"> · {cc.description}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="p-1">
                         <Input className="h-7 w-20 text-xs text-right" type="number" step="0.001"
@@ -369,7 +393,7 @@ export default function ContractFormPage() {
             </div>
             <Button
               type="button" variant="outline" size="sm"
-              onClick={() => append({ item_number: fields.length + 1, description: '', budget_code: '', unit: 'ls', quantity: 1, unit_cost: 0, subtotal: 0, completed_qty: 0, completed_pct: 0, billed_to_date: 0, contract_id: '' })}
+              onClick={() => append({ item_number: fields.length + 1, description: '', budget_code: '', cost_code_id: null, unit: 'ls', quantity: 1, unit_cost: 0, subtotal: 0, completed_qty: 0, completed_pct: 0, billed_to_date: 0, contract_id: '' })}
             >
               <Plus className="h-4 w-4 mr-1.5" />Add Line Item
             </Button>
