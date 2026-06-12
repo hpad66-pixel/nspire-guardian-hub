@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Build OS Design System */
+/* Proj OS Design System */
 
 /* Build landing page custom properties */
 :root {
@@ -23,7 +23,7 @@
 
 @layer base {
   /*
-   * Build OS — warm cream light palette matching the marketing landing.
+   * Proj OS — warm cream light palette matching the marketing landing.
    * Warm off-white backgrounds, near-black text, gold/amber accent.
    */
   :root {

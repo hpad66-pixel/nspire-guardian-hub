@@ -88,7 +88,7 @@ export function CredentialPrintView({
 <body>
   <div class="header">
     <div>
-      <div class="brand">Build OS</div>
+      <div class="brand">Proj OS</div>
       <div class="brand-sub">Credential Summary</div>
     </div>
     <div class="date">
@@ -137,7 +137,7 @@ export function CredentialPrintView({
   </div>` : ''}
 
   <div class="footer">
-    Generated from Build OS · apasos.ai
+    Generated from Proj OS · projos.ai
   </div>
 
   <script>

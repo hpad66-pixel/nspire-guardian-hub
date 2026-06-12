@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -84,8 +85,8 @@ export function useUpcomingMilestones(daysAhead: number = 7) {
           *,
           project:projects(name, property:properties(name))
         `)
-        .gte('due_date', today.toISOString().split('T')[0])
-        .lte('due_date', futureDate.toISOString().split('T')[0])
+        .gte('due_date', toDateOnly(today))
+        .lte('due_date', toDateOnly(futureDate))
         .neq('status', 'completed')
         .order('due_date', { ascending: true });
 

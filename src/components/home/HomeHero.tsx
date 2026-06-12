@@ -64,7 +64,7 @@ export function HomeHero() {
             className="text-white/40 max-w-xl mx-auto mb-10 leading-relaxed"
             style={{ fontFamily: 'Inter, sans-serif', fontSize: 'clamp(16px, 2vw, 19px)' }}
           >
-            Build OS replaces the spreadsheets, email chains, paper checklists, and filing cabinets.
+            Proj OS replaces the spreadsheets, email chains, paper checklists, and filing cabinets.
             Inspections, compliance, work orders, projects, permits — all connected. All auditable.
           </motion.p>
 

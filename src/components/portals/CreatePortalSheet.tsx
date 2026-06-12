@@ -231,7 +231,7 @@ export function CreatePortalSheet({ open, onOpenChange }: CreatePortalSheetProps
                 <Label htmlFor="portal-slug">Your portal link</Label>
                 <div className="flex items-center rounded-md border border-input bg-muted/40 overflow-hidden">
                   <span className="px-3 py-2 text-xs text-muted-foreground border-r border-input bg-muted select-none whitespace-nowrap">
-                    apasos.ai/portal/
+                    projos.ai/portal/
                   </span>
                   <Input
                     id="portal-slug"

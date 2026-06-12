@@ -1,6 +1,7 @@
 /**
  * E1 · Schedule — Gantt + P6/MSP import.
  */
+import { toDateOnly } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
@@ -43,8 +44,8 @@ export function useScheduleTasks(scheduleId: string | null, windowDays?: number)
         const end = new Date(today);
         end.setDate(today.getDate() + windowDays);
         q = q
-          .gte("finish_date", today.toISOString().split("T")[0])
-          .lte("start_date", end.toISOString().split("T")[0]);
+          .gte("finish_date", toDateOnly(today))
+          .lte("start_date", toDateOnly(end));
       }
       const { data, error } = await q.order("start_date");
       if (error) throw error;

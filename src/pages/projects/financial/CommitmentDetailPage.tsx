@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import {
@@ -34,7 +35,7 @@ export default function CommitmentDetailPage() {
 
   const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
   const [invoiceNo, setInvoiceNo] = useState("");
-  const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().split("T")[0]);
+  const [periodEnd, setPeriodEnd] = useState(toDateOnly(new Date()));
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
   if (!commitment) return <div className="p-6 text-muted-foreground">Loading commitment…</div>;
@@ -44,7 +45,7 @@ export default function CommitmentDetailPage() {
     try {
       const row = await createInvoice.mutateAsync({ invoice_no: invoiceNo.trim(), period_end: periodEnd });
       setNewInvoiceOpen(false);
-      setInvoiceNo(""); setPeriodEnd(new Date().toISOString().split("T")[0]);
+      setInvoiceNo(""); setPeriodEnd(toDateOnly(new Date()));
       setOpenInvoiceId(row.id);
       toast.success(`Invoice ${row.invoice_no} created`);
     } catch (e: any) { toast.error(e.message); }

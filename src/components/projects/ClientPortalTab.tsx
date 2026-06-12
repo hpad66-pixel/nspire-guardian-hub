@@ -309,9 +309,9 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
 
 // ─── Portal Link ──────────────────────────────────────────────────────────────
 
-function PortalLink({ projectId }: { projectId: string }) {
+function PortalLink({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
-  const url = `${window.location.origin}/portal/${projectId}`;
+  const url = `${window.location.origin}/portal/${slug}`;
 
   function copy() {
     navigator.clipboard.writeText(url);
@@ -821,6 +821,9 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
   const { data: allItems = [], isLoading: itemsLoading } = useClientActionItems(projectId);
   const { data: messages = [] } = useClientMessages(projectId);
   const { data: updates = [] } = usePortalUpdates(projectId);
+  // #17: a PortalLink is only meaningful when a portal row actually exists —
+  // otherwise it contradicts ScheduleAccessSection's "no portal linked" notice.
+  const { data: portal } = usePortalByProject(projectId);
 
   const pendingItems = allItems.filter(i => i.status === 'pending' || i.status === 'viewed');
   const resolvedItems = allItems.filter(i => i.status === 'resolved' || i.status === 'responded' || i.status === 'cancelled');
@@ -879,8 +882,8 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
       {/* Views */}
       {activeView === 'overview' && (
         <div className="space-y-5">
-          {/* Portal link */}
-          <PortalLink projectId={projectId} />
+          {/* Portal link — only when a portal row exists (#17) */}
+          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} />}
 
           {/* Interactive Schedule & Access */}
           <ScheduleAccessSection projectId={projectId} />

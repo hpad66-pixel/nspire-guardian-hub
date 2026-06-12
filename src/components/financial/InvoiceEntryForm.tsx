@@ -2,6 +2,7 @@
  * D5 · Invoice entry form (cost_type = 'invoice').
  * Requires vendor_org_id + attachment on approval. Line total must == header amount.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState, useMemo } from "react";
 import { useDirectCosts, useDirectCostLines } from "@/hooks/useDirectCosts";
 import { DirectCostLinesEditor, type DirectCostLineDraft } from "./DirectCostLinesEditor";
@@ -26,7 +27,7 @@ export function InvoiceEntryForm({ open, onOpenChange, projectId, onCreated }: I
   const { create } = useDirectCosts(projectId, "invoice");
   const [refNo, setRefNo] = useState("");
   const [vendorOrgId, setVendorOrgId] = useState("");
-  const [costDate, setCostDate] = useState(new Date().toISOString().split("T")[0]);
+  const [costDate, setCostDate] = useState(toDateOnly(new Date()));
   const [description, setDescription] = useState("");
   const [attachmentDocId, setAttachmentDocId] = useState("");
   const [lines, setLines] = useState<DirectCostLineDraft[]>([]);

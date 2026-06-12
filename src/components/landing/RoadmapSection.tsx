@@ -61,7 +61,7 @@ export function RoadmapSection() {
             We're Shipping. <em>Every Month.</em>
           </h2>
           <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '640px', margin: '0 auto' }}>
-            Build OS is live and growing. New features ship every 30 days, informed by the operators and managers who use the platform daily.
+            Proj OS is live and growing. New features ship every 30 days, informed by the operators and managers who use the platform daily.
           </p>
         </motion.div>
 

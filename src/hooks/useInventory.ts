@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -152,7 +153,7 @@ export function useInventoryConsumptionByMonth(
     queryFn: async () => {
       const since = new Date();
       since.setMonth(since.getMonth() - months);
-      const sinceStr = since.toISOString().slice(0, 10);
+      const sinceStr = toDateOnly(since);
 
       // Fetch transactions with their parent item's category
       const { data, error } = await supabase
@@ -322,7 +323,7 @@ export function useLogInventoryTransaction() {
           reference_number: params.referenceNumber ?? null,
           vendor: params.vendor ?? null,
           notes: params.notes ?? null,
-          transaction_date: params.transactionDate ?? new Date().toISOString().slice(0, 10),
+          transaction_date: params.transactionDate ?? toDateOnly(new Date()),
           created_by: user?.id,
         })
         .select()

@@ -4,7 +4,7 @@ import "./index.css";
 
 // Bump when another forced SW eviction is needed (e.g. a future cache split).
 const SW_CLEANUP_VERSION = "2026-05-04-cloudflare-pages-env-reset";
-const SW_CLEANUP_KEY = "build-os-sw-cleanup";
+const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {
   if (!("serviceWorker" in navigator)) return false;

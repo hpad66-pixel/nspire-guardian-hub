@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
   MoreHorizontal, Archive, Trash2, TriangleAlert,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
+  FileSignature,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -60,7 +61,6 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
-import { RepositoryTab } from '@/components/projects/RepositoryTab';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -93,6 +93,7 @@ const TAB_GROUPS = [
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
@@ -102,7 +103,8 @@ export default function ProjectDetailPage() {
   const [actionItemsOpen, setActionItemsOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [teamSheetOpen, setTeamSheetOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  // Honor a ?tab= deep link (e.g. global search → /projects/:id?tab=rfis).
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +121,20 @@ export default function ProjectDetailPage() {
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
+
+  // Contracts and Repository live on their own routed pages, but are surfaced
+  // as entries in the project nav for discoverability (WS-7 #3). They are not
+  // in-page tabs — selecting one (click or ?tab= deep link) redirects to the
+  // dedicated route. Keeps a single source of truth for each module's UI.
+  const ROUTED_TABS: Record<string, string> = {
+    contracts: `/projects/${id}/contracts`,
+    repository: `/projects/${id}/repository`,
+  };
+  useEffect(() => {
+    const dest = ROUTED_TABS[activeTab];
+    if (dest) navigate(dest, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, id]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -248,6 +264,7 @@ export default function ProjectDetailPage() {
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
     { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
     { value: 'financials',   label: 'Financials',   shortLabel: 'Finance',  icon: Wallet,          group: 'core',       badge: null as number | null },
+    { value: 'contracts',    label: 'Contracts',    shortLabel: 'Contracts',icon: FileSignature,   group: 'core',       badge: null as number | null },
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
     { value: 'punch-list',   label: 'Punch List',   shortLabel: 'Punch',    icon: ListChecks,      group: 'compliance', badge: ((punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)) > 0 ? (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) : null },
@@ -806,7 +823,6 @@ export default function ProjectDetailPage() {
                 <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-                <TabsContent value="repository" className="mt-0"><RepositoryTab projectId={id!} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
             </div>
@@ -1092,7 +1108,6 @@ export default function ProjectDetailPage() {
               <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-              <TabsContent value="repository"><RepositoryTab projectId={id!} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
             </div>
 

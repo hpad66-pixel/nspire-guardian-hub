@@ -101,13 +101,13 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* Build OS wordmark */}
+          {/* Proj OS wordmark */}
           <div className="flex items-end gap-0 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
               style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
-              Build
+              Proj
             </span>
             <span
               className="font-black leading-none tracking-tight ml-2"
@@ -122,12 +122,18 @@ export default function AuthPage() {
             >
               OS
             </span>
+            <span
+              className="font-mono text-primary-foreground/40 self-end pb-1 ml-0.5"
+              style={{ fontSize: 'clamp(0.9rem, 1.2vw, 1.1rem)', letterSpacing: '0.01em' }}
+            >
+              .ai
+            </span>
           </div>
 
-          {/* "Operating System" label — the key identity line */}
+          {/* Tagline */}
           <p className="text-primary-foreground/70 font-semibold tracking-[0.22em] uppercase mb-7"
             style={{ fontSize: '0.78rem', letterSpacing: '0.22em' }}>
-            Operating System
+            Project Operating System
           </p>
 
           {/* OS descriptor badge */}
@@ -190,7 +196,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2025 Build OS · apasos.ai · All rights reserved
+            © 2025 Proj OS · projos.ai · All rights reserved
           </p>
         </div>
       </div>
@@ -233,7 +239,7 @@ export default function AuthPage() {
                 Welcome back
               </h1>
               <p className="text-sm text-muted-foreground">
-                Sign in to access your Build OS workspace
+                Sign in to access your Proj OS workspace
               </p>
             </div>
 
@@ -305,7 +311,7 @@ export default function AuthPage() {
                 {isSubmitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>
                 ) : (
-                  'Sign In to Build OS'
+                  'Sign In to Proj OS'
                 )}
               </button>
             </form>

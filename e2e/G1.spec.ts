@@ -20,6 +20,10 @@
 import { test, expect } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ESM ("type":"module") has no __dirname — derive it from import.meta.url.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const MIGRATION_PATH = path.resolve(
   __dirname,

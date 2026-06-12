@@ -45,7 +45,7 @@ const SOURCE_STYLE: Record<ArtifactSource, string> = {
   manual:   "bg-gray-100 text-gray-700 border-gray-200",
 };
 const SOURCE_LABEL: Record<ArtifactSource, string> = {
-  procore: "Procore", builtos: "Build OS", manual: "Manual",
+  procore: "Procore", builtos: "Proj OS", manual: "Manual",
 };
 
 function fmt(n: number | null) {
@@ -193,7 +193,7 @@ export default function ProjectRepositoryPage() {
           <SelectContent>
             <SelectItem value="all">All sources</SelectItem>
             <SelectItem value="procore">Procore (historical)</SelectItem>
-            <SelectItem value="builtos">Build OS</SelectItem>
+            <SelectItem value="builtos">Proj OS</SelectItem>
             <SelectItem value="manual">Manual upload</SelectItem>
           </SelectContent>
         </Select>

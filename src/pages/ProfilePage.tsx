@@ -102,12 +102,21 @@ export default function ProfilePage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadAvatar.mutateAsync(file);
+    try {
+      await uploadAvatar.mutateAsync(file);
+      toast.success('Profile photo updated.');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to upload photo. Check your Supabase storage bucket permissions.');
+    }
     e.target.value = '';
   };
 
   const handleSaveProfile = async () => {
-    await updateProfile.mutateAsync(form);
+    try {
+      await updateProfile.mutateAsync(form);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to save profile.');
+    }
   };
 
   const handleChangePassword = async () => {
@@ -279,7 +288,7 @@ export default function ProfilePage() {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1.5">
-                        Click your photo to upload a new one · JPG, PNG, WebP · max 5 MB
+                        Click your photo to upload a new one · JPG, PNG, WebP
                       </p>
                     </div>
                   </div>

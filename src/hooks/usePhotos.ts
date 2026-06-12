@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { requireTenantId } from "@/lib/tenant";
+import { resolveCurrentWorkspaceId } from "@/lib/tenant";
 
 export interface Photo {
   id: string; tenant_id: string; project_id: string; uploader_id: string | null;
@@ -40,7 +40,12 @@ export function usePhotos(projectId: string | null) {
       takenAt?: string | null;
       exif?: Record<string, unknown>;
     }) => {
-      const tenant_id = await requireTenantId();
+      // #5: resolve the workspace the same way the rest of the app does
+      // (JWT claim → portal membership → profiles.workspace_id). The old
+      // requireTenantId() only read the JWT tenant_id claim, which is absent
+      // in this deployment, so uploads threw and the gallery stayed blank.
+      const tenant_id = await resolveCurrentWorkspaceId();
+      if (!tenant_id) throw new Error("No workspace for current user");
       if (!projectId) throw new Error("No project");
       const path = `${tenant_id}/${projectId}/${crypto.randomUUID()}-${input.file.name}`;
       const { error: upErr } = await supabase.storage
@@ -127,7 +132,8 @@ export function usePhotoAlbums(projectId: string | null) {
     mutationFn: async (input: {
       name: string; description?: string; photoIds?: string[];
     }) => {
-      const tenant_id = await requireTenantId();
+      const tenant_id = await resolveCurrentWorkspaceId();
+      if (!tenant_id) throw new Error("No workspace for current user");
       if (!projectId) throw new Error("No project");
       const { data: album, error } = await supabase
         .from("photo_albums" as any)

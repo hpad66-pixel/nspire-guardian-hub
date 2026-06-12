@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -163,8 +164,8 @@ export function useExpiringPermits(days: number = 30) {
           properties:property_id(id, name)
         `)
         .eq('status', 'active')
-        .lte('expiry_date', futureDate.toISOString().split('T')[0])
-        .gte('expiry_date', new Date().toISOString().split('T')[0])
+        .lte('expiry_date', toDateOnly(futureDate))
+        .gte('expiry_date', toDateOnly(new Date()))
         .order('expiry_date', { ascending: true });
 
       if (!isPrivileged) {

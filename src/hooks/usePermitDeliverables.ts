@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,7 +33,7 @@ export function useOverdueDeliverables() {
   return useQuery({
     queryKey: ['overdue-deliverables'],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateOnly(new Date());
 
       const { data, error } = await supabase
         .from('permit_deliverables')

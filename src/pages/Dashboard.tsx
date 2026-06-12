@@ -26,6 +26,7 @@ import { useWorkOrders } from '@/hooks/useWorkOrders';
 import { useCommandCenter, type CommandCenterAlert, type TeamMemberStatus } from '@/hooks/useCommandCenter';
 import { useCompanyBranding } from '@/hooks/useCompanyBranding';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { isActiveProject } from '@/lib/projects';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ export default function Dashboard() {
   }, [qc]);
 
   const openIssues = useMemo(() => issues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length, [issues]);
-  const activeProjects = useMemo(() => projects.filter(p => p.status === 'active' || p.status === 'planning').length, [projects]);
+  const activeProjects = useMemo(() => projects.filter(isActiveProject).length, [projects]);
   const openWOs = useMemo(() => workOrders.filter(w => !['completed', 'verified', 'closed', 'rejected'].includes(w.status)).length, [workOrders]);
   const totalAlerts = counts.critical + counts.warnings;
 

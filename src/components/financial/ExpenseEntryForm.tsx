@@ -2,6 +2,7 @@
  * D5 · Expense entry form (cost_type = 'expense').
  * Either vendor or employee required; attachment required on approval.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState, useMemo } from "react";
 import { useDirectCosts, useDirectCostLines } from "@/hooks/useDirectCosts";
 import { DirectCostLinesEditor, type DirectCostLineDraft } from "./DirectCostLinesEditor";
@@ -27,7 +28,7 @@ export function ExpenseEntryForm({ open, onOpenChange, projectId, onCreated }: E
   const [refNo, setRefNo] = useState("");
   const [vendorOrgId, setVendorOrgId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [costDate, setCostDate] = useState(new Date().toISOString().split("T")[0]);
+  const [costDate, setCostDate] = useState(toDateOnly(new Date()));
   const [description, setDescription] = useState("");
   const [attachmentDocId, setAttachmentDocId] = useState("");
   const [lines, setLines] = useState<DirectCostLineDraft[]>([]);

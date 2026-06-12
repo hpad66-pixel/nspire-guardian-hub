@@ -3,6 +3,7 @@
  * fields needed to spin up a meeting run (date/time, type, location, title,
  * attendees). Agenda items are edited on the RunPage once the meeting exists.
  */
+import { toDateOnly } from "@/lib/date";
 import { useEffect, useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -44,7 +45,7 @@ export function MeetingDialog({
 
   const [title, setTitle] = useState("");
   const [type, setType] = useState("owner-architect-contractor");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(toDateOnly(new Date()));
   const [time, setTime] = useState("09:00");
   const [location, setLocation] = useState("");
   const [attendees, setAttendees] = useState<MeetingAttendee[]>([]);
@@ -63,7 +64,7 @@ export function MeetingDialog({
     } else {
       setTitle("");
       setType("owner-architect-contractor");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(toDateOnly(new Date()));
       setTime("09:00");
       setLocation("");
       setAttendees([]);

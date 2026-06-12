@@ -103,7 +103,7 @@ export default function CredentialSharePage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <BadgeCheck className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold text-foreground">Build OS</span>
+            <span className="text-lg font-bold text-foreground">Proj OS</span>
           </div>
 
           <div className="rounded-2xl border bg-card p-8 shadow-sm">
@@ -111,14 +111,14 @@ export default function CredentialSharePage() {
             <h1 className="text-xl font-bold text-foreground mb-2">This link has expired</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
               This credential link is no longer active. Ask the credential holder to
-              generate a new share link from their Build OS profile.
+              generate a new share link from their Proj OS profile.
             </p>
           </div>
 
           <p className="mt-6 text-xs text-muted-foreground">
             Verified via{' '}
-            <a href="https://apasos.ai" className="text-primary hover:underline">
-              Build OS · apasos.ai
+            <a href="https://projos.ai" className="text-primary hover:underline">
+              Proj OS · projos.ai
             </a>
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function CredentialSharePage() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
           <BadgeCheck className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-lg font-bold text-foreground">Build OS</span>
+        <span className="text-lg font-bold text-foreground">Proj OS</span>
       </div>
 
       {/* Card */}
@@ -216,8 +216,8 @@ export default function CredentialSharePage() {
       <div className="mt-6 space-y-1 text-center">
         <p className="text-xs text-muted-foreground">
           Verified via{' '}
-          <a href="https://apasos.ai" className="text-primary hover:underline">
-            Build OS · apasos.ai
+          <a href="https://projos.ai" className="text-primary hover:underline">
+            Proj OS · projos.ai
           </a>
         </p>
         <p className="text-xs text-muted-foreground">

@@ -8,8 +8,8 @@ import {
 
 const faqs: { q: string; a: string }[] = [
   {
-    q: 'How is Build OS different from Yardi or AppFolio?',
-    a: 'Legacy suites were built before smartphones. Build OS is mobile-first, includes an AI voice agent, ships NSPIRE-compliant inspections out of the box, and replaces five to ten standalone tools with one connected data model. You can be running inspections in days — not a six-month implementation.',
+    q: 'How is Proj OS different from Yardi or AppFolio?',
+    a: 'Legacy suites were built before smartphones. Proj OS is mobile-first, includes an AI voice agent, ships NSPIRE-compliant inspections out of the box, and replaces five to ten standalone tools with one connected data model. You can be running inspections in days — not a six-month implementation.',
   },
   {
     q: 'Is it really HUD NSPIRE compliant?',
@@ -17,7 +17,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: 'Does it work offline on a property walkthrough?',
-    a: 'Yes. Build OS is a Progressive Web App with an offline queue. Inspectors keep working in basements, stairwells, and on sites with no signal. Every change is captured locally and syncs automatically the moment connectivity returns.',
+    a: 'Yes. Proj OS is a Progressive Web App with an offline queue. Inspectors keep working in basements, stairwells, and on sites with no signal. Every change is captured locally and syncs automatically the moment connectivity returns.',
   },
   {
     q: 'How long does onboarding take?',

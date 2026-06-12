@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ export function useDailyInspections(propertyId?: string) {
 }
 
 export function useTodayInspection(propertyId: string) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateOnly(new Date());
   
   return useQuery({
     queryKey: ['daily-inspection', propertyId, today],

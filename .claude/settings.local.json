@@ -27,7 +27,31 @@
       "Bash(git fetch *)",
       "Bash(git add *)",
       "Bash(git rm *)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "Bash(git stash *)",
+      "Bash(sleep 4 && cat /tmp/vite-dev.log)",
+      "Bash(npm install *)",
+      "Bash(npx vite *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(kill 19066)",
+      "Bash(kill 19049)",
+      "Bash(kill 18911)",
+      "Bash(curl -s http://localhost:5173/)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__read_console_messages",
+      "Bash(sed -n '32,36p' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/pages/projects/financial/PrimeContractPage.tsx)",
+      "Bash(sed -n '14,18p' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/pages/projects/financial/CommitmentsPage.tsx)",
+      "Bash(sed -n '14,18p' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/pages/projects/financial/ChangeEventsPage.tsx)",
+      "Bash(sed -n '14,18p' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/pages/projects/financial/ChangeOrdersPage.tsx)",
+      "Bash(sed -n '16,20p' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/pages/projects/financial/DirectCostsPage.tsx)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(sed -i '' -e 's/About Build\\\\b/About Proj OS/g' -e 's/Built on Build infrastructure intelligence/Powered by Proj OS infrastructure/g' -e 's/© 2026 Build · /© 2026 Proj OS · /g' -e 's/Powered by Build\\\\b/Powered by Proj OS/g' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/components/landing/LandingFooter.tsx)",
+      "Bash(sed -i '' -e 's/company_name || \"Build\"/company_name || \"Proj OS\"/g' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/components/projects/ReportGeneratorDialog.tsx)"
     ]
   }
 }

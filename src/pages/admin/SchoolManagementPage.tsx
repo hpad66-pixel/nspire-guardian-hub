@@ -23,7 +23,7 @@ export default function SchoolManagementPage() {
               <h1 className="text-xl font-bold text-foreground">LearnWorlds Schools</h1>
               <p className="text-sm text-muted-foreground">
                 Connect schools to organizations and individual subscribers.{' '}
-                <span className="text-xs">New school connections are provisioned by Build OS support.</span>
+                <span className="text-xs">New school connections are provisioned by Proj OS support.</span>
               </p>
             </div>
           </div>
@@ -41,7 +41,7 @@ export default function SchoolManagementPage() {
             <School className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm font-medium text-foreground">No schools configured</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Contact Build OS support to add LearnWorlds school connections.
+              Contact Proj OS support to add LearnWorlds school connections.
             </p>
           </div>
         ) : (

@@ -48,6 +48,19 @@ export function useUpdateSafetyIncident() {
   });
 }
 
+export function useDeleteSafetyIncident() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId }: { id: string; projectId: string }) => {
+      const { error } = await supabase.from('project_safety_incidents').delete().eq('id', id);
+      if (error) throw error;
+      return { projectId };
+    },
+    onSuccess: ({ projectId }) => { qc.invalidateQueries({ queryKey: ['safety-incidents', projectId] }); toast.success('Incident deleted'); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useToolboxTalks(projectId: string | null) {
   return useQuery({
     queryKey: ['toolbox-talks', projectId],

@@ -1,3 +1,4 @@
+import { toDateOnly } from "@/lib/date";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -77,7 +78,7 @@ export function useDashboardData() {
         supabase.from('issues').select('id, status, severity'),
         supabase.from('work_orders').select('id, status, priority, assigned_to, due_date'),
         supabase.from('projects').select('id, status'),
-        supabase.from('inspections').select('id, inspector_id, inspection_date').eq('inspection_date', today.toISOString().split('T')[0]),
+        supabase.from('inspections').select('id, inspector_id, inspection_date').eq('inspection_date', toDateOnly(today)),
         supabase.from('daily_inspections').select('id, inspector_id, review_status, inspection_date')
           .is('review_status', null),
       ]);

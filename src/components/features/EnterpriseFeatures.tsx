@@ -41,7 +41,7 @@ const features = [
   {
     icon: Clock,
     title: '3-Year Data Retention',
-    description: 'HUD and NSPIRE compliance requires a history. Build OS keeps all inspection records, work orders, and communications for 3 years — automatically.',
+    description: 'HUD and NSPIRE compliance requires a history. Proj OS keeps all inspection records, work orders, and communications for 3 years — automatically.',
     color: '#10B981',
   },
   {

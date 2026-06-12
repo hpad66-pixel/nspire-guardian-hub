@@ -35,10 +35,15 @@ export function LandingNav() {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.02em' }}>Build</span>
-                <span style={{ width: '5px', height: '5px', background: 'var(--apas-sapphire)', borderRadius: '1px', transform: 'rotate(45deg)', display: 'inline-block', margin: '0 1px' }} />
-                <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.02em' }}>OS</span>
+              <div className="flex items-baseline gap-0">
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 900, fontSize: '23px', color: 'var(--apas-white)', letterSpacing: '-0.03em' }}>Proj</span>
+                <span style={{
+                  fontFamily: 'DM Sans', fontWeight: 900, fontSize: '23px', letterSpacing: '-0.03em',
+                  background: 'linear-gradient(135deg, #C4A35A 0%, #1D6FE8 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                  marginLeft: '3px',
+                }}>OS</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginLeft: '2px', alignSelf: 'flex-end', paddingBottom: '2px' }}>.ai</span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 ml-1">
                 <span style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 6px #10B981', animation: 'pulse 2s infinite' }} />
@@ -109,7 +114,11 @@ export function LandingNav() {
             style={{ background: 'var(--apas-midnight)' }}
           >
             <div className="flex items-center justify-between px-6 py-4">
-              <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>Build OS</span>
+              <span className="flex items-baseline gap-0">
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 900, fontSize: '22px', color: 'var(--apas-white)', letterSpacing: '-0.03em' }}>Proj</span>
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 900, fontSize: '22px', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, #C4A35A 0%, #1D6FE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginLeft: '3px' }}>OS</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginLeft: '2px' }}>.ai</span>
+              </span>
               <button onClick={() => setMobileOpen(false)} style={{ color: 'var(--apas-muted)' }}>
                 <X size={22} />
               </button>

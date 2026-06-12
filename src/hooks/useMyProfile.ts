@@ -70,7 +70,7 @@ export function useUpdateMyProfile() {
       // exist yet. The previous UPDATE-only path crashed with PGRST116
       // ("Cannot coerce result to single JSON object") when the user
       // had no profile row -- which is the default for fresh accounts.
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert(
           {
@@ -80,12 +80,9 @@ export function useUpdateMyProfile() {
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'user_id' },
-        )
-        .select()
-        .maybeSingle();
+        );
 
       if (error) throw error;
-      if (!data) throw new Error('Profile save returned no row');
 
       // Sync full_name to Supabase Auth metadata so header initials update immediately
       if (updates.full_name) {
@@ -94,7 +91,7 @@ export function useUpdateMyProfile() {
         });
       }
 
-      return data;
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });
@@ -116,8 +113,7 @@ export function useUploadAvatar() {
     mutationFn: async (file: File) => {
       if (!user) throw new Error('Not authenticated');
 
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) throw new Error('Image must be smaller than 5MB');
+
       if (!file.type.startsWith('image/')) throw new Error('File must be an image');
 
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -133,18 +129,17 @@ export function useUploadAvatar() {
         data: { publicUrl },
       } = supabase.storage.from('avatars').getPublicUrl(fileName);
 
-      // Use UPDATE instead of upsert so we don't need INSERT permission here
+      // Append cache-buster so the browser fetches the new image immediately
+      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ avatar_url: cacheBustedUrl, updated_at: new Date().toISOString() })
         .eq('user_id', user.id);
 
       if (profileError) throw profileError;
 
-      return publicUrl;
+      return cacheBustedUrl;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { requireTenantId } from "@/lib/tenant";
+import { resolveCurrentWorkspaceId } from "@/lib/tenant";
 
 export type ArtifactType =
   | "prime_contract" | "invoice" | "change_order" | "drawing"
@@ -83,7 +83,14 @@ export function useProjectArtifacts(
       input: Omit<CreateArtifactInput, "file_path" | "file_name" | "file_size" | "mime_type">;
       projectId: string;
     }) => {
-      const tenant_id = await requireTenantId();
+      // Resolve the workspace the same way the rest of the app does (JWT
+      // claim → portal membership → profiles.workspace_id). requireTenantId()
+      // only read the JWT tenant_id claim, which is absent in this deployment,
+      // so uploads threw "No tenant_id in JWT" in a fresh environment. The
+      // first path segment must equal current_tenant_id()::text for the
+      // project-artifacts storage RLS to admit the object.
+      const tenant_id = await resolveCurrentWorkspaceId();
+      if (!tenant_id) throw new Error("No workspace for current user");
       const ext = file.name.split(".").pop() ?? "bin";
       const path = `${tenant_id}/${pid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 

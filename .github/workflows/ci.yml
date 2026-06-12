@@ -29,6 +29,13 @@ jobs:
   unit-tests:
     name: Unit Tests (Vitest)
     runs-on: ubuntu-latest
+    # The smoke test (src/hooks/__tests__/hooks.test.ts) imports hooks that pull
+    # in src/integrations/supabase/client.ts, which throws at import time if the
+    # VITE_SUPABASE_* values are absent. Provide them like the build/e2e jobs do.
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,7 +73,7 @@ jobs:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-      E2E_BASE_URL: http://localhost:5173
+      E2E_BASE_URL: http://localhost:8080
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -98,3 +105,23 @@ jobs:
         run: supabase link --project-ref ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
       - name: Migration dry-run
         run: supabase db push --dry-run
+
+  db-tests:
+    name: Supabase DB Tests (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Applies every migration to a local Postgres, then runs the pgTAP
+      # tests in supabase/tests/. Guards the current_tenant_id() /
+      # get_my_workspace_id() recursion fix (WS-5 #5) against real Postgres,
+      # which the mocked Vitest suite cannot catch.
+      - name: Start local Supabase
+        run: supabase start
+      - name: Run pgTAP tests
+        run: supabase test db
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop

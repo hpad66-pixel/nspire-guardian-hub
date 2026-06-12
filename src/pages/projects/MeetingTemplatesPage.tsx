@@ -6,6 +6,7 @@
  * with an inline "New from template → meeting" shortcut. Editing templates
  * is a simple name+notes form — more elaborate JSON schemas can follow later.
  */
+import { toDateOnly } from "@/lib/date";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -92,7 +93,7 @@ export default function MeetingTemplatesPage() {
         project_id: projectId,
         title: `${tpl.name} · ${new Date().toLocaleDateString()}`,
         meeting_type: tpl.meeting_type,
-        meeting_date: new Date().toISOString().split("T")[0],
+        meeting_date: toDateOnly(new Date()),
         meeting_time: "09:00",
         attendees: [],
         raw_notes: tpl.default_notes ?? "",

@@ -44,7 +44,7 @@ export function MyTrainingDashboard() {
             courses — all tracked in one place.
           </p>
         </div>
-        <Button variant="outline" onClick={() => window.open('https://apasos.ai', '_blank')}>
+        <Button variant="outline" onClick={() => window.open('https://projos.ai', '_blank')}>
           Learn More
         </Button>
       </div>

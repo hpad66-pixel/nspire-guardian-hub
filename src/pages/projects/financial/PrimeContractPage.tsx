@@ -21,11 +21,20 @@ export default function PrimeContractPage() {
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
   if (!pc) {
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
+      <div className="container mx-auto p-6 max-w-4xl space-y-4">
+        <FinancialSubNav />
         <h1 className="text-3xl font-bold">Prime Contract</h1>
-        <Card className="mt-4"><CardContent className="p-8 text-center text-muted-foreground">
-          No prime contract yet for this project.
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground space-y-3">
+            <p>No prime contract yet for this project.</p>
+            <p className="text-sm">
+              Looking for your subcontracts or the Sewer Extension agreement?{' '}
+              <Link to={`/projects/${projectId}/contracts`} className="text-blue-600 underline">
+                Go to Contracts
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
