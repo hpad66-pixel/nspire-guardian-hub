@@ -18,6 +18,7 @@ import {
   HardHat,
   BarChart3,
   ChevronRight,
+  FileSignature,
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
 import type { Database } from '@/integrations/supabase/types';
@@ -66,7 +67,8 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
     { label: 'Change Events',  path: `financials/change-events`,  icon: GitMerge,  desc: 'Exposure ledger' },
     { label: 'Change Orders',  path: `financials/change-orders`,  icon: Layers,    desc: 'PCO → OCO → CCO' },
     { label: 'Direct Costs',   path: `financials/direct-costs`,   icon: DollarSign,desc: 'Invoices, timecards, expenses' },
-    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3, desc: 'Cost code matrix' },
+    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3,      desc: 'Cost code matrix' },
+    { label: 'Contracts',      path: `contracts`,                 icon: FileSignature,  desc: 'Subcontracts & agreements' },
   ];
 
   return (
