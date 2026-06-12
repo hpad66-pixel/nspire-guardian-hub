@@ -11,7 +11,7 @@ const cols = [
   },
   {
     title: 'Company',
-    links: ['About Build', 'The Systems Lens', 'Contact Us', 'Privacy Policy', 'Terms of Service'],
+    links: ['About Proj OS', 'The Systems Lens', 'Contact Us', 'Privacy Policy', 'Terms of Service'],
   },
 ];
 
@@ -22,13 +22,10 @@ export function AltFooter() {
         <div className="grid md:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div style={{ width: '28px', height: '28px', background: '#2563EB', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: '13px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>A</span>
-              </div>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F', letterSpacing: '-0.02em' }}>
-                Build <span style={{ color: '#2563EB' }}>OS</span>
-              </span>
+            <div className="flex items-baseline gap-0 mb-4">
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', color: '#1E3A5F', letterSpacing: '-0.03em' }}>Proj</span>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, #C4A35A 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginLeft: '2px' }}>OS</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'rgba(30,58,95,0.4)', marginLeft: '2px' }}>.ai</span>
             </div>
             <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#64748B', lineHeight: 1.65, marginBottom: '8px' }}>Property operations, built right.</p>
             <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#2563EB' }}>projos.ai</p>
@@ -59,10 +56,10 @@ export function AltFooter() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8" style={{ borderTop: '1px solid #E2E8F0' }}>
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: '#94A3B8' }}>
-            © 2026 Build · All rights reserved · projos.ai
+            © 2026 Proj OS · All rights reserved · projos.ai
           </p>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#CBD5E1' }}>
-            Built by Build
+            Powered by Proj OS
           </p>
         </div>
       </div>

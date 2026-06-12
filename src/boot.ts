@@ -7,6 +7,7 @@ async function loadRuntimeConfig() {
       headers: {
         accept: "application/json",
       },
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!response.ok) return;

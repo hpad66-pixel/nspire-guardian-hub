@@ -211,9 +211,9 @@ export default function AuthPage() {
         >
           {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-10">
-            <div className="flex items-end gap-1 mb-1.5 select-none">
+            <div className="flex items-end gap-0 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                Build
+                Proj
               </span>
               <span
                 className="font-black text-4xl tracking-tight ml-1"
@@ -227,8 +227,9 @@ export default function AuthPage() {
               >
                 OS
               </span>
+              <span className="font-mono text-foreground/30 self-end pb-1 ml-0.5" style={{ fontSize: '0.9rem' }}>.ai</span>
             </div>
-            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Operating System</p>
+            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Project Operating System</p>
             <p className="text-xs text-muted-foreground text-center">For Contractors · Consultants · Property Pros</p>
           </div>
 

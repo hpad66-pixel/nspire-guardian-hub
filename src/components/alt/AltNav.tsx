@@ -33,16 +33,10 @@ export function AltNav() {
         <div className="max-w-[1200px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5">
-              <div
-                className="w-7 h-7 rounded-md flex items-center justify-center"
-                style={{ background: '#2563EB' }}
-              >
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: '13px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>A</span>
-              </div>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F', letterSpacing: '-0.02em' }}>
-                Build <span style={{ color: '#2563EB' }}>OS</span>
-              </span>
+            <Link to="/" className="flex items-center gap-0">
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', color: '#1E3A5F', letterSpacing: '-0.03em' }}>Proj</span>
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, #C4A35A 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginLeft: '2px' }}>OS</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'rgba(30,58,95,0.4)', marginLeft: '2px', alignSelf: 'flex-end', paddingBottom: '2px' }}>.ai</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -126,7 +120,11 @@ export function AltNav() {
             style={{ background: '#F8FAFC' }}
           >
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #E2E8F0' }}>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '18px', color: '#1E3A5F' }}>Build <span style={{ color: '#2563EB' }}>OS</span></span>
+              <span className="flex items-baseline gap-0">
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', color: '#1E3A5F', letterSpacing: '-0.03em' }}>Proj</span>
+                <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 900, fontSize: '20px', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, #C4A35A 0%, #2563EB 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginLeft: '2px' }}>OS</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'rgba(30,58,95,0.4)', marginLeft: '2px' }}>.ai</span>
+              </span>
               <button onClick={() => setMobileOpen(false)} style={{ color: '#475569' }}>
                 <X size={22} />
               </button>

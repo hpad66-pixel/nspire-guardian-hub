@@ -49,9 +49,9 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icons/*.png", "robots.txt"],
       manifest: {
-        name: "Build OS",
-        short_name: "Build OS",
-        description: "One platform to run everything.",
+        name: "Proj OS",
+        short_name: "Proj OS",
+        description: "The operating system for construction projects.",
         theme_color: "#1e2d4f",
         background_color: "#0f1624",
         display: "standalone",
