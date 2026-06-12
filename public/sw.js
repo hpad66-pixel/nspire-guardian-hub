@@ -1,4 +1,4 @@
-// Custom service worker for Build OS
+// Custom service worker for Proj OS
 // Handles: push notifications + standard precache passthrough
 
 // This file is used as the custom SW entry for vite-plugin-pwa injectManifest mode.
@@ -14,7 +14,7 @@ self.addEventListener('activate', (event) => {
 
 // --- Push notification handler ---
 self.addEventListener('push', (event) => {
-  let data = { title: 'Build OS', body: 'You have a new notification.', url: '/dashboard', icon: '/icons/apas-os-192.png' };
+  let data = { title: 'Proj OS', body: 'You have a new notification.', url: '/dashboard', icon: '/icons/apas-os-192.png' };
 
   if (event.data) {
     try {

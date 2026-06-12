@@ -66,12 +66,12 @@ export default function CertificateSharePage() {
           <div>
             <h1 className="text-xl font-bold text-foreground">This link has expired</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              This certificate link is no longer active. Ask the certificate holder to generate a new share link from their Build OS profile.
+              This certificate link is no longer active. Ask the certificate holder to generate a new share link from their Proj OS profile.
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
             Powered by{' '}
-            <a href="https://apasos.ai" className="text-primary hover:underline">Build OS · apasos.ai</a>
+            <a href="https://projos.ai" className="text-primary hover:underline">Proj OS · projos.ai</a>
           </p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function CertificateSharePage() {
       <div className="max-w-sm w-full space-y-6">
         {/* Brand */}
         <div className="text-center">
-          <span className="text-lg font-black tracking-tight text-foreground">Build OS</span>
+          <span className="text-lg font-black tracking-tight text-foreground">Proj OS</span>
         </div>
 
         {/* Card */}
@@ -144,7 +144,7 @@ export default function CertificateSharePage() {
         <div className="text-center space-y-1">
           <p className="text-xs text-muted-foreground">
             Verified via{' '}
-            <a href="https://apasos.ai" className="text-primary hover:underline">Build OS · apasos.ai</a>
+            <a href="https://projos.ai" className="text-primary hover:underline">Proj OS · projos.ai</a>
           </p>
           {expiresLabel && <p className="text-xs text-muted-foreground">{expiresLabel}</p>}
         </div>

@@ -83,7 +83,7 @@ function buildBrandedHtml(
   branding: { company_name?: string; logo_url?: string | null; address_line1?: string | null; phone?: string | null; email?: string | null; website?: string | null; footer_text?: string | null } | null,
   preparedBy: string
 ): string {
-  const company = branding?.company_name || "Build";
+  const company = branding?.company_name || "Proj OS";
   const primaryColor = "#1e3a5f";
   const accentColor = "#2563eb";
 
@@ -252,7 +252,7 @@ export function ReportGeneratorDialog({
   const reportTitle = `${config.reportType === "weekly" ? "Weekly Progress Summary" : "Monthly Invoice Report"} — ${projectName} — ${format(new Date(config.periodStart), "MMM d")} to ${format(new Date(config.periodEnd), "MMM d, yyyy")}`;
 
   const currentHtml = editMode ? editedHtml : generatedHtml;
-  const brandedFull = buildBrandedHtml(currentHtml, config, projectName, branding || null, branding?.company_name || "Build");
+  const brandedFull = buildBrandedHtml(currentHtml, config, projectName, branding || null, branding?.company_name || "Proj OS");
 
   // ── Apply date presets ─────────────────────────────────────────────────────
   const applyPreset = (preset: "week" | "month" | "prev_month") => {

@@ -92,7 +92,7 @@ export function AltPWA() {
               Works on every device.<br />No app store required.
             </h2>
             <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '16px', color: '#475569', lineHeight: 1.75, marginBottom: '28px' }}>
-              Build OS is a Progressive Web App. Install it in 10 seconds from any browser on iPhone, Android, tablet, or desktop. Works offline when you're in the field — syncs when you're back in range. Camera, GPS, voice — all available. No app to update, no version mismatches.
+              Proj OS is a Progressive Web App. Install it in 10 seconds from any browser on iPhone, Android, tablet, or desktop. Works offline when you're in the field — syncs when you're back in range. Camera, GPS, voice — all available. No app to update, no version mismatches.
             </p>
 
             <div className="flex flex-col gap-3 mb-8">

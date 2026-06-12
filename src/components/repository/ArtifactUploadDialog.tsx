@@ -29,7 +29,7 @@ const ARTIFACT_TYPE_LABELS: Record<ArtifactType, string> = {
 
 const SOURCE_LABELS: Record<ArtifactSource, string> = {
   procore:  "Procore (historical)",
-  builtos:  "Build OS",
+  builtos:  "Proj OS",
   manual:   "Manual upload",
 };
 

@@ -8,13 +8,13 @@ const APP_URL = 'https://apasos.lovable.app';
 const iosSteps = [
   { icon: Share, text: 'Open the app in Safari, then tap the Share button (box with arrow) at the bottom of the screen.' },
   { icon: Plus, text: 'Scroll down in the Share sheet and tap "Add to Home Screen".' },
-  { icon: CheckCircle2, text: 'Tap "Add" in the top-right corner. Build OS will appear on your home screen like a native app.' },
+  { icon: CheckCircle2, text: 'Tap "Add" in the top-right corner. Proj OS will appear on your home screen like a native app.' },
 ];
 
 const androidSteps = [
   { icon: Chrome, text: 'Open the app in Chrome. Tap the three-dot menu (⋮) in the top-right corner.' },
   { icon: Plus, text: 'Tap "Add to Home Screen" or "Install App" from the menu.' },
-  { icon: CheckCircle2, text: 'Confirm by tapping "Install". Build OS will appear on your home screen.' },
+  { icon: CheckCircle2, text: 'Confirm by tapping "Install". Proj OS will appear on your home screen.' },
 ];
 
 export default function InstallPage() {
@@ -23,8 +23,8 @@ export default function InstallPage() {
       {/* Header */}
       <header className="border-b border-border px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/icons/apas-os-192.png" alt="Build OS" className="h-8 w-8 rounded-lg" />
-          <span className="font-semibold text-foreground">Build OS</span>
+          <img src="/icons/apas-os-192.png" alt="Proj OS" className="h-8 w-8 rounded-lg" />
+          <span className="font-semibold text-foreground">Proj OS</span>
         </div>
         <Link to="/auth">
           <Button variant="outline" size="sm">Sign In</Button>
@@ -35,11 +35,11 @@ export default function InstallPage() {
         {/* Hero */}
         <div className="text-center space-y-4">
           <div className="h-20 w-20 mx-auto rounded-2xl overflow-hidden shadow-lg">
-            <img src="/icons/apas-os-512.png" alt="Build OS" className="w-full h-full object-cover" />
+            <img src="/icons/apas-os-512.png" alt="Proj OS" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Install Build OS</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Install Proj OS</h1>
           <p className="text-muted-foreground max-w-sm mx-auto">
-            Add Build OS to your home screen for fast, offline-capable access — no app store required.
+            Add Proj OS to your home screen for fast, offline-capable access — no app store required.
           </p>
           <Link to="/portals">
             <Button className="gap-2">
@@ -98,7 +98,7 @@ export default function InstallPage() {
         <section className="space-y-4 text-center">
           <h2 className="text-xl font-semibold">On a computer?</h2>
           <p className="text-muted-foreground text-sm">
-            Scan this QR code with your phone to open Build OS on mobile, then follow the steps above.
+            Scan this QR code with your phone to open Proj OS on mobile, then follow the steps above.
           </p>
           <div className="flex justify-center">
             <div className="p-4 bg-white rounded-2xl shadow-md inline-block">
@@ -128,7 +128,7 @@ export default function InstallPage() {
       </main>
 
       <footer className="border-t border-border px-4 py-6 text-center">
-        <p className="text-xs text-muted-foreground">Build OS — One platform to run everything.</p>
+        <p className="text-xs text-muted-foreground">Proj OS — One platform to run everything.</p>
       </footer>
     </div>
   );

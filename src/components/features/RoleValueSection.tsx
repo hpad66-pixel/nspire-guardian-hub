@@ -6,7 +6,7 @@ const roles = [
     icon: Building2,
     title: 'Property Owner',
     value: 'Complete portfolio oversight. No surprises.',
-    description: 'You own the asset. You carry the liability. Build OS gives you visibility into every inspection, open issue, permit expiry, and maintenance dollar — without having to ask anyone.',
+    description: 'You own the asset. You carry the liability. Proj OS gives you visibility into every inspection, open issue, permit expiry, and maintenance dollar — without having to ask anyone.',
     color: '#8B5CF6',
   },
   {
@@ -59,7 +59,7 @@ export function RoleValueSection() {
           className="text-center mb-16"
         >
           <h2 style={{ fontFamily: 'Instrument Serif', fontSize: 'clamp(28px, 4.5vw, 52px)', color: 'var(--apas-white)', lineHeight: 1.1, marginBottom: '20px' }}>
-            Who Build OS Is Built For
+            Who Proj OS Is Built For
           </h2>
           <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.8 }}>
             From solo owner-operators to multi-portfolio firms. If you touch property, compliance, or construction — this is your platform.

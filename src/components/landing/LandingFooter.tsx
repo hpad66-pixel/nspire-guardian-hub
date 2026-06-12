@@ -33,7 +33,7 @@ export function LandingFooter() {
               The Last Platform You'll Ever Evaluate.
             </h2>
             <p style={{ fontFamily: 'DM Sans', fontSize: '18px', color: 'var(--apas-muted)', maxWidth: '680px', margin: '0 auto 16px', lineHeight: 1.8 }}>
-              You've seen what Build OS can do. The question isn't whether you need it. The question is how long you'll keep paying the cost of not having it — in compliance risk, in wasted time, in enforcement actions you could have prevented, in liability you don't need.
+              You've seen what Proj OS can do. The question isn't whether you need it. The question is how long you'll keep paying the cost of not having it — in compliance risk, in wasted time, in enforcement actions you could have prevented, in liability you don't need.
             </p>
             <p style={{ fontFamily: 'DM Sans', fontSize: '16px', color: 'var(--apas-muted)', maxWidth: '560px', margin: '0 auto 40px', lineHeight: 1.8 }}>
               Start your free trial today. No credit card. No commitment. Setup in under 60 minutes.
@@ -74,14 +74,13 @@ export function LandingFooter() {
           <div className="grid md:grid-cols-4 gap-10 mb-16">
             {/* Brand column */}
             <div>
-              <div className="flex items-center gap-1.5 mb-4">
-                <span style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: '22px', color: 'var(--apas-white)' }}>Build</span>
-                <span style={{ width: '5px', height: '5px', background: 'var(--apas-sapphire)', borderRadius: '1px', transform: 'rotate(45deg)', display: 'inline-block' }} />
-                <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: '22px', color: 'var(--apas-white)' }}>OS</span>
+              <div className="flex items-baseline gap-0 mb-4">
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 900, fontSize: '24px', color: 'var(--apas-white)', letterSpacing: '-0.03em' }}>Proj</span>
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 900, fontSize: '24px', letterSpacing: '-0.03em', background: 'linear-gradient(135deg, #C4A35A 0%, #1D6FE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginLeft: '3px' }}>OS</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginLeft: '2px' }}>.ai</span>
               </div>
-              <p style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', lineHeight: 1.7, marginBottom: '8px' }}>Property Operations. Engineered.</p>
-              <p style={{ fontFamily: 'DM Sans', fontSize: '12px', color: 'var(--apas-muted)', marginBottom: '4px' }}>Built on Build infrastructure intelligence</p>
-              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-sapphire)' }}>apasos.ai</p>
+              <p style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', lineHeight: 1.7, marginBottom: '8px' }}>The operating system for construction projects.</p>
+              <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-sapphire)' }}>projos.ai</p>
             </div>
 
             {/* Link columns */}
@@ -109,10 +108,10 @@ export function LandingFooter() {
           {/* Bottom bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: '1px solid var(--apas-border)' }}>
             <p style={{ fontFamily: 'DM Sans', fontSize: '13px', color: 'var(--apas-muted)' }}>
-              © 2026 Build · apasos.ai · All rights reserved
+              © 2026 Proj OS · projos.ai · All rights reserved
             </p>
             <p style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--apas-muted)' }}>
-              Powered by Build
+              Powered by Proj OS
             </p>
           </div>
         </div>

@@ -123,7 +123,7 @@ function useCurrentWorkspaceId() {
   });
 }
 
-// ─── Hooks: Inside Build OS ────────────────────────────────────────────────────
+// ─── Hooks: Inside Proj OS ────────────────────────────────────────────────────
 
 export function usePortals() {
   const { data: workspaceId } = useCurrentWorkspaceId();

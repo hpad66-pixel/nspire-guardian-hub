@@ -474,7 +474,7 @@ export function UserManagement() {
                 id="email-subject"
                 value={emailSubject}
                 onChange={(e) => setEmailSubject(e.target.value)}
-                placeholder="Quick note from the Build OS team"
+                placeholder="Quick note from the Proj OS team"
               />
             </div>
             <div className="space-y-2">

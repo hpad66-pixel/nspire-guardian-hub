@@ -139,7 +139,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
             Welcome back
           </h2>
           <p className="mb-6 text-[13.5px] text-white/50">
-            Sign in to your Build OS workspace.
+            Sign in to your Proj OS workspace.
           </p>
 
           {/* Google */}
