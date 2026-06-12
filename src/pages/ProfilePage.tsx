@@ -112,7 +112,11 @@ export default function ProfilePage() {
   };
 
   const handleSaveProfile = async () => {
-    await updateProfile.mutateAsync(form);
+    try {
+      await updateProfile.mutateAsync(form);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to save profile.');
+    }
   };
 
   const handleChangePassword = async () => {

@@ -70,7 +70,7 @@ export function useUpdateMyProfile() {
       // exist yet. The previous UPDATE-only path crashed with PGRST116
       // ("Cannot coerce result to single JSON object") when the user
       // had no profile row -- which is the default for fresh accounts.
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert(
           {
@@ -80,12 +80,9 @@ export function useUpdateMyProfile() {
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'user_id' },
-        )
-        .select()
-        .maybeSingle();
+        );
 
       if (error) throw error;
-      if (!data) throw new Error('Profile save returned no row');
 
       // Sync full_name to Supabase Auth metadata so header initials update immediately
       if (updates.full_name) {
@@ -94,7 +91,7 @@ export function useUpdateMyProfile() {
         });
       }
 
-      return data;
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });
@@ -137,10 +134,8 @@ export function useUploadAvatar() {
 
       const { error: profileError } = await supabase
         .from('profiles')
-        .upsert(
-          { user_id: user.id, avatar_url: cacheBustedUrl, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' }
-        );
+        .update({ avatar_url: cacheBustedUrl, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
 
       if (profileError) throw profileError;
 
