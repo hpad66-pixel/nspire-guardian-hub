@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DollarSign,
   TrendingUp,
@@ -9,6 +11,13 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  FileText,
+  Receipt,
+  GitMerge,
+  Layers,
+  HardHat,
+  BarChart3,
+  ChevronRight,
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
 import type { Database } from '@/integrations/supabase/types';
@@ -50,8 +59,41 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   const isOverBudget = remaining < 0;
   const isNearBudget = remaining >= 0 && remaining < adjustedBudget * 0.1;
 
+  const MODULES = [
+    { label: 'Prime Contract', path: `financials/prime-contract`, icon: FileText,  desc: 'SOV, pay applications' },
+    { label: 'Commitments',    path: `financials/commitments`,    icon: HardHat,   desc: 'Subcontracts & POs' },
+    { label: 'Invoices',       path: `financials/invoices`,       icon: Receipt,   desc: 'Commitment invoices' },
+    { label: 'Change Events',  path: `financials/change-events`,  icon: GitMerge,  desc: 'Exposure ledger' },
+    { label: 'Change Orders',  path: `financials/change-orders`,  icon: Layers,    desc: 'PCO → OCO → CCO' },
+    { label: 'Direct Costs',   path: `financials/direct-costs`,   icon: DollarSign,desc: 'Invoices, timecards, expenses' },
+    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3, desc: 'Cost code matrix' },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Financial module quick-links */}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Financial Modules</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {MODULES.map(({ label, path, icon: Icon, desc }) => (
+            <Link key={path} to={`/projects/${project.id}/${path}`}>
+              <Card className="hover:border-primary hover:bg-primary/5 transition cursor-pointer h-full">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="rounded-md bg-muted p-2 shrink-0">
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm leading-tight">{label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{desc}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Budget Overview */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
