@@ -5,4 +5,3 @@ pages_build_output_dir = "dist"
 [vars]
 VITE_SUPABASE_URL = "https://xlfwzqpixlrnntzqhvcm.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_BK8G8YD_lkJRPYJ9uTuktg_7TGsbmkY"
-VITE_SUPABASE_PROJECT_ID = "xlfwzqpixlrnntzqhvcm"
