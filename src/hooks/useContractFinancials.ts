@@ -40,6 +40,12 @@ export interface ContractPayment {
   created_at: string;
 }
 
+async function getTenantId(): Promise<string> {
+  const { data, error } = await supabase.from('workspaces').select('id').limit(1).single();
+  if (error || !data) throw new Error('Could not resolve workspace/tenant');
+  return data.id;
+}
+
 export function useContractInvoices(contractId: string) {
   const qc = useQueryClient();
 
@@ -59,7 +65,12 @@ export function useContractInvoices(contractId: string) {
 
   const create = useMutation({
     mutationFn: async (row: Partial<ContractInvoice> & { contract_id: string }) => {
-      const { data, error } = await supabase.from('contract_invoices').insert(row).select().single();
+      const tenant_id = await getTenantId();
+      const { data, error } = await supabase
+        .from('contract_invoices')
+        .insert({ ...row, tenant_id })
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -104,7 +115,12 @@ export function useContractChangeOrders(contractId: string) {
 
   const create = useMutation({
     mutationFn: async (row: Partial<ContractChangeOrder> & { contract_id: string; description: string }) => {
-      const { data, error } = await supabase.from('contract_change_orders').insert(row).select().single();
+      const tenant_id = await getTenantId();
+      const { data, error } = await supabase
+        .from('contract_change_orders')
+        .insert({ ...row, tenant_id })
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -149,7 +165,12 @@ export function useContractPayments(contractId: string) {
 
   const create = useMutation({
     mutationFn: async (row: Partial<ContractPayment> & { contract_id: string; payment_date: string; amount: number }) => {
-      const { data, error } = await supabase.from('contract_payments').insert(row).select().single();
+      const tenant_id = await getTenantId();
+      const { data, error } = await supabase
+        .from('contract_payments')
+        .insert({ ...row, tenant_id })
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
