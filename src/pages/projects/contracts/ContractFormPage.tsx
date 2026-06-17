@@ -171,8 +171,12 @@ export default function ContractFormPage() {
     setLoading(true);
     try {
       const { sov_items, ...contractFields } = values;
+      // Convert empty date strings to null so Postgres doesn't error on ""
+      const dateFields = ['contract_date','start_date','substantial_completion_date','final_completion_date','actual_completion_date','signed_contract_received_date'] as const;
+      const cleaned = { ...contractFields } as any;
+      dateFields.forEach(f => { if (cleaned[f] === '') cleaned[f] = null; });
       const saved = await upsert.mutateAsync({
-        contract: { ...contractFields, id: isEdit ? contractId : undefined, project_id: projectId! } as ContractUpsert,
+        contract: { ...cleaned, id: isEdit ? contractId : undefined, project_id: projectId! } as ContractUpsert,
         sovItems: sov_items as SovItemUpsert[],
       });
       toast.success(isEdit ? 'Contract updated.' : 'Contract created.');
