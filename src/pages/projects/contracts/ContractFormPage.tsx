@@ -196,7 +196,7 @@ export default function ContractFormPage() {
   const Field = ({ label, name, type = 'text', placeholder }: { label: string; name: any; type?: string; placeholder?: string }) => (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
-      <Input type={type} placeholder={placeholder} {...form.register(name)} className="h-9" />
+      <Input type={type} placeholder={placeholder} {...form.register(name)} className="h-9" step={type === 'number' ? 'any' : undefined} />
       {form.formState.errors[name as keyof FormValues] && (
         <p className="text-xs text-destructive">{String((form.formState.errors[name as keyof FormValues] as any)?.message)}</p>
       )}
