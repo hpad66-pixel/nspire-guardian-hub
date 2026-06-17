@@ -10,9 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
+import { ChevronRight, LayoutDashboard } from "lucide-react";
+import { useProject } from "@/hooks/useProjects";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
 export default function ChangeOrderDetailPage() {
   const { projectId, coId } = useParams<{ projectId: string; coId: string }>();
+  const { data: project } = useProject(projectId ?? null);
 
   const { data: co } = useQuery<ChangeOrder | null>({
     queryKey: ["co", coId],
@@ -47,11 +51,28 @@ export default function ChangeOrderDetailPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
+      <FinancialSubNav projectId={projectId ?? ""} />
       <div>
-        <Link
-          to={`/projects/${projectId}/financials/change-orders`}
-          className="text-sm text-muted-foreground hover:underline"
-        >← Change Orders</Link>
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap mb-4">
+          <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Dashboard
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}`} className="hover:text-foreground">
+            {project?.name ?? 'Project'}
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/prime-contract`} className="hover:text-foreground">
+            Financials
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/change-orders`} className="hover:text-foreground">
+            Change Orders
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="text-foreground font-medium truncate">{co.title}</span>
+        </nav>
         <div className="flex items-start justify-between mt-2">
           <div>
             <h1 className="text-3xl font-bold">

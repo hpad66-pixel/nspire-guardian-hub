@@ -18,14 +18,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, ChevronRight, LayoutDashboard } from "lucide-react";
 import { money } from "@/lib/pdf";
+import { useProject } from "@/hooks/useProjects";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function CommitmentDetailPage() {
   const { projectId, commitmentId } = useParams<{ projectId: string; commitmentId: string }>();
+  const { data: project } = useProject(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const commitment = commitments.find((c) => c.id === commitmentId);
   const { data: totals } = useCommitmentTotals(commitmentId ?? null);
@@ -54,10 +56,26 @@ export default function CommitmentDetailPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <div>
-        <Link
-          to={`/projects/${projectId}/financials/commitments`}
-          className="text-sm text-muted-foreground hover:underline"
-        >← Commitments</Link>
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap mb-4">
+          <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Dashboard
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}`} className="hover:text-foreground">
+            {project?.name ?? 'Project'}
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/prime-contract`} className="hover:text-foreground">
+            Financials
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/commitments`} className="hover:text-foreground">
+            Commitments
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="text-foreground font-medium truncate">{commitment.title}</span>
+        </nav>
         <div className="flex items-start justify-between mt-2">
           <div>
             <h1 className="text-3xl font-bold">

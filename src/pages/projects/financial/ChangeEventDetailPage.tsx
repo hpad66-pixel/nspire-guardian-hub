@@ -6,9 +6,13 @@ import { PromoteToPcoDialog } from "@/components/financial/PromoteToPcoDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ChevronRight, LayoutDashboard } from "lucide-react";
+import { useProject } from "@/hooks/useProjects";
+import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
 export default function ChangeEventDetailPage() {
   const { projectId, eventId } = useParams<{ projectId: string; eventId: string }>();
+  const { data: project } = useProject(projectId ?? null);
   const { data: events = [] } = useChangeEvents(projectId ?? null);
   const event = events.find((e) => e.id === eventId);
 
@@ -27,11 +31,28 @@ export default function ChangeEventDetailPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
+      <FinancialSubNav projectId={projectId ?? ""} />
       <div>
-        <Link
-          to={`/projects/${projectId}/financials/change-events`}
-          className="text-sm text-muted-foreground hover:underline"
-        >← Change Events</Link>
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap mb-4">
+          <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Dashboard
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}`} className="hover:text-foreground">
+            {project?.name ?? 'Project'}
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/prime-contract`} className="hover:text-foreground">
+            Financials
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to={`/projects/${projectId}/financials/change-events`} className="hover:text-foreground">
+            Change Events
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="text-foreground font-medium truncate">{event.title}</span>
+        </nav>
         <div className="flex items-start justify-between mt-2">
           <div>
             <h1 className="text-3xl font-bold">
