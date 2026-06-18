@@ -11,6 +11,8 @@ const TABS = [
   { label: "Change Orders", path: "change-orders" },
   { label: "Budget",        path: "budget" },
   { label: "Direct Costs",  path: "direct-costs" },
+  { label: "Issue Log",     path: "issues" },
+  { label: "Proposals",     path: "proposals" },
 ];
 
 export function FinancialSubNav() {

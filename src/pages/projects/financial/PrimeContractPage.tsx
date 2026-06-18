@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { generateFinancialReport } from "@/lib/pdf/financialReport";
 import { useState } from "react";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useProjectContracts } from "@/hooks/useProjectContracts";
@@ -99,6 +100,46 @@ export default function PrimeContractPage() {
   // Sorted payments for display
   const sortedPayments = [...payList].sort((a, b) => a.payment_date.localeCompare(b.payment_date));
 
+  function handleExportPdf() {
+    generateFinancialReport({
+      projectName: contract.contract_title,
+      companyName: contract.prime_contractor_name ?? undefined,
+      contract: {
+        contract_number: contract.contract_number ?? "PC",
+        contract_title: contract.contract_title,
+        contract_value: contract.base_contract_amount ?? 0,
+      },
+      sovItems: sov.map(i => ({
+        item_number: String(i.item_number),
+        description: i.description ?? "",
+        scheduled_value: i.subtotal ?? 0,
+        completed_to_date: i.billed_to_date ?? undefined,
+      })),
+      changeOrders: coList.map(c => ({
+        co_number: c.co_number,
+        title: c.title,
+        amount: c.amount,
+        status: c.status,
+        co_date: c.co_date ?? null,
+      })),
+      invoices: invList.map(i => ({
+        invoice_number: i.invoice_number ?? null,
+        period_start: i.period_start ?? null,
+        period_end: i.period_end ?? null,
+        amount: i.amount,
+        retainage: i.retainage,
+        net_due: i.net_due ?? (i.amount - i.retainage),
+        status: i.status,
+      })),
+      payments: payList.map(p => ({
+        payment_date: p.payment_date,
+        reference: p.reference ?? null,
+        amount: p.amount,
+        payment_method: p.payment_method ?? null,
+      })),
+    });
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
@@ -128,11 +169,16 @@ export default function PrimeContractPage() {
             </p>
           )}
         </div>
-        <Link to={`/projects/${projectId}/contracts/${contract.id}`}>
-          <Button variant="outline" size="sm">
-            <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Contract Details
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleExportPdf()}>
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Financial Report
           </Button>
-        </Link>
+          <Link to={`/projects/${projectId}/contracts/${contract.id}`}>
+            <Button variant="outline" size="sm">
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Contract Details
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* ── Financial Waterfall ─────────────────────────────────────── */}

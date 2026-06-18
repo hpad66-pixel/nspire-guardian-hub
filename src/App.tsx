@@ -127,6 +127,9 @@ const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCost
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
+const IssuesLogPage = lazy(() => import('./pages/projects/financial/IssuesLogPage'));
+const FinancialProposalsPage = lazy(() => import('./pages/projects/financial/ProposalsPage'));
+const ProposalBuilderPage = lazy(() => import('./pages/projects/financial/ProposalBuilderPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
@@ -349,6 +352,9 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                               <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
+                              <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
+                              <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
+                              <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
                               <Route path="/projects/:projectId/financials/change-events/:eventId" element={<ChangeEventDetailPage />} />
