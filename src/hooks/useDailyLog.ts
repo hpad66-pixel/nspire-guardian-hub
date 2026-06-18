@@ -118,3 +118,91 @@ export function useDailyCategory<T = Record<string, unknown>>(
 
   return { ...list, add, update, remove };
 }
+
+// ─── New exports for redesigned Daily Field Inspection Report ──────────────
+
+export interface ManpowerRow {
+  id: string;
+  daily_report_id: string;
+  organization_id: string | null;
+  trade: string | null;
+  workers: number | null;
+  hours: number | null;
+  notes: string | null;
+  tenant_id: string;
+}
+
+/** List all daily reports for a project (history panel). */
+export function useDailyReportList(projectId: string | null) {
+  return useQuery<{ id: string; report_date: string; weather: string | null; workers_count: number | null; submitted_at: string | null; work_performed: string | null }[]>({
+    queryKey: ["daily-report-list", projectId],
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_reports" as any)
+        .select("id, report_date, weather, workers_count, submitted_at, work_performed")
+        .eq("project_id", projectId!)
+        .order("report_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+}
+
+/** CRUD for daily_manpower child rows. */
+export function useDailyManpower(dailyReportId: string | null) {
+  const qc = useQueryClient();
+
+  const list = useQuery<ManpowerRow[]>({
+    queryKey: ["daily-manpower", dailyReportId],
+    enabled: Boolean(dailyReportId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_manpower" as any)
+        .select("*")
+        .eq("daily_report_id", dailyReportId!);
+      if (error) throw error;
+      return (data ?? []) as ManpowerRow[];
+    },
+  });
+
+  const getTenantId = async () => {
+    const { data } = await supabase.from("workspaces" as any).select("id").limit(1).single();
+    return (data as any)?.id as string;
+  };
+
+  const create = useMutation({
+    mutationFn: async (row: { trade: string; workers: number; hours: number; notes: string }) => {
+      const tenant_id = await getTenantId();
+      const { data, error } = await supabase
+        .from("daily_manpower" as any)
+        .insert({ daily_report_id: dailyReportId!, organization_id: null, tenant_id, ...row } as any)
+        .select().single();
+      if (error) throw error;
+      return data as ManpowerRow;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["daily-manpower", dailyReportId] }),
+  });
+
+  const update = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<ManpowerRow> }) => {
+      const { data, error } = await supabase
+        .from("daily_manpower" as any)
+        .update(patch as any).eq("id", id)
+        .select().single();
+      if (error) throw error;
+      return data as ManpowerRow;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["daily-manpower", dailyReportId] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("daily_manpower" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["daily-manpower", dailyReportId] }),
+  });
+
+  return { ...list, create, update, remove };
+}
