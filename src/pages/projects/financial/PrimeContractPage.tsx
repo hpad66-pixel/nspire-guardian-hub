@@ -36,9 +36,9 @@ function ContractFinancials({ contractId, projectId }: { contractId: string; pro
   const payList = payments.data ?? [];
 
   const approvedCOs = coList.filter(c => c.status === "approved").reduce((s, c) => s + c.amount, 0);
-  const totalBilled = invList.filter(i => ["approved", "paid"].includes(i.status)).reduce((s, i) => s + i.amount, 0);
+  const totalBilled = invList.filter(i => ["submitted", "approved", "paid"].includes(i.status)).reduce((s, i) => s + i.amount, 0);
   const totalPaid = payList.reduce((s, p) => s + p.amount, 0);
-  const retainageHeld = invList.filter(i => ["approved", "paid"].includes(i.status)).reduce((s, i) => s + i.retainage, 0);
+  const retainageHeld = invList.filter(i => ["submitted", "approved", "paid"].includes(i.status)).reduce((s, i) => s + i.retainage, 0);
 
   return { approvedCOs, totalBilled, totalPaid, retainageHeld, invList, coList, payList };
 }
