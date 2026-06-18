@@ -7,10 +7,10 @@ const TABS = [
   { label: "Prime Contract", path: "prime-contract" },
   { label: "Commitments",   path: "commitments" },
   { label: "Invoices",      path: "invoices" },
-  { label: "Change Events", path: "change-events" },
+  { label: "Payments",      path: "payments" },
   { label: "Change Orders", path: "change-orders" },
-  { label: "Direct Costs",  path: "direct-costs" },
   { label: "Budget",        path: "budget" },
+  { label: "Direct Costs",  path: "direct-costs" },
 ];
 
 export function FinancialSubNav() {

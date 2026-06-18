@@ -126,6 +126,7 @@ const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial
 const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCostsPage'));
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
+const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
@@ -347,6 +348,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
+                              <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
                               <Route path="/projects/:projectId/financials/change-events/:eventId" element={<ChangeEventDetailPage />} />
