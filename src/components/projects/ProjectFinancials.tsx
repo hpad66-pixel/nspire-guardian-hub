@@ -64,38 +64,177 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   const isNearBudget = remaining >= 0 && remaining < adjustedBudget * 0.1;
 
   const MODULES = [
-    { label: 'Prime Contract', path: `financials/prime-contract`, icon: FileText,      desc: 'SOV, pay applications' },
-    { label: 'Commitments',    path: `financials/commitments`,    icon: HardHat,       desc: 'Subcontracts & POs' },
-    { label: 'Invoices',       path: `financials/invoices`,       icon: Receipt,       desc: 'Pay apps & invoices' },
-    { label: 'Payments',       path: `financials/payments`,       icon: CreditCard,    desc: 'Payments received' },
-    { label: 'Change Events',  path: `financials/change-events`,  icon: GitMerge,      desc: 'Exposure ledger' },
-    { label: 'Change Orders',  path: `financials/change-orders`,  icon: Layers,        desc: 'PCO → OCO → CCO' },
-    { label: 'Direct Costs',   path: `financials/direct-costs`,   icon: DollarSign,    desc: 'Invoices, timecards' },
-    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3,     desc: 'SOV financial summary' },
-    { label: 'Issue Log',      path: `financials/issues`,         icon: AlertTriangle, desc: 'Field observations' },
-    { label: 'Proposals',      path: `financials/proposals`,      icon: FileSignature, desc: 'Estimates & quotes' },
-    { label: 'Cost Codes',     path: `cost-codes`,                icon: Code2,         desc: 'WBS cost code setup' },
-    { label: 'Contracts',      path: `contracts`,                 icon: FileText,      desc: 'Agreements & docs' },
+    {
+      label: 'Prime Contract',
+      path: `financials/prime-contract`,
+      icon: FileSignature,
+      color: 'text-[var(--apas-sapphire)]',
+      bg: 'bg-blue-50',
+      tag: 'PC · PCCO',
+      what: 'Your main agreement with the owner — the single source of truth for project value.',
+      how: 'Add the signed contract, enter your Schedule of Values (each line item with its dollar amount), then track pay applications as work gets done.',
+      example: 'e.g. PC-01-001 · $1,250,000 · 16 SOV line items',
+    },
+    {
+      label: 'Commitments',
+      path: `financials/commitments`,
+      icon: HardHat,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      tag: 'Subcontracts · POs',
+      what: 'Money you\'ve committed to subs and vendors — what you owe them.',
+      how: 'Create a commitment for every subcontractor or supplier you hire. Enter the contract value and add SOV lines so you can track their billing.',
+      example: 'e.g. SC-002 · ABC Electrical · $185,000',
+    },
+    {
+      label: 'Invoices',
+      path: `financials/invoices`,
+      icon: Receipt,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      tag: 'Pay Apps · Bills',
+      what: 'Every bill received — from your subs and the ones you send to the owner.',
+      how: 'Log pay applications from your owner contract here. When a sub sends you an invoice, record it under the matching commitment.',
+      example: 'e.g. Pay App #3 · $42,500 · Period: Mar 1–31',
+    },
+    {
+      label: 'Payments',
+      path: `financials/payments`,
+      icon: CreditCard,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      tag: 'Cash In · Ledger',
+      what: 'Money actually received from the owner — your cash position at a glance.',
+      how: 'Each time the owner sends a check or wire, record it here with the date and reference number. The running total updates automatically.',
+      example: 'e.g. Check #4421 · $38,250 · Apr 15',
+    },
+    {
+      label: 'Change Events',
+      path: `financials/change-events`,
+      icon: GitMerge,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      tag: 'PCO Exposure',
+      what: 'Potential cost changes before they become official — your early warning system.',
+      how: 'Whenever something unexpected happens that might cost more money, log it here first. Review it, price it, then promote it to a PCO.',
+      example: 'e.g. Unforeseen rock excavation · Est. $22,000',
+    },
+    {
+      label: 'Change Orders',
+      path: `financials/change-orders`,
+      icon: Layers,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      tag: 'PCO → PCCO',
+      what: 'Approved changes that adjust your contract value — the formal paper trail.',
+      how: 'Start with a PCO (Potential Change Order). Once the owner approves it, it becomes a PCCO and adds to your revised contract value.',
+      example: 'e.g. PCCO-003 · Additional MEP Coordination · +$132,021',
+    },
+    {
+      label: 'Direct Costs',
+      path: `financials/direct-costs`,
+      icon: DollarSign,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50',
+      tag: 'Labor · Materials',
+      what: 'Costs you pay directly — labor, materials, equipment not covered by a sub.',
+      how: 'Log any expense your company incurs directly on the project: crew timecards, material purchases, equipment rentals.',
+      example: 'e.g. Concrete pump rental · $3,800 · May 5',
+    },
+    {
+      label: 'Budget',
+      path: `financials/budget`,
+      icon: BarChart3,
+      color: 'text-teal-600',
+      bg: 'bg-teal-50',
+      tag: 'SOV Summary',
+      what: 'The financial health of your project at a single glance.',
+      how: 'This view rolls up your SOV, change orders, billings, and commitments automatically. No manual entry needed — just review.',
+      example: 'e.g. Revised Value $1,481,246 · 67% complete · $214k remaining',
+    },
+    {
+      label: 'Issue Log',
+      path: `financials/issues`,
+      icon: AlertTriangle,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-50',
+      tag: 'Field Obs · PCO Seed',
+      what: 'A running list of problems and surprises found in the field.',
+      how: 'When your super notices something — a scope gap, hidden damage, owner request — log it here. One click turns it into a PCO so nothing gets lost.',
+      example: 'e.g. Concrete delamination found Level 2 · Est. $8,500',
+    },
+    {
+      label: 'Proposals',
+      path: `financials/proposals`,
+      icon: FileText,
+      color: 'text-sky-600',
+      bg: 'bg-sky-50',
+      tag: 'Quotes · Estimates',
+      what: 'Formal price quotes you send to clients before they sign anything.',
+      how: 'Build a line-item estimate with your costs and markup, then export a branded PDF to send to the client. Track status from Draft → Sent → Approved.',
+      example: 'e.g. PROP-001 · Lobby Renovation · $47,250 total',
+    },
+    {
+      label: 'Cost Codes',
+      path: `cost-codes`,
+      icon: Code2,
+      color: 'text-slate-600',
+      bg: 'bg-slate-50',
+      tag: 'WBS · Categories',
+      what: 'The categories you use to organize every dollar on the project.',
+      how: 'Set these up once at the start of the project. Use standard CSI codes or create your own. Every budget line and commitment maps to a code.',
+      example: 'e.g. 03-3000 Cast-in-Place Concrete · 16-0000 Electrical',
+    },
+    {
+      label: 'Contracts',
+      path: `contracts`,
+      icon: FileSignature,
+      color: 'text-gray-600',
+      bg: 'bg-gray-50',
+      tag: 'Agreements · Docs',
+      what: 'All signed agreements in one place — prime contracts, subcontracts, and amendments.',
+      how: 'Upload executed contracts, track their status (Draft → Executed), and link them to your financials so everything stays connected.',
+      example: 'e.g. SC-004 · Plumbing Sub Agreement · Executed Mar 12',
+    },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Financial module quick-links */}
+      {/* Financial module cards */}
       <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Financial Modules</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {MODULES.map(({ label, path, icon: Icon, desc }) => (
-            <Link key={path} to={`/projects/${project.id}/${path}`}>
-              <Card className="hover:border-primary hover:bg-primary/5 transition cursor-pointer h-full">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="rounded-md bg-muted p-2 shrink-0">
-                    <Icon className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold">Financial Modules</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Click any card to open that module</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {MODULES.map(({ label, path, icon: Icon, color, bg, tag, what, how, example }) => (
+            <Link key={path} to={`/projects/${project.id}/${path}`} className="group block">
+              <Card className="h-full border hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden">
+                <CardContent className="p-0">
+                  {/* Header strip */}
+                  <div className={`${bg} px-4 pt-4 pb-3 flex items-start gap-3`}>
+                    <div className="rounded-lg bg-white/80 shadow-sm p-2 shrink-0">
+                      <Icon className={`h-5 w-5 ${color}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-sm text-foreground">{label}</p>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </div>
+                      <span className={`inline-block text-[10px] font-semibold uppercase tracking-wide ${color} mt-0.5`}>{tag}</span>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm leading-tight">{label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{desc}</p>
+
+                  {/* Body */}
+                  <div className="px-4 py-3 space-y-2">
+                    <p className="text-xs text-foreground/80 font-medium leading-relaxed">{what}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{how}</p>
+                    <div className="pt-1 border-t border-dashed border-muted">
+                      <p className="text-[10px] text-muted-foreground/70 italic">{example}</p>
+                    </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
                 </CardContent>
               </Card>
             </Link>
