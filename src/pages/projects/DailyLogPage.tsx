@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toDateOnly } from "@/lib/date";
 import { useDailyReportList, useDailyManpower } from "@/hooks/useDailyLog";
-import { generateInspectionReportPdf } from "@/lib/pdf/inspectionReport";
+import { generateInspectionReportPdf, printInspectionReport } from "@/lib/pdf/inspectionReport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Plus, FileText, CloudSun, Sun, Cloud, CloudRain, Send, Download,
-  Pencil, Loader2, Trash2, Upload, X, Users, ClipboardList,
+  Pencil, Loader2, Trash2, Upload, X, Users, ClipboardList, Printer, Mail,
 } from "lucide-react";
+import {
+  Dialog as EmailDialog,
+  DialogContent as EmailDialogContent,
+  DialogHeader as EmailDialogHeader,
+  DialogTitle as EmailDialogTitle,
+  DialogFooter as EmailDialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,11 +64,14 @@ function weatherIcon(weather: string | null) {
 }
 
 function formatDate(d: string) {
-  const dt = new Date(d + "T12:00:00");
+  // Strip any time/tz suffix so we always anchor at local noon regardless of
+  // what Supabase returns for a DATE column (plain "YYYY-MM-DD" or ISO string).
+  const datePart = d.length > 10 ? d.slice(0, 10) : d;
+  const dt = new Date(datePart + "T12:00:00");
   return {
     short: dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
     dow: dt.toLocaleDateString("en-US", { weekday: "long" }),
-    iso: d,
+    iso: datePart,
   };
 }
 
@@ -242,14 +252,17 @@ function PhotoUpload({
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const BUCKET = "daily-report-photos";
+
   async function upload(files: FileList) {
     setUploading(true);
     const newUrls: string[] = [];
     for (const file of Array.from(files)) {
-      const path = `daily-reports/${projectId}/${reportDate}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("project-photos").upload(path, file, { upsert: true });
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${projectId}/${reportDate}/${Date.now()}-${safeName}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
       if (error) { toast.error(`Upload failed: ${error.message}`); continue; }
-      const { data: { publicUrl } } = supabase.storage.from("project-photos").getPublicUrl(path);
+      const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
       newUrls.push(publicUrl);
     }
     onPhotosChange([...photos, ...newUrls]);
@@ -300,7 +313,7 @@ function PhotoUpload({
 function EditableForm({
   report, projectId, onSubmitted,
 }: {
-  report: ReportDetail; projectId: string; onSubmitted: () => void;
+  report: ReportDetail; projectId: string; onSubmitted: (submittedAt: string) => void;
 }) {
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -379,16 +392,18 @@ function EditableForm({
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      // Final save then submit
       await saveRef.current?.();
+      const submittedAt = new Date().toISOString();
       const { error } = await supabase
         .from("daily_reports" as any)
-        .update({ submitted_at: new Date().toISOString() } as any)
+        .update({ submitted_at: submittedAt } as any)
         .eq("id", report.id);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["daily-report-list", projectId] });
       toast.success("Report submitted successfully");
-      onSubmitted();
+      // Pass the timestamp so the parent can update state in-place
+      // without a round-trip that could land on the wrong report.
+      onSubmitted(submittedAt);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -398,24 +413,28 @@ function EditableForm({
 
   const { data: manpowerRows = [] } = useDailyManpower(report.id);
 
-  async function handleExportPdf() {
-    generateInspectionReportPdf(
-      {
-        ...report,
-        weather,
-        workers_count: workersCount ? Number(workersCount) : null,
-        work_performed: workPerformed,
-        materials_received: materialsReceived,
-        equipment_used: equipmentUsed ? equipmentUsed.split(",").map(s => s.trim()) : [],
-        subcontractors,
-        safety_notes: safetyNotes,
-        delays,
-        visitor_log: visitorLog,
-        photos,
-      },
-      manpowerRows,
-      "Project Report",
-    );
+  function handleExportPdf() {
+    try {
+      generateInspectionReportPdf(
+        {
+          ...report,
+          weather,
+          workers_count: workersCount ? Number(workersCount) : null,
+          work_performed: workPerformed,
+          materials_received: materialsReceived,
+          equipment_used: equipmentUsed ? equipmentUsed.split(",").map(s => s.trim()).filter(Boolean) : [],
+          subcontractors,
+          safety_notes: safetyNotes,
+          delays,
+          visitor_log: visitorLog,
+        },
+        manpowerRows,
+        projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report",
+      );
+      toast.success("PDF downloaded");
+    } catch (e: any) {
+      toast.error(`PDF failed: ${e.message}`);
+    }
   }
 
   const dateInfo = formatDate(report.report_date);
@@ -621,6 +640,9 @@ function ReadOnlyView({
 }) {
   const { data: manpowerRows = [] } = useDailyManpower(report.id);
   const dateInfo = formatDate(report.report_date);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState(`Daily Report — ${dateInfo.short}`);
 
   function Section({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -638,7 +660,44 @@ function ReadOnlyView({
   }
 
   function handleExportPdf() {
-    generateInspectionReportPdf(report, manpowerRows, "Project Report");
+    try {
+      generateInspectionReportPdf(report, manpowerRows, projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report");
+      toast.success("PDF downloaded");
+    } catch (e: any) {
+      toast.error(`PDF failed: ${e.message}`);
+    }
+  }
+
+  function handlePrint() {
+    try {
+      printInspectionReport(report, manpowerRows, projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report");
+    } catch (e: any) {
+      toast.error(`Print failed: ${e.message}`);
+    }
+  }
+
+  function handleEmailSend() {
+    const body = [
+      `Daily Field Inspection Report`,
+      `Date: ${dateInfo.short} (${dateInfo.dow})`,
+      `Weather: ${report.weather ?? "—"}`,
+      `Workers on Site: ${report.workers_count ?? "—"}`,
+      ``,
+      `Work Performed:`,
+      report.work_performed ?? "None recorded.",
+      ``,
+      `Safety Observations:`,
+      report.safety_notes ?? "None recorded.",
+      ``,
+      `Issues & Delays:`,
+      report.delays ?? "None recorded.",
+      ``,
+      `Please find the attached PDF report for full details.`,
+    ].join("\n");
+    const mailto = `mailto:${encodeURIComponent(emailTo)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    setEmailOpen(false);
+    toast.success("Email client opened");
   }
 
   async function copyLink() {
@@ -805,17 +864,68 @@ function ReadOnlyView({
       )}
 
       {/* Action buttons */}
-      <div className="flex flex-wrap gap-3 pt-4">
-        <Button onClick={handleExportPdf} variant="outline" className="min-h-[44px]">
-          <Download className="h-4 w-4 mr-2" /> Export PDF
-        </Button>
-        <Button onClick={onReopen} variant="outline" className="min-h-[44px]">
-          <Pencil className="h-4 w-4 mr-2" /> Re-open for Editing
-        </Button>
-        <Button onClick={copyLink} variant="ghost" className="min-h-[44px]">
-          <ClipboardList className="h-4 w-4 mr-2" /> Copy Link
-        </Button>
+      <div className="rounded-xl border border-border bg-muted/30 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Report Actions</p>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleExportPdf} className="min-h-[44px] bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+            <Download className="h-4 w-4 mr-2" /> Download PDF
+          </Button>
+          <Button onClick={handlePrint} variant="outline" className="min-h-[44px]">
+            <Printer className="h-4 w-4 mr-2" /> Print / View
+          </Button>
+          <Button onClick={() => setEmailOpen(true)} variant="outline" className="min-h-[44px]">
+            <Mail className="h-4 w-4 mr-2" /> Email Report
+          </Button>
+          <Button onClick={onReopen} variant="outline" className="min-h-[44px]">
+            <Pencil className="h-4 w-4 mr-2" /> Re-open for Editing
+          </Button>
+          <Button onClick={copyLink} variant="ghost" className="min-h-[44px]">
+            <ClipboardList className="h-4 w-4 mr-2" /> Copy Link
+          </Button>
+        </div>
       </div>
+
+      {/* Email Dialog */}
+      <EmailDialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <EmailDialogContent className="max-w-sm">
+          <EmailDialogHeader>
+            <EmailDialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Email Report
+            </EmailDialogTitle>
+          </EmailDialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="email-to">Recipient Email</Label>
+              <Input
+                id="email-to"
+                type="email"
+                placeholder="client@example.com"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                className="min-h-[44px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="min-h-[44px]"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Opens your default email client with the report summary pre-filled. Attach the downloaded PDF separately.
+            </p>
+          </div>
+          <EmailDialogFooter>
+            <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleEmailSend} disabled={!emailTo.trim()}>
+              <Mail className="h-4 w-4 mr-2" /> Open Email Client
+            </Button>
+          </EmailDialogFooter>
+        </EmailDialogContent>
+      </EmailDialog>
     </div>
   );
 }
@@ -894,9 +1004,11 @@ export default function DailyLogPage() {
     }
   }
 
-  function handleSubmitted() {
-    if (!selectedId) return;
-    loadReport(selectedId);
+  function handleSubmitted(submittedAt: string) {
+    // Update the report in-place — no re-fetch that could race and land on
+    // a different report in the list.
+    setSelectedReport(prev => prev ? { ...prev, submitted_at: submittedAt } : prev);
+    qc.invalidateQueries({ queryKey: ["daily-report-list", projectId ?? null] });
   }
 
   const isSubmitted = Boolean(selectedReport?.submitted_at);
@@ -978,7 +1090,7 @@ export default function DailyLogPage() {
               <EditableForm
                 report={selectedReport}
                 projectId={projectId ?? ""}
-                onSubmitted={handleSubmitted}
+                onSubmitted={(ts) => handleSubmitted(ts)}
               />
             )}
           </div>
