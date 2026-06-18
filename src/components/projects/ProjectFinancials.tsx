@@ -19,6 +19,9 @@ import {
   BarChart3,
   ChevronRight,
   FileSignature,
+  CreditCard,
+  AlertTriangle,
+  Code2,
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
 import type { Database } from '@/integrations/supabase/types';
@@ -61,14 +64,18 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   const isNearBudget = remaining >= 0 && remaining < adjustedBudget * 0.1;
 
   const MODULES = [
-    { label: 'Prime Contract', path: `financials/prime-contract`, icon: FileText,  desc: 'SOV, pay applications' },
-    { label: 'Commitments',    path: `financials/commitments`,    icon: HardHat,   desc: 'Subcontracts & POs' },
-    { label: 'Invoices',       path: `financials/invoices`,       icon: Receipt,   desc: 'Commitment invoices' },
-    { label: 'Change Events',  path: `financials/change-events`,  icon: GitMerge,  desc: 'Exposure ledger' },
-    { label: 'Change Orders',  path: `financials/change-orders`,  icon: Layers,    desc: 'PCO → OCO → CCO' },
-    { label: 'Direct Costs',   path: `financials/direct-costs`,   icon: DollarSign,desc: 'Invoices, timecards, expenses' },
-    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3,      desc: 'Cost code matrix' },
-    { label: 'Contracts',      path: `contracts`,                 icon: FileSignature,  desc: 'Subcontracts & agreements' },
+    { label: 'Prime Contract', path: `financials/prime-contract`, icon: FileText,      desc: 'SOV, pay applications' },
+    { label: 'Commitments',    path: `financials/commitments`,    icon: HardHat,       desc: 'Subcontracts & POs' },
+    { label: 'Invoices',       path: `financials/invoices`,       icon: Receipt,       desc: 'Pay apps & invoices' },
+    { label: 'Payments',       path: `financials/payments`,       icon: CreditCard,    desc: 'Payments received' },
+    { label: 'Change Events',  path: `financials/change-events`,  icon: GitMerge,      desc: 'Exposure ledger' },
+    { label: 'Change Orders',  path: `financials/change-orders`,  icon: Layers,        desc: 'PCO → OCO → CCO' },
+    { label: 'Direct Costs',   path: `financials/direct-costs`,   icon: DollarSign,    desc: 'Invoices, timecards' },
+    { label: 'Budget',         path: `financials/budget`,         icon: BarChart3,     desc: 'SOV financial summary' },
+    { label: 'Issue Log',      path: `financials/issues`,         icon: AlertTriangle, desc: 'Field observations' },
+    { label: 'Proposals',      path: `financials/proposals`,      icon: FileSignature, desc: 'Estimates & quotes' },
+    { label: 'Cost Codes',     path: `cost-codes`,                icon: Code2,         desc: 'WBS cost code setup' },
+    { label: 'Contracts',      path: `contracts`,                 icon: FileText,      desc: 'Agreements & docs' },
   ];
 
   return (

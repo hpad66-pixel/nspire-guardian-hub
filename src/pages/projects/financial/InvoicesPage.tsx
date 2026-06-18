@@ -121,8 +121,9 @@ function PrimeContractPayApps({ projectId }: { projectId: string }) {
             </thead>
             <tbody>
               {invoices.map(inv => (
-                <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="p-3 font-mono font-medium">{inv.invoice_number ?? "—"}</td>
+                <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
+                  onClick={() => window.location.href = `/projects/${projectId}/financials/prime-contract/pay-apps/${inv.id}`}>
+                  <td className="p-3 font-mono font-medium text-[var(--apas-sapphire)] hover:underline">{inv.invoice_number ?? "—"}</td>
                   <td className="p-3 text-muted-foreground text-xs">
                     {fmtDate(inv.period_start)} – {fmtDate(inv.period_end)}
                   </td>

@@ -51,7 +51,30 @@
       "Bash(git checkout *)",
       "Bash(git merge *)",
       "Bash(sed -i '' -e 's/About Build\\\\b/About Proj OS/g' -e 's/Built on Build infrastructure intelligence/Powered by Proj OS infrastructure/g' -e 's/© 2026 Build · /© 2026 Proj OS · /g' -e 's/Powered by Build\\\\b/Powered by Proj OS/g' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/components/landing/LandingFooter.tsx)",
-      "Bash(sed -i '' -e 's/company_name || \"Build\"/company_name || \"Proj OS\"/g' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/components/projects/ReportGeneratorDialog.tsx)"
+      "Bash(sed -i '' -e 's/company_name || \"Build\"/company_name || \"Proj OS\"/g' /Users/apas/Documents/GitHub/nspire-guardian-hub/src/components/projects/ReportGeneratorDialog.tsx)",
+      "mcp__plugin_cloudflare_cloudflare-api__execute",
+      "Bash(xargs basename -a)",
+      "Bash(xargs ls -1)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(curl -s http://localhost:8081/)",
+      "Bash(gh run *)",
+      "Bash(jobs -l)",
+      "Bash(pkill -f \"vite build\")",
+      "Bash(pkill -f \"run-vite-build\")",
+      "Bash(npx wrangler *)",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "Bash(python3 -c \"import pdfplumber; print\\('ok'\\)\")",
+      "Bash(pip3 install *)",
+      "Bash(python3 parse_daily_logs.py --debug 2026-03-02.pdf)",
+      "Bash(python3 parse_daily_logs.py --sql)",
+      "Bash(python3 parse_invoice.py invoice.csv --number 1)",
+      "Bash(python3 parse_invoice.py \"invoice \\(2\\).csv\" --number 2 --period-start 2025-07-16 --period-end 2026-03-31 --date 2026-04-27 --certified 349363.71)",
+      "Bash(python3 parse_invoice.py \"invoice \\(3\\).csv\" --number 3 --period-start 2026-04-01 --period-end 2026-04-30 --date 2026-04-30 --certified 115027.30)",
+      "Bash(python3 parse_invoice.py \"invoice \\(4\\).csv\" --number 4 --period-start 2026-05-01 --period-end 2026-05-31 --date 2026-05-31 --certified 44731.94)",
+      "Bash(supabase db *)",
+      "Bash(python3 parse_commitments.py budget_details.csv)",
+      "Bash(python3 parse_change_orders.py)",
+      "Bash(python3 parse_payments.py \"Prime Contract Payments.csv\")"
     ]
   }
 }

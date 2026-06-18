@@ -1,9 +1,9 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useProjectContracts } from "@/hooks/useProjectContracts";
 import { useContractChangeOrders } from "@/hooks/useContractFinancials";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, ExternalLink } from "lucide-react";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -75,11 +75,13 @@ export default function ChangeOrdersPage() {
                     <th className="text-left p-3">Date</th>
                     <th className="text-right p-3">Amount</th>
                     <th className="text-center p-3">Status</th>
+                    <th className="p-3" />
                   </tr>
                 </thead>
                 <tbody>
                   {coList.map(co => (
-                    <tr key={co.id} className="border-b last:border-0 hover:bg-muted/20">
+                    <tr key={co.id} className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
+                      onClick={() => window.location.href = `/projects/${projectId}/financials/cos/${co.id}`}>
                       <td className="p-3 font-mono font-medium">{co.co_number ?? "—"}</td>
                       <td className="p-3">{co.description}</td>
                       <td className="p-3 text-muted-foreground">{fmtDate(co.co_date)}</td>
@@ -93,6 +95,11 @@ export default function ChangeOrdersPage() {
                           co.status === "voided"   ? "bg-gray-100 text-gray-500" :
                           "bg-amber-100 text-amber-800"
                         }`}>{co.status}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Link to={`/projects/${projectId}/financials/cos/${co.id}`} onClick={e => e.stopPropagation()}>
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                        </Link>
                       </td>
                     </tr>
                   ))}

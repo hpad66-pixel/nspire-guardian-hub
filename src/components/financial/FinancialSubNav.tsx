@@ -8,6 +8,7 @@ const TABS = [
   { label: "Commitments",   path: "commitments" },
   { label: "Invoices",      path: "invoices" },
   { label: "Payments",      path: "payments" },
+  { label: "Change Events", path: "change-events" },
   { label: "Change Orders", path: "change-orders" },
   { label: "Budget",        path: "budget" },
   { label: "Direct Costs",  path: "direct-costs" },
