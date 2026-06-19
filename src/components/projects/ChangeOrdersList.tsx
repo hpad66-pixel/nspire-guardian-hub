@@ -60,11 +60,23 @@ const statusConfig = {
     bgColor: 'bg-green-500/10',
     label: 'Approved',
   },
+  executed: {
+    icon: CheckCircle2,
+    color: 'text-[var(--apas-sapphire)]',
+    bgColor: 'bg-[var(--apas-sapphire)]/10',
+    label: 'Executed',
+  },
   rejected: {
     icon: XCircle,
     color: 'text-destructive',
     bgColor: 'bg-destructive/10',
     label: 'Rejected',
+  },
+  voided: {
+    icon: Ban,
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted',
+    label: 'Voided',
   },
 };
 
@@ -151,7 +163,7 @@ export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: 
         ) : (
           <div className="space-y-4">
             {sortedOrders.map((co) => {
-              const config = statusConfig[co.status as keyof typeof statusConfig];
+              const config = statusConfig[co.status as keyof typeof statusConfig] ?? statusConfig.draft;
               const Icon = config.icon;
 
               return (
