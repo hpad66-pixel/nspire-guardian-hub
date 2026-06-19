@@ -124,6 +124,64 @@ export function PrintableProjectDailyReport({
       </div>
       {propertyAddress && <div style={{ fontSize: 12, color: MUTED, marginTop: 6 }}>{propertyAddress}</div>}
 
+      {/* Weather Observations */}
+      {weatherObs.length > 0 && (
+        <Section title="Observed Weather Conditions">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'system-ui' }}>
+            <thead>
+              <tr style={{ background: '#F3F4F6' }}>
+                {['#', 'Time', 'Conditions', 'Delay', 'Comments'].map(h => (
+                  <th key={h} style={{ padding: '6px 9px', textAlign: 'left', fontWeight: 700, borderBottom: `1px solid ${LINE}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {weatherObs.map((w: any, i: number) => (
+                <tr key={i} style={{ borderBottom: `1px solid #F3F4F6` }}>
+                  <td style={{ padding: '6px 9px' }}>{i + 1}</td>
+                  <td style={{ padding: '6px 9px' }}>{w.time || '—'}</td>
+                  <td style={{ padding: '6px 9px' }}>{w.conditions || '—'}</td>
+                  <td style={{ padding: '6px 9px', color: w.delay === 'Yes' ? '#B91C1C' : INK }}>{w.delay || 'No'}</td>
+                  <td style={{ padding: '6px 9px' }}>{w.comment || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
+      {/* Manpower */}
+      {(crews.length > 0 || manpower.workers) && (
+        <Section title="Manpower">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'system-ui' }}>
+            <thead>
+              <tr style={{ background: '#F3F4F6' }}>
+                {['Crew / Company', 'Workers', 'Hrs Each', 'Total Hours'].map(h => (
+                  <th key={h} style={{ padding: '6px 9px', textAlign: 'left', fontWeight: 700, borderBottom: `1px solid ${LINE}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(crews.length ? crews : [{ company: null, workers: manpower.workers, hours_each: null, total_hours: manpower.total_hours }]).map((c: any, i: number) => (
+                <tr key={i} style={{ borderBottom: `1px solid #F3F4F6` }}>
+                  <td style={{ padding: '6px 9px' }}>{c.company || 'Crew'}</td>
+                  <td style={{ padding: '6px 9px' }}>{c.workers ?? '—'}</td>
+                  <td style={{ padding: '6px 9px' }}>{c.hours_each ?? '—'}</td>
+                  <td style={{ padding: '6px 9px' }}>{c.total_hours ?? '—'}</td>
+                </tr>
+              ))}
+              <tr style={{ background: '#F9FAFB', fontWeight: 700 }}>
+                <td style={{ padding: '6px 9px' }}>Total</td>
+                <td style={{ padding: '6px 9px' }}>{manpower.workers ?? report.workers_count ?? '—'}</td>
+                <td style={{ padding: '6px 9px' }} />
+                <td style={{ padding: '6px 9px' }}>{totalHours ?? '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          {manpower.created_by && <div style={{ fontSize: 11, color: MUTED, marginTop: 4, fontFamily: 'system-ui' }}>Logged by {manpower.created_by}</div>}
+        </Section>
+      )}
+
       {/* Work Performed */}
       <Section title="Work Performed" accent={SAPPHIRE}>
         {report.work_performed_html ? (
@@ -220,14 +278,28 @@ export function PrintableProjectDailyReport({
         </Section>
       )}
 
-      {/* Photos */}
+      {/* Photos — large 2-up grid */}
       {photos.length > 0 && (
         <Section title={`Site Photos (${photos.length})`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
             {photos.map((url, i) => (
-              <div key={i} style={{ aspectRatio: '3/4', borderRadius: 6, overflow: 'hidden', border: `1px solid ${LINE}` }}>
-                <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 8, overflow: 'hidden', border: `1px solid ${LINE}`, breakInside: 'avoid' }}>
+                <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Photos referenced in the original log but not embedded */}
+      {photos.length === 0 && photoNames.length > 0 && (
+        <Section title={`Photos Referenced (${photoNames.length})`}>
+          <div style={{ fontSize: 12, color: MUTED, fontFamily: 'system-ui', marginBottom: 6 }}>
+            Listed in the original Procore log (view the attached document below for the images):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {photoNames.map((n, i) => (
+              <span key={i} style={{ padding: '3px 9px', background: '#F3F4F6', borderRadius: 14, fontSize: 11, border: `1px solid ${LINE}`, fontFamily: 'monospace' }}>{n}</span>
             ))}
           </div>
         </Section>
@@ -250,8 +322,10 @@ export function PrintableProjectDailyReport({
       <div style={{ borderTop: `2px solid ${LINE}`, marginTop: 28, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>Submitted by</div>
-          <div style={{ fontWeight: 700 }}>{inspectorName || 'Site Supervisor'}</div>
-          <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>{safeFormat((report as any).submitted_at ?? report.created_at, 'MMMM d, yyyy h:mm a')}</div>
+          <div style={{ fontWeight: 700 }}>{inspector || 'Site Supervisor'}</div>
+          <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>
+            {pc.completed_at || safeFormat((report as any).submitted_at ?? report.created_at, 'MMMM d, yyyy h:mm a')}
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           {signature && signature.startsWith('data:image') ? (
