@@ -2,6 +2,9 @@ import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { usePayApp } from "@/hooks/usePayApp";
+import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
+import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
+import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppBuilder } from "@/components/financial/PayAppBuilder";
 import { PayAppPDFExport } from "@/components/financial/PayAppPDFExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +18,9 @@ export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { detail, submit, approve, reject } = usePayApp(payAppId ?? null);
+  const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
   const [approveAmount, setApproveAmount] = useState<number | "">("");
+  const [payOpen, setPayOpen] = useState(false);
 
   const pa = detail.data;
 
@@ -105,6 +110,42 @@ export default function PayAppDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AR payments received against this pay app */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Payments Received</CardTitle>
+          {(pa.status === "approved" || pa.status === "paid") && (
+            <Button size="sm" onClick={() => setPayOpen(true)}>Record payment</Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              {pa.status === "approved" || pa.status === "paid"
+                ? "No payments recorded yet."
+                : "Approve the pay app to record payments."}
+            </div>
+          ) : (
+            <div className="divide-y text-sm">
+              {payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between py-2">
+                  <div>
+                    <span className="font-mono mr-2">{p.received_date}</span>
+                    <span className="text-muted-foreground">{p.method ?? ""} {p.reference ?? ""}</span>
+                  </div>
+                  <span className="font-mono">{money(Number(p.amount))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Outbound lien waivers we issue to the owner for this pay app */}
+      <LienReleasePanel projectId={projectId!} direction="outbound" payAppId={pa.id} />
+
+      <RecordPrimePaymentDialog open={payOpen} onOpenChange={setPayOpen} payAppId={pa.id} />
     </div>
   );
 }

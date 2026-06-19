@@ -6,9 +6,12 @@ import {
 } from "@/hooks/useCommitments";
 import { useChangeOrdersByType } from "@/hooks/useProcoreChangeOrders";
 import { useInvoice } from "@/hooks/useInvoices";
+import { useCommitmentPayments } from "@/hooks/useCommitmentPayments";
 import { CommitmentSovTable } from "@/components/financial/CommitmentSovTable";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
 import { InvoicePDFExport } from "@/components/financial/InvoicePDFExport";
+import { RecordCommitmentPaymentDialog } from "@/components/financial/RecordCommitmentPaymentDialog";
+import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,6 +224,7 @@ export default function CommitmentDetailPage() {
       {openInvoiceId && (
         <InvoiceDetailDialog
           invoiceId={openInvoiceId}
+          projectId={projectId!}
           commitmentId={commitment.id}
           commitmentNo={commitment.commitment_no}
           commitmentTitle={commitment.title}
@@ -233,13 +237,15 @@ export default function CommitmentDetailPage() {
 }
 
 function InvoiceDetailDialog({
-  invoiceId, commitmentId, commitmentNo, commitmentTitle, open, onOpenChange,
+  invoiceId, projectId, commitmentId, commitmentNo, commitmentTitle, open, onOpenChange,
 }: {
-  invoiceId: string; commitmentId: string; commitmentNo: string; commitmentTitle: string;
+  invoiceId: string; projectId: string; commitmentId: string; commitmentNo: string; commitmentTitle: string;
   open: boolean; onOpenChange: (o: boolean) => void;
 }) {
   const { detail, submit, approve, reject } = useInvoice(invoiceId);
+  const { data: payments = [] } = useCommitmentPayments(invoiceId);
   const [approveAmt, setApproveAmt] = useState<number | "">("");
+  const [payOpen, setPayOpen] = useState(false);
   const qc = useQueryClient();
   const inv = detail.data as any;
 
@@ -300,7 +306,38 @@ function InvoiceDetailDialog({
               </div>
             )}
           </div>
+
+          {/* AP payments against this invoice */}
+          <div className="border-t pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">Payments to Vendor</h4>
+              {(inv?.status === "approved" || inv?.status === "paid") && (
+                <Button size="sm" onClick={() => setPayOpen(true)}>Record payment</Button>
+              )}
+            </div>
+            {payments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {inv?.status === "approved" || inv?.status === "paid"
+                  ? "No payments yet. A payment requires an approved lien release."
+                  : "Approve the invoice to record payments."}
+              </p>
+            ) : (
+              <div className="divide-y text-sm">
+                {payments.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between py-1.5">
+                    <span className="font-mono">{p.paid_date} · {p.method ?? ""} {p.reference ?? ""}</span>
+                    <span className="font-mono">{money(Number(p.amount))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Inbound lien releases gate the payment above */}
+          <LienReleasePanel projectId={projectId} direction="inbound" commitmentInvoiceId={invoiceId} />
         </div>
+
+        <RecordCommitmentPaymentDialog open={payOpen} onOpenChange={setPayOpen} invoiceId={invoiceId} />
       </DialogContent>
     </Dialog>
   );
