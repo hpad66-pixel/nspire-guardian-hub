@@ -1,6 +1,7 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useCommitments, useCommitmentInvoices, type CommitmentInvoice, type Commitment } from "@/hooks/useCommitments";
+import { usePrimeContract, usePayApps } from "@/hooks/usePrimeContract";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
 import { InvoicePDFExport } from "@/components/financial/InvoicePDFExport";
@@ -98,10 +99,55 @@ function VendorInvoiceGroup({
   );
 }
 
+/** Prime contract pay apps (the GC's billings to the owner) as a vendor group. */
+function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: string; primeContractId: string; label: string }) {
+  const navigate = useNavigate();
+  const { data: payApps = [], isLoading } = usePayApps(primeContractId);
+  if (isLoading) return null;
+  const ordered = [...payApps].sort((a: any, b: any) => (a.pay_app_no ?? 0) - (b.pay_app_no ?? 0));
+  const total = ordered.reduce((s: number, p: any) => s + (Number(p.approved_amount ?? p.submitted_amount) || 0), 0);
+  return (
+    <div className="border-b last:border-0">
+      <div className="flex items-center justify-between px-3 py-2 bg-[var(--apas-sapphire)]/5">
+        <Link to={`/projects/${projectId}/financials/prime-contract`} className="text-sm font-semibold hover:underline text-primary flex items-center gap-2">
+          {label}
+          <span className="text-xs font-normal text-muted-foreground">Prime Contract</span>
+        </Link>
+        <span className="text-xs text-muted-foreground">
+          {ordered.length} pay app{ordered.length !== 1 ? "s" : ""} · {fmt(total)}
+        </span>
+      </div>
+      {ordered.length === 0 ? (
+        <div className="px-3 py-2 text-xs text-muted-foreground italic">No pay applications yet.</div>
+      ) : (
+        <table className="w-full text-sm">
+          <tbody>
+            {ordered.map((pa: any) => (
+              <tr key={pa.id} className="border-t hover:bg-muted/30 cursor-pointer"
+                onClick={() => navigate(`/projects/${projectId}/financials/prime-contract/pay-apps/${pa.id}`)}>
+                <td className="p-3 w-24"><span className="font-bold text-[var(--apas-sapphire)]">Pay App #{pa.pay_app_no}</span></td>
+                <td className="p-3 text-xs text-muted-foreground font-mono">{pa.invoice_no ? `Ref ${pa.invoice_no}` : ""}</td>
+                <td className="p-3 text-sm text-muted-foreground">{fmtDate(pa.period_end)}</td>
+                <td className="p-3 text-right font-mono text-sm">{pa.submitted_amount != null ? money(pa.submitted_amount) : "—"}</td>
+                <td className="p-3 text-right font-mono text-sm">{pa.approved_amount != null ? money(pa.approved_amount) : "—"}</td>
+                <td className="p-3">
+                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[pa.status as CommitmentInvoice["status"]] ?? "bg-muted text-muted-foreground"}`}>{pa.status}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function InvoicesPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: commitments = [], isLoading } = useCommitments(projectId ?? null);
+  const { data: primeContract } = usePrimeContract(projectId ?? null);
+  const primeLabel = (primeContract as any)?.contractor_name || (primeContract as any)?.contract_no || "Prime Contract";
 
   const [newOpen, setNewOpen] = useState(false);
   const [selectedCommitmentId, setSelectedCommitmentId] = useState("");
@@ -156,7 +202,7 @@ export default function InvoicesPage() {
             <FileText className="h-4 w-4" />
             Vendor Invoices
           </CardTitle>
-          {commitments.length > 0 && (
+          {(commitments.length > 0 || primeContract) && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Filter:</span>
               <Select value={vendorFilter} onValueChange={setVendorFilter}>
@@ -165,6 +211,7 @@ export default function InvoicesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All vendors</SelectItem>
+                  {primeContract && <SelectItem value="prime">{primeLabel} (Prime)</SelectItem>}
                   {commitments.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{vendorName(c)}</SelectItem>
                   ))}
@@ -182,13 +229,16 @@ export default function InvoicesPage() {
           </div>
           {isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading…</p>
-          ) : commitments.length === 0 ? (
+          ) : commitments.length === 0 && !primeContract ? (
             <p className="p-4 text-sm text-muted-foreground">
               No commitments yet. Create a commitment first, then add invoices against it.
             </p>
           ) : (
             <>
-              {visibleCommitments.map((c) => (
+              {primeContract && (vendorFilter === "all" || vendorFilter === "prime") && (
+                <PrimePayAppGroup projectId={projectId!} primeContractId={(primeContract as any).id} label={primeLabel} />
+              )}
+              {(vendorFilter === "all" || (vendorFilter !== "prime")) && visibleCommitments.map((c) => (
                 <VendorInvoiceGroup
                   key={c.id}
                   commitment={c}
