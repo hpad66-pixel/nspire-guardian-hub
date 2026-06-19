@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Calendar, Cloud, FileText, Plus, Users, AlertTriangle, ChevronDown, ChevronUp, Printer, Download, Mail, Loader2, Eye } from 'lucide-react';
 import { ProjectDailyReportPage } from './ProjectDailyReportPage';
 import { PrintableProjectDailyReport } from './PrintableProjectDailyReport';
@@ -31,6 +32,7 @@ export function DailyReportsList({
   const [showNewReport, setShowNewReport] = useState(false);
   const [expandedReports, setExpandedReports] = useState<Set<string>>(new Set());
   const [emailReport, setEmailReport] = useState<DailyReportRow | null>(null);
+  const [viewReport, setViewReport] = useState<DailyReportRow | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
 
@@ -144,8 +146,11 @@ export function DailyReportsList({
                     </div>
                   </div>
 
-                  {/* PDF/Print/Email inline action row */}
+                  {/* View/PDF/Print/Email inline action row */}
                   <div className="flex gap-1 px-4 pb-3 border-t pt-3" onClick={e => e.stopPropagation()}>
+                    <Button variant="default" size="sm" className="gap-1.5" onClick={() => setViewReport(report)}>
+                      <Eye className="h-3.5 w-3.5" /> View
+                    </Button>
                     <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => handleSavePDF(report)} disabled={generatingId === report.id}>
                       {generatingId === report.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                       PDF
@@ -200,6 +205,39 @@ export function DailyReportsList({
           </div>
         )}
       </CardContent>
+
+      {/* View panel — opens out on the right side, with Print / PDF / Email */}
+      <Sheet open={!!viewReport} onOpenChange={(open) => !open && setViewReport(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+          <SheetHeader className="px-5 py-3 border-b border-border flex-row items-center justify-between space-y-0 shrink-0">
+            <SheetTitle className="text-base">
+              {viewReport ? format(new Date(viewReport.report_date), 'EEEE, MMMM d, yyyy') : 'Report'}
+            </SheetTitle>
+            <div className="flex gap-2 pr-6">
+              <Button size="sm" variant="outline" onClick={() => viewReport && handlePrint(viewReport)} disabled={!viewReport || printingId === viewReport?.id} className="gap-1.5">
+                {viewReport && printingId === viewReport.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Print
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => viewReport && handleSavePDF(viewReport)} disabled={!viewReport || generatingId === viewReport?.id} className="gap-1.5">
+                {viewReport && generatingId === viewReport.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} PDF
+              </Button>
+              <Button size="sm" onClick={() => { const r = viewReport; setEmailReport(r); }} disabled={!viewReport} className="gap-1.5">
+                <Mail className="h-4 w-4" /> Email
+              </Button>
+            </div>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto bg-white">
+            {viewReport && (
+              <PrintableProjectDailyReport
+                report={viewReport}
+                projectName={projectName || 'Project'}
+                propertyName={propertyName}
+                propertyAddress={propertyAddress}
+                projectType={projectType}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Email sheet */}
       {emailReport && (
