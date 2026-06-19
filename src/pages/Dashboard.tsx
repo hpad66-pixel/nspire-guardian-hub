@@ -269,12 +269,17 @@ export default function Dashboard() {
             iconClass={totalAlerts > 0 ? 'text-amber-500' : 'text-green-500'}
             accent={totalAlerts > 0 ? 'border-amber-500/20' : 'border-green-500/20'}
             sub={totalAlerts > 0 ? `${counts.critical} critical · ${counts.warnings} warnings` : 'All clear'}
+            onClick={() => {
+              const el = document.getElementById(counts.critical > 0 ? 'dash-critical' : 'dash-warnings') ?? document.getElementById('dash-critical');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
           />
         </div>
       )}
 
       {/* Critical Alerts */}
       {isVisible('alerts-critical') && (
+        <div id="dash-critical" className="scroll-mt-20">
         <ZoneSection
           icon={AlertTriangle} iconClass="text-destructive" accentClass="border-destructive"
           title="Needs Attention Now"
@@ -303,10 +308,12 @@ export default function Dashboard() {
             </div>
           )}
         </ZoneSection>
+        </div>
       )}
 
       {/* Warnings */}
       {isVisible('alerts-warning') && (warningAlerts.length > 0 || isLoading) && (
+        <div id="dash-warnings" className="scroll-mt-20">
         <ZoneSection
           icon={Clock} iconClass="text-amber-500" accentClass="border-amber-500"
           title="Warnings"
@@ -327,6 +334,7 @@ export default function Dashboard() {
             </div>
           )}
         </ZoneSection>
+        </div>
       )}
 
       {/* Coming Up */}
@@ -336,13 +344,17 @@ export default function Dashboard() {
           title="Coming Up"
           subtext="Expirations and deadlines in the next 60 days"
         >
-          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-4">
+          <button
+            onClick={() => navigate('/credentials')}
+            className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-4 w-full text-left hover:bg-accent/40 transition-colors group"
+          >
             <CalendarDays className="h-5 w-5 text-blue-500 shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Timeline view</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium group-hover:text-primary transition-colors">Timeline view</p>
               <p className="text-xs text-muted-foreground">Credential expirations, training due dates, and equipment documents</p>
             </div>
-          </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </button>
         </ZoneSection>
       )}
 
@@ -367,14 +379,17 @@ export default function Dashboard() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {teamStatuses.slice(0, 12).map((member, i) => (
-                <motion.div
+                <motion.button
                   key={member.userId}
+                  type="button"
+                  onClick={() => navigate(`/people?member=${member.userId}`)}
                   custom={i}
                   variants={cardVariants}
                   initial="hidden"
                   animate="visible"
+                  whileHover={{ scale: 1.02 }}
                   className={cn(
-                    'relative flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center',
+                    'relative flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-4 text-center cursor-pointer hover:border-primary/40 transition-colors',
                     member.dot === 'red' && 'bg-destructive/5',
                     member.dot === 'amber' && 'bg-amber-500/5',
                   )}
@@ -392,7 +407,7 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <p className="text-xs font-semibold truncate w-full">{member.name}</p>
-                </motion.div>
+                </motion.button>
               ))}
             </div>
           )}
