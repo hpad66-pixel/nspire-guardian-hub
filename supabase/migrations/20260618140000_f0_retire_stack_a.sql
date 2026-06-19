@@ -11,11 +11,14 @@ DO $$
 DECLARE
   r RECORD;
   v_new_id uuid;
-  v_co_type text;
+  v_existing uuid;
+  v_payno int;
 BEGIN
   -- id maps (old Stack-A id -> new Stack-D id)
   CREATE TEMP TABLE _map_contract (old_id uuid PRIMARY KEY, new_id uuid, kind text) ON COMMIT DROP;
   CREATE TEMP TABLE _map_invoice  (old_id uuid PRIMARY KEY, new_id uuid, kind text) ON COMMIT DROP;
+  -- one canonical prime per project (oldest wins; extra primes merge onto it)
+  CREATE TEMP TABLE _proj_prime  (project_id uuid PRIMARY KEY, new_id uuid) ON COMMIT DROP;
 
   -- Skip cleanly if Stack A is already gone.
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables
@@ -24,23 +27,30 @@ BEGIN
     RETURN;
   END IF;
 
-  -- ── 1 · contracts ─────────────────────────────────────────
-  FOR r IN SELECT * FROM public.project_contracts LOOP
+  -- ── 1 · contracts (oldest prime per project wins; extras merge) ──
+  FOR r IN SELECT * FROM public.project_contracts ORDER BY created_at LOOP
     IF r.contract_type = 'prime' THEN
+      SELECT new_id INTO v_existing FROM _proj_prime WHERE project_id = r.project_id;
+      IF v_existing IS NOT NULL THEN
+        -- duplicate prime → re-parent its children onto the canonical prime
+        INSERT INTO _map_contract VALUES (r.id, v_existing, 'prime');
+        CONTINUE;
+      END IF;
       INSERT INTO public.prime_contracts
         (tenant_id, project_id, contract_no, title, original_value, retainage_pct, status, executed_date, created_by)
       VALUES
-        (r.tenant_id, r.project_id, COALESCE(r.contract_number, 'PC-'||left(r.id::text,8)),
+        (r.tenant_id, r.project_id, COALESCE(NULLIF(r.contract_number,''), 'PC-'||left(r.id::text,8)),
          COALESCE(r.contract_title,'Migrated contract'), COALESCE(r.base_contract_amount,0),
          COALESCE(r.retainage_percent,10), CASE WHEN r.status='executed' THEN 'executed' ELSE 'draft' END,
          r.contract_date, r.created_by)
       RETURNING id INTO v_new_id;
+      INSERT INTO _proj_prime VALUES (r.project_id, v_new_id);
       INSERT INTO _map_contract VALUES (r.id, v_new_id, 'prime');
     ELSE
       INSERT INTO public.commitments
         (tenant_id, project_id, commitment_type, commitment_no, title, original_value, retainage_pct, status, executed_date, created_by)
       VALUES
-        (r.tenant_id, r.project_id, 'subcontract', COALESCE(r.contract_number,'SC-'||left(r.id::text,8)),
+        (r.tenant_id, r.project_id, 'subcontract', COALESCE(NULLIF(r.contract_number,''),'SC-'||left(r.id::text,8)),
          COALESCE(r.contract_title,'Migrated commitment'), COALESCE(r.base_contract_amount,0),
          COALESCE(r.retainage_percent,10), CASE WHEN r.status='executed' THEN 'executed' ELSE 'draft' END,
          r.contract_date, r.created_by)
@@ -71,16 +81,19 @@ BEGIN
   END LOOP;
 
   -- ── 3 · invoices / pay apps ───────────────────────────────
-  FOR r IN SELECT ci.*, m.new_id AS parent_new_id, m.kind,
-                  row_number() OVER (PARTITION BY ci.contract_id ORDER BY ci.invoice_date NULLS LAST, ci.created_at) AS seq
+  FOR r IN SELECT ci.*, m.new_id AS parent_new_id, m.kind
            FROM public.contract_invoices ci
-           JOIN _map_contract m ON m.old_id = ci.contract_id LOOP
+           JOIN _map_contract m ON m.old_id = ci.contract_id
+           ORDER BY ci.invoice_date NULLS LAST, ci.created_at LOOP
     IF r.kind = 'prime' THEN
+      -- unique pay_app_no per (merged) prime: next after current max
+      SELECT COALESCE(MAX(pay_app_no), 0) + 1 INTO v_payno
+        FROM public.prime_contract_pay_apps WHERE prime_contract_id = r.parent_new_id;
       INSERT INTO public.prime_contract_pay_apps
         (tenant_id, prime_contract_id, pay_app_no, period_end, status, submitted_amount, approved_amount,
          retainage_held, approved_date, invoice_no, artifact_id, created_by)
       VALUES
-        (r.tenant_id, r.parent_new_id, COALESCE(r.pay_app_no, r.seq::int),
+        (r.tenant_id, r.parent_new_id, v_payno,
          COALESCE(r.period_end, r.invoice_date, CURRENT_DATE),
          CASE WHEN r.status IN ('approved','paid','submitted','rejected') THEN r.status ELSE 'draft' END,
          r.amount, CASE WHEN r.status IN ('approved','paid') THEN r.amount END,
@@ -93,7 +106,7 @@ BEGIN
         (tenant_id, commitment_id, invoice_no, period_end, status, submitted_amount, approved_amount,
          retainage_held, artifact_id, created_by)
       VALUES
-        (r.tenant_id, r.parent_new_id, COALESCE(r.invoice_number,'INV-'||left(r.id::text,8)),
+        (r.tenant_id, r.parent_new_id, COALESCE(NULLIF(r.invoice_number,''),'INV-'||left(r.id::text,8)),
          COALESCE(r.period_end, r.invoice_date, CURRENT_DATE),
          CASE WHEN r.status IN ('approved','paid','submitted','rejected') THEN r.status ELSE 'draft' END,
          r.amount, CASE WHEN r.status IN ('approved','paid') THEN r.amount END,
