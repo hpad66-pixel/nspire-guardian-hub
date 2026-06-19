@@ -41,7 +41,7 @@ export function parseDate(text: string): string | undefined {
 
 export function parseAmount(text: string): number | undefined {
   // Prefer an amount following a TOTAL/AMOUNT DUE label, else the largest $ figure.
-  const labeled = text.match(/(?:total|amount\s*due|balance\s*due)[^\d$]{0,12}\$?\s*([\d,]+\.\d{2})/i);
+  const labeled = text.match(/\b(?:total|amount\s*due|balance\s*due)\b[^\d$]{0,12}\$?\s*([\d,]+\.\d{2})/i);
   if (labeled) return Number(labeled[1].replace(/,/g, ""));
   const all = [...text.matchAll(/\$\s*([\d,]+\.\d{2})/g)].map((x) => Number(x[1].replace(/,/g, "")));
   return all.length ? Math.max(...all) : undefined;

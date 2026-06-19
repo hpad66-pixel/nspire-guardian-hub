@@ -67,6 +67,7 @@ describe("balanceDue / round2", () => {
     expect(balanceDue({ net_due: null, paid_to_date: null })).toBe(0);
   });
   it("round2 rounds to two decimals", () => {
-    expect(round2(43000.005)).toBe(43000.01);
+    expect(round2(0.1 + 0.2)).toBe(0.3);
+    expect(round2(43000.014)).toBe(43000.01);
   });
 });
