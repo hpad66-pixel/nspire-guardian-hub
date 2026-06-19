@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 export interface ThreadReadStatus {
   id: string;
@@ -119,10 +119,15 @@ export function useUnreadThreadCount() {
 
 export function useUnreadThreadCountRealtime() {
   const queryClient = useQueryClient();
+  // Unique per hook instance — both AppSidebar and MobileNav mount this hook,
+  // and a shared channel name ("thread-updates") makes the second .on()/.subscribe()
+  // collide with the first, throwing "cannot add postgres_changes callbacks …
+  // after subscribe()" and crashing the whole layout.
+  const instanceId = useId();
 
   useEffect(() => {
     const channel = supabase
-      .channel("thread-updates")
+      .channel(`thread-updates-${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -139,5 +144,5 @@ export function useUnreadThreadCountRealtime() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, instanceId]);
 }
