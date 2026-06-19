@@ -4,6 +4,28 @@ import type { Database } from '@/integrations/supabase/types';
 
 type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
 
+/** Never throw on a null/invalid date — imported rows often have missing dates. */
+function safeFormat(value: string | null | undefined, fmt: string, fallback = '—'): string {
+  if (!value) return fallback;
+  const d = new Date(value.length === 10 ? value + 'T12:00:00' : value);
+  if (isNaN(d.getTime())) return fallback;
+  try { return format(d, fmt); } catch { return fallback; }
+}
+
+/** Coerce arrays / JSON strings / scalars into a clean array (imported JSONB
+ *  sometimes arrives as a stringified array). */
+function asArray<T = any>(v: unknown): T[] {
+  if (Array.isArray(v)) return v as T[];
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (!s) return [];
+    try { const p = JSON.parse(s); return Array.isArray(p) ? p : [p]; }
+    catch { return s.split(',').map(x => x.trim()).filter(Boolean) as unknown as T[]; }
+  }
+  if (v == null) return [];
+  return [v as T];
+}
+
 export interface PrintableProjectDailyReportProps {
   report: DailyReportRow;
   projectName: string;
@@ -17,9 +39,11 @@ export interface PrintableProjectDailyReportProps {
 export function PrintableProjectDailyReport({
   report, projectName, propertyName, propertyAddress, projectType, inspectorName, companyName = 'Daily Field Report',
 }: PrintableProjectDailyReportProps) {
-  const subcontractors = (report.subcontractors as any[]) ?? [];
-  const visitorLog = (report.visitor_log as any[]) ?? [];
-  const equipment = report.equipment_used ?? [];
+  const subcontractors = asArray(report.subcontractors);
+  const visitorLog = asArray(report.visitor_log);
+  const equipment = asArray<string>(report.equipment_used);
+  const pdfPath = (report as any).pdf_path as string | null | undefined;
+  const signature = (report as any).signature as string | null | undefined;
 
   const sectionHeader = (title: string) => (
     <div style={{ background: '#1F2937', color: 'white', padding: '6px 12px', marginBottom: 8, marginTop: 16, fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -39,7 +63,7 @@ export function PrintableProjectDailyReport({
           <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginTop: 2 }}>DAILY FIELD REPORT</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{format(new Date(report.report_date), 'MMMM d, yyyy')}</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{safeFormat(report.report_date, 'MMMM d, yyyy')}</div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>Report #{report.id.slice(0, 8).toUpperCase()}</div>
         </div>
       </div>
@@ -58,7 +82,7 @@ export function PrintableProjectDailyReport({
             { label: 'Inspector', value: inspectorName || 'N/A' },
             { label: 'Weather', value: report.weather || 'Not recorded' },
             { label: 'Workers on Site', value: String(report.workers_count || 0) },
-            { label: 'Date', value: format(new Date(report.report_date), 'MMM d, yyyy') },
+            { label: 'Date', value: safeFormat(report.report_date, 'MMM d, yyyy') },
           ].map(item => (
             <div key={item.label} style={{ padding: 8, background: 'white', borderRadius: 6, border: '1px solid #E5E7EB' }}>
               <div style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>{item.label}</div>
@@ -85,13 +109,31 @@ export function PrintableProjectDailyReport({
         </div>
       )}
 
+      {/* Original uploaded document (e.g. imported Procore PDF) */}
+      {pdfPath && (
+        <>
+          {sectionHeader('Original Inspection Document')}
+          <div style={{ border: '1px solid #E5E7EB', borderRadius: 6, overflow: 'hidden', marginBottom: 8 }}>
+            <object data={pdfPath} type="application/pdf" style={{ width: '100%', height: 520, display: 'block' }}>
+              <div style={{ padding: 16, fontSize: 13 }}>
+                <a href={pdfPath} target="_blank" rel="noopener noreferrer" style={{ color: '#1D4ED8', fontWeight: 600 }}>
+                  Open original document ↗
+                </a>
+              </div>
+            </object>
+          </div>
+        </>
+      )}
+
       {/* Work Performed */}
       {sectionHeader('Work Performed Today')}
       <div style={{ padding: '8px 12px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 6 }}>
         {report.work_performed_html ? (
           <RichTextViewer content={report.work_performed_html} />
-        ) : (
+        ) : report.work_performed ? (
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{report.work_performed}</p>
+        ) : (
+          <p style={{ margin: 0, color: '#9CA3AF', fontStyle: 'italic' }}>No work description recorded.</p>
         )}
       </div>
 
@@ -203,11 +245,18 @@ export function PrintableProjectDailyReport({
         <div>
           <div style={{ fontSize: 12, color: '#6B7280' }}>Submitted by</div>
           <div style={{ fontWeight: 600 }}>{inspectorName || 'Site Supervisor'}</div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>{format(new Date(report.created_at), 'MMMM d, yyyy h:mm a')}</div>
+          <div style={{ fontSize: 12, color: '#6B7280' }}>{safeFormat((report as any).submitted_at ?? report.created_at, 'MMMM d, yyyy h:mm a')}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ borderTop: '1px solid #9CA3AF', width: 200, paddingTop: 4 }}>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>Authorized Signature</div>
+          {signature && signature.startsWith('data:image') ? (
+            <img src={signature} alt="Signature" style={{ height: 56, marginLeft: 'auto', display: 'block' }} />
+          ) : signature ? (
+            <div style={{ fontFamily: 'cursive', fontSize: 22 }}>{signature}</div>
+          ) : null}
+          <div style={{ borderTop: '1px solid #9CA3AF', width: 200, paddingTop: 4, marginLeft: 'auto' }}>
+            <div style={{ fontSize: 12, color: '#6B7280' }}>
+              Authorized Signature{(report as any).signature_date ? ` · ${safeFormat((report as any).signature_date, 'MMM d, yyyy')}` : ''}
+            </div>
           </div>
         </div>
       </div>
