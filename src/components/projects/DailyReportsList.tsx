@@ -211,7 +211,7 @@ export function DailyReportsList({
         <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
           <SheetHeader className="px-5 py-3 border-b border-border flex-row items-center justify-between space-y-0 shrink-0">
             <SheetTitle className="text-base">
-              {viewReport ? format(new Date(viewReport.report_date), 'EEEE, MMMM d, yyyy') : 'Report'}
+              {viewReport ? format(new Date(String(viewReport.report_date).slice(0, 10) + 'T12:00:00'), 'EEEE, MMMM d, yyyy') : 'Report'}
             </SheetTitle>
             <div className="flex gap-2 pr-6">
               <Button size="sm" variant="outline" onClick={() => viewReport && handlePrint(viewReport)} disabled={!viewReport || printingId === viewReport?.id} className="gap-1.5">
