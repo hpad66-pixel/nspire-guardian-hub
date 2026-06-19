@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,8 +34,12 @@ import { format, parseISO, subDays, isWithinInterval, startOfDay, endOfDay } fro
 type DateFilter = 'all' | '7days' | '30days' | '90days';
 type StatusFilter = 'all' | 'completed' | 'in_progress';
 
+const ALL_PROPERTIES = '__all__';
+
 export default function InspectionHistoryPage() {
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  // Default to "All Properties" so owners/admins see every property's
+  // inspections in one place — not just the first property in the list.
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(ALL_PROPERTIES);
   const [dateFilter, setDateFilter] = useState<DateFilter>('30days');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,16 +47,12 @@ export default function InspectionHistoryPage() {
   const [showReportDialog, setShowReportDialog] = useState(false);
 
   const { data: properties = [], isLoading: propertiesLoading } = useManagedProperties();
+  // Passing undefined fetches inspections across every property the user's
+  // RLS allows (workspace-scoped), which is exactly the owner/admin view.
   const { data: allInspections = [], isLoading: inspectionsLoading } = useDailyInspections(
-    selectedPropertyId || undefined
+    selectedPropertyId === ALL_PROPERTIES ? undefined : selectedPropertyId
   );
   const { data: profiles = [] } = useProfiles();
-
-  useEffect(() => {
-    if (!selectedPropertyId && properties.length > 0) {
-      setSelectedPropertyId(properties[0].id);
-    }
-  }, [properties, selectedPropertyId]);
 
   // Filter inspections
   const filteredInspections = allInspections.filter((inspection) => {
@@ -135,6 +135,7 @@ export default function InspectionHistoryPage() {
                   <SelectValue placeholder="Select property" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={ALL_PROPERTIES}>All Properties</SelectItem>
                   {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}
