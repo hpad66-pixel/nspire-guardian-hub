@@ -51,6 +51,15 @@ export function PrintableProjectDailyReport({
   const signature = (report as any).signature as string | null | undefined;
   const photos = asArray<string>(report.photos);
 
+  // Full Procore payload (weather observations, manpower breakdown, inspector…)
+  const pc: any = (report as any).procore_data || {};
+  const inspector = inspectorName || pc.inspector || undefined;
+  const weatherObs: any[] = Array.isArray(pc.weather_observations) ? pc.weather_observations : [];
+  const manpower = pc.manpower || {};
+  const crews: any[] = Array.isArray(manpower.crews) ? manpower.crews : [];
+  const photoNames: string[] = Array.isArray(pc.photo_filenames) ? pc.photo_filenames : [];
+  const totalHours = pc.total_hours ?? manpower.total_hours;
+
   // work_performed from the importer is "Title — comment" blocks separated by blank lines
   const noteBlocks = (report.work_performed || '')
     .split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
@@ -100,11 +109,11 @@ export function PrintableProjectDailyReport({
         {[
           { label: 'Project', value: projectName },
           { label: 'Property', value: propertyName || '—' },
-          { label: 'Inspector', value: inspectorName || '—' },
-          { label: 'Weather', value: report.weather || 'Not recorded' },
+          { label: 'Inspector', value: inspector || '—' },
           { label: 'Workers on Site', value: String(report.workers_count ?? 0) },
-          { label: 'Subcontractors', value: String(subcontractors.length) },
-          { label: 'Photos', value: String(photos.length) },
+          { label: 'Total Hours', value: totalHours != null ? String(totalHours) : '—' },
+          { label: 'Weather', value: report.weather || (weatherObs.length ? `${weatherObs.length} obs.` : 'Not recorded') },
+          { label: 'Photos', value: String(photos.length || photoNames.length) },
           { label: 'Type', value: projectType || '—' },
         ].map((it) => (
           <div key={it.label} style={{ background: 'white', padding: '9px 11px' }}>

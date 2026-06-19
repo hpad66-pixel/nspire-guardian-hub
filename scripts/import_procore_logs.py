@@ -128,6 +128,44 @@ def extract_thumbs(pdf, date_str):
     return saved
 
 
+def parse_weather(body):
+    """Weather observation rows: 'N HH:MM:SS AM/PM ... Yes/No' + Comments."""
+    if not body:
+        return []
+    out = []
+    for m in re.finditer(r"\n?\s*(\d+)\s+(\d{1,2}:\d\d:\d\d\s*[AP]M)\s*(.*?)\s*(Yes|No)?\s*\nComments:\s*(.*?)(?=\n\s*\d+\s+\d{1,2}:\d\d:\d\d|\Z)", body, re.S):
+        mid = (m.group(3) or "").strip()
+        out.append({
+            "time": m.group(2).strip(),
+            "conditions": " ".join(mid.split()) or None,
+            "delay": (m.group(4) or "").strip() or "No",
+            "comment": " ".join((m.group(5) or "").split()) or None,
+        })
+    return out
+
+
+def parse_manpower(body):
+    """MANPOWER: total line + per-crew rows + created-by."""
+    if not body:
+        return {}
+    tot = re.search(r"(\d+)\s+Workers?\s*\|\s*([\d.]+)\s+Total Hours", body)
+    created = re.search(r"Created By:\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)", body)
+    crews = []
+    for m in re.finditer(r"\n\s*(\d+)\s+(?:([A-Za-z][\w &.,'-]+?)\s+)?(\d+)\s+([\d.]+)\s+([\d.]+)\s*$", body, re.M):
+        crews.append({
+            "company": (m.group(2) or "").strip() or None,
+            "workers": int(m.group(3)),
+            "hours_each": float(m.group(4)),
+            "total_hours": float(m.group(5)),
+        })
+    return {
+        "workers": int(tot.group(1)) if tot else None,
+        "total_hours": float(tot.group(2)) if tot else None,
+        "created_by": created.group(1).strip() if created else None,
+        "crews": crews,
+    }
+
+
 def parse_pdf(path):
     fn = os.path.basename(path)
     dm = DATE_RE.search(fn)
@@ -143,20 +181,55 @@ def parse_pdf(path):
     photos = parse_photos(secs.get("PHOTOS", ""))
     visitors = parse_visitors(secs.get("VISITORS", ""))
     delays = secs.get("DELAYS", "").strip() or None
+    weather = parse_weather(secs.get("OBSERVED WEATHER CONDITIONS", ""))
+    manpower = parse_manpower(secs.get("MANPOWER", ""))
+
+    # inspector: prefer "completed by", else manpower "Created By", else first note creator
+    inspector = None
+    if comp:
+        inspector = comp.group(1).strip()
+    elif manpower.get("created_by"):
+        inspector = manpower["created_by"]
+    else:
+        nc = re.search(r"\n\s*\d+\s+([A-Z][a-zA-Z]+\s+[A-Z][a-zA-Z]+)\s+(?:Yes|No)\s+", secs.get("NOTES", ""))
+        if nc:
+            inspector = nc.group(1).strip()
 
     work_performed = "\n\n".join(notes) if notes else None
+    proj_full = proj.group(1).strip() if proj else None
+    # address lines (between project line and phone)
+    addr = None
+    am = re.search(r"Project:.*\n(.*?)\nP:", text, re.S)
+    if am:
+        addr = " · ".join(l.strip() for l in am.group(1).split("\n") if l.strip())
+
+    procore_data = {
+        "source": "procore_daily_log",
+        "company": (text.split("\n", 1)[0].strip() if text else None),
+        "project_full": proj_full,
+        "address": addr,
+        "inspector": inspector,
+        "completed_at": comp.group(2).strip() if comp else None,
+        "total_hours": (wm and float(wm.group(2))) or manpower.get("total_hours"),
+        "weather_observations": weather,
+        "manpower": manpower,
+        "photo_filenames": photos,
+        "note_count": len(notes),
+    }
+
     return {
         "file": fn,
         "report_date": date_str,
-        "project_name": proj.group(1).strip() if proj else None,
-        "inspector_name": comp.group(1).strip() if comp else None,
-        "workers_count": int(wm.group(1)) if wm else None,
-        "total_hours": float(wm.group(2)) if wm else None,
+        "project_name": proj_full,
+        "inspector_name": inspector,
+        "workers_count": int(wm.group(1)) if wm else manpower.get("workers"),
+        "total_hours": procore_data["total_hours"],
         "work_performed": work_performed,
         "issues_encountered": "\n\n".join(issues) if issues else None,
         "visitor_log": visitors,
         "delays": delays,
         "photo_filenames": photos,
+        "procore_data": procore_data,
         "thumbs": thumbs,
     }
 
