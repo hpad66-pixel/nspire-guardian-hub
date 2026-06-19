@@ -208,7 +208,9 @@ def apply_to_supabase(records, base, key, project_id, bucket="daily-report-pdfs"
                     photo_urls.append(f"{base}/storage/v1/object/public/{bucket}/{obj}")
         # update the row (match project + date)
         patch = {
-            "work_performed": rec["work_performed"] or "See attached original report.",
+            # only overwrite text when we actually extracted notes — never clobber
+            # an existing value on a genuinely-empty Procore log
+            "work_performed": rec["work_performed"],
             "issues_encountered": rec["issues_encountered"],
             "workers_count": rec["workers_count"],
             "visitor_log": rec["visitor_log"],
