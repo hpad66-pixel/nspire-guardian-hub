@@ -130,7 +130,12 @@ export function useInvoice(invoiceId: string | null) {
         .eq("commitment_invoice_id", invoiceId!)
         .maybeSingle();
       if (error) throw error;
-      return data as any;
+      if (!data) return data as any;
+      // numeric view fields arrive as strings from PostgREST — coerce
+      const num = (v: any) => { const x = parseFloat(String(v ?? "")); return Number.isFinite(x) ? x : 0; };
+      const d: any = { ...data };
+      for (const k of ["billed_amount", "retainage_held", "paid_to_date", "balance_due", "payment_count"]) if (k in d) d[k] = num(d[k]);
+      return d;
     },
   });
 

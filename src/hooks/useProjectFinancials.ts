@@ -7,6 +7,31 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LedgerEntry } from "@/lib/financial/ledger";
 
+/**
+ * PostgREST serializes Postgres `numeric` as a JSON string ("523061.00").
+ * The financial views are all numeric, so coerce the money/count fields to real
+ * numbers — otherwise `summarizeLedger`/`money()` do string math and crash,
+ * which blanks the whole Financial Overview.
+ */
+const n = (v: unknown): number => {
+  const x = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+  return Number.isFinite(x) ? x : 0;
+};
+function coerce<T>(row: any, keys: string[]): T {
+  if (!row) return row;
+  const out = { ...row };
+  for (const k of keys) if (k in out) out[k] = n(out[k]);
+  return out as T;
+}
+const SUMMARY_NUMS = [
+  "original_contract", "approved_co_value", "revised_contract", "billed_to_date",
+  "received_to_date", "ar_outstanding", "ar_retainage_held", "committed_total",
+  "commitment_invoiced", "paid_to_subs", "ap_outstanding", "ap_retainage_held",
+  "net_cash_position",
+];
+const PAYAPP_NUMS = ["pay_app_no", "billed_amount", "retainage_held", "received_to_date", "balance_due", "payment_count"];
+const INVOICE_NUMS = ["billed_amount", "retainage_held", "paid_to_date", "balance_due", "payment_count"];
+
 export interface ProjectFinancialSummary {
   project_id: string;
   tenant_id: string;
@@ -62,7 +87,7 @@ export function useProjectFinancials(projectId: string | null) {
         .eq("project_id", projectId!)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as unknown as ProjectFinancialSummary | null;
+      return data ? coerce<ProjectFinancialSummary>(data, SUMMARY_NUMS) : null;
     },
   });
 
@@ -76,7 +101,7 @@ export function useProjectFinancials(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("entry_date", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as LedgerEntry[];
+      return (data ?? []).map((r: any) => coerce<LedgerEntry>(r, ["amount"]));
     },
   });
 
@@ -89,7 +114,7 @@ export function useProjectFinancials(projectId: string | null) {
         .select("*")
         .eq("project_id", projectId!);
       if (error) throw error;
-      return (data ?? []) as unknown as PayAppBalance[];
+      return (data ?? []).map((r: any) => coerce<PayAppBalance>(r, PAYAPP_NUMS));
     },
   });
 
@@ -102,7 +127,7 @@ export function useProjectFinancials(projectId: string | null) {
         .select("*")
         .eq("project_id", projectId!);
       if (error) throw error;
-      return (data ?? []) as unknown as CommitmentInvoiceBalance[];
+      return (data ?? []).map((r: any) => coerce<CommitmentInvoiceBalance>(r, INVOICE_NUMS));
     },
   });
 

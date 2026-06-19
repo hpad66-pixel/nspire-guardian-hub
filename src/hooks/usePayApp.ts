@@ -137,7 +137,12 @@ export function usePayApp(payAppId: string | null) {
         .eq("pay_app_id", payAppId!)
         .maybeSingle();
       if (error) throw error;
-      return data as any;
+      if (!data) return data as any;
+      // numeric view fields arrive as strings from PostgREST — coerce
+      const num = (v: any) => { const x = parseFloat(String(v ?? "")); return Number.isFinite(x) ? x : 0; };
+      const d: any = { ...data };
+      for (const k of ["pay_app_no", "billed_amount", "retainage_held", "received_to_date", "balance_due", "payment_count"]) if (k in d) d[k] = num(d[k]);
+      return d;
     },
   });
 
