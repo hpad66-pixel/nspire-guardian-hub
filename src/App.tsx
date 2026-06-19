@@ -155,9 +155,6 @@ const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplate
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
 const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
-const ContractListPage = lazy(() => import('./pages/projects/contracts/ContractListPage'));
-const ContractDashboardPage = lazy(() => import('./pages/projects/contracts/ContractDashboardPage'));
-const ContractFormPage = lazy(() => import('./pages/projects/contracts/ContractFormPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -338,10 +335,6 @@ const App = () => (
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
                               <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
-                              <Route path="/projects/:projectId/contracts" element={<ContractListPage />} />
-                              <Route path="/projects/:projectId/contracts/new" element={<ContractFormPage />} />
-                              <Route path="/projects/:projectId/contracts/:contractId" element={<ContractDashboardPage />} />
-                              <Route path="/projects/:projectId/contracts/:contractId/edit" element={<ContractFormPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
