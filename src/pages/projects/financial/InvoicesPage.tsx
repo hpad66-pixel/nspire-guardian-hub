@@ -35,7 +35,14 @@ const STATUS_COLOR: Record<CommitmentInvoice["status"], string> = {
   rejected:  "bg-red-100 text-red-800",
 };
 
-function InvoiceRows({
+/** Clean vendor name from a commitment title like "Eco Tech — Field Services". */
+function vendorName(c: Commitment) {
+  const t = (c.title ?? "").split("—")[0].trim();
+  return t || c.commitment_no;
+}
+
+/** One vendor block: header + that vendor's pay apps numbered #1..N chronologically. */
+function VendorInvoiceGroup({
   commitment, projectId, onOpen,
 }: {
   commitment: Commitment;
@@ -43,40 +50,51 @@ function InvoiceRows({
   onOpen: (invoiceId: string, commitmentId: string) => void;
 }) {
   const { data: invoices = [], isLoading } = useCommitmentInvoices(commitment.id);
-  if (isLoading || invoices.length === 0) return null;
+  if (isLoading) return null;
+
+  // chronological order drives the per-vendor pay-app number (1,2,3,4…)
+  const ordered = [...invoices].sort((a, b) =>
+    (a.period_end ?? a.created_at ?? "").localeCompare(b.period_end ?? b.created_at ?? ""));
+  const total = ordered.reduce((s, i) => s + (Number(i.approved_amount ?? i.submitted_amount) || 0), 0);
+
   return (
-    <>
-      {invoices.map((inv) => (
-        <tr
-          key={inv.id}
-          className="border-t hover:bg-muted/30 cursor-pointer"
-          onClick={() => onOpen(inv.id, commitment.id)}
+    <div className="border-b last:border-0">
+      {/* Vendor header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/50">
+        <Link
+          to={`/projects/${projectId}/financials/commitments/${commitment.id}`}
+          className="text-sm font-semibold hover:underline text-primary flex items-center gap-2"
         >
-          <td className="p-3 font-mono text-sm">{inv.invoice_no}</td>
-          <td className="p-3 text-sm">
-            <Link
-              to={`/projects/${projectId}/financials/commitments/${commitment.id}`}
-              className="hover:underline text-primary"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {commitment.commitment_no} · {commitment.title}
-            </Link>
-          </td>
-          <td className="p-3 text-sm text-muted-foreground">{inv.period_end}</td>
-          <td className="p-3 text-right font-mono text-sm">
-            {inv.submitted_amount != null ? money(inv.submitted_amount) : "—"}
-          </td>
-          <td className="p-3 text-right font-mono text-sm">
-            {inv.approved_amount != null ? money(inv.approved_amount) : "—"}
-          </td>
-          <td className="p-3">
-            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[inv.status]}`}>
-              {inv.status}
-            </span>
-          </td>
-        </tr>
-      ))}
-    </>
+          {vendorName(commitment)}
+          <span className="text-xs font-normal text-muted-foreground">{commitment.commitment_no}</span>
+        </Link>
+        <span className="text-xs text-muted-foreground">
+          {ordered.length} pay app{ordered.length !== 1 ? "s" : ""} · {fmt(total)}
+        </span>
+      </div>
+      {ordered.length === 0 ? (
+        <div className="px-3 py-2 text-xs text-muted-foreground italic">No pay applications yet.</div>
+      ) : (
+        <table className="w-full text-sm">
+          <tbody>
+            {ordered.map((inv, i) => (
+              <tr key={inv.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onOpen(inv.id, commitment.id)}>
+                <td className="p-3 w-24">
+                  <span className="font-bold text-[var(--apas-sapphire)]">Pay App #{i + 1}</span>
+                </td>
+                <td className="p-3 text-xs text-muted-foreground font-mono">Ref {inv.invoice_no}</td>
+                <td className="p-3 text-sm text-muted-foreground">{fmtDate(inv.period_end)}</td>
+                <td className="p-3 text-right font-mono text-sm">{inv.submitted_amount != null ? money(inv.submitted_amount) : "—"}</td>
+                <td className="p-3 text-right font-mono text-sm">{inv.approved_amount != null ? money(inv.approved_amount) : "—"}</td>
+                <td className="p-3">
+                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[inv.status]}`}>{inv.status}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
@@ -91,6 +109,11 @@ export default function InvoicesPage() {
   const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().split("T")[0]);
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
   const [openCommitmentId, setOpenCommitmentId] = useState<string | null>(null);
+  const [vendorFilter, setVendorFilter] = useState<string>("all");
+
+  const visibleCommitments = vendorFilter === "all"
+    ? commitments
+    : commitments.filter((c) => c.id === vendorFilter);
 
   const selectedCommitment = commitments.find((c) => c.id === selectedCommitmentId) ?? null;
   const { create: createInvoice } = useCommitmentInvoices(selectedCommitmentId || null);
@@ -126,15 +149,37 @@ export default function InvoicesPage() {
         </Button>
       </div>
 
-      {/* Commitment Sub-Invoices */}
+      {/* Vendor Invoices — grouped by vendor, numbered per vendor, filterable */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Commitment Invoices
+            Vendor Invoices
           </CardTitle>
+          {commitments.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Filter:</span>
+              <Select value={vendorFilter} onValueChange={setVendorFilter}>
+                <SelectTrigger className="h-8 w-[200px] text-sm">
+                  <SelectValue placeholder="All vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All vendors</SelectItem>
+                  {commitments.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{vendorName(c)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
+          {/* Column legend */}
+          <div className="hidden sm:flex items-center gap-3 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground border-b bg-background">
+            <span className="w-24">Pay App</span>
+            <span className="flex-1">Reference · Period</span>
+            <span>Submitted / Approved · Status</span>
+          </div>
           {isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading…</p>
           ) : commitments.length === 0 ? (
@@ -142,38 +187,20 @@ export default function InvoicesPage() {
               No commitments yet. Create a commitment first, then add invoices against it.
             </p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="p-3 text-left font-medium">Invoice #</th>
-                  <th className="p-3 text-left font-medium">Commitment</th>
-                  <th className="p-3 text-left font-medium">Period End</th>
-                  <th className="p-3 text-right font-medium">Submitted</th>
-                  <th className="p-3 text-right font-medium">Approved</th>
-                  <th className="p-3 text-left font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {commitments.map((c) => (
-                  <InvoiceRows
-                    key={c.id}
-                    commitment={c}
-                    projectId={projectId!}
-                    onOpen={(invId, comId) => {
-                      setOpenInvoiceId(invId);
-                      setOpenCommitmentId(comId);
-                    }}
-                  />
-                ))}
-                <tr>
-                  <td colSpan={6} className="p-4 text-center text-muted-foreground text-xs border-t">
-                    Click any row to open the invoice builder ·{" "}
-                    <button className="underline" onClick={() => setNewOpen(true)}>New Invoice</button>
-                    {" "}to create one
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <>
+              {visibleCommitments.map((c) => (
+                <VendorInvoiceGroup
+                  key={c.id}
+                  commitment={c}
+                  projectId={projectId!}
+                  onOpen={(invId, comId) => { setOpenInvoiceId(invId); setOpenCommitmentId(comId); }}
+                />
+              ))}
+              <div className="p-3 text-center text-muted-foreground text-xs border-t">
+                Pay apps are numbered per vendor in date order ·{" "}
+                <button className="underline" onClick={() => setNewOpen(true)}>New Invoice</button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

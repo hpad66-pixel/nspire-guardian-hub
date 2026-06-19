@@ -76,17 +76,41 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
         ))}
       </div>
 
-      {/* Waterfall */}
+      {/* Contract Value — composition + billing progress */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Contract Value</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-4 text-sm">
-            <WaterBar label="Base" value={base} max={revised} cls="bg-muted-foreground/40" />
-            <span className="pb-6 text-muted-foreground">+</span>
-            <WaterBar label="Executed COs" value={cos} max={revised} cls="bg-emerald-500/60" />
-            <span className="pb-6 text-muted-foreground">=</span>
-            <WaterBar label="Revised" value={revised} max={revised} cls="bg-[var(--apas-sapphire)]/70" />
+        <CardContent className="space-y-5">
+          {/* Composition: Base + COs = Revised (stacked, proportional to revised) */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Original + Change Orders = Revised Contract</span>
+              <span className="font-semibold text-foreground">{fmt(revised)}</span>
+            </div>
+            <div className="flex h-7 w-full overflow-hidden rounded-md bg-muted">
+              <div
+                className="bg-muted-foreground/50 flex items-center justify-center text-[10px] font-medium text-white"
+                style={{ width: revised > 0 ? `${Math.max(2, (base / revised) * 100)}%` : "0%" }}
+                title={`Original ${fmt(base)}`}
+              >
+                {base / Math.max(revised, 1) > 0.12 ? fmt(base) : ""}
+              </div>
+              <div
+                className="bg-emerald-500/70 flex items-center justify-center text-[10px] font-medium text-white"
+                style={{ width: revised > 0 ? `${(cos / revised) * 100}%` : "0%" }}
+                title={`Change Orders ${fmt(cos)}`}
+              >
+                {cos / Math.max(revised, 1) > 0.08 ? fmt(cos) : ""}
+              </div>
+            </div>
+            <div className="flex gap-4 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-muted-foreground/50" /> Original {fmt(base)}</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/70" /> Change Orders {fmt(cos)}</span>
+            </div>
           </div>
+
+          {/* Billing progress vs revised */}
+          <ProgressRow label="Billed to Date" value={s?.billed_to_date ?? 0} max={revised} barCls="bg-[var(--apas-sapphire)]" />
+          <ProgressRow label="Received" value={s?.received_to_date ?? 0} max={revised} barCls="bg-emerald-500" />
         </CardContent>
       </Card>
 
@@ -156,15 +180,17 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
   );
 }
 
-function WaterBar({ label, value, max, cls }: { label: string; value: number; max: number; cls: string }) {
-  const h = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 4;
+function ProgressRow({ label, value, max, barCls }: { label: string; value: number; max: number; barCls: string }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="text-xs font-medium">{fmt(value)}</div>
-      <div className="w-16 rounded-t" style={{ height: `${h}px` }}>
-        <div className={`w-16 rounded-t ${cls}`} style={{ height: `${h}px` }} />
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-semibold tabular-nums">{fmt(value)} <span className="text-muted-foreground font-normal">· {pct.toFixed(0)}%</span></span>
       </div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
