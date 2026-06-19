@@ -8,7 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toDateOnly } from "@/lib/date";
 import { useDailyReportList, useDailyManpower } from "@/hooks/useDailyLog";
-import { generateInspectionReportPdf, printInspectionReport } from "@/lib/pdf/inspectionReport";
+import { generateInspectionReportPdf } from "@/lib/pdf/inspectionReport";
+import { buildDailyReportInnerHtml, printDailyReport, REPORT_STYLE } from "@/lib/reportHtml";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Plus, FileText, CloudSun, Sun, Cloud, CloudRain, Send, Download,
-  Pencil, Loader2, Trash2, Upload, X, Users, ClipboardList, Printer, Mail,
+  Pencil, Loader2, Trash2, Upload, X, Users, ClipboardList, Printer, Mail, Eye,
 } from "lucide-react";
 import {
   Dialog as EmailDialog,
@@ -669,11 +673,8 @@ function ReadOnlyView({
   }
 
   function handlePrint() {
-    try {
-      printInspectionReport(report, manpowerRows, projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report");
-    } catch (e: any) {
-      toast.error(`Print failed: ${e.message}`);
-    }
+    const ok = printDailyReport(report, manpowerRows, projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report");
+    if (!ok) toast.error("Pop-up blocked — allow pop-ups for this site, or use Download PDF.");
   }
 
   function handleEmailSend() {
@@ -930,6 +931,91 @@ function ReadOnlyView({
   );
 }
 
+// ─── Report View Sheet (side panel preview) ───────────────────────────────────
+
+function ReportViewSheet({
+  reportId, projectId, open, onOpenChange,
+}: {
+  reportId: string | null;
+  projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [report, setReport] = useState<ReportDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { data: manpowerRows = [] } = useDailyManpower(open ? report?.id ?? null : null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!open || !reportId) { setReport(null); return; }
+    setLoading(true);
+    supabase
+      .from("daily_reports" as any)
+      .select("*")
+      .eq("id", reportId)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) toast.error(error.message);
+        else setReport(data as ReportDetail);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [open, reportId]);
+
+  const projectName = projectId ? `Project ${projectId.slice(0, 8)}` : "Project Report";
+
+  function handlePrint() {
+    if (!report) return;
+    const ok = printDailyReport(report, manpowerRows, projectName);
+    if (!ok) toast.error("Pop-up blocked — allow pop-ups for this site, or use Download PDF.");
+  }
+
+  function handlePdf() {
+    if (!report) return;
+    try {
+      generateInspectionReportPdf(report as any, manpowerRows, projectName);
+      toast.success("PDF downloaded");
+    } catch (e: any) {
+      toast.error(`PDF failed: ${e.message}`);
+    }
+  }
+
+  const html = report ? buildDailyReportInnerHtml(report, manpowerRows, projectName) : "";
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+        <SheetHeader className="px-5 py-3 border-b border-border flex-row items-center justify-between space-y-0 shrink-0">
+          <SheetTitle className="text-base">Report Preview</SheetTitle>
+          <div className="flex gap-2 pr-6">
+            <Button size="sm" variant="outline" onClick={handlePdf} disabled={!report} className="min-h-[36px]">
+              <Download className="h-4 w-4 mr-1.5" /> PDF
+            </Button>
+            <Button size="sm" onClick={handlePrint} disabled={!report} className="min-h-[36px] bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+              <Printer className="h-4 w-4 mr-1.5" /> Print
+            </Button>
+          </div>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto bg-white">
+          {loading ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading report…
+            </div>
+          ) : report ? (
+            <>
+              <style>{REPORT_STYLE}</style>
+              <div dangerouslySetInnerHTML={{ __html: html }} />
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">No report selected</div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DailyLogPage() {
@@ -938,6 +1024,13 @@ export default function DailyLogPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<ReportDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+
+  function openView(id: string) {
+    setViewId(id);
+    setViewOpen(true);
+  }
 
   const { data: reportList = [], isLoading: listLoading } = useDailyReportList(projectId ?? null);
 
@@ -1041,29 +1134,42 @@ export default function DailyLogPage() {
                 const isActive = selectedId === r.id;
                 return (
                   <li key={r.id}>
-                    <button
-                      onClick={() => loadReport(r.id)}
-                      className={`w-full text-left px-4 py-3 border-b border-border transition-colors flex items-start gap-3 min-h-[72px] ${
+                    <div
+                      className={`relative border-b border-border transition-colors group ${
                         isActive ? "bg-[var(--apas-sapphire)]/10 border-l-2 border-l-[var(--apas-sapphire)]" : "hover:bg-muted/50"
                       }`}
                     >
-                      <div className="mt-0.5">{weatherIcon(r.weather)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-sm text-foreground">{d.short}</span>
-                          {r.submitted_at
-                            ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">Submitted</span>
-                            : <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">Draft</span>
-                          }
+                      <button
+                        onClick={() => loadReport(r.id)}
+                        className="w-full text-left px-4 py-3 flex items-start gap-3 min-h-[72px] pr-12"
+                      >
+                        <div className="mt-0.5">{weatherIcon(r.weather)}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-sm text-foreground">{d.short}</span>
+                            {r.submitted_at
+                              ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">Submitted</span>
+                              : <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">Draft</span>
+                            }
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{d.dow}</p>
+                          {r.workers_count != null && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                              <Users className="h-3 w-3" /> {r.workers_count} workers
+                            </p>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{d.dow}</p>
-                        {r.workers_count != null && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <Users className="h-3 w-3" /> {r.workers_count} workers
-                          </p>
-                        )}
-                      </div>
-                    </button>
+                      </button>
+                      {/* View (side-panel preview) button */}
+                      <button
+                        onClick={() => openView(r.id)}
+                        title="View report"
+                        aria-label="View report"
+                        className="absolute top-1/2 -translate-y-1/2 right-2 p-2 rounded-md text-muted-foreground hover:text-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
                   </li>
                 );
               })}
@@ -1104,6 +1210,14 @@ export default function DailyLogPage() {
           </div>
         )}
       </div>
+
+      {/* Side-panel report preview */}
+      <ReportViewSheet
+        reportId={viewId}
+        projectId={projectId ?? ""}
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+      />
     </div>
   );
 }

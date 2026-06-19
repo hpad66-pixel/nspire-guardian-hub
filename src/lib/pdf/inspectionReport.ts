@@ -3,8 +3,8 @@
  * Uses shared helpers from src/lib/pdf/index.ts.
  */
 import { jsPDF } from "jspdf";
-import { money } from "./index";
 import type { ManpowerRow } from "@/hooks/useDailyLog";
+import { asArray } from "@/lib/reportHtml";
 
 export interface SubcontractorEntry {
   company: string;
@@ -299,13 +299,15 @@ export function generateInspectionReportPdf(
     // ── Equipment
     y = ensureSpace(y, 50);
     y = sectionTitle(doc, "Equipment on Site", y);
-    const equipText = (report.equipment_used ?? []).filter(Boolean).join(", ");
+    const equipText = asArray<any>(report.equipment_used)
+      .map(e => (typeof e === "string" ? e : (e?.equipment_name ?? e?.name ?? "")))
+      .filter(Boolean).join(", ");
     y = bodyText(doc, equipText || null, y, maxContentY);
 
     // ── Subcontractors
     y = ensureSpace(y, 50);
     y = sectionTitle(doc, "Subcontractors on Site", y);
-    const subs = report.subcontractors ?? [];
+    const subs = asArray<SubcontractorEntry>(report.subcontractors);
     if (subs.length > 0) {
       y = ensureSpace(y, 30 + subs.length * 17);
       y = tableSection(
@@ -337,7 +339,7 @@ export function generateInspectionReportPdf(
     // ── Visitors
     y = ensureSpace(y, 50);
     y = sectionTitle(doc, "Visitors to Site", y);
-    const visitors = report.visitor_log ?? [];
+    const visitors = asArray<VisitorEntry>(report.visitor_log);
     if (visitors.length > 0) {
       y = ensureSpace(y, 30 + visitors.length * 17);
       y = tableSection(
@@ -473,11 +475,11 @@ function generateInspectionReportPdfToDoc(
 
   y = ensureSpace(y, 50);
   y = sectionTitle(doc, "Equipment on Site", y);
-  y = bodyText(doc, (report.equipment_used ?? []).filter(Boolean).join(", ") || null, y, maxContentY);
+  y = bodyText(doc, asArray<any>(report.equipment_used).map(e => typeof e === "string" ? e : (e?.equipment_name ?? e?.name ?? "")).filter(Boolean).join(", ") || null, y, maxContentY);
 
   y = ensureSpace(y, 50);
   y = sectionTitle(doc, "Subcontractors on Site", y);
-  const subs = report.subcontractors ?? [];
+  const subs = asArray<SubcontractorEntry>(report.subcontractors);
   if (subs.length > 0) {
     y = ensureSpace(y, 30 + subs.length * 17);
     y = tableSection(doc,
@@ -497,7 +499,7 @@ function generateInspectionReportPdfToDoc(
 
   y = ensureSpace(y, 50);
   y = sectionTitle(doc, "Visitors to Site", y);
-  const visitors = report.visitor_log ?? [];
+  const visitors = asArray<VisitorEntry>(report.visitor_log);
   if (visitors.length > 0) {
     y = ensureSpace(y, 30 + visitors.length * 17);
     y = tableSection(doc,
