@@ -3,17 +3,18 @@ import { cn } from "@/lib/utils";
 import { useProject } from "@/hooks/useProjects";
 import { ChevronRight, LayoutDashboard } from "lucide-react";
 
+// F0: Overview is the home. Order per the F0 spec; only routes that exist.
 const TABS = [
-  { label: "Prime Contract", path: "prime-contract" },
-  { label: "Commitments",   path: "commitments" },
-  { label: "Invoices",      path: "invoices" },
-  { label: "Payments",      path: "payments" },
-  { label: "Change Events", path: "change-events" },
-  { label: "Change Orders", path: "change-orders" },
-  { label: "Budget",        path: "budget" },
-  { label: "Direct Costs",  path: "direct-costs" },
-  { label: "Issue Log",     path: "issues" },
-  { label: "Proposals",     path: "proposals" },
+  { label: "Overview",        path: "overview" },
+  { label: "Prime Contract",  path: "prime-contract" },
+  { label: "Change Orders",   path: "change-orders" },
+  { label: "Commitments",     path: "commitments" },
+  { label: "Vendor Invoices", path: "invoices" },
+  { label: "Lien Releases",   path: "lien-releases" },
+  { label: "Vendor Inbox",    path: "vendor-inbox" },
+  { label: "Budget",          path: "budget" },
+  { label: "Direct Costs",    path: "direct-costs" },
+  { label: "Ledger",          path: "ledger" },
 ];
 
 export function FinancialSubNav() {
@@ -36,7 +37,7 @@ export function FinancialSubNav() {
           {project?.name ?? "Project"}
         </Link>
         <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
-        <Link to={`/projects/${projectId}/financials/prime-contract`} className="hover:text-foreground">
+        <Link to={`/projects/${projectId}/financials/overview`} className="hover:text-foreground">
           Financials
         </Link>
         {activeTab && (

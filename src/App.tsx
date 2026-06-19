@@ -127,6 +127,10 @@ const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCost
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
+const LedgerPage = lazy(() => import('./pages/projects/financial/LedgerPage'));
+const FinancialOverviewPage = lazy(() => import('./pages/projects/financial/FinancialOverviewPage'));
+const LienReleasesPage = lazy(() => import('./pages/projects/financial/LienReleasesPage'));
+const VendorInboxPage = lazy(() => import('./pages/projects/financial/VendorInboxPage'));
 const IssuesLogPage = lazy(() => import('./pages/projects/financial/IssuesLogPage'));
 const FinancialProposalsPage = lazy(() => import('./pages/projects/financial/ProposalsPage'));
 const ProposalBuilderPage = lazy(() => import('./pages/projects/financial/ProposalBuilderPage'));
@@ -151,9 +155,6 @@ const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplate
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
 const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
-const ContractListPage = lazy(() => import('./pages/projects/contracts/ContractListPage'));
-const ContractDashboardPage = lazy(() => import('./pages/projects/contracts/ContractDashboardPage'));
-const ContractFormPage = lazy(() => import('./pages/projects/contracts/ContractFormPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -334,16 +335,17 @@ const App = () => (
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
                               <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
-                              <Route path="/projects/:projectId/contracts" element={<ContractListPage />} />
-                              <Route path="/projects/:projectId/contracts/new" element={<ContractFormPage />} />
-                              <Route path="/projects/:projectId/contracts/:contractId" element={<ContractDashboardPage />} />
-                              <Route path="/projects/:projectId/contracts/:contractId/edit" element={<ContractFormPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
                               <Route path="/projects/:projectId/incidents" element={<IncidentsPage />} />
 
                               {/* ───── Procore Lite · Phase 3 (Financial Cascade) ───── */}
+                              {/* F0 · unified financials — Overview is the single home */}
+                              <Route path="/projects/:projectId/financials" element={<Navigate to="overview" replace />} />
+                              <Route path="/projects/:projectId/financials/overview" element={<FinancialOverviewPage />} />
+                              <Route path="/projects/:projectId/financials/lien-releases" element={<LienReleasesPage />} />
+                              <Route path="/projects/:projectId/financials/vendor-inbox" element={<VendorInboxPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
                               <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
                               <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
@@ -352,6 +354,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                               <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
+                              <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
                               <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
                               <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
                               <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />

@@ -14,6 +14,22 @@ export interface PrimeContract {
   status: "draft"|"out_for_signature"|"executed"|"closed"|"terminated";
   retainage_pct: number;
   workflow_instance_id: string | null;
+  // Contract metadata (added 20260618150000)
+  contractor_name: string | null; contractor_address: string | null;
+  contractor_contact: string | null; contractor_email: string | null;
+  owner_name: string | null; owner_address: string | null;
+  owner_contact: string | null; owner_email: string | null;
+  architect_name: string | null; project_address: string | null;
+  docusign_envelope_id: string | null; artifact_id: string | null;
+  contract_date: string | null; start_date: string | null;
+  substantial_completion_date: string | null; final_completion_date: string | null;
+  actual_completion_date: string | null; signed_contract_received_date: string | null;
+  scope_description: string | null; inclusions: string | null;
+  exclusions: string | null; special_conditions: string | null;
+  mobilization_advance: number | null; liquidated_damages_per_day: number | null;
+  retainage_release_substantial: number | null; retainage_release_final: number | null;
+  retainage_warranty_months: number | null; payment_cycle_days: number | null;
+  payment_due_within_days: number | null;
   created_at: string; updated_at: string;
 }
 
@@ -57,7 +73,17 @@ export function usePrimeContract(projectId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
   });
 
-  return { ...one, create };
+  const update = useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<PrimeContract> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("prime_contracts" as any).update(patch as any).eq("id", id).select().single();
+      if (error) throw error;
+      return data as PrimeContract;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
+  });
+
+  return { ...one, create, update };
 }
 
 export function usePrimeContractSov(primeContractId: string | null) {

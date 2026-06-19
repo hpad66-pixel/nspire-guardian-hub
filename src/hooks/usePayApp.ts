@@ -3,6 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveCurrentWorkspaceId } from "@/lib/tenant";
 
 export interface PayApp {
   id: string; tenant_id: string; prime_contract_id: string;
@@ -114,6 +115,7 @@ export function usePayApp(payAppId: string | null) {
           status: "approved",
           approved_amount: approved,
           retainage_held: retainage,
+          approved_date: new Date().toISOString().slice(0, 10),
         } as any)
         .eq("id", payAppId)
         .select()
@@ -122,6 +124,57 @@ export function usePayApp(payAppId: string | null) {
       return data as PayApp;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app", payAppId] }),
+  });
+
+  // Per-pay-app balance (billed vs received) from v_pay_app_balances.
+  const payAppBalance = useQuery({
+    queryKey: ["pay-app-balance", payAppId],
+    enabled: Boolean(payAppId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_pay_app_balances" as any)
+        .select("*")
+        .eq("pay_app_id", payAppId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  // Record an AR receipt against this pay app (partial allowed; DB guards overpay).
+  const recordPayment = useMutation({
+    mutationFn: async (input: {
+      amount: number; received_date: string;
+      method?: string | null; reference?: string | null;
+      notes?: string | null; artifact_id?: string | null;
+    }) => {
+      if (!payAppId || !detail.data) throw new Error("No pay app");
+      const tenant_id = await resolveCurrentWorkspaceId();
+      if (!tenant_id) throw new Error("No workspace for current user");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from("prime_contract_payments" as any)
+        .insert({
+          tenant_id,
+          prime_contract_id: detail.data.prime_contract_id,
+          pay_app_id: payAppId,
+          created_by: user?.id,
+          ...input,
+        } as any)
+        .select()
+        .single();
+      if (error) {
+        if (/OVERPAYMENT/i.test(error.message)) throw new Error("Exceeds the pay app's remaining balance.");
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-app", payAppId] });
+      qc.invalidateQueries({ queryKey: ["pay-app-balance", payAppId] });
+      qc.invalidateQueries({ queryKey: ["prime-contract-payments", payAppId] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
   });
 
   const reject = useMutation({
@@ -139,5 +192,5 @@ export function usePayApp(payAppId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app", payAppId] }),
   });
 
-  return { detail, lines, upsertLine, submit, approve, reject };
+  return { detail, lines, upsertLine, submit, approve, reject, payAppBalance, recordPayment };
 }

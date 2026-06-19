@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-06-18T21:22:41",
+  "source_dir": "/Users/apas/Documents/GitHub/nspire-guardian-hub/scripts/invoices/source",
+  "count": 3,
+  "invoices": [
+    {
+      "source_file": "ECOTech-594.pdf",
+      "doc_kind": "ap_invoice",
+      "invoice_number": "594",
+      "issue_date": "2026-05-30",
+      "due_date": null,
+      "currency": "USD",
+      "from_party": {
+        "name": "Eco Tech Consulting, LLC",
+        "role": "vendor",
+        "address": "556 NW 53rd Street, Boca Raton, FL 33487",
+        "phone": "(305) 924-2260"
+      },
+      "to_party": {
+        "name": "APAS Consulting LLC",
+        "role": "prime_contractor",
+        "contact": "Hardeep Anand",
+        "address": "3256 NW 83 Way, Pembroke Pines, FL 33024"
+      },
+      "line_items": [
+        {
+          "description": "Pickup Turbidity Meter from Pine Environmental, deliver to Hardeep on 12/05/2025; pickup meter from Eros and deliver to Pine Environmental on 02/17/2026;",
+          "qty": 1,
+          "unit_price": 2075.0,
+          "total": 2075.0
+        }
+      ],
+      "total": 2075.0,
+      "project_hint": "Glorieta Gardens",
+      "project_address": "13210 Alexandria Drive, Opa-locka, FL 33054",
+      "raw_text": "INVOICE\n556 NW 53rd Street\nBoca Raton, Florida 33487\nPhone (305) 924-2260\nINVOICE # 594\nDATE:MAY 30, 2026\nTO: FOR:\nHardeep Anand Glorieta Gardens\nAPAS Consulting LLC 13210 Alexandria Drive\n3256 NW 83 Way Opa-locka, Florida 33054\nPembroke Pines, Florida 33024\nDESCRIPTION AMOUNT\nPickup Turbidity Meter from Pine Environmental, deliver to Hardeep on\n12/05/2025; pickup meter from Eros and deliver to Pine Environmental on\n02/17/2026;\n$ 2075.00\nTOTAL $ 2,075.00\nMake all checks payable to: Eco Tech Consulting, LLC\nThank you for your business!"
+    },
+    {
+      "source_file": "INV-26-33.pdf",
+      "doc_kind": "ar_invoice",
+      "pay_app_no": null,
+      "invoice_number": "INV-26-33",
+      "issue_date": "2026-06-15",
+      "due_date": "2026-07-15",
+      "currency": "USD",
+      "from_party": {
+        "name": "APAS Consulting LLC",
+        "role": "prime_contractor",
+        "email": "admin@apas.ai",
+        "address": "3256 NW 83 Way, Pembroke Pines, FL 33024"
+      },
+      "to_party": {
+        "name": "R4 Capital C/o R4 GGOL GP LLC",
+        "role": "owner",
+        "email": "csullivan@r4cap.com",
+        "address": "780 Third Avenue, New York, NY 11017"
+      },
+      "line_items": [
+        {
+          "description": "Turbidity Meter Rental",
+          "qty": 1,
+          "unit_price": 2075.0,
+          "total": 2075.0
+        }
+      ],
+      "total": 2075.0,
+      "project_hint": "Glorieta Gardens",
+      "raw_text": "June 15, 2026\nAPAS Consulting LLC\nInvoice INV-26-33\n$2,075.00\nHi R4 Capital C/o R4 GGOL GP LLC,\nHere is your invoice! We appreciate your prompt payment\nusing your preferred method.\nDue July 15, 2026\nThanks for your business!\nLine Items\nItem Qty Price Total\nTurbidity Meter Rental 1 $2,075.00 $2,075.00\nTotal $2,075.00\nFrom To\nAPAS Consulting LLC R4 Capital C/o R4 GGOL GP LLC\nadmin@apas.ai csullivan@r4cap.com\n3256 NW 83 Way 780 Third Avenue\nPembroke Pines, FL 33024 New York,, NY 11017\nPowered by INV-26-33 Page 1 of 1"
+    },
+    {
+      "source_file": "INV-26-34.pdf",
+      "doc_kind": "ar_pay_app",
+      "pay_app_no": 5,
+      "invoice_number": "INV-26-34",
+      "issue_date": "2026-06-15",
+      "due_date": "2026-06-30",
+      "currency": "USD",
+      "from_party": {
+        "name": "APAS Consulting LLC",
+        "role": "prime_contractor",
+        "email": "admin@apas.ai",
+        "address": "3256 NW 83 Way, Pembroke Pines, FL 33024"
+      },
+      "to_party": {
+        "name": "R4 Capital C/o R4 GGOL GP LLC",
+        "role": "owner",
+        "email": "csullivan@r4cap.com",
+        "address": "780 Third Avenue, New York, NY 11017"
+      },
+      "line_items": [
+        {
+          "description": "Interim Invoice for Pay App # 5",
+          "qty": 1,
+          "unit_price": 91857.43,
+          "total": 91857.43
+        }
+      ],
+      "total": 91857.43,
+      "project_hint": "Glorieta Gardens",
+      "raw_text": "June 15, 2026\nAPAS Consulting LLC\nInvoice INV-26-34\n$91,857.43\nHi R4 Capital C/o R4 GGOL GP LLC,\nHere is your invoice! We appreciate your prompt payment\nusing your preferred method.\nDue June 30, 2026\nThanks for your business!\nLine Items\nItem Qty Price Total\nInterim Invoice for Pay App # 5 1 $91,857.43 $91,857.43\nTotal $91,857.43\nFrom To\nAPAS Consulting LLC R4 Capital C/o R4 GGOL GP LLC\nadmin@apas.ai csullivan@r4cap.com\n3256 NW 83 Way 780 Third Avenue\nPembroke Pines, FL 33024 New York,, NY 11017\nPowered by INV-26-34 Page 1 of 1"
+    }
+  ]
+}
