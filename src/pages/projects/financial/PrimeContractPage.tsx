@@ -10,8 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { FileSignature, Plus, ExternalLink } from "lucide-react";
+import { FileSignature, Plus, ExternalLink, Pencil } from "lucide-react";
 
 function fmt(n: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n ?? 0);
@@ -31,7 +37,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function PrimeContractPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: contract, isLoading } = usePrimeContract(projectId ?? null);
+  const { data: contract, isLoading, update } = usePrimeContract(projectId ?? null);
   const { data: totals } = usePrimeContractTotals(contract?.id ?? null);
   const { data: sov = [] } = usePrimeContractSov(contract?.id ?? null);
   const { data: payApps = [], create: createPayApp } = usePayApps(contract?.id ?? null);
@@ -39,6 +45,8 @@ export default function PrimeContractPage() {
   const { summary, ledger } = useProjectFinancials(projectId ?? null);
 
   const [creating, setCreating] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
@@ -70,6 +78,36 @@ export default function PrimeContractPage() {
       await createPayApp.mutateAsync({ pay_app_no: nextNo, period_end: new Date().toISOString().slice(0, 10) });
       toast.success(`Pay App #${nextNo} created`);
     } catch (e: any) { toast.error(e.message); } finally { setCreating(false); }
+  }
+
+  const DETAIL_FIELDS: { key: string; label: string; type?: string; full?: boolean }[] = [
+    { key: "contractor_name", label: "Contractor" }, { key: "contractor_email", label: "Contractor email" },
+    { key: "owner_name", label: "Owner" }, { key: "owner_email", label: "Owner email" },
+    { key: "project_address", label: "Project address", full: true },
+    { key: "contract_date", label: "Contract date", type: "date" },
+    { key: "start_date", label: "Start date", type: "date" },
+    { key: "substantial_completion_date", label: "Substantial completion", type: "date" },
+    { key: "final_completion_date", label: "Final completion", type: "date" },
+    { key: "scope_description", label: "Scope", full: true },
+    { key: "special_conditions", label: "Special conditions", full: true },
+  ];
+
+  function openDetails() {
+    if (!contract) return;
+    const seed: Record<string, string> = {};
+    DETAIL_FIELDS.forEach((f) => { seed[f.key] = (contract as any)[f.key] ?? ""; });
+    setForm(seed);
+    setDetailsOpen(true);
+  }
+  async function saveDetails() {
+    if (!contract) return;
+    const patch: Record<string, any> = {};
+    DETAIL_FIELDS.forEach((f) => { patch[f.key] = form[f.key]?.trim() ? form[f.key].trim() : null; });
+    try {
+      await update.mutateAsync({ id: contract.id, ...patch });
+      toast.success("Contract details saved");
+      setDetailsOpen(false);
+    } catch (e: any) { toast.error(e.message); }
   }
 
   const kpis = [
@@ -106,13 +144,36 @@ export default function PrimeContractPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="sov">
+      <Tabs defaultValue="details">
         <TabsList>
+          <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="sov">SOV · {sov.length}</TabsTrigger>
           <TabsTrigger value="payapps">Pay Apps · {(payApps as any[]).length}</TabsTrigger>
           <TabsTrigger value="cos">Change Orders · {coList.length}</TabsTrigger>
           <TabsTrigger value="payments">Payments · {payments.length}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="details">
+          <Card>
+            <CardHeader className="flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base">Contract Details</CardTitle>
+              <Button size="sm" variant="outline" onClick={openDetails}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                {DETAIL_FIELDS.map((f) => {
+                  const v = (contract as any)[f.key];
+                  return (
+                    <div key={f.key} className={f.full ? "md:col-span-2" : ""}>
+                      <dt className="text-xs text-muted-foreground uppercase tracking-wide">{f.label}</dt>
+                      <dd className="font-medium">{v || <span className="text-muted-foreground">—</span>}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="sov">
           <Card><CardContent className="p-0">
@@ -211,6 +272,28 @@ export default function PrimeContractPage() {
           </CardContent></Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Edit Contract Details</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[65vh] overflow-y-auto">
+            {DETAIL_FIELDS.map((f) => (
+              <div key={f.key} className={`space-y-1.5 ${f.full ? "md:col-span-2" : ""}`}>
+                <Label className="text-xs">{f.label}</Label>
+                {f.full ? (
+                  <Textarea rows={2} value={form[f.key] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))} />
+                ) : (
+                  <Input type={f.type ?? "text"} value={form[f.key] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))} />
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>Cancel</Button>
+            <Button onClick={saveDetails} disabled={update.isPending}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
