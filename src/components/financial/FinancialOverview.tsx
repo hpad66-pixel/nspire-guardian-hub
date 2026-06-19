@@ -119,10 +119,12 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
         <AgingCard title="A/R — Pay Apps" rows={(payAppBalances.data ?? []).map((p) => ({
           ref: `Pay App #${p.pay_app_no}`, billed: p.billed_amount, settled: p.received_to_date,
           balance: p.balance_due, status: p.status,
+          to: `/projects/${projectId}/financials/prime-contract/pay-apps/${(p as any).pay_app_id}`,
         }))} />
         <AgingCard title="A/P — Vendor Invoices" rows={(invoiceBalances.data ?? []).map((i) => ({
           ref: i.invoice_no ?? "Invoice", billed: i.billed_amount, settled: i.paid_to_date,
           balance: i.balance_due, status: i.status, lien: i.lien_satisfied,
+          to: `/projects/${projectId}/financials/commitments/${(i as any).commitment_id}`,
         }))} />
       </div>
 
@@ -197,8 +199,9 @@ function ProgressRow({ label, value, max, barCls }: { label: string; value: numb
 
 function AgingCard({ title, rows }: {
   title: string;
-  rows: Array<{ ref: string; billed: number; settled: number; balance: number; status: string; lien?: boolean }>;
+  rows: Array<{ ref: string; billed: number; settled: number; balance: number; status: string; lien?: boolean; to?: string }>;
 }) {
+  const navigate = useNavigate();
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">{title}</CardTitle></CardHeader>
@@ -213,8 +216,13 @@ function AgingCard({ title, rows }: {
           <tbody>
             {rows.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground text-xs">None</td></tr>}
             {rows.map((r) => (
-              <tr key={r.ref} className="border-t">
-                <td className="p-2.5 font-mono text-xs">{r.ref}</td>
+              <tr
+                key={r.ref}
+                className={`border-t ${r.to ? "cursor-pointer hover:bg-accent/30" : ""}`}
+                onClick={r.to ? () => navigate(r.to!) : undefined}
+                title={r.to ? `Open ${r.ref}` : undefined}
+              >
+                <td className={`p-2.5 font-mono text-xs ${r.to ? "text-primary" : ""}`}>{r.ref}</td>
                 <td className="p-2.5 text-right">{fmt2(r.billed)}</td>
                 <td className="p-2.5 text-right">{fmt2(r.settled)}</td>
                 <td className={`p-2.5 text-right font-medium ${r.balance > 0 ? "text-amber-600" : "text-emerald-600"}`}>{fmt2(r.balance)}</td>
