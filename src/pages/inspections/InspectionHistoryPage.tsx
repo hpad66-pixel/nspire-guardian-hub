@@ -13,6 +13,10 @@ import { useAssets } from '@/hooks/useAssets';
 import { useProfiles } from '@/hooks/useProfiles';
 import { AddendumList } from '@/components/inspections/AddendumList';
 import { InspectionReportDialog } from '@/components/inspections/InspectionReportDialog';
+import { PrintableDailyInspectionReport } from '@/components/inspections/PrintableDailyInspectionReport';
+import { SendReportEmailDialog } from '@/components/inspections/SendReportEmailDialog';
+import { generatePDF, printReport } from '@/lib/generatePDF';
+import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -27,7 +31,10 @@ import {
   FileText,
   AlertTriangle,
   ChevronRight,
-  Download
+  Download,
+  Printer,
+  Mail,
+  Loader2
 } from 'lucide-react';
 import { format, parseISO, subDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
@@ -295,12 +302,48 @@ function InspectionDetailSheet({
 }) {
   const { data: items = [], isLoading: itemsLoading } = useInspectionItems(inspection?.id || '');
   const { data: assets = [] } = useAssets(inspection?.property_id || undefined);
+  const [showEmail, setShowEmail] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   if (!inspection) return null;
 
   const property = properties.find(p => p.id === inspection.property_id);
   const inspector = profiles.find(p => p.user_id === inspection.inspector_id);
   const weather = WEATHER_OPTIONS.find(w => w.value === inspection.weather);
+
+  const propertyName = property?.name || 'Unknown Property';
+  const inspectorName = inspector?.full_name || inspector?.email || 'Unknown';
+  const printId = `history-printable-${inspection.id}`;
+  const okCountAll = items.filter(i => i.status === 'ok').length;
+  const attentionCountAll = items.filter(i => i.status === 'needs_attention').length;
+  const defectCountAll = items.filter(i => i.status === 'defect_found').length;
+
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    try {
+      await generatePDF({
+        elementId: printId,
+        filename: `daily-grounds-inspection-${inspection.inspection_date}.pdf`,
+      });
+      toast.success('PDF downloaded');
+    } catch (e) {
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      await printReport(printId);
+    } catch (e) {
+      toast.error('Failed to print');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const getAssetName = (assetId: string) => {
     return assets.find(a => a.id === assetId)?.name || 'Unknown Asset';
@@ -327,16 +370,25 @@ function InspectionDetailSheet({
     <Sheet open={!!inspection} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <SheetTitle>Inspection Details</SheetTitle>
-              <SheetDescription>
-                {format(parseISO(inspection.inspection_date), 'EEEE, MMMM d, yyyy')}
-              </SheetDescription>
-            </div>
-            <Button size="sm" onClick={onViewReport} className="gap-2">
-              <Download className="h-4 w-4" />
-              Download PDF
+          <div>
+            <SheetTitle>Inspection Details</SheetTitle>
+            <SheetDescription>
+              {format(parseISO(inspection.inspection_date), 'EEEE, MMMM d, yyyy')}
+            </SheetDescription>
+          </div>
+          {/* One place for every action: View · Print · PDF · Email */}
+          <div className="flex flex-wrap gap-2 pt-3">
+            <Button size="sm" onClick={onViewReport} className="gap-1.5">
+              <Eye className="h-4 w-4" /> View Report
+            </Button>
+            <Button size="sm" variant="outline" onClick={handlePrint} disabled={isPrinting || itemsLoading} className="gap-1.5">
+              {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Print
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleDownloadPDF} disabled={isGenerating || itemsLoading} className="gap-1.5">
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Save PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowEmail(true)} disabled={itemsLoading} className="gap-1.5">
+              <Mail className="h-4 w-4" /> Email
             </Button>
           </div>
         </SheetHeader>
@@ -445,6 +497,30 @@ function InspectionDetailSheet({
           {/* Addendums */}
           <AddendumList inspectionId={inspection.id} />
         </div>
+
+        {/* Off-screen printable so Print / Save PDF work without opening the report dialog */}
+        <div className="sr-only print:block" aria-hidden="true">
+          <PrintableDailyInspectionReport
+            id={printId}
+            inspection={inspection}
+            items={items}
+            assets={assets}
+            propertyName={propertyName}
+            inspectorName={inspectorName}
+          />
+        </div>
+
+        {/* Email dialog */}
+        <SendReportEmailDialog
+          open={showEmail}
+          onOpenChange={setShowEmail}
+          inspectionId={inspection.id}
+          propertyName={propertyName}
+          inspectorName={inspectorName}
+          inspectionDate={inspection.inspection_date}
+          reportElementId={printId}
+          statusSummary={{ ok: okCountAll, attention: attentionCountAll, defect: defectCountAll }}
+        />
       </SheetContent>
     </Sheet>
   );

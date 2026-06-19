@@ -42,6 +42,7 @@ import {
   Search as SearchIcon,
   QrCode,
   Gavel,
+  History,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -211,6 +212,9 @@ export function AppSidebar() {
             )}
             {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
               <NavItem to="/inspections/daily" icon={Sun} label="Daily Rounds" collapsed={collapsed} />
+            )}
+            {canView('inspections') && (
+              <NavItem to="/inspections/history" icon={History} label="Inspection History" collapsed={collapsed} />
             )}
             {isModuleEnabled('nspireEnabled') && canView('inspections') && (
               <NavItem to="/inspections" icon={ClipboardCheck} label="NSPIRE" collapsed={collapsed} />
