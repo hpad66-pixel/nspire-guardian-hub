@@ -1,0 +1,19 @@
+INVOICE
+556 NW 53rd Street
+Boca Raton, Florida 33487
+Phone (305) 924-2260
+INVOICE # 594
+DATE:MAY 30, 2026
+TO: FOR:
+Hardeep Anand Glorieta Gardens
+APAS Consulting LLC 13210 Alexandria Drive
+3256 NW 83 Way Opa-locka, Florida 33054
+Pembroke Pines, Florida 33024
+DESCRIPTION AMOUNT
+Pickup Turbidity Meter from Pine Environmental, deliver to Hardeep on
+12/05/2025; pickup meter from Eros and deliver to Pine Environmental on
+02/17/2026;
+$ 2075.00
+TOTAL $ 2,075.00
+Make all checks payable to: Eco Tech Consulting, LLC
+Thank you for your business!
