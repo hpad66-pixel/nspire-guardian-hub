@@ -29,6 +29,21 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
   const s = summary.data;
   const [filter, setFilter] = useState<Filter>("all");
   const go = (tab: string) => navigate(`/projects/${projectId}/financials/${tab}`);
+  // Map a ledger entry to its source-record detail route.
+  const ledgerHref = (e: LedgerEntry): string => {
+    const base = `/projects/${projectId}/financials`;
+    const id = String(e.ledger_id ?? "").split(":")[1] ?? "";
+    switch (e.entry_type) {
+      case "pay_app": return id ? `${base}/prime-contract/pay-apps/${id}` : `${base}/prime-contract`;
+      case "prime_contract": return `${base}/prime-contract`;
+      case "change_order": return `${base}/change-orders`;
+      case "commitment": return id ? `${base}/commitments/${id}` : `${base}/commitments`;
+      case "invoice": return `${base}/invoices`;
+      case "payment": return `${base}/payments`;
+      case "lien_release": return `${base}/lien-releases`;
+      default: return base;
+    }
+  };
 
   const rows = useMemo(
     () => (ledger.data ?? []).filter((e) => filter === "all" || e.direction === filter),
@@ -154,7 +169,12 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
                 <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No ledger entries yet.</td></tr>
               )}
               {rows.map((e) => (
-                <tr key={e.ledger_id} className="border-t hover:bg-muted/20">
+                <tr
+                  key={e.ledger_id}
+                  className="border-t hover:bg-accent/30 cursor-pointer"
+                  onClick={() => navigate(ledgerHref(e))}
+                  title={`Open ${ENTRY_LABEL[e.entry_type]}`}
+                >
                   <td className="p-3 whitespace-nowrap">{fmtDate(e.entry_date)}</td>
                   <td className="p-3"><Badge variant="outline" className="font-normal">{ENTRY_LABEL[e.entry_type]}</Badge></td>
                   <td className="p-3">{e.party_name ?? "—"}</td>
