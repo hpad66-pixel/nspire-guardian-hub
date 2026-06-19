@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +24,11 @@ const ENTRY_LABEL: Record<LedgerEntry["entry_type"], string> = {
 type Filter = "all" | "receivable" | "payable";
 
 export function FinancialOverview({ projectId }: { projectId: string }) {
+  const navigate = useNavigate();
   const { summary, ledger, payAppBalances, invoiceBalances } = useProjectFinancials(projectId);
   const s = summary.data;
   const [filter, setFilter] = useState<Filter>("all");
+  const go = (tab: string) => navigate(`/projects/${projectId}/financials/${tab}`);
 
   const rows = useMemo(
     () => (ledger.data ?? []).filter((e) => filter === "all" || e.direction === filter),
@@ -39,17 +42,17 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
   const revised = s?.revised_contract ?? base + cos;
 
   const kpis = [
-    { label: "Original Contract", value: fmt(base), icon: TrendingUp, color: "text-foreground" },
-    { label: "Approved COs", value: fmt(cos), icon: TrendingUp, color: cos > 0 ? "text-emerald-600" : "text-muted-foreground" },
-    { label: "Revised Contract", value: fmt(revised), icon: TrendingUp, color: "text-foreground" },
-    { label: "Billed to Date", value: fmt(s?.billed_to_date), icon: ArrowUpRight, color: "text-foreground" },
-    { label: "Received", value: fmt(s?.received_to_date), icon: ArrowDownLeft, color: "text-emerald-600" },
-    { label: "A/R Outstanding", value: fmt(s?.ar_outstanding), icon: Scale, color: (s?.ar_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600" },
-    { label: "Committed", value: fmt(s?.committed_total), icon: ArrowDownLeft, color: "text-foreground" },
-    { label: "Paid to Subs", value: fmt(s?.paid_to_subs), icon: ArrowUpRight, color: "text-[var(--apas-sapphire)]" },
-    { label: "A/P Outstanding", value: fmt(s?.ap_outstanding), icon: Scale, color: (s?.ap_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600" },
-    { label: "Retainage (AR/AP)", value: `${fmt(s?.ar_retainage_held)} / ${fmt(s?.ap_retainage_held)}`, icon: ShieldCheck, color: "text-muted-foreground" },
-    { label: "Net Cash Position", value: fmt(s?.net_cash_position), icon: Scale, color: (s?.net_cash_position ?? 0) >= 0 ? "text-emerald-600" : "text-destructive" },
+    { label: "Original Contract", value: fmt(base), icon: TrendingUp, color: "text-foreground", to: "prime-contract" },
+    { label: "Approved COs", value: fmt(cos), icon: TrendingUp, color: cos > 0 ? "text-emerald-600" : "text-muted-foreground", to: "change-orders" },
+    { label: "Revised Contract", value: fmt(revised), icon: TrendingUp, color: "text-foreground", to: "prime-contract" },
+    { label: "Billed to Date", value: fmt(s?.billed_to_date), icon: ArrowUpRight, color: "text-foreground", to: "prime-contract" },
+    { label: "Received", value: fmt(s?.received_to_date), icon: ArrowDownLeft, color: "text-emerald-600", to: "payments" },
+    { label: "A/R Outstanding", value: fmt(s?.ar_outstanding), icon: Scale, color: (s?.ar_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600", to: "prime-contract" },
+    { label: "Committed", value: fmt(s?.committed_total), icon: ArrowDownLeft, color: "text-foreground", to: "commitments" },
+    { label: "Paid to Subs", value: fmt(s?.paid_to_subs), icon: ArrowUpRight, color: "text-[var(--apas-sapphire)]", to: "payments" },
+    { label: "A/P Outstanding", value: fmt(s?.ap_outstanding), icon: Scale, color: (s?.ap_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600", to: "invoices" },
+    { label: "Retainage (AR/AP)", value: `${fmt(s?.ar_retainage_held)} / ${fmt(s?.ap_retainage_held)}`, icon: ShieldCheck, color: "text-muted-foreground", to: "prime-contract" },
+    { label: "Net Cash Position", value: fmt(s?.net_cash_position), icon: Scale, color: (s?.net_cash_position ?? 0) >= 0 ? "text-emerald-600" : "text-destructive", to: "ledger" },
   ];
 
   return (
@@ -57,7 +60,12 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {kpis.map((k) => (
-          <Card key={k.label}>
+          <Card
+            key={k.label}
+            onClick={() => go(k.to)}
+            className="cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/30"
+            title={`View ${k.label} detail`}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <k.icon className="h-3.5 w-3.5" /> {k.label}
