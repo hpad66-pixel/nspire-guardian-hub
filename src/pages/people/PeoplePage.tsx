@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Users, UserCheck, Archive, Building2, Shield, Plus, Search, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,21 @@ export default function PeoplePage() {
   const handlePersonClick = (person: PersonWithAssignments) => {
     setSelectedPerson(person);
   };
+
+  // Deep-link from the dashboard ("/people?member=<userId>") — auto-open that
+  // person's detail sheet once the roster loads.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const member = searchParams.get('member');
+    if (!member || !people?.length) return;
+    const match = people.find((p: any) => p.user_id === member || p.id === member);
+    if (match) {
+      setSelectedPerson(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('member');
+      setSearchParams(next, { replace: true });
+    }
+  }, [people, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!canManageRoles && activeTab === 'roles') {
