@@ -35,3 +35,5 @@ video/showcase/.hyperframes/
 video/showcase/capture/
 video/showcase/out/
 video/showcase/renders/
+video/showcase/.ttsenv/
+video/showcase/*.wav
