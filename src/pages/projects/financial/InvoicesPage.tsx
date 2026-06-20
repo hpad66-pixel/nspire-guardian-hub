@@ -107,7 +107,10 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
   const { data: payApps = [], isLoading } = usePayApps(primeContractId);
   if (isLoading) return null;
   const ordered = [...payApps].sort((a: any, b: any) => (a.pay_app_no ?? 0) - (b.pay_app_no ?? 0));
-  const total = ordered.reduce((s: number, p: any) => s + (Number(p.approved_amount ?? p.submitted_amount) || 0), 0);
+  // Headline number = AIA "current payment due" (net cash billed to the owner),
+  // matching the Owner Invoices snapshot. Falls back to this-period submitted.
+  const dueOf = (p: any) => Number(p?.pay_app_data?.current_payment_due ?? p?.approved_amount ?? p?.submitted_amount) || 0;
+  const total = ordered.reduce((s: number, p: any) => s + dueOf(p), 0);
   return (
     <div className="border-b last:border-0">
       <div className="flex items-center justify-between px-3 py-2 bg-[var(--apas-sapphire)]/5">
@@ -123,6 +126,17 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
         <div className="px-3 py-2 text-xs text-muted-foreground italic">No pay applications yet.</div>
       ) : (
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-t">
+              <th className="p-2 pl-3 text-left font-medium">Pay App</th>
+              <th className="p-2 text-left font-medium">Ref</th>
+              <th className="p-2 text-left font-medium">Period end</th>
+              <th className="p-2 text-right font-medium">Payment due</th>
+              <th className="p-2 text-right font-medium">This period</th>
+              <th className="p-2 text-left font-medium">Status</th>
+              <th className="p-2 text-center font-medium">PDF</th>
+            </tr>
+          </thead>
           <tbody>
             {ordered.map((pa: any) => (
               <tr key={pa.id} className="border-t hover:bg-muted/30 cursor-pointer"
@@ -130,8 +144,8 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
                 <td className="p-3 w-24"><span className="font-bold text-[var(--apas-sapphire)]">Pay App #{pa.pay_app_no}</span></td>
                 <td className="p-3 text-xs text-muted-foreground font-mono">{pa.invoice_no ? `Ref ${pa.invoice_no}` : ""}</td>
                 <td className="p-3 text-sm text-muted-foreground">{fmtDate(pa.period_end)}</td>
-                <td className="p-3 text-right font-mono text-sm">{pa.submitted_amount != null ? money(pa.submitted_amount) : "—"}</td>
-                <td className="p-3 text-right font-mono text-sm">{pa.approved_amount != null ? money(pa.approved_amount) : "—"}</td>
+                <td className="p-3 text-right font-mono text-sm font-semibold" title="Current payment due (net billed to owner)">{money(dueOf(pa))}</td>
+                <td className="p-3 text-right font-mono text-xs text-muted-foreground" title="Work completed this period">{pa.submitted_amount != null ? money(pa.submitted_amount) : "—"}</td>
                 <td className="p-3">
                   <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[pa.status as CommitmentInvoice["status"]] ?? "bg-muted text-muted-foreground"}`}>{pa.status}</span>
                 </td>
