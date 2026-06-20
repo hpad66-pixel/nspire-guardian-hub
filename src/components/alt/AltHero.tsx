@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, Play, CheckCircle, AlertTriangle, XCircle, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Play, CheckCircle, AlertTriangle, XCircle, Zap, X } from 'lucide-react';
 
 const words = ['Run Every Property.', 'Every Project.', 'From One Place.'];
 
@@ -157,6 +157,7 @@ function FloatingMockup() {
 }
 
 export function AltHero() {
+  const [showDemo, setShowDemo] = useState(false);
   return (
     <section style={{ background: 'linear-gradient(180deg, #EEF4FF 0%, #F8FAFC 100%)', minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: '80px' }}>
       <div className="max-w-[1200px] mx-auto px-6 py-24 w-full">
@@ -232,7 +233,7 @@ export function AltHero() {
               >
                 Start Free — No Card Required <ArrowRight size={16} />
               </Link>
-              <button style={{
+              <button onClick={() => setShowDemo(true)} style={{
                 fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: '15px',
                 color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -265,6 +266,36 @@ export function AltHero() {
           </motion.div>
         </div>
       </div>
+
+      {/* 3-Minute demo video modal */}
+      <AnimatePresence>
+        {showDemo && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 sm:p-8"
+            onClick={() => setShowDemo(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-5xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowDemo(false)}
+                className="absolute -top-12 right-0 text-white/70 hover:text-white flex items-center gap-1.5 text-sm"
+              >
+                <X size={18} /> Close
+              </button>
+              <video
+                src="/proj-os-demo.mp4"
+                className="w-full rounded-xl shadow-2xl border border-white/10"
+                controls autoPlay playsInline
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

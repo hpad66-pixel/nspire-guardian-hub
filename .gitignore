@@ -29,3 +29,9 @@ dist-ssr
 *.sw?
 .claude/worktrees/
 scripts/_extracted/
+# HyperFrames video build artifacts
+video/showcase/node_modules/
+video/showcase/.hyperframes/
+video/showcase/capture/
+video/showcase/out/
+video/showcase/renders/

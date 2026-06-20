@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face{font-family:'DM Sans';font-weight:400;font-display:swap;src:url('fonts/dmsans-400.woff2') format('woff2')}
+  @font-face{font-family:'DM Sans';font-weight:500;font-display:swap;src:url('fonts/dmsans-500.woff2') format('woff2')}
+  @font-face{font-family:'DM Sans';font-weight:700;font-display:swap;src:url('fonts/dmsans-700.woff2') format('woff2')}
+  @font-face{font-family:'Playfair Display';font-weight:700;font-display:swap;src:url('fonts/playfair-700.woff2') format('woff2')}
+  @font-face{font-family:'Playfair Display';font-weight:900;font-display:swap;src:url('fonts/playfair-900.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:400;font-display:swap;src:url('fonts/jetbrains-400.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:500;font-display:swap;src:url('fonts/jetbrains-500.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-weight:700;font-display:swap;src:url('fonts/jetbrains-700.woff2') format('woff2')}
+  :root{
+    --ink:#14110E; --ink2:#1F1A15; --cream:#FDFCF9; --muted:#A8A29A;
+    --sapphire:#1D6FE8; --gold:#C4A35A; --emerald:#10B981; --amber:#F59E0B; --rose:#F43F5E;
+    --hair:rgba(253,252,249,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [data-composition-id="showcase"]{
+    width:1920px;height:1080px;position:relative;overflow:hidden;
+    background:var(--ink);color:var(--cream);font-family:'DM Sans',sans-serif;
+  }
+  .glow{position:absolute;border-radius:50%;filter:blur(120px);opacity:.5;pointer-events:none}
+  .scene{position:absolute;inset:0;opacity:0}
+  .pad{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:130px 160px}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+  .display{font-family:'Playfair Display',serif;font-weight:900;line-height:1.02;color:var(--cream)}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .panel{background:var(--ink2);border:1px solid var(--hair);border-radius:18px}
+</style>
+</head>
+<body>
+<div data-composition-id="showcase" data-start="0" data-width="1920" data-height="1080" data-duration="53">
+
+  <!-- SCENE 1 · LOGO -->
+  <div class="scene" id="s1">
+    <div class="glow" style="width:900px;height:900px;left:510px;top:90px;background:var(--sapphire)"></div>
+    <div class="pad" style="align-items:center;justify-content:center;text-align:center">
+      <div id="s1-logo" class="display" style="font-size:200px;letter-spacing:-2px">Proj<span style="color:var(--sapphire)">OS</span></div>
+      <div id="s1-tag" class="display" style="font-size:62px;font-weight:700;margin-top:18px;max-width:1500px">Run every property. Every project. <span style="color:var(--gold)">From one place.</span></div>
+      <div id="s1-sub" class="mono" style="font-size:24px;color:var(--muted);margin-top:26px;letter-spacing:.1em">PROPERTY · CONSTRUCTION · FINANCIALS · FIELD</div>
+    </div>
+  </div>
+
+  <!-- SCENE 2 · COMMAND CENTER -->
+  <div class="scene" id="s2">
+    <div class="glow" style="width:700px;height:700px;left:-180px;top:380px;background:var(--sapphire)"></div>
+    <div class="pad">
+      <div id="s2-k" class="kicker">Command Center</div>
+      <div id="s2-h" class="display" style="font-size:84px;font-weight:700;margin-top:10px">Your whole operation, <span style="color:var(--sapphire)">at a glance.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:54px">
+        <div class="panel kpi" style="padding:30px"><div style="color:var(--muted);font-size:22px">Open Issues</div><div class="mono kpinum" data-to="7" style="font-size:64px;font-weight:700;color:var(--rose)">0</div></div>
+        <div class="panel kpi" style="padding:30px"><div style="color:var(--muted);font-size:22px">Active Projects</div><div class="mono kpinum" data-to="12" style="font-size:64px;font-weight:700;color:var(--sapphire)">0</div></div>
+        <div class="panel kpi" style="padding:30px"><div style="color:var(--muted);font-size:22px">Work Orders</div><div class="mono kpinum" data-to="23" style="font-size:64px;font-weight:700;color:var(--amber)">0</div></div>
+        <div class="panel kpi" style="padding:30px"><div style="color:var(--muted);font-size:22px">Inspections</div><div class="mono kpinum" data-to="96" style="font-size:64px;font-weight:700;color:var(--emerald)">0</div></div>
+      </div>
+      <div id="s2-row" class="panel" style="margin-top:24px;padding:26px 30px;display:flex;align-items:center;gap:20px;border-left:4px solid var(--rose)">
+        <div style="font-size:30px">⚠️</div>
+        <div><div style="font-size:26px;font-weight:700">Stormwater permit expires in 6 days</div><div style="color:var(--muted);font-size:20px">Glorieta Gardens · Compliance</div></div>
+        <div class="mono" style="margin-left:auto;color:#5B9BF5;font-size:22px">Review →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 3 · INSPECTIONS -->
+  <div class="scene" id="s3">
+    <div class="glow" style="width:760px;height:760px;right:-160px;top:120px;background:var(--gold)"></div>
+    <div class="pad">
+      <div id="s3-k" class="kicker" style="color:var(--emerald)">Daily Field Inspections</div>
+      <div id="s3-h" class="display" style="font-size:80px;font-weight:700;margin-top:10px">From the field to the record, <span style="color:var(--gold)">in one tap.</span></div>
+      <div style="display:flex;gap:34px;margin-top:50px;align-items:stretch">
+        <div id="s3-card" class="panel" style="padding:34px;width:760px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:30px;font-weight:700">Friday, May 29, 2026</div><div class="mono" style="color:var(--emerald);font-size:20px">SUBMITTED</div></div>
+          <div style="display:flex;gap:30px;margin-top:18px;color:var(--muted);font-size:22px"><span>☀️ Clear · 84°F</span><span>👷 4 workers</span><span>📸 8 photos</span></div>
+          <div style="height:1px;background:var(--hair);margin:24px 0"></div>
+          <div style="font-size:22px;line-height:1.5;color:var(--cream)">Core drilling completed on Line 3; two additional pipe lengths installed. Catch-basin fabric protection replaced site-wide.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:16px;flex:1">
+          <div class="s3-ph" style="background:linear-gradient(135deg,#3a5a40,#588157);border-radius:14px"></div>
+          <div class="s3-ph" style="background:linear-gradient(135deg,#6b705c,#a5a58d);border-radius:14px"></div>
+          <div class="s3-ph" style="background:linear-gradient(135deg,#4a4e69,#7b6c8c);border-radius:14px"></div>
+          <div class="s3-ph" style="background:linear-gradient(135deg,#7f5539,#9c6644);border-radius:14px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 4 · FINANCIALS HERO -->
+  <div class="scene" id="s4">
+    <div class="glow" style="width:820px;height:820px;left:560px;top:130px;background:var(--sapphire)"></div>
+    <div class="pad">
+      <div id="s4-k" class="kicker">Financials · AIA G702 Pay Apps</div>
+      <div id="s4-h" class="display" style="font-size:78px;font-weight:700;margin-top:8px">Every dollar, <span style="color:var(--emerald)">reconciled.</span></div>
+      <div style="margin-top:44px">
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:22px"><span>Original + Change Orders = Revised Contract</span><span class="mono" style="color:var(--cream);font-weight:700">$756,382</span></div>
+        <div style="display:flex;height:46px;border-radius:12px;overflow:hidden;margin-top:12px;background:var(--ink2);border:1px solid var(--hair)">
+          <div id="s4-base" style="width:0%;background:rgba(168,162,154,.5);display:flex;align-items:center;padding-left:20px;font-size:20px;white-space:nowrap" class="mono">$523,061</div>
+          <div id="s4-co" style="width:0%;background:var(--emerald);display:flex;align-items:center;padding-left:16px;font-size:20px;white-space:nowrap" class="mono">+ $233,321</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:36px">
+        <div class="pa panel" style="padding:24px"><div class="mono" style="color:var(--sapphire);font-weight:700;font-size:26px">Pay App #1</div><div class="mono" style="font-size:34px;font-weight:700;margin-top:6px">$78,459</div><div style="color:var(--muted);font-size:18px;margin-top:4px">Jul 2025</div></div>
+        <div class="pa panel" style="padding:24px"><div class="mono" style="color:var(--sapphire);font-weight:700;font-size:26px">Pay App #2</div><div class="mono" style="font-size:34px;font-weight:700;margin-top:6px">$366,006</div><div style="color:var(--muted);font-size:18px;margin-top:4px">Mar 2026</div></div>
+        <div class="pa panel" style="padding:24px"><div class="mono" style="color:var(--sapphire);font-weight:700;font-size:26px">Pay App #3</div><div class="mono" style="font-size:34px;font-weight:700;margin-top:6px">$121,081</div><div style="color:var(--muted);font-size:18px;margin-top:4px">Apr 2026</div></div>
+        <div class="pa panel" style="padding:24px"><div class="mono" style="color:var(--sapphire);font-weight:700;font-size:26px">Pay App #4</div><div class="mono" style="font-size:34px;font-weight:700;margin-top:6px">$47,086</div><div style="color:var(--muted);font-size:18px;margin-top:4px">May 2026</div></div>
+      </div>
+      <div id="s4-billed" style="margin-top:32px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap">
+        <span style="color:var(--muted);font-size:26px">Billed to date</span>
+        <span class="mono billnum" data-to="612632" style="font-size:70px;font-weight:700;color:var(--emerald)">$0</span>
+        <span class="mono" style="color:var(--gold);font-size:22px">· extracted from your AIA PDFs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 5 · DRILL DOWN -->
+  <div class="scene" id="s5">
+    <div class="glow" style="width:680px;height:680px;right:-120px;bottom:-120px;background:var(--gold)"></div>
+    <div class="pad" style="align-items:center;text-align:center">
+      <div id="s5-k" class="kicker">Drill-down everything</div>
+      <div id="s5-h" class="display" style="font-size:96px;font-weight:700;margin-top:14px;max-width:1500px">Every number is a <span style="color:var(--sapphire)">doorway.</span></div>
+      <div style="display:flex;gap:18px;margin-top:50px;align-items:center" id="s5-chips">
+        <div class="chip mono panel" style="padding:18px 30px;font-size:24px">KPI tile</div>
+        <div class="mono" style="font-size:30px;color:var(--gold)">→</div>
+        <div class="chip mono panel" style="padding:18px 30px;font-size:24px">Aging row</div>
+        <div class="mono" style="font-size:30px;color:var(--gold)">→</div>
+        <div class="chip mono panel" style="padding:18px 30px;font-size:24px">Ledger entry</div>
+        <div class="mono" style="font-size:30px;color:var(--gold)">→</div>
+        <div class="chip mono panel" style="padding:18px 30px;font-size:24px;border-color:var(--sapphire);color:var(--sapphire)">Source record</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 6 · MODULE GRID -->
+  <div class="scene" id="s6">
+    <div class="glow" style="width:760px;height:760px;left:-180px;top:-120px;background:var(--sapphire)"></div>
+    <div class="pad">
+      <div id="s6-h" class="display" style="font-size:76px;font-weight:700">One operating system. <span style="color:var(--gold)">Twelve modules.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:48px" id="s6-grid">
+        <div class="m panel" style="padding:26px;font-size:26px">🏢 Properties</div>
+        <div class="m panel" style="padding:26px;font-size:26px">📋 Inspections</div>
+        <div class="m panel" style="padding:26px;font-size:26px">🔧 Work Orders</div>
+        <div class="m panel" style="padding:26px;font-size:26px">📐 Projects</div>
+        <div class="m panel" style="padding:26px;font-size:26px">💰 Financials</div>
+        <div class="m panel" style="padding:26px;font-size:26px">📄 Pay Apps</div>
+        <div class="m panel" style="padding:26px;font-size:26px">🔁 Change Orders</div>
+        <div class="m panel" style="padding:26px;font-size:26px">🤝 Commitments</div>
+        <div class="m panel" style="padding:26px;font-size:26px">🛡️ Compliance</div>
+        <div class="m panel" style="padding:26px;font-size:26px">📅 Schedule</div>
+        <div class="m panel" style="padding:26px;font-size:26px">👥 Team</div>
+        <div class="m panel" style="padding:26px;font-size:26px">🔗 Client Portals</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 7 · CTA -->
+  <div class="scene" id="s7">
+    <div class="glow" style="width:1000px;height:1000px;left:460px;top:40px;background:var(--sapphire);opacity:.6"></div>
+    <div class="pad" style="align-items:center;justify-content:center;text-align:center">
+      <div id="s7-logo" class="display" style="font-size:150px">Proj<span style="color:var(--sapphire)">OS</span></div>
+      <div id="s7-h" class="display" style="font-size:58px;font-weight:700;margin-top:10px">Stop running on twelve tools.</div>
+      <div id="s7-cta" class="mono" style="margin-top:42px;background:var(--sapphire);color:var(--cream);padding:24px 56px;border-radius:14px;font-size:30px;font-weight:700">Start Free — No Card Required</div>
+      <div id="s7-foot" class="mono" style="color:var(--muted);font-size:22px;margin-top:26px;letter-spacing:.08em">14-day trial · Setup in 60 minutes · Works on any device</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused:true });
+  const E="power3.out", X="expo.out", B="back.out(1.6)";
+
+  function countUp(sel, t, dur, prefix){
+    document.querySelectorAll(sel).forEach(el=>{
+      const target=+el.dataset.to; const o={v:0};
+      tl.to(o,{v:target,duration:dur,ease:"power2.out",onUpdate:()=>{
+        el.textContent=(prefix||"")+Math.round(o.v).toLocaleString();
+      }}, t);
+    });
+  }
+  const show=(sel,t)=>tl.to(sel,{opacity:1,duration:0.5,ease:"power1.out"},t);
+  const hide=(sel,t)=>tl.to(sel,{opacity:0,duration:0.6,ease:"power1.inOut"},t);
+
+  /* S1 0–4.4 */
+  show("#s1",0.1);
+  tl.from("#s1-logo",{scale:0.8,opacity:0,duration:1.0,ease:B},0.3);
+  tl.from("#s1-tag",{y:50,opacity:0,duration:0.8,ease:X},1.0);
+  tl.from("#s1-sub",{y:24,opacity:0,duration:0.6,ease:E},1.5);
+  hide("#s1",4.4);
+
+  /* S2 4.8–12.4 */
+  show("#s2",4.8);
+  tl.from("#s2-k",{x:-30,opacity:0,duration:0.5,ease:E},5.0);
+  tl.from("#s2-h",{y:40,opacity:0,duration:0.7,ease:X},5.2);
+  tl.from(".kpi",{y:50,opacity:0,scale:0.9,duration:0.6,ease:B,stagger:0.12},5.7);
+  countUp(".kpinum",6.0,1.1);
+  tl.from("#s2-row",{x:40,opacity:0,duration:0.6,ease:E},7.4);
+  hide("#s2",12.4);
+
+  /* S3 12.8–20.4 */
+  show("#s3",12.8);
+  tl.from("#s3-k",{x:-30,opacity:0,duration:0.5,ease:E},13.0);
+  tl.from("#s3-h",{y:40,opacity:0,duration:0.7,ease:X},13.2);
+  tl.from("#s3-card",{x:-50,opacity:0,duration:0.7,ease:E},13.7);
+  tl.from(".s3-ph",{scale:0.6,opacity:0,duration:0.6,ease:B,stagger:0.1},14.0);
+  hide("#s3",20.4);
+
+  /* S4 20.8–32.4 (financials hero) */
+  show("#s4",20.8);
+  tl.from("#s4-k",{x:-30,opacity:0,duration:0.5,ease:E},21.0);
+  tl.from("#s4-h",{y:40,opacity:0,duration:0.7,ease:X},21.2);
+  tl.to("#s4-base",{width:"69%",duration:0.9,ease:"power3.inOut"},21.9);
+  tl.to("#s4-co",{width:"31%",duration:0.7,ease:"power3.inOut"},22.6);
+  tl.from(".pa",{y:50,opacity:0,scale:0.92,duration:0.6,ease:B,stagger:0.14},23.2);
+  tl.from("#s4-billed",{y:30,opacity:0,duration:0.5,ease:E},24.8);
+  countUp(".billnum",25.0,1.6,"$");
+  hide("#s4",32.4);
+
+  /* S5 32.8–39.4 */
+  show("#s5",32.8);
+  tl.from("#s5-k",{y:-20,opacity:0,duration:0.5,ease:E},33.0);
+  tl.from("#s5-h",{scale:0.9,opacity:0,duration:0.8,ease:B},33.3);
+  tl.from("#s5-chips > *",{y:30,opacity:0,duration:0.5,ease:E,stagger:0.1},34.0);
+  hide("#s5",39.4);
+
+  /* S6 39.8–46.4 */
+  show("#s6",39.8);
+  tl.from("#s6-h",{y:40,opacity:0,duration:0.7,ease:X},40.0);
+  tl.from(".m",{y:40,opacity:0,scale:0.9,duration:0.5,ease:B,stagger:0.06},40.5);
+  hide("#s6",46.4);
+
+  /* S7 46.8–53 */
+  show("#s7",46.8);
+  tl.from("#s7-logo",{scale:0.85,opacity:0,duration:0.8,ease:B},47.0);
+  tl.from("#s7-h",{y:30,opacity:0,duration:0.6,ease:X},47.6);
+  tl.from("#s7-cta",{y:30,opacity:0,scale:0.9,duration:0.6,ease:B},48.1);
+  tl.from("#s7-foot",{y:20,opacity:0,duration:0.5,ease:E},48.6);
+  tl.to("#s7",{opacity:0,duration:0.8,ease:"power2.in"},52.2);
+
+  window.__timelines["showcase"] = tl;
+  </script>
+</div>
+</body>
+</html>
