@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useDefectStats, useOpenDefects } from '@/hooks/useDefects';
 import { useInspectionStats, useAnnualInspectionProgress } from '@/hooks/useInspectionStats';
 import { useProperties } from '@/hooks/useProperties';
@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
 
 export default function InspectionsDashboard() {
+  const navigate = useNavigate();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyFilterId = searchParams.get('propertyId');
@@ -133,6 +134,7 @@ export default function InspectionsDashboard() {
                   subtitle="24hr deadline"
                   icon={AlertTriangle}
                   variant="severe"
+                  onClick={() => navigate("/inspections/history")}
                 />
                 <StatCard
                   title="Moderate Defects"
@@ -140,6 +142,7 @@ export default function InspectionsDashboard() {
                   subtitle="30 day deadline"
                   icon={Clock}
                   variant="moderate"
+                  onClick={() => navigate("/inspections/history")}
                 />
                 <StatCard
                   title="Low Priority"
@@ -147,6 +150,7 @@ export default function InspectionsDashboard() {
                   subtitle="60 day deadline"
                   icon={Clock}
                   variant="low"
+                  onClick={() => navigate("/inspections/history")}
                 />
                 <StatCard
                   title="Resolved"
@@ -154,6 +158,7 @@ export default function InspectionsDashboard() {
                   subtitle="This month"
                   icon={CheckCircle2}
                   variant="success"
+                  onClick={() => navigate("/inspections/history")}
                 />
               </>
             )}

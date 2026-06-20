@@ -92,7 +92,7 @@ export default function PermitsDashboard() {
       </div>
 
       {/* Stats */}
-      <ComplianceStats stats={stats} isLoading={statsLoading} />
+      <ComplianceStats stats={stats} isLoading={statsLoading} onSelectStatus={setStatusFilter} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

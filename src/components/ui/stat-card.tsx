@@ -13,6 +13,7 @@ interface StatCardProps {
   };
   variant?: 'default' | 'severe' | 'moderate' | 'low' | 'success';
   className?: string;
+  onClick?: () => void;
 }
 
 const variantStyles = {
@@ -31,12 +32,17 @@ export function StatCard({
   trend,
   variant = 'default',
   className,
+  onClick,
 }: StatCardProps) {
   return (
     <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={cn(
         'stat-card rounded-lg border bg-card p-6',
         variantStyles[variant],
+        onClick && 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/30',
         className
       )}
     >

@@ -10,9 +10,10 @@ interface ComplianceStatsProps {
     total: number;
   } | undefined;
   isLoading?: boolean;
+  onSelectStatus?: (status: string) => void;
 }
 
-export function ComplianceStats({ stats, isLoading }: ComplianceStatsProps) {
+export function ComplianceStats({ stats, isLoading, onSelectStatus }: ComplianceStatsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -31,6 +32,7 @@ export function ComplianceStats({ stats, isLoading }: ComplianceStatsProps) {
         subtitle={`${stats?.total || 0} total permits`}
         icon={Shield}
         variant="success"
+        onClick={onSelectStatus ? () => onSelectStatus('active') : undefined}
       />
       <StatCard
         title="Expiring Soon"
@@ -38,6 +40,7 @@ export function ComplianceStats({ stats, isLoading }: ComplianceStatsProps) {
         subtitle="Within 30 days"
         icon={Calendar}
         variant={stats?.expiringSoon ? 'moderate' : 'default'}
+        onClick={onSelectStatus ? () => onSelectStatus('active') : undefined}
       />
       <StatCard
         title="Due This Month"
@@ -52,6 +55,7 @@ export function ComplianceStats({ stats, isLoading }: ComplianceStatsProps) {
         subtitle="Requires attention"
         icon={AlertTriangle}
         variant={stats?.nonCompliant ? 'severe' : 'default'}
+        onClick={onSelectStatus ? () => onSelectStatus('expired') : undefined}
       />
     </div>
   );

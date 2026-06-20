@@ -24,6 +24,9 @@ import {
   Code2,
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
+import { useProjectFinancials } from '@/hooks/useProjectFinancials';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
@@ -47,7 +50,25 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   };
 
   const originalBudget = Number(project.budget) || 0;
-  const spent = Number(project.spent) || 0;
+
+  // "Spent" = costs actually incurred on the build: vendor/sub invoices received
+  // (commitment_invoiced) + direct costs logged. Falls back to the legacy
+  // project.spent field only if the rollup has no data.
+  const { summary } = useProjectFinancials(project.id);
+  const { data: directCostsTotal = 0 } = useQuery({
+    queryKey: ['direct-costs-total', project.id],
+    enabled: Boolean(project.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('direct_costs' as any)
+        .select('amount')
+        .eq('project_id', project.id);
+      if (error) throw error;
+      return (data ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+    },
+  });
+  const rolledSpent = Number(summary.data?.commitment_invoiced ?? 0) + directCostsTotal;
+  const spent = rolledSpent > 0 ? rolledSpent : Number(project.spent) || 0;
 
   const approvedCOs = changeOrders.filter((co) => co.status === 'approved');
   const pendingCOs = changeOrders.filter((co) => co.status === 'pending');

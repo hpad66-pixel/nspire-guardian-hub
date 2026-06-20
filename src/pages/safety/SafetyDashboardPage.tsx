@@ -22,6 +22,7 @@ export default function SafetyDashboardPage() {
   const [osha300AOpen, setOsha300AOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
+  const [tab, setTab] = useState('all');
 
   const { isAdmin, currentRole } = useUserPermissions();
   const isManager = isAdmin || ['owner', 'manager', 'superintendent', 'project_manager'].includes(currentRole ?? '');
@@ -74,21 +75,22 @@ export default function SafetyDashboardPage() {
       {isManager && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Total This Year', value: allIncidents.length, color: 'text-foreground' },
-            { label: 'OSHA Recordable', value: recordableCount, color: 'text-red-600' },
-            { label: 'Pending Review', value: pendingIncidents.length, color: 'text-amber-600' },
-            { label: 'Closed', value: closedCount, color: 'text-green-600' },
+            { label: 'Total This Year', value: allIncidents.length, color: 'text-foreground', tab: 'all' },
+            { label: 'OSHA Recordable', value: recordableCount, color: 'text-red-600', tab: 'all' },
+            { label: 'Pending Review', value: pendingIncidents.length, color: 'text-amber-600', tab: 'pending' },
+            { label: 'Closed', value: closedCount, color: 'text-green-600', tab: 'all' },
           ].map(card => (
-            <div key={card.label} className="rounded-xl border bg-card p-4">
+            <button key={card.label} onClick={() => setTab(card.tab)}
+              className="rounded-xl border bg-card p-4 text-left cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/30">
               <p className="text-xs text-muted-foreground">{card.label}</p>
               <p className={`text-3xl font-bold mt-1 ${card.color}`}>{card.value}</p>
-            </div>
+            </button>
           ))}
         </div>
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="all">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-9">
           <TabsTrigger value="all">All Incidents</TabsTrigger>
           {isManager && (
