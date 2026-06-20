@@ -1,9 +1,12 @@
-import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
+import { ChangeOrderSignDialog } from "@/components/financial/ChangeOrderSignDialog";
+import { SendChangeOrderDialog } from "@/components/financial/SendChangeOrderDialog";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
+import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
 import { PromoteToOcoDialog } from "@/components/financial/PromoteToOcoDialog";
 import { CoPdfExport } from "@/components/financial/CoPdfExport";
@@ -11,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { ChevronRight, LayoutDashboard } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Lock, PenLine, Send, CheckCircle2, FileDown } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -44,7 +47,25 @@ export default function ChangeOrderDetailPage() {
   });
 
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const spec = (co as any)?.spec as CoSpec | null;
+  const locked = Boolean((co as any)?.locked);
+  const signedAt = (co as any)?.submitted_signed_at as string | null;
+  const acceptedAt = (co as any)?.accepted_signed_at as string | null;
+  const sentAt = (co as any)?.sent_to_client_at as string | null;
+  const docxPath = (co as any)?.docx_path as string | null;
+
+  // Auto-open the sign dialog when arriving from the generator (?sign=1).
+  useEffect(() => {
+    if (searchParams.get("sign") === "1" && spec && !locked) {
+      setSignOpen(true);
+      const next = new URLSearchParams(searchParams); next.delete("sign"); setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, spec, locked, setSearchParams]);
 
   async function setCoPdf(url: string | null) {
     if (!coId) return;
@@ -111,23 +132,48 @@ export default function ChangeOrderDetailPage() {
           <CardContent className="text-sm">{co.executed_date ?? "—"}</CardContent></Card>
       </div>
 
-      {/* Signed change-order document */}
+      {/* Change-order document + signing workflow */}
       <Card>
         <CardHeader>
-          <CardTitle>Signed change order</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Attach the signed/approved CO document so it can be viewed or printed from the record.
-          </p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle>Change order document</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              {locked && <Badge className="bg-emerald-100 text-emerald-800 gap-1"><Lock className="h-3 w-3" /> Locked</Badge>}
+              {acceptedAt && <Badge className="bg-emerald-600 text-white gap-1"><CheckCircle2 className="h-3 w-3" /> Client accepted</Badge>}
+              {!acceptedAt && sentAt && <Badge className="bg-blue-100 text-blue-800 gap-1"><Send className="h-3 w-3" /> Sent to client</Badge>}
+            </div>
+          </div>
+          {spec && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {signedAt ? `Signed by you ${new Date(signedAt).toLocaleDateString()}. ` : "Generated — sign to lock and send. "}
+              {acceptedAt && `Accepted by client ${new Date(acceptedAt).toLocaleDateString()}.`}
+            </p>
+          )}
         </CardHeader>
-        <CardContent>
-          <AttachmentField
-            url={(co as any).pdf_path}
-            onChange={setCoPdf}
-            projectId={projectId ?? ""}
-            folder="change-orders"
-            label="Change order"
-            readOnly={co.status === "void"}
-          />
+        <CardContent className="space-y-3">
+          {spec ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {!locked && <Button onClick={() => setSignOpen(true)}><PenLine className="h-4 w-4 mr-1.5" /> Sign &amp; lock</Button>}
+                {locked && !acceptedAt && <Button onClick={() => setSendOpen(true)}><Send className="h-4 w-4 mr-1.5" /> {sentAt ? "Re-send to client" : "Send to client"}</Button>}
+                {docxPath && <a href={docxPath} target="_blank" rel="noopener noreferrer"><Button variant="outline"><FileDown className="h-4 w-4 mr-1.5" /> Editable .docx</Button></a>}
+              </div>
+              {(co as any).pdf_path && (
+                <object data={(co as any).pdf_path} type="application/pdf" className="w-full rounded-md border" style={{ height: 560 }}>
+                  <a href={(co as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-[var(--apas-sapphire)] underline">Open the change order PDF</a>
+                </object>
+              )}
+            </>
+          ) : (
+            <AttachmentField
+              url={(co as any).pdf_path}
+              onChange={setCoPdf}
+              projectId={projectId ?? ""}
+              folder="change-orders"
+              label="Change order"
+              readOnly={co.status === "void"}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -187,6 +233,25 @@ export default function ChangeOrderDetailPage() {
         onOpenChange={setPromoteOpen}
         pco={co}
       />
+
+      {coId && (
+        <ChangeOrderSignDialog
+          open={signOpen}
+          onOpenChange={setSignOpen}
+          coId={coId}
+          spec={spec}
+          projectId={projectId ?? ""}
+          onSigned={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+        />
+      )}
+      {coId && (
+        <SendChangeOrderDialog
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          co={co as any}
+          onSent={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+        />
+      )}
     </div>
   );
 }

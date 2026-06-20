@@ -139,6 +139,7 @@ const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDet
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
 const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/ChangeOrderDetailPage'));
 const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/ChangeOrderGeneratorPage'));
+const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
 const ProjectDirectoryPage = lazy(() => import('./pages/projects/ProjectDirectoryPage'));
@@ -229,6 +230,7 @@ const App = () => (
                      <Route path="/portal/:slug/schedule" element={<PortalSchedulePage />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
+                     <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
                      
                     {/* Protected Routes */}
                     <Route
