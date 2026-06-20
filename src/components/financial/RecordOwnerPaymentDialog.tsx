@@ -19,7 +19,14 @@ import {
 import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import type { PayAppBalance } from "@/hooks/useProjectFinancials";
 
-const METHODS = ["Check", "ACH", "Wire", "Credit Card", "Cash", "Other"];
+// Values must match the DB check constraint (check/ach/wire/card/other).
+const METHODS = [
+  { value: "check", label: "Check" },
+  { value: "ach", label: "ACH" },
+  { value: "wire", label: "Wire" },
+  { value: "card", label: "Credit Card" },
+  { value: "other", label: "Other" },
+];
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
 const today = () => new Date().toISOString().split("T")[0];
@@ -35,7 +42,7 @@ export function RecordOwnerPaymentDialog({
   const [payAppId, setPayAppId] = useState<string>("");
   const [receivedDate, setReceivedDate] = useState(today());
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("Check");
+  const [method, setMethod] = useState("check");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -51,7 +58,7 @@ export function RecordOwnerPaymentDialog({
   useEffect(() => {
     if (!open) {
       setPayAppId(""); setReceivedDate(today()); setAmount("");
-      setMethod("Check"); setReference(""); setNotes("");
+      setMethod("check"); setReference(""); setNotes("");
     }
   }, [open]);
 
@@ -132,7 +139,7 @@ export function RecordOwnerPaymentDialog({
               <Select value={method} onValueChange={setMethod}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

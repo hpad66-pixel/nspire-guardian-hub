@@ -19,7 +19,14 @@ import { useCommitmentPayments, CommitmentPaymentError } from "@/hooks/useCommit
 import type { CommitmentInvoiceBalance } from "@/hooks/useProjectFinancials";
 import type { Commitment } from "@/hooks/useCommitments";
 
-const METHODS = ["Check", "ACH", "Wire", "Credit Card", "Cash", "Other"];
+// Values must match the DB check constraint (check/ach/wire/card/other).
+const METHODS = [
+  { value: "check", label: "Check" },
+  { value: "ach", label: "ACH" },
+  { value: "wire", label: "Wire" },
+  { value: "card", label: "Credit Card" },
+  { value: "other", label: "Other" },
+];
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
 const today = () => new Date().toISOString().split("T")[0];
@@ -41,7 +48,7 @@ export function RecordSubPaymentDialog({
   const [invoiceId, setInvoiceId] = useState<string>("");
   const [paidDate, setPaidDate] = useState(today());
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("Check");
+  const [method, setMethod] = useState("check");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -60,7 +67,7 @@ export function RecordSubPaymentDialog({
   useEffect(() => {
     if (!open) {
       setCommitmentId(""); setInvoiceId(""); setPaidDate(today());
-      setAmount(""); setMethod("Check"); setReference(""); setNotes("");
+      setAmount(""); setMethod("check"); setReference(""); setNotes("");
     }
   }, [open]);
 
@@ -161,7 +168,7 @@ export function RecordSubPaymentDialog({
               <Select value={method} onValueChange={setMethod}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
