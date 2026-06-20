@@ -216,13 +216,48 @@ export function useVoidChangeOrder() {
   });
 }
 
+// Hard-delete a change order. Guarded to draft-only: approved/executed/voided
+// COs are part of the financial record and must never be silently removed.
+export function useDeleteChangeOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: existing, error: fetchError } = await supabase
+        .from('change_orders')
+        .select('id, status')
+        .eq('id', id)
+        .single();
+      if (fetchError) throw fetchError;
+      if (existing?.status !== 'draft') {
+        throw new Error('Only draft change orders can be deleted. Void executed/approved COs instead.');
+      }
+
+      const { error } = await supabase
+        .from('change_orders')
+        .delete()
+        .eq('id', id)
+        .eq('status', 'draft');
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      toast.success('Draft change order deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useApproveChangeOrder() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { data, error } = await supabase
         .from('change_orders')
         .update({ 

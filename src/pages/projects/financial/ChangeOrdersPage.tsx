@@ -1,9 +1,9 @@
 import { useParams, Link } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
-import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
+import { useChangeOrdersByProject, useDeleteChangeOrder } from "@/hooks/useChangeOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, ExternalLink } from "lucide-react";
+import { TrendingUp, ExternalLink, Trash2 } from "lucide-react";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -19,6 +19,7 @@ export default function ChangeOrdersPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { data: allCos = [], isLoading } = useChangeOrdersByProject(projectId ?? null);
+  const deleteCo = useDeleteChangeOrder();
   // Prime-side change orders roll up the contract value.
   const coList = allCos.filter((c) => (c as any).co_type !== "CCO" && !(c as any).commitment_id);
 
@@ -98,9 +99,26 @@ export default function ChangeOrdersPage() {
                         }`}>{co.status}</span>
                       </td>
                       <td className="p-3 text-center">
-                        <Link to={`/projects/${projectId}/financials/cos/${co.id}`} onClick={(e) => e.stopPropagation()}>
-                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                        </Link>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link to={`/projects/${projectId}/financials/cos/${co.id}`} onClick={(e) => e.stopPropagation()}>
+                            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                          </Link>
+                          {co.status === "draft" && (
+                            <button
+                              title="Delete this draft change order"
+                              className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+                              disabled={deleteCo.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete draft change order ${(co as any).co_no ?? ""}? This cannot be undone.`)) {
+                                  deleteCo.mutate(co.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
