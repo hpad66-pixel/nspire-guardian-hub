@@ -138,6 +138,7 @@ const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/Commi
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
 const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/ChangeOrderDetailPage'));
+const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/ChangeOrderGeneratorPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
 const ProjectDirectoryPage = lazy(() => import('./pages/projects/ProjectDirectoryPage'));
@@ -350,6 +351,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
                               <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
                               <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
+                              <Route path="/projects/:projectId/financials/change-orders/new" element={<ChangeOrderGeneratorPage />} />
                               <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />

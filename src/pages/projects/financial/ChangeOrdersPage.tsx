@@ -1,9 +1,10 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useChangeOrdersByProject, useDeleteChangeOrder } from "@/hooks/useChangeOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, ExternalLink, Trash2, Paperclip } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, ExternalLink, Trash2, Paperclip, Plus } from "lucide-react";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -17,6 +18,7 @@ const PENDING = (s: string | null) => s === "pending" || s === "draft" || s === 
 
 export default function ChangeOrdersPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { data: allCos = [], isLoading } = useChangeOrdersByProject(projectId ?? null);
   const deleteCo = useDeleteChangeOrder();
@@ -29,17 +31,22 @@ export default function ChangeOrdersPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <FinancialSubNav />
-      <div className="flex items-start gap-2">
-        <TrendingUp className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
-        <div>
-          <h1 className="text-2xl font-bold">Prime Contract Change Orders</h1>
-          <p className="text-muted-foreground text-sm">
-            Changes between you and the owner on{" "}
-            {contract ? `Prime Contract ${contract.contract_no}` : "the prime contract"} ·
-            PCO = potential (pending) · PCCO = executed. Subcontractor change orders
-            (SCOs) live on each commitment.
-          </p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          <TrendingUp className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
+          <div>
+            <h1 className="text-2xl font-bold">Prime Contract Change Orders</h1>
+            <p className="text-muted-foreground text-sm">
+              Changes between you and the owner on{" "}
+              {contract ? `Prime Contract ${contract.contract_no}` : "the prime contract"} ·
+              PCO = potential (pending) · PCCO = executed. Subcontractor change orders
+              (SCOs) live on each commitment.
+            </p>
+          </div>
         </div>
+        <Button onClick={() => navigate(`/projects/${projectId}/financials/change-orders/new`)} className="shrink-0">
+          <Plus className="h-4 w-4 mr-1.5" />New Change Order
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
