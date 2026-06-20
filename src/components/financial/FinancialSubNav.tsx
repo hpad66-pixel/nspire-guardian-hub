@@ -14,6 +14,7 @@ const TABS = [
   { label: "Vendor Inbox",    path: "vendor-inbox" },
   { label: "Budget",          path: "budget" },
   { label: "Direct Costs",    path: "direct-costs" },
+  { label: "Payments",        path: "payments" },
   { label: "Ledger",          path: "ledger" },
 ];
 
