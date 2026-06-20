@@ -186,10 +186,11 @@ export default function CommitmentDetailPage() {
                 <div className="text-muted-foreground">No subcontractor change orders on this commitment yet.</div>
               ) : (
                 <div className="divide-y text-sm">
-                  {filteredCcos.map((co) => (
+                  {[...filteredCcos].sort((a, b) => ((a as any).co_no ?? 0) - ((b as any).co_no ?? 0)).map((co, i) => (
                     <div key={co.id} className="flex items-center justify-between py-2">
                       <div>
-                        <span className="font-mono mr-2">SCO #{co.co_no}</span>
+                        {/* Per-commitment sequence — DB co_no is unique per project, so it isn't 1-based per sub. */}
+                        <span className="font-mono mr-2">SCO #{i + 1}</span>
                         {co.title}
                       </div>
                       <div className="flex gap-2 items-center">
