@@ -16,7 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileText, Receipt } from "lucide-react";
+import { Plus, FileText, Receipt, Paperclip } from "lucide-react";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
 
@@ -134,6 +134,22 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
                 <td className="p-3 text-right font-mono text-sm">{pa.approved_amount != null ? money(pa.approved_amount) : "—"}</td>
                 <td className="p-3">
                   <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[pa.status as CommitmentInvoice["status"]] ?? "bg-muted text-muted-foreground"}`}>{pa.status}</span>
+                </td>
+                <td className="p-3 w-10 text-center">
+                  {pa.pdf_path ? (
+                    <a
+                      href={pa.pdf_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      title="View / print the AIA pay application PDF"
+                      className="inline-flex items-center text-[var(--apas-sapphire)] hover:text-primary"
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground/40" title="No PDF attached">—</span>
+                  )}
                 </td>
               </tr>
             ))}
