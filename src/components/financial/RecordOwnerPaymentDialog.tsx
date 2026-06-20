@@ -63,8 +63,11 @@ export function RecordOwnerPaymentDialog({
   }, [open]);
 
   const amt = Number(amount);
+  // A single pay app may legitimately be overpaid (owner lump checks span periods);
+  // the server caps total receipts at the revised contract value. So this is a
+  // heads-up, not a hard block.
   const overpays = selected != null && amt > selected.balance_due + 0.004;
-  const canSave = payAppId && receivedDate && amt > 0 && !overpays && !create.isPending;
+  const canSave = payAppId && receivedDate && amt > 0 && !create.isPending;
 
   function handleSave() {
     if (!canSave || !selected) return;
@@ -155,8 +158,9 @@ export function RecordOwnerPaymentDialog({
           </div>
 
           {overpays && selected && (
-            <p className="text-xs text-destructive">
-              {money(amt)} exceeds the {money(selected.balance_due)} open on Pay App #{selected.pay_app_no}.
+            <p className="text-xs text-amber-600">
+              Note: {money(amt)} exceeds the {money(selected.balance_due)} open on Pay App #{selected.pay_app_no}.
+              The excess records as an advance and applies toward later pay apps — fine if the owner prepaid.
             </p>
           )}
         </div>
