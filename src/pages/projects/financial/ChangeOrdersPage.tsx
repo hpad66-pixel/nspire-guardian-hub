@@ -31,9 +31,12 @@ export default function ChangeOrdersPage() {
       <div className="flex items-start gap-2">
         <TrendingUp className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
         <div>
-          <h1 className="text-2xl font-bold">Change Orders</h1>
+          <h1 className="text-2xl font-bold">Prime Contract Change Orders</h1>
           <p className="text-muted-foreground text-sm">
-            {contract ? `Prime Contract ${contract.contract_no}` : "Prime contract change orders"}
+            Changes between you and the owner on{" "}
+            {contract ? `Prime Contract ${contract.contract_no}` : "the prime contract"} ·
+            PCO = potential (pending) · PCCO = executed. Subcontractor change orders
+            (SCOs) live on each commitment.
           </p>
         </div>
       </div>
@@ -80,7 +83,7 @@ export default function ChangeOrdersPage() {
                     <tr key={co.id} className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
                       onClick={() => (window.location.href = `/projects/${projectId}/financials/cos/${co.id}`)}>
                       <td className="p-3 font-mono font-medium">
-                        {(co as any).co_type ?? "CO"}-{(co as any).co_no ?? "—"}
+                        {EXECUTED(co.status) ? "PCCO" : "PCO"} #{(co as any).co_no ?? "—"}
                       </td>
                       <td className="p-3">{co.title ?? co.description}</td>
                       <td className="p-3 text-muted-foreground">{fmtDate((co as any).executed_date)}</td>

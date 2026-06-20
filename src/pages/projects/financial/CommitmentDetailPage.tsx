@@ -96,7 +96,7 @@ export default function CommitmentDetailPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Original</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.original_value ?? commitment.original_value))}</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">CCOs</CardTitle></CardHeader>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">SCOs</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.executed_cco_value ?? 0))}</CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Revised</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold text-primary">{money(Number((totals as any)?.revised_commitment_value ?? commitment.original_value))}</CardContent></Card>
@@ -174,16 +174,22 @@ export default function CommitmentDetailPage() {
 
         <TabsContent value="cos">
           <Card>
-            <CardHeader><CardTitle>Commitment Change Orders (CCOs)</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Subcontractor Change Orders (SCOs)</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Changes between you and this subcontractor — tracked separately from prime
+                (owner-facing) change orders.
+              </p>
+            </CardHeader>
             <CardContent>
               {filteredCcos.length === 0 ? (
-                <div className="text-muted-foreground">No CCOs on this commitment.</div>
+                <div className="text-muted-foreground">No subcontractor change orders on this commitment yet.</div>
               ) : (
                 <div className="divide-y text-sm">
                   {filteredCcos.map((co) => (
                     <div key={co.id} className="flex items-center justify-between py-2">
                       <div>
-                        <span className="font-mono mr-2">CCO-{co.co_no}</span>
+                        <span className="font-mono mr-2">SCO #{co.co_no}</span>
                         {co.title}
                       </div>
                       <div className="flex gap-2 items-center">

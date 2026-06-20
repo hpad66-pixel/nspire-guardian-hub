@@ -53,37 +53,39 @@ function VendorInvoiceGroup({
   const { data: invoices = [], isLoading } = useCommitmentInvoices(commitment.id);
   if (isLoading) return null;
 
-  // chronological order drives the per-vendor pay-app number (1,2,3,4…)
+  // Subcontractor invoices keep the vendor's OWN invoice number — they are NOT
+  // pay applications (those belong to the prime contract). Order chronologically
+  // only for display.
   const ordered = [...invoices].sort((a, b) =>
     (a.period_end ?? a.created_at ?? "").localeCompare(b.period_end ?? b.created_at ?? ""));
   const total = ordered.reduce((s, i) => s + (Number(i.approved_amount ?? i.submitted_amount) || 0), 0);
 
   return (
     <div className="border-b last:border-0">
-      {/* Vendor header */}
+      {/* Subcontractor header */}
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50">
         <Link
           to={`/projects/${projectId}/financials/commitments/${commitment.id}`}
           className="text-sm font-semibold hover:underline text-primary flex items-center gap-2"
         >
           {vendorName(commitment)}
-          <span className="text-xs font-normal text-muted-foreground">{commitment.commitment_no}</span>
+          <span className="text-xs font-normal text-muted-foreground">Subcontractor · {commitment.commitment_no}</span>
         </Link>
         <span className="text-xs text-muted-foreground">
-          {ordered.length} pay app{ordered.length !== 1 ? "s" : ""} · {fmt(total)}
+          {ordered.length} invoice{ordered.length !== 1 ? "s" : ""} · {fmt(total)}
         </span>
       </div>
       {ordered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-muted-foreground italic">No pay applications yet.</div>
+        <div className="px-3 py-2 text-xs text-muted-foreground italic">No invoices submitted yet.</div>
       ) : (
         <table className="w-full text-sm">
           <tbody>
-            {ordered.map((inv, i) => (
+            {ordered.map((inv) => (
               <tr key={inv.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onOpen(inv.id, commitment.id)}>
-                <td className="p-3 w-24">
-                  <span className="font-bold text-[var(--apas-sapphire)]">Pay App #{i + 1}</span>
+                <td className="p-3 w-28">
+                  <span className="font-bold text-foreground">Invoice #{inv.invoice_no}</span>
                 </td>
-                <td className="p-3 text-xs text-muted-foreground font-mono">Ref {inv.invoice_no}</td>
+                <td className="p-3 text-xs text-muted-foreground font-mono">{vendorName(commitment)}</td>
                 <td className="p-3 text-sm text-muted-foreground">{fmtDate(inv.period_end)}</td>
                 <td className="p-3 text-right font-mono text-sm">{inv.submitted_amount != null ? money(inv.submitted_amount) : "—"}</td>
                 <td className="p-3 text-right font-mono text-sm">{inv.approved_amount != null ? money(inv.approved_amount) : "—"}</td>
@@ -188,32 +190,38 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
-          <p className="text-muted-foreground text-sm">Prime contract pay applications and commitment invoices.</p>
+          <p className="text-muted-foreground text-sm">Your pay applications to the owner, and subcontractor invoices to you.</p>
         </div>
         <Button onClick={() => setNewOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Commitment Invoice
+          <Plus className="h-4 w-4 mr-2" /> Record Sub Invoice
         </Button>
       </div>
 
       {/* Vendor Invoices — grouped by vendor, numbered per vendor, filterable */}
       <Card>
         <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Vendor Invoices
-          </CardTitle>
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Pay Applications & Invoices
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Prime contract = <span className="font-medium text-foreground">Pay Apps</span> you submit to the owner ·
+              subcontractors = <span className="font-medium text-foreground">Invoices</span> they submit to you
+            </p>
+          </div>
           {(commitments.length > 0 || primeContract) && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs text-muted-foreground">Filter:</span>
               <Select value={vendorFilter} onValueChange={setVendorFilter}>
                 <SelectTrigger className="h-8 w-[200px] text-sm">
-                  <SelectValue placeholder="All vendors" />
+                  <SelectValue placeholder="All parties" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All vendors</SelectItem>
-                  {primeContract && <SelectItem value="prime">{primeLabel} (Prime)</SelectItem>}
+                  <SelectItem value="all">All parties</SelectItem>
+                  {primeContract && <SelectItem value="prime">{primeLabel} (Prime · Pay Apps)</SelectItem>}
                   {commitments.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{vendorName(c)}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{vendorName(c)} (Sub · Invoices)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -221,12 +229,6 @@ export default function InvoicesPage() {
           )}
         </CardHeader>
         <CardContent className="p-0">
-          {/* Column legend */}
-          <div className="hidden sm:flex items-center gap-3 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground border-b bg-background">
-            <span className="w-24">Pay App</span>
-            <span className="flex-1">Reference · Period</span>
-            <span>Submitted / Approved · Status</span>
-          </div>
           {isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading…</p>
           ) : commitments.length === 0 && !primeContract ? (
@@ -247,8 +249,8 @@ export default function InvoicesPage() {
                 />
               ))}
               <div className="p-3 text-center text-muted-foreground text-xs border-t">
-                Pay apps are numbered per vendor in date order ·{" "}
-                <button className="underline" onClick={() => setNewOpen(true)}>New Invoice</button>
+                Prime pay apps auto-number #1, #2, #3… · subcontractor invoices keep the sub's own number ·{" "}
+                <button className="underline" onClick={() => setNewOpen(true)}>Record a sub invoice</button>
               </div>
             </>
           )}
@@ -259,7 +261,7 @@ export default function InvoicesPage() {
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>New Commitment Invoice</DialogTitle>
+            <DialogTitle>Record Subcontractor Invoice</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -278,7 +280,7 @@ export default function InvoicesPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Invoice #</Label>
+              <Label>Sub's Invoice # (use their number)</Label>
               <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-001" />
             </div>
             <div className="space-y-1">
