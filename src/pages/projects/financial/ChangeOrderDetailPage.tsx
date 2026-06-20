@@ -1,7 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { AttachmentField } from "@/components/common/AttachmentField";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
 import { PromoteToOcoDialog } from "@/components/financial/PromoteToOcoDialog";
@@ -43,6 +44,15 @@ export default function ChangeOrderDetailPage() {
   });
 
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const qc = useQueryClient();
+
+  async function setCoPdf(url: string | null) {
+    if (!coId) return;
+    const { error } = await supabase.from("change_orders" as any).update({ pdf_path: url }).eq("id", coId);
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ["co", coId] });
+    qc.invalidateQueries({ queryKey: ["change-orders"] });
+  }
 
   if (!co) return <div className="p-6 text-muted-foreground">Loading change order…</div>;
 
@@ -100,6 +110,26 @@ export default function ChangeOrderDetailPage() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Executed</CardTitle></CardHeader>
           <CardContent className="text-sm">{co.executed_date ?? "—"}</CardContent></Card>
       </div>
+
+      {/* Signed change-order document */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Signed change order</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Attach the signed/approved CO document so it can be viewed or printed from the record.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <AttachmentField
+            url={(co as any).pdf_path}
+            onChange={setCoPdf}
+            projectId={projectId ?? ""}
+            folder="change-orders"
+            label="Change order"
+            readOnly={co.status === "void"}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Line items</CardTitle></CardHeader>

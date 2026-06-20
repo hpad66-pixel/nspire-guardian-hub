@@ -3,7 +3,7 @@ import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useChangeOrdersByProject, useDeleteChangeOrder } from "@/hooks/useChangeOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, ExternalLink, Trash2 } from "lucide-react";
+import { TrendingUp, ExternalLink, Trash2, Paperclip } from "lucide-react";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -100,6 +100,18 @@ export default function ChangeOrdersPage() {
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex items-center justify-center gap-2">
+                          {(co as any).pdf_path && (
+                            <a
+                              href={(co as any).pdf_path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="View / print the signed change order PDF"
+                              className="text-[var(--apas-sapphire)] hover:text-primary"
+                            >
+                              <Paperclip className="h-3.5 w-3.5" />
+                            </a>
+                          )}
                           <Link to={`/projects/${projectId}/financials/cos/${co.id}`} onClick={(e) => e.stopPropagation()}>
                             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                           </Link>

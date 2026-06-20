@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { money } from "@/lib/pdf";
+import { supabase } from "@/integrations/supabase/client";
+import { AttachmentField } from "@/components/common/AttachmentField";
 
 export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
@@ -40,6 +42,11 @@ export default function PayAppDetailPage() {
     if (!confirm("Reject this pay app? It will return to Draft.")) return;
     try { await reject.mutateAsync(); toast.success("Rejected"); }
     catch (e: any) { toast.error(e.message); }
+  }
+  async function setPayAppPdf(url: string | null) {
+    const { error } = await supabase.from("prime_contract_pay_apps" as any).update({ pdf_path: url }).eq("id", payAppId!);
+    if (error) throw error;
+    await detail.refetch();
   }
 
   return (
@@ -106,20 +113,22 @@ export default function PayAppDetailPage() {
         </Card>
       )}
 
-      {/* Original submitted PDF, attached for review */}
-      {(pa as any).pdf_path && (
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Original Pay Application (PDF)</CardTitle>
-            <a href={(pa as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--apas-sapphire)] font-medium hover:underline">Open ↗</a>
-          </CardHeader>
-          <CardContent>
-            <object data={(pa as any).pdf_path} type="application/pdf" className="w-full rounded-md border" style={{ height: 640 }}>
-              <a href={(pa as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-[var(--apas-sapphire)] underline">Download the original pay application PDF</a>
-            </object>
-          </CardContent>
-        </Card>
-      )}
+      {/* Pay application document — view, print, upload, or replace */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Pay Application (PDF)</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">The signed AIA G702/G703. Attach or replace it here.</p>
+        </CardHeader>
+        <CardContent>
+          <AttachmentField
+            url={(pa as any).pdf_path}
+            onChange={setPayAppPdf}
+            projectId={projectId ?? ""}
+            folder="pay-apps"
+            label="Pay application"
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Line-by-line</CardTitle></CardHeader>
