@@ -77,6 +77,50 @@ export default function PayAppDetailPage() {
           <CardContent className="text-2xl font-bold">{money(Number(pa.retainage_held ?? 0))}</CardContent></Card>
       </div>
 
+      {/* Original AIA G702 summary (from the submitted PDF) */}
+      {(pa as any).pay_app_data && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">AIA G702 Summary (as submitted)</CardTitle></CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <tbody>
+                {[
+                  ["1. Original Contract Sum", (pa as any).pay_app_data.original_contract_sum],
+                  ["2. Net change by change orders", (pa as any).pay_app_data.net_change_orders],
+                  ["3. Contract Sum to date", (pa as any).pay_app_data.contract_sum_to_date],
+                  ["4. Total completed & stored to date", (pa as any).pay_app_data.completed_stored_to_date],
+                  ["5. Retainage", (pa as any).pay_app_data.retainage_total],
+                  ["6. Total earned less retainage", (pa as any).pay_app_data.total_earned_less_retainage],
+                  ["7. Less previous certificates", (pa as any).pay_app_data.less_previous_certificates],
+                  ["8. Current payment due", (pa as any).pay_app_data.current_payment_due],
+                  ["9. Balance to finish", (pa as any).pay_app_data.balance_to_finish],
+                ].map(([label, val]: any, i) => (
+                  <tr key={i} className={`border-t ${String(label).startsWith("8.") ? "font-bold bg-[var(--apas-sapphire)]/5" : ""}`}>
+                    <td className="py-2 pr-3">{label}</td>
+                    <td className="py-2 text-right font-mono">{money(Number(val ?? 0))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Original submitted PDF, attached for review */}
+      {(pa as any).pdf_path && (
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Original Pay Application (PDF)</CardTitle>
+            <a href={(pa as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--apas-sapphire)] font-medium hover:underline">Open ↗</a>
+          </CardHeader>
+          <CardContent>
+            <object data={(pa as any).pdf_path} type="application/pdf" className="w-full rounded-md border" style={{ height: 640 }}>
+              <a href={(pa as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-[var(--apas-sapphire)] underline">Download the original pay application PDF</a>
+            </object>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader><CardTitle>Line-by-line</CardTitle></CardHeader>
         <CardContent>

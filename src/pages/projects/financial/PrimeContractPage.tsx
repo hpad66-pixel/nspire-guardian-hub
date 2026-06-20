@@ -112,7 +112,7 @@ export default function PrimeContractPage() {
 
   const kpis = [
     { label: "Original", value: fmt(original) },
-    { label: "Executed COs", value: fmt(executedCo), color: "text-emerald-600" },
+    { label: "Executed Change Orders", value: fmt(executedCo), color: "text-emerald-600" },
     { label: "Revised", value: fmt(revised), color: "text-[var(--apas-sapphire)]" },
     { label: "Billed", value: fmt(billed) },
     { label: "Received", value: fmt(s?.received_to_date), color: "text-emerald-600" },

@@ -58,7 +58,7 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
 
   const kpis = [
     { label: "Original Contract", value: fmt(base), icon: TrendingUp, color: "text-foreground", to: "prime-contract" },
-    { label: "Approved COs", value: fmt(cos), icon: TrendingUp, color: cos > 0 ? "text-emerald-600" : "text-muted-foreground", to: "change-orders" },
+    { label: "Approved Change Orders", value: fmt(cos), icon: TrendingUp, color: cos > 0 ? "text-emerald-600" : "text-muted-foreground", to: "change-orders" },
     { label: "Revised Contract", value: fmt(revised), icon: TrendingUp, color: "text-foreground", to: "prime-contract" },
     { label: "Billed to Date", value: fmt(s?.billed_to_date), icon: ArrowUpRight, color: "text-foreground", to: "prime-contract" },
     { label: "Received", value: fmt(s?.received_to_date), icon: ArrowDownLeft, color: "text-emerald-600", to: "payments" },

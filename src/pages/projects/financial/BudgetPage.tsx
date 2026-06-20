@@ -71,7 +71,7 @@ export default function BudgetPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Original Contract", value: fmt(base), sub: "Base contract value", color: "text-foreground" },
-          { label: "Approved COs", value: `+${fmt(approvedCOs)}`, sub: "executed change orders", color: "text-emerald-600" },
+          { label: "Approved Change Orders", value: `+${fmt(approvedCOs)}`, sub: "executed change orders", color: "text-emerald-600" },
           { label: "Revised Contract", value: fmt(revised), sub: "Current contract value", color: "text-[var(--apas-sapphire)]" },
           { label: "Subcontract Exposure", value: fmt(totalCommitted), sub: `${commitments.length} commitment${commitments.length !== 1 ? "s" : ""}`, color: "text-amber-600" },
         ].map((k) => (

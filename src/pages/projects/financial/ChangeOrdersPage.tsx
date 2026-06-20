@@ -40,7 +40,7 @@ export default function ChangeOrdersPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Total COs", value: coList.length.toString(), sub: "all statuses" },
+          { label: "Total Change Orders", value: coList.length.toString(), sub: "all statuses" },
           { label: "Executed", value: fmt(approvedTotal), sub: `${coList.filter((c) => EXECUTED(c.status)).length} executed`, color: "text-emerald-600" },
           { label: "Pending", value: fmt(pendingTotal), sub: `${coList.filter((c) => PENDING(c.status)).length} pending`, color: "text-amber-600" },
           { label: "Net CO Value", value: fmt(approvedTotal), sub: "added to contract", color: "text-[var(--apas-sapphire)]" },
