@@ -28,9 +28,21 @@ export function useCoWorkflow(projectId: string | null) {
       if (!tenant_id) throw new Error("No workspace for current user");
       const { data: { user } } = await supabase.auth.getUser();
 
-      const docxBlob = await generateCoDocx(spec);
-      const docx_path = await uploadCoArtifact(docxBlob, projectId, "change-orders", "docx");
-      const pdf_path = previewPdf ? await uploadCoArtifact(previewPdf, projectId, "change-orders", "pdf") : null;
+      // Artifact generation is best-effort — the spec itself drives the on-screen
+      // template, so a docx/pdf hiccup must never block creating the change order.
+      let docx_path: string | null = null;
+      try {
+        const docxBlob = await generateCoDocx(spec);
+        docx_path = await uploadCoArtifact(docxBlob, projectId, "change-orders", "docx");
+      } catch (e) {
+        console.warn("CO .docx generation failed (continuing):", e);
+      }
+      let pdf_path: string | null = null;
+      try {
+        if (previewPdf) pdf_path = await uploadCoArtifact(previewPdf, projectId, "change-orders", "pdf");
+      } catch (e) {
+        console.warn("CO preview PDF upload failed (continuing):", e);
+      }
 
       const coNo = spec.doc.co_number ? parseInt(spec.doc.co_number, 10) : null;
       const row: Record<string, unknown> = {

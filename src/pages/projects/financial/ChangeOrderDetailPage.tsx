@@ -1,10 +1,13 @@
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { ChangeOrderSignDialog } from "@/components/financial/ChangeOrderSignDialog";
 import { SendChangeOrderDialog } from "@/components/financial/SendChangeOrderDialog";
+import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
+import { nodeToPdfBlob } from "@/lib/changeOrder/generatePdf";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
@@ -52,8 +55,28 @@ export default function ChangeOrderDetailPage() {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const docRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const spec = (co as any)?.spec as CoSpec | null;
   const locked = Boolean((co as any)?.locked);
+
+  async function downloadPdf() {
+    if (!docRef.current) return;
+    setPdfBusy(true);
+    try {
+      const blob = await nodeToPdfBlob(docRef.current);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(spec?.doc?.co_label || "change-order")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(`PDF export failed: ${(e as Error).message}`);
+    } finally {
+      setPdfBusy(false);
+    }
+  }
   const signedAt = (co as any)?.submitted_signed_at as string | null;
   const acceptedAt = (co as any)?.accepted_signed_at as string | null;
   const sentAt = (co as any)?.sent_to_client_at as string | null;
@@ -157,12 +180,19 @@ export default function ChangeOrderDetailPage() {
                 {!locked && <Button onClick={() => setSignOpen(true)}><PenLine className="h-4 w-4 mr-1.5" /> Sign &amp; lock</Button>}
                 {locked && !acceptedAt && <Button onClick={() => setSendOpen(true)}><Send className="h-4 w-4 mr-1.5" /> {sentAt ? "Re-send to client" : "Send to client"}</Button>}
                 {docxPath && <a href={docxPath} target="_blank" rel="noopener noreferrer"><Button variant="outline"><FileDown className="h-4 w-4 mr-1.5" /> Editable .docx</Button></a>}
+                <Button variant="outline" disabled={pdfBusy} onClick={downloadPdf}><FileDown className="h-4 w-4 mr-1.5" /> {pdfBusy ? "Preparing…" : "Download PDF"}</Button>
               </div>
-              {(co as any).pdf_path && (
-                <object data={(co as any).pdf_path} type="application/pdf" className="w-full rounded-md border" style={{ height: 560 }}>
-                  <a href={(co as any).pdf_path} target="_blank" rel="noopener noreferrer" className="text-[var(--apas-sapphire)] underline">Open the change order PDF</a>
-                </object>
-              )}
+              {/* Live rendered skill template — always visible, theme-independent */}
+              <div className="rounded-md border bg-muted/30 p-3 overflow-auto max-h-[680px]">
+                <ChangeOrderDocument
+                  ref={docRef}
+                  spec={spec}
+                  signatures={{
+                    submitted: (co as any).submitted_signature_path ?? null,
+                    accepted: (co as any).accepted_signature_path ?? null,
+                  }}
+                />
+              </div>
             </>
           ) : (
             <AttachmentField

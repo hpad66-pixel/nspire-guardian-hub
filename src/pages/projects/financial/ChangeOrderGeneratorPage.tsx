@@ -73,7 +73,14 @@ export default function ChangeOrderGeneratorPage() {
     if (!finalSpec.doc.title.trim()) return toast.error("Add a title for the change order.");
     setSaving(true);
     try {
-      const previewPdf = docRef.current ? await nodeToPdfBlob(docRef.current) : null;
+      // Preview PDF is best-effort — html2canvas can choke on themed CSS, and it
+      // must never block creating the change order or its .docx (the real output).
+      let previewPdf: Blob | null = null;
+      try {
+        if (docRef.current) previewPdf = await nodeToPdfBlob(docRef.current);
+      } catch (pdfErr) {
+        console.warn("CO preview PDF generation failed (continuing):", pdfErr);
+      }
       const row = await create.mutateAsync({ projectId, primeContractId: (contract as any)?.id ?? null, spec: finalSpec, previewPdf });
       toast.success(`Change order ${finalSpec.doc.co_label} created`);
       navigate(`/projects/${projectId}/financials/cos/${row.id}${thenSign ? "?sign=1" : ""}`);
