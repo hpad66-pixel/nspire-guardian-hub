@@ -1,9 +1,9 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Plus } from "lucide-react";
 import { useLienReleases } from "@/hooks/useLienReleases";
 
 const fmt = (n: number | null | undefined) =>
@@ -15,19 +15,25 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function LienReleasesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const { data: releases = [], submitForApproval, approve, reject } = useLienReleases(projectId ?? null);
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
-      <div className="flex items-start gap-2">
-        <ShieldCheck className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
-        <div>
-          <h1 className="text-2xl font-bold">Lien Releases</h1>
-          <p className="text-muted-foreground text-sm">
-            Inbound waivers from subs (gate AP payment) and outbound waivers we issue to the owner.
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <ShieldCheck className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
+          <div>
+            <h1 className="text-2xl font-bold">Lien Releases</h1>
+            <p className="text-muted-foreground text-sm">
+              Inbound waivers from subs (gate AP payment) and outbound waivers we issue to the owner.
+            </p>
+          </div>
         </div>
+        <Button onClick={() => navigate(`/projects/${projectId}/financials/lien-releases/new`)} className="shrink-0">
+          <Plus className="h-4 w-4 mr-1.5" />New Waiver
+        </Button>
       </div>
 
       <Card>
