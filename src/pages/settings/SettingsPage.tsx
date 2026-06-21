@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
@@ -171,10 +172,15 @@ export default function SettingsPage() {
           {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
           {isAdmin && <TabsTrigger value="demo">Demo Mode</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="notifications" className="space-y-6">
+          <NotificationSettings />
+        </TabsContent>
 
         <TabsContent value="modules" className="space-y-6">
           {!isAdmin && (
