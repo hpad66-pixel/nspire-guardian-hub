@@ -8,7 +8,10 @@ import { AttachmentField } from "@/components/common/AttachmentField";
 import { ChangeOrderSignDialog } from "@/components/financial/ChangeOrderSignDialog";
 import { SendChangeOrderDialog } from "@/components/financial/SendChangeOrderDialog";
 import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
+import { CoSpecEditor } from "@/components/financial/CoSpecEditor";
 import { buildCoPdf } from "@/lib/changeOrder/coPdf";
+import { recomputePricing } from "@/lib/changeOrder/pricing";
+import { useCoWorkflow } from "@/hooks/useCoWorkflow";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
@@ -18,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { ChevronRight, LayoutDashboard, Lock, PenLine, Send, CheckCircle2, FileDown, Trash2 } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Lock, PenLine, Pencil, Save, Send, CheckCircle2, FileDown, Trash2 } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -53,6 +56,10 @@ export default function ChangeOrderDetailPage() {
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<CoSpec | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const { update } = useCoWorkflow(projectId ?? null);
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -103,6 +110,34 @@ export default function ChangeOrderDetailPage() {
 
   const label = `${co.co_type ?? "CO"}-${String(co.co_no ?? 0).padStart(4, "0")}`;
   const readOnly = co.status === "executed" || co.status === "void";
+
+  // A generated CO (has a spec) can be edited inline until it's signed/locked or executed.
+  const canEdit = Boolean(spec) && !locked && !readOnly;
+  function patchDraft(updater: (s: CoSpec) => void) {
+    setDraft((prev) => { if (!prev) return prev; const next = structuredClone(prev); updater(next); return next; });
+  }
+  function startEdit() { if (spec) { setDraft(structuredClone(spec)); setEditing(true); } }
+  function cancelEdit() { setEditing(false); setDraft(null); }
+  async function saveEdit() {
+    if (!draft || !coId) return;
+    if (!draft.doc.title.trim()) { toast.error("Add a title for the change order."); return; }
+    const finalSpec = structuredClone(draft);
+    finalSpec.pricing = recomputePricing(finalSpec.pricing);
+    if (!finalSpec.doc.co_label && finalSpec.doc.co_number) {
+      finalSpec.doc.co_label = `PCO-${String(finalSpec.doc.co_number).padStart(3, "0")}`;
+    }
+    setSavingEdit(true);
+    try {
+      await update.mutateAsync({ coId, spec: finalSpec });
+      toast.success("Change order saved");
+      setEditing(false);
+      setDraft(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
@@ -182,25 +217,43 @@ export default function ChangeOrderDetailPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {spec ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {!locked && <Button onClick={() => setSignOpen(true)}><PenLine className="h-4 w-4 mr-1.5" /> Sign &amp; lock</Button>}
-                {locked && !acceptedAt && <Button onClick={() => setSendOpen(true)}><Send className="h-4 w-4 mr-1.5" /> {sentAt ? "Re-send to client" : "Send to client"}</Button>}
-                {docxPath && <a href={docxPath} target="_blank" rel="noopener noreferrer"><Button variant="outline"><FileDown className="h-4 w-4 mr-1.5" /> Editable .docx</Button></a>}
-                <Button variant="outline" disabled={pdfBusy} onClick={downloadPdf}><FileDown className="h-4 w-4 mr-1.5" /> {pdfBusy ? "Preparing…" : "Download PDF"}</Button>
+            editing && draft ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm text-muted-foreground">Editing this change order — changes apply when you save.</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={cancelEdit} disabled={savingEdit}>Cancel</Button>
+                    <Button onClick={saveEdit} disabled={savingEdit}><Save className="h-4 w-4 mr-1.5" /> {savingEdit ? "Saving…" : "Save changes"}</Button>
+                  </div>
+                </div>
+                <CoSpecEditor spec={draft} onPatch={patchDraft} coNumberPlaceholder={String(co.co_no ?? "")} />
+                {/* Live preview of the edited document */}
+                <div className="rounded-md border bg-muted/30 p-3 overflow-auto max-h-[680px]">
+                  <ChangeOrderDocument spec={{ ...draft, pricing: recomputePricing(draft.pricing) }} />
+                </div>
               </div>
-              {/* Live rendered skill template — always visible, theme-independent */}
-              <div className="rounded-md border bg-muted/30 p-3 overflow-auto max-h-[680px]">
-                <ChangeOrderDocument
-                  ref={docRef}
-                  spec={spec}
-                  signatures={{
-                    submitted: (co as any).submitted_signature_path ?? null,
-                    accepted: (co as any).accepted_signature_path ?? null,
-                  }}
-                />
-              </div>
-            </>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {canEdit && <Button variant="outline" onClick={startEdit}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>}
+                  {!locked && <Button onClick={() => setSignOpen(true)}><PenLine className="h-4 w-4 mr-1.5" /> Sign &amp; lock</Button>}
+                  {locked && !acceptedAt && <Button onClick={() => setSendOpen(true)}><Send className="h-4 w-4 mr-1.5" /> {sentAt ? "Re-send to client" : "Send to client"}</Button>}
+                  {docxPath && <a href={docxPath} target="_blank" rel="noopener noreferrer"><Button variant="outline"><FileDown className="h-4 w-4 mr-1.5" /> Editable .docx</Button></a>}
+                  <Button variant="outline" disabled={pdfBusy} onClick={downloadPdf}><FileDown className="h-4 w-4 mr-1.5" /> {pdfBusy ? "Preparing…" : "Download PDF"}</Button>
+                </div>
+                {/* Live rendered skill template — always visible, theme-independent */}
+                <div className="rounded-md border bg-muted/30 p-3 overflow-auto max-h-[680px]">
+                  <ChangeOrderDocument
+                    ref={docRef}
+                    spec={spec}
+                    signatures={{
+                      submitted: (co as any).submitted_signature_path ?? null,
+                      accepted: (co as any).accepted_signature_path ?? null,
+                    }}
+                  />
+                </div>
+              </>
+            )
           ) : (
             <AttachmentField
               url={(co as any).pdf_path}
