@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useSovProgress, type SovProgressRow } from "@/hooks/useSovProgress";
+import { useChangeOrderLineItems } from "@/hooks/useChangeOrderLineItems";
 import { useProject } from "@/hooks/useProjects";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,11 +39,16 @@ export default function QuantitiesProgressPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project } = useProject(projectId ?? null);
   const { data: rows = [], isLoading } = useSovProgress(projectId ?? null);
+  const { data: coLines = {} } = useChangeOrderLineItems(projectId ?? null);
 
   const [showMoney, setShowMoney] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [coOpen, setCoOpen] = useState(true);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpand = (coId: string) =>
+    setExpanded((s) => { const n = new Set(s); n.has(coId) ? n.delete(coId) : n.add(coId); return n; });
+  const coLineColSpan = showMoney ? 10 : 7;
 
   const base = useMemo(() => rows.filter((r) => r.kind === "base"), [rows]);
   const cos = useMemo(() => rows.filter((r) => r.kind === "change_order"), [rows]);
@@ -77,14 +83,21 @@ export default function QuantitiesProgressPage() {
     );
   }
 
-  function Row({ r }: { r: SovProgressRow }) {
+  function Row({ r, expandable, expanded, onToggle }: { r: SovProgressRow; expandable?: boolean; expanded?: boolean; onToggle?: () => void }) {
     return (
       <tr className={`border-b last:border-0 hover:bg-muted/20 ${rowPrintHidden(r.sov_line_item_id) ? "print:hidden" : ""}`}>
         <td className="p-2 print:hidden">
           <Checkbox checked={selected.has(r.sov_line_item_id)} onCheckedChange={() => toggleRow(r.sov_line_item_id)} />
         </td>
         <td className="p-2 font-mono text-xs text-muted-foreground">{r.item_no}</td>
-        <td className="p-2">{r.description}</td>
+        <td className="p-2">
+          {expandable ? (
+            <button onClick={onToggle} className="inline-flex items-center gap-1 text-left hover:text-[var(--apas-sapphire)] print:cursor-default">
+              {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 print:hidden" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 print:hidden" />}
+              {r.description}
+            </button>
+          ) : r.description}
+        </td>
         <td className="p-2 text-center text-muted-foreground">{r.unit ?? "—"}</td>
         <td className="p-2 text-right font-mono">{qfmt(r.scheduled_qty)}</td>
         <td className="p-2 text-right font-mono">{qfmt(r.qty_to_date)}</td>
@@ -233,7 +246,50 @@ export default function QuantitiesProgressPage() {
                   <div className="overflow-x-auto print:!block">
                     <table className="w-full text-sm">
                       <Th />
-                      <tbody>{cos.map((r) => <Row key={r.sov_line_item_id} r={r} />)}</tbody>
+                      <tbody>
+                        {cos.map((r) => {
+                          const coId = r.change_order_id;
+                          const lines = coId ? coLines[coId] : undefined;
+                          const isOpen = coId ? expanded.has(coId) : false;
+                          return (
+                            <Fragment key={r.sov_line_item_id}>
+                              <Row r={r} expandable={!!lines?.length} expanded={isOpen} onToggle={() => coId && toggleExpand(coId)} />
+                              {isOpen && lines?.length ? (
+                                <tr className="bg-muted/20">
+                                  <td className="print:hidden" />
+                                  <td colSpan={coLineColSpan} className="p-0">
+                                    <div className="px-6 py-2">
+                                      <p className="text-xs text-muted-foreground mb-1">{lines.length} priced line{lines.length === 1 ? "" : "s"} on this change order:</p>
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="text-muted-foreground border-b">
+                                            <th className="text-left p-1 font-normal">Item</th>
+                                            <th className="text-center p-1 font-normal">Unit</th>
+                                            <th className="text-right p-1 font-normal">Qty</th>
+                                            <th className="text-right p-1 font-normal">Unit Price</th>
+                                            <th className="text-right p-1 font-normal">Amount</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {lines.map((l) => (
+                                            <tr key={l.id} className="border-b last:border-0">
+                                              <td className="p-1">{l.description}{l.basis ? <span className="text-muted-foreground"> · {l.basis}</span> : null}</td>
+                                              <td className="p-1 text-center text-muted-foreground">{l.unit ?? "—"}</td>
+                                              <td className="p-1 text-right font-mono">{qfmt(l.qty)}</td>
+                                              <td className="p-1 text-right font-mono text-muted-foreground">{money(l.unit_price)}</td>
+                                              <td className="p-1 text-right font-mono">{money(l.extended_value)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </Fragment>
+                          );
+                        })}
+                      </tbody>
                       <SectionFoot r={coRoll} />
                     </table>
                   </div>
