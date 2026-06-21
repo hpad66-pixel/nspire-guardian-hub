@@ -43,6 +43,7 @@ const SYSTEM = `You extract the priced line items from a construction change-ord
 - INCLUDE markup rows that carry a dollar amount (e.g. Overhead, Profit) as their own lines so the lines sum to the grand total. INCLUDE waived markups shown as $0.00.
 - EXCLUDE section subtotal rows, the GRAND TOTAL row, and pure header/label rows.
 - If the proposal has multiple priced groups (A, B, …), return all of them in order.
+- CRITICAL: If the change order is a PURE LUMP SUM with no itemized cost breakdown — i.e. the only priced row is a single line (such as "Lump Sum Change Order Amount") that simply equals the total — return an EMPTY lines array. Do NOT fabricate a placeholder line; there is nothing to itemize. Only return lines when the proposal genuinely breaks the cost into multiple distinct priced components.
 - Always call the co_lines tool.`;
 
 serve(async (req) => {
@@ -85,21 +86,25 @@ serve(async (req) => {
     });
     if (!res.ok) return json({ error: `AI error: ${await res.text()}` }, 502);
     const data = await res.json();
-    const lines = (data?.content ?? []).find((c: any) => c.type === "tool_use")?.input?.lines as any[] | undefined;
-    if (!Array.isArray(lines) || lines.length === 0) return json({ error: "No lines extracted" }, 502);
+    const toolUse = (data?.content ?? []).find((c: any) => c.type === "tool_use");
+    if (!toolUse?.input || !Array.isArray(toolUse.input.lines)) return json({ error: "No tool output" }, 502);
+    const lines = toolUse.input.lines as any[];
 
-    // Clean slate for this CO, then insert.
+    // Clean slate for this CO. An EMPTY result is valid — a pure lump-sum CO has
+    // nothing to itemize, so we clear any prior (possibly fabricated) lines.
     await admin.from("change_order_line_items").delete().eq("change_order_id", co.id);
-    const rows = lines.map((ln, i) => ({
-      tenant_id: co.tenant_id, change_order_id: co.id, line_no: Number(ln.line_no) || i + 1,
-      description: String(ln.description ?? ""), unit: ln.unit || null,
-      qty: Number(ln.qty) || 0, unit_price: Number(ln.unit_price) || 0,
-      extended_value: Number(ln.extended_value) || 0, basis: ln.basis || null,
-    }));
-    const { error: insErr } = await admin.from("change_order_line_items").insert(rows);
-    if (insErr) return json({ error: insErr.message }, 500);
+    if (lines.length > 0) {
+      const rows = lines.map((ln, i) => ({
+        tenant_id: co.tenant_id, change_order_id: co.id, line_no: Number(ln.line_no) || i + 1,
+        description: String(ln.description ?? ""), unit: ln.unit || null,
+        qty: Number(ln.qty) || 0, unit_price: Number(ln.unit_price) || 0,
+        extended_value: Number(ln.extended_value) || 0, basis: ln.basis || null,
+      }));
+      const { error: insErr } = await admin.from("change_order_line_items").insert(rows);
+      if (insErr) return json({ error: insErr.message }, 500);
+    }
 
-    return json({ ok: true, co_no: co.co_no, lines: rows.length });
+    return json({ ok: true, co_no: co.co_no, lines: lines.length });
   } catch (e) {
     return json({ error: String((e as Error).message ?? e) }, 500);
   }
