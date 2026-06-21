@@ -139,6 +139,7 @@ const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDet
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
 const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/ChangeOrderDetailPage'));
 const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/ChangeOrderGeneratorPage'));
+const ChangeOrderSettingsPage = lazy(() => import('./pages/settings/ChangeOrderSettingsPage'));
 const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
@@ -354,6 +355,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
                               <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
                               <Route path="/projects/:projectId/financials/change-orders/new" element={<ChangeOrderGeneratorPage />} />
+                              <Route path="/settings/change-orders" element={<ChangeOrderSettingsPage />} />
                               <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />

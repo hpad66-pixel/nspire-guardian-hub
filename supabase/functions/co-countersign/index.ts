@@ -73,7 +73,7 @@ serve(async (req) => {
       const label = spec?.doc?.co_label ?? `${co.co_type}-${co.co_no}`;
       const clientEmail = spec?.parties?.to?.email as string | undefined;
       const contractorEmail = spec?.parties?.from?.email as string | undefined;
-      const contractorName = spec?.parties?.from?.name ?? "APAS Consulting";
+      const contractorName = spec?.parties?.from?.name || "Change Orders";
       const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(Number(n) || 0);
 
       async function sendMail(to: string | undefined, fromName: string, subject: string, html: string) {

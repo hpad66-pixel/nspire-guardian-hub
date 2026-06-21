@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
       senderName = ws?.name || "";
     }
-    if (!senderName) senderName = "APAS Consulting";
+    if (!senderName) senderName = "Change Orders";
 
     // Add user's email to BCC if auto_bcc is enabled
     if (profile?.auto_bcc_enabled !== false) {

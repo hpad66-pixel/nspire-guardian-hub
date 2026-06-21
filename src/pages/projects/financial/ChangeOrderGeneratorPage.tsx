@@ -6,6 +6,7 @@ import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { useProject } from "@/hooks/useProjects";
 import { useCoWorkflow } from "@/hooks/useCoWorkflow";
+import { useCoSettings } from "@/hooks/useCoSettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +30,10 @@ export default function ChangeOrderGeneratorPage() {
   const { data: project } = useProject(projectId ?? null);
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { data: existingCos = [] } = useChangeOrdersByProject(projectId ?? null);
+  const { data: coSettings } = useCoSettings();
   const { create } = useCoWorkflow(projectId ?? null);
   const docRef = useRef<HTMLDivElement>(null);
+  const company = (coSettings ?? null) as any;
 
   const nextNo = useMemo(() => {
     const nums = existingCos.filter((c: any) => c.co_type === "PCO" && !c.commitment_id).map((c: any) => Number(c.co_no) || 0);
@@ -38,22 +41,28 @@ export default function ChangeOrderGeneratorPage() {
   }, [existingCos]);
 
   const [spec, setSpec] = useState<CoSpec>(() => {
-    const parties = partiesFromContract(contract as any, (project as any)?.name);
-    const sigs = signatoriesFromContract(contract as any);
-    const s = blankSpec(parties, sigs);
+    const parties = partiesFromContract(contract as any, (project as any)?.name, company);
+    const sigs = signatoriesFromContract(contract as any, company);
+    const s = blankSpec(parties, sigs, { company });
     s.doc.date = todayLong();
     s.signatures.submitted.date = todayLong();
     return s;
   });
 
-  // Re-seed parties once the contract loads (first time only).
+  // Re-seed parties/branding/markups once the contract + workspace settings load.
   const seeded = useRef(false);
-  if (!seeded.current && contract) {
+  if (!seeded.current && (contract || coSettings)) {
     seeded.current = true;
+    const fresh = blankSpec(
+      partiesFromContract(contract as any, (project as any)?.name, company),
+      signatoriesFromContract(contract as any, company),
+      { company, overheadPct: Number(company?.default_overhead_pct ?? 10), profitPct: Number(company?.default_profit_pct ?? 5) },
+    );
     setSpec((prev) => ({
-      ...prev,
-      parties: { ...partiesFromContract(contract as any, (project as any)?.name), subject: prev.parties.subject, basis: prev.parties.basis },
-      signatures: { ...signatoriesFromContract(contract as any), submitted: { ...signatoriesFromContract(contract as any).submitted, date: prev.signatures.submitted.date } },
+      ...fresh,
+      doc: { ...fresh.doc, date: prev.doc.date || todayLong() },
+      parties: { ...fresh.parties, subject: prev.parties.subject, basis: prev.parties.basis },
+      signatures: { ...fresh.signatures, submitted: { ...fresh.signatures.submitted, date: prev.signatures.submitted.date || todayLong() } },
     }));
   }
 
@@ -160,6 +169,7 @@ export default function ChangeOrderGeneratorPage() {
           <p className="text-muted-foreground text-sm">Parties auto-fill from the prime contract · edit anything · live preview on the right.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/settings/change-orders")} title="Set your company identity & defaults">Company defaults</Button>
           <Button variant="outline" disabled={saving} onClick={() => handleSave(false)}><FileText className="h-4 w-4 mr-1.5" />Save draft</Button>
           <Button disabled={saving} onClick={() => handleSave(true)}>{saving ? "Saving…" : "Save & sign"}</Button>
         </div>
