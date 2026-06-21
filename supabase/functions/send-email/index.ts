@@ -77,9 +77,20 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("user_id", userId)
       .single();
 
-    // From display name: explicit override (e.g. signer / company) → the user's
-    // name → their workspace/company name. Never the generic "User".
-    let senderName = (fromName && fromName.trim()) || profile?.full_name || "";
+    // From display name = the SENDER. Priority: explicit override (signer/company)
+    // → profile name → auth metadata name → name derived from their email →
+    // workspace/company name. Never the generic "User".
+    const meta = (userData.user.user_metadata ?? {}) as Record<string, string>;
+    const titleCase = (s: string) =>
+      s.replace(/[._\-+]+/g, " ").split(" ").filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+
+    let senderName = (fromName && fromName.trim()) || profile?.full_name || meta.full_name || meta.name || "";
+    if (!senderName) {
+      const em = profile?.work_email || profile?.email || userData.user.email || "";
+      const local = em.split("@")[0];
+      if (local) senderName = titleCase(local);
+    }
     if (!senderName && profile?.workspace_id) {
       const { data: ws } = await supabase
         .from("workspaces")
