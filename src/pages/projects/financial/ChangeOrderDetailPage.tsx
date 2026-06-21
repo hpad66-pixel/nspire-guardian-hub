@@ -8,7 +8,7 @@ import { AttachmentField } from "@/components/common/AttachmentField";
 import { ChangeOrderSignDialog } from "@/components/financial/ChangeOrderSignDialog";
 import { SendChangeOrderDialog } from "@/components/financial/SendChangeOrderDialog";
 import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
-import { nodeToPdfBlob } from "@/lib/changeOrder/generatePdf";
+import { buildCoPdf } from "@/lib/changeOrder/coPdf";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
@@ -64,16 +64,14 @@ export default function ChangeOrderDetailPage() {
   const locked = Boolean((co as any)?.locked);
 
   async function downloadPdf() {
-    if (!docRef.current) return;
+    if (!spec) return;
     setPdfBusy(true);
     try {
-      const blob = await nodeToPdfBlob(docRef.current);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${(spec?.doc?.co_label || "change-order")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const pdf = await buildCoPdf(spec, {
+        submitted: (co as any)?.submitted_signature_path,
+        accepted: (co as any)?.accepted_signature_path,
+      });
+      pdf.save(`${spec.doc.co_label || "change-order"}.pdf`);
     } catch (e) {
       toast.error(`PDF export failed: ${(e as Error).message}`);
     } finally {

@@ -6,8 +6,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, PenLine, Loader2 } from "lucide-react";
+import { CheckCircle2, PenLine, Loader2, FileDown } from "lucide-react";
 import { TypedSignaturePad } from "@/components/financial/TypedSignaturePad";
+import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
+import { buildCoPdf } from "@/lib/changeOrder/coPdf";
+import type { CoSpec } from "@/lib/changeOrder/types";
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/co-countersign`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -16,6 +19,7 @@ const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency",
 interface CoSummary {
   co_label: string; title: string; amount: number; pdf_url: string | null;
   project: string; from: string; to: string; accepted: boolean; signable: boolean;
+  spec: CoSpec | null; submitted_signature_path: string | null;
 }
 
 export default function CounterSignChangeOrderPage() {
@@ -60,21 +64,35 @@ export default function CounterSignChangeOrderPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>;
   if (err && !co) return <div className="min-h-screen flex items-center justify-center text-destructive">{err}</div>;
 
+  async function downloadPdf() {
+    if (!co?.spec) { if (co?.pdf_url) window.open(co.pdf_url, "_blank"); return; }
+    const pdf = await buildCoPdf(co.spec, { submitted: co.submitted_signature_path });
+    pdf.save(`${co.spec.doc.co_label || "change-order"}.pdf`);
+  }
+
   return (
-    <div className="min-h-screen bg-[#FDFCF9] py-10 px-4">
-      <div className="max-w-3xl mx-auto space-y-5">
-        <div className="text-center">
-          <div className="text-lg font-bold tracking-wide">{co?.from || "APAS CONSULTING"}</div>
-          <div className="h-1 w-20 bg-[#C4A35A] mx-auto my-2 rounded" />
-          <h1 className="text-2xl font-bold">{co?.co_label} — {co?.title}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{co?.project} · Amount {money(co?.amount ?? 0)}</p>
+    <div className="min-h-screen bg-[#FDFCF9] py-8 px-4">
+      <div className="max-w-4xl mx-auto space-y-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold">{co?.co_label} — {co?.title}</h1>
+            <p className="text-muted-foreground text-sm">{co?.project} · {money(co?.amount ?? 0)}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={downloadPdf}><FileDown className="h-4 w-4 mr-1.5" /> Download PDF</Button>
         </div>
 
-        {co?.pdf_url && (
-          <object data={co.pdf_url} type="application/pdf" className="w-full rounded-lg border bg-white" style={{ height: 600 }}>
+        {/* Full document, rendered like a Word page — not a cramped viewer */}
+        {co?.spec ? (
+          <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
+            <div className="mx-auto" style={{ width: 720, maxWidth: "100%" }}>
+              <ChangeOrderDocument spec={co.spec} signatures={{ submitted: co.submitted_signature_path }} />
+            </div>
+          </div>
+        ) : co?.pdf_url ? (
+          <object data={co.pdf_url} type="application/pdf" className="w-full rounded-lg border bg-white" style={{ height: "80vh" }}>
             <a href={co.pdf_url} target="_blank" rel="noopener noreferrer" className="text-[#1D6FE8] underline">Open the change order PDF</a>
           </object>
-        )}
+        ) : null}
 
         {done ? (
           <div className="rounded-lg border bg-emerald-50 text-emerald-800 p-6 text-center">

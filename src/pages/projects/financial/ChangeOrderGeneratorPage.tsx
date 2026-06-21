@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
-import { nodeToPdfBlob } from "@/lib/changeOrder/generatePdf";
+import { buildCoPdfBlob } from "@/lib/changeOrder/coPdf";
 import { recomputePricing } from "@/lib/changeOrder/pricing";
 import {
   partiesFromContract, signatoriesFromContract, blankSpec, fmtLongDate, money,
@@ -127,11 +127,10 @@ export default function ChangeOrderGeneratorPage() {
     if (!finalSpec.doc.title.trim()) return toast.error("Add a title for the change order.");
     setSaving(true);
     try {
-      // Preview PDF is best-effort — html2canvas can choke on themed CSS, and it
-      // must never block creating the change order or its .docx (the real output).
+      // Crisp vector preview PDF (best-effort — must never block creating the CO).
       let previewPdf: Blob | null = null;
       try {
-        if (docRef.current) previewPdf = await nodeToPdfBlob(docRef.current);
+        previewPdf = await buildCoPdfBlob(finalSpec);
       } catch (pdfErr) {
         console.warn("CO preview PDF generation failed (continuing):", pdfErr);
       }

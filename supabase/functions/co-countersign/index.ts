@@ -30,7 +30,7 @@ serve(async (req) => {
       if (!UUID.test(token)) return json({ error: "Invalid token" }, 400);
       const { data, error } = await admin
         .from("change_orders")
-        .select("id, co_no, co_type, title, amount, status, pdf_path, spec, accepted_signed_at, locked")
+        .select("id, co_no, co_type, title, amount, status, pdf_path, spec, accepted_signed_at, locked, submitted_signature_path")
         .eq("sign_token", token)
         .maybeSingle();
       if (error || !data) return json({ error: "Not found" }, 404);
@@ -45,6 +45,8 @@ serve(async (req) => {
         to: spec?.parties?.to?.name ?? "",
         accepted: Boolean(data.accepted_signed_at),
         signable: Boolean(data.locked) && !data.accepted_signed_at,
+        spec: data.spec ?? null,
+        submitted_signature_path: data.submitted_signature_path ?? null,
       });
     }
 

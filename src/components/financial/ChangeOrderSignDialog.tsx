@@ -3,15 +3,14 @@
  * stamps into the document, then produces the locked signed PDF and freezes the
  * row. Once signed the CO is locked (DB guard) — the signed version is immutable.
  */
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PenLine } from "lucide-react";
-import { ChangeOrderDocument } from "@/lib/changeOrder/ChangeOrderDocument";
 import { TypedSignaturePad } from "@/components/financial/TypedSignaturePad";
-import { nodeToPdfBlob } from "@/lib/changeOrder/generatePdf";
+import { buildCoPdfBlob } from "@/lib/changeOrder/coPdf";
 import { uploadCoArtifact } from "@/lib/changeOrder/storage";
 import { fmtLongDate } from "@/lib/changeOrder/defaults";
 import type { CoSpec } from "@/lib/changeOrder/types";
@@ -30,7 +29,6 @@ export function ChangeOrderSignDialog({
   projectId: string;
   onSigned?: () => void;
 }) {
-  const docRef = useRef<HTMLDivElement>(null);
   const [sigData, setSigData] = useState<string | null>(null);
   const [typedName, setTypedName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,15 +42,14 @@ export function ChangeOrderSignDialog({
     : null;
 
   async function handleSign() {
-    if (!sigData || !signedSpec || !docRef.current) return toast.error("Type your name to sign first.");
+    if (!sigData || !signedSpec) return toast.error("Type your name to sign first.");
     setBusy(true);
     try {
-      // Render the locked PDF with the signature stamped in (best-effort — a
-      // PDF hiccup must never block locking the signed change order).
-      await new Promise((r) => setTimeout(r, 50)); // let the hidden doc paint
+      // Render the locked vector PDF with the signature stamped in (best-effort —
+      // a PDF hiccup must never block locking the signed change order).
       let pdfUrl: string | null = null;
       try {
-        const pdf = await nodeToPdfBlob(docRef.current);
+        const pdf = await buildCoPdfBlob(signedSpec, { submitted: sigData });
         pdfUrl = await uploadCoArtifact(pdf, projectId, "change-orders/signed", "pdf");
       } catch (pdfErr) {
         console.warn("Signed PDF generation failed (continuing):", pdfErr);
@@ -93,11 +90,6 @@ export function ChangeOrderSignDialog({
           onNameChange={setTypedName}
         />
         <p className="text-xs text-muted-foreground">{signerName} · {spec?.signatures.submitted.title}</p>
-
-        {/* Hidden document used to rasterize the signed PDF */}
-        <div style={{ position: "fixed", left: -10000, top: 0 }} aria-hidden>
-          {signedSpec && <ChangeOrderDocument ref={docRef} spec={signedSpec} signatures={{ submitted: sigData }} />}
-        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
