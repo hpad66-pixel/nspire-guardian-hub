@@ -3,11 +3,11 @@
  * and counter-signs it. No app login required — the sign_token in the URL is the
  * capability, validated by the co-countersign edge function.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Eraser, CheckCircle2, PenLine, Loader2 } from "lucide-react";
+import { CheckCircle2, PenLine, Loader2 } from "lucide-react";
+import { TypedSignaturePad } from "@/components/financial/TypedSignaturePad";
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/co-countersign`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -24,11 +24,9 @@ export default function CounterSignChangeOrderPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [sigData, setSigData] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const drawing = useRef(false);
-  const [hasInk, setHasInk] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -43,29 +41,14 @@ export default function CounterSignChangeOrderPage() {
     })();
   }, [token]);
 
-  useEffect(() => {
-    const c = canvasRef.current; if (!c || !co?.signable || done) return;
-    const dpr = window.devicePixelRatio || 1;
-    c.width = 460 * dpr; c.height = 150 * dpr;
-    const ctx = c.getContext("2d")!; ctx.scale(dpr, dpr);
-    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = 2.2; ctx.strokeStyle = "#0a1a3a";
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 460, 150);
-  }, [co, done]);
-
-  function p(e: React.PointerEvent<HTMLCanvasElement>) { const r = canvasRef.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  function down(e: React.PointerEvent<HTMLCanvasElement>) { drawing.current = true; const ctx = canvasRef.current!.getContext("2d")!; const q = p(e); ctx.beginPath(); ctx.moveTo(q.x, q.y); }
-  function move(e: React.PointerEvent<HTMLCanvasElement>) { if (!drawing.current) return; const ctx = canvasRef.current!.getContext("2d")!; const q = p(e); ctx.lineTo(q.x, q.y); ctx.stroke(); setHasInk(true); }
-  function clear() { const ctx = canvasRef.current!.getContext("2d")!; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 460, 150); setHasInk(false); }
-
   async function submit() {
-    if (!hasInk || !canvasRef.current) return;
+    if (!sigData || !name.trim()) return;
     setBusy(true);
     try {
-      const signature = canvasRef.current.toDataURL("image/png");
       const res = await fetch(FN_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: ANON, Authorization: `Bearer ${ANON}` },
-        body: JSON.stringify({ token, signature, name }),
+        body: JSON.stringify({ token, signature: sigData, name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -102,14 +85,9 @@ export default function CounterSignChangeOrderPage() {
         ) : co?.signable ? (
           <div className="rounded-lg border bg-white p-5 space-y-3">
             <div className="flex items-center gap-2 font-semibold"><PenLine className="h-4 w-4" /> Accept &amp; sign</div>
-            <div><label className="text-sm">Your name</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></div>
-            <div>
-              <label className="text-sm">Signature</label>
-              <canvas ref={canvasRef} style={{ width: 460, height: 150, touchAction: "none", maxWidth: "100%" }} className="w-full rounded-md border bg-white cursor-crosshair" onPointerDown={down} onPointerMove={move} onPointerUp={() => (drawing.current = false)} onPointerLeave={() => (drawing.current = false)} />
-              <Button variant="ghost" size="sm" onClick={clear}><Eraser className="h-3.5 w-3.5 mr-1" />Clear</Button>
-            </div>
+            <TypedSignaturePad onChange={setSigData} onNameChange={setName} />
             {err && <p className="text-sm text-destructive">{err}</p>}
-            <Button className="w-full" onClick={submit} disabled={!hasInk || !name.trim() || busy}>{busy ? "Submitting…" : "Accept & sign"}</Button>
+            <Button className="w-full" onClick={submit} disabled={!sigData || !name.trim() || busy}>{busy ? "Submitting…" : "Accept & sign"}</Button>
           </div>
         ) : (
           <div className="rounded-lg border bg-muted/30 p-6 text-center text-muted-foreground">This change order isn't available for signature.</div>
