@@ -47,6 +47,28 @@ export default function PayAppDetailPage() {
     const { error } = await supabase.from("prime_contract_pay_apps" as any).update({ pdf_path: url }).eq("id", payAppId!);
     if (error) throw error;
     await detail.refetch();
+    if (url && payAppId) await syncQuantities(true);
+  }
+
+  // Parse the G703 in the attached PDF → sov_line_items / pay_app_line_progress,
+  // so the Quantities & Progress dashboard auto-updates from this pay app.
+  const [syncing, setSyncing] = useState(false);
+  async function syncQuantities(silent = false) {
+    if (!payAppId) return;
+    setSyncing(true);
+    const t = toast.loading("Reading quantities from the pay-app PDF…");
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("extract-payapp-lines", { body: { payAppId } });
+      if (fnErr) throw fnErr;
+      const d = data as any;
+      if (d?.ok) toast.success(`Quantities updated — ${d.sov_lines_upserted} lines from Pay App #${d.pay_app_no}.`, { id: t });
+      else toast.error(`Quantity sync: ${d?.error ?? "no G703 lines found"}`, { id: t });
+    } catch (e: any) {
+      if (!silent) toast.error(`Quantity sync failed: ${e.message}`, { id: t });
+      else toast.dismiss(t);
+    } finally {
+      setSyncing(false);
+    }
   }
 
   return (
@@ -116,8 +138,17 @@ export default function PayAppDetailPage() {
       {/* Pay application document — view, print, upload, or replace */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Pay Application (PDF)</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">The signed AIA G702/G703. Attach or replace it here.</p>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Pay Application (PDF)</CardTitle>
+            {(pa as any).pdf_path && (
+              <Button variant="outline" size="sm" disabled={syncing} onClick={() => syncQuantities(false)}>
+                {syncing ? "Syncing…" : "Sync quantities"}
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            The signed AIA G702/G703. Attaching it auto-updates the project&apos;s Quantities &amp; Progress from the G703.
+          </p>
         </CardHeader>
         <CardContent>
           <AttachmentField
