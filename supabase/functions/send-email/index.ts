@@ -16,6 +16,8 @@ interface SendEmailRequest {
   subject: string;
   bodyHtml: string;
   bodyText?: string;
+  /** Optional override for the From display name (e.g. signer or company). */
+  fromName?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -62,6 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject,
       bodyHtml,
       bodyText,
+      fromName,
     } = body;
 
     // Get user's profile for auto-BCC if not provided
@@ -70,11 +73,22 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch user's profile to get their email for auto-BCC
     const { data: profile } = await supabase
       .from("profiles")
-      .select("email, work_email, auto_bcc_enabled, full_name")
+      .select("email, work_email, auto_bcc_enabled, full_name, workspace_id")
       .eq("user_id", userId)
       .single();
 
-    const senderName = profile?.full_name || "User";
+    // From display name: explicit override (e.g. signer / company) → the user's
+    // name → their workspace/company name. Never the generic "User".
+    let senderName = (fromName && fromName.trim()) || profile?.full_name || "";
+    if (!senderName && profile?.workspace_id) {
+      const { data: ws } = await supabase
+        .from("workspaces")
+        .select("name")
+        .eq("id", profile.workspace_id)
+        .maybeSingle();
+      senderName = ws?.name || "";
+    }
+    if (!senderName) senderName = "APAS Consulting";
 
     // Add user's email to BCC if auto_bcc is enabled
     if (profile?.auto_bcc_enabled !== false) {

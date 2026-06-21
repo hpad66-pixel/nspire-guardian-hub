@@ -51,8 +51,10 @@ export function SendChangeOrderDialog({
           ${co.pdf_path ? `<p><a href="${co.pdf_path}">View the signed PDF</a></p>` : ""}
           <p style="color:#6B6B6B;font-size:13px">${label} · ${spec?.doc?.title || co.title} · ${money(Number(co.amount))}</p>
         </div>`;
+      // From name = the signer, else the consulting company — never "User".
+      const fromName = spec?.signatures?.submitted?.name || spec?.parties?.from?.name || undefined;
       const { error } = await supabase.functions.invoke("send-email", {
-        body: { recipients: [to.trim()], subject: `${label} — ${spec?.doc?.title || co.title} (signature requested)`, bodyHtml, bodyText: `${message}\n\nReview & sign: ${signLink}` },
+        body: { recipients: [to.trim()], subject: `${label} — ${spec?.doc?.title || co.title} (signature requested)`, bodyHtml, bodyText: `${message}\n\nReview & sign: ${signLink}`, fromName },
       });
       if (error) throw error;
       await supabase.from("change_orders" as any).update({ sent_to_client_at: new Date().toISOString() }).eq("id", co.id);
