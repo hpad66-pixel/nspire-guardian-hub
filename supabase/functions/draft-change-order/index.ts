@@ -1,6 +1,12 @@
-// Turn a natural-language description of a change order into a structured draft
-// (title, background, scope bullets, priced line items, overhead/profit %) that
-// pre-fills the in-app generator form for the user to review and edit.
+// Turn a contractor's plain-language direction AND/OR an uploaded background
+// document (an RFI, field report, vendor quote, email thread, sketch, etc.) into
+// a structured change-order draft (title, background, scope bullets, priced line
+// items, overhead/profit %) that pre-fills the in-app generator form for review.
+//
+// The background document is sent to Claude natively as a document/image content
+// block (no lossy client-side text extraction), so scanned PDFs, tables, and
+// quotes are read with full fidelity. The written direction steers emphasis,
+// scope boundaries, and pricing; the document supplies the concrete facts.
 //
 // Uses the Anthropic (Claude) API with tool-use for guaranteed structured output.
 // Requires the ANTHROPIC_API_KEY edge-function secret.
@@ -12,11 +18,11 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-opus-4-8";
 
 const DRAFT_TOOL = {
   name: "draft_change_order",
-  description: "Return the structured change-order draft extracted from the description.",
+  description: "Return the structured change-order draft extracted from the direction and/or background document.",
   input_schema: {
     type: "object",
     properties: {
@@ -48,6 +54,10 @@ const DRAFT_TOOL = {
   },
 };
 
+// Anthropic document/image content blocks accept these natively.
+const PDF_MEDIA = "application/pdf";
+const IMAGE_MEDIA = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, status = 200) =>
@@ -59,8 +69,21 @@ serve(async (req) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
-    const { description, projectId, overheadPct, profitPct } = await req.json();
-    if (!description || String(description).trim().length < 5) return json({ error: "Describe the change order first." }, 400);
+    const { description, projectId, overheadPct, profitPct, document, documentName } = await req.json();
+
+    // `document` (optional): { kind: 'pdf'|'image'|'text', mediaType, data }
+    //   pdf/image → data is base64; text → data is the raw extracted/plain text.
+    const hasDoc = document && typeof document.data === "string" && document.data.length > 0;
+    const hasDescription = description && String(description).trim().length >= 5;
+    if (!hasDoc && !hasDescription) {
+      return json({ error: "Attach a background document or describe the change order first." }, 400);
+    }
+    if (hasDoc && !["pdf", "image", "text"].includes(document.kind)) {
+      return json({ error: `Unsupported document kind: ${document.kind}` }, 400);
+    }
+    if (hasDoc && document.kind === "image" && !IMAGE_MEDIA.has(document.mediaType)) {
+      return json({ error: `Unsupported image type: ${document.mediaType}` }, 400);
+    }
 
     let projectName = "";
     if (projectId) {
@@ -71,30 +94,52 @@ serve(async (req) => {
       projectName = data?.name ?? "";
     }
 
-    const system = `You convert a contractor's plain-language description of ONE construction change order into a structured proposal draft for the APAS Consulting format.
+    const docLabel = documentName ? `"${documentName}"` : "the attached document";
+    const system = `You convert a contractor's input into a structured change-order proposal draft for the APAS Consulting format. The input is (a) a plain-language direction and/or (b) an attached background document (RFI, field report, vendor quote, email, sketch, marked-up drawing).
 Rules:
+- Ground the scope, quantities, and pricing in the BACKGROUND DOCUMENT when one is attached — pull real line items, units, quantities, unit costs, dates, and parties from it. Do not invent numbers the document or direction don't support.
+- The WRITTEN DIRECTION governs emphasis, scope boundaries, and intent. When the direction and document conflict, follow the direction and omit what the direction excludes.
 - TITLE: concise one line, no "Change Order" prefix.
 - BACKGROUND: short paragraph on the field condition / owner request / unforeseen item that triggered it.
 - SCOPE: an intro line plus 2-6 specific scope bullets.
-- LINE ITEMS: break the cost into priced items (desc, unit, qty, unit_cost like "$1,450", basis). If the user gives a single lump sum, make one Firm LS line item for it.
+- LINE ITEMS: break the cost into priced items (desc, unit, qty, unit_cost like "$1,450", basis). If only a single lump sum is available, make one Firm LS line item for it.
 - overhead_pct / profit_pct: use the user's values if given, else the provided defaults; if they say profit or markup is waived, use 0.
-- Estimate only from the description; do not invent unrelated scope. Always call the draft_change_order tool.`;
+- Always call the draft_change_order tool.`;
 
-    const prompt = `Project: ${projectName || "construction project"}
-Default overhead %: ${overheadPct ?? 10}
-Default profit %: ${profitPct ?? 5}
+    const promptLines = [
+      `Project: ${projectName || "construction project"}`,
+      `Default overhead %: ${overheadPct ?? 10}`,
+      `Default profit %: ${profitPct ?? 5}`,
+    ];
+    if (hasDoc) promptLines.push(`\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, unit costs, dates, and parties from it.`);
+    promptLines.push(
+      hasDescription
+        ? `\nContractor's direction:\n${description}`
+        : `\nNo additional written direction was provided — base the draft on the attached document.`,
+    );
+    const prompt = promptLines.join("\n");
 
-Description:
-${description}`;
+    // Build the user content: document/image block first (if any), then the prompt.
+    const content: unknown[] = [];
+    if (hasDoc) {
+      if (document.kind === "pdf") {
+        content.push({ type: "document", source: { type: "base64", media_type: PDF_MEDIA, data: document.data }, title: documentName ?? undefined });
+      } else if (document.kind === "image") {
+        content.push({ type: "image", source: { type: "base64", media_type: document.mediaType, data: document.data } });
+      } else if (document.kind === "text") {
+        content.push({ type: "document", source: { type: "text", media_type: "text/plain", data: document.data }, title: documentName ?? undefined });
+      }
+    }
+    content.push({ type: "text", text: prompt });
 
     const res = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 2000,
+        max_tokens: 4096,
         system,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content }],
         tools: [DRAFT_TOOL],
         tool_choice: { type: "tool", name: "draft_change_order" },
       }),
