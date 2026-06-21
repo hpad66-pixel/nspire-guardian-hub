@@ -1,8 +1,7 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useSovProgress, type SovProgressRow } from "@/hooks/useSovProgress";
-import { useChangeOrderLineItems } from "@/hooks/useChangeOrderLineItems";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { downloadQuantitiesPdf } from "@/lib/financial/quantitiesPdf";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +42,6 @@ export default function QuantitiesProgressPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project } = useProject(projectId ?? null);
   const { data: rows = [], isLoading } = useSovProgress(projectId ?? null);
-  const { data: coLines = {} } = useChangeOrderLineItems(projectId ?? null);
   const { data: allCos = [] } = useChangeOrdersByProject(projectId ?? null);
   const coMeta = useMemo(
     () => Object.fromEntries(allCos.map((c: any) => [c.id, { co_no: c.co_no, title: c.title }])),
@@ -54,10 +52,6 @@ export default function QuantitiesProgressPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [coOpen, setCoOpen] = useState(true);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExpand = (coId: string) =>
-    setExpanded((s) => { const n = new Set(s); n.has(coId) ? n.delete(coId) : n.add(coId); return n; });
-  const coLineColSpan = showMoney ? 10 : 7;
   const qc = useQueryClient();
   async function saveUnit(id: string, value: string) {
     const unit = value.trim() || null;
@@ -280,7 +274,7 @@ export default function QuantitiesProgressPage() {
                 </button>
                 {(coOpen) && (
                   <>
-                    <p className="px-4 pt-2 text-xs text-muted-foreground">Change orders are tracked by fee (approved · earned · remaining), not base-contract quantities. Expand one to see its own priced scope.</p>
+                    <p className="px-4 pt-2 text-xs text-muted-foreground">Change orders are tracked by fee (approved · earned · remaining), separate from base-contract quantities.</p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -297,65 +291,22 @@ export default function QuantitiesProgressPage() {
                           {cos.map((r) => {
                             const coId = r.change_order_id;
                             const meta = coId ? coMeta[coId] : undefined;
-                            const lines = coId ? coLines[coId] : undefined;
-                            const isOpen = coId ? expanded.has(coId) : false;
                             const coNum = meta ? `CO-${String(meta.co_no).padStart(3, "0")}` : r.item_no;
                             const title = meta?.title ?? r.description;
                             return (
-                              <Fragment key={r.sov_line_item_id}>
-                                <tr className="border-b last:border-0 hover:bg-muted/20">
-                                  <td className="p-2 font-mono text-xs">{coNum}</td>
-                                  <td className="p-2">
-                                    {lines?.length ? (
-                                      <button onClick={() => coId && toggleExpand(coId)} className="inline-flex items-center gap-1 text-left hover:text-[var(--apas-sapphire)]">
-                                        {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-                                        {title}
-                                      </button>
-                                    ) : <span className="inline-flex items-center gap-1">{title}<span className="text-muted-foreground text-xs">· lump sum</span></span>}
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="flex items-center gap-2">
-                                      <Bar value={r.pct_complete} />
-                                      <span className="text-xs tabular-nums w-11 text-right">{pfmt(r.pct_complete)}</span>
-                                    </div>
-                                  </td>
-                                  {showMoney && <td className="p-2 text-right font-mono text-muted-foreground">{money(r.scheduled_value)}</td>}
-                                  {showMoney && <td className="p-2 text-right font-mono text-emerald-600">{money(r.value_to_date)}</td>}
-                                  {showMoney && <td className={`p-2 text-right font-mono ${r.value_remaining > 0 ? "text-[var(--apas-amber)]" : "text-muted-foreground"}`}>{money(r.value_remaining)}</td>}
-                                </tr>
-                                {isOpen && lines?.length ? (
-                                  <tr className="bg-muted/20">
-                                    <td />
-                                    <td colSpan={showMoney ? 5 : 2} className="p-0">
-                                      <div className="px-6 py-2">
-                                        <p className="text-xs text-muted-foreground mb-1">Priced scope on {coNum} — {lines.length} line{lines.length === 1 ? "" : "s"} from the signed change order (its own work, separate from the base contract):</p>
-                                        <table className="w-full text-xs">
-                                          <thead>
-                                            <tr className="text-muted-foreground border-b">
-                                              <th className="text-left p-1 font-normal">Item</th>
-                                              <th className="text-center p-1 font-normal">Unit</th>
-                                              <th className="text-right p-1 font-normal">Qty</th>
-                                              <th className="text-right p-1 font-normal">Unit Price</th>
-                                              <th className="text-right p-1 font-normal">Amount</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {lines.map((l) => (
-                                              <tr key={l.id} className="border-b last:border-0">
-                                                <td className="p-1">{l.description}{l.basis ? <span className="text-muted-foreground"> · {l.basis}</span> : null}</td>
-                                                <td className="p-1 text-center text-muted-foreground">{l.unit ?? "—"}</td>
-                                                <td className="p-1 text-right font-mono">{qfmt(l.qty)}</td>
-                                                <td className="p-1 text-right font-mono text-muted-foreground">{money(l.unit_price)}</td>
-                                                <td className="p-1 text-right font-mono">{money(l.extended_value)}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : null}
-                              </Fragment>
+                              <tr key={r.sov_line_item_id} className="border-b last:border-0 hover:bg-muted/20">
+                                <td className="p-2 font-mono text-xs">{coNum}</td>
+                                <td className="p-2">{title}</td>
+                                <td className="p-2">
+                                  <div className="flex items-center gap-2">
+                                    <Bar value={r.pct_complete} />
+                                    <span className="text-xs tabular-nums w-11 text-right">{pfmt(r.pct_complete)}</span>
+                                  </div>
+                                </td>
+                                {showMoney && <td className="p-2 text-right font-mono text-muted-foreground">{money(r.scheduled_value)}</td>}
+                                {showMoney && <td className="p-2 text-right font-mono text-emerald-600">{money(r.value_to_date)}</td>}
+                                {showMoney && <td className={`p-2 text-right font-mono ${r.value_remaining > 0 ? "text-[var(--apas-amber)]" : "text-muted-foreground"}`}>{money(r.value_remaining)}</td>}
+                              </tr>
                             );
                           })}
                         </tbody>
