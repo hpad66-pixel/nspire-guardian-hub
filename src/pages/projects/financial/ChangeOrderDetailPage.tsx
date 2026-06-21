@@ -173,6 +173,12 @@ export default function ChangeOrderDetailPage() {
               {acceptedAt && `Accepted by client ${new Date(acceptedAt).toLocaleDateString()}.`}
             </p>
           )}
+          {co.status === "rejected" && (co as any).client_comments && (
+            <div className="mt-2 rounded-md border-l-2 border-[var(--apas-rose)] bg-[var(--apas-rose)]/5 px-3 py-2">
+              <p className="text-xs font-semibold text-[var(--apas-rose)]">Rejected by client{(co as any).accepted_signed_name ? ` (${(co as any).accepted_signed_name})` : ""}</p>
+              <p className="text-sm mt-0.5">{(co as any).client_comments}</p>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           {spec ? (

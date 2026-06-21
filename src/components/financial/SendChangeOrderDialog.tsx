@@ -31,7 +31,7 @@ export function SendChangeOrderDialog({
   useEffect(() => {
     if (open) {
       setTo(spec?.parties?.to?.email || "");
-      setMessage(`Please find attached ${spec?.doc?.co_label || "the change order"} for ${spec?.parties?.project || "the project"}. You can review and sign it electronically at the link below.`);
+      setMessage(`Please find attached ${spec?.doc?.co_label || "the change order"} for ${spec?.parties?.project || "the project"}. You can review and sign it electronically at the link below. Once executed, you'll automatically receive a fully-signed copy by email. If anything needs to change, you can reject it with comments and they'll come straight back to us.`);
     }
   }, [open, co]);
 
