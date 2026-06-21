@@ -216,34 +216,36 @@ export function useVoidChangeOrder() {
   });
 }
 
-// Hard-delete a change order. Guarded to draft-only: approved/executed/voided
-// COs are part of the financial record and must never be silently removed.
+// Hard-delete a change order. Drafts delete freely; signed/executed COs are part
+// of the financial record, so the UI must double-confirm before passing force.
 export function useDeleteChangeOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (input: string | { id: string; force?: boolean }) => {
+      const id = typeof input === "string" ? input : input.id;
+      const force = typeof input === "string" ? false : Boolean(input.force);
+
       const { data: existing, error: fetchError } = await supabase
         .from('change_orders')
-        .select('id, status')
+        .select('id, status, locked')
         .eq('id', id)
         .single();
       if (fetchError) throw fetchError;
-      if (existing?.status !== 'draft') {
-        throw new Error('Only draft change orders can be deleted. Void executed/approved COs instead.');
+
+      const protectedStatus = existing?.status !== 'draft' || (existing as any)?.locked;
+      if (protectedStatus && !force) {
+        throw new Error('This change order is signed or executed. Confirm deletion to proceed.');
       }
 
-      const { error } = await supabase
-        .from('change_orders')
-        .delete()
-        .eq('id', id)
-        .eq('status', 'draft');
+      const { error } = await supabase.from('change_orders').delete().eq('id', id);
       if (error) throw error;
       return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
-      toast.success('Draft change order deleted');
+      queryClient.invalidateQueries({ queryKey: ['procore-change-orders'] });
+      toast.success('Change order deleted');
     },
     onError: (error: Error) => {
       toast.error(error.message);

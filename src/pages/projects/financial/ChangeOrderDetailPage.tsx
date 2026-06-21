@@ -1,4 +1,5 @@
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useDeleteChangeOrder } from "@/hooks/useChangeOrders";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { ChevronRight, LayoutDashboard, Lock, PenLine, Send, CheckCircle2, FileDown } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Lock, PenLine, Send, CheckCircle2, FileDown, Trash2 } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -55,6 +56,8 @@ export default function ChangeOrderDetailPage() {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const navigate = useNavigate();
+  const deleteCo = useDeleteChangeOrder();
   const docRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const spec = (co as any)?.spec as CoSpec | null;
@@ -246,7 +249,7 @@ export default function ChangeOrderDetailPage() {
       {/* Actions */}
       <Card>
         <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent className="flex flex-wrap items-center gap-2">
           {co.co_type === "PCO" && co.status !== "executed" && co.status !== "void" && (
             <Button onClick={() => setPromoteOpen(true)}>Promote to OCO</Button>
           )}
@@ -255,6 +258,26 @@ export default function ChangeOrderDetailPage() {
               Executed — to reverse, create a new CO with the inverse amount.
             </span>
           )}
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              disabled={deleteCo.isPending}
+              onClick={() => {
+                const isDraft = co.status === "draft" && !locked;
+                const msg = isDraft
+                  ? `Delete ${label}? This cannot be undone.`
+                  : `${label} is signed/executed and part of the financial record. Permanently delete it anyway? This cannot be undone.`;
+                if (window.confirm(msg)) {
+                  deleteCo.mutate({ id: co.id, force: !isDraft }, {
+                    onSuccess: () => navigate(`/projects/${projectId}/financials/change-orders`),
+                  });
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" /> Delete change order
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

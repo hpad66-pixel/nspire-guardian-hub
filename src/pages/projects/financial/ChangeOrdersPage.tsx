@@ -122,21 +122,24 @@ export default function ChangeOrdersPage() {
                           <Link to={`/projects/${projectId}/financials/cos/${co.id}`} onClick={(e) => e.stopPropagation()}>
                             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                           </Link>
-                          {co.status === "draft" && (
-                            <button
-                              title="Delete this draft change order"
-                              className="text-muted-foreground hover:text-destructive disabled:opacity-40"
-                              disabled={deleteCo.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm(`Delete draft change order ${(co as any).co_no ?? ""}? This cannot be undone.`)) {
-                                  deleteCo.mutate(co.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
+                          <button
+                            title="Delete this change order"
+                            className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+                            disabled={deleteCo.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const isDraft = co.status === "draft" && !(co as any).locked;
+                              const label = `${EXECUTED(co.status) ? "PCCO" : "PCO"} #${(co as any).co_no ?? ""}`;
+                              const msg = isDraft
+                                ? `Delete draft ${label}? This cannot be undone.`
+                                : `${label} is signed/executed and part of the financial record. Permanently delete it anyway? This cannot be undone.`;
+                              if (window.confirm(msg)) {
+                                deleteCo.mutate({ id: co.id, force: !isDraft });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>

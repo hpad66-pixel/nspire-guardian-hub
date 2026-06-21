@@ -64,6 +64,17 @@ export default function ChangeOrderGeneratorPage() {
     setSpec((prev) => { const next = structuredClone(prev); updater(next); return next; });
   }
 
+  // Overhead / Profit are stored as "<n>%" markups; recomputePricing turns them
+  // into dollars off the change subtotal. These read/write just the percentage.
+  const pctOf = (m: CoMarkup | undefined) => (m?.amount ?? "").toString().replace("%", "").trim();
+  function setMarkupPct(idx: number, label: string, value: string) {
+    patch((s) => {
+      while (s.pricing.markups.length <= idx) s.pricing.markups.push({ label: "", amount: "0%", basis: "" } as CoMarkup);
+      s.pricing.markups[idx].label = s.pricing.markups[idx].label || label;
+      s.pricing.markups[idx].amount = value === "" ? "0%" : `${value}%`;
+    });
+  }
+
   async function handleSave(thenSign: boolean) {
     if (!projectId) return;
     const finalSpec = structuredClone(spec);
@@ -170,22 +181,36 @@ export default function ChangeOrderGeneratorPage() {
                 <Button variant="outline" size="sm" onClick={() => patch((s) => { s.pricing.groups[0].rows.push({ n: String(s.pricing.groups[0].rows.length + 1), desc: "", unit: "LS", qty: "1", unit_cost: "", extended: "", basis: "Firm" } as CoPricingRow); })}><Plus className="h-3.5 w-3.5 mr-1" />Line item</Button>
               </div>
 
-              <div className="border-t pt-2 space-y-2">
-                <Label className="text-xs text-muted-foreground">Markups (amount or e.g. "10%")</Label>
-                {spec.pricing.markups.map((m, mi) => (
-                  <div key={mi} className="grid grid-cols-[1fr_90px_auto] gap-1.5 items-center">
-                    <Input className="h-8 text-xs" placeholder="APAS 10% Overhead" value={m.label} onChange={(e) => patch((s) => { s.pricing.markups[mi].label = e.target.value; })} />
-                    <Input className="h-8 text-xs" placeholder="10% or $1,100" value={m.amount} onChange={(e) => patch((s) => { s.pricing.markups[mi].amount = e.target.value; })} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => patch((s) => { s.pricing.markups.splice(mi, 1); })}><Trash2 className="h-3.5 w-3.5" /></Button>
+              {/* Overhead & Profit — enter the percentages, the proposal calculates the rest. */}
+              <div className="border-t pt-3 space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Markup — enter %, we calculate the dollars</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Overhead %</Label>
+                    <Input className="h-8" type="number" step="any" min="0" placeholder="10"
+                      value={pctOf(spec.pricing.markups[0])}
+                      onChange={(e) => setMarkupPct(0, "APAS Overhead", e.target.value)} />
                   </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={() => patch((s) => { s.pricing.markups.push({ label: "", amount: "", basis: "" } as CoMarkup); })}><Plus className="h-3.5 w-3.5 mr-1" />Markup</Button>
+                  <div>
+                    <Label className="text-xs">Profit %</Label>
+                    <Input className="h-8" type="number" step="any" min="0" placeholder="5"
+                      value={pctOf(spec.pricing.markups[1])}
+                      onChange={(e) => setMarkupPct(1, "APAS Profit", e.target.value)} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Set Profit to 0 to waive it (shows as $0.00 in the proposal).</p>
               </div>
 
-              <Input value={spec.pricing.grand_total.label} placeholder="GRAND TOTAL label" onChange={(e) => patch((s) => { s.pricing.grand_total.label = e.target.value; })} />
-              <div className="flex justify-between items-center bg-[var(--apas-sapphire)]/5 rounded px-3 py-2">
-                <span className="text-sm font-medium">{livePricing.grand_total.label}</span>
-                <span className="text-lg font-bold text-[var(--apas-sapphire)]">{livePricing.grand_total.amount}</span>
+              {/* Live calculated breakdown */}
+              <div className="border-t pt-3 space-y-1.5 text-sm">
+                <Input value={spec.pricing.grand_total.label} placeholder="GRAND TOTAL label" className="mb-2" onChange={(e) => patch((s) => { s.pricing.grand_total.label = e.target.value; })} />
+                <div className="flex justify-between text-muted-foreground"><span>Change subtotal (cost of work)</span><span className="font-mono">{livePricing.groups[0]?.subtotal?.amount ?? "$0.00"}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>{livePricing.markups[0]?.label || "Overhead"}</span><span className="font-mono">{livePricing.markups[0]?.amount ?? "$0.00"}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>{livePricing.markups[1]?.label || "Profit"}</span><span className="font-mono">{livePricing.markups[1]?.amount ?? "$0.00"}</span></div>
+                <div className="flex justify-between items-center bg-[var(--apas-sapphire)]/5 rounded px-3 py-2 mt-1">
+                  <span className="font-medium">{livePricing.grand_total.label}</span>
+                  <span className="text-lg font-bold text-[var(--apas-sapphire)]">{livePricing.grand_total.amount}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

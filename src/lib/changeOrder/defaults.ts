@@ -139,7 +139,10 @@ export function blankSpec(parties: CoParties, sigs: { submitted: CoSignatory; ac
       heading: "3. PRICING",
       intro: "",
       groups: [{ label: "A. ", rows: [], subtotal: { label: "Subtotal A", amount: money(0) } }],
-      markups: [],
+      markups: [
+        { label: "APAS Overhead", amount: "10%", basis: "" },
+        { label: "APAS Profit", amount: "5%", basis: "" },
+      ],
       grand_total: { label: "GRAND TOTAL", amount: money(0) },
     },
     sections_after_pricing: [
