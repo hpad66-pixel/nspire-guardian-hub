@@ -67,15 +67,21 @@ export function ChangeOrderSignDialog({
     if (!sigData || !signedSpec || !docRef.current) return toast.error("Draw your signature first.");
     setBusy(true);
     try {
-      // Render the locked PDF with the signature stamped in.
+      // Render the locked PDF with the signature stamped in (best-effort — a
+      // PDF hiccup must never block locking the signed change order).
       await new Promise((r) => setTimeout(r, 50)); // let the hidden doc paint
-      const pdf = await nodeToPdfBlob(docRef.current);
-      const pdfUrl = await uploadCoArtifact(pdf, projectId, "change-orders/signed", "pdf");
+      let pdfUrl: string | null = null;
+      try {
+        const pdf = await nodeToPdfBlob(docRef.current);
+        pdfUrl = await uploadCoArtifact(pdf, projectId, "change-orders/signed", "pdf");
+      } catch (pdfErr) {
+        console.warn("Signed PDF generation failed (continuing):", pdfErr);
+      }
       const sigUrl = await uploadCoArtifact(await dataUrlToBlob(sigData), projectId, "change-orders/sig", "png");
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from("change_orders" as any).update({
         spec: signedSpec,
-        pdf_path: pdfUrl,
+        ...(pdfUrl ? { pdf_path: pdfUrl } : {}),
         submitted_signature_path: sigUrl,
         submitted_signed_at: new Date().toISOString(),
         submitted_signed_by: user?.id ?? null,
