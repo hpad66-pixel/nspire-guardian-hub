@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useSovProgress, type SovProgressRow } from "@/hooks/useSovProgress";
 import { useChangeOrderLineItems } from "@/hooks/useChangeOrderLineItems";
+import { downloadQuantitiesPdf } from "@/lib/financial/quantitiesPdf";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useProject } from "@/hooks/useProjects";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QuantitiesEmailDialog } from "@/components/financial/QuantitiesEmailDialog";
-import { Printer, Mail, ChevronDown, ChevronRight, Ruler } from "lucide-react";
+import { Download, Mail, ChevronDown, ChevronRight, Ruler } from "lucide-react";
 
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n || 0);
@@ -49,6 +52,13 @@ export default function QuantitiesProgressPage() {
   const toggleExpand = (coId: string) =>
     setExpanded((s) => { const n = new Set(s); n.has(coId) ? n.delete(coId) : n.add(coId); return n; });
   const coLineColSpan = showMoney ? 10 : 7;
+  const qc = useQueryClient();
+  async function saveUnit(id: string, value: string) {
+    const unit = value.trim() || null;
+    await supabase.from("sov_line_items" as any).update({ unit }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["sov-progress", projectId] });
+  }
+  const exportLines = () => (selected.size > 0 ? rows.filter((r) => selected.has(r.sov_line_item_id)) : rows);
 
   const base = useMemo(() => rows.filter((r) => r.kind === "base"), [rows]);
   const cos = useMemo(() => rows.filter((r) => r.kind === "change_order"), [rows]);
@@ -98,7 +108,18 @@ export default function QuantitiesProgressPage() {
             </button>
           ) : r.description}
         </td>
-        <td className="p-2 text-center text-muted-foreground">{r.unit ?? "—"}</td>
+        <td className="p-2 text-center">
+          <span className="hidden print:inline">{r.unit ?? "—"}</span>
+          <input
+            key={`u-${r.sov_line_item_id}-${r.unit ?? ""}`}
+            defaultValue={r.unit ?? ""}
+            placeholder="—"
+            aria-label="Unit of measure"
+            title="Click to edit the unit of measure"
+            onBlur={(e) => { if ((e.target.value.trim() || null) !== (r.unit ?? null)) saveUnit(r.sov_line_item_id, e.target.value); }}
+            className="print:hidden w-12 text-center text-xs text-muted-foreground bg-transparent rounded border border-dashed border-transparent hover:border-muted-foreground/40 focus:border-[var(--apas-sapphire)] focus:text-foreground outline-none"
+          />
+        </td>
         <td className="p-2 text-right font-mono">{qfmt(r.scheduled_qty)}</td>
         <td className="p-2 text-right font-mono">{qfmt(r.qty_to_date)}</td>
         <td className={`p-2 text-right font-mono ${r.qty_remaining > 0 ? "text-[var(--apas-amber)] font-medium" : "text-muted-foreground"}`}>
@@ -166,9 +187,14 @@ export default function QuantitiesProgressPage() {
             <Mail className="h-4 w-4 mr-1.5" />
             Email{hasSelection ? ` (${selected.size})` : ""}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-1.5" />
-            Print{hasSelection ? ` (${selected.size})` : ""}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={rows.length === 0}
+            onClick={() => downloadQuantitiesPdf({ lines: exportLines(), showMoney, projectName: project?.name ?? "Project", payAppNo: latestPayApp })}
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            PDF{hasSelection ? ` (${selected.size})` : ""}
           </Button>
         </div>
       </div>

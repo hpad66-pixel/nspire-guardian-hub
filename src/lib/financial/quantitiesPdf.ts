@@ -11,14 +11,16 @@ const pfmt = (n: number) => `${Number(n || 0).toFixed(1)}%`;
 
 interface Col { t: string; w: number; a: "left" | "right" | "center"; x: number; render: (r: SovProgressRow) => string }
 
-/** Build a clean tabular PDF of the quantities list (selected lines, with/without $). */
-export function buildQuantitiesPdf(opts: {
+export interface QuantitiesPdfOpts {
   lines: SovProgressRow[];
   showMoney: boolean;
   projectName: string;
   payAppNo: number | null;
   intro?: string;
-}): { base64: string; filename: string; size: number } {
+}
+
+/** Render the branded quantities table to a jsPDF doc (selected lines, with/without $). */
+function renderDoc(opts: QuantitiesPdfOpts): { doc: jsPDF; filename: string } {
   const { lines, showMoney, projectName, payAppNo, intro } = opts;
   const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
   const PW = doc.internal.pageSize.getWidth();
@@ -127,8 +129,19 @@ export function buildQuantitiesPdf(opts: {
     doc.text(`Page ${i} of ${pages}`, PW - M, PH - 18, { align: "right" });
   }
 
-  const uri = doc.output("datauristring");
-  const base64 = uri.split(",")[1] ?? "";
   const safe = projectName.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "quantities";
-  return { base64, filename: `${safe}-quantities.pdf`, size: Math.floor(base64.length * 0.75) };
+  return { doc, filename: `${safe}-quantities.pdf` };
+}
+
+/** Base64 + filename for emailing as an attachment. */
+export function buildQuantitiesPdf(opts: QuantitiesPdfOpts): { base64: string; filename: string; size: number } {
+  const { doc, filename } = renderDoc(opts);
+  const base64 = (doc.output("datauristring") as string).split(",")[1] ?? "";
+  return { base64, filename, size: Math.floor(base64.length * 0.75) };
+}
+
+/** Download the branded PDF to the user's device. */
+export function downloadQuantitiesPdf(opts: QuantitiesPdfOpts): void {
+  const { doc, filename } = renderDoc(opts);
+  doc.save(filename);
 }
