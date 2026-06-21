@@ -18,6 +18,7 @@ interface SendEmailRequest {
   bodyText?: string;
   /** Optional override for the From display name (e.g. signer or company). */
   fromName?: string;
+  attachments?: { filename: string; contentBase64: string; contentType?: string; size?: number }[];
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -65,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
       bodyHtml,
       bodyText,
       fromName,
+      attachments,
     } = body;
 
     // Get user's profile for auto-BCC if not provided
@@ -149,6 +151,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (finalBccRecipients.length > 0) {
       emailPayload.bcc = finalBccRecipients;
       console.log("Sending with BCC to:", finalBccRecipients);
+    }
+
+    // Attachments (Resend takes base64 `content`).
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      emailPayload.attachments = attachments
+        .filter((a) => a?.filename && a?.contentBase64)
+        .map((a) => ({ filename: a.filename, content: a.contentBase64, content_type: a.contentType }));
     }
 
     // Send email using Resend API

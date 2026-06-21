@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Mail, Loader2 } from "lucide-react";
 import { useSendEmail } from "@/hooks/useSendEmail";
+import { buildQuantitiesPdf } from "@/lib/financial/quantitiesPdf";
 import type { SovProgressRow } from "@/hooks/useSovProgress";
 
 const money = (n: number) =>
@@ -99,6 +100,7 @@ export function QuantitiesEmailDialog({
   const [cc, setCc] = useState("");
   const [intro, setIntro] = useState("");
   const [showMoney, setShowMoney] = useState(initialShowMoney);
+  const [attachPdf, setAttachPdf] = useState(true);
   const [subject, setSubject] = useState(`${projectName} — Quantities & Progress`);
 
   const lines = useMemo(
@@ -110,11 +112,18 @@ export function QuantitiesEmailDialog({
 
   async function send() {
     const bodyHtml = buildHtml(lines, showMoney, projectName, payAppNo, intro);
+    const attachments = attachPdf
+      ? (() => {
+          const pdf = buildQuantitiesPdf({ lines, showMoney, projectName, payAppNo, intro });
+          return [{ filename: pdf.filename, contentBase64: pdf.base64, contentType: "application/pdf", size: pdf.size }];
+        })()
+      : undefined;
     await sendEmail.mutateAsync({
       recipients,
       ccRecipients: parseEmails(cc).filter(valid),
       subject: subject.trim() || `${projectName} — Quantities & Progress`,
       bodyHtml,
+      attachments,
     });
     onOpenChange(false);
     setTo(""); setCc(""); setIntro("");
@@ -144,14 +153,20 @@ export function QuantitiesEmailDialog({
             <Label className="text-xs">Message (optional)</Label>
             <Textarea rows={3} value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="Here are the remaining quantities for Line 1 — please quote…" />
           </div>
-          <div className="flex items-center justify-between rounded-md border px-3 py-2">
-            <div className="text-sm">
-              <span className="font-medium">{lines.length}</span> line{lines.length === 1 ? "" : "s"}
-              <span className="text-muted-foreground"> · {selectedIds.size > 0 ? "selected" : "all"}</span>
+          <div className="rounded-md border px-3 py-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <span className="font-medium">{lines.length}</span> line{lines.length === 1 ? "" : "s"}
+                <span className="text-muted-foreground"> · {selectedIds.size > 0 ? "selected" : "all"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="em-money" className="text-xs cursor-pointer">Include dollars</Label>
+                <Switch id="em-money" checked={showMoney} onCheckedChange={setShowMoney} />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="em-money" className="text-xs cursor-pointer">Include dollars</Label>
-              <Switch id="em-money" checked={showMoney} onCheckedChange={setShowMoney} />
+            <div className="flex items-center justify-between border-t pt-2">
+              <span className="text-xs text-muted-foreground">Attach a PDF copy</span>
+              <Switch id="em-pdf" checked={attachPdf} onCheckedChange={setAttachPdf} />
             </div>
           </div>
         </div>
