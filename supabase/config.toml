@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.extract-change-order-lines]
 verify_jwt = false
 
+[functions.lien-countersign]
+verify_jwt = false
+
 [functions.send-invitation]
 verify_jwt = false
 

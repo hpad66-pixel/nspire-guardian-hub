@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useLienWaivers } from "@/hooks/useLienWaivers";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useProject } from "@/hooks/useProjects";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
@@ -24,8 +25,25 @@ export default function LienWaiverGeneratorPage() {
   const { data: project } = useProject(projectId ?? null);
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { data: coSettings } = useCoSettings();
+  const navigate = useNavigate();
+  const { create } = useLienWaivers(projectId ?? null);
   const docRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(thenSend: boolean) {
+    if (!projectId) return;
+    if (!spec.parties.claimant.name.trim()) return toast.error("Add the Claimant name.");
+    if (thenSend && !spec.parties.claimant.email?.trim()) return toast.error("Add the Claimant email to send it.");
+    setSaving(true);
+    try {
+      const row = await create.mutateAsync({ spec });
+      toast.success(`Waiver saved${spec.doc.waiver_no ? ` (${spec.doc.waiver_no})` : ""}`);
+      navigate(`/projects/${projectId}/financials/lien-releases/${row.id}${thenSend ? "?send=1" : ""}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setSaving(false); }
+  }
 
   const [spec, setSpec] = useState<LienWaiverSpec>(() => blankWaiverSpec({ date: fmtLongDate(today()) }));
   const seeded = useRef(false);
@@ -82,8 +100,9 @@ export default function LienWaiverGeneratorPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={busy} onClick={() => window.print()}><Printer className="h-4 w-4 mr-1.5" />Print</Button>
-          <Button disabled={busy} onClick={exportPdf}><FileDown className="h-4 w-4 mr-1.5" />{busy ? "Preparing…" : "Download PDF"}</Button>
+          <Button variant="outline" disabled={busy} onClick={exportPdf}><FileDown className="h-4 w-4 mr-1.5" />{busy ? "…" : "PDF"}</Button>
+          <Button variant="outline" disabled={saving} onClick={() => handleSave(false)}>Save draft</Button>
+          <Button disabled={saving} onClick={() => handleSave(true)}>{saving ? "Saving…" : "Save & send"}</Button>
         </div>
       </div>
 

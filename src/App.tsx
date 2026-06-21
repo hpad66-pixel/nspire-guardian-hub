@@ -143,6 +143,8 @@ const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/Chan
 const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/ChangeOrderGeneratorPage'));
 const ChangeOrderSettingsPage = lazy(() => import('./pages/settings/ChangeOrderSettingsPage'));
 const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
+const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
+const LienWaiverDetailPage = lazy(() => import('./pages/projects/financial/LienWaiverDetailPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
 const ProjectDirectoryPage = lazy(() => import('./pages/projects/ProjectDirectoryPage'));
@@ -234,6 +236,7 @@ const App = () => (
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
+                     <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
                      
                     {/* Protected Routes */}
                     <Route
@@ -352,6 +355,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/overview" element={<FinancialOverviewPage />} />
                               <Route path="/projects/:projectId/financials/lien-releases" element={<LienReleasesPage />} />
                               <Route path="/projects/:projectId/financials/lien-releases/new" element={<LienWaiverGeneratorPage />} />
+                              <Route path="/projects/:projectId/financials/lien-releases/:waiverId" element={<LienWaiverDetailPage />} />
                               <Route path="/projects/:projectId/financials/vendor-inbox" element={<VendorInboxPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
                               <Route path="/projects/:projectId/financials/quantities" element={<QuantitiesProgressPage />} />

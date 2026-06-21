@@ -47,26 +47,33 @@ export default function LienReleasesPage() {
             </thead>
             <tbody>
               {releases.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No lien releases yet.</td></tr>}
-              {releases.map((r) => (
-                <tr key={r.id} className="border-t hover:bg-muted/20">
+              {releases.map((r) => {
+                const isWaiver = !!r.spec;
+                const open = () => navigate(`/projects/${projectId}/financials/lien-releases/${r.id}`);
+                return (
+                <tr key={r.id} className={`border-t hover:bg-muted/20 ${isWaiver ? "cursor-pointer" : ""}`} onClick={isWaiver ? open : undefined}>
                   <td className="p-3"><Badge variant="outline">{r.direction}</Badge></td>
-                  <td className="p-3">{r.release_type.replace(/_/g, " ")}</td>
+                  <td className="p-3">{r.claimant_name ? <span><span className="font-medium">{r.claimant_name}</span> · </span> : null}{r.release_type.replace(/_/g, " ")}</td>
                   <td className="p-3">{r.through_date ?? "—"}</td>
                   <td className="p-3 text-right">{fmt(r.amount)}</td>
                   <td className="p-3"><Badge className={STATUS_COLOR[r.status] ?? ""}>{r.status}</Badge></td>
-                  <td className="p-3 text-right space-x-1">
-                    {r.status === "pending" && (
-                      <Button size="sm" variant="outline" onClick={() => submitForApproval.mutate(r)}>Submit</Button>
-                    )}
-                    {(r.status === "pending" || r.status === "submitted") && (
+                  <td className="p-3 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
+                    {isWaiver ? (
+                      <Button size="sm" variant="outline" onClick={open}>Open</Button>
+                    ) : (
                       <>
-                        <Button size="sm" onClick={() => approve.mutate(r)}>Approve</Button>
-                        <Button size="sm" variant="ghost" onClick={() => reject.mutate(r)}>Reject</Button>
+                        {r.status === "pending" && <Button size="sm" variant="outline" onClick={() => submitForApproval.mutate(r)}>Submit</Button>}
+                        {(r.status === "pending" || r.status === "submitted") && (
+                          <>
+                            <Button size="sm" onClick={() => approve.mutate(r)}>Approve</Button>
+                            <Button size="sm" variant="ghost" onClick={() => reject.mutate(r)}>Reject</Button>
+                          </>
+                        )}
                       </>
                     )}
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </CardContent>
