@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Printer, ChevronDown, ChevronRight, Ruler } from "lucide-react";
+import { QuantitiesEmailDialog } from "@/components/financial/QuantitiesEmailDialog";
+import { Printer, Mail, ChevronDown, ChevronRight, Ruler } from "lucide-react";
 
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n || 0);
@@ -41,6 +42,7 @@ export default function QuantitiesProgressPage() {
   const [showMoney, setShowMoney] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [coOpen, setCoOpen] = useState(true);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const base = useMemo(() => rows.filter((r) => r.kind === "base"), [rows]);
   const cos = useMemo(() => rows.filter((r) => r.kind === "change_order"), [rows]);
@@ -147,12 +149,26 @@ export default function QuantitiesProgressPage() {
             <Switch id="money" checked={showMoney} onCheckedChange={setShowMoney} />
             <Label htmlFor="money" className="text-sm cursor-pointer">Show dollars</Label>
           </div>
+          <Button variant="outline" size="sm" onClick={() => setEmailOpen(true)} disabled={rows.length === 0}>
+            <Mail className="h-4 w-4 mr-1.5" />
+            Email{hasSelection ? ` (${selected.size})` : ""}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-1.5" />
             Print{hasSelection ? ` (${selected.size})` : ""}
           </Button>
         </div>
       </div>
+
+      <QuantitiesEmailDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        rows={rows}
+        selectedIds={selected}
+        showMoney={showMoney}
+        projectName={project?.name ?? "Project"}
+        payAppNo={latestPayApp}
+      />
 
       {/* Roll-up cards */}
       <div className="grid grid-cols-3 gap-3 print:hidden">
