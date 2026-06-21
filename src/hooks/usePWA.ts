@@ -96,10 +96,19 @@ export function usePWAUpdate() {
   }, []);
 
   const updateServiceWorker = () => {
-    if (registration?.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    const waiting = registration?.waiting;
+    if (!waiting) {
+      window.location.reload();
+      return;
     }
-    window.location.reload();
+    // Tell the waiting SW to activate, then reload only once it controls the
+    // page — reloading before that would just re-serve the old precache. A
+    // short fallback covers the rare case controllerchange never fires.
+    let reloaded = false;
+    const reload = () => { if (!reloaded) { reloaded = true; window.location.reload(); } };
+    navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+    setTimeout(reload, 2000);
   };
 
   return { needRefresh, updateServiceWorker };

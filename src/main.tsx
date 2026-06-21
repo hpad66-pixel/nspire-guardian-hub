@@ -3,7 +3,9 @@ import App from "./App.tsx";
 import "./index.css";
 
 // Bump when another forced SW eviction is needed (e.g. a future cache split).
-const SW_CLEANUP_VERSION = "2026-05-04-cloudflare-pages-env-reset";
+// 2026-06-21: one-time flush when moving autoUpdate → prompt-banner so every
+// client lands cleanly on the new update strategy with no stale precache.
+const SW_CLEANUP_VERSION = "2026-06-21-prompt-update-banner";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {

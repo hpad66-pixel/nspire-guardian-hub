@@ -46,7 +46,11 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt": a new build does NOT silently take over. The SW installs and
+      // waits; the in-app PWAUpdateBanner shows "Reload now" and activates it on
+      // click. This replaces the old silent autoUpdate, which left users on stale
+      // JS until a manual cache clear.
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "icons/*.png", "robots.txt"],
       manifest: {
         name: "Proj OS",
@@ -79,11 +83,10 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        // Take over immediately on update so users don't get stuck on a
-        // stale SPA shell (the dark-landing build) until they close every
-        // tab. Without these the autoUpdate SW lingers in "waiting" and a
-        // hard-reload is the only way to see the new index.html.
-        skipWaiting: true,
+        // Do NOT skipWaiting: the new SW waits so PWAUpdateBanner can offer a
+        // one-click "Reload now". With skipWaiting omitted, workbox adds a
+        // SKIP_WAITING message listener to the generated SW, which the banner
+        // posts to before reloading. clientsClaim takes control on activation.
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         // Allow large vendor chunks up to 6 MB in the precache manifest
