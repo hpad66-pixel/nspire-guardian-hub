@@ -1,6 +1,9 @@
 // Turn a natural-language description of a change order into a structured draft
 // (title, background, scope bullets, priced line items, overhead/profit %) that
 // pre-fills the in-app generator form for the user to review and edit.
+//
+// Uses the Anthropic (Claude) API with tool-use for guaranteed structured output.
+// Requires the ANTHROPIC_API_KEY edge-function secret.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -8,7 +11,42 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-6";
+
+const DRAFT_TOOL = {
+  name: "draft_change_order",
+  description: "Return the structured change-order draft extracted from the description.",
+  input_schema: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Concise one-line title, no 'Change Order' prefix" },
+      subject: { type: "string" },
+      basis: { type: "string", description: "e.g. Lump Sum, Fixed, Actual Quantity" },
+      background: { type: "string", description: "Why this CO exists — field condition / owner request / unforeseen item" },
+      scope_intro: { type: "string" },
+      scope_bullets: { type: "array", items: { type: "string" } },
+      line_items: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            desc: { type: "string" },
+            unit: { type: "string", description: "EA/LS/LF/SF/DAY/HR/CY/TON" },
+            qty: { type: "string" },
+            unit_cost: { type: "string", description: "formatted like $1,450" },
+            basis: { type: "string", description: "Firm, Allowance, Actual Qty, Completed, If Worked, Vendor Invoice, or No Cost" },
+          },
+          required: ["desc", "unit", "qty", "unit_cost", "basis"],
+        },
+      },
+      overhead_pct: { type: "number" },
+      profit_pct: { type: "number" },
+      justification: { type: "string" },
+    },
+    required: ["title", "background", "scope_intro", "scope_bullets", "line_items", "overhead_pct", "profit_pct"],
+  },
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -18,8 +56,8 @@ serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-    const key = Deno.env.get("GEMINI_API_KEY");
-    if (!key) return json({ error: "GEMINI_API_KEY not configured" }, 500);
+    const key = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
     const { description, projectId, overheadPct, profitPct } = await req.json();
     if (!description || String(description).trim().length < 5) return json({ error: "Describe the change order first." }, 400);
@@ -35,13 +73,12 @@ serve(async (req) => {
 
     const system = `You convert a contractor's plain-language description of ONE construction change order into a structured proposal draft for the APAS Consulting format.
 Rules:
-- Extract a concise one-line TITLE (no "Change Order" prefix).
-- Write a short BACKGROUND paragraph: the field condition / owner request / unforeseen item that triggered it.
-- Write a SCOPE intro line plus 2-6 specific scope BULLETS.
-- Break the cost into priced LINE ITEMS. Each: desc, unit (EA/LS/LF/SF/DAY/HR/CY/TON), qty, unit_cost (like "$1,450"), basis (one of: Firm, Allowance, Actual Qty, Completed, If Worked, Vendor Invoice, No Cost).
-- If the user gives a single lump amount, make one Firm LS line item for it.
-- overhead_pct and profit_pct: use the user's values if provided, else 10 and 5. If the user says profit/markup is waived, use 0.
-- Numbers are best estimates from the description; do not invent unrelated scope.`;
+- TITLE: concise one line, no "Change Order" prefix.
+- BACKGROUND: short paragraph on the field condition / owner request / unforeseen item that triggered it.
+- SCOPE: an intro line plus 2-6 specific scope bullets.
+- LINE ITEMS: break the cost into priced items (desc, unit, qty, unit_cost like "$1,450", basis). If the user gives a single lump sum, make one Firm LS line item for it.
+- overhead_pct / profit_pct: use the user's values if given, else the provided defaults; if they say profit or markup is waived, use 0.
+- Estimate only from the description; do not invent unrelated scope. Always call the draft_change_order tool.`;
 
     const prompt = `Project: ${projectName || "construction project"}
 Default overhead %: ${overheadPct ?? 10}
@@ -50,50 +87,24 @@ Default profit %: ${profitPct ?? 5}
 Description:
 ${description}`;
 
-    const res = await fetch(`${GEMINI}/gemini-2.0-flash:generateContent?key=${key}`, {
+    const res = await fetch(ANTHROPIC_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              title: { type: "STRING" },
-              subject: { type: "STRING" },
-              basis: { type: "STRING" },
-              background: { type: "STRING" },
-              scope_intro: { type: "STRING" },
-              scope_bullets: { type: "ARRAY", items: { type: "STRING" } },
-              line_items: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    desc: { type: "STRING" }, unit: { type: "STRING" }, qty: { type: "STRING" },
-                    unit_cost: { type: "STRING" }, basis: { type: "STRING" },
-                  },
-                  required: ["desc", "unit", "qty", "unit_cost", "basis"],
-                },
-              },
-              overhead_pct: { type: "NUMBER" },
-              profit_pct: { type: "NUMBER" },
-              justification: { type: "STRING" },
-            },
-            required: ["title", "background", "scope_intro", "scope_bullets", "line_items", "overhead_pct", "profit_pct"],
-          },
-        },
+        model: MODEL,
+        max_tokens: 2000,
+        system,
+        messages: [{ role: "user", content: prompt }],
+        tools: [DRAFT_TOOL],
+        tool_choice: { type: "tool", name: "draft_change_order" },
       }),
     });
 
     if (!res.ok) return json({ error: `AI error: ${await res.text()}` }, 502);
     const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return json({ error: "No draft returned" }, 502);
-    return json({ draft: JSON.parse(text) });
+    const toolUse = (data?.content ?? []).find((c: any) => c.type === "tool_use");
+    if (!toolUse?.input) return json({ error: "No draft returned" }, 502);
+    return json({ draft: toolUse.input });
   } catch (e) {
     return json({ error: String((e as Error).message ?? e) }, 500);
   }
