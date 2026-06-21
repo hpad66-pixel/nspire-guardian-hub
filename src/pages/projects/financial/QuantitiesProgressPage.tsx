@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useSovProgress, type SovProgressRow } from "@/hooks/useSovProgress";
 import { useChangeOrderLineItems } from "@/hooks/useChangeOrderLineItems";
+import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { downloadQuantitiesPdf } from "@/lib/financial/quantitiesPdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,11 @@ export default function QuantitiesProgressPage() {
   const { data: project } = useProject(projectId ?? null);
   const { data: rows = [], isLoading } = useSovProgress(projectId ?? null);
   const { data: coLines = {} } = useChangeOrderLineItems(projectId ?? null);
+  const { data: allCos = [] } = useChangeOrdersByProject(projectId ?? null);
+  const coMeta = useMemo(
+    () => Object.fromEntries(allCos.map((c: any) => [c.id, { co_no: c.co_no, title: c.title }])),
+    [allCos],
+  ) as Record<string, { co_no: number; title: string }>;
 
   const [showMoney, setShowMoney] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -58,7 +64,11 @@ export default function QuantitiesProgressPage() {
     await supabase.from("sov_line_items" as any).update({ unit }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["sov-progress", projectId] });
   }
-  const exportLines = () => (selected.size > 0 ? rows.filter((r) => selected.has(r.sov_line_item_id)) : rows);
+  // Export/print is base-contract quantities only (what you send a sub to quote).
+  const exportLines = () => {
+    const b = rows.filter((r) => r.kind === "base");
+    return selected.size > 0 ? b.filter((r) => selected.has(r.sov_line_item_id)) : b;
+  };
 
   const base = useMemo(() => rows.filter((r) => r.kind === "base"), [rows]);
   const cos = useMemo(() => rows.filter((r) => r.kind === "change_order"), [rows]);
@@ -202,7 +212,7 @@ export default function QuantitiesProgressPage() {
       <QuantitiesEmailDialog
         open={emailOpen}
         onOpenChange={setEmailOpen}
-        rows={rows}
+        rows={base}
         selectedIds={selected}
         showMoney={showMoney}
         projectName={project?.name ?? "Project"}
@@ -269,56 +279,98 @@ export default function QuantitiesProgressPage() {
                   <span className="text-muted-foreground font-normal">{pfmt(coRoll.pct)} earned</span>
                 </button>
                 {(coOpen) && (
-                  <div className="overflow-x-auto print:!block">
-                    <table className="w-full text-sm">
-                      <Th />
-                      <tbody>
-                        {cos.map((r) => {
-                          const coId = r.change_order_id;
-                          const lines = coId ? coLines[coId] : undefined;
-                          const isOpen = coId ? expanded.has(coId) : false;
-                          return (
-                            <Fragment key={r.sov_line_item_id}>
-                              <Row r={r} expandable={!!lines?.length} expanded={isOpen} onToggle={() => coId && toggleExpand(coId)} />
-                              {isOpen && lines?.length ? (
-                                <tr className="bg-muted/20">
-                                  <td className="print:hidden" />
-                                  <td colSpan={coLineColSpan} className="p-0">
-                                    <div className="px-6 py-2">
-                                      <p className="text-xs text-muted-foreground mb-1">{lines.length} priced line{lines.length === 1 ? "" : "s"} on this change order:</p>
-                                      <table className="w-full text-xs">
-                                        <thead>
-                                          <tr className="text-muted-foreground border-b">
-                                            <th className="text-left p-1 font-normal">Item</th>
-                                            <th className="text-center p-1 font-normal">Unit</th>
-                                            <th className="text-right p-1 font-normal">Qty</th>
-                                            <th className="text-right p-1 font-normal">Unit Price</th>
-                                            <th className="text-right p-1 font-normal">Amount</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {lines.map((l) => (
-                                            <tr key={l.id} className="border-b last:border-0">
-                                              <td className="p-1">{l.description}{l.basis ? <span className="text-muted-foreground"> · {l.basis}</span> : null}</td>
-                                              <td className="p-1 text-center text-muted-foreground">{l.unit ?? "—"}</td>
-                                              <td className="p-1 text-right font-mono">{qfmt(l.qty)}</td>
-                                              <td className="p-1 text-right font-mono text-muted-foreground">{money(l.unit_price)}</td>
-                                              <td className="p-1 text-right font-mono">{money(l.extended_value)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                  <>
+                    <p className="px-4 pt-2 text-xs text-muted-foreground">Change orders are tracked by fee (approved · earned · remaining), not base-contract quantities. Expand one to see its own priced scope.</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase tracking-wide">
+                            <th className="p-2 text-left w-24">CO #</th>
+                            <th className="p-2 text-left">Change Order</th>
+                            <th className="p-2 text-left w-[150px]">% Earned</th>
+                            {showMoney && <th className="p-2 text-right">Approved</th>}
+                            {showMoney && <th className="p-2 text-right">Earned</th>}
+                            {showMoney && <th className="p-2 text-right">To Complete</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cos.map((r) => {
+                            const coId = r.change_order_id;
+                            const meta = coId ? coMeta[coId] : undefined;
+                            const lines = coId ? coLines[coId] : undefined;
+                            const isOpen = coId ? expanded.has(coId) : false;
+                            const coNum = meta ? `CO-${String(meta.co_no).padStart(3, "0")}` : r.item_no;
+                            const title = meta?.title ?? r.description;
+                            return (
+                              <Fragment key={r.sov_line_item_id}>
+                                <tr className="border-b last:border-0 hover:bg-muted/20">
+                                  <td className="p-2 font-mono text-xs">{coNum}</td>
+                                  <td className="p-2">
+                                    {lines?.length ? (
+                                      <button onClick={() => coId && toggleExpand(coId)} className="inline-flex items-center gap-1 text-left hover:text-[var(--apas-sapphire)]">
+                                        {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                                        {title}
+                                      </button>
+                                    ) : <span className="inline-flex items-center gap-1">{title}<span className="text-muted-foreground text-xs">· lump sum</span></span>}
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="flex items-center gap-2">
+                                      <Bar value={r.pct_complete} />
+                                      <span className="text-xs tabular-nums w-11 text-right">{pfmt(r.pct_complete)}</span>
                                     </div>
                                   </td>
+                                  {showMoney && <td className="p-2 text-right font-mono text-muted-foreground">{money(r.scheduled_value)}</td>}
+                                  {showMoney && <td className="p-2 text-right font-mono text-emerald-600">{money(r.value_to_date)}</td>}
+                                  {showMoney && <td className={`p-2 text-right font-mono ${r.value_remaining > 0 ? "text-[var(--apas-amber)]" : "text-muted-foreground"}`}>{money(r.value_remaining)}</td>}
                                 </tr>
-                              ) : null}
-                            </Fragment>
-                          );
-                        })}
-                      </tbody>
-                      <SectionFoot r={coRoll} />
-                    </table>
-                  </div>
+                                {isOpen && lines?.length ? (
+                                  <tr className="bg-muted/20">
+                                    <td />
+                                    <td colSpan={showMoney ? 5 : 2} className="p-0">
+                                      <div className="px-6 py-2">
+                                        <p className="text-xs text-muted-foreground mb-1">Priced scope on {coNum} — {lines.length} line{lines.length === 1 ? "" : "s"} from the signed change order (its own work, separate from the base contract):</p>
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="text-muted-foreground border-b">
+                                              <th className="text-left p-1 font-normal">Item</th>
+                                              <th className="text-center p-1 font-normal">Unit</th>
+                                              <th className="text-right p-1 font-normal">Qty</th>
+                                              <th className="text-right p-1 font-normal">Unit Price</th>
+                                              <th className="text-right p-1 font-normal">Amount</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {lines.map((l) => (
+                                              <tr key={l.id} className="border-b last:border-0">
+                                                <td className="p-1">{l.description}{l.basis ? <span className="text-muted-foreground"> · {l.basis}</span> : null}</td>
+                                                <td className="p-1 text-center text-muted-foreground">{l.unit ?? "—"}</td>
+                                                <td className="p-1 text-right font-mono">{qfmt(l.qty)}</td>
+                                                <td className="p-1 text-right font-mono text-muted-foreground">{money(l.unit_price)}</td>
+                                                <td className="p-1 text-right font-mono">{money(l.extended_value)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-muted/60 font-semibold text-sm border-t">
+                            <td className="p-2" colSpan={2}>Subtotal — {cos.length} change order{cos.length === 1 ? "" : "s"}</td>
+                            <td className="p-2">{pfmt(coRoll.pct)}</td>
+                            {showMoney && <td className="p-2 text-right font-mono">{money(coRoll.sv)}</td>}
+                            {showMoney && <td className="p-2 text-right font-mono text-emerald-600">{money(coRoll.vd)}</td>}
+                            {showMoney && <td className="p-2 text-right font-mono">{money(coRoll.rem)}</td>}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
