@@ -120,6 +120,7 @@ const ReportBuilderPage = lazy(() => import('./pages/reports/ReportBuilderPage')
 
 // ───────── Procore Lite · Phase 3 (D1–D6 Financial Cascade) ─────────
 const PrimeContractPage = lazy(() => import('./pages/projects/financial/PrimeContractPage'));
+const QuantitiesProgressPage = lazy(() => import('./pages/projects/financial/QuantitiesProgressPage'));
 const PhaseThreeCommitmentsPage = lazy(() => import('./pages/projects/financial/CommitmentsPage'));
 const ChangeEventsPage = lazy(() => import('./pages/projects/financial/ChangeEventsPage'));
 const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial/ChangeOrdersPage'));
@@ -351,6 +352,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/lien-releases" element={<LienReleasesPage />} />
                               <Route path="/projects/:projectId/financials/vendor-inbox" element={<VendorInboxPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
+                              <Route path="/projects/:projectId/financials/quantities" element={<QuantitiesProgressPage />} />
                               <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
                               <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
                               <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
