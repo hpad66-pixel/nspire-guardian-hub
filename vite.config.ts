@@ -89,6 +89,10 @@ export default defineConfig(({ mode }) => ({
         // posts to before reloading. clientsClaim takes control on activation.
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Pull the web-push (push + notificationclick) handlers into the
+        // generated SW. generateSW can't host custom handlers itself, so the
+        // standalone public/sw-push.js is imported at SW eval time.
+        importScripts: ["sw-push.js"],
         // Allow large vendor chunks up to 6 MB in the precache manifest
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // CRITICAL: Never intercept OAuth, auth callbacks, or Supabase redirects.

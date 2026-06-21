@@ -1,18 +1,9 @@
-// Custom service worker for Proj OS
-// Handles: push notifications + standard precache passthrough
+// Web-push handlers, imported into the generated workbox service worker via
+// VitePWA workbox.importScripts. The SW lifecycle (install/activate/precache/
+// SKIP_WAITING) is owned by the generated worker — this file ONLY adds the
+// push display + click behavior. Payload shape must match the
+// send-push-notification edge function: { title, body, url, icon }.
 
-// This file is used as the custom SW entry for vite-plugin-pwa injectManifest mode.
-// It must self.skipWaiting() and claim clients for immediate activation.
-
-self.addEventListener('install', () => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// --- Push notification handler ---
 self.addEventListener('push', (event) => {
   let data = { title: 'Proj OS', body: 'You have a new notification.', url: '/dashboard', icon: '/icons/apas-os-192.png' };
 
@@ -32,12 +23,9 @@ self.addEventListener('push', (event) => {
     vibrate: [200, 100, 200],
   };
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-// --- Notification click: focus or open app ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/dashboard';
