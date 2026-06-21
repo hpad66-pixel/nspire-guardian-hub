@@ -26,7 +26,6 @@ export function useCoWorkflow(projectId: string | null) {
     mutationFn: async ({ projectId, primeContractId, spec, previewPdf }: CreateCoInput) => {
       const tenant_id = await resolveCurrentWorkspaceId();
       if (!tenant_id) throw new Error("No workspace for current user");
-      const { data: { user } } = await supabase.auth.getUser();
 
       // Artifact generation is best-effort — the spec itself drives the on-screen
       // template, so a docx/pdf hiccup must never block creating the change order.
@@ -57,7 +56,6 @@ export function useCoWorkflow(projectId: string | null) {
         spec,
         docx_path,
         pdf_path,
-        created_by: user?.id ?? null,
       };
       if (coNo && Number.isFinite(coNo)) row.co_no = coNo;
 

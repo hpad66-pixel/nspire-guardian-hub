@@ -56,7 +56,7 @@ serve(async (req) => {
 
       const { data: co, error: e1 } = await admin
         .from("change_orders")
-        .select("id, tenant_id, project_id, co_no, co_type, title, spec, locked, accepted_signed_at, created_by, submitted_signed_by")
+        .select("id, tenant_id, project_id, co_no, co_type, title, spec, locked, accepted_signed_at, submitted_signed_by")
         .eq("sign_token", token)
         .maybeSingle();
       if (e1 || !co) return json({ error: "Not found" }, 404);
@@ -85,7 +85,7 @@ serve(async (req) => {
       if (e2) return json({ error: e2.message }, 500);
 
       // Drop a notification into the originator's in-app inbox.
-      const notifyUser = co.submitted_signed_by ?? co.created_by;
+      const notifyUser = co.submitted_signed_by;
       if (notifyUser) {
         await admin.from("notifications").insert({
           user_id: notifyUser,
