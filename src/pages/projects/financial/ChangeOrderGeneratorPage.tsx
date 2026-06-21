@@ -18,7 +18,8 @@ import {
   partiesFromContract, signatoriesFromContract, blankSpec, fmtLongDate, money,
 } from "@/lib/changeOrder/defaults";
 import type { CoSpec, CoPricingRow, CoMarkup } from "@/lib/changeOrder/types";
-import { Plus, Trash2, FileText, ChevronRight, LayoutDashboard } from "lucide-react";
+import { Plus, Trash2, FileText, ChevronRight, LayoutDashboard, Sparkles, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const todayLong = () => fmtLongDate(new Date().toISOString().slice(0, 10));
 
@@ -59,6 +60,48 @@ export default function ChangeOrderGeneratorPage() {
   const coNo = spec.doc.co_number || String(nextNo);
   const livePricing = useMemo(() => recomputePricing(spec.pricing), [spec.pricing]);
   const [saving, setSaving] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+
+  // Natural-language → structured draft. The user reviews/edits everything after.
+  async function draftWithAI() {
+    if (aiText.trim().length < 5) return toast.error("Describe the change order first.");
+    setAiBusy(true);
+    try {
+      const oh = Number(pctOf(spec.pricing.markups[0])) || 10;
+      const pf = Number(pctOf(spec.pricing.markups[1])) || 5;
+      const { data, error } = await supabase.functions.invoke("draft-change-order", {
+        body: { description: aiText, projectId, overheadPct: oh, profitPct: pf },
+      });
+      if (error) throw error;
+      const d = (data as any)?.draft;
+      if (!d) throw new Error("No draft returned");
+      patch((s) => {
+        if (d.title) s.doc.title = d.title;
+        if (d.subject) s.parties.subject = d.subject;
+        if (d.basis) s.parties.basis = d.basis;
+        s.sections[0] = { heading: "1. BACKGROUND", blocks: [{ p: d.background ?? "" }] };
+        s.sections[1] = { heading: "2. SCOPE OF WORK", blocks: [{ p: d.scope_intro ?? "" }, { bullets: (d.scope_bullets ?? []).filter(Boolean) }] };
+        s.pricing.groups[0].rows = (d.line_items ?? []).map((li: any, i: number) => ({
+          n: String(i + 1), desc: li.desc ?? "", unit: li.unit ?? "LS", qty: String(li.qty ?? "1"),
+          unit_cost: String(li.unit_cost ?? ""), extended: "", basis: li.basis ?? "Firm",
+        }));
+        if (s.pricing.markups[0]) s.pricing.markups[0].amount = `${d.overhead_pct ?? oh}%`;
+        if (s.pricing.markups[1]) s.pricing.markups[1].amount = `${d.profit_pct ?? pf}%`;
+        if (d.justification) {
+          const idx = s.sections_after_pricing.findIndex((x) => /justification/i.test(x.heading));
+          const sec = { heading: "JUSTIFICATION", blocks: [{ p: d.justification } as any] };
+          if (idx >= 0) s.sections_after_pricing[idx] = { ...s.sections_after_pricing[idx], blocks: [{ p: d.justification } as any] };
+          else s.sections_after_pricing.unshift(sec);
+        }
+      });
+      toast.success("Draft ready — review and edit below.");
+    } catch (e) {
+      toast.error(`Draft failed: ${(e as Error).message}`);
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   function patch(updater: (s: CoSpec) => void) {
     setSpec((prev) => { const next = structuredClone(prev); updater(next); return next; });
@@ -126,6 +169,28 @@ export default function ChangeOrderGeneratorPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* ── Editor ─────────────────────────────────────────── */}
         <div className="space-y-4">
+          {/* Describe it in plain language → AI drafts the scope + pricing */}
+          <Card className="border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/[0.03]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> Describe the change order</CardTitle>
+              <p className="text-xs text-muted-foreground">Tell it what changed, where, why, and the costs — it drafts the scope and pricing for you to review. You can also dictate with your keyboard's mic.</p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Textarea
+                rows={4}
+                placeholder="e.g. Six manhole rims on Line 2 ended up below the new asphalt grade after paving and need adjusting. Adjust each rim to grade — about $1,450 each — plus restore the asphalt collar at roughly $380 each. 10% overhead, 5% profit."
+                value={aiText}
+                onChange={(e) => setAiText(e.target.value)}
+              />
+              <div className="flex justify-end">
+                <Button onClick={draftWithAI} disabled={aiBusy}>
+                  {aiBusy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />}
+                  {aiBusy ? "Drafting…" : "Draft with AI"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Header</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 gap-3">
