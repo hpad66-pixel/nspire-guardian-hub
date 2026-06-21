@@ -86,7 +86,7 @@ export function ChangeOrderSignDialog({
         submitted_signed_at: new Date().toISOString(),
         submitted_signed_by: user?.id ?? null,
         locked: true,
-        status: "submitted",
+        status: "out_for_signature",
       } as any).eq("id", coId);
       if (error) throw error;
       toast.success("Change order signed and locked");
