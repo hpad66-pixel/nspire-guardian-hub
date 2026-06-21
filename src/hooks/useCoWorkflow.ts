@@ -27,6 +27,26 @@ export function useCoWorkflow(projectId: string | null) {
       const tenant_id = await resolveCurrentWorkspaceId();
       if (!tenant_id) throw new Error("No workspace for current user");
 
+      // A prime change order MUST carry a prime_contract_id — the DB trigger
+      // (validate_co_type_link) rejects a PCO without one. The caller passes null
+      // when the prime-contract query hasn't resolved yet at click-time, which
+      // would silently drop the draft. Resolve it here so Save always persists.
+      let resolvedPrimeId = primeContractId;
+      if (!resolvedPrimeId) {
+        const { data: pc, error: pcErr } = await supabase
+          .from("prime_contracts" as any)
+          .select("id")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (pcErr) throw pcErr;
+        resolvedPrimeId = (pc as any)?.id ?? null;
+      }
+      if (!resolvedPrimeId) {
+        throw new Error("This project has no prime contract yet — create the prime contract before adding a change order.");
+      }
+
       // Artifact generation is best-effort — the spec itself drives the on-screen
       // template, so a docx/pdf hiccup must never block creating the change order.
       let docx_path: string | null = null;
@@ -47,7 +67,7 @@ export function useCoWorkflow(projectId: string | null) {
       const row: Record<string, unknown> = {
         tenant_id,
         project_id: projectId,
-        prime_contract_id: primeContractId,
+        prime_contract_id: resolvedPrimeId,
         co_type: "PCO",
         title: spec.doc.title || spec.doc.co_label || "Change Order",
         amount: grandTotalNumber(spec.pricing),
