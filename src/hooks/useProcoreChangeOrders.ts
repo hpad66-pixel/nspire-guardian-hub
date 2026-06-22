@@ -6,6 +6,8 @@ import { toDateOnly } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
+import { buildCoPdfBlob } from "@/lib/changeOrder/coPdf";
+import { uploadCoArtifact } from "@/lib/changeOrder/storage";
 
 export interface ChangeOrder {
   id: string; tenant_id: string; project_id: string;
@@ -135,11 +137,11 @@ export function useRenumberChangeOrder() {
       if (!Number.isInteger(newCoNo) || newCoNo <= 0) throw new Error("Enter a positive whole number.");
       if (!reason.trim()) throw new Error("A reason is required.");
 
-      const { data: co, error: e1 } = await supabase
+      const { data: co, error: e0 } = await supabase
         .from("change_orders" as any)
-        .select("co_no, co_type, project_id, co_no_history")
+        .select("co_no, co_type, project_id, co_no_history, spec, locked, submitted_signature_path, accepted_signature_path")
         .eq("id", coId).single();
-      if (e1) throw e1;
+      if (e0) throw e0;
       const cur = co as any;
       if (Number(cur.co_no) === newCoNo) throw new Error("That is already the current number.");
 
@@ -150,6 +152,25 @@ export function useRenumberChangeOrder() {
         .eq("co_no", newCoNo).neq("id", coId).maybeSingle();
       if (clash) throw new Error(`${label} already exists on this project — pick a free number.`);
 
+      // Rebuild the number everywhere it's embedded in the document spec — this is
+      // what the rendered document AND the email subject/body read from.
+      const hasSpec = cur.spec && typeof cur.spec === "object" && (cur.spec as any).doc;
+      const updatedSpec = hasSpec
+        ? { ...cur.spec, doc: { ...(cur.spec as any).doc, co_number: String(newCoNo), co_label: label } }
+        : null;
+
+      // Regenerate the branded PDF from the updated spec (keeping signatures) so the
+      // attached/linked document shows the new number too. Non-fatal if it fails.
+      let newPdfPath: string | null = null;
+      if (updatedSpec && cur.project_id) {
+        try {
+          const blob = await buildCoPdfBlob(updatedSpec as any, {
+            submitted: cur.submitted_signature_path, accepted: cur.accepted_signature_path,
+          });
+          newPdfPath = await uploadCoArtifact(blob, cur.project_id, "change-orders", "pdf");
+        } catch { /* keep the existing PDF if regeneration fails */ }
+      }
+
       const { data: auth } = await supabase.auth.getUser();
       const history = Array.isArray(cur.co_no_history) ? cur.co_no_history : [];
       const entry = {
@@ -157,18 +178,31 @@ export function useRenumberChangeOrder() {
         by: auth.user?.id ?? null, reason: reason.trim(),
         at: new Date().toISOString(),
       };
+      const wasLocked = Boolean(cur.locked);
 
-      const { error: e2 } = await supabase
-        .from("change_orders" as any)
-        .update({ co_no: newCoNo, co_no_history: [...history, entry] } as any)
-        .eq("id", coId);
-      if (e2) {
-        if (/duplicate key|uniq_co/i.test(e2.message)) {
+      // Flip `locked` off in the SAME update so the lock guard permits the spec/pdf
+      // change (it only raises when OLD.locked AND NEW.locked are both true), then
+      // restore the lock. co_no/co_no_history aren't lock-protected either way.
+      const patch: Record<string, unknown> = {
+        co_no: newCoNo, co_no_history: [...history, entry], locked: false,
+      };
+      if (updatedSpec) patch.spec = updatedSpec;
+      if (newPdfPath) patch.pdf_path = newPdfPath;
+
+      const { error: e1 } = await supabase
+        .from("change_orders" as any).update(patch as any).eq("id", coId);
+      if (e1) {
+        if (/duplicate key|uniq_co/i.test(e1.message)) {
           throw new Error(`${label} already exists on this project — pick a free number.`);
         }
-        throw e2;
+        throw e1;
       }
-      return { coId, newCoNo };
+      if (wasLocked) {
+        const { error: e2 } = await supabase
+          .from("change_orders" as any).update({ locked: true } as any).eq("id", coId);
+        if (e2) throw e2;
+      }
+      return { coId, newCoNo, regeneratedPdf: Boolean(newPdfPath), specUpdated: Boolean(updatedSpec) };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["co"] });

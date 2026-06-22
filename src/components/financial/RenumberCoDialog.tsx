@@ -39,8 +39,13 @@ export function RenumberCoDialog({
   async function submit() {
     try {
       const n = parseInt(newNo, 10);
-      await renumber.mutateAsync({ coId: co.id, newCoNo: n, reason });
-      toast.success(`Renumbered to ${type}-${String(n).padStart(4, "0")}.`);
+      const res = await renumber.mutateAsync({ coId: co.id, newCoNo: n, reason });
+      const newLabel = `${type}-${String(n).padStart(4, "0")}`;
+      toast.success(
+        res.specUpdated
+          ? `Renumbered to ${newLabel}. Document, email, and PDF now use the new number.`
+          : `Renumbered to ${newLabel}. Note: this CO has no generated document — a previously uploaded signed scan keeps its printed number.`,
+      );
       setNewNo(""); setReason("");
       onOpenChange(false);
       onDone?.();
