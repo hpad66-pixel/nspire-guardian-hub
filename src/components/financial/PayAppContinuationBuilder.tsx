@@ -55,8 +55,17 @@ export function PayAppContinuationBuilder({
     } catch (e: any) { toast.error(e.message); }
   }
 
-  /** Commit a new this-period QUANTITY → value = qty × unit price. */
+  /** Commit a new this-period QUANTITY → value = qty × unit price. Capped at the
+   *  scheduled quantity — billing more requires an approved change order. */
   async function commitQty(line: ContinuationLine, qtyThisPeriod: number) {
+    const remaining = line.scheduled_qty - line.prior_qty_to_date;
+    if (qtyThisPeriod > remaining + 0.0001) {
+      toast.error(
+        `Exceeds the scheduled quantity — only ${qty(Math.max(0, remaining))} ${line.unit ?? ""} remain on this line. Bill the extra on an approved change order instead.`,
+        { action: { label: "Create CO", onClick: () => { window.location.href = `/projects/${projectId}/financials/change-orders/new`; } } },
+      );
+      return;
+    }
     try {
       await upsertLine.mutateAsync({
         sov_line_item_id: line.sov_line_item_id,
@@ -64,7 +73,11 @@ export function PayAppContinuationBuilder({
         qty_this_period: qtyThisPeriod,
         value_this_period: round2(qtyThisPeriod * line.unit_price),
       });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) {
+      toast.error(/scheduled value|check_violation/i.test(e.message)
+        ? "Can't bill beyond the scheduled quantity on this line — raise a change order for the extra scope."
+        : e.message);
+    }
   }
 
   const base = lines.filter((l) => l.kind === "base");
@@ -157,6 +170,7 @@ function LineSection({
       )}
       {rows.map((l) => {
         const over = l.value_to_date > l.scheduled_value + 0.01;
+        const remaining = Math.max(0, l.scheduled_qty - l.prior_qty_to_date);
         return (
         <tr key={l.sov_line_item_id} className={`border-t ${over ? "bg-[var(--apas-rose)]/5" : ""}`}>
           <td className="p-2 text-muted-foreground">{l.item_no}</td>
@@ -173,8 +187,9 @@ function LineSection({
               <span className="font-mono">{qty(l.qty_this_period)}</span>
             ) : (
               <Input
-                type="number" inputMode="decimal" step="any"
+                type="number" inputMode="decimal" step="any" max={remaining || undefined}
                 defaultValue={l.qty_this_period || ""}
+                placeholder={`${qty(remaining)} left`}
                 className="h-8 text-right font-mono"
                 onBlur={(e) => {
                   const v = Number(e.target.value) || 0;
