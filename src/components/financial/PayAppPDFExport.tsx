@@ -1,78 +1,95 @@
 /**
- * D1 · PayAppPDFExport button.
- * Collects contract + SOV + pay-app line data, assembles the G702/G703 PDF,
- * and triggers download. Uses the shared src/lib/pdf/payApp.ts generator.
+ * PayAppPDFExport — assembles the branded AIA G702/G703 "Application and
+ * Certificate for Payment" (parties, G702 cover, contractor certification +
+ * signature, and the G703 quantity continuation) from the live continuation
+ * data, renders it off-screen, and downloads a paginated PDF.
  */
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { usePrimeContractSov, usePrimeContractTotals } from "@/hooks/usePrimeContract";
-import { usePayApp } from "@/hooks/usePayApp";
-import { downloadPayAppPdf } from "@/lib/pdf/payApp";
 import { toast } from "sonner";
+import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
+import { useCoSettings } from "@/hooks/useCoSettings";
+import { PayApplicationDocument, type PayApplicationSpec } from "@/lib/payApp/PayApplicationDocument";
+import { downloadPayAppPdf } from "@/lib/payApp/payAppPdf";
+import type { PrimeContract } from "@/hooks/usePrimeContract";
 
 export interface PayAppPDFExportProps {
   payAppId: string;
-  primeContractId: string;
-  contractNo: string;
-  contractTitle: string;
-  tenantName?: string;
+  projectId: string;
+  contract: PrimeContract;
 }
 
-export function PayAppPDFExport({
-  payAppId, primeContractId, contractNo, contractTitle, tenantName,
-}: PayAppPDFExportProps) {
-  const { data: sov = [] } = usePrimeContractSov(primeContractId);
-  const { data: totals } = usePrimeContractTotals(primeContractId);
-  const { detail, lines } = usePayApp(payAppId);
+export function PayAppPDFExport({ payAppId, contract }: PayAppPDFExportProps) {
+  const { detail, lines, g702 } = usePayAppContinuation(payAppId);
+  const { data: coSettings } = useCoSettings();
+  const docRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const pa = detail.data;
+  const s: any = coSettings ?? {};
+
+  const spec: PayApplicationSpec | null = pa
+    ? {
+        wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
+        footer: s.footer ?? null,
+        contractor: {
+          name: contract.contractor_name || s.company_name || "APAS Consulting LLC",
+          address: contract.contractor_address || s.company_address || null,
+          contact: contract.contractor_contact || s.company_contact || null,
+          email: contract.contractor_email || s.company_email || null,
+          title: s.company_title || "Authorized Representative",
+        },
+        owner: {
+          name: contract.owner_name || "Owner",
+          address: contract.owner_address || null,
+          contact: contract.owner_contact || null,
+          email: contract.owner_email || null,
+        },
+        project: { name: contract.title, address: contract.project_address || null },
+        payAppNo: pa.pay_app_no,
+        periodEnd: pa.period_end,
+        applicationDate: (pa as any).approved_date || new Date().toISOString().slice(0, 10),
+        contractNo: contract.contract_no,
+        contractTitle: contract.title,
+        retainagePct: Number(contract.retainage_pct ?? 0),
+        g702,
+        lines: lines.map((l) => ({
+          item_no: l.item_no,
+          description: l.description,
+          unit: l.unit,
+          kind: l.kind,
+          scheduled_qty: l.scheduled_qty,
+          scheduled_value: l.scheduled_value,
+          prev_value: l.prior_value_to_date,
+          this_value: l.value_this_period,
+          value_to_date: l.value_to_date,
+          pct: l.pct_complete,
+          retainage: l.retainage,
+        })),
+      }
+    : null;
 
   async function handleExport() {
-    const pa = detail.data;
-    if (!pa) { toast.error("Pay app not loaded"); return; }
-
-    const linesByS = new Map((lines.data ?? []).map((l) => [l.sov_line_id, l]));
-    const mergedLines = sov.map((s) => {
-      const l = linesByS.get(s.id);
-      return {
-        line_no: s.line_no,
-        cost_code: "",           // populated once we join cost_codes in a follow-up
-        description: s.description,
-        scheduled_value: Number(s.scheduled_value ?? 0),
-        work_this_period: Number(l?.work_this_period ?? 0),
-        materials_stored: Number(l?.materials_stored ?? 0),
-        pct_complete: l?.pct_complete ?? null,
-      };
-    });
-
+    if (!docRef.current || !spec) { toast.error("Pay app not loaded"); return; }
+    setBusy(true);
     try {
-      await downloadPayAppPdf({
-        tenantName,
-        contract: {
-          contract_no: contractNo,
-          title: contractTitle,
-          original_value: Number(totals?.original_value ?? 0),
-          executed_co_value: Number(totals?.executed_co_value ?? 0),
-          revised_contract_value: Number(totals?.revised_contract_value ?? 0),
-          retainage_pct: 10,
-        },
-        payApp: {
-          pay_app_no: pa.pay_app_no,
-          period_end: pa.period_end,
-          status: pa.status,
-          submitted_amount: pa.submitted_amount,
-          approved_amount: pa.approved_amount,
-          retainage_held: pa.retainage_held,
-        },
-        lines: mergedLines,
-      });
-      toast.success(`Pay App ${pa.pay_app_no} exported`);
+      await downloadPayAppPdf(docRef.current, `pay-app-${spec.payAppNo}-${contract.contract_no || "g702"}.pdf`);
+      toast.success(`Pay App #${spec.payAppNo} exported.`);
     } catch (e: any) {
-      toast.error(e.message);
-    }
+      toast.error(`PDF failed: ${e.message}`);
+    } finally { setBusy(false); }
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleExport}>
-      <Download className="h-4 w-4 mr-1" /> Export G702/G703 PDF
-    </Button>
+    <>
+      <Button variant="outline" size="sm" disabled={busy || !spec} onClick={handleExport}>
+        <Download className="h-4 w-4 mr-1" />{busy ? "Exporting…" : "Export G702/G703 PDF"}
+      </Button>
+      {/* Off-screen render target for rasterization */}
+      <div style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none", opacity: 0 }} aria-hidden>
+        {spec && <PayApplicationDocument ref={docRef} spec={spec} />}
+      </div>
+    </>
   );
 }

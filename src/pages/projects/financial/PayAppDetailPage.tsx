@@ -101,12 +101,7 @@ export default function PayAppDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
-            <PayAppPDFExport
-              payAppId={pa.id}
-              primeContractId={contract.id}
-              contractNo={contract.contract_no}
-              contractTitle={contract.title}
-            />
+            <PayAppPDFExport payAppId={pa.id} projectId={projectId ?? ""} contract={contract} />
           </div>
         </div>
       </div>
