@@ -120,4 +120,55 @@ describe("useProgressReports", () => {
       result.current.mutateAsync({ id: "rep1", projectId: "p1" }),
     ).rejects.toBeTruthy();
   });
+
+  it("delete filters by id and resolves with the projectId on success", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useDeleteProgressReport());
+
+    const out = await result.current.mutateAsync({ id: "rep1", projectId: "p1" });
+    expect(out).toBe("p1");
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["id", "rep1"]]),
+    );
+  });
+
+  it("save (insert) surfaces an insert error as a rejection", async () => {
+    armSession();
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useSaveProgressReport());
+    await expect(
+      result.current.mutateAsync({
+        project_id: "p1",
+        report_type: "weekly",
+        report_period_start: "2026-06-01",
+        report_period_end: "2026-06-07",
+        title: "x",
+        content_html: "<p>x</p>",
+        status: "draft",
+      }),
+    ).rejects.toBeTruthy();
+  });
+
+  it("save (update) surfaces an update error as a rejection", async () => {
+    armSession();
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useSaveProgressReport());
+    await expect(
+      result.current.mutateAsync({
+        id: "rep1",
+        project_id: "p1",
+        report_type: "weekly",
+        report_period_start: "2026-06-01",
+        report_period_end: "2026-06-07",
+        title: "x",
+        content_html: "<p>x</p>",
+        status: "draft",
+      }),
+    ).rejects.toBeTruthy();
+  });
 });

@@ -32,6 +32,9 @@ vi.mock("../propertyAccess", () => ({
 import {
   useProject,
   useProjects,
+  useActiveProjects,
+  useProjectsByProperty,
+  useProjectStats,
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
@@ -100,5 +103,131 @@ describe("useProjects", () => {
     __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
     const { result } = renderHookWithClient(() => useDeleteProject());
     await expect(result.current.mutateAsync("proj1")).rejects.toBeTruthy();
+  });
+
+  it("create surfaces an insert error as a rejection", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useCreateProject());
+    await expect(
+      result.current.mutateAsync({ name: "X", status: "planning" } as any),
+    ).rejects.toBeTruthy();
+  });
+});
+
+describe("useActiveProjects", () => {
+  beforeEach(() => {
+    __mock.reset();
+    mockPermissions.mockReturnValue({ isAdmin: true, isLoading: false });
+  });
+
+  it("filters to planning/active statuses (admin path)", async () => {
+    const builder = makeBuilder({
+      data: [{ id: "proj1", name: "Active Build", status: "active" }],
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useActiveProjects());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].name).toBe("Active Build");
+    expect((builder.in as any).mock.calls).toEqual(
+      expect.arrayContaining([["status", ["planning", "active"]]]),
+    );
+  });
+
+  it("surfaces errors as query errors", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useActiveProjects());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("useProjectsByProperty", () => {
+  beforeEach(() => {
+    __mock.reset();
+    mockPermissions.mockReturnValue({ isAdmin: true, isLoading: false });
+  });
+
+  it("is disabled until a propertyId is provided", () => {
+    const { result } = renderHookWithClient(() => useProjectsByProperty(null));
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("lists projects for a property (admin path)", async () => {
+    const builder = makeBuilder({
+      data: [{ id: "proj1", name: "Prop Build", property_id: "prop1" }],
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useProjectsByProperty("prop1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].name).toBe("Prop Build");
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["property_id", "prop1"]]),
+    );
+  });
+
+  it("returns empty for a non-admin without access to the property", async () => {
+    mockPermissions.mockReturnValue({ isAdmin: false, isLoading: false });
+    (getAssignedPropertyIds as any).mockResolvedValueOnce(["other-prop"]);
+    __mock.from.mockReturnValue(makeBuilder({ data: [], error: null }));
+    const { result } = renderHookWithClient(() => useProjectsByProperty("prop1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+});
+
+describe("useProjectStats", () => {
+  beforeEach(() => {
+    __mock.reset();
+    mockPermissions.mockReturnValue({ isAdmin: true, isLoading: false });
+  });
+
+  it("aggregates status counts + budget totals", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({
+        data: [
+          { status: "active", budget: 100, spent: 40, property_id: null },
+          { status: "planning", budget: 50, spent: 0, property_id: null },
+          { status: "completed", budget: 200, spent: 200, property_id: null },
+          { status: "on_hold", budget: 10, spent: 1, property_id: null },
+        ],
+        error: null,
+      }),
+    );
+    const { result } = renderHookWithClient(() => useProjectStats());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toMatchObject({
+      active: 1,
+      planning: 1,
+      onHold: 1,
+      completed: 1,
+      totalBudget: 360,
+      totalSpent: 241,
+      total: 4,
+    });
+  });
+
+  it("takes the non-admin no-match branch when the user has no access", async () => {
+    mockPermissions.mockReturnValue({ isAdmin: false, isLoading: false });
+    (getAssignedPropertyIds as any).mockResolvedValueOnce([]);
+    (getDirectProjectIds as any).mockResolvedValueOnce([]);
+    // buildNonAdminFilter still pushes 'property_id.is.null', so a query runs;
+    // return an empty set and assert the aggregation degrades gracefully.
+    __mock.from.mockReturnValue(makeBuilder({ data: [], error: null }));
+    const { result } = renderHookWithClient(() => useProjectStats());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.total).toBe(0);
+  });
+
+  it("surfaces errors as query errors", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useProjectStats());
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

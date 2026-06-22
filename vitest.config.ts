@@ -73,10 +73,19 @@ export default defineConfig({
         "src/hooks/useSovProgress.ts": { lines: 95, functions: 90 },
         "src/hooks/useWorkOrders.ts": { lines: 65, functions: 75 },
         "src/hooks/useProjectProgress.ts": { lines: 65, functions: 75 },
-        // Measured-but-ungated (multi-export files needing more sibling-hook
-        // tests before a fair floor): usePrimeContract, useFinancialProposals,
-        // useProjectDocuments, useReports, useProposals, usePermits, useRFIs,
-        // useProgressReports, useProjectProcurement, useProjects.
+        // Former laggards — sibling exports now covered, so gated.
+        "src/hooks/usePrimeContract.ts": { lines: 95, functions: 95 },
+        "src/hooks/useFinancialProposals.ts": { lines: 95, functions: 95 },
+        "src/hooks/useProjectDocuments.ts": { lines: 95, functions: 95 },
+        "src/hooks/useReports.ts": { lines: 90, functions: 95 },
+        "src/hooks/useProposals.ts": { lines: 95, functions: 95 },
+        "src/hooks/usePermits.ts": { lines: 90, functions: 90 },
+        "src/hooks/useRFIs.ts": { lines: 95, functions: 95 },
+        "src/hooks/useProjectProcurement.ts": { lines: 95, functions: 95 },
+        "src/hooks/useProjects.ts": { lines: 85, functions: 80 },
+        // useProgressReports: line floor is modest — its SSE-streaming
+        // useGenerateProgressReport isn't exercisable via the builder mock.
+        "src/hooks/useProgressReports.ts": { lines: 50, functions: 85 },
       },
     },
   },

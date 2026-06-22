@@ -25,7 +25,15 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: "u1" } }),
 }));
 
-import { usePermits, useCreatePermit } from "../usePermits";
+import {
+  usePermits,
+  usePermit,
+  usePermitStats,
+  useExpiringPermits,
+  useCreatePermit,
+  useUpdatePermit,
+  useDeletePermit,
+} from "../usePermits";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 
@@ -78,5 +86,160 @@ describe("usePermits", () => {
     );
     const { result } = renderHookWithClient(() => usePermits());
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("usePermit (single)", () => {
+  beforeEach(() => {
+    __mock.reset();
+    vi.clearAllMocks();
+  });
+
+  it("is disabled until an id is provided", () => {
+    const { result } = renderHookWithClient(() => usePermit(null));
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("returns the permit for an admin (allowlist bypassed)", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: { id: "pm1", property_id: "prop1", status: "active" }, error: null }),
+    );
+    const { result } = renderHookWithClient(() => usePermit("pm1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.id).toBe("pm1");
+  });
+
+  it("surfaces a fetch error as a query error", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => usePermit("pm1"));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("usePermitStats", () => {
+  beforeEach(() => {
+    __mock.reset();
+    vi.clearAllMocks();
+  });
+
+  it("aggregates permit + requirement counts (two-table flow)", async () => {
+    const now = new Date();
+    const soon = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    const permitsBuilder = makeBuilder({
+      data: [
+        { id: "pm1", status: "active", expiry_date: soon, property_id: "prop1" },
+        { id: "pm2", status: "expired", expiry_date: null, property_id: "prop1" },
+      ],
+      error: null,
+    });
+    const reqsBuilder = makeBuilder({
+      data: [
+        { id: "r1", status: "non_compliant", next_due_date: now.toISOString(), permit_id: "pm1" },
+      ],
+      error: null,
+    });
+    __mock.from.mockImplementation((table: string) =>
+      table === "permit_requirements" ? reqsBuilder : permitsBuilder,
+    );
+
+    const { result } = renderHookWithClient(() => usePermitStats());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toMatchObject({
+      active: 1,
+      expiringSoon: 1,
+      nonCompliant: 1,
+      total: 2,
+    });
+  });
+
+  it("propagates a permits-query error", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => usePermitStats());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("useExpiringPermits", () => {
+  beforeEach(() => {
+    __mock.reset();
+    vi.clearAllMocks();
+  });
+
+  it("lists active permits within the window (admin path)", async () => {
+    const builder = makeBuilder({
+      data: [{ id: "pm1", status: "active", property_id: "prop1" }],
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useExpiringPermits(15));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].id).toBe("pm1");
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["status", "active"]]),
+    );
+  });
+
+  it("surfaces errors as query errors", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useExpiringPermits());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("useUpdatePermit / useDeletePermit", () => {
+  beforeEach(() => {
+    __mock.reset();
+    vi.clearAllMocks();
+  });
+
+  it("update applies the supplied fields and returns the row", async () => {
+    const builder = makeBuilder({ data: { id: "pm1", status: "expired" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useUpdatePermit());
+
+    const row = await result.current.mutateAsync({ id: "pm1", status: "expired" } as any);
+    expect((row as any).id).toBe("pm1");
+    const updated = (builder.update as any).mock.calls[0][0];
+    expect(updated).toMatchObject({ status: "expired" });
+    // id is stripped from the update payload (used only in the .eq filter)
+    expect(updated).not.toHaveProperty("id");
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["id", "pm1"]]),
+    );
+  });
+
+  it("update surfaces errors as a rejection", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useUpdatePermit());
+    await expect(
+      result.current.mutateAsync({ id: "pm1", status: "x" } as any),
+    ).rejects.toBeTruthy();
+  });
+
+  it("delete filters by id and resolves on success", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useDeletePermit());
+
+    await result.current.mutateAsync("pm1");
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["id", "pm1"]]),
+    );
+  });
+
+  it("delete surfaces errors as a rejection", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useDeletePermit());
+    await expect(result.current.mutateAsync("pm1")).rejects.toBeTruthy();
   });
 });

@@ -13,7 +13,10 @@ vi.mock("@/integrations/supabase/client", async () => {
 
 import {
   useRFIsByProject,
+  useRFI,
+  useRFIStats,
   useCreateRFI,
+  useUpdateRFI,
   useRespondToRFI,
   useCloseRFI,
 } from "../useRFIs";
@@ -74,5 +77,93 @@ describe("useRFIs", () => {
     __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
     const { result } = renderHookWithClient(() => useCloseRFI());
     await expect(result.current.mutateAsync("rfi1")).rejects.toBeTruthy();
+  });
+
+  it("single RFI query is disabled until an id is provided", () => {
+    const { result } = renderHookWithClient(() => useRFI(null));
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("fetches a single RFI by id", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: { id: "rfi1", subject: "Beam", status: "open" }, error: null }),
+    );
+    const { result } = renderHookWithClient(() => useRFI("rfi1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.id).toBe("rfi1");
+  });
+
+  it("stats query is disabled until a projectId is provided", () => {
+    const { result } = renderHookWithClient(() => useRFIStats(null));
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("stats tallies RFIs by status", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({
+        data: [
+          { status: "open" },
+          { status: "open" },
+          { status: "pending" },
+          { status: "answered" },
+          { status: "closed" },
+        ],
+        error: null,
+      }),
+    );
+    const { result } = renderHookWithClient(() => useRFIStats("p1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toMatchObject({
+      open: 2,
+      pending: 1,
+      answered: 1,
+      closed: 1,
+      total: 5,
+    });
+  });
+
+  it("update applies the supplied changes to the RFI", async () => {
+    const builder = makeBuilder({ data: { id: "rfi1", subject: "Revised" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useUpdateRFI());
+
+    await result.current.mutateAsync({ id: "rfi1", subject: "Revised" } as any);
+    const updated = (builder.update as any).mock.calls[0][0];
+    expect(updated).toMatchObject({ subject: "Revised" });
+    expect(updated.id).toBeUndefined();
+  });
+
+  it("update surfaces errors as a rejection", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    const { result } = renderHookWithClient(() => useUpdateRFI());
+    await expect(
+      result.current.mutateAsync({ id: "rfi1", subject: "x" } as any),
+    ).rejects.toBeTruthy();
+  });
+
+  it("create surfaces insert errors as a rejection", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    const { result } = renderHookWithClient(() => useCreateRFI());
+    await expect(
+      result.current.mutateAsync({ project_id: "p1" } as any),
+    ).rejects.toBeTruthy();
+  });
+
+  it("respondToRFI surfaces errors as a rejection", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    const { result } = renderHookWithClient(() => useRespondToRFI());
+    await expect(
+      result.current.mutateAsync({ id: "rfi1", response: "x", respondedBy: "u1" }),
+    ).rejects.toBeTruthy();
+  });
+
+  it("closeRFI stamps the closed status", async () => {
+    const builder = makeBuilder({ data: { id: "rfi1", status: "closed" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useCloseRFI());
+
+    await result.current.mutateAsync("rfi1");
+    const updated = (builder.update as any).mock.calls[0][0];
+    expect(updated).toMatchObject({ status: "closed" });
   });
 });
