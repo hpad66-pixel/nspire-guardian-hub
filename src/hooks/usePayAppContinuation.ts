@@ -160,7 +160,7 @@ export function useGeneratePayApp(primeContractId: string | null, projectId: str
 export interface ContinuationLine {
   sov_line_item_id: string; item_no: string; kind: "base" | "change_order";
   description: string; unit: string | null;
-  scheduled_qty: number; scheduled_value: number;
+  scheduled_qty: number; unit_price: number; scheduled_value: number;
   prior_value_to_date: number; prior_qty_to_date: number;
   qty_this_period: number; value_this_period: number;
   value_to_date: number; qty_to_date: number; pct_complete: number; retainage: number;
@@ -258,7 +258,8 @@ export function usePayAppContinuation(payAppId: string | null) {
       return {
         sov_line_item_id: li.id, item_no: li.item_no, kind: li.kind,
         description: li.description, unit: li.unit,
-        scheduled_qty: Number(li.scheduled_qty), scheduled_value: Number(li.scheduled_value),
+        scheduled_qty: Number(li.scheduled_qty), unit_price: Number(li.unit_price),
+        scheduled_value: Number(li.scheduled_value),
         prior_value_to_date: pr ? Number(pr.value_to_date) : 0,
         prior_qty_to_date: pr ? Number(pr.qty_to_date) : 0,
         qty_this_period: cur ? Number(cur.qty_this_period) : 0,
