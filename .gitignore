@@ -37,3 +37,6 @@ video/showcase/out/
 video/showcase/renders/
 video/showcase/.ttsenv/
 video/showcase/*.wav
+
+# Vitest coverage output
+coverage/
