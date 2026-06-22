@@ -2,10 +2,11 @@ import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { usePayApp } from "@/hooks/usePayApp";
+import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
 import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
-import { PayAppBuilder } from "@/components/financial/PayAppBuilder";
+import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
 import { PayAppPDFExport } from "@/components/financial/PayAppPDFExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ import { AttachmentField } from "@/components/common/AttachmentField";
 export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
   const { data: contract } = usePrimeContract(projectId ?? null);
-  const { detail, submit, approve, reject } = usePayApp(payAppId ?? null);
+  const { detail, approve, reject } = usePayApp(payAppId ?? null);
+  const { submit } = usePayAppContinuation(payAppId ?? null);
   const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
   const [approveAmount, setApproveAmount] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
@@ -30,7 +32,7 @@ export default function PayAppDetailPage() {
   if (!contract) return <div className="p-6 text-muted-foreground">Loading contract…</div>;
 
   async function doSubmit() {
-    try { await submit.mutateAsync(); toast.success("Submitted"); }
+    try { await submit.mutateAsync(); toast.success("Submitted — G702 cover saved."); }
     catch (e: any) { toast.error(e.message); }
   }
   async function doApprove() {
@@ -162,9 +164,9 @@ export default function PayAppDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Line-by-line</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Schedule of Values — this application</CardTitle></CardHeader>
         <CardContent>
-          <PayAppBuilder payAppId={pa.id} primeContractId={contract.id} />
+          <PayAppContinuationBuilder payAppId={pa.id} projectId={projectId ?? ""} primeContractId={contract.id} />
         </CardContent>
       </Card>
 

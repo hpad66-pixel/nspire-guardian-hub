@@ -19,6 +19,8 @@ export default defineConfig({
         "src/lib/financial/lien.ts",
         "src/lib/financial/intake.ts",
         "src/lib/financial/ledger.ts",
+        "src/lib/financial/payAppContinuation.ts",
+        "src/hooks/usePayAppContinuation.ts",
         "src/hooks/useLienWaivers.ts",
         "src/hooks/useLienReleases.ts",
         "src/hooks/useCoWorkflow.ts",
@@ -57,6 +59,7 @@ export default defineConfig({
         "src/lib/financial/lien.ts": { statements: 95, branches: 95, functions: 95, lines: 95 },
         "src/lib/financial/intake.ts": { statements: 90, branches: 80, functions: 95, lines: 90 },
         "src/lib/financial/ledger.ts": { statements: 95, branches: 90, functions: 95, lines: 95 },
+        "src/lib/financial/payAppContinuation.ts": { statements: 95, branches: 90, functions: 95, lines: 95 },
         // Financial money-path hooks.
         "src/hooks/useLienWaivers.ts": { lines: 75, functions: 70 },
         "src/hooks/useLienReleases.ts": { lines: 95, functions: 90 },
@@ -85,6 +88,8 @@ export default defineConfig({
         "src/hooks/useProjects.ts": { lines: 85, functions: 80 },
         // useProgressReports — SSE generate hook now covered via makeSseResponse.
         "src/hooks/useProgressReports.ts": { lines: 95, functions: 95 },
+        // Prime pay-app continuation (generate from SOV + approved COs).
+        "src/hooks/usePayAppContinuation.ts": { lines: 70, functions: 60 },
       },
     },
   },

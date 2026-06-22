@@ -4,6 +4,7 @@ import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import {
   usePrimeContract, usePrimeContractSov, usePrimeContractTotals, usePayApps,
 } from "@/hooks/usePrimeContract";
+import { useGeneratePayApp } from "@/hooks/usePayAppContinuation";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { useProjectFinancials } from "@/hooks/useProjectFinancials";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +41,8 @@ export default function PrimeContractPage() {
   const { data: contract, isLoading, update } = usePrimeContract(projectId ?? null);
   const { data: totals } = usePrimeContractTotals(contract?.id ?? null);
   const { data: sov = [] } = usePrimeContractSov(contract?.id ?? null);
-  const { data: payApps = [], create: createPayApp } = usePayApps(contract?.id ?? null);
+  const { data: payApps = [] } = usePayApps(contract?.id ?? null);
+  const generatePayApp = useGeneratePayApp(contract?.id ?? null, projectId ?? null);
   const { data: allCos = [] } = useChangeOrdersByProject(projectId ?? null);
   const { summary, ledger } = useProjectFinancials(projectId ?? null);
 
@@ -74,9 +76,9 @@ export default function PrimeContractPage() {
   async function newPayApp() {
     setCreating(true);
     try {
-      const nextNo = (payApps as any[]).reduce((m, p) => Math.max(m, p.pay_app_no ?? 0), 0) + 1;
-      await createPayApp.mutateAsync({ pay_app_no: nextNo, period_end: new Date().toISOString().slice(0, 10) });
-      toast.success(`Pay App #${nextNo} created`);
+      const res = await generatePayApp.mutateAsync({});
+      toast.success(`Pay App #${res.payAppNo} generated — ${res.lineCount} SOV lines seeded from the contract + approved change orders.`);
+      window.location.href = `/projects/${projectId}/financials/prime-contract/pay-apps/${res.payAppId}`;
     } catch (e: any) { toast.error(e.message); } finally { setCreating(false); }
   }
 
@@ -201,7 +203,7 @@ export default function PrimeContractPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-2">
               <CardTitle className="text-base">Pay Applications</CardTitle>
-              <Button size="sm" onClick={newPayApp} disabled={creating}><Plus className="h-4 w-4 mr-1" /> New Pay App</Button>
+              <Button size="sm" onClick={newPayApp} disabled={creating}><Plus className="h-4 w-4 mr-1" /> {creating ? "Generating…" : "Generate Pay App"}</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
