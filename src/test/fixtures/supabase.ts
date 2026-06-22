@@ -20,7 +20,19 @@ export interface MockBuilder {
   insert: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
+  upsert: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  neq: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  not: ReturnType<typeof vi.fn>;
+  is: ReturnType<typeof vi.fn>;
+  ilike: ReturnType<typeof vi.fn>;
+  like: ReturnType<typeof vi.fn>;
+  contains: ReturnType<typeof vi.fn>;
+  overlaps: ReturnType<typeof vi.fn>;
+  filter: ReturnType<typeof vi.fn>;
+  range: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
@@ -35,8 +47,22 @@ export function makeBuilder(
   b.select = vi.fn(() => b);
   b.insert = vi.fn(() => b);
   b.update = vi.fn(() => b);
+  b.upsert = vi.fn(() => b);
   b.delete = chain;
+  // Filter operators — all chainable (return self); awaiting the builder or a
+  // terminal (.single/.maybeSingle/.limit) resolves the configured result.
   b.eq = vi.fn(() => b);
+  b.neq = vi.fn(() => b);
+  b.in = vi.fn(() => b);
+  b.or = vi.fn(() => b);
+  b.not = vi.fn(() => b);
+  b.is = vi.fn(() => b);
+  b.ilike = vi.fn(() => b);
+  b.like = vi.fn(() => b);
+  b.contains = vi.fn(() => b);
+  b.overlaps = vi.fn(() => b);
+  b.filter = vi.fn(() => b);
+  b.range = vi.fn(() => b);
   b.gte = vi.fn(() => b);
   b.lte = vi.fn(() => b);
   b.order = vi.fn(() => b);
