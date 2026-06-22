@@ -78,6 +78,41 @@ export function makeBuilder(
   return b as MockBuilder;
 }
 
+/**
+ * Build a fake streaming `Response` for SSE hooks that read `resp.body.getReader()`
+ * (e.g. useGenerateProgressReport). `chunks` are raw strings emitted in order by
+ * successive `reader.read()` calls (encoded to Uint8Array). Set `ok:false` +
+ * `errorBody` to exercise the HTTP-error branch, or `noBody:true` for the
+ * missing-body branch.
+ *
+ *   stubGlobal('fetch', vi.fn(() => Promise.resolve(makeSseResponse([
+ *     'data: {"choices":[{"delta":{"content":"Hello"}}]}\n',
+ *     'data: [DONE]\n',
+ *   ]))))
+ */
+export function makeSseResponse(
+  chunks: string[] = [],
+  opts: { ok?: boolean; status?: number; errorBody?: unknown; noBody?: boolean } = {},
+): any {
+  const { ok = true, status = 200, errorBody, noBody = false } = opts;
+  const encoder = new TextEncoder();
+  let i = 0;
+  const reader = {
+    read: () =>
+      i < chunks.length
+        ? Promise.resolve({ value: encoder.encode(chunks[i++]), done: false })
+        : Promise.resolve({ value: undefined, done: true }),
+    cancel: () => Promise.resolve(),
+  };
+  return {
+    ok,
+    status,
+    json: () => Promise.resolve(errorBody ?? {}),
+    text: () => Promise.resolve(typeof errorBody === "string" ? errorBody : ""),
+    body: ok && !noBody ? { getReader: () => reader } : null,
+  };
+}
+
 const fromMock = vi.fn(() => makeBuilder());
 const rpcMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
 const invokeMock = vi.fn(() => Promise.resolve({ data: null, error: null }));

@@ -6,24 +6,26 @@
  *
  * Note: useSaveProgressReport reads `supabase.auth.getSession()` for the user
  * id, so tests arm a session before exercising the save mutation. The streaming
- * useGenerateProgressReport hook (fetch/SSE based) is intentionally not covered
- * by these supabase-builder unit tests.
+ * useGenerateProgressReport hook (fetch/SSE based) is covered via a faked
+ * streaming Response (makeSseResponse) with global.fetch stubbed.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { act, waitFor } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", async () => {
   const m = await import("@/test/fixtures/supabase");
   return { supabase: m.supabase, __mock: m.__mock };
 });
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import {
   useProgressReports,
   useSaveProgressReport,
   useDeleteProgressReport,
+  useGenerateProgressReport,
 } from "../useProgressReports";
 import { renderHookWithClient } from "@/test/utils";
-import { __mock, makeBuilder, supabase } from "@/test/fixtures/supabase";
+import { __mock, makeBuilder, makeSseResponse, supabase } from "@/test/fixtures/supabase";
 
 const armSession = () =>
   (supabase.auth.getSession as any).mockResolvedValue({
@@ -170,5 +172,68 @@ describe("useProgressReports", () => {
         status: "draft",
       }),
     ).rejects.toBeTruthy();
+  });
+});
+
+describe("useGenerateProgressReport (SSE streaming)", () => {
+  const params = {
+    projectId: "p1", reportType: "weekly",
+    periodStart: "2026-06-01", periodEnd: "2026-06-07", userNotes: "",
+  } as any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (supabase.auth.getSession as any).mockResolvedValue({
+      data: { session: { access_token: "tok", user: { id: "u1" } } },
+      error: null,
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("streams delta content to onChunk and calls onDone, ending on [DONE]", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(makeSseResponse([
+      'data: {"choices":[{"delta":{"content":"Hello"}}]}\n',
+      'data: {"choices":[{"delta":{"content":" World"}}]}\n',
+      'data: [DONE]\n',
+    ]))));
+    const { result } = renderHookWithClient(() => useGenerateProgressReport());
+    const chunks: string[] = [];
+    const onDone = vi.fn();
+    await act(async () => {
+      await result.current.generate(params, (c: string) => chunks.push(c), onDone);
+    });
+    expect(chunks.join("")).toBe("Hello World");
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(result.current.isGenerating).toBe(false);
+  });
+
+  it("rejects when there is no active session", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null }, error: null });
+    const { result } = renderHookWithClient(() => useGenerateProgressReport());
+    await act(async () => {
+      await expect(
+        result.current.generate(params, () => {}, () => {}),
+      ).rejects.toThrow(/Not authenticated/);
+    });
+  });
+
+  it("rejects with the server error message on a non-ok response", async () => {
+    vi.stubGlobal("fetch", vi.fn(() =>
+      Promise.resolve(makeSseResponse([], { ok: false, status: 500, errorBody: { error: "boom" } })),
+    ));
+    const { result } = renderHookWithClient(() => useGenerateProgressReport());
+    await act(async () => {
+      await expect(result.current.generate(params, () => {}, () => {})).rejects.toThrow(/boom/);
+    });
+  });
+
+  it("rejects when the response has no body", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(makeSseResponse([], { noBody: true }))));
+    const { result } = renderHookWithClient(() => useGenerateProgressReport());
+    await act(async () => {
+      await expect(
+        result.current.generate(params, () => {}, () => {}),
+      ).rejects.toThrow(/No response body/);
+    });
   });
 });

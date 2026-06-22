@@ -83,9 +83,8 @@ export default defineConfig({
         "src/hooks/useRFIs.ts": { lines: 95, functions: 95 },
         "src/hooks/useProjectProcurement.ts": { lines: 95, functions: 95 },
         "src/hooks/useProjects.ts": { lines: 85, functions: 80 },
-        // useProgressReports: line floor is modest — its SSE-streaming
-        // useGenerateProgressReport isn't exercisable via the builder mock.
-        "src/hooks/useProgressReports.ts": { lines: 50, functions: 85 },
+        // useProgressReports — SSE generate hook now covered via makeSseResponse.
+        "src/hooks/useProgressReports.ts": { lines: 95, functions: 95 },
       },
     },
   },
