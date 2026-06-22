@@ -82,10 +82,27 @@ const fromMock = vi.fn(() => makeBuilder());
 const rpcMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
 const invokeMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
 
+// Storage: `supabase.storage.from(bucket).upload/getPublicUrl/remove/...`.
+// upload/remove/createSignedUrl/download resolve {data,error}; getPublicUrl is
+// sync and returns a public URL object (matching the real client).
+const storageUploadMock = vi.fn(() => Promise.resolve({ data: { path: "uploads/file" }, error: null }));
+const storageRemoveMock = vi.fn(() => Promise.resolve({ data: [], error: null }));
+const storageSignedUrlMock = vi.fn(() => Promise.resolve({ data: { signedUrl: "https://signed/url" }, error: null }));
+const storageDownloadMock = vi.fn(() => Promise.resolve({ data: new Blob(), error: null }));
+const storageBucket = {
+  upload: storageUploadMock,
+  remove: storageRemoveMock,
+  createSignedUrl: storageSignedUrlMock,
+  download: storageDownloadMock,
+  getPublicUrl: vi.fn((path: string) => ({ data: { publicUrl: `https://public/${path}` } })),
+};
+const storageFromMock = vi.fn(() => storageBucket);
+
 export const supabase = {
   from: fromMock,
   rpc: rpcMock,
   functions: { invoke: invokeMock },
+  storage: { from: storageFromMock },
   auth: {
     getUser: vi.fn(() => Promise.resolve({ data: { user: { id: "u1" } }, error: null })),
     getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
@@ -97,6 +114,8 @@ export const __mock = {
   from: fromMock,
   rpc: rpcMock,
   invoke: invokeMock,
+  storageFrom: storageFromMock,
+  storageUpload: storageUploadMock,
   reset() {
     fromMock.mockReset();
     fromMock.mockImplementation(() => makeBuilder());
@@ -104,5 +123,9 @@ export const __mock = {
     rpcMock.mockImplementation(() => Promise.resolve({ data: null, error: null }));
     invokeMock.mockReset();
     invokeMock.mockImplementation(() => Promise.resolve({ data: null, error: null }));
+    storageUploadMock.mockClear();
+    storageUploadMock.mockImplementation(() => Promise.resolve({ data: { path: "uploads/file" }, error: null }));
+    storageFromMock.mockClear();
+    storageFromMock.mockImplementation(() => storageBucket);
   },
 };
