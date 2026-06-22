@@ -181,6 +181,11 @@ export default function ChangeOrderDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="capitalize">{co.status.replace("_", " ")}</Badge>
+            {canRenumber && (locked || readOnly) && (
+              <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}>
+                <Hash className="h-4 w-4 mr-1.5" /> Renumber
+              </Button>
+            )}
             <CoPdfExport co={co} />
           </div>
         </div>
@@ -242,11 +247,6 @@ export default function ChangeOrderDetailPage() {
               <>
                 <div className="flex flex-wrap gap-2">
                   {canEdit && <Button variant="outline" onClick={startEdit}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>}
-                  {canRenumber && (locked || readOnly) && (
-                    <Button variant="outline" onClick={() => setRenumberOpen(true)}>
-                      <Hash className="h-4 w-4 mr-1.5" /> Renumber (admin)
-                    </Button>
-                  )}
                   {!locked && <Button onClick={() => setSignOpen(true)}><PenLine className="h-4 w-4 mr-1.5" /> Sign &amp; lock</Button>}
                   {locked && !acceptedAt && <Button onClick={() => setSendOpen(true)}><Send className="h-4 w-4 mr-1.5" /> {sentAt ? "Re-send to client" : "Send to client"}</Button>}
                   {docxPath && <a href={docxPath} target="_blank" rel="noopener noreferrer"><Button variant="outline"><FileDown className="h-4 w-4 mr-1.5" /> Editable .docx</Button></a>}
