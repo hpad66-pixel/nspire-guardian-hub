@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
+import { Badge } from "@/components/ui/badge";
 import { useSovProgress, type SovProgressRow } from "@/hooks/useSovProgress";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { downloadQuantitiesPdf } from "@/lib/financial/quantitiesPdf";
@@ -67,6 +68,7 @@ export default function QuantitiesProgressPage() {
   const base = useMemo(() => rows.filter((r) => r.kind === "base"), [rows]);
   const cos = useMemo(() => rows.filter((r) => r.kind === "change_order"), [rows]);
   const baseRoll = roll(base), coRoll = roll(cos), allRoll = roll(rows);
+  const overbilled = useMemo(() => rows.filter((r) => r.value_to_date > r.scheduled_value + 0.01), [rows]);
   const latestPayApp = rows.find((r) => r.latest_pay_app_no != null)?.latest_pay_app_no ?? null;
 
   const toggleRow = (id: string) =>
@@ -98,8 +100,9 @@ export default function QuantitiesProgressPage() {
   }
 
   function Row({ r, expandable, expanded, onToggle }: { r: SovProgressRow; expandable?: boolean; expanded?: boolean; onToggle?: () => void }) {
+    const over = r.value_to_date > r.scheduled_value + 0.01;
     return (
-      <tr className={`border-b last:border-0 hover:bg-muted/20 ${rowPrintHidden(r.sov_line_item_id) ? "print:hidden" : ""}`}>
+      <tr className={`border-b last:border-0 hover:bg-muted/20 ${over ? "bg-[var(--apas-rose)]/5" : ""} ${rowPrintHidden(r.sov_line_item_id) ? "print:hidden" : ""}`}>
         <td className="p-2 print:hidden">
           <Checkbox checked={selected.has(r.sov_line_item_id)} onCheckedChange={() => toggleRow(r.sov_line_item_id)} />
         </td>
@@ -111,6 +114,7 @@ export default function QuantitiesProgressPage() {
               {r.description}
             </button>
           ) : r.description}
+          {over && <Badge className="ml-2 text-[10px] bg-[var(--apas-rose)] text-white print:hidden">Over 100%</Badge>}
         </td>
         <td className="p-2 text-center">
           <span className="hidden print:inline">{r.unit ?? "—"}</span>
@@ -162,6 +166,18 @@ export default function QuantitiesProgressPage() {
       <div className="print:hidden">
         <FinancialSubNav />
       </div>
+
+      {overbilled.length > 0 && (
+        <div className="print:hidden rounded-md border border-[var(--apas-rose)] bg-[var(--apas-rose)]/5 px-3 py-2 text-sm">
+          <span className="font-medium text-[var(--apas-rose)]">
+            {overbilled.length} line{overbilled.length === 1 ? "" : "s"} built/billed over 100% of the scheduled quantity.
+          </span>{" "}
+          <span className="text-muted-foreground">
+            You can&apos;t bill past the contract quantity — raise an approved change order for the extra scope and
+            bill it on the change-order line instead.
+          </span>
+        </div>
+      )}
 
       {/* Print-only header */}
       <div className="hidden print:block mb-3">

@@ -69,9 +69,22 @@ export function PayAppContinuationBuilder({
 
   const base = lines.filter((l) => l.kind === "base");
   const cos = lines.filter((l) => l.kind === "change_order");
+  // A line billed past its scheduled value (over 100%). Not allowed — needs a CO.
+  const overbilled = lines.filter((l) => l.value_to_date > l.scheduled_value + 0.01);
 
   return (
     <div className="space-y-4">
+      {overbilled.length > 0 && (
+        <div className="rounded-md border border-[var(--apas-rose)] bg-[var(--apas-rose)]/5 px-3 py-2 text-sm">
+          <span className="font-medium text-[var(--apas-rose)]">
+            {overbilled.length} line{overbilled.length === 1 ? "" : "s"} billed over 100% of scheduled.
+          </span>{" "}
+          <span className="text-muted-foreground">
+            Billing past the contract quantity isn&apos;t allowed. Back these down to ≤ 100%, or raise an
+            approved change order for the extra scope and bill it on the change-order line instead.
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {locked
@@ -142,12 +155,15 @@ function LineSection({
       {rows.length === 0 && (
         <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
       )}
-      {rows.map((l) => (
-        <tr key={l.sov_line_item_id} className="border-t">
+      {rows.map((l) => {
+        const over = l.value_to_date > l.scheduled_value + 0.01;
+        return (
+        <tr key={l.sov_line_item_id} className={`border-t ${over ? "bg-[var(--apas-rose)]/5" : ""}`}>
           <td className="p-2 text-muted-foreground">{l.item_no}</td>
           <td className="p-2">
             {l.description}
             {l.kind === "change_order" && <Badge variant="outline" className="ml-2 text-[10px]">CO</Badge>}
+            {over && <Badge className="ml-2 text-[10px] bg-[var(--apas-rose)] text-white">Over 100%</Badge>}
           </td>
           <td className="p-2 text-muted-foreground">{l.unit ?? "—"}</td>
           <td className="p-2 text-right font-mono">{qty(l.scheduled_qty)}</td>
@@ -168,10 +184,11 @@ function LineSection({
             )}
           </td>
           <td className="p-2 text-right font-mono">{qty(l.qty_to_date)}</td>
-          <td className="p-2 text-right font-mono">{l.pct_complete.toFixed(0)}%</td>
+          <td className={`p-2 text-right font-mono ${over ? "text-[var(--apas-rose)] font-bold" : ""}`}>{l.pct_complete.toFixed(0)}%</td>
           <td className="p-2 text-right font-mono">{money(l.value_to_date)}</td>
         </tr>
-      ))}
+        );
+      })}
     </tbody>
   );
 }
