@@ -1,4 +1,5 @@
 import { toDateOnly } from "@/lib/date";
+import { isAdminRole } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -83,7 +84,7 @@ export function usePeople(filters?: {
 
       if (currentUserRolesError) throw currentUserRolesError;
 
-      const isAdmin = (currentUserRoles || []).some((r) => r.role === 'admin');
+      const isAdmin = (currentUserRoles || []).some((r) => isAdminRole(r.role));
 
       let accessiblePropertyIds: string[] = [];
       if (!isAdmin) {

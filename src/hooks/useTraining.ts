@@ -1,4 +1,5 @@
 import { toDateOnly } from "@/lib/date";
+import { isManagerRole } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -138,7 +139,7 @@ export function useAllAssignments() {
   const { user } = useAuth();
   const { isModuleEnabled } = useModules();
   const { data: role } = useCurrentUserRole();
-  const isAdmin = role === 'admin' || role === 'owner' || role === 'manager';
+  const isAdmin = isManagerRole(role);
 
   return useQuery({
     queryKey: ['training-assignments-all', user?.id],
@@ -166,7 +167,7 @@ export function useTeamCompletions() {
   const { user } = useAuth();
   const { isModuleEnabled } = useModules();
   const { data: role } = useCurrentUserRole();
-  const isAdmin = role === 'admin' || role === 'owner' || role === 'manager';
+  const isAdmin = isManagerRole(role);
 
   return useQuery({
     queryKey: ['training-completions-all', user?.id],

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
+import { isAdminRole } from "@/lib/rbac";
 import { useCompanyBranding } from "@/hooks/useCompanyBranding";
 import { useUpsertWorkspaceBranding, useUploadWorkspaceLogo } from "@/hooks/useWorkspaceBranding";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,7 @@ export default function WorkspaceProfilePage() {
   // Validation
   const [nameError, setNameError] = useState("");
 
-  const isAdmin = role === "admin" || role === "owner";
+  const isAdmin = isAdminRole(role);
 
   // Populate form from fetched branding
   useEffect(() => {

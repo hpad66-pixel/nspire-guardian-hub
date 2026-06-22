@@ -1,4 +1,5 @@
 import { toDateOnly } from "@/lib/date";
+import { isManagerRole } from "@/lib/rbac";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -123,7 +124,7 @@ export function useDashboardData() {
       // Build action items based on role
       const actionItems: ActionItem[] = [];
       
-      if (role === 'admin' || role === 'owner' || role === 'manager') {
+      if (isManagerRole(role)) {
         if (pendingApprovals.length > 0) {
           actionItems.push({
             id: 'pending-approvals',

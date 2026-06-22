@@ -1,7 +1,11 @@
 import { useModules } from '@/contexts/ModuleContext';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { isAdminRole, isManagerRole } from '@/lib/rbac';
 import type { LWCourse, LWCourseCategory, SubscriptionTier } from '@/services/learnworlds/learnworldsTypes';
 import { TIER_CATEGORIES } from '@/services/learnworlds/learnworldsTypes';
+
+// Roles that map to the "professional" training tier in the placeholder model.
+const PROFESSIONAL_TIER_ROLES = ['manager', 'project_manager', 'superintendent'];
 
 interface TrainingAccess {
   canAccessTraining: boolean;
@@ -27,17 +31,18 @@ export function useTrainingAccess(): TrainingAccess {
   // Admin/Owner → Enterprise
   // Manager/Project Manager/Superintendent → Professional
   // Everyone else → Starter
+  // TODO: replace this role→tier placeholder with canUseFeature() once the
+  // training hub is wired into the A6 billing plan.
   const subscriptionTier: SubscriptionTier =
-    role === 'admin' || role === 'owner'
+    isAdminRole(role)
       ? 'enterprise'
-      : role === 'manager' || role === 'project_manager' || role === 'superintendent'
+      : PROFESSIONAL_TIER_ROLES.includes(role ?? '')
         ? 'professional'
         : 'starter';
 
   const visibleCategories = TIER_CATEGORIES[subscriptionTier];
 
-  const canAssignCourses =
-    role === 'admin' || role === 'owner' || role === 'manager' || role === 'project_manager';
+  const canAssignCourses = isManagerRole(role);
 
   return {
     canAccessTraining: trainingEnabled,

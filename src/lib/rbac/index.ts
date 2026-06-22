@@ -76,6 +76,31 @@ export async function permissionLevel(
   return data as PermissionLevel;
 }
 
+/**
+ * Workspace-role helpers for the LEGACY role surfaces (training hub, dashboards,
+ * people management, workspace settings) that predate the A2 permission-template
+ * engine and operate on the workspace-level app_role rather than per-project
+ * Procore-module permissions.
+ *
+ * Procore-module gating MUST still go through can()/permissionLevel() — these
+ * helpers exist only to keep workspace-admin role determination in ONE auditable
+ * place instead of scattering `role === 'admin'` string literals across feature
+ * code (CLAUDE.md rule 5). When the legacy subsystems are migrated onto the
+ * permission-template engine, replace these call sites with can()/canUseFeature().
+ */
+export const ADMIN_ROLES = ["admin", "owner", "administrator"] as const;
+export const MANAGER_ROLES = [...ADMIN_ROLES, "manager", "project_manager"] as const;
+
+/** True for workspace administrators (admin / owner / administrator). */
+export function isAdminRole(role?: string | null): boolean {
+  return !!role && (ADMIN_ROLES as readonly string[]).includes(role);
+}
+
+/** True for admins plus managers (admin / owner / administrator / manager / project_manager). */
+export function isManagerRole(role?: string | null): boolean {
+  return !!role && (MANAGER_ROLES as readonly string[]).includes(role);
+}
+
 export class ForbiddenError extends Error {
   constructor(message = "Forbidden") {
     super(message);

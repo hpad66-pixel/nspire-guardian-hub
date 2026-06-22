@@ -18,9 +18,6 @@ verify_jwt = false
 [functions.extract-payapp-lines]
 verify_jwt = false
 
-[functions.extract-change-order-lines]
-verify_jwt = false
-
 [functions.lien-countersign]
 verify_jwt = false
 

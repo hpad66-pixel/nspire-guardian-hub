@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { isAdminRole, isManagerRole } from '@/lib/rbac';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import type { Lifecycle, Visibility } from './seed';
@@ -53,14 +54,14 @@ function decide(
     return { enabled: false, lifecycle: 'UNKNOWN', visibility: 'unknown', reason: 'not-in-registry' };
   }
 
-  const isAdmin = role === 'admin';
-  const isPayingTenant = role === 'owner' || role === 'manager' || role === 'administrator';
+  const isAdmin = isAdminRole(role);
+  const isPrivileged = isManagerRole(role);
 
   switch (row.lifecycle) {
     case 'LIVE':
       return { enabled: true, lifecycle: row.lifecycle, visibility: row.visibility };
     case 'PREVIEW':
-      if (isAdmin || isPayingTenant) {
+      if (isPrivileged) {
         return { enabled: true, lifecycle: row.lifecycle, visibility: row.visibility };
       }
       return { enabled: false, lifecycle: row.lifecycle, visibility: row.visibility, reason: 'preview-restricted' };
@@ -86,8 +87,8 @@ function decide(
  *
  * Role rules:
  *   - LIVE        → everyone
- *   - PREVIEW     → admins + paying tenants (owner/manager/administrator)
- *   - LAB         → admins only
+ *   - PREVIEW     → admins + managers (isManagerRole)
+ *   - LAB         → admins only (isAdminRole)
  *   - ARCHIVED    → no one
  *   - DEPRECATED  → no one
  */
