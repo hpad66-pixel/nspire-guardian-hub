@@ -48,24 +48,26 @@ describe("useLoadApprovedCos", () => {
     });
     const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
     const n = await result.current.mutateAsync();
-    expect(n).toBe(1);
+    expect(n).toMatchObject({ inserted: 1 });
     const inserted = (sovBuilder.insert as any).mock.calls[0][0];
     expect(inserted[0]).toMatchObject({
       prime_contract_id: "pc1", project_id: "p1",
       kind: "change_order", change_order_id: "co1", scheduled_value: 24050,
+      description: "Storm drainage", // the CO title
     });
   });
 
-  it("is a no-op when every approved CO already has a line", async () => {
+  it("refreshes the title on a CO line that already exists (no insert)", async () => {
     let sovBuilder: any;
     __mock.from.mockImplementation((t: string) => {
-      if (t === "change_orders") return makeBuilder({ data: [{ id: "co1", co_no: 1, amount: 100, status: "approved" }], error: null });
-      sovBuilder = makeBuilder({ data: [{ item_no: "17", change_order_id: "co1", sort_order: 17 }], error: null });
+      if (t === "change_orders") return makeBuilder({ data: [{ id: "co1", co_no: 1, title: "On-Site Owner's Rep", amount: 100, status: "approved" }], error: null });
+      sovBuilder = makeBuilder({ data: [{ id: "li1", item_no: "17", change_order_id: "co1", sort_order: 17, description: "PCO #001" }], error: null });
       return sovBuilder;
     });
     const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
     const n = await result.current.mutateAsync();
-    expect(n).toBe(0);
+    expect(n).toMatchObject({ inserted: 0, updated: 1 });
+    expect((sovBuilder.update as any).mock.calls[0][0]).toMatchObject({ description: "On-Site Owner's Rep" });
     expect((sovBuilder.insert as any)).not.toHaveBeenCalled();
   });
 

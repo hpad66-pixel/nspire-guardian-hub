@@ -46,8 +46,11 @@ export function PayAppContinuationBuilder({
 
   async function loadApprovedCos() {
     try {
-      const n = await loadCos.mutateAsync();
-      toast.success(n > 0 ? `Loaded ${n} approved change order${n === 1 ? "" : "s"} into the SOV.` : "No new approved change orders to load.");
+      const { inserted, updated } = await loadCos.mutateAsync();
+      const parts: string[] = [];
+      if (inserted) parts.push(`added ${inserted} change order${inserted === 1 ? "" : "s"}`);
+      if (updated) parts.push(`refreshed ${updated} title${updated === 1 ? "" : "s"}`);
+      toast.success(parts.length ? `Approved change orders: ${parts.join(" · ")}.` : "Approved change orders are already up to date.");
       refetch();
     } catch (e: any) { toast.error(e.message); }
   }

@@ -35,8 +35,24 @@ interface ProgressRow {
   pct_complete: number; qty_this_period: number; value_this_period: number; retainage: number;
 }
 
-/** Create sov_line_items for executed/approved prime COs that don't have one yet. */
-async function loadApprovedCosInner(primeContractId: string, projectId: string): Promise<number> {
+/** The descriptive label for a CO's SOV line — the change order's title. */
+function coTitle(co: { title?: string | null; description?: string | null; co_no?: number | null }): string {
+  return (
+    (co.title && co.title.trim()) ||
+    (co.description && co.description.trim()) ||
+    `Change Order ${co.co_no ?? ""}`.trim()
+  );
+}
+
+/**
+ * Sync executed/approved prime COs into the SOV: create a line for any CO that
+ * lacks one, AND refresh the description (= the CO title) on lines that already
+ * exist — so loading approved change orders always shows their current title,
+ * even for CO lines that came from an imported pay-app G703.
+ */
+async function loadApprovedCosInner(
+  primeContractId: string, projectId: string,
+): Promise<{ inserted: number; updated: number }> {
   const tenant_id = await requireTenantId();
   const { data: cos, error: coErr } = await supabase
     .from("change_orders" as any)
@@ -48,13 +64,30 @@ async function loadApprovedCosInner(primeContractId: string, projectId: string):
 
   const { data: existing, error: exErr } = await supabase
     .from("sov_line_items" as any)
-    .select("item_no, change_order_id, sort_order")
+    .select("id, item_no, change_order_id, sort_order, description")
     .eq("prime_contract_id", primeContractId);
   if (exErr) throw exErr;
 
-  const linkedCoIds = new Set((existing ?? []).map((r: any) => r.change_order_id).filter(Boolean));
-  const missing = (cos ?? []).filter((c: any) => !linkedCoIds.has(c.id));
-  if (missing.length === 0) return 0;
+  const lineByCoId = new Map<string, any>(
+    (existing ?? []).filter((r: any) => r.change_order_id).map((r: any) => [r.change_order_id, r]),
+  );
+
+  // Refresh the title on CO lines that already exist.
+  let updated = 0;
+  for (const co of (cos ?? []) as any[]) {
+    const line = lineByCoId.get(co.id);
+    const title = coTitle(co);
+    if (line && line.description !== title) {
+      const { error: upErr } = await supabase
+        .from("sov_line_items" as any).update({ description: title } as any).eq("id", line.id);
+      if (upErr) throw upErr;
+      updated += 1;
+    }
+  }
+
+  // Create lines for COs that don't have one yet.
+  const missing = (cos ?? []).filter((c: any) => !lineByCoId.has(c.id));
+  if (missing.length === 0) return { inserted: 0, updated };
 
   let nextItemNo = (existing ?? []).reduce((m: number, r: any) => {
     const n = parseInt(String(r.item_no), 10);
@@ -74,7 +107,7 @@ async function loadApprovedCosInner(primeContractId: string, projectId: string):
   });
   const { error: insErr } = await supabase.from("sov_line_items" as any).insert(rows as any);
   if (insErr) throw insErr;
-  return rows.length;
+  return { inserted: rows.length, updated };
 }
 
 export function useLoadApprovedCos(primeContractId: string | null, projectId: string | null) {
