@@ -212,3 +212,55 @@ export function useRenumberChangeOrder() {
     },
   });
 }
+
+/**
+ * Reopen a signed/executed change order for amendment — the clean path when a
+ * client asks to change the CONTENT. Flips the lock off in the same statement
+ * (bypassing the lock guard), reverts to an editable Draft, and clears the
+ * signatures so a fresh re-sign with a new date is required. Records the reason
+ * in amendment_history. The CO stops counting as executed until it's re-signed.
+ * Gate the UI to admins.
+ */
+export function useReopenChangeOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ coId, reason }: { coId: string; reason: string }) => {
+      if (!reason.trim()) throw new Error("A reason is required.");
+      const { data: co, error: e0 } = await supabase
+        .from("change_orders" as any)
+        .select("status, locked, executed_date, amendment_history")
+        .eq("id", coId).single();
+      if (e0) throw e0;
+      const cur = co as any;
+      const { data: auth } = await supabase.auth.getUser();
+      const history = Array.isArray(cur.amendment_history) ? cur.amendment_history : [];
+      const entry = {
+        by: auth.user?.id ?? null, reason: reason.trim(), at: new Date().toISOString(),
+        from_status: cur.status ?? null, was_executed: cur.executed_date ?? null,
+      };
+      const { error: e1 } = await supabase
+        .from("change_orders" as any)
+        .update({
+          locked: false,
+          status: "draft",
+          executed_date: null,
+          signed_at: null,
+          submitted_signature_path: null,
+          accepted_signature_path: null,
+          accepted_signed_name: null,
+          client_comments: null,
+          sent_to_client_at: null,
+          amendment_history: [...history, entry],
+        } as any)
+        .eq("id", coId);
+      if (e1) throw e1;
+      return { coId };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["co"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+}

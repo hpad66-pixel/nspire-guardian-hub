@@ -21,11 +21,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { ChevronRight, LayoutDashboard, Lock, PenLine, Pencil, Save, Send, CheckCircle2, FileDown, Trash2, Hash } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Lock, PenLine, Pencil, Save, Send, CheckCircle2, FileDown, Trash2, Hash, RotateCcw } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { isAdminRole } from "@/lib/rbac";
 import { RenumberCoDialog } from "@/components/financial/RenumberCoDialog";
+import { ReopenCoDialog } from "@/components/financial/ReopenCoDialog";
 import { coLabel } from "@/lib/changeOrder/coLabel";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -61,6 +62,7 @@ export default function ChangeOrderDetailPage() {
   const [signOpen, setSignOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [renumberOpen, setRenumberOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const { data: role } = useCurrentUserRole();
   const canRenumber = isAdminRole(role);
   const [editing, setEditing] = useState(false);
@@ -185,6 +187,11 @@ export default function ChangeOrderDetailPage() {
             {canRenumber && (locked || readOnly) && (
               <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}>
                 <Hash className="h-4 w-4 mr-1.5" /> Renumber
+              </Button>
+            )}
+            {canRenumber && (locked || readOnly) && (
+              <Button variant="outline" size="sm" onClick={() => setReopenOpen(true)}>
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Amend
               </Button>
             )}
             <CoPdfExport co={co} />
@@ -378,6 +385,12 @@ export default function ChangeOrderDetailPage() {
         open={renumberOpen}
         onOpenChange={setRenumberOpen}
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, co_no_history: (co as any).co_no_history }}
+        onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+      />
+      <ReopenCoDialog
+        open={reopenOpen}
+        onOpenChange={setReopenOpen}
+        co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, amendment_history: (co as any).amendment_history }}
         onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
       />
     </div>
