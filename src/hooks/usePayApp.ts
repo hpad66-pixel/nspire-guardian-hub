@@ -199,3 +199,56 @@ export function usePayApp(payAppId: string | null) {
 
   return { detail, lines, upsertLine, submit, approve, reject, payAppBalance, recordPayment };
 }
+
+export type PayAppStatus = "draft" | "submitted" | "approved" | "paid" | "rejected";
+
+export const PAY_APP_STATUSES: { value: PayAppStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "submitted", label: "Submitted" },
+  { value: "approved", label: "Approved" },
+  { value: "paid", label: "Paid" },
+  { value: "rejected", label: "Rejected" },
+];
+
+/**
+ * Manually set a pay app's status (the dropdown override). Keeps derived fields
+ * sane: approving stamps approved_amount (= submitted if unset) + retainage +
+ * date; reverting to draft/submitted/rejected clears them; "paid" leaves the
+ * approved figures intact. Usable standalone from a list or a detail page.
+ */
+export function useSetPayAppStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ payAppId, status }: { payAppId: string; status: PayAppStatus }) => {
+      const patch: Record<string, unknown> = { status };
+      if (status === "approved") {
+        const { data: pa } = await supabase
+          .from("prime_contract_pay_apps" as any)
+          .select("submitted_amount, approved_amount, prime_contract_id")
+          .eq("id", payAppId).single();
+        const approved = Number((pa as any)?.approved_amount ?? (pa as any)?.submitted_amount ?? 0);
+        const { data: pc } = await supabase
+          .from("prime_contracts" as any)
+          .select("retainage_pct").eq("id", (pa as any)?.prime_contract_id).single();
+        patch.approved_amount = approved;
+        patch.retainage_held = Number(((approved * Number((pc as any)?.retainage_pct ?? 0)) / 100).toFixed(2));
+        patch.approved_date = new Date().toISOString().slice(0, 10);
+      } else if (status === "draft" || status === "submitted" || status === "rejected") {
+        patch.approved_amount = null;
+        patch.retainage_held = null;
+        patch.approved_date = null;
+      }
+      const { data, error } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .update(patch as any).eq("id", payAppId).select().single();
+      if (error) throw error;
+      return data as PayApp;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["pay-app", vars.payAppId] });
+      qc.invalidateQueries({ queryKey: ["pay-apps"] });
+      qc.invalidateQueries({ queryKey: ["pay-app-balance", vars.payAppId] });
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation", "detail", vars.payAppId] });
+    },
+  });
+}

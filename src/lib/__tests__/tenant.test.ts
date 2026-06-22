@@ -4,7 +4,9 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       getSession: vi.fn(),
+      getUser: vi.fn(async () => ({ data: { user: null } })),
     },
+    from: vi.fn(),
   },
 }));
 
@@ -55,16 +57,30 @@ describe("tenant helpers (A1)", () => {
     expect(ctx.is_super_admin).toBe(true);
   });
 
-  it("requireTenantId throws when not signed in", async () => {
+  it("requireTenantId throws when no workspace resolves (no JWT, no user, no profile)", async () => {
     (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
-    await expect(requireTenantId()).rejects.toThrow(/tenant_id/);
+    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: null } });
+    await expect(requireTenantId()).rejects.toThrow(/workspace/i);
   });
 
-  it("requireTenantId returns id when present", async () => {
+  it("requireTenantId returns the JWT tenant_id when present (no fallback needed)", async () => {
     const token = makeJwt({ tenant_id: "abc" });
     (supabase.auth.getSession as any).mockResolvedValue({
       data: { session: { access_token: token } },
     });
     await expect(requireTenantId()).resolves.toBe("abc");
+  });
+
+  it("requireTenantId falls back to the profile workspace_id when the JWT has no claim", async () => {
+    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: { id: "u1" } } });
+    // portal_memberships → none; profiles → workspace_id
+    (supabase.from as any).mockImplementation((t: string) => {
+      if (t === "portal_memberships") {
+        return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) };
+      }
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { workspace_id: "ws-9" }, error: null }) }) }) };
+    });
+    await expect(requireTenantId()).resolves.toBe("ws-9");
   });
 });

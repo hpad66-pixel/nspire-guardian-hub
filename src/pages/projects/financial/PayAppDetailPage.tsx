@@ -7,6 +7,7 @@ import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
 import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
+import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
 import { PayAppPDFExport } from "@/components/financial/PayAppPDFExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ export default function PayAppDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">{pa.status}</Badge>
+            <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
             <PayAppPDFExport
               payAppId={pa.id}
               primeContractId={contract.id}

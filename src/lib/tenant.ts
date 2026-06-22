@@ -58,15 +58,21 @@ export async function getTenantContext(): Promise<TenantContext> {
   };
 }
 
-/** Throws if no tenant context is available (use in guarded mutations). */
-export async function requireTenantId(): Promise<string> {
-  const ctx = await getTenantContext();
-  if (!ctx.tenant_id) {
+/**
+ * Resolve the current workspace id for a guarded mutation, throwing if none.
+ *
+ * Resolves across the full chain (JWT claim → portal membership → legacy
+ * profile linkage) via resolveCurrentWorkspaceId — this deployment does NOT
+ * inject a tenant_id JWT claim, so a JWT-only check would always fail.
+ */
+export async function requireTenantId(userId?: string | null): Promise<string> {
+  const id = await resolveCurrentWorkspaceId(userId);
+  if (!id) {
     throw new Error(
-      "No tenant_id in JWT. User must be signed into a workspace before this action.",
+      "No workspace found for the current user. Sign in to a workspace before this action.",
     );
   }
-  return ctx.tenant_id;
+  return id;
 }
 
 /** Resolve the current workspace id across JWT, portal membership, and legacy profile linkage. */

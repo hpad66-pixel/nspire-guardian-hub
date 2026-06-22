@@ -7,7 +7,7 @@ import { usePrimeContract, usePayApps } from "@/hooks/usePrimeContract";
 import { useGeneratePayApp } from "@/hooks/usePayAppContinuation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
 
 const fmt2 = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n));
@@ -83,7 +83,9 @@ export default function PayAppsPage() {
                     <td className="p-3 text-muted-foreground">{fmtDate(pa.period_end)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.submitted_amount)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.approved_amount)}</td>
-                    <td className="p-3 text-center"><Badge variant="outline" className="capitalize">{pa.status}</Badge></td>
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
+                    </td>
                     <td className="p-3 text-center"><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></td>
                   </tr>
                 ))}
