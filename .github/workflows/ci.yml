@@ -43,7 +43,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run test
+      # Runs the full Vitest suite WITH coverage and enforces the per-glob gate
+      # in vitest.config.ts (≥80% on src/lib/workflow — the Ball-in-Court engine).
+      - run: npm run test:coverage
 
   build:
     name: Production Build

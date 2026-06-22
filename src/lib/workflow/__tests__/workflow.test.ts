@@ -39,17 +39,37 @@ describe("workflow engine (A4)", () => {
     expect(out).toMatchObject({ id: "inst-1", state: "open", current_step: 2 });
   });
 
-  it("getInstanceForRecord → null when no row", async () => {
-    (supabase.from as any).mockReturnValue({
-      select: vi.fn().mockReturnValue({
+  it("advanceWorkflow throws on RPC error", async () => {
+    (supabase.rpc as any).mockResolvedValue({ data: null, error: new Error("bad transition") });
+    await expect(
+      advanceWorkflow({ instanceId: "inst-1", action: "approve" }),
+    ).rejects.toThrow(/bad transition/);
+  });
+
+  const chainTo = (result: any) => ({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-          }),
+          maybeSingle: vi.fn().mockResolvedValue(result),
         }),
       }),
-    });
+    }),
+  });
+
+  it("getInstanceForRecord → null when no row", async () => {
+    (supabase.from as any).mockReturnValue(chainTo({ data: null, error: null }));
     const out = await getInstanceForRecord("rfi", "rfi-1");
     expect(out).toBeNull();
+  });
+
+  it("getInstanceForRecord → returns the instance when present", async () => {
+    (supabase.from as any).mockReturnValue(chainTo({ data: { id: "inst-9", state: "open" }, error: null }));
+    const out = await getInstanceForRecord("change_order", "co-9");
+    expect(out).toMatchObject({ id: "inst-9", state: "open" });
+  });
+
+  it("getInstanceForRecord throws on query error", async () => {
+    (supabase.from as any).mockReturnValue(chainTo({ data: null, error: new Error("rls") }));
+    await expect(getInstanceForRecord("rfi", "rfi-1")).rejects.toThrow(/rls/);
   });
 });
