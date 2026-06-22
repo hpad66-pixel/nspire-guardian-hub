@@ -6,8 +6,8 @@
  *
  * Note: the top-level useWorkOrders() list takes no argument, so there is no
  * id-gating test here. The neq-filtered variants (useOpenWorkOrders /
- * useEmergencyWorkOrders) are not exercised — the shared builder fixture only
- * models eq/order, not neq.
+ * useEmergencyWorkOrders) and the stat aggregator (useWorkOrderStats) are now
+ * exercised — the shared builder fixture models neq.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { waitFor } from "@testing-library/react";
@@ -19,6 +19,9 @@ vi.mock("@/integrations/supabase/client", async () => {
 
 import {
   useWorkOrders,
+  useOpenWorkOrders,
+  useEmergencyWorkOrders,
+  useWorkOrderStats,
   useWorkOrdersByProperty,
   useCreateWorkOrder,
   useAssignWorkOrder,
@@ -42,6 +45,46 @@ describe("useWorkOrders", () => {
     const { result } = renderHookWithClient(() => useWorkOrders());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].id).toBe("wo1");
+  });
+
+  it("open work orders filters out verified (.neq path)", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: [{ id: "wo2", status: "in_progress" }], error: null }),
+    );
+    const { result } = renderHookWithClient(() => useOpenWorkOrders());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].id).toBe("wo2");
+  });
+
+  it("emergency work orders filters priority + status (.eq + .neq path)", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: [{ id: "wo3", priority: "emergency", status: "pending" }], error: null }),
+    );
+    const { result } = renderHookWithClient(() => useEmergencyWorkOrders());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].id).toBe("wo3");
+  });
+
+  it("stats aggregates status/priority/overdue counts", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({
+        data: [
+          { status: "pending", priority: "normal", due_date: "2999-01-01" },
+          { status: "in_progress", priority: "emergency", due_date: "2999-01-01" },
+          { status: "verified", priority: "normal", due_date: "2000-01-01" },
+        ],
+        error: null,
+      }),
+    );
+    const { result } = renderHookWithClient(() => useWorkOrderStats());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toMatchObject({
+      pending: 1,
+      inProgress: 1,
+      verified: 1,
+      emergency: 1,
+      total: 3,
+    });
   });
 
   it("create inserts the supplied work order", async () => {

@@ -17,8 +17,9 @@ vi.mock("@/integrations/supabase/client", async () => {
   const m = await import("@/test/fixtures/supabase");
   return { supabase: m.supabase, __mock: m.__mock };
 });
+const mockPermissions = vi.fn(() => ({ isAdmin: true, isLoading: false }));
 vi.mock("../usePermissions", () => ({
-  useUserPermissions: () => ({ isAdmin: true, isLoading: false }),
+  useUserPermissions: () => mockPermissions(),
 }));
 vi.mock("../useAuth", () => ({
   useAuth: () => ({ user: { id: "u1" } }),
@@ -37,9 +38,13 @@ import {
 } from "../useProjects";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
+import { getAssignedPropertyIds, getDirectProjectIds } from "../propertyAccess";
 
 describe("useProjects", () => {
-  beforeEach(() => __mock.reset());
+  beforeEach(() => {
+    __mock.reset();
+    mockPermissions.mockReturnValue({ isAdmin: true, isLoading: false });
+  });
 
   it("detail query is disabled until a projectId is provided", () => {
     const { result } = renderHookWithClient(() => useProject(null));
@@ -53,6 +58,22 @@ describe("useProjects", () => {
     const { result } = renderHookWithClient(() => useProjects());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].name).toBe("HQ Build");
+  });
+
+  it("lists projects on the non-admin path (.or()/.in() filter)", async () => {
+    // Take the RBAC-scoped branch: buildNonAdminFilter resolves assigned
+    // property + direct project ids and applies .or() (which the fixture now
+    // supports). The query still resolves through the shared builder.
+    mockPermissions.mockReturnValue({ isAdmin: false, isLoading: false });
+    (getAssignedPropertyIds as any).mockResolvedValueOnce(["prop1", "prop2"]);
+    (getDirectProjectIds as any).mockResolvedValueOnce(["projA"]);
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: [{ id: "proj1", name: "Scoped Build", status: "active" }], error: null }),
+    );
+
+    const { result } = renderHookWithClient(() => useProjects());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].name).toBe("Scoped Build");
   });
 
   it("create stamps created_by from the auth user", async () => {
