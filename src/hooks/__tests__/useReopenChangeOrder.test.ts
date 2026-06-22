@@ -38,8 +38,9 @@ describe("useReopenChangeOrder", () => {
     const patch = (builders[1].update as any).mock.calls[0][0];
     expect(patch).toMatchObject({
       status: "draft", locked: false, executed_date: null,
-      submitted_signature_path: null, accepted_signature_path: null,
-      accepted_signed_name: null, signed_at: null, sent_to_client_at: null,
+      submitted_signature_path: null, submitted_signed_at: null,
+      accepted_signature_path: null, accepted_signed_at: null,
+      accepted_signed_name: null, sent_to_client_at: null,
     });
     expect(patch.amendment_history).toHaveLength(1);
     expect(patch.amendment_history[0]).toMatchObject({ reason: "Client revised scope", from_status: "executed", was_executed: "2026-04-22" });
