@@ -24,6 +24,14 @@ verify_jwt = false
 [functions.lien-countersign]
 verify_jwt = false
 
+# Change-order counter-sign — public, token-gated (matches lien-countersign)
+[functions.co-countersign]
+verify_jwt = false
+
+# AI change-order drafting — authenticated GC invokes it; explicit for clarity
+[functions.draft-change-order]
+verify_jwt = true
+
 [functions.send-invitation]
 verify_jwt = false
 

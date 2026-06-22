@@ -46,7 +46,7 @@ export default function SubInvoiceBuilderPage() {
     try {
       await submit.mutateAsync();
       toast.success("Submitted for GC review");
-      navigate(`/portal/sub/commitments/${commitmentId}`);
+      navigate(`/sub-portal/commitments/${commitmentId}`);
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -56,7 +56,7 @@ export default function SubInvoiceBuilderPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div>
         <Link
-          to={`/portal/sub/commitments/${commitmentId}`}
+          to={`/sub-portal/commitments/${commitmentId}`}
           className="text-sm text-muted-foreground hover:underline"
         >← Commitment</Link>
         <h1 className="text-3xl font-bold mt-2">New invoice</h1>

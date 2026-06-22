@@ -50,7 +50,7 @@ export default function OwnerSchedulePage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
       <div>
-        <Link to="/portal/owner" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
           ← Owner dashboard
         </Link>
         <h1 className="text-3xl font-bold mt-2">Project schedule</h1>

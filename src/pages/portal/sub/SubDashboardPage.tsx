@@ -26,13 +26,13 @@ export default function SubDashboardPage() {
 
       <div className="grid grid-cols-3 gap-2 mb-6">
         <Button asChild variant="outline">
-          <Link to="/portal/sub/commitments"><FileText className="h-4 w-4 mr-1" /> Commitments</Link>
+          <Link to="/sub-portal/commitments"><FileText className="h-4 w-4 mr-1" /> Commitments</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/portal/sub/rfis"><Inbox className="h-4 w-4 mr-1" /> RFIs</Link>
+          <Link to="/sub-portal/rfis"><Inbox className="h-4 w-4 mr-1" /> RFIs</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/portal/sub/submittals"><ClipboardList className="h-4 w-4 mr-1" /> Submittals</Link>
+          <Link to="/sub-portal/submittals"><ClipboardList className="h-4 w-4 mr-1" /> Submittals</Link>
         </Button>
       </div>
 
@@ -46,7 +46,7 @@ export default function SubDashboardPage() {
           ) : (
             <div className="divide-y">
               {(data.commitments as any[]).map((c) => (
-                <Link key={c.id} to={`/portal/sub/commitments/${c.id}`} className="flex items-center justify-between py-2 hover:bg-muted px-2 rounded">
+                <Link key={c.id} to={`/sub-portal/commitments/${c.id}`} className="flex items-center justify-between py-2 hover:bg-muted px-2 rounded">
                   <div>
                     <span className="font-mono text-muted-foreground mr-2">{c.commitment_no}</span>
                     {c.title}

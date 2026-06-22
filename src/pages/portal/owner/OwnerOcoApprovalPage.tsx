@@ -55,7 +55,7 @@ export default function OwnerOcoApprovalPage() {
     try {
       await approve.mutateAsync({ coId: co.id, signaturePath: sigPath });
       toast.success(`OCO-${co.co_no} approved and executed`);
-      navigate("/portal/owner");
+      navigate("/owner-portal");
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -65,14 +65,14 @@ export default function OwnerOcoApprovalPage() {
     try {
       await reject.mutateAsync({ coId: co.id, reason: reason.trim() });
       toast.success("Rejected");
-      navigate("/portal/owner");
+      navigate("/owner-portal");
     } catch (e: any) { toast.error(e.message); }
   }
 
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div>
-        <Link to="/portal/owner" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
           ← Owner dashboard
         </Link>
         <div className="flex items-start justify-between mt-2">

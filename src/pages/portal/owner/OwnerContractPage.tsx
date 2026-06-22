@@ -20,7 +20,7 @@ export default function OwnerContractPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/portal/owner" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
           ← Owner dashboard
         </Link>
         <h1 className="text-3xl font-bold mt-2">Prime contracts</h1>
@@ -65,7 +65,7 @@ export default function OwnerContractPage() {
                       .map((co: any) => (
                         <Link
                           key={co.id}
-                          to={`/portal/owner/cos/${co.id}`}
+                          to={`/owner-portal/cos/${co.id}`}
                           className="flex items-center justify-between py-2 px-3 hover:bg-muted"
                         >
                           <div>

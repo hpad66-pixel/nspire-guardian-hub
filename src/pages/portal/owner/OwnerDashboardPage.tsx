@@ -28,13 +28,13 @@ export default function OwnerDashboardPage() {
 
       <div className="grid grid-cols-4 gap-2 mb-6">
         <Button asChild variant="outline">
-          <Link to="/portal/owner/contract"><FileText className="h-4 w-4 mr-1" /> Contracts</Link>
+          <Link to="/owner-portal/contract"><FileText className="h-4 w-4 mr-1" /> Contracts</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/portal/owner/schedule"><Calendar className="h-4 w-4 mr-1" /> Schedule</Link>
+          <Link to="/owner-portal/schedule"><Calendar className="h-4 w-4 mr-1" /> Schedule</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link to="/portal/owner/reports"><BarChart3 className="h-4 w-4 mr-1" /> Reports</Link>
+          <Link to="/owner-portal/reports"><BarChart3 className="h-4 w-4 mr-1" /> Reports</Link>
         </Button>
       </div>
 
@@ -50,7 +50,7 @@ export default function OwnerDashboardPage() {
               {(data.pendingOcos as any[]).map((co) => (
                 <Link
                   key={co.id}
-                  to={`/portal/owner/cos/${co.id}`}
+                  to={`/owner-portal/cos/${co.id}`}
                   className="flex items-center justify-between py-3 hover:bg-muted px-2 rounded -mx-2"
                 >
                   <div>
@@ -81,7 +81,7 @@ export default function OwnerDashboardPage() {
               {(data.pendingPayApps as any[]).map((pa) => (
                 <Link
                   key={pa.id}
-                  to={`/portal/owner/pay-apps/${pa.id}`}
+                  to={`/owner-portal/pay-apps/${pa.id}`}
                   className="flex items-center justify-between py-2 hover:bg-muted px-2 rounded -mx-2"
                 >
                   <div>

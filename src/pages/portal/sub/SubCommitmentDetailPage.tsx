@@ -36,7 +36,7 @@ export default function SubCommitmentDetailPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/portal/sub/commitments" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/sub-portal/commitments" className="text-sm text-muted-foreground hover:underline">
           ← My commitments
         </Link>
         <div className="flex items-start justify-between mt-2">
@@ -112,7 +112,7 @@ export default function SubCommitmentDetailPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Invoices submitted</CardTitle>
-              <Button size="sm" onClick={() => navigate(`/portal/sub/commitments/${commitmentId}/invoices/new`)}>
+              <Button size="sm" onClick={() => navigate(`/sub-portal/commitments/${commitmentId}/invoices/new`)}>
                 <Plus className="h-4 w-4 mr-1" /> New invoice
               </Button>
             </CardHeader>

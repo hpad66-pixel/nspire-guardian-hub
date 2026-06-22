@@ -1,7 +1,7 @@
 /**
  * G3 · PortalProtectedRoute
  *
- * Wraps /portal/sub/* and /portal/owner/* routes with a
+ * Wraps /sub-portal/* and /owner-portal/* routes with a
  * three-layer gate:
  *   1. Auth      -> redirect to /login?next=<encoded path>
  *   2. RBAC role -> redirect to /dashboard with error toast

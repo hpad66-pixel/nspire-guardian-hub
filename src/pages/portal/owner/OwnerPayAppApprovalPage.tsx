@@ -103,7 +103,7 @@ export default function OwnerPayAppApprovalPage() {
       // Then approve at the adjusted total
       await approve.mutateAsync(adjustedTotal);
       toast.success(`Pay App #${pa.pay_app_no} approved at ${money(adjustedTotal)}`);
-      navigate("/portal/owner");
+      navigate("/owner-portal");
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -136,14 +136,14 @@ export default function OwnerPayAppApprovalPage() {
         .eq("id", pa.id);
       if (error) throw error;
       toast.success("Rejected");
-      navigate("/portal/owner");
+      navigate("/owner-portal");
     } catch (e: any) { toast.error(e.message); }
   }
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <div>
-        <Link to="/portal/owner" className="text-sm text-muted-foreground hover:underline">
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
           ← Owner dashboard
         </Link>
         <div className="flex items-start justify-between mt-2">

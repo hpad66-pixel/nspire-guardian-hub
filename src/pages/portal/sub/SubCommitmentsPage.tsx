@@ -29,7 +29,7 @@ export default function SubCommitmentsPage() {
       ) : (
         <div className="grid gap-2">
           {commitments.map((c) => (
-            <Link key={c.id} to={`/portal/sub/commitments/${c.id}`}>
+            <Link key={c.id} to={`/sub-portal/commitments/${c.id}`}>
               <Card className="hover:border-primary transition">
                 <CardContent className="flex items-center justify-between p-3">
                   <div>
