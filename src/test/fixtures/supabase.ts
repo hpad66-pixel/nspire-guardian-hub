@@ -40,7 +40,9 @@ export function makeBuilder(
   b.gte = vi.fn(() => b);
   b.lte = vi.fn(() => b);
   b.order = vi.fn(() => b);
-  b.limit = vi.fn(() => Promise.resolve(result));
+  // Chainable AND awaitable: supports both `await q.limit(n)` (via b.then) and
+  // `q.limit(n).single()` / `.maybeSingle()` chains used by single-row queries.
+  b.limit = vi.fn(() => b);
   b.single = vi.fn(() => Promise.resolve(result));
   b.maybeSingle = vi.fn(() => Promise.resolve(result));
   // Awaitable terminal -- list queries do `await supabase.from(t).select().order(...)`
