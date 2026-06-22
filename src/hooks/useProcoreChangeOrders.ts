@@ -120,3 +120,60 @@ export function usePromoteToOco() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["change-orders"] }),
   });
 }
+
+/**
+ * Admin renumber of a change order's co_no — allowed even when the CO is
+ * executed/locked (co_no isn't part of the lock guard's protected set). Keeps
+ * the CO's status untouched (co_no is a reference label, not money), validates
+ * the new number is free for this project+type, and appends an audit entry to
+ * co_no_history. Gate the UI to admins.
+ */
+export function useRenumberChangeOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ coId, newCoNo, reason }: { coId: string; newCoNo: number; reason: string }) => {
+      if (!Number.isInteger(newCoNo) || newCoNo <= 0) throw new Error("Enter a positive whole number.");
+      if (!reason.trim()) throw new Error("A reason is required.");
+
+      const { data: co, error: e1 } = await supabase
+        .from("change_orders" as any)
+        .select("co_no, co_type, project_id, co_no_history")
+        .eq("id", coId).single();
+      if (e1) throw e1;
+      const cur = co as any;
+      if (Number(cur.co_no) === newCoNo) throw new Error("That is already the current number.");
+
+      const label = `${cur.co_type ?? "CO"}-${String(newCoNo).padStart(4, "0")}`;
+      const { data: clash } = await supabase
+        .from("change_orders" as any)
+        .select("id").eq("project_id", cur.project_id).eq("co_type", cur.co_type)
+        .eq("co_no", newCoNo).neq("id", coId).maybeSingle();
+      if (clash) throw new Error(`${label} already exists on this project — pick a free number.`);
+
+      const { data: auth } = await supabase.auth.getUser();
+      const history = Array.isArray(cur.co_no_history) ? cur.co_no_history : [];
+      const entry = {
+        from: Number(cur.co_no), to: newCoNo,
+        by: auth.user?.id ?? null, reason: reason.trim(),
+        at: new Date().toISOString(),
+      };
+
+      const { error: e2 } = await supabase
+        .from("change_orders" as any)
+        .update({ co_no: newCoNo, co_no_history: [...history, entry] } as any)
+        .eq("id", coId);
+      if (e2) {
+        if (/duplicate key|uniq_co/i.test(e2.message)) {
+          throw new Error(`${label} already exists on this project — pick a free number.`);
+        }
+        throw e2;
+      }
+      return { coId, newCoNo };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["co"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+    },
+  });
+}
