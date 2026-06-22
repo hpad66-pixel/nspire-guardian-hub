@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
-import { usePayApp } from "@/hooks/usePayApp";
+import { usePayApp, useDeletePayApp } from "@/hooks/usePayApp";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
@@ -17,12 +17,14 @@ import { toast } from "sonner";
 import { money } from "@/lib/pdf";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
+import { Trash2 } from "lucide-react";
 
 export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { detail, approve, reject } = usePayApp(payAppId ?? null);
   const { submit } = usePayAppContinuation(payAppId ?? null);
+  const del = useDeletePayApp();
   const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
   const [approveAmount, setApproveAmount] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
@@ -46,6 +48,15 @@ export default function PayAppDetailPage() {
     if (!confirm("Reject this pay app? It will return to Draft.")) return;
     try { await reject.mutateAsync(); toast.success("Rejected"); }
     catch (e: any) { toast.error(e.message); }
+  }
+  async function doDelete() {
+    if (!pa) return;
+    if (!confirm(`Delete draft Pay App #${pa.pay_app_no}? This cannot be undone.`)) return;
+    try {
+      await del.mutateAsync(pa.id);
+      toast.success(`Deleted draft Pay App #${pa.pay_app_no}.`);
+      window.location.href = `/projects/${projectId}/financials/pay-apps`;
+    } catch (e: any) { toast.error(e.message); }
   }
   async function setPayAppPdf(url: string | null) {
     const { error } = await supabase.from("prime_contract_pay_apps" as any).update({ pdf_path: url }).eq("id", payAppId!);
@@ -175,7 +186,12 @@ export default function PayAppDetailPage() {
         <CardHeader><CardTitle>Workflow</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-center gap-2">
           {pa.status === "draft" && (
-            <Button onClick={doSubmit} disabled={submit.isPending}>Submit for review</Button>
+            <>
+              <Button onClick={doSubmit} disabled={submit.isPending}>Submit for review</Button>
+              <Button variant="outline" className="text-[var(--apas-rose)] hover:text-[var(--apas-rose)]" onClick={doDelete} disabled={del.isPending}>
+                <Trash2 className="h-4 w-4 mr-1.5" />Delete draft
+              </Button>
+            </>
           )}
           {pa.status === "submitted" && (
             <>

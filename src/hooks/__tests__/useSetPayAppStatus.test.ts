@@ -9,7 +9,7 @@ vi.mock("@/integrations/supabase/client", async () => {
   return { supabase: m.supabase, __mock: m.__mock };
 });
 
-import { useSetPayAppStatus } from "../usePayApp";
+import { useSetPayAppStatus, useDeletePayApp } from "../usePayApp";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 
@@ -54,5 +54,32 @@ describe("useSetPayAppStatus", () => {
     __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
     const { result } = renderHookWithClient(() => useSetPayAppStatus());
     await expect(result.current.mutateAsync({ payAppId: "pa1", status: "paid" })).rejects.toBeTruthy();
+  });
+});
+
+describe("useDeletePayApp", () => {
+  beforeEach(() => __mock.reset());
+
+  it("deletes a draft pay app", async () => {
+    const b = makeBuilder({ data: { status: "draft" }, error: null });
+    __mock.from.mockReturnValue(b);
+    const { result } = renderHookWithClient(() => useDeletePayApp());
+    const id = await result.current.mutateAsync("pa1");
+    expect(id).toBe("pa1");
+    expect((b.delete as any)).toHaveBeenCalled();
+    // status guard is applied in the delete filter
+    expect((b.eq as any).mock.calls).toContainEqual(["status", "draft"]);
+  });
+
+  it("refuses to delete a non-draft pay app", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: { status: "approved" }, error: null }));
+    const { result } = renderHookWithClient(() => useDeletePayApp());
+    await expect(result.current.mutateAsync("pa1")).rejects.toThrow(/Only draft/);
+  });
+
+  it("rejects when the pay app does not exist", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: null }));
+    const { result } = renderHookWithClient(() => useDeletePayApp());
+    await expect(result.current.mutateAsync("missing")).rejects.toThrow(/not found/);
   });
 });

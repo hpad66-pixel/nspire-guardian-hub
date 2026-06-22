@@ -211,6 +211,37 @@ export const PAY_APP_STATUSES: { value: PayAppStatus; label: string }[] = [
 ];
 
 /**
+ * Delete a pay app — guarded to DRAFT only, so submitted/approved/paid
+ * applications (which carry billing history) can never be removed. The
+ * status guard is applied in the delete filter itself (atomic): if the row
+ * isn't draft, zero rows match and we surface a clear error.
+ */
+export function useDeletePayApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payAppId: string) => {
+      const { data: pa, error: selErr } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .select("status").eq("id", payAppId).maybeSingle();
+      if (selErr) throw selErr;
+      if (!pa) throw new Error("Pay app not found.");
+      if ((pa as any).status !== "draft") {
+        throw new Error("Only draft pay apps can be deleted.");
+      }
+      const { error } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .delete().eq("id", payAppId).eq("status", "draft");
+      if (error) throw error;
+      return payAppId;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-apps"] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+}
+
+/**
  * Manually set a pay app's status (the dropdown override). Keeps derived fields
  * sane: approving stamps approved_amount (= submitted if unset) + retainage +
  * date; reverting to draft/submitted/rejected clears them; "paid" leaves the

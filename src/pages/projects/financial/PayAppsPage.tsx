@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, ExternalLink, FileText } from "lucide-react";
+import { Plus, ExternalLink, FileText, Trash2 } from "lucide-react";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract, usePayApps } from "@/hooks/usePrimeContract";
 import { useGeneratePayApp } from "@/hooks/usePayAppContinuation";
+import { useDeletePayApp } from "@/hooks/usePayApp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
@@ -18,7 +19,17 @@ export default function PayAppsPage() {
   const { data: contract, isLoading } = usePrimeContract(projectId ?? null);
   const { data: payApps = [] } = usePayApps(contract?.id ?? null);
   const generate = useGeneratePayApp(contract?.id ?? null, projectId ?? null);
+  const del = useDeletePayApp();
   const [creating, setCreating] = useState(false);
+
+  function deleteDraft(e: React.MouseEvent, pa: any) {
+    e.stopPropagation();
+    if (!window.confirm(`Delete draft Pay App #${pa.pay_app_no}? This cannot be undone.`)) return;
+    del.mutate(pa.id, {
+      onSuccess: () => toast.success(`Deleted draft Pay App #${pa.pay_app_no}.`),
+      onError: (err: any) => toast.error(err.message),
+    });
+  }
 
   async function generatePayApp() {
     setCreating(true);
@@ -86,7 +97,22 @@ export default function PayAppsPage() {
                     <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
                     </td>
-                    <td className="p-3 text-center"><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {pa.status === "draft" && (
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-[var(--apas-rose)]"
+                            disabled={del.isPending}
+                            title="Delete draft"
+                            onClick={(e) => deleteDraft(e, pa)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
