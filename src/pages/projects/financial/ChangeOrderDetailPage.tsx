@@ -27,6 +27,7 @@ import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { isAdminRole } from "@/lib/rbac";
 import { RenumberCoDialog } from "@/components/financial/RenumberCoDialog";
 import { ReopenCoDialog } from "@/components/financial/ReopenCoDialog";
+import { ExecuteCoOfflineDialog } from "@/components/financial/ExecuteCoOfflineDialog";
 import { coLabel } from "@/lib/changeOrder/coLabel";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -63,6 +64,7 @@ export default function ChangeOrderDetailPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [renumberOpen, setRenumberOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
+  const [executeOpen, setExecuteOpen] = useState(false);
   const { data: role } = useCurrentUserRole();
   const canRenumber = isAdminRole(role);
   const [editing, setEditing] = useState(false);
@@ -184,6 +186,11 @@ export default function ChangeOrderDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="capitalize">{co.status.replace("_", " ")}</Badge>
+            {co.status !== "executed" && co.status !== "void" && (
+              <Button size="sm" onClick={() => setExecuteOpen(true)}>
+                <CheckCircle2 className="h-4 w-4 mr-1.5" /> Mark executed
+              </Button>
+            )}
             {canRenumber && (locked || readOnly) && (
               <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}>
                 <Hash className="h-4 w-4 mr-1.5" /> Renumber
@@ -391,6 +398,13 @@ export default function ChangeOrderDetailPage() {
         open={reopenOpen}
         onOpenChange={setReopenOpen}
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, amendment_history: (co as any).amendment_history }}
+        onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+      />
+      <ExecuteCoOfflineDialog
+        open={executeOpen}
+        onOpenChange={setExecuteOpen}
+        co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, pdf_path: (co as any).pdf_path }}
+        projectId={projectId ?? ""}
         onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
       />
     </div>

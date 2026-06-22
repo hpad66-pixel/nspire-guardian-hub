@@ -264,3 +264,44 @@ export function useReopenChangeOrder() {
     },
   });
 }
+
+/**
+ * Execute a change order from a client's OFFLINE-signed copy: the client printed
+ * it, signed on paper, and sent back a scan. Uploads that scan as pdf_path, marks
+ * the CO executed + locked with an executed date and (optional) signer name —
+ * the offline counterpart to the in-app counter-sign. Flips locked off in the
+ * same statement so the pdf_path change is permitted even if the CO was already
+ * locked (awaiting signature), then re-locks.
+ */
+export function useExecuteCoOffline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ coId, pdfPath, executedDate, signerName }: {
+      coId: string; pdfPath: string; executedDate: string; signerName?: string | null;
+    }) => {
+      if (!pdfPath) throw new Error("Upload the client's signed copy first.");
+      const { error: e1 } = await supabase
+        .from("change_orders" as any)
+        .update({
+          locked: false,
+          pdf_path: pdfPath,
+          status: "executed",
+          executed_date: executedDate || new Date().toISOString().slice(0, 10),
+          accepted_signed_name: signerName?.trim() || null,
+          accepted_signed_at: new Date().toISOString(),
+        } as any)
+        .eq("id", coId);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase
+        .from("change_orders" as any).update({ locked: true } as any).eq("id", coId);
+      if (e2) throw e2;
+      return { coId };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["co"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+}
