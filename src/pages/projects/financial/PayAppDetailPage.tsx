@@ -26,6 +26,7 @@ export default function PayAppDetailPage() {
   const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
   const [approveAmount, setApproveAmount] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const pa = detail.data;
 
@@ -55,7 +56,6 @@ export default function PayAppDetailPage() {
 
   // Parse the G703 in the attached PDF → sov_line_items / pay_app_line_progress,
   // so the Quantities & Progress dashboard auto-updates from this pay app.
-  const [syncing, setSyncing] = useState(false);
   async function syncQuantities(silent = false) {
     if (!payAppId) return;
     setSyncing(true);
