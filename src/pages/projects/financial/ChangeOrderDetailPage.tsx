@@ -15,7 +15,6 @@ import { useCoWorkflow } from "@/hooks/useCoWorkflow";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
-import { PromoteToOcoDialog } from "@/components/financial/PromoteToOcoDialog";
 import { CoPdfExport } from "@/components/financial/CoPdfExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +58,6 @@ export default function ChangeOrderDetailPage() {
     },
   });
 
-  const [promoteOpen, setPromoteOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [renumberOpen, setRenumberOpen] = useState(false);
@@ -333,9 +331,6 @@ export default function ChangeOrderDetailPage() {
       <Card>
         <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-center gap-2">
-          {co.co_type === "PCO" && co.status !== "executed" && co.status !== "void" && (
-            <Button onClick={() => setPromoteOpen(true)}>Promote to OCO</Button>
-          )}
           {co.status === "executed" && (
             <span className="text-sm text-muted-foreground">
               Executed — to reverse, create a new CO with the inverse amount.
@@ -363,12 +358,6 @@ export default function ChangeOrderDetailPage() {
           </div>
         </CardContent>
       </Card>
-
-      <PromoteToOcoDialog
-        open={promoteOpen}
-        onOpenChange={setPromoteOpen}
-        pco={co}
-      />
 
       {coId && (
         <ChangeOrderSignDialog

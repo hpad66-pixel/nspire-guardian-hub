@@ -38,9 +38,7 @@ export default function ChangeOrdersPage() {
             <h1 className="text-2xl font-bold">Prime Contract Change Orders</h1>
             <p className="text-muted-foreground text-sm">
               Changes between you and the owner on{" "}
-              {contract ? `Prime Contract ${contract.contract_no}` : "the prime contract"} ·
-              PCO = potential (pending) · PCCO = executed. Subcontractor change orders
-              (SCOs) live on each commitment.
+              {contract ? `Prime Contract ${contract.contract_no}` : "the prime contract"}.
             </p>
           </div>
         </div>
@@ -155,6 +153,27 @@ export default function ChangeOrdersPage() {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Plain-English explainer */}
+      <Card>
+        <CardContent className="p-4 text-sm text-muted-foreground space-y-1.5">
+          <div className="font-medium text-foreground">How prime change orders work here</div>
+          <p>
+            A prime change order is <strong>one record</strong>. It&apos;s a{" "}
+            <strong>PCO</strong> (potential — a proposal you&apos;re negotiating) while pending, and becomes a{" "}
+            <strong>PCCO</strong> (prime contract change order — executed) the moment it&apos;s signed/executed.
+            It&apos;s the same change order, just relabeled by status.
+          </p>
+          <p>
+            <strong>Executed change orders add to the contract value once.</strong> The{" "}
+            <span className="text-emerald-600">Executed</span> and Net CO Value cards above sum every executed CO a
+            single time. You don&apos;t need to &ldquo;promote&rdquo; anything — signing/executing a CO is what makes it count.
+          </p>
+          <p>
+            Subcontractor change orders (SCOs / CCOs) are tracked separately on each commitment, not here.
+          </p>
         </CardContent>
       </Card>
     </div>

@@ -2,7 +2,6 @@
  * D4 · Change Orders (PCO/OCO/CCO).
  * Named useProcoreChangeOrders to coexist with pre-existing useChangeOrders.ts.
  */
-import { toDateOnly } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
@@ -79,50 +78,6 @@ export function useChangeOrderLines(coId: string | null) {
   return { ...list, addLine };
 }
 
-/** Promote a PCO to an OCO once signed by the Owner. */
-export function usePromoteToOco() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (pcoId: string) => {
-      const tenant_id = await requireTenantId();
-      const { data: pco, error: e1 } = await supabase
-        .from("change_orders" as any).select("*").eq("id", pcoId).single();
-      if (e1) throw e1;
-
-      const { data: oco, error: e2 } = await supabase.from("change_orders" as any).insert({
-        tenant_id,
-        project_id: (pco as any).project_id,
-        prime_contract_id: (pco as any).prime_contract_id,
-        co_type: "OCO",
-        title: (pco as any).title,
-        description: (pco as any).description,
-        amount: (pco as any).amount,
-        status: "executed",
-        parent_pco_id: pcoId,
-        executed_date: toDateOnly(new Date()),
-      } as any).select().single();
-      if (e2) throw e2;
-
-      // Copy lines
-      const { data: lines } = await supabase
-        .from("change_order_lines" as any).select("*").eq("change_order_id", pcoId);
-      if (Array.isArray(lines) && lines.length > 0) {
-        await supabase.from("change_order_lines" as any).insert(
-          (lines as any[]).map((l) => ({
-            tenant_id,
-            change_order_id: (oco as any).id,
-            cost_code_id: l.cost_code_id,
-            description: l.description,
-            amount: l.amount,
-          })) as any,
-        );
-      }
-
-      return oco as ChangeOrder;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["change-orders"] }),
-  });
-}
 
 /**
  * Admin renumber of a change order's co_no — allowed even when the CO is

@@ -6,8 +6,7 @@
  * the list error path.
  *
  * Note: mutations resolve the tenant via `requireTenantId` from @/lib/tenant
- * (mocked). usePromoteToOco issues a select-then-insert plus a lines copy, so
- * table-aware mocking is used to avoid sequencing.
+ * (mocked).
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { waitFor } from "@testing-library/react";
@@ -23,7 +22,6 @@ vi.mock("@/lib/tenant", () => ({
 import {
   useChangeOrdersByType,
   useChangeOrderLines,
-  usePromoteToOco,
 } from "../useProcoreChangeOrders";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
@@ -65,29 +63,6 @@ describe("useProcoreChangeOrders", () => {
       change_order_id: "co1",
       cost_code_id: "cc-1",
       amount: 1200,
-    });
-  });
-
-  it("promote-to-OCO reads the PCO then inserts an executed OCO with parent_pco_id", async () => {
-    const coBuilder = makeBuilder({
-      data: { id: "pco1", project_id: "p1", prime_contract_id: "pc1", title: "T", description: "D", amount: 900 },
-      error: null,
-    });
-    const linesBuilder = makeBuilder({ data: [], error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "change_order_lines" ? linesBuilder : coBuilder,
-    );
-
-    const { result } = renderHookWithClient(() => usePromoteToOco());
-    await result.current.mutateAsync("pco1");
-
-    const inserted = (coBuilder.insert as any).mock.calls[0][0];
-    expect(inserted).toMatchObject({
-      tenant_id: "ws-1",
-      project_id: "p1",
-      co_type: "OCO",
-      status: "executed",
-      parent_pco_id: "pco1",
     });
   });
 
