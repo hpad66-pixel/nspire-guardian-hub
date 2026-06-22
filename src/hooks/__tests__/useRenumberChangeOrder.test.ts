@@ -97,7 +97,7 @@ describe("useRenumberChangeOrder", () => {
     expect(patch1.co_no).toBe(9);
     expect(patch1.locked).toBe(false);                 // flipped off to bypass the lock guard
     expect(patch1.spec.doc.co_number).toBe("9");
-    expect(patch1.spec.doc.co_label).toBe("PCO-0009"); // embedded label the email reads
+    expect(patch1.spec.doc.co_label).toBe("PCO-009"); // canonical 3-digit label
     expect(patch1.pdf_path).toBe("https://new/pdf.pdf"); // regenerated attachment
 
     expect((builders[3].update as any).mock.calls[0][0]).toEqual({ locked: true }); // restored

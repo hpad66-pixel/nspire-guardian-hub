@@ -26,6 +26,7 @@ import { useProject } from "@/hooks/useProjects";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { isAdminRole } from "@/lib/rbac";
 import { RenumberCoDialog } from "@/components/financial/RenumberCoDialog";
+import { coLabel } from "@/lib/changeOrder/coLabel";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
 export default function ChangeOrderDetailPage() {
@@ -114,7 +115,7 @@ export default function ChangeOrderDetailPage() {
 
   if (!co) return <div className="p-6 text-muted-foreground">Loading change order…</div>;
 
-  const label = `${co.co_type ?? "CO"}-${String(co.co_no ?? 0).padStart(4, "0")}`;
+  const label = coLabel(co.co_type, co.co_no);
   const readOnly = co.status === "executed" || co.status === "void";
 
   // A generated CO (has a spec) can be edited inline until it's signed/locked or executed.

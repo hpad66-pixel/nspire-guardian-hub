@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
 import { buildCoPdfBlob } from "@/lib/changeOrder/coPdf";
 import { uploadCoArtifact } from "@/lib/changeOrder/storage";
+import { coLabel } from "@/lib/changeOrder/coLabel";
 
 export interface ChangeOrder {
   id: string; tenant_id: string; project_id: string;
@@ -145,7 +146,7 @@ export function useRenumberChangeOrder() {
       const cur = co as any;
       if (Number(cur.co_no) === newCoNo) throw new Error("That is already the current number.");
 
-      const label = `${cur.co_type ?? "CO"}-${String(newCoNo).padStart(4, "0")}`;
+      const label = coLabel(cur.co_type, newCoNo);
       const { data: clash } = await supabase
         .from("change_orders" as any)
         .select("id").eq("project_id", cur.project_id).eq("co_type", cur.co_type)

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRenumberChangeOrder } from "@/hooks/useProcoreChangeOrders";
+import { coLabel } from "@/lib/changeOrder/coLabel";
 
 interface RenumberCo {
   id: string;
@@ -33,14 +34,14 @@ export function RenumberCoDialog({
   const [reason, setReason] = useState("");
 
   const type = co.co_type ?? "CO";
-  const label = `${type}-${String(co.co_no ?? 0).padStart(4, "0")}`;
+  const label = coLabel(co.co_type, co.co_no);
   const history = Array.isArray(co.co_no_history) ? co.co_no_history : [];
 
   async function submit() {
     try {
       const n = parseInt(newNo, 10);
       const res = await renumber.mutateAsync({ coId: co.id, newCoNo: n, reason });
-      const newLabel = `${type}-${String(n).padStart(4, "0")}`;
+      const newLabel = coLabel(co.co_type, n);
       toast.success(
         res.specUpdated
           ? `Renumbered to ${newLabel}. Document, email, and PDF now use the new number.`

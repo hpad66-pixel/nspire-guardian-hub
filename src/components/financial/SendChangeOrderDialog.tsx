@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { coLabel } from "@/lib/changeOrder/coLabel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +29,13 @@ export function SendChangeOrderDialog({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Always derive the label from the LIVE co_no — never the cached spec.doc.co_label.
+  const liveLabel = coLabel(co?.co_type, co?.co_no) || spec?.doc?.co_label || "the change order";
+
   useEffect(() => {
     if (open) {
       setTo(spec?.parties?.to?.email || "");
-      setMessage(`Please find attached ${spec?.doc?.co_label || "the change order"} for ${spec?.parties?.project || "the project"}. You can review and sign it electronically at the link below. Once executed, you'll automatically receive a fully-signed copy by email. If anything needs to change, you can reject it with comments and they'll come straight back to us.`);
+      setMessage(`Please find attached ${liveLabel} for ${spec?.parties?.project || "the project"}. You can review and sign it electronically at the link below. Once executed, you'll automatically receive a fully-signed copy by email. If anything needs to change, you can reject it with comments and they'll come straight back to us.`);
     }
   }, [open, co]);
 
@@ -41,7 +45,7 @@ export function SendChangeOrderDialog({
     if (!to.trim()) return toast.error("Enter the client's email.");
     setBusy(true);
     try {
-      const label = spec?.doc?.co_label || `${co.co_type}-${co.co_no}`;
+      const label = coLabel(co.co_type, co.co_no) || spec?.doc?.co_label || `${co.co_type}-${co.co_no}`;
       const bodyHtml = `
         <div style="font-family:Georgia,serif;color:#1A1714">
           <p>${message.replace(/\n/g, "<br>")}</p>
