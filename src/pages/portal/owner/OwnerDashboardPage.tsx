@@ -1,4 +1,6 @@
 import { useOwnerPortalData } from "@/hooks/usePortals";
+import { useFinancialReportData } from "@/hooks/useFinancialReportData";
+import { financialSummary } from "@/lib/reports/financialReports";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +11,53 @@ function fmt(n: number | null | undefined) {
   return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+/** Owner-safe financial health: contract, billings, retainage, balance — NO sub costs. */
+function OwnerFinancialHealth({ projectId }: { projectId: string | null }) {
+  const { data } = useFinancialReportData(projectId);
+  if (!data) return null;
+  const s = financialSummary(data);
+  const pct = Math.min(100, Math.max(0, s.pctComplete));
+  const cells: Array<[string, string, string?]> = [
+    ["Revised Contract", fmt(s.revisedValue)],
+    ["Billed to Date", fmt(s.billedToDate), "text-[var(--apas-sapphire)]"],
+    ["Retainage Held", fmt(s.retainageHeld), "text-[var(--apas-amber)]"],
+    ["Balance to Finish", fmt(s.balanceToFinish), "text-[var(--apas-emerald)]"],
+  ];
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-2"><CardTitle className="text-base">Project financial health</CardTitle></CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {cells.map(([label, value, cls]) => (
+            <div key={label}>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+              <div className={`text-2xl font-bold ${cls ?? ""}`}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Contract complete</span><span>{pct.toFixed(1)}%</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-[var(--apas-sapphire)] rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function OwnerDashboardPage() {
   const { data, isLoading } = useOwnerPortalData();
+  const projectId = (data?.primeContracts as any[] | undefined)?.[0]?.project_id ?? null;
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <h1 className="text-3xl font-bold mb-1">Owner Portal</h1>
       <p className="text-muted-foreground mb-6">Prime contract, change orders, pay apps.</p>
+
+      <OwnerFinancialHealth projectId={projectId} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Contracts</CardTitle></CardHeader>

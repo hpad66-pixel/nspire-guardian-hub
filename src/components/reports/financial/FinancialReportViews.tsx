@@ -344,6 +344,63 @@ export function LienReportView({ data, brand }: { data: ReportData; brand: Repor
   );
 }
 
+// ── Owner-safe summary (NO payments-out, NO subcontractor costs/margins) ──────
+export function OwnerSummaryReportView({ data, brand }: { data: ReportData; brand: ReportBrand }) {
+  const s = financialSummary(data);
+  const netBilled = Math.max(0, s.billedToDate - s.retainageHeld);
+  const bars = [
+    { name: "Original", value: s.originalValue, fill: BRAND.ink },
+    { name: "Approved COs", value: s.approvedCoValue, fill: BRAND.gold },
+    { name: "Revised", value: s.revisedValue, fill: BRAND.sapphire },
+    { name: "Billed", value: s.billedToDate, fill: BRAND.emerald },
+  ];
+  const donut = [
+    { name: "Earned (less retainage)", value: netBilled },
+    { name: "Retainage held", value: Math.max(0, s.retainageHeld) },
+    { name: "Balance to finish", value: Math.max(0, s.balanceToFinish) },
+  ];
+  return (
+    <div>
+      <ReportHeader brand={brand} title="Project Financial Summary" subtitle="Contract value, approved changes, billings and retainage to date" />
+      <div style={kpiRow}>
+        <Kpi label="Revised Contract" value={money(s.revisedValue)} sub={`${money(s.originalValue)} + ${money(s.approvedCoValue)} COs`} />
+        <Kpi label="Billed to Date" value={money(s.billedToDate)} accent={BRAND.sapphire} sub={pct(s.pctComplete) + " complete"} />
+        <Kpi label="Retainage Held" value={money(s.retainageHeld)} accent={BRAND.amber} />
+        <Kpi label="Balance to Finish" value={money(s.balanceToFinish)} accent={BRAND.emerald} />
+      </div>
+      <div style={{ display: "flex", gap: 14 }}>
+        <div style={{ ...chartCard, flex: 1.4 }}>
+          <div style={cardTitle}>Contract value &amp; progress</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={bars} margin={{ top: 16, right: 8, bottom: 0, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={BRAND.rule} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={kmoney} tick={{ fontSize: 10 }} width={48} />
+              <Tooltip formatter={(v: any) => money2(v)} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="value" position="top" formatter={kmoney} style={{ fontSize: 10, fill: BRAND.ink }} />
+                {bars.map((b, i) => <Cell key={i} fill={b.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ ...chartCard, flex: 1 }}>
+          <div style={cardTitle}>Completion of the contract</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <PieChart>
+              <Pie data={donut} dataKey="value" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={2}>
+                {donut.map((_, i) => <Cell key={i} fill={PIE[i % PIE.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v: any) => money2(v)} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── registry ─────────────────────────────────────────────────────────────────
 export interface ReportDef {
   key: string; title: string; description: string;
@@ -356,4 +413,12 @@ export const FINANCIAL_REPORTS: ReportDef[] = [
   { key: "cash-flow", title: "Cash Flow", description: "Money in vs out with running net position", Component: CashFlowReportView },
   { key: "commitments", title: "Subcontractor Status", description: "Committed vs paid vs remaining by subcontract", Component: CommitmentReportView },
   { key: "liens", title: "Lien Waiver Compliance", description: "Outbound & inbound waiver status", Component: LienReportView },
+];
+
+// Owner/client-facing reports — deliberately EXCLUDES cash-flow (sub payments) and
+// subcontractor status (our costs/margins). Owner sees contract, billings, and COs.
+export const OWNER_REPORTS: ReportDef[] = [
+  { key: "summary", title: "Project Financial Summary", description: "Contract value, approved changes, billings & retainage", Component: OwnerSummaryReportView },
+  { key: "billing", title: "Billing & Pay App History", description: "Per-application billings, retainage & amounts due", Component: BillingReportView },
+  { key: "change-orders", title: "Change Order Log", description: "Approved value & pending change orders", Component: ChangeOrderReportView },
 ];
