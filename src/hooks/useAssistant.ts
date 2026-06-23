@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface ChatMessage { role: "user" | "assistant"; content: string; }
 
-export function useAssistant(projectId: string | null) {
+export function useAssistant(projectId: string | null, audience: "gc" | "owner" = "gc") {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function useAssistant(projectId: string | null) {
     const mySeq = ++seq.current;
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("assistant-chat", {
-        body: { projectId, messages: next },
+        body: { projectId, messages: next, audience },
       });
       if (mySeq !== seq.current) return; // a newer send superseded this one
       if (fnErr) throw fnErr;
@@ -38,7 +38,7 @@ export function useAssistant(projectId: string | null) {
     } finally {
       if (mySeq === seq.current) setIsLoading(false);
     }
-  }, [messages, projectId, isLoading]);
+  }, [messages, projectId, isLoading, audience]);
 
   const reset = useCallback(() => { seq.current++; setMessages([]); setError(null); setIsLoading(false); }, []);
 

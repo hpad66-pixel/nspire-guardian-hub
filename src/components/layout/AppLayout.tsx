@@ -16,6 +16,7 @@ import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
+import { OwnerAssistantLauncher } from '@/components/assistant/OwnerAssistantLauncher';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
 import { cn } from '@/lib/utils';
@@ -256,6 +257,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Floating financial assistant — only when enabled in Settings + on a project route */}
       <AssistantLauncher />
+      {/* Client assistant — always available in the owner portal (owner-safe tools) */}
+      <OwnerAssistantLauncher />
     </>
   );
 }

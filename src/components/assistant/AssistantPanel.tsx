@@ -12,7 +12,7 @@ import { Sparkles, Send, Volume2, VolumeX, RotateCcw, Loader2, Bot, User } from 
 import { useAssistant } from "@/hooks/useAssistant";
 import { cn } from "@/lib/utils";
 
-const PROMPTS = [
+const GC_PROMPTS = [
   "What's my cash position?",
   "Which pay apps are still unpaid?",
   "How much retainage is being held?",
@@ -20,11 +20,20 @@ const PROMPTS = [
   "Show me pending change orders",
   "How much have we paid each subcontractor?",
 ];
+const OWNER_PROMPTS = [
+  "How much is left on my contract?",
+  "What change orders have I approved?",
+  "How much retainage is being held?",
+  "What's the status of the latest pay application?",
+  "How much have I been billed to date?",
+  "Are there any change orders awaiting my approval?",
+];
 
 export function AssistantPanel({
-  projectId, projectName, open, onOpenChange,
-}: { projectId: string; projectName?: string; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { messages, isLoading, send, reset } = useAssistant(projectId);
+  projectId, projectName, open, onOpenChange, audience = "gc",
+}: { projectId: string; projectName?: string; open: boolean; onOpenChange: (v: boolean) => void; audience?: "gc" | "owner" }) {
+  const { messages, isLoading, send, reset } = useAssistant(projectId, audience);
+  const PROMPTS = audience === "owner" ? OWNER_PROMPTS : GC_PROMPTS;
   const [input, setInput] = useState("");
   const [speak, setSpeak] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);

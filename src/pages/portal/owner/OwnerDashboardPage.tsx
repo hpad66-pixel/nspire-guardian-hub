@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { FileText, Calendar, BarChart3 } from "lucide-react";
+import { FileText, Calendar, BarChart3, FolderOpen } from "lucide-react";
 
 function fmt(n: number | null | undefined) {
   return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -77,6 +77,9 @@ export default function OwnerDashboardPage() {
         </Button>
         <Button asChild variant="outline">
           <Link to="/owner-portal/reports"><BarChart3 className="h-4 w-4 mr-1" /> Reports</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/owner-portal/documents"><FolderOpen className="h-4 w-4 mr-1" /> Documents</Link>
         </Button>
       </div>
 

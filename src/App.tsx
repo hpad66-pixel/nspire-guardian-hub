@@ -111,6 +111,7 @@ const OwnerOcoApprovalPage = lazy(() => import('./pages/portal/owner/OwnerOcoApp
 const OwnerPayAppApprovalPage = lazy(() => import('./pages/portal/owner/OwnerPayAppApprovalPage'));
 const OwnerSchedulePage = lazy(() => import('./pages/portal/owner/OwnerSchedulePage'));
 const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPage'));
+const OwnerDocumentsPage = lazy(() => import('./pages/portal/owner/OwnerDocumentsPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
 const WebhooksPage = lazy(() => import('./pages/settings/api/WebhooksPage'));
 const WebhookDeliveriesPage = lazy(() => import('./pages/settings/api/WebhookDeliveriesPage'));
@@ -403,6 +404,7 @@ const App = () => (
                                 <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
                                 <Route path="/owner-portal/schedule" element={<OwnerSchedulePage />} />
                                 <Route path="/owner-portal/reports" element={<OwnerReportsPage />} />
+                                <Route path="/owner-portal/documents" element={<OwnerDocumentsPage />} />
                               </Route>
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />

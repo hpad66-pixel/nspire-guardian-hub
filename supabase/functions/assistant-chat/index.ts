@@ -28,6 +28,10 @@ const TOOLS = [
   { name: "get_retainage_held", description: "Retainage currently held, from the latest pay application.", input_schema: { type: "object", properties: {} } },
 ];
 
+// Owner/client audience: contract, billings, change orders, retainage ONLY.
+// NEVER the contractor's cash position or subcontractor costs/margins.
+const OWNER_SAFE = new Set(["get_financial_summary", "get_retainage_held", "list_pay_apps", "list_change_orders"]);
+
 interface Fin {
   contract: { original_value: number; retainage_pct: number };
   cos: any[]; payApps: any[]; primePayments: any[]; commitments: any[]; commitmentPayments: any[];
@@ -70,7 +74,8 @@ function summary(f: Fin) {
   };
 }
 
-function runTool(name: string, input: any, f: Fin): unknown {
+function runTool(name: string, input: any, f: Fin, owner: boolean): unknown {
+  if (owner && !OWNER_SAFE.has(name)) return { error: "That information isn't available in the client view." };
   switch (name) {
     case "get_financial_summary":
       return summary(f);
@@ -126,9 +131,11 @@ serve(async (req) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
-    const { projectId, messages } = await req.json();
+    const { projectId, messages, audience } = await req.json();
     if (!projectId) return json({ error: "projectId required" }, 400);
     if (!Array.isArray(messages) || !messages.length) return json({ error: "messages required" }, 400);
+    const owner = audience === "owner";
+    const tools = owner ? TOOLS.filter((t) => OWNER_SAFE.has(t.name)) : TOOLS;
 
     const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
@@ -137,7 +144,13 @@ serve(async (req) => {
     const fin = await gather(supa, projectId);
     if (!fin) return json({ reply: "I couldn't find a prime contract for this project, so there are no financials to report yet." });
 
-    const system = `You are the Build OS financial assistant for the construction project "${project?.name ?? "this project"}".
+    const system = owner
+      ? `You are the client assistant for the project "${project?.name ?? "this project"}", speaking to the OWNER/client.
+Answer the owner's questions about THEIR contract using the provided tools. Rules:
+- Scope: the contract value, approved/pending change orders, pay-application billings, amounts due, and retainage held.
+- You do NOT have, and must NEVER discuss or estimate, the contractor's internal costs, subcontractor payments, vendor costs, or profit/margins. If asked, politely say that isn't part of the client view.
+- Use tools for real numbers; NEVER invent figures. Be concise and specific with exact dollars and percentages.`
+      : `You are the Build OS financial assistant for the construction project "${project?.name ?? "this project"}".
 Answer the user's questions about THIS project's finances using the provided tools. Rules:
 - Use tools to get real numbers; NEVER invent or estimate figures the tools didn't return.
 - Be concise and specific. Quote exact dollar amounts and percentages. Prefer a short sentence or a tight bullet list.
@@ -153,7 +166,7 @@ Answer the user's questions about THIS project's finances using the provided too
       const res = await fetch(ANTHROPIC_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: MODEL, max_tokens: 1500, system, messages: convo, tools: TOOLS }),
+        body: JSON.stringify({ model: MODEL, max_tokens: 1500, system, messages: convo, tools }),
       });
       if (!res.ok) return json({ error: `AI error: ${await res.text()}` }, 502);
       const data = await res.json();
@@ -166,7 +179,7 @@ Answer the user's questions about THIS project's finances using the provided too
         convo.push({
           role: "user",
           content: toolUses.map((t: any) => ({
-            type: "tool_result", tool_use_id: t.id, content: JSON.stringify(runTool(t.name, t.input, fin)),
+            type: "tool_result", tool_use_id: t.id, content: JSON.stringify(runTool(t.name, t.input, fin, owner)),
           })),
         });
         continue;
