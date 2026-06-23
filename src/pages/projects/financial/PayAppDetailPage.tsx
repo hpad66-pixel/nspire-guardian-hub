@@ -9,6 +9,7 @@ import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
 import { PayAppPDFExport } from "@/components/financial/PayAppPDFExport";
+import { PayAppSignSendDialog } from "@/components/financial/PayAppSignSendDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,8 +103,23 @@ export default function PayAppDetailPage() {
           <div className="flex items-center gap-2">
             <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
             <PayAppPDFExport payAppId={pa.id} projectId={projectId ?? ""} contract={contract} />
+            <PayAppSignSendDialog payAppId={pa.id} contract={contract} />
           </div>
         </div>
+        {((pa as any).sent_for_review_at || (pa as any).signed_at) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            {(pa as any).signed_at && (
+              <Badge variant="outline">
+                Signed by {(pa as any).signed_name || "contractor"} · {String((pa as any).signed_at).slice(0, 10)}
+              </Badge>
+            )}
+            {(pa as any).sent_for_review_at && (
+              <Badge variant="outline" className="text-[var(--apas-sapphire)] border-[var(--apas-sapphire)]/40">
+                Draft sent to {(pa as any).sent_for_review_to || "client"} · {String((pa as any).sent_for_review_at).slice(0, 10)}
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

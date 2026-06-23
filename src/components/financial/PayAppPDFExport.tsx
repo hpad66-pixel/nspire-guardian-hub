@@ -10,7 +10,8 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { useCoSettings } from "@/hooks/useCoSettings";
-import { PayApplicationDocument, type PayApplicationSpec } from "@/lib/payApp/PayApplicationDocument";
+import { PayApplicationDocument } from "@/lib/payApp/PayApplicationDocument";
+import { buildPayAppSpec } from "@/lib/payApp/buildSpec";
 import { downloadPayAppPdf } from "@/lib/payApp/payAppPdf";
 import type { PrimeContract } from "@/hooks/usePrimeContract";
 
@@ -29,46 +30,7 @@ export function PayAppPDFExport({ payAppId, contract }: PayAppPDFExportProps) {
   const pa = detail.data;
   const s: any = coSettings ?? {};
 
-  const spec: PayApplicationSpec | null = pa
-    ? {
-        wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
-        footer: s.footer ?? null,
-        contractor: {
-          name: contract.contractor_name || s.company_name || "APAS Consulting LLC",
-          address: contract.contractor_address || s.company_address || null,
-          contact: contract.contractor_contact || s.company_contact || null,
-          email: contract.contractor_email || s.company_email || null,
-          title: s.company_title || "Authorized Representative",
-        },
-        owner: {
-          name: contract.owner_name || "Owner",
-          address: contract.owner_address || null,
-          contact: contract.owner_contact || null,
-          email: contract.owner_email || null,
-        },
-        project: { name: contract.title, address: contract.project_address || null },
-        payAppNo: pa.pay_app_no,
-        periodEnd: pa.period_end,
-        applicationDate: (pa as any).approved_date || new Date().toISOString().slice(0, 10),
-        contractNo: contract.contract_no,
-        contractTitle: contract.title,
-        retainagePct: Number(contract.retainage_pct ?? 0),
-        g702,
-        lines: lines.map((l) => ({
-          item_no: l.item_no,
-          description: l.description,
-          unit: l.unit,
-          kind: l.kind,
-          scheduled_qty: l.scheduled_qty,
-          scheduled_value: l.scheduled_value,
-          prev_value: l.prior_value_to_date,
-          this_value: l.value_this_period,
-          value_to_date: l.value_to_date,
-          pct: l.pct_complete,
-          retainage: l.retainage,
-        })),
-      }
-    : null;
+  const spec = pa ? buildPayAppSpec(pa, contract, s, g702, lines) : null;
 
   async function handleExport() {
     if (!docRef.current || !spec) { toast.error("Pay app not loaded"); return; }

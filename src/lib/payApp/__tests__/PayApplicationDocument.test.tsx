@@ -53,4 +53,17 @@ describe("PayApplicationDocument", () => {
     const { queryByText } = render(<PayApplicationDocument spec={baseOnly} />);
     expect(queryByText("Change orders")).toBeNull();
   });
+
+  it("paginates into discrete pdf-page blocks (cover + continuation)", () => {
+    const { container } = render(<PayApplicationDocument spec={spec} />);
+    expect(container.querySelectorAll("[data-pdf-page]").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows the DRAFT banner and stamps the signature when provided", () => {
+    const { getByText, container } = render(
+      <PayApplicationDocument spec={{ ...spec, draft: true, signatureUrl: "data:image/png;base64,AAAA", signedName: "Hardeep Anand", signedDate: "2026-06-22" }} />,
+    );
+    expect(getByText(/Draft — for owner review/i)).toBeTruthy();
+    expect(container.querySelector('img[alt="signature"]')).toBeTruthy();
+  });
 });
