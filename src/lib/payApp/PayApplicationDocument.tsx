@@ -30,7 +30,11 @@ export interface PayAppDocLine {
   unit: string | null;
   kind: "base" | "change_order";
   scheduled_qty: number;
+  unit_price: number;
   scheduled_value: number;
+  prev_qty: number;       // quantity completed through the previous application
+  this_qty: number;       // quantity completed this application
+  qty_to_date: number;    // total quantity to date (prev + this)
   prev_value: number;
   this_value: number;
   value_to_date: number;
@@ -70,12 +74,19 @@ const PAGE: React.CSSProperties = {
   width: 760, minHeight: 983, background: "#fff", color: INK,
   fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box", position: "relative",
 };
+// Wide landscape sheet for the G703 quantity continuation (Procore-style) so all
+// the quantity + dollar columns fit. Rendered as a landscape PDF page (payAppPdf).
+const PAGE_LANDSCAPE: React.CSSProperties = {
+  width: 1040, minHeight: 740, background: "#fff", color: INK,
+  fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box", position: "relative",
+};
 const cell: React.CSSProperties = { padding: "5px 7px", fontSize: 11, borderBottom: `1px solid ${RULE}` };
 const numCell: React.CSSProperties = { ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 const th: React.CSSProperties = { padding: "6px 7px", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, textAlign: "right", borderBottom: `2px solid ${INK}` };
 
-// Max Schedule-of-Values rows (incl. section headers) per continuation page.
-const ROWS_PER_PAGE = 26;
+// Max Schedule-of-Values rows (incl. section headers) per continuation page
+// (landscape is shorter, so fewer rows keep the dense quantity grid legible).
+const ROWS_PER_PAGE = 20;
 
 export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayApplicationSpec }>(
   ({ spec }, ref) => {
@@ -227,33 +238,38 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
           <Footer n={1} of={totalPages} />
         </div>
 
-        {/* ── Page 2…N · G703 continuation ──────────────────────── */}
+        {/* ── Page 2…N · G703 quantity continuation (landscape, Procore-style) ── */}
         {sovPages.map((pageItems, pi) => (
-          <div data-pdf-page style={PAGE} key={pi}>
+          <div data-pdf-page data-orientation="landscape" style={PAGE_LANDSCAPE} key={pi}>
             <Header sheet="G703" />
-            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 14, marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 14, marginBottom: 2 }}>
               Continuation Sheet — Schedule of Values{sovPages.length > 1 ? ` (${pi + 1}/${sovPages.length})` : ""}
+            </div>
+            <div style={{ fontSize: 9.5, color: MUTE, marginBottom: 6 }}>
+              Quantity completed: through the previous application, this application, and total to date.
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={{ ...th, textAlign: "left", width: 28 }}>#</th>
+                  <th style={{ ...th, textAlign: "left", width: 24 }}>#</th>
                   <th style={{ ...th, textAlign: "left" }}>Description</th>
-                  <th style={{ ...th, width: 38 }}>Unit</th>
-                  <th style={{ ...th, width: 54 }}>Sched Qty</th>
-                  <th style={th}>Scheduled</th>
-                  <th style={th}>Previous</th>
-                  <th style={th}>This Period</th>
-                  <th style={th}>To Date</th>
-                  <th style={{ ...th, width: 38 }}>%</th>
-                  <th style={th}>Retainage</th>
+                  <th style={{ ...th, width: 34 }}>Unit</th>
+                  <th style={{ ...th, width: 56 }}>Sched Qty</th>
+                  <th style={{ ...th, width: 62 }}>Unit Price</th>
+                  <th style={{ ...th, width: 78 }}>Sched Value</th>
+                  <th style={{ ...th, width: 56, background: "#faf8f4" }}>Prev Qty</th>
+                  <th style={{ ...th, width: 56, background: "#faf8f4" }}>This Qty</th>
+                  <th style={{ ...th, width: 60, background: "#faf8f4" }}>Total Qty</th>
+                  <th style={{ ...th, width: 34 }}>%</th>
+                  <th style={{ ...th, width: 80 }}>Value to Date</th>
+                  <th style={{ ...th, width: 66 }}>Retainage</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.map((it, idx) =>
                   it.kind === "section" ? (
                     <tr key={`s${idx}`}>
-                      <td colSpan={10} style={{ padding: "6px 7px", fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, background: "#faf8f4" }}>{it.title}</td>
+                      <td colSpan={12} style={{ padding: "6px 7px", fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, background: "#faf8f4" }}>{it.title}</td>
                     </tr>
                   ) : (
                     <tr key={`l${it.line.item_no}`}>
@@ -261,11 +277,13 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                       <td style={cell}>{it.line.description}</td>
                       <td style={{ ...cell, textAlign: "center", color: MUTE }}>{it.line.unit ?? "—"}</td>
                       <td style={numCell}>{qty(it.line.scheduled_qty)}</td>
+                      <td style={numCell}>{money(it.line.unit_price)}</td>
                       <td style={numCell}>{money(it.line.scheduled_value)}</td>
-                      <td style={numCell}>{money(it.line.prev_value)}</td>
-                      <td style={numCell}>{money(it.line.this_value)}</td>
-                      <td style={numCell}>{money(it.line.value_to_date)}</td>
+                      <td style={{ ...numCell, background: "#faf8f4" }}>{qty(it.line.prev_qty)}</td>
+                      <td style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.this_qty)}</td>
+                      <td style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.qty_to_date)}</td>
                       <td style={numCell}>{Math.round(it.line.pct)}%</td>
+                      <td style={numCell}>{money(it.line.value_to_date)}</td>
                       <td style={numCell}>{money(it.line.retainage)}</td>
                     </tr>
                   ),
@@ -275,12 +293,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               {pi === sovPages.length - 1 && (
                 <tfoot>
                   <tr style={{ borderTop: `2px solid ${INK}`, fontWeight: 700 }}>
-                    <td style={{ ...cell, borderBottom: "none" }} colSpan={4}>Grand total</td>
+                    <td style={{ ...cell, borderBottom: "none" }} colSpan={5}>Grand total</td>
                     <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.prev)}</td>
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.thisP)}</td>
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
+                    <td style={{ ...numCell, borderBottom: "none" }} colSpan={3} />
                     <td style={{ ...numCell, borderBottom: "none" }} />
+                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
                     <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
                   </tr>
                 </tfoot>

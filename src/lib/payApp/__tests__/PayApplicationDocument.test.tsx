@@ -20,8 +20,8 @@ const spec: PayApplicationSpec = {
     less_previous_certificates: 400000, current_payment_due: 140000, balance_to_finish: 154307.23,
   },
   lines: [
-    { item_no: "1", description: "Sewer line install", unit: "LF", kind: "base", scheduled_qty: 1000, scheduled_value: 523061, prev_value: 400000, this_value: 61372, value_to_date: 461372, pct: 88, retainage: 46137.2 },
-    { item_no: "17", description: "PCO-001 Storm drainage", unit: "LS", kind: "change_order", scheduled_qty: 1, scheduled_value: 24050, prev_value: 0, this_value: 24050, value_to_date: 24050, pct: 100, retainage: 2405 },
+    { item_no: "1", description: "Sewer line install", unit: "LF", kind: "base", scheduled_qty: 1000, unit_price: 523.061, scheduled_value: 523061, prev_qty: 765, this_qty: 117, qty_to_date: 882, prev_value: 400000, this_value: 61372, value_to_date: 461372, pct: 88, retainage: 46137.2 },
+    { item_no: "17", description: "PCO-001 Storm drainage", unit: "LS", kind: "change_order", scheduled_qty: 1, unit_price: 24050, scheduled_value: 24050, prev_qty: 0, this_qty: 1, qty_to_date: 1, prev_value: 0, this_value: 24050, value_to_date: 24050, pct: 100, retainage: 2405 },
   ],
 };
 

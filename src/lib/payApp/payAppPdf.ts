@@ -14,23 +14,23 @@ import html2canvas from "html2canvas";
 export async function payAppPdfBlob(node: HTMLElement): Promise<Blob> {
   const marked = Array.from(node.querySelectorAll<HTMLElement>("[data-pdf-page]"));
   const pages = marked.length ? marked : [node];
-
-  const pdf = new jsPDF({ unit: "pt", format: "letter" });
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
   const margin = 28;
-  const maxW = pageW - margin * 2;
-  const maxH = pageH - margin * 2;
+
+  // First page sets the document orientation; subsequent pages can switch (the
+  // G703 quantity continuation is landscape so all the columns fit).
+  const orient = (el: Element) => (el.getAttribute("data-orientation") === "landscape" ? "landscape" : "portrait");
+  const pdf = new jsPDF({ unit: "pt", format: "letter", orientation: orient(pages[0]) });
 
   for (let i = 0; i < pages.length; i++) {
+    if (i > 0) pdf.addPage("letter", orient(pages[i]));
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
     const canvas = await html2canvas(pages[i], { scale: 3, backgroundColor: "#ffffff", useCORS: true });
     // Fit within the printable area, preserving aspect ratio — never overflow a page.
-    const ratio = Math.min(maxW / canvas.width, maxH / canvas.height);
+    const ratio = Math.min((pageW - margin * 2) / canvas.width, (pageH - margin * 2) / canvas.height);
     const w = canvas.width * ratio;
     const h = canvas.height * ratio;
-    const x = (pageW - w) / 2; // center horizontally
-    if (i > 0) pdf.addPage();
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, margin, w, h);
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", (pageW - w) / 2, margin, w, h);
   }
   return pdf.output("blob");
 }
