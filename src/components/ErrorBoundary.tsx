@@ -1,7 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { isChunkLoadError, reloadOnceForChunkError } from '@/lib/chunkReload';
 
 interface Props {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  recovering: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -19,16 +21,25 @@ export class ErrorBoundary extends Component<Props, State> {
     hasError: false,
     error: null,
     errorInfo: null,
+    recovering: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+    // A stale chunk after a deploy isn't a real crash — recover by reloading.
+    return { hasError: true, error, errorInfo: null, recovering: isChunkLoadError(error) };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isChunkLoadError(error)) {
+      // Pull the fresh build instead of showing the crash screen. If the loop
+      // guard suppresses the reload, fall back to the normal error UI.
+      const reloading = reloadOnceForChunkError();
+      this.setState({ recovering: reloading });
+      return;
+    }
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({ errorInfo });
-    
+
     // Here you could send to an error tracking service like Sentry
     // if (typeof window !== 'undefined' && window.Sentry) {
     //   window.Sentry.captureException(error);
@@ -44,11 +55,22 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   private handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null, errorInfo: null, recovering: false });
   };
 
   public render() {
     if (this.state.hasError) {
+      // Stale chunk after a deploy — a reload is in flight; show a calm updater.
+      if (this.state.recovering) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--apas-sapphire)] mb-4" />
+            <p className="text-lg font-medium">Updating to the latest version…</p>
+            <p className="text-sm text-muted-foreground mt-1">A new build is available — reloading.</p>
+          </div>
+        );
+      }
+
       if (this.props.fallback) {
         return this.props.fallback;
       }

@@ -1,6 +1,23 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { isChunkLoadError, reloadOnceForChunkError } from "./lib/chunkReload";
+
+// Recover from stale chunks after a deploy before they ever reach the UI:
+// Vite fires `vite:preloadError` when a lazy chunk fails to preload, and an
+// unhandled dynamic-import rejection surfaces as an unhandledrejection.
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (e) => {
+    e.preventDefault();
+    reloadOnceForChunkError();
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    if (isChunkLoadError(e.reason)) {
+      e.preventDefault();
+      reloadOnceForChunkError();
+    }
+  });
+}
 
 // Bump when another forced SW eviction is needed (e.g. a future cache split).
 // 2026-06-21: one-time flush when moving autoUpdate → prompt-banner so every
