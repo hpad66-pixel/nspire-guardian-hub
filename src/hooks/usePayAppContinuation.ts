@@ -29,6 +29,7 @@ interface SovLineRow {
   id: string; item_no: string; kind: "base" | "change_order";
   change_order_id: string | null; description: string; unit: string | null;
   scheduled_qty: number; unit_price: number; scheduled_value: number; sort_order: number;
+  retainage_pct: number | null; // per-line override; null = use contract default
 }
 interface ProgressRow {
   sov_line_item_id: string; qty_to_date: number; value_to_date: number;
@@ -197,6 +198,8 @@ export interface ContinuationLine {
   prior_value_to_date: number; prior_qty_to_date: number;
   qty_this_period: number; value_this_period: number;
   value_to_date: number; qty_to_date: number; pct_complete: number; retainage: number;
+  retainage_pct: number | null; // per-line override (null = contract default)
+  retainage_exempt: boolean;    // true when the line holds no retainage (override = 0)
 }
 
 export function usePayAppContinuation(payAppId: string | null) {
@@ -301,6 +304,8 @@ export function usePayAppContinuation(payAppId: string | null) {
         qty_to_date: cur ? Number(cur.qty_to_date) : pr ? Number(pr.qty_to_date) : 0,
         pct_complete: cur ? Number(cur.pct_complete) : 0,
         retainage: cur ? Number(cur.retainage) : 0,
+        retainage_pct: li.retainage_pct == null ? null : Number(li.retainage_pct),
+        retainage_exempt: li.retainage_pct != null && Number(li.retainage_pct) === 0,
       };
     });
   }, [sov.data, thisProgress.data, priorByLineId]);
@@ -326,13 +331,17 @@ export function usePayAppContinuation(payAppId: string | null) {
       if (!payAppId) throw new Error("No pay app");
       const tenant_id = await requireTenantId();
       const pr = priorByLineId[input.sov_line_item_id];
+      // Per-line retainage: a line's override (e.g. 0 for a PM fee) wins over the
+      // contract default.
+      const sovLine = (sov.data ?? []).find((l) => l.id === input.sov_line_item_id);
+      const effPct = sovLine?.retainage_pct == null ? retainagePct : Number(sovLine.retainage_pct);
       const td = computeLineToDate({
         scheduledValue: input.scheduled_value,
         priorValueToDate: pr ? Number(pr.value_to_date) : 0,
         priorQtyToDate: pr ? Number(pr.qty_to_date) : 0,
         valueThisPeriod: Number(input.value_this_period) || 0,
         qtyThisPeriod: Number(input.qty_this_period) || 0,
-        retainagePct,
+        retainagePct: effPct,
       });
       const { error } = await supabase.from("pay_app_line_progress" as any).upsert(
         {
@@ -346,6 +355,33 @@ export function usePayAppContinuation(payAppId: string | null) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app-continuation", "progress", payAppId] }),
+  });
+
+  // Toggle retainage on a line (e.g. exempt a PM fee). Sets the SOV line's
+  // retainage_pct override (0 = no retainage, null = contract default) and
+  // recomputes this pay app's retainage on that line. Prior pay apps' certified
+  // retainage is historical and untouched.
+  const setLineRetainage = useMutation({
+    mutationFn: async ({ sovLineItemId, exempt }: { sovLineItemId: string; exempt: boolean }) => {
+      const override = exempt ? 0 : null; // null → use contract default
+      const { error: e1 } = await supabase
+        .from("sov_line_items" as any).update({ retainage_pct: override } as any).eq("id", sovLineItemId);
+      if (e1) throw e1;
+      const line = lines.find((l) => l.sov_line_item_id === sovLineItemId);
+      if (payAppId && line) {
+        const effPct = exempt ? 0 : retainagePct;
+        const retainage = round2(line.value_to_date * (effPct / 100));
+        const { error: e2 } = await supabase
+          .from("pay_app_line_progress" as any)
+          .update({ retainage } as any)
+          .eq("pay_app_id", payAppId).eq("sov_line_item_id", sovLineItemId);
+        if (e2) throw e2;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation", "sov", primeContractId] });
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation", "progress", payAppId] });
+    },
   });
 
   // Persist the computed G702 cover + submitted amount and move to "submitted".
@@ -371,7 +407,7 @@ export function usePayAppContinuation(payAppId: string | null) {
   return {
     detail, contract, lines, g702, retainagePct,
     isLoading: detail.isLoading || sov.isLoading || thisProgress.isLoading,
-    upsertLine, submit,
+    upsertLine, submit, setLineRetainage,
     refetch: () => {
       thisProgress.refetch(); sov.refetch(); detail.refetch();
     },

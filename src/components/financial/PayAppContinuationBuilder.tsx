@@ -39,10 +39,18 @@ const G702_ROWS: Array<[string, keyof G702Summary]> = [
 export function PayAppContinuationBuilder({
   payAppId, projectId, primeContractId,
 }: { payAppId: string; projectId: string; primeContractId: string }) {
-  const { detail, lines, g702, upsertLine, refetch } = usePayAppContinuation(payAppId);
+  const { detail, lines, g702, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
   const loadCos = useLoadApprovedCos(primeContractId, projectId);
   const status = detail.data?.status as string | undefined;
   const locked = status === "approved" || status === "paid";
+
+  async function toggleRetainage(line: ContinuationLine) {
+    try {
+      await setLineRetainage.mutateAsync({ sovLineItemId: line.sov_line_item_id, exempt: !line.retainage_exempt });
+      toast.success(line.retainage_exempt ? "Retainage restored on this line." : "Retainage removed from this line.");
+      refetch();
+    } catch (e: any) { toast.error(e.message); }
+  }
 
   async function loadApprovedCos() {
     try {
@@ -129,10 +137,11 @@ export function PayAppContinuationBuilder({
               <th className="p-2 text-right">Qty to date</th>
               <th className="p-2 text-right w-14">%</th>
               <th className="p-2 text-right">Value to date</th>
+              <th className="p-2 text-center w-20" title="Hold retainage on this line?">Retainage</th>
             </tr>
           </thead>
-          <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} />
-          {cos.length > 0 && <LineSection title="Change orders" rows={cos} locked={locked} onCommit={commitQty} />}
+          <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />
+          {cos.length > 0 && <LineSection title="Change orders" rows={cos} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />}
         </table>
       </div>
 
@@ -155,18 +164,19 @@ export function PayAppContinuationBuilder({
 }
 
 function LineSection({
-  title, rows, locked, onCommit,
+  title, rows, locked, onCommit, onToggleRetainage,
 }: {
   title: string; rows: ContinuationLine[]; locked: boolean;
   onCommit: (line: ContinuationLine, qtyThisPeriod: number) => void;
+  onToggleRetainage: (line: ContinuationLine) => void;
 }) {
   return (
     <tbody>
       <tr className="bg-muted/20">
-        <td colSpan={9} className="px-2 py-1 text-xs font-semibold uppercase text-muted-foreground">{title}</td>
+        <td colSpan={10} className="px-2 py-1 text-xs font-semibold uppercase text-muted-foreground">{title}</td>
       </tr>
       {rows.length === 0 && (
-        <tr><td colSpan={9} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
+        <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
       )}
       {rows.map((l) => {
         const over = l.value_to_date > l.scheduled_value + 0.01;
@@ -201,6 +211,19 @@ function LineSection({
           <td className="p-2 text-right font-mono">{qty(l.qty_to_date)}</td>
           <td className={`p-2 text-right font-mono ${over ? "text-[var(--apas-rose)] font-bold" : ""}`}>{l.pct_complete.toFixed(0)}%</td>
           <td className="p-2 text-right font-mono">{money(l.value_to_date)}</td>
+          <td className="p-2 text-center">
+            {l.retainage_exempt ? (
+              <button type="button" disabled={locked} onClick={() => onToggleRetainage(l)}
+                className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-60" title="No retainage held — click to restore">
+                Exempt
+              </button>
+            ) : (
+              <button type="button" disabled={locked} onClick={() => onToggleRetainage(l)}
+                className="font-mono text-xs hover:text-[var(--apas-rose)] disabled:opacity-60" title="Retainage held — click to exempt this line">
+                {money(l.retainage)}
+              </button>
+            )}
+          </td>
         </tr>
         );
       })}

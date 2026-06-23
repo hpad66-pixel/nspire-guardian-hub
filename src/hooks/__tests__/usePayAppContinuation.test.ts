@@ -151,4 +151,17 @@ describe("usePayAppContinuation", () => {
     });
     expect(result.current.upsertLine.isError).toBe(false);
   });
+
+  it("setLineRetainage writes a 0% override when exempting a line", async () => {
+    let sovBuilder: any;
+    __mock.from.mockImplementation((t: string) => {
+      if (t === "prime_contract_pay_apps") return makeBuilder({ data: { id: "pa5", prime_contract_id: "pc1", pay_app_no: 5, status: "draft" }, error: null });
+      if (t === "prime_contracts") return makeBuilder({ data: { original_value: 1000, retainage_pct: 10 }, error: null });
+      if (t === "sov_line_items") { sovBuilder = makeBuilder({ data: [], error: null }); return sovBuilder; }
+      return makeBuilder({ data: [], error: null });
+    });
+    const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
+    await result.current.setLineRetainage.mutateAsync({ sovLineItemId: "l1", exempt: true });
+    expect((sovBuilder.update as any).mock.calls.some((c: any[]) => c[0].retainage_pct === 0)).toBe(true);
+  });
 });
