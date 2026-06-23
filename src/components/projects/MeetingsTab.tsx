@@ -1026,7 +1026,8 @@ export function MeetingEditorSheet({
     setRawNotes(meeting?.raw_notes || '');
     setPolishedHtml(meeting?.polished_notes_html || meeting?.polished_notes || '');
     setPreviousHtml(null);
-    setActiveTab('notes');
+    // Open straight to the finalized minutes when they already exist.
+    setActiveTab((meeting?.polished_notes_html || meeting?.polished_notes) ? 'minutes' : 'notes');
     setIsEditing(false);
     setIsFullScreen(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps

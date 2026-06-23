@@ -23,6 +23,7 @@ import {
   Sparkles, Loader2, Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EditorToolsBar } from '@/components/ui/editor-tools';
 
 // ─── Basic editor (backward-compatible) ─────────────────────────────────────
 
@@ -438,6 +439,9 @@ export function ProRichTextEditor({
           'prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono',
           'prose-hr:border-border',
         ].join(' '),
+        // Native browser spell-check: red underlines, right-click suggestions, and
+        // "Add to Dictionary" to teach the browser custom terms for the future.
+        spellcheck: 'true',
       },
     },
     onUpdate: ({ editor }) => { onChange(editor.getHTML()); },
@@ -480,12 +484,15 @@ export function ProRichTextEditor({
     <TooltipProvider>
       <div className={cn('rounded-lg border border-border bg-background flex flex-col overflow-hidden', className)}>
         {editable && (
-          <ProMenuBar
-            editor={editor}
-            onAiComplete={onAiComplete ? handleAiComplete : undefined}
-            isAiLoading={isAiLoading || isAiProcessing}
-            onImageUpload={handleImageUpload}
-          />
+          <>
+            <ProMenuBar
+              editor={editor}
+              onAiComplete={onAiComplete ? handleAiComplete : undefined}
+              isAiLoading={isAiLoading || isAiProcessing}
+              onImageUpload={handleImageUpload}
+            />
+            <EditorToolsBar editor={editor} />
+          </>
         )}
         <div style={{ minHeight }} className="overflow-y-auto flex-1">
           <EditorContent editor={editor} className="h-full" />
