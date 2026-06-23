@@ -134,7 +134,9 @@ export function CreatePortalSheet({ open, onOpenChange }: CreatePortalSheetProps
   }
 
   const step1Valid = name.trim().length > 0 && slug.length >= 3 && slugAvailable === true;
-  const step3Valid = selectedModules.length > 0;
+  // Modules are OPTIONAL — you can create a portal with none selected and add
+  // them later. Don't block "Create" on having picked at least one.
+  const step3Valid = true;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
@@ -346,7 +348,7 @@ export function CreatePortalSheet({ open, onOpenChange }: CreatePortalSheetProps
           {/* ── STEP 3 ── */}
           {step === 3 && (
             <>
-              <p className="text-sm text-muted-foreground">Select the modules to share. You can exclude specific records after the portal is created.</p>
+              <p className="text-sm text-muted-foreground">Select the modules to share — this is <strong>optional</strong>. You can create the portal with none and add modules (or exclude specific records) anytime after it&apos;s created.</p>
 
               <div className="space-y-3">
                 {MODULES.map(m => {
