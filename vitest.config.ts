@@ -21,6 +21,7 @@ export default defineConfig({
         "src/lib/financial/ledger.ts",
         "src/lib/financial/payAppContinuation.ts",
         "src/lib/reports/financialReports.ts",
+        "src/lib/financial/paymentAllocation.ts",
         "src/hooks/usePayAppContinuation.ts",
         "src/hooks/useLienWaivers.ts",
         "src/hooks/useLienReleases.ts",
@@ -62,6 +63,7 @@ export default defineConfig({
         "src/lib/financial/ledger.ts": { statements: 95, branches: 90, functions: 95, lines: 95 },
         "src/lib/financial/payAppContinuation.ts": { statements: 95, branches: 90, functions: 95, lines: 95 },
         "src/lib/reports/financialReports.ts": { statements: 85, branches: 70, functions: 90, lines: 85 },
+        "src/lib/financial/paymentAllocation.ts": { statements: 90, branches: 85, functions: 90, lines: 90 },
         // Financial money-path hooks.
         "src/hooks/useLienWaivers.ts": { lines: 75, functions: 70 },
         "src/hooks/useLienReleases.ts": { lines: 95, functions: 90 },

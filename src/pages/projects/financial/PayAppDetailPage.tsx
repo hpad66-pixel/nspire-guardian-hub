@@ -5,6 +5,8 @@ import { usePayApp, useDeletePayApp } from "@/hooks/usePayApp";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
+import { AllocatePaymentDialog } from "@/components/financial/AllocatePaymentDialog";
+import { useAllocationTargets, usePaymentAllocations, type AllocationTargets } from "@/hooks/usePaymentAllocations";
 import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
@@ -30,6 +32,8 @@ export default function PayAppDetailPage() {
   const [approveAmount, setApproveAmount] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [allocPayment, setAllocPayment] = useState<any>(null);
+  const { data: allocTargets } = useAllocationTargets(contract?.id ?? null);
 
   const pa = detail.data;
 
@@ -243,13 +247,7 @@ export default function PayAppDetailPage() {
           ) : (
             <div className="divide-y text-sm">
               {payments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between py-2">
-                  <div>
-                    <span className="font-mono mr-2">{p.received_date}</span>
-                    <span className="text-muted-foreground">{p.method ?? ""} {p.reference ?? ""}</span>
-                  </div>
-                  <span className="font-mono">{money(Number(p.amount))}</span>
-                </div>
+                <PaymentRow key={p.id} payment={p} targets={allocTargets} onAllocate={setAllocPayment} />
               ))}
             </div>
           )}
@@ -260,6 +258,53 @@ export default function PayAppDetailPage() {
       <LienReleasePanel projectId={projectId!} direction="outbound" payAppId={pa.id} />
 
       <RecordPrimePaymentDialog open={payOpen} onOpenChange={setPayOpen} payAppId={pa.id} />
+      <AllocatePaymentDialog
+        open={Boolean(allocPayment)}
+        onOpenChange={(v) => { if (!v) setAllocPayment(null); }}
+        payment={allocPayment}
+        primeContractId={contract.id}
+      />
+    </div>
+  );
+}
+
+function allocLabel(a: { kind: string; change_order_id: string | null; sov_line_item_id: string | null }, targets?: AllocationTargets): string {
+  if (a.kind === "base") return "Base contract";
+  if (a.kind === "change_order") {
+    const c = targets?.changeOrders.find((x) => x.id === a.change_order_id);
+    return c ? `${c.co_type}-${String(c.co_no).padStart(3, "0")}` : "Change order";
+  }
+  const l = targets?.lineItems.find((x) => x.id === a.sov_line_item_id);
+  return l ? `Line #${l.item_no}` : "Line item";
+}
+
+function PaymentRow({ payment, targets, onAllocate }: {
+  payment: any; targets?: AllocationTargets; onAllocate: (p: any) => void;
+}) {
+  const { data: allocs = [] } = usePaymentAllocations(payment.id);
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="font-mono mr-2">{payment.received_date}</span>
+          <span className="text-muted-foreground">{payment.method ?? ""} {payment.reference ?? ""}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono">{money(Number(payment.amount))}</span>
+          <Button size="sm" variant="outline" onClick={() => onAllocate(payment)}>
+            {allocs.length ? "Edit split" : "Allocate"}
+          </Button>
+        </div>
+      </div>
+      {allocs.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {allocs.map((a) => (
+            <Badge key={a.id} variant="outline" className="text-[10px] font-normal">
+              {allocLabel(a, targets)} · {money(Number(a.amount))}
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
