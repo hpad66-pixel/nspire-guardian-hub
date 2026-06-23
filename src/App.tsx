@@ -114,6 +114,7 @@ const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPag
 const OwnerDocumentsPage = lazy(() => import('./pages/portal/owner/OwnerDocumentsPage'));
 const OwnerUpdatesPage = lazy(() => import('./pages/portal/owner/OwnerUpdatesPage'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
+const PortalInviteAcceptPage = lazy(() => import('./pages/portal/PortalInviteAcceptPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
 const WebhooksPage = lazy(() => import('./pages/settings/api/WebhooksPage'));
 const WebhookDeliveriesPage = lazy(() => import('./pages/settings/api/WebhookDeliveriesPage'));
@@ -233,6 +234,7 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
+                    <Route path="/portal-invite/:token" element={<PortalInviteAcceptPage />} />
                      <Route path="/portal/:slug" element={<PortalLoginPage />} />
                      <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
                      <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />

@@ -13,13 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Trash2, Send, Eye, Save } from "lucide-react";
+import { Plus, X, Trash2, Send, Eye, Save, UserPlus, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
+import { InviteClientDialog } from "@/components/portal/InviteClientDialog";
+import { useFinancialReportData } from "@/hooks/useFinancialReportData";
+import { financialSummary } from "@/lib/reports/financialReports";
 import {
   useClientUpdates, type ClientUpdate, type RiskItem, type DecisionItem, type ActionItem,
 } from "@/hooks/useClientUpdates";
+
+const m0 = (n: number) => `$${Math.round(Number(n) || 0).toLocaleString()}`;
 
 type Draft = Pick<ClientUpdate,
   "title" | "period_label" | "health" | "summary" | "accomplishments" | "risks" | "decisions" | "action_items" | "next_steps" | "statement_pdf_path">;
@@ -55,15 +60,25 @@ function StringList({ label, items, onChange, placeholder }: { label: string; it
 export default function ClientUpdatesPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: updates = [], create, save, setStatus, remove } = useClientUpdates(projectId ?? null);
+  const { data: finData } = useFinancialReportData(projectId ?? null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [preview, setPreview] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const selected = useMemo(() => updates.find((u) => u.id === selectedId) ?? null, [updates, selectedId]);
   useEffect(() => { if (selected) setDraft(fromUpdate(selected)); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!selectedId && updates.length) setSelectedId(updates[0].id); }, [updates, selectedId]);
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  function pullFinancials() {
+    if (!finData) { toast.error("No financial data for this project yet."); return; }
+    const s = financialSummary(finData);
+    const snap = `Financial snapshot — Revised contract ${m0(s.revisedValue)}; billed to date ${m0(s.billedToDate)} (${s.pctComplete.toFixed(0)}% complete); paid to date ${m0(s.paidToDate)}; retainage held ${m0(s.retainageHeld)}; balance to finish ${m0(s.balanceToFinish)}.`;
+    set({ summary: draft.summary?.trim() ? `${draft.summary.trim()}\n\n${snap}` : snap });
+    toast.success("Financial snapshot added to the summary.");
+  }
 
   async function newUpdate() {
     try {
@@ -109,7 +124,10 @@ export default function ClientUpdatesPage() {
             <h1 className="text-3xl font-bold">Client Updates</h1>
             <p className="text-muted-foreground">Compose the briefings your client sees in their portal.</p>
           </div>
-          <Button onClick={newUpdate} disabled={create.isPending}><Plus className="h-4 w-4 mr-1" />New update</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4 mr-1" />Invite client</Button>
+            <Button onClick={newUpdate} disabled={create.isPending}><Plus className="h-4 w-4 mr-1" />New update</Button>
+          </div>
         </div>
       </div>
 
@@ -165,7 +183,13 @@ export default function ClientUpdatesPage() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-1.5"><Label>Summary</Label><Textarea rows={3} value={draft.summary ?? ""} onChange={(e) => set({ summary: e.target.value })} placeholder="A short narrative for the client…" /></div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label>Summary</Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={pullFinancials}><TrendingUp className="h-3.5 w-3.5 mr-1" />Pull from financials</Button>
+                </div>
+                <Textarea rows={4} value={draft.summary ?? ""} onChange={(e) => set({ summary: e.target.value })} placeholder="A short narrative for the client…" />
+              </div>
 
               <StringList label="Accomplishments" items={draft.accomplishments} onChange={(v) => set({ accomplishments: v })} placeholder="What got done" />
 
@@ -232,6 +256,8 @@ export default function ClientUpdatesPage() {
           </Card>
         )}
       </div>
+
+      <InviteClientDialog open={inviteOpen} onOpenChange={setInviteOpen} />
     </div>
   );
 }

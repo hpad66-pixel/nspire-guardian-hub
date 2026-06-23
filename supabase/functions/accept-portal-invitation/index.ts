@@ -70,8 +70,8 @@ serve(async (req) => {
     .eq("token", token);
 
   const redirect = (invite as any).portal_kind === "owner"
-    ? `${APP_ORIGIN}/portal/owner`
-    : `${APP_ORIGIN}/portal/sub`;
+    ? `${APP_ORIGIN}/owner-portal`
+    : `${APP_ORIGIN}/sub-portal`;
 
   const { data: link } = await admin.auth.admin.generateLink({
     type: "magiclink",
