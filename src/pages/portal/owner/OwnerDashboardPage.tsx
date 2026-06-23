@@ -1,11 +1,29 @@
 import { useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
+import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { financialSummary } from "@/lib/reports/financialReports";
+import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { FileText, Calendar, BarChart3, FolderOpen } from "lucide-react";
+import { FileText, Calendar, BarChart3, FolderOpen, Megaphone } from "lucide-react";
+
+/** Most recent published client briefing, shown front and center. */
+function LatestUpdateCard({ projectId }: { projectId: string | null }) {
+  const { data: updates = [] } = useClientUpdates(projectId, { publishedOnly: true });
+  const latest = updates[0];
+  if (!latest) return null;
+  return (
+    <Card className="mb-6 border-[var(--apas-sapphire)]/30">
+      <CardHeader className="pb-2 flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2"><Megaphone className="h-4 w-4 text-[var(--apas-sapphire)]" /> Latest update</CardTitle>
+        <Button asChild variant="ghost" size="sm"><Link to="/owner-portal/updates">All updates →</Link></Button>
+      </CardHeader>
+      <CardContent><ClientUpdateView update={latest} /></CardContent>
+    </Card>
+  );
+}
 
 function fmt(n: number | null | undefined) {
   return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -57,6 +75,7 @@ export default function OwnerDashboardPage() {
       <h1 className="text-3xl font-bold mb-1">Owner Portal</h1>
       <p className="text-muted-foreground mb-6">Prime contract, change orders, pay apps.</p>
 
+      <LatestUpdateCard projectId={projectId} />
       <OwnerFinancialHealth projectId={projectId} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
@@ -68,7 +87,10 @@ export default function OwnerDashboardPage() {
           <CardContent className="text-3xl font-bold">{data?.pendingPayApps.length ?? 0}</CardContent></Card>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
+        <Button asChild variant="outline">
+          <Link to="/owner-portal/updates"><Megaphone className="h-4 w-4 mr-1" /> Updates</Link>
+        </Button>
         <Button asChild variant="outline">
           <Link to="/owner-portal/contract"><FileText className="h-4 w-4 mr-1" /> Contracts</Link>
         </Button>

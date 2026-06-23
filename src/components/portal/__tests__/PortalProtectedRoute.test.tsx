@@ -29,6 +29,16 @@ vi.mock('sonner', () => ({
   toast: { error: (...args: any[]) => mockToastError(...args) },
 }));
 
+// Default: the current user is NOT a main-workspace member, so the role/plan
+// decision tree below is exercised unchanged.
+vi.mock('@/integrations/supabase/client', () => {
+  const chain: any = {
+    select: () => chain, eq: () => chain, limit: () => chain,
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  };
+  return { supabase: { from: () => chain } };
+});
+
 import { PortalProtectedRoute } from '../PortalProtectedRoute';
 
 function renderAt(path: string, role: 'subcontractor' | 'owner', feature: 'sub_portal' | 'owner_portal') {

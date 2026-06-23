@@ -9,6 +9,7 @@ const TABS = [
   { label: "Prime Contract",  path: "prime-contract" },
   { label: "Pay Apps",        path: "pay-apps" },
   { label: "Reports",         path: "reports" },
+  { label: "Client Updates",  path: "client-updates" },
   { label: "Quantities",      path: "quantities" },
   { label: "Change Orders",   path: "change-orders" },
   { label: "Commitments",     path: "commitments" },

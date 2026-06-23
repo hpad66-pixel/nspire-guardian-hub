@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { can } from '@/lib/rbac';
 import { canUseFeature, type FeatureKey } from '@/lib/billing';
+import { supabase } from '@/integrations/supabase/client';
 import { UpgradeRequired } from './UpgradeRequired';
 
 export type PortalRole = 'subcontractor' | 'owner';
@@ -82,7 +83,23 @@ export function PortalProtectedRoute({
         (user as any)?.user_metadata?.role === 'super_admin';
 
       try {
-        if (isSuper) {
+        // A workspace's own main member (the GC/admin) can preview & manage the
+        // client/sub portals for their own project — they're not an "owner" role
+        // but they own the data. The plan feature still applies.
+        let isMainAdmin = false;
+        if (!isSuper) {
+          const { data: mainMember } = await supabase
+            .from('portal_memberships' as any)
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('portal_kind', 'main')
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+          isMainAdmin = Boolean(mainMember);
+        }
+
+        if (isSuper || isMainAdmin) {
           const hasFeature = await canUseFeature(FEATURE_MAP[feature]);
           if (cancelled) return;
           setGate({ status: hasFeature ? 'allowed' : 'plan-locked' });
