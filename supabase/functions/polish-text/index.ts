@@ -13,45 +13,31 @@ const contextPrompts: Record<string, string> = {
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
   ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a seamless professional continuation. Write in a formal, authoritative, and precise tone — the quality of a McKinsey or Bain engagement report. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text — one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
-  meeting_minutes: `You are a senior partner at a top-tier management consulting firm (McKinsey, BCG, or Bain caliber) who specializes in project management and governance documentation. Your task is to transform raw meeting notes into formal, publication-quality meeting minutes that would be appropriate for board-level review or client submission.
+  meeting_minutes: `You turn raw construction progress-meeting notes into clean, CONCISE meeting minutes as HTML. Be brief and factual — no filler, no padding, no consultant-speak. Every line carries information.
 
-CRITICAL FORMATTING RULES:
-- Output ONLY valid HTML — no markdown, no asterisks, no hash symbols, no special characters for formatting
-- Use proper HTML tags: <h2>, <h3>, <p>, <ul>, <li>, <ol>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>, <em>, <hr>
-- Every section heading must be an <h2> tag
-- Every sub-heading must be an <h3> tag  
-- All body text must be in <p> tags with full, complete sentences
-- Action items MUST be rendered as a proper HTML <table> with columns: Action Item | Responsible Party | Due Date | Priority
-- Lists must use <ul><li> or <ol><li> tags — never dashes or bullet characters
-- Do not use any markdown syntax whatsoever
+Output ONLY valid HTML (no markdown, no code fences, no asterisks). Allowed tags: <h2>, <h3>, <p>, <ul>, <li>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>. Keep paragraphs to 1–2 sentences.
 
-CONTENT REQUIREMENTS — Write with precision, authority, and depth:
+Produce these sections IN ORDER, and OMIT any section that has no content (do not write "none" or placeholders):
 
-<h2>1. EXECUTIVE SUMMARY</h2>
-Write 2-3 substantive paragraphs summarizing the meeting's purpose, key outcomes, and overall project status. Be expansive — this should read like a consulting partner's summary memo. Describe the meeting context, what was reviewed, what was decided, and the implications for the project.
+<h2>Summary</h2>
+2–4 tight sentences: what was covered and the headline status.
 
-<h2>2. AGENDA ITEMS DISCUSSED</h2>
-For each topic raised in the notes, write a numbered <h3> section (e.g., "2.1 Schedule Review", "2.2 Budget Status") with a full paragraph of narrative — not bullet points. Describe what was discussed, what concerns were raised, what context was provided, and how the discussion evolved. Be thorough, not cryptic.
+<h2>Progress</h2>
+<ul> of what advanced or completed since the last meeting — one crisp bullet each (area/trade + status). Include %, quantities, or dates only if stated.
 
-<h2>3. KEY DECISIONS MADE</h2>
-List each decision as a complete, formal sentence in <ul><li> format. Each item should state the decision clearly and include any conditions or qualifications. Example: "The team resolved to extend the mechanical rough-in deadline by fourteen (14) calendar days, contingent upon receipt of revised shop drawings from the MEP subcontractor by Friday, February 21, 2026."
+<h2>Decisions</h2>
+<ul> of decisions made — one sentence each, with any condition or date.
 
-<h2>4. RISKS AND ISSUES IDENTIFIED</h2>
-Identify any risks, concerns, or issues mentioned in the notes. For each, provide: the risk/issue description, potential impact on schedule or budget, assigned owner (if mentioned), and recommended mitigation. Present as structured <p> paragraphs or a <ul> list.
+<h2>Risks &amp; Issues</h2>
+<ul> of open risks/issues — each gives the issue, its impact (schedule/cost), and owner if stated.
 
-<h2>5. ACTION ITEMS</h2>
-Extract ALL action items and render as an HTML table:
-<table><thead><tr><th>Action Item</th><th>Responsible Party</th><th>Due Date</th><th>Priority</th></tr></thead><tbody>...</tbody></table>
-If no due date is mentioned, write "To be confirmed." If priority is not stated, infer it from context (High / Medium / Low).
+<h2>Action Items</h2>
+An HTML <table> with columns: Action | Owner | Due | Priority. One row per action. Use "TBD" if no due date is given; infer priority (High/Medium/Low) from context.
 
-<h2>6. NEXT STEPS AND UPCOMING MEETINGS</h2>
-Summarize follow-up activities, next scheduled meetings, and any preparation required by participants. Write in full sentences.
+<h2>Next Steps</h2>
+Short <ul> of follow-ups, plus the next meeting date/time if mentioned.
 
-<h2>7. DISTRIBUTION AND APPROVAL</h2>
-<p>These minutes are circulated to all meeting attendees for review and approval. Any corrections or amendments must be submitted within five (5) business days of receipt. Upon expiration of the review period, these minutes shall be deemed approved as presented.</p>
-<p><em>Minutes prepared by: _____________________________ &nbsp;&nbsp;&nbsp; Date: _____________________________</em></p>
-
-Maintain ALL factual information from the raw notes. Do not invent names, dates, or amounts not present in the notes — but do infer reasonable context where the notes are ambiguous. Output ONLY the HTML content described above — no explanations, no preamble, no markdown.`,
+Rules: preserve EVERY real fact (names, dates, amounts, trades) from the notes; never invent them. Do NOT add distribution, approval, or signature blocks. Concise above all — when in doubt, cut it.`,
 };
 
 // Google Gemini API endpoint
@@ -99,11 +85,8 @@ serve(async (req) => {
   }
 
   try {
+    // Gemini key is optional — a Claude (cloud API) model routes below without it.
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not configured');
-      throw new Error('AI service is not configured');
-    }
 
     const { text, context = 'notes', preferredModel } = await req.json();
 
@@ -185,7 +168,15 @@ serve(async (req) => {
       }
     }
 
-    // --- Step 3: Gemini path (default + Claude fallback) ---
+    // --- Step 3: Gemini path (default; also the fallback if a Claude call failed) ---
+    if (!GEMINI_API_KEY) {
+      // No Gemini key — Claude is the only provider. Reaching here means the
+      // request wasn't a Claude model, or the Claude call above didn't return.
+      return new Response(
+        JSON.stringify({ error: 'AI service is not configured.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const defaultModel = 'google/gemini-2.5-flash';
     const modelsToTry = [defaultModel, 'google/gemini-2.5-flash-lite'];
 

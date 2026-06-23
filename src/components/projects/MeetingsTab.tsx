@@ -1035,7 +1035,7 @@ function MeetingEditorSheet({
   const handlePolish = useCallback(async () => {
     if (!rawNotes.trim()) { toast.error('Enter some notes first'); return; }
     setPreviousHtml(polishedHtml);
-    const result = await polish(rawNotes, { context: 'meeting_minutes', model: 'google/gemini-2.5-pro' });
+    const result = await polish(rawNotes, { context: 'meeting_minutes', model: 'claude-opus-4-8' });
     if (result && result !== rawNotes) {
       // AI returns clean HTML directly — no regex processing needed
       setPolishedHtml(result);
