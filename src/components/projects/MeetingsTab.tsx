@@ -989,7 +989,7 @@ function MeetingEditorInner({
 }
 
 // ─── Meeting editor (Sheet / full-screen Dialog wrapper) ─────────────────────
-function MeetingEditorSheet({
+export function MeetingEditorSheet({
   meeting, projectId, open, onClose, onSave, onFinalize,
 }: {
   meeting: ProjectMeeting | null;
@@ -1103,7 +1103,7 @@ function MeetingEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full max-w-4xl overflow-hidden p-0 flex flex-col">
+      <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl overflow-hidden p-0 flex flex-col">
         <MeetingEditorInner {...innerProps} />
       </SheetContent>
     </Sheet>
