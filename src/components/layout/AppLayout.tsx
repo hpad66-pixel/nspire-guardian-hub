@@ -15,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
+import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
 import { cn } from '@/lib/utils';
@@ -252,6 +253,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* PWA Install Banner — rendered outside SidebarProvider so it overlays correctly */}
       <PWAInstallBanner />
+
+      {/* Floating financial assistant — only when enabled in Settings + on a project route */}
+      <AssistantLauncher />
     </>
   );
 }

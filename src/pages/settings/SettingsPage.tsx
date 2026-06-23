@@ -43,6 +43,7 @@ import {
 import { UserManagement } from '@/components/settings/UserManagement';
 import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { AssistantSettings } from '@/components/settings/AssistantSettings';
 import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
@@ -173,6 +174,7 @@ export default function SettingsPage() {
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="assistant">Assistant</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
           {isAdmin && <TabsTrigger value="demo">Demo Mode</TabsTrigger>}
@@ -180,6 +182,10 @@ export default function SettingsPage() {
 
         <TabsContent value="notifications" className="space-y-6">
           <NotificationSettings />
+        </TabsContent>
+
+        <TabsContent value="assistant" className="space-y-6">
+          <AssistantSettings />
         </TabsContent>
 
         <TabsContent value="modules" className="space-y-6">
