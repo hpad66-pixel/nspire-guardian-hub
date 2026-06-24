@@ -22,6 +22,9 @@ vi.mock("@/lib/tenant", () => ({
 import {
   useChangeOrdersByType,
   useChangeOrderLines,
+  useReopenChangeOrder,
+  useUploadSignedHardcopy,
+  useExecuteCoOffline,
 } from "../useProcoreChangeOrders";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
@@ -72,5 +75,88 @@ describe("useProcoreChangeOrders", () => {
     );
     const { result } = renderHookWithClient(() => useChangeOrdersByType("p1", "OCO"));
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  // ── useReopenChangeOrder ──────────────────────────────────────────────
+  it("reopen requires a reason", async () => {
+    const { result } = renderHookWithClient(() => useReopenChangeOrder());
+    await expect(
+      result.current.mutateAsync({ coId: "co1", reason: "   " }),
+    ).rejects.toThrow(/reason is required/i);
+  });
+
+  it("reopen reverts a signed CO to an editable draft and records history", async () => {
+    const builder = makeBuilder({
+      data: { status: "executed", locked: true, executed_date: "2026-06-01", amendment_history: [] },
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useReopenChangeOrder());
+
+    const out = await result.current.mutateAsync({ coId: "co1", reason: "client scope change" });
+    expect(out).toEqual({ coId: "co1" });
+    const patch = (builder.update as any).mock.calls[0][0];
+    expect(patch).toMatchObject({
+      locked: false,
+      status: "draft",
+      executed_date: null,
+      submitted_signature_path: null,
+      accepted_signature_path: null,
+    });
+    expect(Array.isArray(patch.amendment_history)).toBe(true);
+    expect(patch.amendment_history).toHaveLength(1);
+  });
+
+  // ── useUploadSignedHardcopy ───────────────────────────────────────────
+  it("upload-hardcopy requires a path", async () => {
+    const { result } = renderHookWithClient(() => useUploadSignedHardcopy());
+    await expect(
+      result.current.mutateAsync({ coId: "co1", path: "", note: "", replacePrimary: false, locked: false }),
+    ).rejects.toThrow(/upload the signed hard copy/i);
+  });
+
+  it("upload-hardcopy on a locked CO flips the lock off then re-locks (two updates)", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useUploadSignedHardcopy());
+
+    const out = await result.current.mutateAsync({
+      coId: "co1", path: "co/signed.pdf", note: "scan", replacePrimary: true, locked: true,
+    });
+    expect(out).toEqual({ coId: "co1" });
+    // First update carries the hardcopy fields + locked:false; second re-locks.
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({
+      signed_hardcopy_path: "co/signed.pdf",
+      pdf_path: "co/signed.pdf",
+      locked: false,
+    });
+    expect((builder.update as any).mock.calls[1][0]).toEqual({ locked: true });
+  });
+
+  // ── useExecuteCoOffline ───────────────────────────────────────────────
+  it("execute-offline requires the signed pdf path", async () => {
+    const { result } = renderHookWithClient(() => useExecuteCoOffline());
+    await expect(
+      result.current.mutateAsync({ coId: "co1", pdfPath: "", executedDate: "2026-06-24" }),
+    ).rejects.toThrow(/upload the client's signed copy/i);
+  });
+
+  it("execute-offline marks the CO executed + locked from the scanned copy", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useExecuteCoOffline());
+
+    const out = await result.current.mutateAsync({
+      coId: "co1", pdfPath: "co/exec.pdf", executedDate: "2026-06-24", signerName: " Jane Owner ",
+    });
+    expect(out).toEqual({ coId: "co1" });
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({
+      pdf_path: "co/exec.pdf",
+      status: "executed",
+      executed_date: "2026-06-24",
+      accepted_signed_name: "Jane Owner",
+      locked: false,
+    });
+    expect((builder.update as any).mock.calls[1][0]).toEqual({ locked: true });
   });
 });
