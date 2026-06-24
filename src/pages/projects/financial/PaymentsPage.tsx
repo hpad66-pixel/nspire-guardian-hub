@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useProjectFinancials } from "@/hooks/useProjectFinancials";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
@@ -8,7 +8,8 @@ import { summarizeLedger } from "@/lib/financial/ledger";
 import { RecordOwnerPaymentDialog } from "@/components/financial/RecordOwnerPaymentDialog";
 import { RecordSubPaymentDialog } from "@/components/financial/RecordSubPaymentDialog";
 import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
-import { useReconciledPaymentKeys, recvKey, paidKey } from "@/hooks/useReconciledPaymentKeys";
+import { VendorPayments } from "@/components/financial/VendorPayments";
+import { useReconciledPaymentIds, ledgerPaymentId } from "@/hooks/useReconciledPaymentIds";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,14 +20,18 @@ const fmt = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+const EMPTY_IDS: Set<string> = new Set();
 
 export default function PaymentsPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "paid" ? "paid" : "received";
   const { summary, ledger, payAppBalances, invoiceBalances } = useProjectFinancials(projectId ?? null);
   const { data: primeContract } = usePrimeContract(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const commitmentIds = useMemo(() => commitments.map((c) => c.id), [commitments]);
-  const { data: reconciledKeys } = useReconciledPaymentKeys(primeContract?.id ?? null, commitmentIds);
+  const { data: reconciledIds } = useReconciledPaymentIds(primeContract?.id ?? null, commitmentIds);
+  const recIds = reconciledIds ?? EMPTY_IDS;
 
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [subOpen, setSubOpen] = useState(false);
@@ -77,7 +82,7 @@ export default function PaymentsPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="received">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="received" className="gap-1.5"><ArrowDownLeft className="h-4 w-4" /> Received from Owner</TabsTrigger>
           <TabsTrigger value="paid" className="gap-1.5"><ArrowUpRight className="h-4 w-4" /> Paid to Subcontractors</TabsTrigger>
@@ -145,7 +150,7 @@ export default function PaymentsPage() {
                       <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
                       <td className="p-3 text-right font-medium text-emerald-600">
                         <span className="inline-flex items-center gap-2">
-                          {reconciledKeys?.has(recvKey(p.amount, p.entry_date, p.reference)) && <ReconciledBadge />}
+                          {recIds.has(ledgerPaymentId(p.ledger_id)) && <ReconciledBadge />}
                           {fmt(p.amount)}
                         </span>
                       </td>
@@ -169,6 +174,19 @@ export default function PaymentsPage() {
             </Button>
           </div>
 
+          <Tabs defaultValue="by-vendor">
+            <TabsList>
+              <TabsTrigger value="by-vendor">By vendor</TabsTrigger>
+              <TabsTrigger value="all">All payments</TabsTrigger>
+            </TabsList>
+
+            {/* Per-vendor ecosystem: invoices + granular payment splits */}
+            <TabsContent value="by-vendor" className="pt-2">
+              <VendorPayments commitments={commitments} invoiceBalances={invoices} reconciledIds={recIds} />
+            </TabsContent>
+
+            {/* Flat view across all vendors */}
+            <TabsContent value="all" className="space-y-4 pt-2">
           {/* Per-invoice reconciliation */}
           <Card>
             <CardContent className="p-0">
@@ -223,7 +241,7 @@ export default function PaymentsPage() {
                       <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
                       <td className="p-3 text-right font-medium text-[var(--apas-sapphire)]">
                         <span className="inline-flex items-center gap-2">
-                          {reconciledKeys?.has(paidKey(p.amount, p.entry_date, p.reference)) && <ReconciledBadge />}
+                          {recIds.has(ledgerPaymentId(p.ledger_id)) && <ReconciledBadge />}
                           {fmt(p.amount)}
                         </span>
                       </td>
@@ -233,6 +251,8 @@ export default function PaymentsPage() {
               </table>
             </CardContent>
           </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 

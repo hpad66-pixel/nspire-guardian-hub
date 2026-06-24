@@ -64,7 +64,7 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
     { label: "Received", value: fmt(s?.received_to_date), icon: ArrowDownLeft, color: "text-emerald-600", to: "payments" },
     { label: "A/R Outstanding", value: fmt(s?.ar_outstanding), icon: Scale, color: (s?.ar_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600", to: "prime-contract" },
     { label: "Committed", value: fmt(s?.committed_total), icon: ArrowDownLeft, color: "text-foreground", to: "commitments" },
-    { label: "Paid to Subs", value: fmt(s?.paid_to_subs), icon: ArrowUpRight, color: "text-[var(--apas-sapphire)]", to: "payments" },
+    { label: "Paid to Subs", value: fmt(s?.paid_to_subs), icon: ArrowUpRight, color: "text-[var(--apas-sapphire)]", to: "payments?tab=paid" },
     { label: "A/P Outstanding", value: fmt(s?.ap_outstanding), icon: Scale, color: (s?.ap_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600", to: "invoices" },
     { label: "Retainage (AR/AP)", value: `${fmt(s?.ar_retainage_held)} / ${fmt(s?.ap_retainage_held)}`, icon: ShieldCheck, color: "text-muted-foreground", to: "prime-contract" },
     { label: "Net Cash Position", value: fmt(s?.net_cash_position), icon: Scale, color: (s?.net_cash_position ?? 0) >= 0 ? "text-emerald-600" : "text-destructive", to: "ledger" },
