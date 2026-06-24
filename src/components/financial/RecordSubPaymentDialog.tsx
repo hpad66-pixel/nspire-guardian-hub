@@ -16,6 +16,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useCommitmentPayments, CommitmentPaymentError } from "@/hooks/useCommitmentPayments";
+import { useCommitmentAllocationTargets, useCommitmentPaymentAllocations } from "@/hooks/useCommitmentPaymentAllocations";
+import { PaymentAllocationEditor } from "@/components/financial/PaymentAllocationEditor";
+import { validateAllocations, type AllocationDraft } from "@/lib/financial/paymentAllocation";
 import type { CommitmentInvoiceBalance } from "@/hooks/useProjectFinancials";
 import type { Commitment } from "@/hooks/useCommitments";
 
@@ -59,27 +62,32 @@ export function RecordSubPaymentDialog({
   );
   const selected = useMemo(() => invoiceBalances.find((i) => i.commitment_invoice_id === invoiceId), [invoiceBalances, invoiceId]);
   const { create } = useCommitmentPayments(invoiceId || null);
+  const [allocations, setAllocations] = useState<AllocationDraft[]>([]);
+  const { data: allocTargets } = useCommitmentAllocationTargets(commitmentId || null);
+  const { saveAll } = useCommitmentPaymentAllocations(null);
 
-  useEffect(() => { setInvoiceId(""); }, [commitmentId]);
+  useEffect(() => { setInvoiceId(""); setAllocations([]); }, [commitmentId]);
   useEffect(() => {
     if (selected) setAmount(selected.balance_due > 0 ? String(selected.balance_due) : "");
   }, [selected]);
   useEffect(() => {
     if (!open) {
       setCommitmentId(""); setInvoiceId(""); setPaidDate(today());
-      setAmount(""); setMethod("check"); setReference(""); setNotes("");
+      setAmount(""); setMethod("check"); setReference(""); setNotes(""); setAllocations([]);
     }
   }, [open]);
 
   const amt = Number(amount);
   const overpays = selected != null && amt > selected.balance_due + 0.004;
   const lienBlocked = selected != null && !selected.lien_satisfied;
-  const canSave = invoiceId && paidDate && amt > 0 && !overpays && !create.isPending;
+  const canSave = invoiceId && paidDate && amt > 0 && !overpays && !create.isPending && !saveAll.isPending;
 
-  function handleSave() {
+  async function handleSave() {
     if (!canSave || !selected) return;
-    create.mutate(
-      {
+    const allocErrs = validateAllocations(amt, allocations);
+    if (allocErrs.length) { toast.error(allocErrs[0]); return; }
+    try {
+      const created: any = await create.mutateAsync({
         commitment_id: selected.commitment_id,
         commitment_invoice_id: invoiceId,
         amount: amt,
@@ -87,27 +95,25 @@ export function RecordSubPaymentDialog({
         method,
         reference: reference || null,
         notes: notes || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success(`Recorded ${money(amt)} paid to ${vendorName(commitment)}`);
-          onOpenChange(false);
-        },
-        onError: (e: unknown) => {
-          const err = e as CommitmentPaymentError;
-          toast.error(err?.message ?? "Failed to record payment");
-        },
-      },
-    );
+      });
+      if (allocations.length && created?.id) {
+        await saveAll.mutateAsync({ paymentId: created.id, allocations });
+      }
+      toast.success(`Recorded ${money(amt)} paid to ${vendorName(commitment)}${allocations.length ? ` · split ${allocations.length} ways` : ""}`);
+      onOpenChange(false);
+    } catch (e: unknown) {
+      const err = e as CommitmentPaymentError;
+      toast.error(err?.message ?? "Failed to record payment");
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record Payment to Subcontractor</DialogTitle>
           <DialogDescription>
-            Cash paid out to a subcontractor against one of their invoices.
+            Cash paid to a subcontractor against an invoice — optionally split across their base, change orders, or line items.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,6 +188,18 @@ export function RecordSubPaymentDialog({
             <Label>Notes (optional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
+
+          {/* Split this payment across the sub's base / change orders / line items */}
+          {commitmentId && (
+            <div className="rounded-md border p-3">
+              <PaymentAllocationEditor
+                paymentAmount={amt || 0}
+                value={allocations}
+                onChange={setAllocations}
+                targets={allocTargets}
+              />
+            </div>
+          )}
 
           {overpays && selected && (
             <p className="text-xs text-destructive">
