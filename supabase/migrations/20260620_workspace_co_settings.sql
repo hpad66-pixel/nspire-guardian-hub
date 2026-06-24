@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS public.workspace_co_settings (
 
 ALTER TABLE public.workspace_co_settings ENABLE ROW LEVEL SECURITY;
 
+-- Idempotent: drop-then-create so re-applying can't fail on an existing policy.
+-- DROP POLICY removes only the policy definition; the table's rows are untouched.
+DROP POLICY IF EXISTS workspace_co_settings_tenant_all ON public.workspace_co_settings;
 CREATE POLICY workspace_co_settings_tenant_all ON public.workspace_co_settings
   FOR ALL TO authenticated
   USING (workspace_id = public.current_tenant_id() OR public.is_super_admin())
