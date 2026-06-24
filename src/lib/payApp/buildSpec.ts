@@ -14,6 +14,7 @@ export interface BuildSpecOpts {
   signedName?: string | null;
   signedDate?: string | null;
   draft?: boolean;
+  reconciled?: boolean;
 }
 
 export function buildPayAppSpec(
@@ -71,5 +72,6 @@ export function buildPayAppSpec(
     signedName: opts.signedName !== undefined ? opts.signedName : (pa.signed_name ?? null),
     signedDate: opts.signedDate !== undefined ? opts.signedDate : signedAt,
     draft: opts.draft ?? false,
+    reconciled: opts.reconciled !== undefined ? opts.reconciled : pa.status === "paid",
   };
 }

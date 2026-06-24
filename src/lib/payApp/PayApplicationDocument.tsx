@@ -68,6 +68,8 @@ export interface PayApplicationSpec {
   signedDate?: string | null;
   /** Render the "DRAFT — FOR OWNER REVIEW" banner (review copy, not a final submission). */
   draft?: boolean;
+  /** Stamp a green "RECONCILED" seal on the cover (e.g. the pay app is fully paid). */
+  reconciled?: boolean;
 }
 
 const PAGE: React.CSSProperties = {
@@ -171,6 +173,13 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
         <div data-pdf-page style={PAGE}>
           <DraftBanner />
           <Header sheet="G702" />
+          {spec.reconciled && (
+            <div style={{ position: "absolute", top: 96, right: 46, transform: "rotate(-9deg)", textAlign: "center", border: "3px solid #10B981", borderRadius: 10, padding: "6px 14px", color: "#10B981", background: "rgba(16,185,129,0.06)", lineHeight: 1.15 }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.24em", fontWeight: 900 }}>RECONCILED</div>
+              <div style={{ fontSize: 17, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{money(g.current_payment_due)}</div>
+              <div style={{ fontSize: 7.5, letterSpacing: "0.12em", fontWeight: 700 }}>PAID IN FULL</div>
+            </div>
+          )}
 
           {/* Parties + meta */}
           <div style={{ display: "flex", gap: 24, marginTop: 14 }}>

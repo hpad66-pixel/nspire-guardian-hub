@@ -7,6 +7,8 @@ import { useCommitments } from "@/hooks/useCommitments";
 import { summarizeLedger } from "@/lib/financial/ledger";
 import { RecordOwnerPaymentDialog } from "@/components/financial/RecordOwnerPaymentDialog";
 import { RecordSubPaymentDialog } from "@/components/financial/RecordSubPaymentDialog";
+import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
+import { useReconciledPaymentKeys, recvKey, paidKey } from "@/hooks/useReconciledPaymentKeys";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +25,8 @@ export default function PaymentsPage() {
   const { summary, ledger, payAppBalances, invoiceBalances } = useProjectFinancials(projectId ?? null);
   const { data: primeContract } = usePrimeContract(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
+  const commitmentIds = useMemo(() => commitments.map((c) => c.id), [commitments]);
+  const { data: reconciledKeys } = useReconciledPaymentKeys(primeContract?.id ?? null, commitmentIds);
 
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [subOpen, setSubOpen] = useState(false);
@@ -139,7 +143,12 @@ export default function PaymentsPage() {
                       <td className="p-3 whitespace-nowrap">{fmtDate(p.entry_date)}</td>
                       <td className="p-3">{p.party_name ?? "Owner"}</td>
                       <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
-                      <td className="p-3 text-right font-medium text-emerald-600">{fmt(p.amount)}</td>
+                      <td className="p-3 text-right font-medium text-emerald-600">
+                        <span className="inline-flex items-center gap-2">
+                          {reconciledKeys?.has(recvKey(p.amount, p.entry_date, p.reference)) && <ReconciledBadge />}
+                          {fmt(p.amount)}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -212,7 +221,12 @@ export default function PaymentsPage() {
                       <td className="p-3 whitespace-nowrap">{fmtDate(p.entry_date)}</td>
                       <td className="p-3">{p.party_name ?? "—"}</td>
                       <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
-                      <td className="p-3 text-right font-medium text-[var(--apas-sapphire)]">{fmt(p.amount)}</td>
+                      <td className="p-3 text-right font-medium text-[var(--apas-sapphire)]">
+                        <span className="inline-flex items-center gap-2">
+                          {reconciledKeys?.has(paidKey(p.amount, p.entry_date, p.reference)) && <ReconciledBadge />}
+                          {fmt(p.amount)}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
