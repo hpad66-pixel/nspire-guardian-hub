@@ -52,10 +52,18 @@ test.describe("G4 file scaffolding", () => {
     expect(insertBlock![0]).not.toMatch(/client_secret\s*:/);
   });
 
-  test("rotate destroys legacy plaintext and stores only hash", () => {
+  test("rotate persists the new signing secret (symmetric HMAC) plus a hash record", () => {
     const src = fs.readFileSync(p("supabase/functions/webhook-secret-rotate/index.ts"), "utf8");
-    expect(src).toMatch(/secret:\s*""/);
-    expect(src).toMatch(/secret_hash/);
+    // HMAC webhook signing is symmetric: webhook-dispatch must reproduce the exact
+    // secret to sign each delivery, so the new plaintext is persisted in `secret`
+    // (retrievable, like Stripe/GitHub signing secrets) alongside a secret_hash.
+    // Blanking `secret` here previously broke ALL deliveries after a rotate.
+    const updateBlock = src.match(/\.update\(\{[\s\S]*?\}\)/);
+    expect(updateBlock, "webhook_subscriptions update block").toBeTruthy();
+    expect(updateBlock![0]).toMatch(/secret:\s*plaintext/);
+    expect(updateBlock![0]).toMatch(/secret_hash/);
+    // The plaintext must NOT be blanked — that was the post-rotate signing bug.
+    expect(src).not.toMatch(/secret:\s*""/);
   });
 
   test("redeliver invokes webhook-dispatch with new delivery row", () => {
