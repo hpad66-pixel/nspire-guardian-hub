@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Phone, Filter, RefreshCw, Mic, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +18,27 @@ export default function VoiceAgentDashboard() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [callDialogOpen, setCallDialogOpen] = useState(false);
   const [propertySelectOpen, setPropertySelectOpen] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(() => {
+    try { return localStorage.getItem('voice-agent-property') || ''; } catch { return ''; }
+  });
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: requests, isLoading, refetch } = useMaintenanceRequests(
     statusFilter !== 'all' ? { status: statusFilter } : undefined
   );
   const { data: properties = [] } = useProperties();
+
+  // Default the routing property to the saved one (or the first available) so calls
+  // route automatically instead of showing "Not set"; persist any change.
+  useEffect(() => {
+    if (!properties.length) return;
+    if (!selectedPropertyId || !properties.some(p => p.id === selectedPropertyId)) {
+      setSelectedPropertyId(properties[0].id);
+    }
+  }, [properties, selectedPropertyId]);
+  useEffect(() => {
+    try { if (selectedPropertyId) localStorage.setItem('voice-agent-property', selectedPropertyId); } catch { /* ignore */ }
+  }, [selectedPropertyId]);
 
   const selectedProperty = useMemo(
     () => properties.find(p => p.id === selectedPropertyId) || null,

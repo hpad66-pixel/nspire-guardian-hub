@@ -119,6 +119,15 @@ export default function ProjectDetailPage() {
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
+  // No one is explicitly on the team, but people have clearly worked the project —
+  // derive a "contributors" count from distinct daily-report authors so the panel
+  // isn't misleadingly "0 members".
+  const contributorCount = new Set((dailyReports ?? []).map((r: any) => r.submitted_by).filter(Boolean)).size;
+  const teamCountLabel = teamMembers.length > 0
+    ? `${teamMembers.length} member${teamMembers.length !== 1 ? 's' : ''}`
+    : contributorCount > 0
+      ? `${contributorCount} contributor${contributorCount !== 1 ? 's' : ''}`
+      : '0 members';
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
 
@@ -796,7 +805,7 @@ export default function ProjectDetailPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
-                        <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p></div>
+                        <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamCountLabel}</p></div>
                       </div>
                       <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
                     </div>
@@ -811,7 +820,7 @@ export default function ProjectDetailPage() {
                         {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>
+                      <p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>
                     )}
                   </div>
                 </TabsContent>
@@ -1081,7 +1090,7 @@ export default function ProjectDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
-                      <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}</p></div>
+                      <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamCountLabel}</p></div>
                     </div>
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
                   </div>
@@ -1090,7 +1099,7 @@ export default function ProjectDetailPage() {
                       {teamMembers.slice(0, 8).map(m => (<div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs"><div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div><span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span></div>))}
                       {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
                     </div>
-                  ) : (<p className="text-xs text-muted-foreground italic">No team members yet — click Manage Team to add people.</p>)}
+                  ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>)}
                 </div>
               </TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>

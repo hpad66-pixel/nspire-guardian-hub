@@ -13,8 +13,10 @@ import {
   User,
   Download,
   TriangleAlert,
+  Plus,
 } from 'lucide-react';
 import { useWorkOrdersByProperty, type WorkOrder } from '@/hooks/useWorkOrders';
+import { CreateWorkOrderDialog } from '@/components/workorders/CreateWorkOrderDialog';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkOrderDetailSheet } from '@/components/workorders/WorkOrderDetailSheet';
@@ -30,6 +32,7 @@ export default function WorkOrdersPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [searchParams] = useSearchParams();
@@ -224,7 +227,11 @@ export default function WorkOrdersPage() {
         </Select>
         
         <div className="hidden sm:flex flex-1" />
-        
+
+        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" />
+          New Work Order
+        </Button>
         <Button variant="outline" onClick={handleExport} disabled={filteredWorkOrders.length === 0} className="w-full sm:w-auto">
           <Download className="h-4 w-4 mr-2" />
           Export CSV
@@ -331,6 +338,8 @@ export default function WorkOrdersPage() {
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
       />
+
+      <CreateWorkOrderDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <LogIncidentSheet
         open={incidentSheetOpen}
