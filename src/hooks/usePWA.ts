@@ -80,6 +80,11 @@ export function usePWAUpdate() {
         setNeedRefresh(true);
       }
 
+      // Force an update check on every load (not just the hourly poll) so a fresh
+      // deploy is detected immediately and the "Update available" banner appears
+      // right away instead of an open tab serving the stale precached app.
+      reg.update().catch(() => {});
+
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (!newWorker) return;

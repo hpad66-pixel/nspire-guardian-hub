@@ -22,7 +22,9 @@ if (typeof window !== "undefined") {
 // Bump when another forced SW eviction is needed (e.g. a future cache split).
 // 2026-06-21: one-time flush when moving autoUpdate → prompt-banner so every
 // client lands cleanly on the new update strategy with no stale precache.
-const SW_CLEANUP_VERSION = "2026-06-21-prompt-update-banner";
+// 2026-06-24: forced flush so every client picks up the reconciled-stamp build
+// and the new immediate-update-check (stale precache was hiding fresh deploys).
+const SW_CLEANUP_VERSION = "2026-06-24-reconciled-stamp-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {
