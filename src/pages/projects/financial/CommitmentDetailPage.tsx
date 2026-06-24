@@ -1,5 +1,5 @@
 import { toDateOnly } from "@/lib/date";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useState } from "react";
 import {
   useCommitments, useCommitmentTotals, useCommitmentInvoices,
@@ -30,6 +30,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export default function CommitmentDetailPage() {
   const { projectId, commitmentId } = useParams<{ projectId: string; commitmentId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialTab = ["general", "sov", "invoices", "cos"].includes(searchParams.get("tab") ?? "")
+    ? (searchParams.get("tab") as string) : "general";
   const { data: project } = useProject(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const commitment = commitments.find((c) => c.id === commitmentId);
@@ -104,7 +107,7 @@ export default function CommitmentDetailPage() {
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.billed_to_date ?? 0))}</CardContent></Card>
       </div>
 
-      <Tabs defaultValue="general">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="sov">SOV</TabsTrigger>

@@ -182,7 +182,7 @@ export default function PaymentsPage() {
 
             {/* Per-vendor ecosystem: invoices + granular payment splits */}
             <TabsContent value="by-vendor" className="pt-2">
-              <VendorPayments commitments={commitments} invoiceBalances={invoices} reconciledIds={recIds} />
+              <VendorPayments commitments={commitments} invoiceBalances={invoices} reconciledIds={recIds} projectId={projectId ?? ""} />
             </TabsContent>
 
             {/* Flat view across all vendors */}

@@ -5,7 +5,8 @@
  * granular split (base / change order / line item — i.e. labor vs. materials dollars).
  */
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Receipt, Wallet } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronDown, ChevronRight, ListPlus, Receipt, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
@@ -84,14 +85,17 @@ function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: Al
 }
 
 function VendorPanel({
-  commitment, invoices, reconciledIds,
+  commitment, invoices, reconciledIds, projectId,
 }: {
   commitment: Commitment;
   invoices: CommitmentInvoiceBalance[];
   reconciledIds: Set<string>;
+  projectId: string;
 }) {
   const { data: payments = [], isLoading } = useVendorPayments(commitment.id);
   const { data: targets } = useCommitmentAllocationTargets(commitment.id);
+  const lineCount = targets?.lineItems.length ?? 0;
+  const sovHref = `/projects/${projectId}/financials/commitments/${commitment.id}?tab=sov`;
 
   const billed = invoices.reduce((s, i) => s + i.billed_amount, 0);
   const paid = payments.reduce((s, p) => s + p.amount, 0);
@@ -100,6 +104,20 @@ function VendorPanel({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          {lineCount > 0
+            ? <>{lineCount} line item{lineCount === 1 ? "" : "s"} defined — used to label payment splits.</>
+            : <>No line items defined yet. Add them to split payments into labor / materials, etc.</>}
+        </div>
+        <Link
+          to={sovHref}
+          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted/50"
+        >
+          <ListPlus className="h-3.5 w-3.5" /> Manage line items
+        </Link>
+      </div>
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Metric label="Contract" value={fmt(commitment.original_value)} />
         <Metric label="Billed" value={fmt(billed)} />
@@ -160,11 +178,12 @@ function VendorPanel({
 }
 
 export function VendorPayments({
-  commitments, invoiceBalances, reconciledIds,
+  commitments, invoiceBalances, reconciledIds, projectId,
 }: {
   commitments: Commitment[];
   invoiceBalances: CommitmentInvoiceBalance[];
   reconciledIds: Set<string>;
+  projectId: string;
 }) {
   const sorted = useMemo(
     () => [...commitments].sort((a, b) => vendorName(a).localeCompare(vendorName(b))),
@@ -207,6 +226,7 @@ export function VendorPayments({
           commitment={active}
           invoices={invoiceBalances.filter((i) => i.commitment_id === active.id)}
           reconciledIds={reconciledIds}
+          projectId={projectId}
         />
       )}
     </div>
