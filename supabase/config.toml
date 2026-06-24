@@ -25,6 +25,14 @@ verify_jwt = false
 [functions.co-countersign]
 verify_jwt = false
 
+# Punch list response — public, token-gated (sub responds with no login)
+[functions.punch-respond]
+verify_jwt = false
+
+# AI punch list drafting — public so dictation/typing works without auth friction
+[functions.draft-punch-items]
+verify_jwt = false
+
 # AI change-order drafting — authenticated GC invokes it; explicit for clarity
 [functions.draft-change-order]
 verify_jwt = true

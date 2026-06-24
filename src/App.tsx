@@ -150,6 +150,8 @@ const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/C
 const ChangeOrderSettingsPage = lazy(() => import('./pages/settings/ChangeOrderSettingsPage'));
 const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
+const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
+const SubPunchListsPage = lazy(() => import('./pages/portal/sub/SubPunchListsPage'));
 const LienWaiverDetailPage = lazy(() => import('./pages/projects/financial/LienWaiverDetailPage'));
 
 // ───────── Procore Lite · Phase 2 (B1–B5, C1–C5, E1–E2) ─────────
@@ -244,6 +246,7 @@ const App = () => (
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
+                     <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      
                     {/* Protected Routes */}
                     <Route
@@ -398,6 +401,7 @@ const App = () => (
                                 <Route path="/sub-portal/commitments" element={<SubCommitmentsPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                                <Route path="/sub-portal/punch" element={<SubPunchListsPage />} />
                                 <Route path="/sub-portal/rfis" element={<SubRfisPage />} />
                                 <Route path="/sub-portal/submittals" element={<SubSubmittalsPage />} />
                               </Route>

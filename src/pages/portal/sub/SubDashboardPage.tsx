@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, ClipboardList, Inbox } from "lucide-react";
+import { FileText, ClipboardList, Inbox, ListChecks } from "lucide-react";
 
 export default function SubDashboardPage() {
   const { data, isLoading } = useSubPortalData();
@@ -30,6 +30,9 @@ export default function SubDashboardPage() {
         </Button>
         <Button asChild variant="outline">
           <Link to="/sub-portal/rfis"><Inbox className="h-4 w-4 mr-1" /> RFIs</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/sub-portal/punch"><ListChecks className="h-4 w-4 mr-1" /> Punch lists</Link>
         </Button>
         <Button asChild variant="outline">
           <Link to="/sub-portal/submittals"><ClipboardList className="h-4 w-4 mr-1" /> Submittals</Link>
