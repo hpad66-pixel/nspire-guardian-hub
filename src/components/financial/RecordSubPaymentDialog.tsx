@@ -197,6 +197,9 @@ export function RecordSubPaymentDialog({
                 value={allocations}
                 onChange={setAllocations}
                 targets={allocTargets}
+                manageLineItemsHref={
+                  commitment ? `/projects/${commitment.project_id}/financials/commitments/${commitment.id}?tab=sov` : undefined
+                }
               />
             </div>
           )}

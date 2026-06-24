@@ -6,7 +6,7 @@
  */
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, X } from "lucide-react";
+import { ListPlus, Plus, X } from "lucide-react";
 import type { AllocationDraft } from "@/lib/financial/paymentAllocation";
 import { allocatedTotal, unallocated, validateAllocations } from "@/lib/financial/paymentAllocation";
 import { ReconciledStamp } from "@/components/financial/ReconciledStamp";
@@ -28,12 +28,14 @@ function decode(v: string): Pick<AllocationDraft, "kind" | "change_order_id" | "
 }
 
 export function PaymentAllocationEditor({
-  paymentAmount, value, onChange, targets,
+  paymentAmount, value, onChange, targets, manageLineItemsHref,
 }: {
   paymentAmount: number;
   value: AllocationDraft[];
   onChange: (next: AllocationDraft[]) => void;
   targets: AllocationTargets | undefined;
+  /** When set, shows a "+ Add line item" link (opens the SOV editor in a new tab). */
+  manageLineItemsHref?: string;
 }) {
   const remainder = unallocated(paymentAmount, value);
   const errors = validateAllocations(paymentAmount, value);
@@ -49,9 +51,21 @@ export function PaymentAllocationEditor({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Apply payment to <span className="text-muted-foreground font-normal">(optional)</span></span>
-        <Button type="button" variant="outline" size="sm" onClick={add}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add
-        </Button>
+        <div className="flex items-center gap-2">
+          {manageLineItemsHref && (
+            <a
+              href={manageLineItemsHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--apas-sapphire)] hover:underline"
+            >
+              <ListPlus className="h-3.5 w-3.5" /> Add line item
+            </a>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={add}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add
+          </Button>
+        </div>
       </div>
 
       {value.length === 0 && (

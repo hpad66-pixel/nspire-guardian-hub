@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, ListPlus, Receipt, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
+import { ReconciledBadge, ReconciledStamp } from "@/components/financial/ReconciledStamp";
 import { useVendorPayments, type VendorPayment } from "@/hooks/useVendorPayments";
 import { useCommitmentAllocationTargets } from "@/hooks/useCommitmentPaymentAllocations";
 import type { AllocationTargets } from "@/hooks/usePaymentAllocations";
@@ -68,6 +68,11 @@ function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: Al
       </button>
       {open && hasSplit && (
         <div className="bg-muted/20 px-4 pb-3 pl-11">
+          {reconciled && (
+            <div className="flex justify-center py-3">
+              <ReconciledStamp amount={p.amount} />
+            </div>
+          )}
           <table className="w-full text-xs">
             <tbody>
               {p.allocations.map((a) => (
