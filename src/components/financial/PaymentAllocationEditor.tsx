@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, X } from "lucide-react";
 import type { AllocationDraft } from "@/lib/financial/paymentAllocation";
 import { allocatedTotal, unallocated, validateAllocations } from "@/lib/financial/paymentAllocation";
+import { ReconciledStamp } from "@/components/financial/ReconciledStamp";
 import type { AllocationTargets } from "@/hooks/usePaymentAllocations";
 
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n) || 0);
@@ -36,6 +37,8 @@ export function PaymentAllocationEditor({
 }) {
   const remainder = unallocated(paymentAmount, value);
   const errors = validateAllocations(paymentAmount, value);
+  // Fully split with nothing left over → reconciled.
+  const reconciled = value.length > 0 && errors.length === 0 && allocatedTotal(value) > 0.005 && Math.abs(remainder) < 0.005;
 
   const update = (i: number, patch: Partial<AllocationDraft>) =>
     onChange(value.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
@@ -94,6 +97,11 @@ export function PaymentAllocationEditor({
           <span className={remainder < -0.001 ? "text-[var(--apas-rose)] font-medium" : remainder > 0.001 ? "text-[var(--apas-amber)] font-medium" : "text-[var(--apas-emerald)] font-medium"}>
             {remainder < -0.001 ? `Over by ${money(-remainder)}` : `${money(remainder)} unallocated`}
           </span>
+        </div>
+      )}
+      {reconciled && (
+        <div className="flex justify-center py-2">
+          <ReconciledStamp amount={paymentAmount} />
         </div>
       )}
       {errors.length > 0 && (

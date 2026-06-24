@@ -7,6 +7,7 @@ import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
 import { AllocatePaymentDialog } from "@/components/financial/AllocatePaymentDialog";
 import { useAllocationTargets, usePaymentAllocations, type AllocationTargets } from "@/hooks/usePaymentAllocations";
+import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
 import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
@@ -282,6 +283,8 @@ function PaymentRow({ payment, targets, onAllocate }: {
   payment: any; targets?: AllocationTargets; onAllocate: (p: any) => void;
 }) {
   const { data: allocs = [] } = usePaymentAllocations(payment.id);
+  const allocatedSum = allocs.reduce((s, a) => s + Number(a.amount), 0);
+  const reconciled = allocs.length > 0 && Math.abs(allocatedSum - Number(payment.amount)) < 0.01;
   return (
     <div className="py-2">
       <div className="flex items-center justify-between">
@@ -290,6 +293,7 @@ function PaymentRow({ payment, targets, onAllocate }: {
           <span className="text-muted-foreground">{payment.method ?? ""} {payment.reference ?? ""}</span>
         </div>
         <div className="flex items-center gap-2">
+          {reconciled && <ReconciledBadge />}
           <span className="font-mono">{money(Number(payment.amount))}</span>
           <Button size="sm" variant="outline" onClick={() => onAllocate(payment)}>
             {allocs.length ? "Edit split" : "Allocate"}
