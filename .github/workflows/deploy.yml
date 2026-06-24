@@ -62,10 +62,13 @@ jobs:
         run: supabase link --project-ref ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
 
       - name: Show migration plan
-        run: supabase db push --dry-run
+        # --include-all: see ci.yml migration-dry-run — the shared remote has
+        # later-dated migrations than main carries, so the out-of-order guard
+        # blocks new in-order local migrations without it.
+        run: supabase db push --dry-run --include-all
 
       - name: Push migrations
-        run: supabase db push
+        run: supabase db push --include-all
 
   deploy-functions:
     name: Deploy Edge Functions
