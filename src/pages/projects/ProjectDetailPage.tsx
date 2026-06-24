@@ -248,6 +248,10 @@ export default function ProjectDetailPage() {
   const milestoneProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
   const daysRemaining = project.target_end_date ? differenceInDays(new Date(project.target_end_date), new Date()) : null;
   const approvedCOAmount = changeOrders?.filter(co => co.status === 'approved').reduce((sum, co) => sum + (Number(co.amount) || 0), 0) || 0;
+  // Count PRIME change orders only (exclude subcontractor/commitment COs) so this
+  // tile matches the Financials → Change Orders module. Subcontractor COs belong to
+  // their commitments, not the prime contract.
+  const primeChangeOrderCount = changeOrders?.filter(co => (co as any).co_type !== 'CCO' && !(co as any).commitment_id).length || 0;
   const status = statusConfig[project.status] ?? statusConfig.planning;
   const isClientProject = (project as any).project_type === 'client';
 
@@ -779,7 +783,7 @@ export default function ProjectDetailPage() {
                     {[
                       { label: 'Milestones', value: totalMilestones, icon: CheckSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                       { label: 'Daily Reports', value: dailyReports?.length || 0, icon: ClipboardList, color: 'text-module-projects', bg: 'bg-module-projects/10' },
-                      { label: 'Change Orders', value: changeOrders?.length || 0, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
+                      { label: 'Change Orders', value: primeChangeOrderCount, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
                       { label: 'Approved COs', value: formatCurrency(approvedCOAmount), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
                     ].map(({ label, value, icon: Icon, color, bg }) => (
                       <div key={label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
@@ -1064,7 +1068,7 @@ export default function ProjectDetailPage() {
                   {[
                     { label: 'Milestones', value: totalMilestones, icon: CheckSquare, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                     { label: 'Daily Reports', value: dailyReports?.length || 0, icon: ClipboardList, color: 'text-module-projects', bg: 'bg-module-projects/10' },
-                    { label: 'Change Orders', value: changeOrders?.length || 0, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
+                    { label: 'Change Orders', value: primeChangeOrderCount, icon: FileText, color: 'text-warning', bg: 'bg-warning/10' },
                     { label: 'Approved COs', value: formatCurrency(approvedCOAmount), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
                   ].map(({ label, value, icon: Icon, color, bg }) => (
                     <div key={label} className="rounded-xl border bg-card p-4 flex items-center gap-3">

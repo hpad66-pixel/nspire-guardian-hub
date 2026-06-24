@@ -296,7 +296,6 @@ export default function SettingsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Label htmlFor="occupancy" className="font-medium">Occupancy Tracking</Label>
-                      <Badge variant="secondary">Coming Soon</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Tenant management and lease tracking

@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { useProperties } from '@/hooks/useProperties';
 import { useUnitsByProperty } from '@/hooks/useUnits';
 import { useCreateIssue, useUpdateIssue } from '@/hooks/useIssues';
+import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 type IssueRow = Database['public']['Tables']['issues']['Row'];
@@ -43,10 +44,21 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
   const { data: units } = useUnitsByProperty(formData.property_id);
   const createIssue = useCreateIssue();
   const updateIssue = useUpdateIssue();
+  const [errors, setErrors] = useState<{ title?: string; property_id?: string }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const nextErrors: { title?: string; property_id?: string } = {};
+    if (!formData.title.trim()) nextErrors.title = 'Title is required.';
+    if (!formData.property_id) nextErrors.property_id = 'Select a property.';
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      toast.error('Please fill in the required fields.');
+      return;
+    }
+    setErrors({});
+
     try {
       if (isEditing && issue) {
         await updateIssue.mutateAsync({
@@ -71,6 +83,7 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
   };
 
   const resetForm = () => {
+    setErrors({});
     setFormData({
       property_id: '',
       unit_id: '',
@@ -104,10 +117,12 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (errors.title) setErrors((x) => ({ ...x, title: undefined })); }}
                 placeholder="Brief description of the issue"
-                required
+                aria-invalid={!!errors.title}
+                className={cn(errors.title && 'border-destructive focus-visible:ring-destructive')}
               />
+              {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -127,9 +142,9 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
                 <Label>Property *</Label>
                 <Select
                   value={formData.property_id}
-                  onValueChange={(value) => setFormData({ ...formData, property_id: value, unit_id: '' })}
+                  onValueChange={(value) => { setFormData({ ...formData, property_id: value, unit_id: '' }); if (errors.property_id) setErrors((x) => ({ ...x, property_id: undefined })); }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-invalid={!!errors.property_id} className={cn(errors.property_id && 'border-destructive focus:ring-destructive')}>
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
                   <SelectContent>
@@ -140,6 +155,7 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.property_id && <p className="text-xs text-destructive">{errors.property_id}</p>}
               </div>
 
               <div className="grid gap-2">
@@ -245,7 +261,7 @@ export function IssueDialog({ open, onOpenChange, issue }: IssueDialogProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !formData.property_id || !formData.title}>
+            <Button type="submit" disabled={isPending}>
               {isPending ? 'Saving...' : isEditing ? 'Update Issue' : 'Create Issue'}
             </Button>
           </DialogFooter>
