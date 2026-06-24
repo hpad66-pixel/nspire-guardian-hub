@@ -7,7 +7,7 @@ import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
 import { AllocatePaymentDialog } from "@/components/financial/AllocatePaymentDialog";
 import { useAllocationTargets, usePaymentAllocations, type AllocationTargets } from "@/hooks/usePaymentAllocations";
-import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
+import { ReconciledStamp } from "@/components/financial/ReconciledStamp";
 import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { PayAppContinuationBuilder } from "@/components/financial/PayAppContinuationBuilder";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
@@ -292,9 +292,10 @@ function PaymentRow({ payment, targets, onAllocate }: {
           <span className="font-mono mr-2">{payment.received_date}</span>
           <span className="text-muted-foreground">{payment.method ?? ""} {payment.reference ?? ""}</span>
         </div>
-        <div className="flex items-center gap-2">
-          {reconciled && <ReconciledBadge />}
-          <span className="font-mono">{money(Number(payment.amount))}</span>
+        <div className="flex items-center gap-3">
+          {reconciled
+            ? <ReconciledStamp amount={Number(payment.amount)} />
+            : <span className="font-mono">{money(Number(payment.amount))}</span>}
           <Button size="sm" variant="outline" onClick={() => onAllocate(payment)}>
             {allocs.length ? "Edit split" : "Allocate"}
           </Button>
