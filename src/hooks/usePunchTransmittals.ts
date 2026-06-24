@@ -23,7 +23,7 @@ export interface PunchTransmittal {
   viewed_at: string | null;
   responded_at: string | null;
   created_at: string;
-  items?: { id: string; description: string; location: string; sub_status: string | null }[];
+  items?: { id: string; description: string; location: string; sub_status: string | null; photos?: string[] }[];
 }
 
 export interface CreateTransmittalInput {
@@ -85,10 +85,25 @@ export function usePunchTransmittals(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return ((data ?? []) as any[]).map((t) => ({
+      const txs = ((data ?? []) as any[]).map((t) => ({
         ...t,
         items: (t.punch_transmittal_items ?? []).map((l: any) => l.punch_items).filter(Boolean),
-      })) as PunchTransmittal[];
+      }));
+
+      // Attach response photos (accumulated across responses) to each item.
+      const itemIds = txs.flatMap((t) => t.items.map((i: any) => i.id));
+      if (itemIds.length) {
+        const { data: resp } = await supabase
+          .from("punch_item_responses" as any)
+          .select("punch_item_id, photos")
+          .in("punch_item_id", itemIds);
+        const byItem: Record<string, string[]> = {};
+        for (const r of (resp ?? []) as any[]) {
+          if (Array.isArray(r.photos) && r.photos.length) byItem[r.punch_item_id] = [...(byItem[r.punch_item_id] ?? []), ...r.photos];
+        }
+        for (const t of txs) for (const i of t.items as any[]) i.photos = byItem[i.id] ?? [];
+      }
+      return txs as PunchTransmittal[];
     },
   });
 }

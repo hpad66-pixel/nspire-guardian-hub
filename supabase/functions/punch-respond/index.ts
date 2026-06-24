@@ -16,8 +16,22 @@ const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const admin = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const VALID = ["acknowledged", "in_progress", "completed", "disputed"];
+const BUCKET = "daily-report-files";
+const bytesFromDataUrl = (d: string) => Uint8Array.from(atob(d.split(",")[1] ?? d), (c) => c.charCodeAt(0));
 
-function renderPayload(tx: any, items: any[], latest: Record<string, any>) {
+// Upload an array of image data-URLs; return the public URLs that uploaded ok.
+async function uploadPhotos(db: any, base: string, dataUrls: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const d of (dataUrls ?? []).slice(0, 10)) {
+    if (typeof d !== "string" || !d.startsWith("data:")) continue;
+    const path = `${base}/${crypto.randomUUID()}.jpg`;
+    const up = await db.storage.from(BUCKET).upload(path, bytesFromDataUrl(d), { contentType: "image/jpeg", upsert: false });
+    if (!up.error) urls.push(db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl);
+  }
+  return urls;
+}
+
+function renderPayload(tx: any, items: any[], latest: Record<string, any>, photosByItem: Record<string, string[]>) {
   return {
     project: tx.projects?.name ?? "",
     recipient: tx.recipient_name, subject: tx.subject, message: tx.message,
@@ -25,6 +39,7 @@ function renderPayload(tx: any, items: any[], latest: Record<string, any>) {
     items: items.map((i: any) => ({
       id: i.id, description: i.description, location: i.location, priority: i.priority,
       gcStatus: i.status, lastStatus: latest[i.id]?.sub_status ?? null, lastComment: latest[i.id]?.comment ?? null,
+      photos: photosByItem[i.id] ?? [],
     })),
   };
 }
@@ -40,14 +55,20 @@ async function loadByToken(db: any, token: string) {
   const items = (links ?? []).map((l: any) => l.punch_items).filter(Boolean);
   // Most recent response per item, so a returning sub sees what they last said.
   const ids = items.map((i: any) => i.id);
-  let latest: Record<string, any> = {};
+  const latest: Record<string, any> = {};
+  const photosByItem: Record<string, string[]> = {};
   if (ids.length) {
     const { data: resp } = await db.from("punch_item_responses")
-      .select("punch_item_id, sub_status, comment, responded_at")
+      .select("punch_item_id, sub_status, comment, responded_at, photos")
       .in("punch_item_id", ids).order("responded_at", { ascending: false });
-    for (const r of resp ?? []) if (!latest[r.punch_item_id]) latest[r.punch_item_id] = r;
+    for (const r of resp ?? []) {
+      if (!latest[r.punch_item_id]) latest[r.punch_item_id] = r;
+      if (Array.isArray(r.photos) && r.photos.length) {
+        photosByItem[r.punch_item_id] = [...(photosByItem[r.punch_item_id] ?? []), ...r.photos];
+      }
+    }
   }
-  return { tx, items, latest };
+  return { tx, items, latest, photosByItem };
 }
 
 serve(async (req) => {
@@ -59,7 +80,7 @@ serve(async (req) => {
       if (!token) return json({ error: "token required" }, 400);
       const loaded = await loadByToken(db, token);
       if (!loaded) return json({ error: "This punch list link was not found." }, 404);
-      return json(renderPayload(loaded.tx, loaded.items, loaded.latest));
+      return json(renderPayload(loaded.tx, loaded.items, loaded.latest, loaded.photosByItem));
     }
 
     const body = await req.json();
@@ -70,7 +91,7 @@ serve(async (req) => {
     const { tx } = loaded;
 
     if (action === "get") {
-      return json(renderPayload(loaded.tx, loaded.items, loaded.latest));
+      return json(renderPayload(loaded.tx, loaded.items, loaded.latest, loaded.photosByItem));
     }
 
     if (action === "view") {
@@ -88,13 +109,16 @@ serve(async (req) => {
       if (!Array.isArray(responses) || responses.length === 0) return json({ error: "No responses provided." }, 400);
       const allowedIds = new Set(loaded.items.map((i: any) => i.id));
       const now = new Date().toISOString();
-      const rows = responses
-        .filter((r: any) => allowedIds.has(r.punch_item_id) && VALID.includes(r.sub_status))
-        .map((r: any) => ({
+      const valid = responses.filter((r: any) => allowedIds.has(r.punch_item_id) && VALID.includes(r.sub_status));
+      const rows: any[] = [];
+      for (const r of valid) {
+        const photoUrls = await uploadPhotos(db, `${tx.tenant_id}/${tx.project_id}/punch/${r.punch_item_id}`, r.photos ?? []);
+        rows.push({
           tenant_id: tx.tenant_id, transmittal_id: tx.id, punch_item_id: r.punch_item_id,
           responder_name: responder_name ?? null, responder_email: responder_email ?? null,
-          sub_status: r.sub_status, comment: (r.comment ?? "").trim() || null, responded_at: now,
-        }));
+          sub_status: r.sub_status, comment: (r.comment ?? "").trim() || null, photos: photoUrls, responded_at: now,
+        });
+      }
       if (!rows.length) return json({ error: "No valid responses." }, 400);
 
       const { error: insErr } = await db.from("punch_item_responses").insert(rows);

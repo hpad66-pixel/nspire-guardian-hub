@@ -62,8 +62,19 @@ function Row({ tx }: { tx: PunchTransmittal }) {
               {(tx.items ?? []).map((i) => {
                 const ss = i.sub_status ? SUB_STATUS[i.sub_status] : null;
                 return (
-                  <tr key={i.id} className="border-b border-border/40 last:border-0">
-                    <td className="py-1.5">{i.description}<span className="text-muted-foreground"> · {i.location || "—"}</span></td>
+                  <tr key={i.id} className="border-b border-border/40 last:border-0 align-top">
+                    <td className="py-1.5">
+                      {i.description}<span className="text-muted-foreground"> · {i.location || "—"}</span>
+                      {(i.photos ?? []).length > 0 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {i.photos!.map((url, n) => (
+                            <a key={n} href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt="" className="h-12 w-12 rounded object-cover border" />
+                            </a>
+                          ))}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-1.5 text-right whitespace-nowrap">
                       {ss ? <span className={`font-semibold ${ss.cls}`}>{ss.label}</span> : <span className="text-muted-foreground">Awaiting</span>}
                     </td>

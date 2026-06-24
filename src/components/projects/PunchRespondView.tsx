@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { Camera, CheckCircle2, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,15 +24,31 @@ const STATUS_OPTIONS = [
 ];
 const PRIORITY_CLS: Record<string, string> = { high: "text-[var(--apas-rose)]", medium: "text-amber-600", low: "text-muted-foreground" };
 
-interface RespItem { id: string; description: string; location: string; priority: string; lastStatus: string | null; lastComment: string | null; }
+/** Downscale a captured image to keep uploads small (phone photos can be many MB). */
+async function fileToResizedDataUrl(file: File, max = 1600, quality = 0.8): Promise<string> {
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = dataUrl;
+  });
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+  canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+interface RespItem { id: string; description: string; location: string; priority: string; lastStatus: string | null; lastComment: string | null; photos: string[]; }
 interface RespData { project: string; recipient: string; message: string | null; status: string; items: RespItem[]; }
+type ItemResp = { sub_status: string; comment: string; newPhotos: string[] };
 
 export function PunchRespondView({ token, embedded = false }: { token: string; embedded?: boolean }) {
   const [data, setData] = useState<RespData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responderName, setResponderName] = useState("");
   const [responderEmail, setResponderEmail] = useState("");
-  const [resp, setResp] = useState<Record<string, { sub_status: string; comment: string }>>({});
+  const [resp, setResp] = useState<Record<string, ItemResp>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -44,17 +60,27 @@ export function PunchRespondView({ token, embedded = false }: { token: string; e
       if (e || (d as any)?.error) { setError((d as any)?.error ?? e?.message ?? "Could not load this punch list."); return; }
       const payload = d as RespData;
       setData(payload);
-      setResp(Object.fromEntries(payload.items.map((i) => [i.id, { sub_status: i.lastStatus ?? "", comment: i.lastComment ?? "" }])));
+      setResp(Object.fromEntries(payload.items.map((i) => [i.id, { sub_status: i.lastStatus ?? "", comment: i.lastComment ?? "", newPhotos: [] }])));
       setResponderName(payload.recipient ?? "");
       supabase.functions.invoke("punch-respond", { body: { token, action: "view" } });
     })();
     return () => { active = false; };
   }, [token]);
 
+  async function addPhotos(itemId: string, files: FileList | null) {
+    if (!files?.length) return;
+    try {
+      const urls = await Promise.all(Array.from(files).map((f) => fileToResizedDataUrl(f)));
+      setResp((s) => ({ ...s, [itemId]: { ...s[itemId], newPhotos: [...(s[itemId]?.newPhotos ?? []), ...urls] } }));
+    } catch { toast.error("Couldn't read that image."); }
+  }
+  const removeStaged = (itemId: string, idx: number) =>
+    setResp((s) => ({ ...s, [itemId]: { ...s[itemId], newPhotos: s[itemId].newPhotos.filter((_, n) => n !== idx) } }));
+
   async function submit() {
     const responses = Object.entries(resp)
       .filter(([, v]) => v.sub_status)
-      .map(([punch_item_id, v]) => ({ punch_item_id, sub_status: v.sub_status, comment: v.comment }));
+      .map(([punch_item_id, v]) => ({ punch_item_id, sub_status: v.sub_status, comment: v.comment, photos: v.newPhotos }));
     if (!responses.length) { toast.error("Set a status on at least one item."); return; }
     setSubmitting(true);
     try {
@@ -119,6 +145,29 @@ export function PunchRespondView({ token, embedded = false }: { token: string; e
                   onChange={(e) => setResp((s) => ({ ...s, [i.id]: { ...s[i.id], comment: e.target.value } }))}
                   placeholder="Comment (optional)" className="h-8 flex-1 min-w-40 text-xs"
                 />
+              </div>
+
+              {/* Photos — already uploaded (previous visits) + staged for this submit */}
+              <div className="ml-5 flex flex-wrap items-center gap-2">
+                {i.photos.map((url, n) => (
+                  <a key={`p${n}`} href={url} target="_blank" rel="noreferrer" className="block">
+                    <img src={url} alt="" className="h-14 w-14 rounded object-cover border" />
+                  </a>
+                ))}
+                {(resp[i.id]?.newPhotos ?? []).map((url, n) => (
+                  <span key={`n${n}`} className="relative">
+                    <img src={url} alt="" className="h-14 w-14 rounded object-cover border border-[var(--apas-sapphire)]" />
+                    <button type="button" onClick={() => removeStaged(i.id, n)}
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-background border shadow p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-muted/40">
+                  <Camera className="h-5 w-5" />
+                  <input type="file" accept="image/*" multiple capture="environment" className="hidden"
+                    onChange={(e) => { addPhotos(i.id, e.target.files); e.currentTarget.value = ""; }} />
+                </label>
               </div>
             </CardContent>
           </Card>
