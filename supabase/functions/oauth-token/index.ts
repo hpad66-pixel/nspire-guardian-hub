@@ -53,8 +53,13 @@ serve(async (req) => {
     .maybeSingle();
   if (!client) return json({ error: "invalid_client" }, 401);
 
-  const secretHash = await sha256Hex(clientSecret);
-  if (secretHash !== (client as any).client_secret_hash) {
+  const storedHash = String((client as any).client_secret_hash ?? "");
+  // api-key-mint persists PBKDF2 hashes ("pbkdf2$<iters>$<saltB64>$<dkB64>").
+  // Fall back to raw SHA-256 for any legacy rows minted via the old path.
+  const secretOk = storedHash.startsWith("pbkdf2$")
+    ? await verifyPbkdf2(clientSecret, storedHash)
+    : timingSafeEqualStr(await sha256Hex(clientSecret), storedHash);
+  if (!secretOk) {
     return json({ error: "invalid_client" }, 401);
   }
 
@@ -90,6 +95,49 @@ async function sha256Hex(s: string): Promise<string> {
   const enc = new TextEncoder().encode(s);
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function b64encode(bytes: Uint8Array): string {
+  let s = "";
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+function b64decode(s: string): Uint8Array {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Constant-time string comparison to avoid leaking secret length/content via timing. */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** Verify a plaintext secret against a "pbkdf2$<iters>$<saltB64>$<dkB64>" hash (matches api-key-mint). */
+async function verifyPbkdf2(plaintext: string, stored: string): Promise<boolean> {
+  const parts = stored.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+  const iterations = parseInt(parts[1], 10);
+  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  const salt = b64decode(parts[2]);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(plaintext),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"],
+  );
+  const dk = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    keyMaterial,
+    32 * 8,
+  );
+  return timingSafeEqualStr(b64encode(new Uint8Array(dk)), parts[3]);
 }
 
 function json(body: unknown, status = 200) {

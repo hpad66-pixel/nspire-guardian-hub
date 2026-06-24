@@ -57,7 +57,7 @@ export default function SubmittalRegisterPage() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <Link
-            to={`/projects/${projectId}/submittals`}
+            to={`/projects/${projectId}?tab=submittals`}
             className="text-sm text-muted-foreground hover:underline inline-flex items-center gap-1"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to submittals

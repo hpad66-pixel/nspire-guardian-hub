@@ -39,6 +39,7 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
     deposit_amount: tenant?.deposit_amount?.toString() || '',
     status: tenant?.status || 'active',
     move_in_date: tenant?.move_in_date || '',
+    move_out_date: tenant?.move_out_date || '',
     notes: tenant?.notes || '',
   });
 
@@ -69,7 +70,7 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
         deposit_amount: formData.deposit_amount ? parseFloat(formData.deposit_amount) : null,
         status: formData.status,
         move_in_date: formData.move_in_date || null,
-        move_out_date: null,
+        move_out_date: formData.move_out_date || null,
         notes: formData.notes || null,
       };
 
@@ -103,6 +104,7 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
       deposit_amount: '',
       status: 'active',
       move_in_date: '',
+      move_out_date: '',
       notes: '',
     });
   };
@@ -283,6 +285,20 @@ export function TenantDialog({ open, onOpenChange, tenant }: TenantDialogProps) 
                 type="date"
                 value={formData.move_in_date}
                 onChange={(e) => setFormData({ ...formData, move_in_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Move-out Date — relevant once the tenant has given notice or moved out */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="move_out_date">Move-out Date</Label>
+              <Input
+                id="move_out_date"
+                type="date"
+                value={formData.move_out_date}
+                min={formData.move_in_date || undefined}
+                onChange={(e) => setFormData({ ...formData, move_out_date: e.target.value })}
               />
             </div>
           </div>

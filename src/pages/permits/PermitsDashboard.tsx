@@ -59,15 +59,28 @@ export default function PermitsDashboard() {
   }, [properties, propertyFilter]);
 
   // Filter permits
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const filteredPermits = permits?.filter((permit) => {
-    const matchesSearch = 
+    const matchesSearch =
       permit.name.toLowerCase().includes(search.toLowerCase()) ||
       permit.permit_number?.toLowerCase().includes(search.toLowerCase()) ||
       permit.issuing_authority?.toLowerCase().includes(search.toLowerCase());
-    
+
     const matchesProperty = !propertyFilter || permit.property_id === propertyFilter;
     const matchesType = typeFilter === 'all' || permit.permit_type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || permit.status === statusFilter;
+
+    // `expiringSoon` is a derived pseudo-status (active + expiry within 30 days),
+    // not a literal permit.status value — mirror the usePermitStats predicate.
+    let matchesStatus: boolean;
+    if (statusFilter === 'all') {
+      matchesStatus = true;
+    } else if (statusFilter === 'expiringSoon') {
+      const expiry = permit.expiry_date ? new Date(permit.expiry_date) : null;
+      matchesStatus = permit.status === 'active' && !!expiry && expiry <= thirtyDaysFromNow && expiry >= now;
+    } else {
+      matchesStatus = permit.status === statusFilter;
+    }
 
     return matchesSearch && matchesProperty && matchesType && matchesStatus;
   });

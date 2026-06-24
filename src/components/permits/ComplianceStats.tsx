@@ -40,7 +40,7 @@ export function ComplianceStats({ stats, isLoading, onSelectStatus }: Compliance
         subtitle="Within 30 days"
         icon={Calendar}
         variant={stats?.expiringSoon ? 'moderate' : 'default'}
-        onClick={onSelectStatus ? () => onSelectStatus('active') : undefined}
+        onClick={onSelectStatus ? () => onSelectStatus('expiringSoon') : undefined}
       />
       <StatCard
         title="Due This Month"
@@ -55,7 +55,6 @@ export function ComplianceStats({ stats, isLoading, onSelectStatus }: Compliance
         subtitle="Requires attention"
         icon={AlertTriangle}
         variant={stats?.nonCompliant ? 'severe' : 'default'}
-        onClick={onSelectStatus ? () => onSelectStatus('expired') : undefined}
       />
     </div>
   );

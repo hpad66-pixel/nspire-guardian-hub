@@ -38,7 +38,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function PrimeContractPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: contract, isLoading, update } = usePrimeContract(projectId ?? null);
+  const { data: contract, isLoading, create, update } = usePrimeContract(projectId ?? null);
   const { data: totals } = usePrimeContractTotals(contract?.id ?? null);
   const { data: sov = [] } = usePrimeContractSov(contract?.id ?? null);
   const { data: payApps = [] } = usePayApps(contract?.id ?? null);
@@ -49,6 +49,29 @@ export default function PrimeContractPage() {
   const [creating, setCreating] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ contract_no: "", title: "", original_value: "" });
+
+  async function handleCreate() {
+    const original_value = parseFloat(createForm.original_value || "0");
+    if (!createForm.contract_no.trim() || !createForm.title.trim()) {
+      toast.error("Contract number and title are required.");
+      return;
+    }
+    try {
+      await create.mutateAsync({
+        contract_no: createForm.contract_no.trim(),
+        title: createForm.title.trim(),
+        original_value: Number.isFinite(original_value) ? original_value : 0,
+        status: "draft",
+      });
+      toast.success("Prime contract created.");
+      setCreateOpen(false);
+      setCreateForm({ contract_no: "", title: "", original_value: "" });
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to create prime contract");
+    }
+  }
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
@@ -56,10 +79,47 @@ export default function PrimeContractPage() {
     return (
       <div className="container mx-auto p-6 max-w-4xl space-y-4">
         <FinancialSubNav />
-        <h1 className="text-3xl font-bold">Prime Contract</h1>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h1 className="text-3xl font-bold">Prime Contract</h1>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Create Prime Contract
+          </Button>
+        </div>
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          No prime contract yet for this project.
+          No prime contract yet for this project. Create one to unlock pay apps, payments, budget, and reports.
         </CardContent></Card>
+
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Create Prime Contract</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="pc-no">Contract Number</Label>
+                <Input id="pc-no" value={createForm.contract_no}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, contract_no: e.target.value }))}
+                  placeholder="e.g. PC-001" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pc-title">Title</Label>
+                <Input id="pc-title" value={createForm.title}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Main Building Construction" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pc-value">Original Contract Value (USD)</Label>
+                <Input id="pc-value" type="number" min="0" step="0.01" value={createForm.original_value}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, original_value: e.target.value }))}
+                  placeholder="0.00" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={create.isPending}>
+                {create.isPending ? "Creating…" : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

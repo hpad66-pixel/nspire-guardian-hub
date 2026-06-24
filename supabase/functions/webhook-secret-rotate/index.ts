@@ -9,13 +9,11 @@
  * only the salted hash, and returns the plaintext exactly
  * once. The old hash is overwritten on the same row.
  *
- * The webhook_subscriptions table currently stores `secret`
- * as the plaintext. This rotate function transitions the row
- * to the new pattern: plaintext goes back to the caller
- * exactly once and only the `secret_hash` is persisted. The
- * `secret` column is set to '' on rotate so the legacy
- * plaintext is destroyed; webhook-dispatch will be updated
- * to read from secret_hash via verify-on-send.
+ * The plaintext is returned to the caller exactly once. Because
+ * HMAC signing is symmetric, webhook-dispatch must reproduce the
+ * exact secret to sign each delivery, so the new plaintext is
+ * persisted in `secret` (retrievable, like Stripe/GitHub signing
+ * secrets) and a `secret_hash` record is kept alongside it.
  */
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -106,11 +104,14 @@ serve(async (req) => {
   const plaintext = `whsec_${randomBase62(32)}`;
   const secret_hash = await pbkdf2Hash(plaintext);
 
-  // Overwrite plaintext to '' so the prior cleartext is destroyed.
-  // secret_hash holds the new salted hash going forward.
+  // HMAC webhook signing is symmetric: webhook-dispatch must reproduce the
+  // exact signing secret to sign each outgoing payload, so the plaintext has
+  // to remain retrievable (this is how Stripe/GitHub store signing secrets).
+  // We persist the new plaintext in `secret` AND keep a `secret_hash` record;
+  // blanking `secret` here previously broke all deliveries after a rotate.
   const { error: updErr } = await admin
     .from("webhook_subscriptions")
-    .update({ secret: "", secret_hash })
+    .update({ secret: plaintext, secret_hash })
     .eq("id", existing.id);
 
   if (updErr) {

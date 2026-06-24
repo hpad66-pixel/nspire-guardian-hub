@@ -28,6 +28,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
 
@@ -61,6 +65,10 @@ export default function OwnerPayAppApprovalPage() {
 
   // Local override map: sov_line_id → adjusted work_this_period
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState<string>("other");
+  const [rejectComment, setRejectComment] = useState("");
+  const [rejecting, setRejecting] = useState(false);
 
   useEffect(() => {
     // Initialize adjustments to the submitted amounts
@@ -108,36 +116,44 @@ export default function OwnerPayAppApprovalPage() {
   }
 
   async function handleReject() {
-    const form = await new Promise<{ reason_code: string; comment: string } | null>((res) => {
-      const reasonCode = prompt(
-        "Rejection reason code (one of: " + REJECT_REASONS.join(", ") + "):",
-        "other",
-      );
-      if (!reasonCode || !REJECT_REASONS.includes(reasonCode)) { res(null); return; }
-      const comment = prompt("Detailed reason:", "") ?? "";
-      res({ reason_code: reasonCode, comment });
-    });
-    if (!form) return;
-
+    if (!REJECT_REASONS.includes(rejectReason)) {
+      toast.error("Select a rejection reason");
+      return;
+    }
+    setRejecting(true);
     try {
-      // Write to owner_audit_log directly (reject path)
-      await supabase.from("owner_audit_log" as any).insert({
-        tenant_id: pa.tenant_id,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        action: "pay_app.reject",
-        object_type: "pay_app",
-        object_id: pa.id,
-        meta: { reason_code: form.reason_code, comment: form.comment },
-      } as any);
-      // And return the pay app to draft state for the GC to revise
+      // Mark the pay app rejected so the GC can revise and resubmit. This is
+      // the authoritative action — it must succeed for the rejection to count.
       const { error } = await supabase
         .from("prime_contract_pay_apps" as any)
         .update({ status: "rejected" } as any)
         .eq("id", pa.id);
       if (error) throw error;
+
+      // Audit trail is best-effort: never let a logging failure undo a
+      // completed rejection. (oal_tenant_insert RLS policy permits this insert.)
+      try {
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        await supabase.from("owner_audit_log" as any).insert({
+          tenant_id: pa.tenant_id,
+          user_id: userId,
+          action: "pay_app.reject",
+          object_type: "pay_app",
+          object_id: pa.id,
+          meta: { reason_code: rejectReason, comment: rejectComment },
+        } as any);
+      } catch (logErr) {
+        console.error("owner_audit_log insert failed (rejection still applied):", logErr);
+      }
+
       toast.success("Rejected");
+      setRejectOpen(false);
       navigate("/owner-portal");
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setRejecting(false);
+    }
   }
 
   return (
@@ -241,12 +257,43 @@ export default function OwnerPayAppApprovalPage() {
             <Button onClick={handleApprove} disabled={approve.isPending}>
               {approve.isPending ? "Approving…" : `Approve ${money(adjustedTotal)}`}
             </Button>
-            <Button variant="destructive" onClick={handleReject}>
+            <Button variant="destructive" onClick={() => setRejectOpen(true)}>
               Reject with reason
             </Button>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reject Pay Application #{pa.pay_app_no}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Reason code</Label>
+              <Select value={rejectReason} onValueChange={setRejectReason}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REJECT_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>{r.replace(/_/g, " ")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reject-comment">Detailed reason</Label>
+              <Textarea id="reject-comment" value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+                placeholder="Explain what needs to change before resubmission…" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={rejecting}>
+              {rejecting ? "Rejecting…" : "Confirm rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {!canApprove && (
         <Card><CardContent className="p-6 text-center text-muted-foreground">
           This pay app is {pa.status} — no further owner action required.
