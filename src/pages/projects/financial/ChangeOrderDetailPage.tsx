@@ -20,13 +20,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { ChevronRight, LayoutDashboard, Lock, PenLine, Pencil, Save, Send, CheckCircle2, FileDown, Trash2, Hash, RotateCcw } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Lock, PenLine, Pencil, Save, Send, CheckCircle2, FileDown, Trash2, Hash, RotateCcw, FileCheck } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { isAdminRole } from "@/lib/rbac";
 import { RenumberCoDialog } from "@/components/financial/RenumberCoDialog";
 import { ReopenCoDialog } from "@/components/financial/ReopenCoDialog";
 import { ExecuteCoOfflineDialog } from "@/components/financial/ExecuteCoOfflineDialog";
+import { UploadSignedHardcopyDialog } from "@/components/financial/UploadSignedHardcopyDialog";
 import { coLabel } from "@/lib/changeOrder/coLabel";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 
@@ -63,6 +64,7 @@ export default function ChangeOrderDetailPage() {
   const [renumberOpen, setRenumberOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [executeOpen, setExecuteOpen] = useState(false);
+  const [hardcopyOpen, setHardcopyOpen] = useState(false);
   const { data: role } = useCurrentUserRole();
   const canRenumber = isAdminRole(role);
   const [editing, setEditing] = useState(false);
@@ -199,9 +201,33 @@ export default function ChangeOrderDetailPage() {
                 <RotateCcw className="h-4 w-4 mr-1.5" /> Amend
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => setHardcopyOpen(true)}>
+              <FileCheck className="h-4 w-4 mr-1.5" /> Signed hard copy
+            </Button>
             <CoPdfExport co={co} />
           </div>
         </div>
+        {(co as any).signed_hardcopy_path && (
+          <div className="mt-3 rounded-md border border-[var(--apas-emerald)]/30 bg-[var(--apas-emerald)]/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <FileCheck className="h-4 w-4 text-[var(--apas-emerald)]" />
+                <span className="font-medium">Signed hard copy on file</span>
+                {(co as any).signed_hardcopy_at && (
+                  <span className="text-xs text-muted-foreground">· uploaded {String((co as any).signed_hardcopy_at).slice(0, 10)}</span>
+                )}
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <a href={(co as any).signed_hardcopy_path} target="_blank" rel="noopener noreferrer" download>
+                  <FileDown className="h-4 w-4 mr-1" /> Download
+                </a>
+              </Button>
+            </div>
+            {(co as any).signed_hardcopy_note && (
+              <p className="text-xs text-muted-foreground mt-1.5">{(co as any).signed_hardcopy_note}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -395,6 +421,13 @@ export default function ChangeOrderDetailPage() {
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, pdf_path: (co as any).pdf_path }}
         projectId={projectId ?? ""}
         onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+      />
+      <UploadSignedHardcopyDialog
+        open={hardcopyOpen}
+        onOpenChange={setHardcopyOpen}
+        coId={co.id}
+        projectId={projectId ?? ""}
+        locked={Boolean((co as any).locked)}
       />
     </div>
   );

@@ -230,6 +230,51 @@ export function useReopenChangeOrder() {
  * same statement so the pdf_path change is permitted even if the CO was already
  * locked (awaiting signature), then re-locks.
  */
+/**
+ * Upload the client's signed PHYSICAL copy of a CO for records. Either keep it
+ * alongside the unsigned/electronic copy (replacePrimary=false) or set it as the
+ * primary document (replacePrimary=true). A note records why. The hard-copy columns
+ * aren't lock-protected, but replacing pdf_path is — so on a locked CO we flip
+ * `locked` off in the same statement (the guard only fires when OLD & NEW are both
+ * locked) and re-lock after.
+ */
+export function useUploadSignedHardcopy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ coId, path, note, replacePrimary, locked }: {
+      coId: string; path: string; note: string; replacePrimary: boolean; locked: boolean;
+    }) => {
+      if (!path) throw new Error("Upload the signed hard copy first.");
+      const { data: { user } } = await supabase.auth.getUser();
+      const patch: Record<string, unknown> = {
+        signed_hardcopy_path: path,
+        signed_hardcopy_note: note?.trim() || null,
+        signed_hardcopy_at: new Date().toISOString(),
+        signed_hardcopy_by: user?.id ?? null,
+      };
+      if (replacePrimary) patch.pdf_path = path;
+
+      if (locked) {
+        const { error: e1 } = await supabase.from("change_orders" as any)
+          .update({ ...patch, locked: false } as any).eq("id", coId);
+        if (e1) throw e1;
+        const { error: e2 } = await supabase.from("change_orders" as any)
+          .update({ locked: true } as any).eq("id", coId);
+        if (e2) throw e2;
+      } else {
+        const { error } = await supabase.from("change_orders" as any).update(patch as any).eq("id", coId);
+        if (error) throw error;
+      }
+      return { coId };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["co"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+    },
+  });
+}
+
 export function useExecuteCoOffline() {
   const qc = useQueryClient();
   return useMutation({
