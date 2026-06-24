@@ -13,10 +13,16 @@ import {
   Clock,
   Wrench,
   User,
+  Sparkles,
+  Send,
 } from 'lucide-react';
 import { usePunchItemsByProject, usePunchItemStats, type PunchItem } from '@/hooks/usePunchItems';
+import { useProject } from '@/hooks/useProjects';
 import { PunchItemDialog } from './PunchItemDialog';
 import { PunchItemCard } from './PunchItemCard';
+import { AIPunchBuilderDialog } from './AIPunchBuilderDialog';
+import { SendPunchTransmittalDialog } from './SendPunchTransmittalDialog';
+import { PunchTransmittalsPanel } from './PunchTransmittalsPanel';
 
 interface PunchListTabProps {
   projectId: string;
@@ -33,7 +39,11 @@ const statusOptions = [
 export function PunchListTab({ projectId }: PunchListTabProps) {
   const { data: punchItems, isLoading } = usePunchItemsByProject(projectId);
   const { data: stats } = usePunchItemStats(projectId);
+  const { data: project } = useProject(projectId);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [preselect, setPreselect] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   
   const filteredItems = punchItems?.filter(item =>
@@ -95,10 +105,20 @@ export function PunchListTab({ projectId }: PunchListTabProps) {
           </SelectContent>
         </Select>
         
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Punch Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => { setPreselect([]); setSendOpen(true); }}>
+            <Send className="h-4 w-4 mr-2" />
+            Send to sub
+          </Button>
+          <Button variant="outline" onClick={() => setAiOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Generate with AI
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Punch Item
+          </Button>
+        </div>
       </div>
       
       {/* Punch Items List */}
@@ -145,10 +165,27 @@ export function PunchListTab({ projectId }: PunchListTabProps) {
         </Card>
       )}
       
+      {/* Sent-to-subs tracking + audit trail */}
+      <PunchTransmittalsPanel projectId={projectId} />
+
       <PunchItemDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         projectId={projectId}
+      />
+      <AIPunchBuilderDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        projectId={projectId}
+        projectName={project?.name}
+        onSaved={(ids, send) => { if (send) { setPreselect(ids); setSendOpen(true); } }}
+      />
+      <SendPunchTransmittalDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        projectId={projectId}
+        projectName={project?.name}
+        preselectedIds={preselect}
       />
     </div>
   );
