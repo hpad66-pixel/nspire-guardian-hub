@@ -90,14 +90,20 @@ export function PayAppSignSendDialog({
         attachments: [{ filename, contentBase64: base64, contentType: "application/pdf", size: blob.size }],
       });
 
-      // 4) Record the send (informational; does not change status).
-      await supabase.from("prime_contract_pay_apps" as any)
-        .update({ sent_for_review_at: signedAt, sent_for_review_to: recipients.join(", ") } as any)
-        .eq("id", pa.id);
-
-      await detail.refetch();
+      // The email is out — confirm success NOW and close. Everything below is
+      // best-effort bookkeeping; a hiccup there must never make a delivered email
+      // look failed (that previously pushed users to re-send the same draft).
       toast.success(`Signed draft sent to ${recipients.join(", ")}.`, { id: t });
       setOpen(false);
+      try {
+        // 4) Record the send (informational; does not change status).
+        await supabase.from("prime_contract_pay_apps" as any)
+          .update({ sent_for_review_at: signedAt, sent_for_review_to: recipients.join(", ") } as any)
+          .eq("id", pa.id);
+        await detail.refetch();
+      } catch (bookErr) {
+        console.warn("Pay app send bookkeeping failed (the email was delivered):", bookErr);
+      }
     } catch (e: any) {
       toast.error(`Couldn't send: ${e.message}`, { id: t });
     } finally {
