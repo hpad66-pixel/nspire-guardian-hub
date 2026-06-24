@@ -10,6 +10,8 @@
 -- This policy is additive and non-destructive: it only grants INSERTs that are
 -- scoped to the caller's own tenant and authored by the caller themselves.
 
+-- Idempotent: safe to re-run (DROP guard, since CREATE POLICY has no IF NOT EXISTS).
+DROP POLICY IF EXISTS oal_tenant_insert ON public.owner_audit_log;
 CREATE POLICY oal_tenant_insert ON public.owner_audit_log
   FOR INSERT TO authenticated
   WITH CHECK (
