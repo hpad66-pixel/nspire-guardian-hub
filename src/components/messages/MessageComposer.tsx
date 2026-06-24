@@ -3,8 +3,12 @@ import { motion } from "framer-motion";
 import { Send, Smile, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSendThreadMessage } from "@/hooks/useThreadMessages";
 import { cn } from "@/lib/utils";
+
+const QUICK_EMOJIS = ["👍", "🙏", "🎉", "✅", "❤️", "😀", "😂", "🔥", "🚀", "👀", "💯", "⚠️"];
 
 interface MessageComposerProps {
   threadId: string;
@@ -55,6 +59,14 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
     }
   };
 
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  const insertEmoji = (emoji: string) => {
+    setContent((c) => c + emoji);
+    setEmojiOpen(false);
+    textareaRef.current?.focus();
+  };
+
   const canSend = content.trim().length > 0;
 
   return (
@@ -73,13 +85,24 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
       >
         {/* Left actions */}
         <div className="flex items-center gap-1 pb-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* Attachments require a storage pipeline that isn't wired yet;
+                  disabled rather than silently doing nothing on click. */}
+              <span tabIndex={-1}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled
+                  aria-label="Attach file (coming soon)"
+                  className="h-8 w-8 rounded-full text-muted-foreground"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>File attachments are coming soon</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Text input */}
@@ -101,14 +124,33 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
 
         {/* Right actions */}
         <div className="flex items-center gap-1 pb-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-          >
-            <Smile className="h-4 w-4" />
-          </Button>
-          
+          <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Insert emoji"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <Smile className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-2">
+              <div className="grid grid-cols-6 gap-1">
+                {QUICK_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => insertEmoji(e)}
+                    className="h-8 w-8 rounded-md text-lg hover:bg-muted transition-colors"
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <motion.div
             animate={{ 
               scale: canSend ? 1 : 0.9,

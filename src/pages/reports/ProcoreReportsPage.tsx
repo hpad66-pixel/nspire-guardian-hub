@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useProcoreReports } from "@/hooks/useProcoreReports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,11 +25,17 @@ export default function ProcoreReportsPage() {
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="text-muted-foreground mt-1">Build, save, and schedule reports across every module.</p>
         </div>
+        <Button asChild>
+          <Link to="/reports/new"><Plus className="h-4 w-4 mr-1" /> New report</Link>
+        </Button>
       </div>
       {isLoading ? (
         <div className="text-muted-foreground">Loading…</div>
       ) : reports.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">No reports yet.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center space-y-3">
+          <p className="text-muted-foreground">No reports yet.</p>
+          <Button asChild variant="outline"><Link to="/reports/new"><Plus className="h-4 w-4 mr-1" /> Create your first report</Link></Button>
+        </CardContent></Card>
       ) : (
         <div className="grid gap-2">
           {reports.map((r) => (

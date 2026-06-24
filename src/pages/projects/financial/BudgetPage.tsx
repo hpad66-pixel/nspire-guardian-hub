@@ -1,13 +1,19 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract, usePrimeContractSov } from "@/hooks/usePrimeContract";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { useCommitments } from "@/hooks/useCommitments";
 import { useProjectFinancials } from "@/hooks/useProjectFinancials";
+import { useActiveBudget, useBudgetMatrix } from "@/hooks/useBudget";
+import { BudgetMatrixGrid } from "@/components/financial/BudgetMatrixGrid";
+import { BudgetModificationDialog } from "@/components/financial/BudgetModificationDialog";
+import { BudgetSnapshotDialog } from "@/components/financial/BudgetSnapshotDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Download, BarChart3, FileSignature } from "lucide-react";
+import { Download, BarChart3, FileSignature, Plus, Camera, ArrowLeftRight, Grid3x3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 function fmt(n: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -50,6 +56,22 @@ export default function BudgetPage() {
 
   const sortedSov = [...sov].sort((a: any, b: any) => (a.line_no ?? 0) - (b.line_no ?? 0));
 
+  // D6 · Cost-code budget matrix (was previously mounted nowhere).
+  const activeBudget = useActiveBudget(projectId ?? null);
+  const budgetId = (activeBudget.data as any)?.id ?? null;
+  const { data: matrixRows = [], isLoading: lmx } = useBudgetMatrix(budgetId);
+  const [modOpen, setModOpen] = useState(false);
+  const [snapOpen, setSnapOpen] = useState(false);
+
+  async function handleCreateBudget() {
+    try {
+      await activeBudget.create.mutateAsync("Project Budget");
+      toast.success("Budget created — add cost-code lines to populate the matrix.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to create budget");
+    }
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
@@ -84,6 +106,54 @@ export default function BudgetPage() {
           </Card>
         ))}
       </div>
+
+      {/* D6 · Cost-Code Budget Matrix */}
+      <Card>
+        <CardHeader className="pb-2 flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Grid3x3 className="h-4 w-4" /> Cost-Code Budget Matrix
+          </CardTitle>
+          {budgetId && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setModOpen(true)}>
+                <ArrowLeftRight className="h-4 w-4 mr-1" /> Budget modification
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setSnapOpen(true)}>
+                <Camera className="h-4 w-4 mr-1" /> Snapshot
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          {!budgetId ? (
+            activeBudget.isLoading ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">Loading budget…</div>
+            ) : (
+              <div className="rounded-md border p-8 text-center space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No budget yet for this project. Create one to track committed cost,
+                  change orders, exposure, and variance by cost code.
+                </p>
+                <Button onClick={handleCreateBudget} disabled={activeBudget.create.isPending}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  {activeBudget.create.isPending ? "Creating…" : "Create budget"}
+                </Button>
+              </div>
+            )
+          ) : lmx ? (
+            <div className="p-6 text-center text-muted-foreground text-sm">Loading matrix…</div>
+          ) : (
+            <BudgetMatrixGrid rows={matrixRows} projectId={projectId} />
+          )}
+        </CardContent>
+      </Card>
+
+      {budgetId && (
+        <>
+          <BudgetModificationDialog open={modOpen} onOpenChange={setModOpen} projectBudgetId={budgetId} />
+          <BudgetSnapshotDialog open={snapOpen} onOpenChange={setSnapOpen} projectBudgetId={budgetId} />
+        </>
+      )}
 
       {revised > 0 && (
         <Card>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProcoreReports, type ReportDataSource } from "@/hooks/useProcoreReports";
+import { useProjects } from "@/hooks/useProjects";
 import { FilterRuleBuilder, type FilterRule } from "@/components/reports/FilterRuleBuilder";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const EMPTY_SELECT_VALUE = "__none__";
 export default function ReportBuilderPage() {
   const navigate = useNavigate();
   const { create } = useProcoreReports();
+  const { data: projects = [] } = useProjects();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -52,6 +54,10 @@ export default function ReportBuilderPage() {
   async function handleSave() {
     if (!name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    if (scope === "project" && !projectId) {
+      toast.error("Select a project for a project-scoped report");
       return;
     }
     const normalizedGroupBy = groupBy === EMPTY_SELECT_VALUE ? null : groupBy || null;
@@ -125,8 +131,16 @@ export default function ReportBuilderPage() {
           </div>
           {scope === "project" && (
             <div>
-              <Label>Project ID</Label>
-              <Input value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="uuid" />
+              <Label>Project</Label>
+              <Select value={projectId || EMPTY_SELECT_VALUE} onValueChange={(v) => setProjectId(v === EMPTY_SELECT_VALUE ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EMPTY_SELECT_VALUE}>—</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </CardContent>

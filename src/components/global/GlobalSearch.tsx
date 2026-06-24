@@ -171,7 +171,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {filteredProperties.map((property) => (
                 <CommandItem
                   key={property.id}
-                  onSelect={() => handleSelect('/properties')}
+                  onSelect={() => handleSelect(`/units?propertyId=${property.id}`)}
                 >
                   <Building2 className="mr-2 h-4 w-4" />
                   <div>
@@ -213,7 +213,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {filteredIssues.map((issue) => (
                 <CommandItem
                   key={issue.id}
-                  onSelect={() => handleSelect('/issues')}
+                  onSelect={() => handleSelect(`/issues?issueId=${issue.id}`)}
                 >
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   <div>
