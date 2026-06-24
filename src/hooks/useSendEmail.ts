@@ -35,11 +35,19 @@ export function useSendEmail() {
 
       if (error) {
         console.error("Error sending email:", error);
-        throw new Error(error.message || "Failed to send email");
+        // supabase.functions.invoke surfaces a generic "non-2xx" message; the real
+        // reason (attachment too large, invalid recipient, …) is in the response body.
+        let detail = error.message || "Failed to send email";
+        try {
+          const ctx = (error as any).context;
+          const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+          if (body?.error) detail = body.error;
+        } catch { /* keep generic message */ }
+        throw new Error(detail);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to send email");
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to send email");
       }
 
       return data;

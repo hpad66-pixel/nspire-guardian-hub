@@ -25,12 +25,14 @@ export async function payAppPdfBlob(node: HTMLElement): Promise<Blob> {
     if (i > 0) pdf.addPage("letter", orient(pages[i]));
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const canvas = await html2canvas(pages[i], { scale: 3, backgroundColor: "#ffffff", useCORS: true });
+    const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true });
     // Fit within the printable area, preserving aspect ratio — never overflow a page.
     const ratio = Math.min((pageW - margin * 2) / canvas.width, (pageH - margin * 2) / canvas.height);
     const w = canvas.width * ratio;
     const h = canvas.height * ratio;
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", (pageW - w) / 2, margin, w, h);
+    // JPEG (not PNG) — a multi-page PNG pay app balloons to several MB and the
+    // email send (Resend attachment) fails; JPEG@0.92 stays crisp but ~10x smaller.
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", (pageW - w) / 2, margin, w, h);
   }
   return pdf.output("blob");
 }
