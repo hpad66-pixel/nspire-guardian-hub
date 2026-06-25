@@ -148,8 +148,9 @@ export function ActivityFeedPanel({ projectId, open, onClose }: ActivityFeedPane
     rec.continuous = true;
     rec.interimResults = false;
     rec.lang = "en-US";
-    rec.onresult = (e: SpeechRecognitionEvent) => {
-      const transcript = Array.from(e.results).slice(e.resultIndex).map(r => r[0].transcript).join(" ");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results).slice(e.resultIndex).map((r: any) => r[0].transcript).join(" ");
       setContent(prev => (prev ? prev + " " + transcript : transcript).trim());
     };
     rec.onerror = () => setIsListening(false);
