@@ -10,6 +10,7 @@ import {
   ChevronDown, ChevronUp, ArrowRight, Wrench, FolderKanban, ClipboardCheck,
   Activity, ShieldCheck, CalendarDays, Building2, TriangleAlert,
   Settings2, Eye, EyeOff, RotateCcw, GripVertical, Plus,
+  MessageCircle, ClipboardList, BarChart3,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,9 @@ import { useWorkOrders } from '@/hooks/useWorkOrders';
 import { useCommandCenter, type CommandCenterAlert, type TeamMemberStatus } from '@/hooks/useCommandCenter';
 import { useCompanyBranding } from '@/hooks/useCompanyBranding';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { usePendingReviewCount } from '@/hooks/useInspectionReview';
+import { useUnreadThreadCount } from '@/hooks/useThreadReadStatus';
+import { ActionCard, type ActionCardData } from '@/components/dashboard/ActionCard';
 import { isActiveProject } from '@/lib/projects';
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -207,6 +211,8 @@ export default function Dashboard() {
   const { data: workOrders = [] } = useWorkOrders();
   const { criticalAlerts, warningAlerts, teamStatuses, isLoading, counts } = useCommandCenter();
   const { hiddenWidgets, toggleWidget, resetLayout } = useDashboardLayout();
+  const { data: pendingReviews = 0 } = usePendingReviewCount();
+  const { data: unreadMessages = 0 } = useUnreadThreadCount();
 
   const [showAllCritical, setShowAllCritical] = useState(false);
   const [showAllWarning, setShowAllWarning] = useState(false);
@@ -228,6 +234,72 @@ export default function Dashboard() {
   const today = format(new Date(), 'EEEE, MMMM d, yyyy');
   const greeting = getGreeting(profile?.full_name ?? null);
   const workspaceName = branding?.company_name ?? 'Your Workspace';
+  const firstName = profile?.full_name?.split(' ')[0] ?? null;
+
+  // ── Guided actions ──────────────────────────────────────────────────
+  // Real, tenant-scoped signals (RLS keeps each org to its own data). Only
+  // cards with a live count surface; if fewer than three are active we fill
+  // with quick-start actions so the band always guides the user somewhere.
+  const actionCards = useMemo<ActionCardData[]>(() => {
+    const live: ActionCardData[] = [];
+
+    if (counts.critical > 0) {
+      live.push({
+        id: 'critical', title: 'Resolve critical items', tone: 'danger',
+        description: 'Items flagged as needing attention right now.',
+        icon: AlertTriangle, count: counts.critical,
+        onClick: () => document.getElementById('dash-critical')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      });
+    }
+    if (openIssues > 0) {
+      live.push({
+        id: 'issues', title: 'Work open issues', tone: 'danger',
+        description: 'Open issues across your properties and projects.',
+        icon: ClipboardCheck, count: openIssues, to: '/issues',
+      });
+    }
+    if (pendingReviews > 0) {
+      live.push({
+        id: 'reviews', title: 'Review inspections', tone: 'warning',
+        description: 'Submitted inspections waiting for your sign-off.',
+        icon: ShieldCheck, count: pendingReviews, to: '/inspections/review',
+      });
+    }
+    if (openWOs > 0) {
+      live.push({
+        id: 'work-orders', title: 'Advance work orders', tone: 'warning',
+        description: 'Work orders still in progress.',
+        icon: Wrench, count: openWOs, to: '/work-orders',
+      });
+    }
+    if (activeProjects > 0) {
+      live.push({
+        id: 'projects', title: 'Check on projects', tone: 'default',
+        description: 'Active projects in your workspace.',
+        icon: FolderKanban, count: activeProjects, to: '/projects',
+      });
+    }
+    if (unreadMessages > 0) {
+      live.push({
+        id: 'messages', title: 'Read new messages', tone: 'default',
+        description: 'Unread message threads.',
+        icon: MessageCircle, count: unreadMessages, to: '/messages',
+      });
+    }
+
+    const fillers: ActionCardData[] = [
+      { id: 'new-project', title: 'Start a new project', description: 'Spin up a project and its workspace.', icon: Plus, to: '/projects', tone: 'default' },
+      { id: 'daily-reports', title: 'File a daily report', description: 'Capture today’s field activity.', icon: ClipboardList, to: '/daily-reports', tone: 'default' },
+      { id: 'reports', title: 'Open reports', description: 'Review analytics across modules.', icon: BarChart3, to: '/reports', tone: 'default' },
+    ];
+
+    const cards = [...live];
+    for (const f of fillers) {
+      if (cards.length >= 3) break;
+      cards.push(f);
+    }
+    return cards.slice(0, 6);
+  }, [counts.critical, openIssues, pendingReviews, openWOs, activeProjects, unreadMessages]);
 
   const isVisible = (id: string) => !hiddenWidgets.includes(id);
 
@@ -257,6 +329,21 @@ export default function Dashboard() {
           <WidgetCustomizer hiddenWidgets={hiddenWidgets} toggleWidget={toggleWidget} resetLayout={resetLayout} />
         </div>
       </div>
+
+      {/* Welcome + guided actions */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">
+            Welcome back{firstName ? `, ${firstName}` : ''}.
+          </h2>
+          <p className="text-sm text-muted-foreground">What would you like to accomplish today?</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {actionCards.map((card) => (
+            <ActionCard key={card.id} card={card} />
+          ))}
+        </div>
+      </section>
 
       {/* KPI Strip */}
       {isVisible('kpi-strip') && (
