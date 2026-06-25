@@ -46,6 +46,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OrgProjectTree } from '@/components/layout/OrgProjectTree';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import {
@@ -246,6 +247,8 @@ export function AppSidebar() {
                 {isAdmin && (
                   <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
                 )}
+                {/* Organizations expand to reveal their own projects */}
+                <OrgProjectTree collapsed={collapsed} />
               </div>
             </>
           )}
