@@ -1046,7 +1046,7 @@ export function MeetingEditorSheet({
   }, [rawNotes, polishedHtml, polish]);
 
   const handleAiContinue = useCallback(async (context: string): Promise<string> => {
-    const result = await polish(context, { context: 'ai_continue', model: 'google/gemini-2.5-flash' });
+    const result = await polish(context, { context: 'ai_continue', model: 'claude-sonnet-4-6' });
     return result !== context ? result : '';
   }, [polish]);
 

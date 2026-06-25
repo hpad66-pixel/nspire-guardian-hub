@@ -29,17 +29,15 @@ import { format } from 'date-fns';
 
 // Available models for selection
 const MODELS = [
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast, Default)' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (Best Quality)' },
-  { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast, Requires API key)' },
-  { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Balanced, Requires API key)' },
-  { value: 'claude-opus-4-5', label: 'Claude Opus 4.5 (Best Quality, Requires API key)' },
+  { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast)' },
+  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Balanced, Default)' },
+  { value: 'claude-opus-4-8', label: 'Claude Opus 4.8 (Best Quality)' },
 ];
 
 // Default prompts — used for "Reset to Default" per skill_key
 const DEFAULT_PROMPTS: Record<string, { system_prompt: string; model: string }> = {
   meeting_minutes: {
-    model: 'google/gemini-2.5-flash',
+    model: 'claude-sonnet-4-6',
     system_prompt: `You are a senior partner at a top-tier management consulting firm (McKinsey, BCG, or Bain caliber) who specializes in project management and governance documentation. Your task is to transform raw meeting notes into formal, publication-quality meeting minutes that would be appropriate for board-level review or client submission.
 
 CRITICAL FORMATTING RULES:
@@ -356,8 +354,8 @@ export function AISkillsSettings() {
                 no code changes or redeployment needed.
               </p>
               <p>
-                To use Claude models, add your <code className="bg-muted px-1 rounded text-xs">ANTHROPIC_API_KEY</code> as a
-                backend secret. If Claude is selected but the key is missing, the system falls back to Gemini automatically.
+                These skills run on Claude. The <code className="bg-muted px-1 rounded text-xs">ANTHROPIC_API_KEY</code>{' '}
+                backend secret must be set for generation to work.
               </p>
             </div>
           </div>
