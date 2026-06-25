@@ -126,7 +126,7 @@ export function ActivityFeedPanel({ projectId, open, onClose }: ActivityFeedPane
 
   const handlePolish = async () => {
     const fullText = `Subject: ${subject}\n\n${content}`;
-    const polished = await polish(fullText, { context: 'notes', model: 'google/gemini-3-flash-preview' });
+    const polished = await polish(fullText, { context: 'notes', model: 'claude-sonnet-4-6' });
     if (polished) {
       const lines = polished.split("\n");
       const subjectLine = lines.find(l => l.toLowerCase().startsWith("subject:"));
