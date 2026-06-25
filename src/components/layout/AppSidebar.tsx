@@ -187,14 +187,32 @@ export function AppSidebar() {
             <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
           </div>
 
-          {/* ─── Portfolio ─── */}
-          <SectionLabel label="Portfolio" collapsed={collapsed} />
+          {/* ─── Property Management ─── */}
+          {/* Everything tied to operating a property: the property itself, its
+              physical assets, grounds inspections, field tools, and the workforce
+              compliance (credentials/training) that keeps it running. */}
+          <SectionLabel label="Property Management" collapsed={collapsed} />
           <div className="space-y-px">
             <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
             <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
-            <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
             {isModuleEnabled('occupancyEnabled') && (
               <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
+            )}
+            <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
+            {isModuleEnabled('equipmentTrackerEnabled') && (
+              <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
+              <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('qrScanningEnabled') && (
+              <NavItem to="/qr-scanner" icon={QrCode} label="Scanner" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('credentialWalletEnabled') && (
+              <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('trainingHubEnabled') && (
+              <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
             )}
           </div>
 
@@ -210,11 +228,11 @@ export function AppSidebar() {
             {canView('work_orders') && (
               <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
             )}
-            {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-              <NavItem to="/inspections/daily" icon={Sun} label="Daily Rounds" collapsed={collapsed} />
-            )}
             {isModuleEnabled('nspireEnabled') && canView('inspections') && (
               <NavItem to="/inspections" icon={ClipboardCheck} label="NSPIRE" collapsed={collapsed} />
+            )}
+            {isModuleEnabled('safetyModuleEnabled') && (
+              <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
             )}
             <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
           </div>
@@ -240,33 +258,7 @@ export function AppSidebar() {
             )}
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
             <NavItem to="/organizations" icon={Briefcase} label="Organizations" collapsed={collapsed} />
-            {isModuleEnabled('trainingHubEnabled') && (
-              <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('credentialWalletEnabled') && (
-              <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
-            )}
           </div>
-
-          {/* ─── Tools (module-gated items) ─── */}
-          {(isModuleEnabled('safetyModuleEnabled') ||
-            isModuleEnabled('equipmentTrackerEnabled') ||
-            isModuleEnabled('qrScanningEnabled')) && (
-            <>
-              <SectionLabel label="Tools" collapsed={collapsed} />
-              <div className="space-y-px">
-                {isModuleEnabled('safetyModuleEnabled') && (
-                  <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
-                )}
-                {isModuleEnabled('equipmentTrackerEnabled') && (
-                  <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
-                )}
-                {isModuleEnabled('qrScanningEnabled') && (
-                  <NavItem to="/qr-scanner" icon={QrCode} label="QR Scanner" collapsed={collapsed} />
-                )}
-              </div>
-            </>
-          )}
 
           {/* ─── Insights ─── */}
           {(canView('documents') || canView('reports') || isAdmin) && (
