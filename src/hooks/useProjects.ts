@@ -11,7 +11,7 @@ type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 
 export interface Project extends ProjectRow {
   property?: { name: string } | null;
-  client?: { name: string } | null;
+  client?: { name: string; client_type?: string } | null;
   milestones?: Array<{
     id: string;
     name: string;
@@ -23,14 +23,14 @@ export interface Project extends ProjectRow {
 const PROJECT_SELECT = `
   *,
   property:properties(name),
-  client:clients(name),
+  client:clients(name, client_type),
   milestones:project_milestones(id, name, due_date, status)
 `;
 
 const PROJECT_SELECT_DETAIL = `
   *,
   property:properties(name),
-  client:clients(name),
+  client:clients(name, client_type),
   milestones:project_milestones(id, name, due_date, status, notes, completed_at)
 `;
 

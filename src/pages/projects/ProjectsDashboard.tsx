@@ -39,12 +39,16 @@ import { ProjectTableView } from '@/components/projects/ProjectTableView';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { computeHealth, HEALTH_CONFIG, type HealthStatus } from '@/lib/projectHealth';
+import {
+  getProjectSector, SECTOR_CONFIG, SECTOR_ORDER, type ProjectSector,
+} from '@/lib/projectSector';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 
 type ViewMode = 'cards' | 'list' | 'table';
 type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed';
 type HealthFilter = HealthStatus | 'all';
+type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
 
 const LS_VIEW_KEY = 'projects_view_preference';
@@ -77,6 +81,7 @@ export default function ProjectsDashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
+  const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('created');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -119,6 +124,16 @@ export default function ProjectsDashboard() {
     }, { on_track: 0, at_risk: 0, overdue: 0, stalled: 0 } as Record<HealthStatus, number>);
   }, [projects]);
 
+  // --- Computed sector counts (over active projects) ---
+  const sectorCounts = useMemo(() => {
+    const empty = { government: 0, private: 0, property_mgmt: 0, internal: 0, property: 0, other: 0 } as Record<ProjectSector, number>;
+    if (!projects) return empty;
+    return projects.filter(isActiveProject).reduce((acc, p) => {
+      acc[getProjectSector(p)]++;
+      return acc;
+    }, empty);
+  }, [projects]);
+
   // --- Filtered & sorted projects ---
   const displayProjects = useMemo(() => {
     if (!projects) return [];
@@ -148,6 +163,11 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter(p => computeHealth(p) === healthFilter);
     }
 
+    // Sector filter
+    if (sectorFilter !== 'all') {
+      filtered = filtered.filter(p => getProjectSector(p) === sectorFilter);
+    }
+
     // Sort
     filtered.sort((a, b) => {
       let av: any, bv: any;
@@ -165,7 +185,7 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, propertyFilterId, search, statusFilter, healthFilter, sortBy, sortDir]);
+  }, [projects, propertyFilterId, search, statusFilter, healthFilter, sectorFilter, sortBy, sortDir]);
 
   const handleArchive = (project: Project) => {
     updateProject.mutate({ id: project.id, status: 'closed' });
@@ -181,10 +201,15 @@ export default function ProjectsDashboard() {
     const health = computeHealth(project);
     const hc = HEALTH_CONFIG[health];
     const HIcon = hc.icon;
+    const sc = SECTOR_CONFIG[getProjectSector(project)];
+    const SIcon = sc.icon;
 
     return (
       <div
-        className="p-4 rounded-lg border bg-card hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group relative"
+        className={cn(
+          'p-4 rounded-lg border border-l-4 bg-card hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group relative',
+          sc.accent,
+        )}
         onClick={() => navigate(`/projects/${project.id}`)}
       >
         {/* More actions */}
@@ -227,6 +252,13 @@ export default function ProjectsDashboard() {
               <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                 {project.status === 'active' ? 'Active' : project.status}
               </Badge>
+              <span className={cn(
+                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border',
+                sc.bg, sc.text, sc.border,
+              )}>
+                <SIcon className="h-3 w-3" />
+                {sc.label}
+              </span>
             </div>
             {parentName && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -356,6 +388,41 @@ export default function ProjectsDashboard() {
         </div>
       )}
 
+      {/* ── Sector Strip ── */}
+      {projects && projects.length > 0 && SECTOR_ORDER.some(s => sectorCounts[s] > 0) && (
+        <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg border bg-muted/30">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">Sector</span>
+          {SECTOR_ORDER.filter(s => sectorCounts[s] > 0).map(s => {
+            const sc = SECTOR_CONFIG[s];
+            const SIcon = sc.icon;
+            const isActive = sectorFilter === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setSectorFilter(isActive ? 'all' : s)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                  isActive
+                    ? cn(sc.bg, sc.text, sc.border, 'ring-2 ring-offset-1 ring-current')
+                    : cn(sc.text, 'border-border hover:border-current'),
+                )}
+              >
+                <SIcon className="h-3.5 w-3.5" />
+                <span>{sectorCounts[s]} {sc.label}</span>
+              </button>
+            );
+          })}
+          {sectorFilter !== 'all' && (
+            <button
+              onClick={() => setSectorFilter('all')}
+              className="text-xs text-muted-foreground hover:text-foreground underline ml-1"
+            >
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Projects Section ── */}
       <div className="space-y-4">
         {/* Controls row */}
@@ -447,7 +514,7 @@ export default function ProjectsDashboard() {
             <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="font-medium mb-1">No projects found</p>
             <p className="text-sm text-muted-foreground mb-4">
-              {search || statusFilter !== 'all' || healthFilter !== 'all'
+              {search || statusFilter !== 'all' || healthFilter !== 'all' || sectorFilter !== 'all'
                 ? 'Try adjusting your filters'
                 : 'Create your first project to get started'}
             </p>

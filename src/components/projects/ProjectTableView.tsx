@@ -19,11 +19,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Building2, Briefcase, MoreHorizontal, Edit, Archive, Trash2,
+  MoreHorizontal, Edit, Archive, Trash2,
   ArrowUp, ArrowDown, ChevronsUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
+import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
 import { format } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
 
@@ -141,6 +142,8 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
             const parentName = isClientProject
               ? (project as any).client?.name
               : project.property?.name;
+            const sc = SECTOR_CONFIG[getProjectSector(project)];
+            const SIcon = sc.icon;
             const budget = Number(project.budget) || 0;
             const spent = Number(project.spent) || 0;
             const spentPct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
@@ -158,11 +161,15 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
                   {project.name}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    {isClientProject
-                      ? <Briefcase className="h-3.5 w-3.5 shrink-0" />
-                      : <Building2 className="h-3.5 w-3.5 shrink-0" />}
-                    <span className="truncate max-w-[120px]">{parentName || '—'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0',
+                      sc.bg, sc.text, sc.border,
+                    )}>
+                      <SIcon className="h-3 w-3" />
+                      {sc.label}
+                    </span>
+                    <span className="truncate max-w-[120px] text-sm text-muted-foreground">{parentName || '—'}</span>
                   </div>
                 </TableCell>
                 <TableCell>
