@@ -57,7 +57,7 @@ export function usePrimeContract(projectId: string | null) {
         .from("prime_contracts" as any).select("*")
         .eq("project_id", projectId!).maybeSingle();
       if (error) throw error;
-      return (data ?? null) as PrimeContract | null;
+      return (data ?? null) as unknown as PrimeContract | null;
     },
   });
 
@@ -68,7 +68,7 @@ export function usePrimeContract(projectId: string | null) {
         tenant_id, project_id: projectId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as PrimeContract;
+      return data as unknown as PrimeContract;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
   });
@@ -78,7 +78,7 @@ export function usePrimeContract(projectId: string | null) {
       const { data, error } = await supabase
         .from("prime_contracts" as any).update(patch as any).eq("id", id).select().single();
       if (error) throw error;
-      return data as PrimeContract;
+      return data as unknown as PrimeContract;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
   });
@@ -119,7 +119,7 @@ export function usePrimeContractSov(primeContractId: string | null) {
         tenant_id, prime_contract_id: primeContractId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as PrimeContractSovLine;
+      return data as unknown as PrimeContractSovLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract-sov", primeContractId] }),
   });
@@ -136,7 +136,7 @@ export function usePrimeContractTotals(primeContractId: string | null) {
         .from("prime_contract_totals" as any).select("*")
         .eq("prime_contract_id", primeContractId!).maybeSingle();
       if (error) throw error;
-      return (data ?? null) as PrimeContractTotals | null;
+      return (data ?? null) as unknown as PrimeContractTotals | null;
     },
   });
 }

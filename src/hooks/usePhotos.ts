@@ -28,7 +28,7 @@ export function usePhotos(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("taken_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as Photo[];
+      return (data ?? []) as unknown as Photo[];
     },
   });
 
@@ -64,7 +64,7 @@ export function usePhotos(projectId: string | null) {
         exif: input.exif ?? {},
       } as any).select().single();
       if (error) throw error;
-      return data as Photo;
+      return data as unknown as Photo;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["photos", projectId] }),
   });
@@ -124,7 +124,7 @@ export function usePhotoAlbums(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as PhotoAlbum[];
+      return (data ?? []) as unknown as PhotoAlbum[];
     },
   });
 
@@ -153,7 +153,7 @@ export function usePhotoAlbums(projectId: string | null) {
           .from("photo_album_items" as any).insert(rows as any);
         if (linkErr) throw linkErr;
       }
-      return album as PhotoAlbum;
+      return album as unknown as PhotoAlbum;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["photo-albums", projectId] }),
   });

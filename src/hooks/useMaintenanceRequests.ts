@@ -142,7 +142,7 @@ export function useUpdateMaintenanceRequest() {
     mutationFn: async ({ id, ...updates }: Partial<MaintenanceRequest> & { id: string }) => {
       const { data, error } = await supabase
         .from('maintenance_requests')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

@@ -39,7 +39,7 @@ export function useUpdateSafetyIncident() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: unknown }) => {
-      const { data, error } = await supabase.from('project_safety_incidents').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('project_safety_incidents').update(updates as any).eq('id', id).select().single();
       if (error) throw error;
       return data;
     },

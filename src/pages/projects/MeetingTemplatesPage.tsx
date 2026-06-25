@@ -45,7 +45,7 @@ export default function MeetingTemplatesPage() {
         .from("meeting_templates" as any).select("*")
         .order("name");
       if (error) throw error;
-      return (data ?? []) as MeetingTemplate[];
+      return (data ?? []) as unknown as MeetingTemplate[];
     },
   });
 
@@ -57,7 +57,7 @@ export default function MeetingTemplatesPage() {
         default_notes: input.notes || null,
       } as any).select().single();
       if (error) throw error;
-      return data as MeetingTemplate;
+      return data as unknown as MeetingTemplate;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["meeting-templates"] }),
   });

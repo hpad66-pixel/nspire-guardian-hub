@@ -33,7 +33,7 @@ export function usePayApp(payAppId: string | null) {
         .eq("id", payAppId!)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as PayApp | null;
+      return (data ?? null) as unknown as PayApp | null;
     },
   });
 
@@ -46,7 +46,7 @@ export function usePayApp(payAppId: string | null) {
         .select("*")
         .eq("pay_app_id", payAppId!);
       if (error) throw error;
-      return (data ?? []) as PayAppLine[];
+      return (data ?? []) as unknown as PayAppLine[];
     },
   });
 
@@ -67,7 +67,7 @@ export function usePayApp(payAppId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as PayAppLine;
+      return data as unknown as PayAppLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app-lines", payAppId] }),
   });
@@ -92,7 +92,7 @@ export function usePayApp(payAppId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as PayApp;
+      return data as unknown as PayApp;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app", payAppId] }),
   });
@@ -121,7 +121,7 @@ export function usePayApp(payAppId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as PayApp;
+      return data as unknown as PayApp;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app", payAppId] }),
   });
@@ -140,7 +140,7 @@ export function usePayApp(payAppId: string | null) {
       if (!data) return data as any;
       // numeric view fields arrive as strings from PostgREST — coerce
       const num = (v: any) => { const x = parseFloat(String(v ?? "")); return Number.isFinite(x) ? x : 0; };
-      const d: any = { ...data };
+      const d: any = { ...(data as any) };
       for (const k of ["pay_app_no", "billed_amount", "retainage_held", "received_to_date", "balance_due", "payment_count"]) if (k in d) d[k] = num(d[k]);
       return d;
     },
@@ -192,7 +192,7 @@ export function usePayApp(payAppId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as PayApp;
+      return data as unknown as PayApp;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pay-app", payAppId] }),
   });
@@ -273,7 +273,7 @@ export function useSetPayAppStatus() {
         .from("prime_contract_pay_apps" as any)
         .update(patch as any).eq("id", payAppId).select().single();
       if (error) throw error;
-      return data as PayApp;
+      return data as unknown as PayApp;
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["pay-app", vars.payAppId] });

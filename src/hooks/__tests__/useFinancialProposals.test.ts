@@ -44,9 +44,8 @@ describe("useFinancialProposals", () => {
     const insertBuilder = makeBuilder({ data: { id: "pr-new" }, error: null });
     // Table-aware so the mount list query (proposals) doesn't steal a sequenced
     // mock: workspaces → tenant lookup, proposals → list + insert.
-    __mock.from.mockImplementation((table: string) =>
-      table === "workspaces" ? workspaceBuilder : insertBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "workspaces" ? workspaceBuilder : insertBuilder) as any);
 
     const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
     const row = await result.current.create.mutateAsync({
@@ -132,9 +131,8 @@ describe("useFinancialProposalLines", () => {
   it("create resolves the workspace then stamps tenant_id on the line", async () => {
     const workspaceBuilder = makeBuilder({ data: { id: "ws-1" }, error: null });
     const insertBuilder = makeBuilder({ data: { id: "ln-new" }, error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "workspaces" ? workspaceBuilder : insertBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "workspaces" ? workspaceBuilder : insertBuilder) as any);
 
     const { result } = renderHookWithClient(() => useFinancialProposalLines("pr1"));
     const row = await result.current.create.mutateAsync({
@@ -160,8 +158,8 @@ describe("useFinancialProposalLines", () => {
   it("create surfaces insert errors as a rejection", async () => {
     const workspaceBuilder = makeBuilder({ data: { id: "ws-1" }, error: null });
     const insertBuilder = makeBuilder({ data: null, error: { message: "denied" } as any });
-    __mock.from.mockImplementation((table: string) =>
-      table === "workspaces" ? workspaceBuilder : insertBuilder,
+    __mock.from.mockImplementation(((table: string) =>
+      table === "workspaces" ? workspaceBuilder : insertBuilder) as any,
     );
     const { result } = renderHookWithClient(() => useFinancialProposalLines("pr1"));
     await expect(

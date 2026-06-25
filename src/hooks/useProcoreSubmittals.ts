@@ -59,7 +59,7 @@ export function useSubmittalSteps(submittalId: string | null) {
         .from("submittal_workflow_steps" as any).select("*")
         .eq("submittal_id", submittalId!).order("sequence");
       if (error) throw error;
-      return (data ?? []) as SubmittalStep[];
+      return (data ?? []) as unknown as SubmittalStep[];
     },
   });
 
@@ -75,7 +75,7 @@ export function useSubmittalSteps(submittalId: string | null) {
       }));
       const { data, error } = await supabase.from("submittal_workflow_steps" as any).insert(rows as any).select();
       if (error) throw error;
-      return (data ?? []) as SubmittalStep[];
+      return (data ?? []) as unknown as SubmittalStep[];
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["submittal-steps", submittalId] }),
   });
@@ -92,7 +92,7 @@ export function useSubmittalSteps(submittalId: string | null) {
         .eq("id", input.stepId)
         .select().single();
       if (error) throw error;
-      return data as SubmittalStep;
+      return data as unknown as SubmittalStep;
     },
     onSuccess: async () => {
       const { data: steps } = await supabase

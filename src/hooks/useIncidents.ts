@@ -32,7 +32,7 @@ export function useIncidents(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("occurred_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as Incident[];
+      return (data ?? []) as unknown as Incident[];
     },
   });
 
@@ -43,7 +43,7 @@ export function useIncidents(projectId: string | null) {
         tenant_id, project_id: projectId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as Incident;
+      return data as unknown as Incident;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["incidents", projectId] }),
   });
@@ -65,7 +65,7 @@ export function useOshaRecordables(projectId: string | null, year: number) {
         .gte("occurred_at", start)
         .lt("occurred_at", end);
       if (error) throw error;
-      return (data ?? []) as Incident[];
+      return (data ?? []) as unknown as Incident[];
     },
   });
 }
@@ -121,7 +121,7 @@ export function useIncidentRootCauses(incidentId: string | null) {
         .eq("incident_id", incidentId!)
         .order("id");
       if (error) throw error;
-      return (data ?? []) as IncidentRootCause[];
+      return (data ?? []) as unknown as IncidentRootCause[];
     },
   });
 
@@ -136,7 +136,7 @@ export function useIncidentRootCauses(incidentId: string | null) {
           description: input.description,
         } as any).select().single();
       if (error) throw error;
-      return data as IncidentRootCause;
+      return data as unknown as IncidentRootCause;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["incident-root-causes", incidentId] }),
   });

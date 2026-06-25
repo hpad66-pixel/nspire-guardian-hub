@@ -294,7 +294,7 @@ export function useUpdateUtilityBill() {
 
       const { data, error } = await supabase
         .from('property_utility_bills')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

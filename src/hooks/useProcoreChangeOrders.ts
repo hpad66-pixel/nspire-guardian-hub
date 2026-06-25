@@ -41,7 +41,7 @@ export function useChangeOrdersByType(projectId: string | null, coType: "PCO"|"O
         .eq("project_id", projectId!).eq("co_type", coType)
         .order("co_no", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ChangeOrder[];
+      return (data ?? []) as unknown as ChangeOrder[];
     },
   });
 }
@@ -56,7 +56,7 @@ export function useChangeOrderLines(coId: string | null) {
         .from("change_order_lines" as any).select("*")
         .eq("change_order_id", coId!);
       if (error) throw error;
-      return (data ?? []) as ChangeOrderLine[];
+      return (data ?? []) as unknown as ChangeOrderLine[];
     },
   });
 
@@ -70,7 +70,7 @@ export function useChangeOrderLines(coId: string | null) {
         amount: input.amount,
       } as any).select().single();
       if (error) throw error;
-      return data as ChangeOrderLine;
+      return data as unknown as ChangeOrderLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["co-lines", coId] }),
   });

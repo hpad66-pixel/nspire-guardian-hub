@@ -266,7 +266,7 @@ export function useUpdateCredential() {
     mutationFn: async ({ id, ...updates }: Partial<Credential> & { id: string }) => {
       const { data, error } = await supabase
         .from('credentials')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

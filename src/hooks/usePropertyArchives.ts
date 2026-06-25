@@ -40,19 +40,17 @@ export function usePropertyArchives(category?: string) {
   return useQuery({
     queryKey: ['property-archives', category],
     queryFn: async () => {
-      let query = supabase
-        .from('property_archives')
+      const q: any = supabase
+        .from('property_archives' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (category) {
-        query = query.eq('category', category);
-      }
+      const q2: any = category ? q.eq('category', category) : q;
 
-      const { data, error } = await query;
+      const { data, error } = await q2;
 
       if (error) throw error;
-      return data as PropertyArchive[];
+      return (data ?? []) as unknown as PropertyArchive[];
     },
   });
 }
@@ -61,9 +59,9 @@ export function useArchiveCategoryStats() {
   return useQuery({
     queryKey: ['property-archives-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('property_archives')
-        .select('category');
+      const { data, error } = await (supabase
+        .from('property_archives' as any)
+        .select('category') as any);
 
       if (error) throw error;
 
@@ -72,7 +70,8 @@ export function useArchiveCategoryStats() {
         stats[cat.id] = 0;
       });
 
-      data?.forEach((item) => {
+      const rows = (data ?? []) as unknown as { category: string }[];
+      rows.forEach((item) => {
         if (stats[item.category] !== undefined) {
           stats[item.category]++;
         }
@@ -87,12 +86,12 @@ export function useTotalArchiveCount() {
   return useQuery({
     queryKey: ['property-archives-total'],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('property_archives')
-        .select('*', { count: 'exact', head: true });
+      const { count, error } = await (supabase
+        .from('property_archives' as any)
+        .select('*', { count: 'exact', head: true }) as any);
 
       if (error) throw error;
-      return count || 0;
+      return (count as number) || 0;
     },
   });
 }
@@ -136,8 +135,8 @@ export function useUploadPropertyArchive() {
         .getPublicUrl(filePath);
 
       // Create database record
-      const { data, error } = await supabase
-        .from('property_archives')
+      const { data, error } = await (supabase
+        .from('property_archives' as any)
         .insert({
           name: params.name,
           category: params.category,
@@ -153,9 +152,9 @@ export function useUploadPropertyArchive() {
           received_from: params.received_from,
           tags: params.tags || [],
           notes: params.notes,
-        })
-        .select()
-        .single();
+        } as any)
+        .select('id')
+        .single() as any);
 
       if (error) throw error;
       return data;
@@ -189,7 +188,7 @@ export function useUpdatePropertyArchive() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: UpdateArchiveParams) => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('property_archives')
         .update(updates)
         .eq('id', id)

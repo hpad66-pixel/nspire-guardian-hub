@@ -43,7 +43,7 @@ export function useWorkflowDefinitions(module?: WorkflowModule | string) {
       if (module) q = q.eq("module", module);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as WorkflowDefinition[];
+      return (data ?? []) as unknown as WorkflowDefinition[];
     },
   });
 
@@ -89,7 +89,7 @@ export function useWorkflowDefinitions(module?: WorkflowModule | string) {
         }
       }
 
-      return def as WorkflowDefinition;
+      return def as unknown as WorkflowDefinition;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow-definitions"] }),
   });
@@ -119,7 +119,7 @@ export function useWorkflowSteps(definitionId: string | null) {
         .from("workflow_steps" as any).select("*")
         .eq("definition_id", definitionId!).order("sequence");
       if (error) throw error;
-      return (data ?? []) as WorkflowStep[];
+      return (data ?? []) as unknown as WorkflowStep[];
     },
   });
 
@@ -140,7 +140,7 @@ export function useWorkflowSteps(definitionId: string | null) {
       const { data, error } = await supabase
         .from("workflow_steps" as any).insert(rows as any).select();
       if (error) throw error;
-      return (data ?? []) as WorkflowStep[];
+      return (data ?? []) as unknown as WorkflowStep[];
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflow-steps", definitionId] }),
   });

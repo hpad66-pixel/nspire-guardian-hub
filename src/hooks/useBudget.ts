@@ -50,7 +50,7 @@ export function useActiveBudget(projectId: string | null) {
         .from("project_budgets" as any).select("*")
         .eq("project_id", projectId!).eq("is_active", true).maybeSingle();
       if (error) throw error;
-      return (data ?? null) as ProjectBudget | null;
+      return (data ?? null) as unknown as ProjectBudget | null;
     },
   });
 
@@ -61,7 +61,7 @@ export function useActiveBudget(projectId: string | null) {
         tenant_id, project_id: projectId!, name, is_active: true,
       } as any).select().single();
       if (error) throw error;
-      return data as ProjectBudget;
+      return data as unknown as ProjectBudget;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["active-budget", projectId] }),
   });
@@ -79,7 +79,7 @@ export function useBudgetLines(projectBudgetId: string | null) {
         .from("budget_lines" as any).select("*")
         .eq("project_budget_id", projectBudgetId!);
       if (error) throw error;
-      return (data ?? []) as BudgetLine[];
+      return (data ?? []) as unknown as BudgetLine[];
     },
   });
 
@@ -92,7 +92,7 @@ export function useBudgetLines(projectBudgetId: string | null) {
         original_budget: input.originalBudget,
       } as any, { onConflict: "project_budget_id,cost_code_id" }).select().single();
       if (error) throw error;
-      return data as BudgetLine;
+      return data as unknown as BudgetLine;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["budget-lines", projectBudgetId] });
@@ -113,7 +113,7 @@ export function useBudgetMatrix(projectBudgetId: string | null) {
         .eq("project_budget_id", projectBudgetId!)
         .order("cost_code");
       if (error) throw error;
-      return (data ?? []) as BudgetMatrixRow[];
+      return (data ?? []) as unknown as BudgetMatrixRow[];
     },
   });
 }
@@ -128,7 +128,7 @@ export function useBudgetModifications(projectBudgetId: string | null) {
         .from("budget_modifications" as any).select("*")
         .eq("project_budget_id", projectBudgetId!).order("mod_no", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as BudgetModification[];
+      return (data ?? []) as unknown as BudgetModification[];
     },
   });
 
@@ -154,7 +154,7 @@ export function useBudgetModifications(projectBudgetId: string | null) {
         );
         if (linesErr) throw linesErr;
       }
-      return mod as BudgetModification;
+      return mod as unknown as BudgetModification;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["budget-modifications", projectBudgetId] }),
   });

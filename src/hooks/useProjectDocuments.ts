@@ -40,7 +40,7 @@ export function useProjectDocuments(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ProjectDocument[];
+      return (data ?? []) as unknown as ProjectDocument[];
     },
   });
 
@@ -97,7 +97,7 @@ export function useDocumentVersions(documentId: string | null) {
         .eq("document_id", documentId!)
         .order("version", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ProjectDocumentVersion[];
+      return (data ?? []) as unknown as ProjectDocumentVersion[];
     },
   });
 
@@ -161,7 +161,7 @@ export function useTransmittals(projectId: string | null) {
         .from("transmittals" as any).select("*")
         .eq("project_id", projectId!).order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Transmittal[];
+      return (data ?? []) as unknown as Transmittal[];
     },
   });
 
@@ -195,7 +195,7 @@ export function useTransmittals(projectId: string | null) {
           })) as any,
         );
       }
-      return t as Transmittal;
+      return t as unknown as Transmittal;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["transmittals", projectId] }),
   });

@@ -119,7 +119,7 @@ export function useUpdateVoiceAgentConfig() {
 
       const { data, error } = await supabase
         .from('voice_agent_config')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', id)
         .select()
         .single();

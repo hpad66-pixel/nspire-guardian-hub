@@ -28,7 +28,7 @@ describe("usePunchItemsByProject", () => {
     }));
     const { result } = renderHookWithClient(() => usePunchItemsByProject("p1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.[0].title).toMatch(/touch-up/i);
+    expect((result.current.data?.[0] as any).title).toMatch(/touch-up/i);
   });
 
   it("surfaces select errors", async () => {

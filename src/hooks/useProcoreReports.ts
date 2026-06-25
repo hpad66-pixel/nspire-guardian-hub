@@ -29,7 +29,7 @@ export function useProcoreReports() {
       const { data, error } = await supabase
         .from("reports" as any).select("*").order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ProcoreReport[];
+      return (data ?? []) as unknown as ProcoreReport[];
     },
   });
 
@@ -43,7 +43,7 @@ export function useProcoreReports() {
         tenant_id, owner_user_id, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as ProcoreReport;
+      return data as unknown as ProcoreReport;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["procore-reports"] }),
   });
@@ -79,7 +79,7 @@ export function useReportSchedules(reportId: string | null) {
       const { data, error } = await supabase
         .from("report_schedules" as any).select("*").eq("report_id", reportId!);
       if (error) throw error;
-      return (data ?? []) as ReportSchedule[];
+      return (data ?? []) as unknown as ReportSchedule[];
     },
   });
 
@@ -93,7 +93,7 @@ export function useReportSchedules(reportId: string | null) {
         tenant_id, report_id: reportId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as ReportSchedule;
+      return data as unknown as ReportSchedule;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["report-schedules", reportId] }),
   });
@@ -117,7 +117,7 @@ export function useDashboards() {
       const { data, error } = await supabase
         .from("dashboards" as any).select("*").order("name");
       if (error) throw error;
-      return (data ?? []) as Dashboard[];
+      return (data ?? []) as unknown as Dashboard[];
     },
   });
 
@@ -128,7 +128,7 @@ export function useDashboards() {
         tenant_id, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as Dashboard;
+      return data as unknown as Dashboard;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboards"] }),
   });

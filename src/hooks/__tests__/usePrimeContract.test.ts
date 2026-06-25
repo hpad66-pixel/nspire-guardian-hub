@@ -224,7 +224,7 @@ describe("usePayApps", () => {
     __mock.from.mockReturnValue(builder);
     const { result } = renderHookWithClient(() => usePayApps("pc1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.[0].pay_app_no).toBe(3);
+    expect((result.current.data?.[0] as any).pay_app_no).toBe(3);
     expect((builder.order as any).mock.calls[0]).toEqual([
       "pay_app_no",
       { ascending: false },

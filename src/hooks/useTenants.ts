@@ -126,7 +126,7 @@ export function useUpdateTenant() {
     mutationFn: async ({ id, ...updates }: Partial<Tenant> & { id: string }) => {
       const { data, error } = await supabase
         .from('tenants')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

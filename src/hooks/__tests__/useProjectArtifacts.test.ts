@@ -84,7 +84,7 @@ describe("useProjectArtifacts", () => {
 
     expect(h.storageFrom).toHaveBeenCalledWith("project-artifacts");
     expect(h.storageUpload).toHaveBeenCalledTimes(1);
-    const uploadedPath = h.storageUpload.mock.calls[0][0] as string;
+    const uploadedPath = (h.storageUpload.mock.calls[0] as any[])[0] as string;
     expect(uploadedPath.startsWith("tenant-1/p1/")).toBe(true);
     // The DB row records the same tenant-scoped path.
     expect(h.tableInsert).toHaveBeenCalledWith(

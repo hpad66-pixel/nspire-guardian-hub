@@ -57,7 +57,7 @@ function VendorInvoiceGroup({
   // pay applications (those belong to the prime contract). Order chronologically
   // only for display.
   const ordered = [...invoices].sort((a, b) =>
-    (a.period_end ?? a.created_at ?? "").localeCompare(b.period_end ?? b.created_at ?? ""));
+    ((a as any).period_end ?? (a as any).created_at ?? "").localeCompare((b as any).period_end ?? (b as any).created_at ?? ""));
   const total = ordered.reduce((s, i) => s + (Number(i.approved_amount ?? i.submitted_amount) || 0), 0);
 
   return (

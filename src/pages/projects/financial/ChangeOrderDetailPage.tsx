@@ -43,7 +43,7 @@ export default function ChangeOrderDetailPage() {
         .from("change_orders" as any).select("*")
         .eq("id", coId!).maybeSingle();
       if (error) throw error;
-      return (data ?? null) as ChangeOrder | null;
+      return (data ?? null) as unknown as ChangeOrder | null;
     },
   });
 

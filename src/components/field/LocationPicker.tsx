@@ -91,7 +91,7 @@ export function LocationPicker({
         .eq("project_id", projectId)
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []) as ProjectLocation[];
+      return (data ?? []) as unknown as ProjectLocation[];
     },
   });
 
@@ -112,7 +112,7 @@ export function LocationPicker({
         } as any)
         .select().single();
       if (error) throw error;
-      return data as ProjectLocation;
+      return data as unknown as ProjectLocation;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project-locations", projectId] });

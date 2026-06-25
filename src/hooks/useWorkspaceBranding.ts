@@ -61,7 +61,7 @@ export function useUpsertWorkspaceBranding() {
       if (existing) {
         const { data, error } = await supabase
           .from("company_branding")
-          .update({ ...payload, workspace_id: workspaceId })
+          .update({ ...payload, workspace_id: workspaceId } as any)
           .eq("id", existing.id)
           .select()
           .single();
@@ -70,7 +70,7 @@ export function useUpsertWorkspaceBranding() {
       } else {
         const { data, error } = await supabase
           .from("company_branding")
-          .insert({ ...payload, user_id: userId, workspace_id: workspaceId })
+          .insert({ ...payload, user_id: userId, workspace_id: workspaceId } as any)
           .select()
           .single();
         if (error) throw error;

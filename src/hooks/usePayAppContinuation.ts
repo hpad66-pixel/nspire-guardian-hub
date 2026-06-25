@@ -142,8 +142,9 @@ export function useGeneratePayApp(primeContractId: string | null, projectId: str
         .eq("prime_contract_id", primeContractId)
         .order("pay_app_no", { ascending: false });
       if (paErr) throw paErr;
-      const nextNo = ((payApps ?? [])[0]?.pay_app_no ?? 0) + 1;
-      const priorPayAppId = (payApps ?? [])[0]?.id ?? null;
+      const payAppsRows = (payApps ?? []) as unknown as { id: string; pay_app_no: number }[];
+      const nextNo = (payAppsRows[0]?.pay_app_no ?? 0) + 1;
+      const priorPayAppId = payAppsRows[0]?.id ?? null;
 
       // 3. Create the new draft pay app.
       const { data: created, error: createErr } = await supabase
@@ -240,7 +241,7 @@ export function usePayAppContinuation(payAppId: string | null) {
         .from("sov_line_items" as any).select("*")
         .eq("prime_contract_id", primeContractId!).order("sort_order");
       if (error) throw error;
-      return (data ?? []) as SovLineRow[];
+      return (data ?? []) as unknown as SovLineRow[];
     },
   });
 
@@ -251,7 +252,7 @@ export function usePayAppContinuation(payAppId: string | null) {
       const { data, error } = await supabase
         .from("pay_app_line_progress" as any).select("*").eq("pay_app_id", payAppId!);
       if (error) throw error;
-      return (data ?? []) as ProgressRow[];
+      return (data ?? []) as unknown as ProgressRow[];
     },
   });
 
@@ -264,13 +265,14 @@ export function usePayAppContinuation(payAppId: string | null) {
         .from("prime_contract_pay_apps" as any)
         .select("id, pay_app_no").eq("prime_contract_id", primeContractId!)
         .lt("pay_app_no", payAppNo!).order("pay_app_no", { ascending: false }).limit(1);
-      const priorId = (priors ?? [])[0]?.id ?? null;
+      const priorsRows = (priors ?? []) as unknown as { id: string; pay_app_no: number }[];
+      const priorId = priorsRows[0]?.id ?? null;
       if (!priorId) return { progress: [], earnedLessRetainage: 0 };
       const { data: pp } = await supabase
         .from("pay_app_line_progress" as any)
         .select("sov_line_item_id, qty_to_date, value_to_date, pct_complete, qty_this_period, value_this_period, retainage")
         .eq("pay_app_id", priorId);
-      const rows = (pp ?? []) as ProgressRow[];
+      const rows = (pp ?? []) as unknown as ProgressRow[];
       const earned = round2(
         rows.reduce((s, r) => s + Number(r.value_to_date) - Number(r.retainage), 0),
       );

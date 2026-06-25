@@ -34,7 +34,7 @@ export function useDrawings(projectId: string | null) {
         .from("drawings" as any).select("*")
         .eq("project_id", projectId!).order("sheet_number");
       if (error) throw error;
-      return (data ?? []) as Drawing[];
+      return (data ?? []) as unknown as Drawing[];
     },
   });
 }
@@ -48,7 +48,7 @@ export function useDrawingRevisions(drawingId: string | null) {
         .from("drawing_revisions" as any).select("*")
         .eq("drawing_id", drawingId!).order("uploaded_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as DrawingRevision[];
+      return (data ?? []) as unknown as DrawingRevision[];
     },
   });
 }
@@ -63,7 +63,7 @@ export function useMarkups(revisionId: string | null) {
         .from("drawing_markups" as any).select("*")
         .eq("revision_id", revisionId!);
       if (error) throw error;
-      return (data ?? []) as DrawingMarkup[];
+      return (data ?? []) as unknown as DrawingMarkup[];
     },
   });
 
@@ -75,7 +75,7 @@ export function useMarkups(revisionId: string | null) {
         .insert({ tenant_id, revision_id: revisionId!, ...input } as any)
         .select().single();
       if (error) throw error;
-      return data as DrawingMarkup;
+      return data as unknown as DrawingMarkup;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["markups", revisionId] }),
   });

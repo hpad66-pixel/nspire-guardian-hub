@@ -47,7 +47,7 @@ export default function ProjectCostCodesPage() {
         .select("*")
         .eq("project_id", projectId!);
       if (error) throw error;
-      return (data ?? []) as OverrideRow[];
+      return (data ?? []) as unknown as OverrideRow[];
     },
   });
 

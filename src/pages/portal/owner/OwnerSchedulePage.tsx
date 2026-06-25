@@ -43,7 +43,7 @@ export default function OwnerSchedulePage() {
       const { data, error } = await supabase
         .from("schedule_predecessors" as any).select("*");
       if (error) throw error;
-      return (data ?? []) as Array<{ task_id: string; predecessor_task_id: string; lag_days: number }>;
+      return (data ?? []) as unknown as Array<{ task_id: string; predecessor_task_id: string; lag_days: number }>;
     },
   });
 

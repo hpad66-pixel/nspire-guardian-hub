@@ -44,7 +44,7 @@ export function useUpdateProgressEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: unknown }) => {
-      const { data, error } = await supabase.from('project_progress_entries').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('project_progress_entries').update(updates as any).eq('id', id).select().single();
       if (error) throw error;
       return data;
     },

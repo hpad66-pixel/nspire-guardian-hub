@@ -179,7 +179,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase
         .from('properties')
-        .update({ [columnName]: newValue })
+        .update({ [columnName]: newValue } as any)
         .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all properties
 
       if (error) throw error;
@@ -204,7 +204,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase
         .from('properties')
-        .update({ [columnName]: enabled })
+        .update({ [columnName]: enabled } as any)
         .eq('id', propertyId);
 
       if (error) throw error;

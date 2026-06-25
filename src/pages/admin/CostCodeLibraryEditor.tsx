@@ -73,7 +73,7 @@ function parseCsv(text: string): Array<{ code: string; description: string; pare
 
 export default function CostCodeLibraryEditor() {
   const qc = useQueryClient();
-  const { data: libraries = [], create: _unused, seedCsi } = useCostCodeLibraries();
+  const { data: libraries = [], seedCsi } = useCostCodeLibraries();
   const [libraryId, setLibraryId] = useState<string | null>(null);
   const active = libraries.find((l) => l.id === libraryId) ?? libraries[0] ?? null;
   const activeId = active?.id ?? null;
@@ -136,7 +136,7 @@ export default function CostCodeLibraryEditor() {
         is_active: true,
       } as any).select().single();
       if (error) throw error;
-      return data as CostCode;
+      return data as unknown as CostCode;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cost-codes", activeId] }),
   });

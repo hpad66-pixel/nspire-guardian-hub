@@ -162,7 +162,7 @@ export function useDailyManpower(dailyReportId: string | null) {
         .select("*")
         .eq("daily_report_id", dailyReportId!);
       if (error) throw error;
-      return (data ?? []) as ManpowerRow[];
+      return (data ?? []) as unknown as ManpowerRow[];
     },
   });
 
@@ -179,7 +179,7 @@ export function useDailyManpower(dailyReportId: string | null) {
         .insert({ daily_report_id: dailyReportId!, organization_id: null, tenant_id, ...row } as any)
         .select().single();
       if (error) throw error;
-      return data as ManpowerRow;
+      return data as unknown as ManpowerRow;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["daily-manpower", dailyReportId] }),
   });
@@ -191,7 +191,7 @@ export function useDailyManpower(dailyReportId: string | null) {
         .update(patch as any).eq("id", id)
         .select().single();
       if (error) throw error;
-      return data as ManpowerRow;
+      return data as unknown as ManpowerRow;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["daily-manpower", dailyReportId] }),
   });

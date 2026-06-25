@@ -24,14 +24,14 @@ import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 function tableQueue(map: Record<string, Array<{ data?: unknown; error?: unknown }>>) {
   const idx: Record<string, number> = {};
   const builders: Record<string, any> = {};
-  __mock.from.mockImplementation((t: string) => {
+  __mock.from.mockImplementation(((t: string) => {
     const arr = map[t] ?? [{ data: null, error: null }];
     const i = Math.min(idx[t] ?? 0, arr.length - 1);
     idx[t] = (idx[t] ?? 0) + 1;
     const b = makeBuilder(arr[i]);
     builders[t] = b;
     return b;
-  });
+  }) as any);
   return builders;
 }
 
@@ -41,11 +41,11 @@ describe("useLoadApprovedCos", () => {
   it("creates SOV lines for approved COs that lack one", async () => {
     const co = { id: "co1", co_no: 1, title: "Storm drainage", description: null, amount: 24050, status: "executed" };
     let sovBuilder: any;
-    __mock.from.mockImplementation((t: string) => {
+    __mock.from.mockImplementation(((t: string) => {
       if (t === "change_orders") return makeBuilder({ data: [co], error: null });
       sovBuilder = makeBuilder({ data: [], error: null }); // existing select [] + insert
       return sovBuilder;
-    });
+    }) as any);
     const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
     const n = await result.current.mutateAsync();
     expect(n).toMatchObject({ inserted: 1 });
@@ -59,11 +59,11 @@ describe("useLoadApprovedCos", () => {
 
   it("refreshes the title on a CO line that already exists (no insert)", async () => {
     let sovBuilder: any;
-    __mock.from.mockImplementation((t: string) => {
+    __mock.from.mockImplementation(((t: string) => {
       if (t === "change_orders") return makeBuilder({ data: [{ id: "co1", co_no: 1, title: "On-Site Owner's Rep", amount: 100, status: "approved" }], error: null });
       sovBuilder = makeBuilder({ data: [{ id: "li1", item_no: "17", change_order_id: "co1", sort_order: 17, description: "PCO #001" }], error: null });
       return sovBuilder;
-    });
+    }) as any);
     const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
     const n = await result.current.mutateAsync();
     expect(n).toMatchObject({ inserted: 0, updated: 1 });
@@ -136,13 +136,13 @@ describe("usePayAppContinuation", () => {
 
   it("upsertLine computes to-date from prior baseline + this period", async () => {
     // detail + contract resolve so retainagePct/prior are available
-    __mock.from.mockImplementation((t: string) => {
+    __mock.from.mockImplementation(((t: string) => {
       if (t === "prime_contract_pay_apps") return makeBuilder({ data: { id: "pa5", prime_contract_id: "pc1", pay_app_no: 5, status: "draft" }, error: null });
       if (t === "prime_contracts") return makeBuilder({ data: { original_value: 1000, retainage_pct: 10 }, error: null });
       if (t === "sov_line_items") return makeBuilder({ data: [{ id: "l1", item_no: "1", kind: "base", description: "x", unit: "LS", scheduled_qty: 1, unit_price: 1000, scheduled_value: 1000, sort_order: 1 }], error: null });
       // pay_app_line_progress (this + prior) + upsert target
       return makeBuilder({ data: [], error: null });
-    });
+    }) as any);
     const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
     // upsert one line; should not throw and should compute via computeLineToDate
     await result.current.upsertLine.mutateAsync({
@@ -154,12 +154,12 @@ describe("usePayAppContinuation", () => {
 
   it("setLineRetainage writes a 0% override when exempting a line", async () => {
     let sovBuilder: any;
-    __mock.from.mockImplementation((t: string) => {
+    __mock.from.mockImplementation(((t: string) => {
       if (t === "prime_contract_pay_apps") return makeBuilder({ data: { id: "pa5", prime_contract_id: "pc1", pay_app_no: 5, status: "draft" }, error: null });
       if (t === "prime_contracts") return makeBuilder({ data: { original_value: 1000, retainage_pct: 10 }, error: null });
       if (t === "sov_line_items") { sovBuilder = makeBuilder({ data: [], error: null }); return sovBuilder; }
       return makeBuilder({ data: [], error: null });
-    });
+    }) as any);
     const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
     await result.current.setLineRetainage.mutateAsync({ sovLineItemId: "l1", exempt: true });
     expect((sovBuilder.update as any).mock.calls.some((c: any[]) => c[0].retainage_pct === 0)).toBe(true);

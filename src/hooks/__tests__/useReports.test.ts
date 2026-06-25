@@ -54,7 +54,7 @@ describe("useReports", () => {
         error: null,
       }),
     };
-    __mock.from.mockImplementation((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null }));
+    __mock.from.mockImplementation(((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null })) as any);
 
     const { result } = renderHookWithClient(() => usePropertyPortfolioReport());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -75,7 +75,7 @@ describe("useReports", () => {
       }),
       project_milestones: makeBuilder({ data: [], error: null }),
     };
-    __mock.from.mockImplementation((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null }));
+    __mock.from.mockImplementation(((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null })) as any);
 
     const { result } = renderHookWithClient(() => useProjectStatusReport());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -90,7 +90,7 @@ describe("useReports", () => {
       work_orders: makeBuilder({ data: [{ id: "w1", assigned_to: "u1", due_date: "2999-01-01" }], error: null }),
       issue_mentions: makeBuilder({ data: [{ issue_id: "i9" }], error: null }),
     };
-    __mock.from.mockImplementation((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null }));
+    __mock.from.mockImplementation(((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null })) as any);
 
     const { result } = renderHookWithClient(() => useMyAssignedItemsReport());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -212,7 +212,7 @@ describe("useReports", () => {
         error: null,
       }),
     };
-    __mock.from.mockImplementation((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null }));
+    __mock.from.mockImplementation(((table: string) => byTable[table] ?? makeBuilder({ data: [], error: null })) as any);
 
     const { result } = renderHookWithClient(() =>
       useMyInspectionsReport({ from: new Date("2026-01-01"), to: new Date("2026-02-01") }),

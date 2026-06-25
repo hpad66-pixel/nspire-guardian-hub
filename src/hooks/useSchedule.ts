@@ -28,7 +28,7 @@ export function useSchedules(projectId: string | null) {
         .from("schedules" as any).select("*")
         .eq("project_id", projectId!).order("imported_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as Schedule[];
+      return (data ?? []) as unknown as Schedule[];
     },
   });
 }
@@ -49,7 +49,7 @@ export function useScheduleTasks(scheduleId: string | null, windowDays?: number)
       }
       const { data, error } = await q.order("start_date");
       if (error) throw error;
-      return (data ?? []) as ScheduleTask[];
+      return (data ?? []) as unknown as ScheduleTask[];
     },
   });
 }
@@ -107,7 +107,7 @@ export function useCreateSchedule() {
         source: input.source ?? "native",
       } as any).select().single();
       if (error) throw error;
-      return data as Schedule;
+      return data as unknown as Schedule;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["schedules", v.projectId] }),
   });

@@ -42,7 +42,7 @@ async function executeAction(action: OfflineAction): Promise<void> {
 
       const { error } = await supabase
         .from('work_orders')
-        .update(update)
+        .update(update as any)
         .eq('id', id);
 
       if (error) throw new Error(`work_order_status: ${error.message}`);
@@ -78,7 +78,7 @@ async function executeAction(action: OfflineAction): Promise<void> {
           attachments,
           status: 'submitted',
           submitted_at: new Date().toISOString(),
-        })
+        } as any)
         .select('id')
         .single();
 

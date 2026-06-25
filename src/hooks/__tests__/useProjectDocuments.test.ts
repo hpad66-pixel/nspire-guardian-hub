@@ -62,9 +62,8 @@ describe("useProjectDocuments", () => {
   it("createWithFile uploads to storage then inserts doc + version 1", async () => {
     const docsBuilder = makeBuilder({ data: { id: "d-new" }, error: null });
     const versionsBuilder = makeBuilder({ data: null, error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "pl_document_versions" ? versionsBuilder : docsBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "pl_document_versions" ? versionsBuilder : docsBuilder) as any);
 
     const { result } = renderHookWithClient(() => useProjectDocuments("p1"));
     await result.current.createWithFile.mutateAsync({ file: fakeFile("Plan.pdf") });
@@ -142,9 +141,8 @@ describe("useDocumentVersions", () => {
       error: null,
     });
     const versionsBuilder = makeBuilder({ data: null, error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "pl_document_versions" ? versionsBuilder : docLookupBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "pl_document_versions" ? versionsBuilder : docLookupBuilder) as any);
 
     const { result } = renderHookWithClient(() => useDocumentVersions("d1"));
     const next = await result.current.uploadNewVersion.mutateAsync({
@@ -208,9 +206,8 @@ describe("useTransmittals", () => {
     __mock.rpc.mockResolvedValue({ data: "TX-003", error: null } as any);
     const txBuilder = makeBuilder({ data: { id: "tx-new" }, error: null });
     const itemsBuilder = makeBuilder({ data: null, error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "transmittal_items" ? itemsBuilder : txBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "transmittal_items" ? itemsBuilder : txBuilder) as any);
 
     const { result } = renderHookWithClient(() => useTransmittals("p1"));
     const row = await result.current.create.mutateAsync({
@@ -238,9 +235,8 @@ describe("useTransmittals", () => {
     __mock.rpc.mockResolvedValue({ data: "TX-004", error: null } as any);
     const txBuilder = makeBuilder({ data: { id: "tx-2" }, error: null });
     const itemsBuilder = makeBuilder({ data: null, error: null });
-    __mock.from.mockImplementation((table: string) =>
-      table === "transmittal_items" ? itemsBuilder : txBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "transmittal_items" ? itemsBuilder : txBuilder) as any);
 
     const { result } = renderHookWithClient(() => useTransmittals("p1"));
     await result.current.create.mutateAsync({

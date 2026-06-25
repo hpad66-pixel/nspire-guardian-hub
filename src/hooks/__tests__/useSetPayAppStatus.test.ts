@@ -18,11 +18,11 @@ describe("useSetPayAppStatus", () => {
 
   it("approving stamps approved_amount (= submitted), retainage, and date", async () => {
     let paBuilder: any;
-    __mock.from.mockImplementation((t: string) => {
+    __mock.from.mockImplementation(((t: string) => {
       if (t === "prime_contracts") return makeBuilder({ data: { retainage_pct: 10 }, error: null });
       paBuilder = makeBuilder({ data: { submitted_amount: 1000, approved_amount: null, prime_contract_id: "pc1" }, error: null });
       return paBuilder;
-    });
+    }) as any);
     const { result } = renderHookWithClient(() => useSetPayAppStatus());
     await result.current.mutateAsync({ payAppId: "pa1", status: "approved" });
 

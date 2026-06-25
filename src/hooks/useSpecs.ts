@@ -25,7 +25,7 @@ export function useSpecSets(projectId: string | null) {
         .from("specification_sets" as any).select("*")
         .eq("project_id", projectId!).order("set_date", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SpecSet[];
+      return (data ?? []) as unknown as SpecSet[];
     },
   });
 }
@@ -39,7 +39,7 @@ export function useSpecSections(setId: string | null) {
         .from("specification_sections" as any).select("*")
         .eq("set_id", setId!).order("section_number");
       if (error) throw error;
-      return (data ?? []) as SpecSection[];
+      return (data ?? []) as unknown as SpecSection[];
     },
   });
 }

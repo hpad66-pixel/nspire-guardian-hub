@@ -38,7 +38,7 @@ export function useProjectIssues(projectId: string | null) {
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ProjectIssue[];
+      return (data ?? []) as unknown as ProjectIssue[];
     },
   });
 
@@ -51,7 +51,7 @@ export function useProjectIssues(projectId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as ProjectIssue;
+      return data as unknown as ProjectIssue;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });

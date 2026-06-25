@@ -107,7 +107,7 @@ export function useUpdateDocumentFolder() {
 
       const { data, error } = await supabase
         .from('document_folders')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

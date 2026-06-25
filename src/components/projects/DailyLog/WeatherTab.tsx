@@ -35,7 +35,7 @@ export function WeatherTab({ dailyReportId }: { dailyReportId: string | null }) 
       const { data, error } = await supabase.from("daily_weather" as any)
         .select("*").eq("daily_report_id", dailyReportId!).maybeSingle();
       if (error) throw error;
-      return (data as DailyWeatherRow | null) ?? null;
+      return (data as unknown as DailyWeatherRow | null) ?? null;
     },
   });
 

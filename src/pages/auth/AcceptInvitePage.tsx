@@ -97,7 +97,7 @@ export default function AcceptInvitePage() {
       if (authData.user && Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .update(profileUpdates)
+          .update(profileUpdates as any)
           .eq('user_id', authData.user.id);
         if (profileError) {
           console.error('Failed to update user profile:', profileError);

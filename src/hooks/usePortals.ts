@@ -47,7 +47,7 @@ export function usePortalInvitations() {
         .is("accepted_at", null)
         .order("invited_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as PortalInvitation[];
+      return (data ?? []) as unknown as PortalInvitation[];
     },
   });
 
@@ -69,7 +69,7 @@ export function usePortalInvitations() {
         token,
       } as any).select().single();
       if (error) throw error;
-      return data as PortalInvitation;
+      return data as unknown as PortalInvitation;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["portal-invitations"] }),
   });

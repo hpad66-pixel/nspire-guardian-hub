@@ -42,7 +42,7 @@ export function useSsoConfig() {
         .select("*")
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as TenantSsoConfig | null;
+      return (data ?? null) as unknown as TenantSsoConfig | null;
     },
   });
 
@@ -58,7 +58,7 @@ export function useSsoConfig() {
         .select()
         .single();
       if (error) throw error;
-      return data as TenantSsoConfig;
+      return data as unknown as TenantSsoConfig;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sso-config"] }),
   });
@@ -77,7 +77,7 @@ export function useScimTokens() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ScimToken[];
+      return (data ?? []) as unknown as ScimToken[];
     },
   });
 

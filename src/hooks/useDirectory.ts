@@ -109,7 +109,7 @@ export function useOrganizations(opts?: { search?: string; kind?: Organization["
       if (opts?.search?.trim()) q = q.ilike("name", `%${opts.search.trim()}%`);
       const { data, error } = await q.limit(200);
       if (error) throw error;
-      return (data ?? []) as Organization[];
+      return (data ?? []) as unknown as Organization[];
     },
   });
 
@@ -133,7 +133,7 @@ export function useOrganizations(opts?: { search?: string; kind?: Organization["
         } as any)
         .select().single();
       if (error) throw error;
-      return data as Organization;
+      return data as unknown as Organization;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["organizations"] }),
   });
@@ -228,7 +228,7 @@ export function useOrganization(id: string | null) {
       const { data, error } = await supabase.from("organizations" as any)
         .select("*").eq("id", id!).maybeSingle();
       if (error) throw error;
-      return (data as Organization | null) ?? null;
+      return (data as unknown as Organization | null) ?? null;
     },
   });
 }

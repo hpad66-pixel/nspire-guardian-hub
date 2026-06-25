@@ -113,7 +113,7 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
   const [qaMessages, setQaMessages] = useState<PortalQaMessage[]>([]);
 
   const loadQaMessages = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('portal_qa_messages')
       .select('*')
       .eq('portal_id', portalId)
@@ -136,35 +136,35 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
         responsesResult,
         qaResult,
       ] = await Promise.all([
-        supabase.from('portal_schedule_content').select('content').eq('portal_id', portalId).maybeSingle(),
-        supabase.from('portal_schedule_milestones').select('*').eq('portal_id', portalId).order('area').order('sort_order'),
-        supabase.from('portal_schedule_state').select('milestone_checks').eq('portal_id', portalId).maybeSingle(),
-        supabase.from('portal_schedule_questions').select('*').eq('portal_id', portalId).order('sort_order'),
+        (supabase as any).from('portal_schedule_content').select('content').eq('portal_id', portalId).maybeSingle() as Promise<{ data: { content?: unknown } | null; error: unknown }>,
+        (supabase as any).from('portal_schedule_milestones').select('*').eq('portal_id', portalId).order('area').order('sort_order') as Promise<{ data: MilestoneRecord[] | null; error: unknown }>,
+        (supabase as any).from('portal_schedule_state').select('milestone_checks').eq('portal_id', portalId).maybeSingle() as Promise<{ data: { milestone_checks?: unknown } | null; error: unknown }>,
+        (supabase as any).from('portal_schedule_questions').select('*').eq('portal_id', portalId).order('sort_order') as Promise<{ data: (QuestionDef & { options: unknown })[] | null; error: unknown }>,
         session?.accessId
-          ? supabase
+          ? ((supabase as any)
               .from('portal_questionnaire_responses')
               .select('responses')
               .eq('portal_id', portalId)
               .eq('access_id', session.accessId)
-              .maybeSingle()
+              .maybeSingle() as Promise<{ data: { responses?: Json } | null; error: unknown }>)
           : Promise.resolve({ data: null, error: null }),
-        supabase.from('portal_qa_messages').select('*').eq('portal_id', portalId).order('created_at', { ascending: true }),
+        (supabase as any).from('portal_qa_messages').select('*').eq('portal_id', portalId).order('created_at', { ascending: true }) as Promise<{ data: PortalQaMessage[] | null; error: unknown }>,
       ]);
 
       if (!active) return;
 
-      setContent((contentResult.data?.content as ScheduleContent) ?? DEFAULT_CONTENT);
+      setContent((contentResult.data?.content as unknown as ScheduleContent) ?? DEFAULT_CONTENT);
       setMilestones(((milestonesResult.data ?? []) as MilestoneRecord[]));
-      setMilestoneChecks((stateResult.data?.milestone_checks as Record<string, boolean>) ?? {});
+      setMilestoneChecks((stateResult.data?.milestone_checks as unknown as Record<string, boolean>) ?? {});
       setQuestions(
         questionsResult.data && questionsResult.data.length > 0
-          ? questionsResult.data.map((question) => ({
+          ? (questionsResult.data as unknown as (QuestionDef & { options: unknown })[]).map((question) => ({
               ...question,
               options: question.options ? (question.options as string[]) : null,
-            }))
+            })) as QuestionDef[]
           : DEFAULT_QUESTIONS,
       );
-      setResponses((responsesResult as { data: { responses?: Json } | null }).data?.responses as Record<string, string> ?? {});
+      setResponses((responsesResult.data?.responses as unknown as Record<string, string>) ?? {});
       setQaMessages(((qaResult.data ?? []) as PortalQaMessage[]));
       setLoading(false);
     }
@@ -198,7 +198,7 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
     async (nextResponses: Record<string, string>) => {
       if (!session?.accessId) return;
       setSaving(true);
-      await supabase.from('portal_questionnaire_responses').upsert(
+      await (supabase as any).from('portal_questionnaire_responses').upsert(
         {
           portal_id: portalId,
           access_id: session.accessId,
@@ -224,14 +224,14 @@ export function GlorietaSchedule({ portalId, portalName, accentColor = '#1E3A5F'
   async function handleSendQa(body: string) {
     if (!session?.accessId) return;
     setSendingQa(true);
-    const { error } = await supabase.from('portal_qa_messages').insert({
+    const { error } = await (supabase as any).from('portal_qa_messages').insert({
       portal_id: portalId,
       access_id: session.accessId,
       sender_email: session.email,
       sender_name: session.name ?? session.email,
       sender_role: 'client',
       body,
-    });
+    }) as { error: Error | null };
     setSendingQa(false);
     if (error) throw error;
     await loadQaMessages();

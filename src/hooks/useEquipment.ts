@@ -407,7 +407,7 @@ export function useUpdateAsset() {
     mutationFn: async ({ id, ...updates }: Partial<EquipmentAsset> & { id: string }) => {
       const { error } = await supabase
         .from('equipment_assets')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() } as any)
         .eq('id', id);
       if (error) throw error;
     },
@@ -561,7 +561,7 @@ export function useCheckIn() {
 
       const { error: ae } = await supabase
         .from('equipment_assets')
-        .update(assetUpdate)
+        .update(assetUpdate as any)
         .eq('id', payload.asset_id);
       if (ae) throw ae;
     },

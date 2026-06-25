@@ -43,7 +43,7 @@ export function useCostCodeLibraries() {
         .order("is_default", { ascending: false })
         .order("name");
       if (error) throw error;
-      return (data ?? []) as CostCodeLibrary[];
+      return (data ?? []) as unknown as CostCodeLibrary[];
     },
   });
 
@@ -99,7 +99,7 @@ export function useCostCodeLibraries() {
           { onConflict: "tenant_id,code" },
         );
 
-      return lib as CostCodeLibrary;
+      return lib as unknown as CostCodeLibrary;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cost-code-libraries"] }),
   });
@@ -119,7 +119,7 @@ export function useCostCodes(libraryId: string | null) {
         .eq("is_active", true)
         .order("code");
       if (error) throw error;
-      return (data ?? []) as CostCode[];
+      return (data ?? []) as unknown as CostCode[];
     },
   });
 }
@@ -135,7 +135,7 @@ export function useDefaultLibrary() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as CostCodeLibrary | null;
+      return (data ?? null) as unknown as CostCodeLibrary | null;
     },
   });
 }
@@ -149,7 +149,7 @@ export function useCostTypes() {
         .select("*")
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []) as CostType[];
+      return (data ?? []) as unknown as CostType[];
     },
   });
 }

@@ -34,7 +34,7 @@ export function useDirectCosts(projectId: string | null, costType?: DirectCost["
       if (costType) q = q.eq("cost_type", costType);
       const { data, error } = await q.order("cost_date", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as DirectCost[];
+      return (data ?? []) as unknown as DirectCost[];
     },
   });
 
@@ -47,7 +47,7 @@ export function useDirectCosts(projectId: string | null, costType?: DirectCost["
         tenant_id, project_id: projectId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as DirectCost;
+      return data as unknown as DirectCost;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["direct-costs", projectId] }),
   });
@@ -65,7 +65,7 @@ export function useDirectCostLines(directCostId: string | null) {
         .from("direct_cost_lines" as any).select("*")
         .eq("direct_cost_id", directCostId!);
       if (error) throw error;
-      return (data ?? []) as DirectCostLine[];
+      return (data ?? []) as unknown as DirectCostLine[];
     },
   });
 
@@ -76,7 +76,7 @@ export function useDirectCostLines(directCostId: string | null) {
         tenant_id, direct_cost_id: directCostId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as DirectCostLine;
+      return data as unknown as DirectCostLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["direct-cost-lines", directCostId] }),
   });

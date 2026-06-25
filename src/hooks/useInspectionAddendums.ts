@@ -19,14 +19,16 @@ export function useInspectionAddendums(inspectionId: string) {
   return useQuery({
     queryKey: ['inspection-addendums', inspectionId],
     queryFn: async () => {
-      const { data: addendums, error } = await supabase
+      const q = (supabase as any)
         .from('daily_inspection_addendums')
         .select('*')
         .eq('daily_inspection_id', inspectionId)
         .order('created_at', { ascending: true });
-      
+      const { data: addendumsData, error } = await q;
+      const addendums = (addendumsData ?? []) as any[];
+
       if (error) throw error;
-      
+
       // Fetch profiles for addendum creators
       const creatorIds = [...new Set(addendums?.map(a => a.created_by).filter(Boolean) as string[])];
       let profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
@@ -48,7 +50,7 @@ export function useInspectionAddendums(inspectionId: string) {
       }));
       
       if (error) throw error;
-      return result as InspectionAddendum[];
+      return result as unknown as InspectionAddendum[];
     },
     enabled: !!inspectionId,
   });
@@ -65,14 +67,14 @@ export function useCreateAddendum() {
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('daily_inspection_addendums')
         .insert({
           daily_inspection_id: input.daily_inspection_id,
           content: input.content,
           attachments: input.attachments || [],
           created_by: user?.id,
-        })
+        } as any)
         .select()
         .single();
       

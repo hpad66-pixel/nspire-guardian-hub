@@ -83,7 +83,7 @@ export function TemplateAssignmentDialog({
       const { data, error } = await supabase
         .from("workspaces" as any).select("id, name").order("name");
       if (error) throw error;
-      return (data ?? []) as SimpleRow[];
+      return (data ?? []) as unknown as SimpleRow[];
     },
   });
 
@@ -94,7 +94,7 @@ export function TemplateAssignmentDialog({
       const { data, error } = await supabase
         .from("projects" as any).select("id, name").order("name");
       if (error) throw error;
-      return (data ?? []) as SimpleRow[];
+      return (data ?? []) as unknown as SimpleRow[];
     },
   });
 

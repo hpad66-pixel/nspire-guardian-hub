@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
-type ReviewStatus = Database['public']['Enums']['daily_inspection_review_status'];
+type ReviewStatus = (Database['public']['Enums'] & { daily_inspection_review_status: string })['daily_inspection_review_status'];
 
 export interface DailyInspectionWithDetails {
   id: string;
@@ -33,7 +33,7 @@ export function usePendingReviews() {
   return useQuery({
     queryKey: ['pending-reviews'],
     queryFn: async () => {
-      const { data: inspections, error } = await supabase
+      const { data: inspections, error } = await (supabase as any)
         .from('daily_inspections')
         .select(`
           *,
@@ -63,7 +63,7 @@ export function usePendingReviews() {
         ...i,
         inspector: i.inspector_id ? profileMap[i.inspector_id] : undefined,
       }));
-      return result as DailyInspectionWithDetails[];
+      return result as unknown as DailyInspectionWithDetails[];
     },
   });
 }
@@ -72,10 +72,11 @@ export function usePendingReviewCount() {
   return useQuery({
     queryKey: ['pending-review-count'],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const q: any = (supabase as any)
         .from('daily_inspections')
         .select('*', { count: 'exact', head: true })
         .eq('review_status', 'pending_review');
+      const { count, error } = await q;
       
       if (error) throw error;
       return count || 0;

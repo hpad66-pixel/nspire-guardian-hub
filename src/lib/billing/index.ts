@@ -56,7 +56,7 @@ export async function getMySubscription(): Promise<MySubscription | null> {
     .select("*")
     .maybeSingle();
   if (error) throw error;
-  return (data ?? null) as MySubscription | null;
+  return (data ?? null) as unknown as MySubscription | null;
 }
 
 /** Server-evaluated feature check. Honors super_admin bypass. */
@@ -97,7 +97,7 @@ export async function listPublicPlans(): Promise<Plan[]> {
     .eq("is_public", true)
     .order("sort_order");
   if (error) throw error;
-  return (data ?? []) as Plan[];
+  return (data ?? []) as unknown as Plan[];
 }
 
 /** Start a Stripe Checkout session for the given plan. Returns the URL to redirect to. */

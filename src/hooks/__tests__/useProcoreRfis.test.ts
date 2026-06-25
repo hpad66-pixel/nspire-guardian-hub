@@ -46,7 +46,7 @@ describe("useProcoreRfis", () => {
     );
     const { result } = renderHookWithClient(() => useProcoreRfis("p1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.[0].stage).toBe("open");
+    expect((result.current.data?.[0] as any).stage).toBe("open");
   });
 
   it("create pulls next number, inserts the RFI, and spins up a workflow", async () => {

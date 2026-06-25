@@ -65,7 +65,7 @@ export function SpecSectionPicker({
       if (division) q = q.eq("division", division);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as SpecSectionOption[];
+      return (data ?? []) as unknown as SpecSectionOption[];
     },
   });
 

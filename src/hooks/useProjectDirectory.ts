@@ -28,7 +28,7 @@ export function useProjectDirectory(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("is_key_contact", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as DirectoryEntry[];
+      return (data ?? []) as unknown as DirectoryEntry[];
     },
   });
 
@@ -41,7 +41,7 @@ export function useProjectDirectory(projectId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as DirectoryEntry;
+      return data as unknown as DirectoryEntry;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["project-directory", projectId] }),
   });

@@ -37,7 +37,7 @@ export function usePermissionTemplates() {
         .order("is_system", { ascending: false })
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as PermissionTemplate[];
+      return (data ?? []) as unknown as PermissionTemplate[];
     },
   });
 
@@ -74,7 +74,7 @@ export function usePermissionTemplates() {
           );
         }
       }
-      return data as PermissionTemplate;
+      return data as unknown as PermissionTemplate;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["permission-templates"] }),
   });
@@ -88,7 +88,7 @@ export function usePermissionTemplates() {
         .select()
         .single();
       if (error) throw error;
-      return data as PermissionTemplate;
+      return data as unknown as PermissionTemplate;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["permission-templates"] }),
   });
@@ -121,7 +121,7 @@ export function useTemplateGrants(templateId: string | null) {
         .order("module")
         .order("action");
       if (error) throw error;
-      return (data ?? []) as PermissionTemplateGrant[];
+      return (data ?? []) as unknown as PermissionTemplateGrant[];
     },
   });
 
@@ -141,7 +141,7 @@ export function useTemplateGrants(templateId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as PermissionTemplateGrant;
+      return data as unknown as PermissionTemplateGrant;
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["permission-template-grants", templateId] }),

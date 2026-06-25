@@ -53,7 +53,7 @@ export function useFinancialProposals(projectId: string | null) {
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as FinancialProposal[];
+      return (data ?? []) as unknown as FinancialProposal[];
     },
   });
 
@@ -66,7 +66,7 @@ export function useFinancialProposals(projectId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as FinancialProposal;
+      return data as unknown as FinancialProposal;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
@@ -99,7 +99,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
         .eq('proposal_id', proposalId!)
         .order('line_no', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as FinancialProposalLine[];
+      return (data ?? []) as unknown as FinancialProposalLine[];
     },
   });
 
@@ -112,7 +112,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as FinancialProposalLine;
+      return data as unknown as FinancialProposalLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });

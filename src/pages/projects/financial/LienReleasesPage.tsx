@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Plus } from "lucide-react";
-import { useLienReleases } from "@/hooks/useLienReleases";
+import { useLienReleases, type LienRelease } from "@/hooks/useLienReleases";
+
+type LienReleaseRow = LienRelease & { spec?: unknown; claimant_name?: string | null };
 
 const fmt = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
@@ -47,7 +49,7 @@ export default function LienReleasesPage() {
             </thead>
             <tbody>
               {releases.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No lien releases yet.</td></tr>}
-              {releases.map((r) => {
+              {(releases as unknown as LienReleaseRow[]).map((r) => {
                 const isWaiver = !!r.spec;
                 const open = () => navigate(`/projects/${projectId}/financials/lien-releases/${r.id}`);
                 return (

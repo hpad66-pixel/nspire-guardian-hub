@@ -33,7 +33,7 @@ export function useMyCourt() {
         .select("*")
         .order("due_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []) as MyCourtRow[];
+      return (data ?? []) as unknown as MyCourtRow[];
     },
   });
 }

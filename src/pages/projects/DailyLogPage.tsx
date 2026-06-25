@@ -957,7 +957,7 @@ function ReportViewSheet({
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) toast.error(error.message);
-        else setReport(data as ReportDetail);
+        else setReport(data as unknown as ReportDetail);
         setLoading(false);
       });
     return () => { cancelled = true; };
@@ -1044,7 +1044,7 @@ export default function DailyLogPage() {
         .eq("id", id)
         .single();
       if (error) throw error;
-      setSelectedReport(data as ReportDetail);
+      setSelectedReport(data as unknown as ReportDetail);
     } catch (e: any) {
       toast.error(e.message);
     } finally {

@@ -35,7 +35,7 @@ export function useInvoice(invoiceId: string | null) {
         .from("commitment_invoice_lines" as any).select("*")
         .eq("invoice_id", invoiceId!);
       if (error) throw error;
-      return (data ?? []) as CommitmentInvoiceLine[];
+      return (data ?? []) as unknown as CommitmentInvoiceLine[];
     },
   });
 
@@ -55,7 +55,7 @@ export function useInvoice(invoiceId: string | null) {
         )
         .select().single();
       if (error) throw error;
-      return data as CommitmentInvoiceLine;
+      return data as unknown as CommitmentInvoiceLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice-lines", invoiceId] }),
   });
@@ -133,7 +133,7 @@ export function useInvoice(invoiceId: string | null) {
       if (!data) return data as any;
       // numeric view fields arrive as strings from PostgREST — coerce
       const num = (v: any) => { const x = parseFloat(String(v ?? "")); return Number.isFinite(x) ? x : 0; };
-      const d: any = { ...data };
+      const d: any = { ...(data as any) };
       for (const k of ["billed_amount", "retainage_held", "paid_to_date", "balance_due", "payment_count"]) if (k in d) d[k] = num(d[k]);
       return d;
     },

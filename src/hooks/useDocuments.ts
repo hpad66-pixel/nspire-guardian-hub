@@ -222,7 +222,7 @@ export function useUpdateOrganizationDocument() {
       
       const { data, error } = await supabase
         .from('organization_documents')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

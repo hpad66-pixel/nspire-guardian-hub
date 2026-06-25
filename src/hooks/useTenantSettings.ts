@@ -24,7 +24,7 @@ export function useTenantSettings() {
         .select("*")
         .order("key", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TenantSetting[];
+      return (data ?? []) as unknown as TenantSetting[];
     },
   });
 
@@ -40,7 +40,7 @@ export function useTenantSettings() {
         .select()
         .single();
       if (error) throw error;
-      return data as TenantSetting;
+      return data as unknown as TenantSetting;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-settings"] }),
   });

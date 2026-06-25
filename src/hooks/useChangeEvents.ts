@@ -35,7 +35,7 @@ export function useChangeEvents(projectId: string | null) {
         .from("change_events" as any).select("*")
         .eq("project_id", projectId!).order("event_no", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ChangeEvent[];
+      return (data ?? []) as unknown as ChangeEvent[];
     },
   });
 
@@ -46,7 +46,7 @@ export function useChangeEvents(projectId: string | null) {
         tenant_id, project_id: projectId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as ChangeEvent;
+      return data as unknown as ChangeEvent;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["change-events", projectId] }),
   });
@@ -64,7 +64,7 @@ export function useChangeEventLines(eventId: string | null) {
         .from("change_event_lines" as any).select("*")
         .eq("change_event_id", eventId!);
       if (error) throw error;
-      return (data ?? []) as ChangeEventLine[];
+      return (data ?? []) as unknown as ChangeEventLine[];
     },
   });
 
@@ -75,7 +75,7 @@ export function useChangeEventLines(eventId: string | null) {
         tenant_id, change_event_id: eventId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as ChangeEventLine;
+      return data as unknown as ChangeEventLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["change-event-lines", eventId] }),
   });

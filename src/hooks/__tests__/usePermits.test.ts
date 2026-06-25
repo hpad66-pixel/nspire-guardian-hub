@@ -140,9 +140,8 @@ describe("usePermitStats", () => {
       ],
       error: null,
     });
-    __mock.from.mockImplementation((table: string) =>
-      table === "permit_requirements" ? reqsBuilder : permitsBuilder,
-    );
+    __mock.from.mockImplementation(((table: string) =>
+      table === "permit_requirements" ? reqsBuilder : permitsBuilder) as any);
 
     const { result } = renderHookWithClient(() => usePermitStats());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));

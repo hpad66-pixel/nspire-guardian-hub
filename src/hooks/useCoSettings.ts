@@ -33,7 +33,7 @@ export function useCoSettings() {
         .select("*")
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as CoSettings | null;
+      return (data ?? null) as unknown as CoSettings | null;
     },
   });
 

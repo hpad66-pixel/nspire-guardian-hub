@@ -42,7 +42,7 @@ export function useCommitments(projectId: string | null) {
         .from("commitments" as any).select("*")
         .eq("project_id", projectId!).order("commitment_no");
       if (error) throw error;
-      return (data ?? []) as Commitment[];
+      return (data ?? []) as unknown as Commitment[];
     },
   });
 
@@ -56,7 +56,7 @@ export function useCommitments(projectId: string | null) {
         tenant_id, project_id: projectId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as Commitment;
+      return data as unknown as Commitment;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commitments", projectId] }),
   });
@@ -74,7 +74,7 @@ export function useCommitmentSov(commitmentId: string | null) {
         .from("commitment_sov_lines" as any).select("*")
         .eq("commitment_id", commitmentId!).order("line_no");
       if (error) throw error;
-      return (data ?? []) as CommitmentSovLine[];
+      return (data ?? []) as unknown as CommitmentSovLine[];
     },
   });
 
@@ -85,7 +85,7 @@ export function useCommitmentSov(commitmentId: string | null) {
         tenant_id, commitment_id: commitmentId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as CommitmentSovLine;
+      return data as unknown as CommitmentSovLine;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commitment-sov", commitmentId] }),
   });
@@ -117,7 +117,7 @@ export function useCommitmentInvoices(commitmentId: string | null) {
         .from("commitment_invoices" as any).select("*")
         .eq("commitment_id", commitmentId!).order("invoice_no");
       if (error) throw error;
-      return (data ?? []) as CommitmentInvoice[];
+      return (data ?? []) as unknown as CommitmentInvoice[];
     },
   });
 
@@ -128,7 +128,7 @@ export function useCommitmentInvoices(commitmentId: string | null) {
         tenant_id, commitment_id: commitmentId!, ...input,
       } as any).select().single();
       if (error) throw error;
-      return data as CommitmentInvoice;
+      return data as unknown as CommitmentInvoice;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commitment-invoices", commitmentId] }),
   });

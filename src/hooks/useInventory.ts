@@ -272,7 +272,7 @@ export function useUpdateInventoryItem() {
 
       const { data, error } = await supabase
         .from('property_inventory_items')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();

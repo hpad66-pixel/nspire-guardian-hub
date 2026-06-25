@@ -31,7 +31,7 @@ export function useApiClients() {
       const { data, error } = await supabase
         .from("api_clients" as any).select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ApiClient[];
+      return (data ?? []) as unknown as ApiClient[];
     },
   });
 
@@ -85,7 +85,7 @@ export function useWebhookSubscriptions() {
       const { data, error } = await supabase
         .from("webhook_subscriptions" as any).select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as WebhookSubscription[];
+      return (data ?? []) as unknown as WebhookSubscription[];
     },
   });
 
@@ -101,7 +101,7 @@ export function useWebhookSubscriptions() {
         secret,
       } as any).select().single();
       if (error) throw error;
-      return data as WebhookSubscription;
+      return data as unknown as WebhookSubscription;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["webhook-subscriptions"] }),
   });

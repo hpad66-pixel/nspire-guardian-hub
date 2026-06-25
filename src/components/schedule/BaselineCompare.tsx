@@ -65,7 +65,7 @@ export function BaselineCompare({ scheduleId, currentTasks }: BaselineComparePro
         .eq("schedule_id", scheduleId)
         .order("captured_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Baseline[];
+      return (data ?? []) as unknown as Baseline[];
     },
   });
 

@@ -19,9 +19,10 @@ export function InvoiceBuilder({
 }) {
   const { data: sov = [] } = useCommitmentSov(commitmentId);
   const { detail, lines, upsertLine } = useInvoice(invoiceId);
+  const detailData = detail.data as { status?: string } | null | undefined;
   const locked = readOnly
-    || detail.data?.status === "approved"
-    || detail.data?.status === "paid";
+    || detailData?.status === "approved"
+    || detailData?.status === "paid";
 
   const lineByS = useMemo(() => {
     const m = new Map<string, CommitmentInvoiceLine>();
@@ -64,7 +65,7 @@ export function InvoiceBuilder({
         <Badge variant="outline" className="font-mono">This period {money(totals.thisP)}</Badge>
         <Badge variant="outline" className="font-mono">Materials {money(totals.mats)}</Badge>
         <Badge className="font-mono">Completed {money(totals.completed)}</Badge>
-        {locked && <Badge variant="secondary">Locked · {detail.data?.status}</Badge>}
+        {locked && <Badge variant="secondary">Locked · {detailData?.status}</Badge>}
       </div>
 
       <div className="overflow-x-auto rounded-md border">

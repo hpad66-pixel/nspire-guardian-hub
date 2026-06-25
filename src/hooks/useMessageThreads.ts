@@ -184,7 +184,7 @@ export function useCreateThread() {
           context_type: params.context_type ?? null,
           context_id: params.context_id ?? null,
           context_label: params.context_label ?? null,
-        })
+        } as any)
         .select()
         .single();
 

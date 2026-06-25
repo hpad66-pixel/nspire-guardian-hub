@@ -36,7 +36,7 @@ export function useDistributionLists(opts?: { projectId?: string | null }) {
       }
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as DistributionList[];
+      return (data ?? []) as unknown as DistributionList[];
     },
   });
 
@@ -62,7 +62,7 @@ export function useDistributionLists(opts?: { projectId?: string | null }) {
         .select()
         .single();
       if (error) throw error;
-      return data as DistributionList;
+      return data as unknown as DistributionList;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["distribution-lists"] }),
   });
@@ -89,7 +89,7 @@ export function useDistributionListMembers(listId: string | null) {
         .select("*")
         .eq("list_id", listId!);
       if (error) throw error;
-      return (data ?? []) as DistributionListMember[];
+      return (data ?? []) as unknown as DistributionListMember[];
     },
   });
 
@@ -102,7 +102,7 @@ export function useDistributionListMembers(listId: string | null) {
         .select()
         .single();
       if (error) throw error;
-      return data as DistributionListMember;
+      return data as unknown as DistributionListMember;
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["distribution-list-members", listId] }),
