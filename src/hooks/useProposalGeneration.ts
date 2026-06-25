@@ -7,6 +7,8 @@ interface GenerateProposalParams {
   templateId?: string;
   userNotes?: string;
   subject?: string;
+  fileContext?: string;
+  images?: { media_type: string; data: string }[];
 }
 
 interface UseProposalGenerationOptions {
