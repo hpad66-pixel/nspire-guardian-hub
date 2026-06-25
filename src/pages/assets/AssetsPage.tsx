@@ -13,15 +13,18 @@ import { useManagedProperties } from '@/hooks/useProperties';
 import { useLowStockCount } from '@/hooks/useInventory';
 import { InventoryStatusPanel } from '@/components/analytics/InventoryStatusPanel';
 import { 
-  Plus, 
-  Search, 
-  Pencil, 
+  Plus,
+  Search,
+  Pencil,
   Trash2,
   MapPin,
   Filter,
   AlertTriangle,
   BarChart2,
+  Clock,
+  ImageOff,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -257,35 +260,66 @@ export default function AssetsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredAssets.map((asset) => (
-                <Card key={asset.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="pt-4">
-                    <div className="flex items-start gap-3">
-                      <AssetTypeIcon type={asset.asset_type} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-semibold truncate">{asset.name}</h3>
-                          <Badge 
-                            variant={asset.status === 'active' ? 'default' : 'secondary'}
-                            className="shrink-0"
-                          >
-                            {asset.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {typeLabels[asset.asset_type] || asset.asset_type}
-                        </p>
-                        {asset.location_description && (
-                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3" />
-                            {asset.location_description}
-                          </p>
-                        )}
+                <Card
+                  key={asset.id}
+                  className="group overflow-hidden hover:shadow-lg hover:border-accent/40 transition-all duration-200"
+                >
+                  {/* Photo hero — falls back to a branded placeholder when no photo */}
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-muted to-muted/40">
+                    {asset.photo_url ? (
+                      <img
+                        src={asset.photo_url}
+                        alt={asset.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground/60">
+                        <AssetTypeIcon type={asset.asset_type} size="lg" />
+                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.14em]">
+                          <ImageOff className="h-3 w-3" />
+                          No photo
+                        </span>
                       </div>
+                    )}
+
+                    {/* Status badge overlay */}
+                    <Badge
+                      variant={asset.status === 'active' ? 'default' : 'secondary'}
+                      className="absolute top-2 right-2 shadow-sm capitalize"
+                    >
+                      {asset.status}
+                    </Badge>
+
+                    {/* Type chip overlay */}
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-background/85 backdrop-blur-sm px-2 py-1 shadow-sm">
+                      <AssetTypeIcon type={asset.asset_type} size="sm" />
+                      <span className="text-[11px] font-medium">
+                        {typeLabels[asset.asset_type] || asset.asset_type}
+                      </span>
                     </div>
+                  </div>
+
+                  {/* Body */}
+                  <CardContent className="p-4 space-y-2">
+                    <h3 className="font-semibold truncate" title={asset.name}>
+                      {asset.name}
+                    </h3>
+                    {asset.location_description && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{asset.location_description}</span>
+                      </p>
+                    )}
+                    <p className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      Updated {format(new Date(asset.updated_at), 'MMM d, yyyy')}
+                    </p>
+
                     {(canUpdateAssets || canDeleteAssets) && (
-                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                      <div className="flex gap-2 pt-2 border-t">
                         {canUpdateAssets && (
                           <Button
                             variant="ghost"
