@@ -12,6 +12,7 @@ import {
 import { Building2, Briefcase, MoreHorizontal, Edit, Archive, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
+import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
 import type { Project } from '@/hooks/useProjects';
 
 interface ProjectListViewProps {
@@ -57,11 +58,16 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
         const HIcon = hc.icon;
         const dot = STATUS_DOT[project.status ?? 'planning'] ?? 'bg-slate-400';
         const isDone = project.status === 'completed' || project.status === 'closed';
+        const sc = SECTOR_CONFIG[getProjectSector(project)];
+        const SIcon = sc.icon;
 
         return (
           <div
             key={project.id}
-            className="group flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+            className={cn(
+              'group flex items-center gap-3 px-4 py-3 border-l-4 hover:bg-muted/40 transition-colors cursor-pointer',
+              sc.accent,
+            )}
             onClick={() => navigate(`/projects/${project.id}`)}
           >
             {/* Status dot */}
@@ -100,6 +106,15 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
             ) : (
               <span className="hidden lg:block w-20 shrink-0" />
             )}
+
+            {/* Sector badge */}
+            <span className={cn(
+              'hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0',
+              sc.bg, sc.text, sc.border
+            )}>
+              <SIcon className="h-3 w-3" />
+              {sc.label}
+            </span>
 
             {/* Health badge */}
             <span className={cn(
