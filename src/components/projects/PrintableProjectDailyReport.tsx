@@ -55,7 +55,7 @@ export function PrintableProjectDailyReport({
 
   // Full Procore payload (weather observations, manpower breakdown, inspector…)
   const pc: any = (report as any).procore_data || {};
-  const inspector = inspectorName || pc.inspector || undefined;
+  const inspector = inspectorName || (report as any).submitted_by_name || pc.inspector || undefined;
   const weatherObs: any[] = Array.isArray(pc.weather_observations) ? pc.weather_observations : [];
   const manpower = pc.manpower || {};
   const crews: any[] = Array.isArray(manpower.crews) ? manpower.crews : [];
@@ -334,7 +334,8 @@ export function PrintableProjectDailyReport({
       <div style={{ borderTop: `2px solid ${LINE}`, marginTop: 28, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>Submitted by</div>
-          <div style={{ fontWeight: 700 }}>{inspector || 'Site Supervisor'}</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{inspector || 'Site Supervisor'}</div>
+          <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>{inspector ? 'Site Supervisor' : ''}</div>
           <div style={{ fontSize: 11, color: MUTED, fontFamily: 'system-ui' }}>
             {pc.completed_at || safeFormat((report as any).submitted_at ?? report.created_at, 'MMMM d, yyyy h:mm a')}
           </div>

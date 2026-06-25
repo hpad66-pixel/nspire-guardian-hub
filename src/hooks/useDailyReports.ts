@@ -76,10 +76,11 @@ export function useCreateDailyReport() {
   return useMutation({
     mutationFn: async (report: Omit<DailyReportInsert, 'id' | 'created_at'>) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+      const submittedByName = (user?.user_metadata as any)?.full_name || user?.email || null;
+
       const { data, error } = await supabase
         .from('daily_reports')
-        .insert({ ...report, submitted_by: user?.id })
+        .insert({ ...report, submitted_by: user?.id, submitted_by_name: submittedByName } as any)
         .select()
         .single();
       

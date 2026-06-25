@@ -45,6 +45,7 @@ export function DailyReportsList({
   const [viewReport, setViewReport] = useState<DailyReportRow | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
+  const [exportReport, setExportReport] = useState<DailyReportRow | null>(null);
   const review = useReviewDailyReport();
 
   const toggleExpanded = (id: string) => {
@@ -55,12 +56,25 @@ export function DailyReportsList({
 
   const reportDate = (r: DailyReportRow) => format(safeDate(r.report_date), 'yyyy-MM-dd');
   const filename = (r: DailyReportRow) => `field-report-${(projectName || 'project').replace(/\s+/g, '-').toLowerCase()}-${reportDate(r)}.pdf`;
-  const elementId = (r: DailyReportRow) => `printable-report-${r.id}`;
+  const EXPORT_ID = 'dr-export-root';
+
+  // Render the report once, full-width and off-screen (NOT sr-only, which clips to
+  // 1px and broke the PDF), wait for its photos to load, then capture / print.
+  const withExport = async (r: DailyReportRow, fn: () => Promise<void>) => {
+    setExportReport(r);
+    await new Promise<void>((res) => requestAnimationFrame(() => setTimeout(res, 60)));
+    const root = document.getElementById(EXPORT_ID);
+    if (root) {
+      await Promise.all(Array.from(root.querySelectorAll('img')).map((img) =>
+        img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = img.onerror = () => res(); })));
+    }
+    try { await fn(); } finally { setExportReport(null); }
+  };
 
   const handleSavePDF = async (r: DailyReportRow) => {
     setGeneratingId(r.id);
     try {
-      await generatePDF({ filename: filename(r), elementId: elementId(r), scale: 2 });
+      await withExport(r, () => generatePDF({ filename: filename(r), elementId: EXPORT_ID, scale: 2 }));
       toast.success('Report saved to your device ✓');
     } catch { toast.error('Failed to generate PDF'); }
     setGeneratingId(null);
@@ -68,7 +82,7 @@ export function DailyReportsList({
 
   const handlePrint = async (r: DailyReportRow) => {
     setPrintingId(r.id);
-    try { await printReport(elementId(r)); }
+    try { await withExport(r, () => printReport(EXPORT_ID)); }
     catch { toast.error('Failed to open print dialog'); }
     setPrintingId(null);
   };
@@ -250,16 +264,6 @@ export function DailyReportsList({
                     </div>
                   )}
 
-                  {/* Hidden printable element (always rendered for PDF/print) */}
-                  <div className="sr-only print:block" id={elementId(report)} aria-hidden="true">
-                    <PrintableProjectDailyReport
-                      report={report}
-                      projectName={projectName || 'Project'}
-                      propertyName={propertyName}
-                      propertyAddress={propertyAddress}
-                      projectType={projectType}
-                    />
-                  </div>
                 </div>
               );
             })}
@@ -327,6 +331,19 @@ export function DailyReportsList({
           projectName={projectName || 'Project'}
           reportFilename={filename(emailReport)}
         />
+      )}
+
+      {/* On-demand off-screen render used by PDF / print (full width, real size) */}
+      {exportReport && (
+        <div id={EXPORT_ID} aria-hidden="true" style={{ position: 'fixed', left: '-10000px', top: 0, width: 800, background: '#fff' }}>
+          <PrintableProjectDailyReport
+            report={exportReport}
+            projectName={projectName || 'Project'}
+            propertyName={propertyName}
+            propertyAddress={propertyAddress}
+            projectType={projectType}
+          />
+        </div>
       )}
     </Card>
   );

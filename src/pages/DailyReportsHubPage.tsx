@@ -35,6 +35,7 @@ export default function DailyReportsHubPage() {
   const [flag, setFlag] = useState<'all' | 'reviewed' | 'unreviewed' | 'issues'>('all');
   const [viewReport, setViewReport] = useState<DailyReport | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [exportReport, setExportReport] = useState<DailyReport | null>(null);
 
   const projects = useMemo(() => {
     const seen = new Map<string, string>();
@@ -60,19 +61,31 @@ export default function DailyReportsHubPage() {
 
   const liveView = viewReport ? (reports.find((r) => r.id === viewReport.id) ?? viewReport) : null;
   const { data: openCounts = {} } = useOpenActionItemCounts(filtered.map((r) => r.id));
-  const elementId = (id: string) => `hub-printable-${id}`;
+  const EXPORT_ID = 'hub-export-root';
+
+  // Render the report full-width off-screen, wait for its photos, then capture.
+  const withExport = async (r: DailyReport, fn: () => Promise<void>) => {
+    setExportReport(r);
+    await new Promise<void>((res) => requestAnimationFrame(() => setTimeout(res, 60)));
+    const root = document.getElementById(EXPORT_ID);
+    if (root) {
+      await Promise.all(Array.from(root.querySelectorAll('img')).map((img) =>
+        img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = img.onerror = () => res(); })));
+    }
+    try { await fn(); } finally { setExportReport(null); }
+  };
 
   const savePDF = async (r: DailyReport) => {
     setBusyId(r.id);
     try {
-      await generatePDF({ filename: `field-report-${(r.project?.name || 'project').replace(/\s+/g, '-').toLowerCase()}-${format(safeDate(r.report_date), 'yyyy-MM-dd')}.pdf`, elementId: elementId(r.id), scale: 2 });
+      await withExport(r, () => generatePDF({ filename: `field-report-${(r.project?.name || 'project').replace(/\s+/g, '-').toLowerCase()}-${format(safeDate(r.report_date), 'yyyy-MM-dd')}.pdf`, elementId: EXPORT_ID, scale: 2 }));
       toast.success('Report saved ✓');
     } catch { toast.error('Failed to generate PDF'); }
     setBusyId(null);
   };
   const print = async (r: DailyReport) => {
     setBusyId(r.id);
-    try { await printReport(elementId(r.id)); } catch { toast.error('Failed to print'); }
+    try { await withExport(r, () => printReport(EXPORT_ID)); } catch { toast.error('Failed to print'); }
     setBusyId(null);
   };
 
@@ -141,9 +154,6 @@ export default function DailyReportsHubPage() {
                   <Button size="sm" variant="default" className="gap-1.5" onClick={() => setViewReport(r)}><Eye className="h-3.5 w-3.5" />View</Button>
                 </div>
               </CardContent>
-              <div className="sr-only print:block" id={elementId(r.id)} aria-hidden="true">
-                <PrintableProjectDailyReport report={r as any} projectName={r.project?.name} propertyName={r.project?.property?.name} />
-              </div>
             </Card>
           ))}
         </div>
@@ -185,6 +195,13 @@ export default function DailyReportsHubPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* On-demand off-screen render for PDF / print (full width, real size) */}
+      {exportReport && (
+        <div id={EXPORT_ID} aria-hidden="true" style={{ position: 'fixed', left: '-10000px', top: 0, width: 800, background: '#fff' }}>
+          <PrintableProjectDailyReport report={exportReport as any} projectName={exportReport.project?.name} propertyName={exportReport.project?.property?.name} />
+        </div>
+      )}
     </div>
   );
 }
