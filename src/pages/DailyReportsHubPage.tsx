@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 import { useDailyReports, useReviewDailyReport, type DailyReport } from '@/hooks/useDailyReports';
 import { PrintableProjectDailyReport } from '@/components/projects/PrintableProjectDailyReport';
 import { DailyReviewSeal, DailyReviewBadge } from '@/components/projects/DailyReviewSeal';
+import { DailyReportActionItems } from '@/components/projects/DailyReportActionItems';
+import { useOpenActionItemCounts } from '@/hooks/useDailyReportActionItems';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 
 const safeDate = (d: unknown) => new Date(String(d ?? '').slice(0, 10) + 'T12:00:00');
@@ -57,6 +59,7 @@ export default function DailyReportsHubPage() {
     .sort((a, b) => safeDate(b.report_date).getTime() - safeDate(a.report_date).getTime());
 
   const liveView = viewReport ? (reports.find((r) => r.id === viewReport.id) ?? viewReport) : null;
+  const { data: openCounts = {} } = useOpenActionItemCounts(filtered.map((r) => r.id));
   const elementId = (id: string) => `hub-printable-${id}`;
 
   const savePDF = async (r: DailyReport) => {
@@ -130,6 +133,9 @@ export default function DailyReportsHubPage() {
                   </div>
                 </button>
                 <div className="flex items-center gap-2 shrink-0">
+                  {openCounts[r.id] > 0 && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-500/30 gap-1"><ClipboardList className="h-3 w-3" />{openCounts[r.id]}</Badge>
+                  )}
                   {(r as any).reviewed_at && <DailyReviewBadge />}
                   {r.issues_encountered && <Badge variant="outline" className="text-amber-500 border-amber-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Issues</Badge>}
                   <Button size="sm" variant="default" className="gap-1.5" onClick={() => setViewReport(r)}><Eye className="h-3.5 w-3.5" />View</Button>
@@ -175,6 +181,7 @@ export default function DailyReportsHubPage() {
               <div className="flex justify-end px-6 pt-4"><DailyReviewSeal name={(liveView as any).reviewed_by_name} at={(liveView as any).reviewed_at} /></div>
             )}
             {liveView && <PrintableProjectDailyReport report={liveView as any} projectName={liveView.project?.name} propertyName={liveView.project?.property?.name} />}
+            {liveView && <DailyReportActionItems reportId={liveView.id} projectId={liveView.project_id} />}
           </div>
         </SheetContent>
       </Sheet>

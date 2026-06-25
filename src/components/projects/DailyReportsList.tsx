@@ -11,8 +11,10 @@ import { ProjectDailyReportPage } from './ProjectDailyReportPage';
 import { PrintableProjectDailyReport } from './PrintableProjectDailyReport';
 import { ProjectReportEmailSheet } from './ProjectReportEmailSheet';
 import { DailyReviewSeal, DailyReviewBadge } from './DailyReviewSeal';
+import { DailyReportActionItems } from './DailyReportActionItems';
 import { useReviewDailyReport } from '@/hooks/useDailyReports';
-import { CheckCircle2, RotateCcw } from 'lucide-react';
+import { useOpenActionItemCounts } from '@/hooks/useDailyReportActionItems';
+import { CheckCircle2, RotateCcw, ClipboardList } from 'lucide-react';
 import { RichTextViewer } from '@/components/ui/rich-text-editor';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 import { toast } from 'sonner';
@@ -98,6 +100,7 @@ export function DailyReportsList({
   // The drawer holds a captured row; re-read it from the live list so the seal /
   // review button update immediately after marking reviewed.
   const liveView = viewReport ? (reports.find((r) => r.id === viewReport.id) ?? viewReport) : null;
+  const { data: openCounts = {} } = useOpenActionItemCounts(filteredReports.map((r) => r.id));
 
   if (showNewReport) {
     return (
@@ -191,6 +194,9 @@ export function DailyReportsList({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {openCounts[report.id] > 0 && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-500/30 gap-1"><ClipboardList className="h-3 w-3" />{openCounts[report.id]} action{openCounts[report.id] > 1 ? 's' : ''}</Badge>
+                      )}
                       {(report as any).reviewed_at && <DailyReviewBadge />}
                       {report.issues_encountered && (
                         <Badge variant="outline" className="text-amber-500 border-amber-500/20">
@@ -307,6 +313,7 @@ export function DailyReportsList({
                 projectType={projectType}
               />
             )}
+            {liveView && <DailyReportActionItems reportId={liveView.id} projectId={projectId} />}
           </div>
         </SheetContent>
       </Sheet>
