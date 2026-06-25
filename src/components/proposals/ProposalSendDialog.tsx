@@ -18,6 +18,7 @@ import { useSendReportEmail } from "@/hooks/useReportEmails";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfiles } from "@/hooks/useProfiles";
+import { supabase } from "@/integrations/supabase/client";
 import { generatePDFBase64 } from "@/lib/generatePDF";
 import type { CompanyBranding } from "@/hooks/useCompanyBranding";
 import { Loader2, Send, FileText } from "lucide-react";
@@ -90,6 +91,19 @@ export function ProposalSendDialog({
         proposalId = created.id;
       }
 
+      // Pull the proposal's capability token so the recipient can review & e-sign.
+      const { data: row } = await supabase
+        .from("project_proposals" as any)
+        .select("sign_token")
+        .eq("id", proposalId)
+        .maybeSingle();
+      const signToken = (row as { sign_token?: string } | null)?.sign_token;
+      const signLink = signToken ? `${window.location.origin}/sign/proposal/${signToken}` : null;
+      const emailMessage = [
+        message,
+        signLink ? `Review and sign this proposal online: ${signLink}` : "",
+      ].filter(Boolean).join("\n\n") || undefined;
+
       // Create temp element for PDF generation
       const today = format(new Date(), "MMMM d, yyyy");
       const tempDiv = document.createElement("div");
@@ -140,7 +154,7 @@ export function ProposalSendDialog({
         propertyName: project?.name || "Project",
         inspectorName: userProfile?.full_name || "Team",
         inspectionDate: today,
-        message: message || undefined,
+        message: emailMessage,
         pdfBase64,
         pdfFilename: `${proposal.title.replace(/[^a-z0-9]/gi, "_")}.pdf`,
       });

@@ -1,9 +1,10 @@
 // Client-side extraction of context from uploaded proposal files.
 // Text formats are read inline; spreadsheets via SheetJS; PDFs via pdf.js (CDN,
 // same loader the viewer uses); images are passed through as base64 for Claude's
-// multimodal input. DOCX is not yet supported (needs a parser lib) and is skipped.
+// multimodal input. DOCX is extracted via mammoth.
 
 import * as XLSX from "xlsx";
+import mammoth from "mammoth/mammoth.browser.js";
 
 const PDFJS_CDN = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
@@ -35,6 +36,12 @@ async function readSpreadsheet(file: File): Promise<string> {
     const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
     return `# Sheet: ${name}\n${csv}`;
   }).join("\n\n");
+}
+
+async function readDocx(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const { value } = await mammoth.extractRawText({ arrayBuffer });
+  return value;
 }
 
 async function readPdf(file: File): Promise<string> {
@@ -78,8 +85,11 @@ export async function extractFiles(files: File[]): Promise<ExtractResult> {
       } else if (ext === "pdf" || file.type === "application/pdf") {
         chunks.push(`--- ${name} ---\n${await readPdf(file)}`);
         result.processed.push(name);
-      } else if (["docx", "doc"].includes(ext)) {
-        result.skipped.push({ name, reason: "Word files aren't supported yet — export to PDF and re-upload." });
+      } else if (ext === "docx") {
+        chunks.push(`--- ${name} ---\n${await readDocx(file)}`);
+        result.processed.push(name);
+      } else if (ext === "doc") {
+        result.skipped.push({ name, reason: "Legacy .doc isn't supported — save as .docx or PDF." });
       } else {
         result.skipped.push({ name, reason: "Unsupported file type." });
       }

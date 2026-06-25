@@ -344,7 +344,7 @@ export function ProposalEditor({
                         id="proposal-files"
                         type="file"
                         multiple
-                        accept=".pdf,.csv,.txt,.md,.tsv,.xlsx,.xls,image/*"
+                        accept=".pdf,.csv,.txt,.md,.tsv,.xlsx,.xls,.docx,image/*"
                         className="hidden"
                         onChange={(e) => { handleFilesPicked(e.target.files); e.target.value = ""; }}
                       />
