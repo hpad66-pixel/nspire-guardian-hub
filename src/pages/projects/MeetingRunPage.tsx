@@ -10,26 +10,43 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProjectMeetings } from "@/hooks/useProjectMeetings";
-import { downloadMeetingMinutesPdf } from "@/lib/pdf/meetingMinutes";
+import { useProject } from "@/hooks/useProjects";
+import { useCompanyBranding } from "@/hooks/useCompanyBranding";
+import { generatePDF, generatePDFBase64, printReport } from "@/lib/generatePDF";
+import { useSendReportEmail } from "@/hooks/useReportEmails";
+import { PrintableMeetingMinutes } from "@/components/projects/PrintableMeetingMinutes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Download, ArrowLeft, CheckCheck, Lock,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Download, ArrowLeft, CheckCheck, Lock, Printer, Mail, Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+const MEETING_EXPORT_ID = "meeting-minutes-export";
 
 export default function MeetingRunPage() {
   const { projectId = "", meetingId = "" } = useParams();
   const navigate = useNavigate();
   const { meetings, isLoading, updateMeeting, finalizeMeeting } =
     useProjectMeetings(projectId);
+  const { data: project } = useProject(projectId || null);
+  const { data: branding } = useCompanyBranding();
+  const sendEmail = useSendReportEmail();
 
   const meeting = meetings.find((m) => m.id === meetingId);
   const [notes, setNotes] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState<null | "pdf" | "print">(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
 
   useEffect(() => {
     if (meeting) {
@@ -69,19 +86,42 @@ export default function MeetingRunPage() {
     }
   }
 
-  function handleDownload() {
-    downloadMeetingMinutesPdf({
-      id: meeting.id,
-      title: meeting.title,
-      meeting_type: meeting.meeting_type,
-      meeting_date: meeting.meeting_date,
-      meeting_time: meeting.meeting_time ?? null,
-      location: meeting.location ?? null,
-      status: meeting.status,
-      attendees: meeting.attendees ?? [],
-      polished_notes: meeting.polished_notes ?? notes,
-      raw_notes: meeting.raw_notes ?? null,
-    });
+  const fileBase = `minutes-${meeting.meeting_date}-${(meeting.title || "meeting").slice(0, 24).replace(/\s+/g, "-")}`;
+
+  async function handlePdf() {
+    setBusy("pdf");
+    try {
+      await generatePDF({ filename: `${fileBase}.pdf`, elementId: MEETING_EXPORT_ID, scale: 2 });
+    } catch (e: any) { toast.error(e?.message || "Could not generate PDF"); }
+    finally { setBusy(null); }
+  }
+
+  async function handlePrint() {
+    setBusy("print");
+    try { await printReport(MEETING_EXPORT_ID); }
+    catch (e: any) { toast.error(e?.message || "Could not print"); }
+    finally { setBusy(null); }
+  }
+
+  async function handleEmail() {
+    if (!emailTo.trim()) { toast.error("Enter a recipient email."); return; }
+    try {
+      const pdfBase64 = await generatePDFBase64({ elementId: MEETING_EXPORT_ID, scale: 2 });
+      await sendEmail.mutateAsync({
+        recipients: [emailTo.trim()],
+        subject: `Meeting minutes — ${meeting.title} · ${project?.name ?? "Project"}`,
+        reportType: "daily_report",
+        reportId: meeting.id,
+        propertyName: project?.name ?? "Project",
+        inspectorName: branding?.company_name ?? "APAS Consulting",
+        inspectionDate: meeting.meeting_date,
+        pdfBase64,
+        pdfFilename: `${fileBase}.pdf`,
+        projectId: projectId || undefined,
+      });
+      toast.success("Minutes emailed.");
+      setEmailOpen(false); setEmailTo("");
+    } catch (e: any) { toast.error(e?.message || "Could not send email."); }
   }
 
   return (
@@ -137,9 +177,19 @@ export default function MeetingRunPage() {
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" /> Download minutes PDF
+              <Button className="w-full" onClick={handlePdf} disabled={busy !== null}>
+                {busy === "pdf" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download PDF
               </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={handlePrint} disabled={busy !== null}>
+                  {busy === "print" ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Printer className="h-4 w-4 mr-1.5" />}
+                  Print
+                </Button>
+                <Button variant="outline" onClick={() => setEmailOpen(true)} disabled={busy !== null}>
+                  <Mail className="h-4 w-4 mr-1.5" /> Email
+                </Button>
+              </div>
               {!isFinalized && (
                 <>
                   <Button
@@ -197,6 +247,55 @@ export default function MeetingRunPage() {
           </Card>
         </section>
       </div>
+
+      {/* Hidden branded export source — used by Print, Download PDF, and Email. */}
+      <div style={{ position: "fixed", left: -10000, top: 0 }} aria-hidden>
+        <div id={MEETING_EXPORT_ID}>
+          <PrintableMeetingMinutes
+            id={meeting.id}
+            title={meeting.title}
+            meetingType={meeting.meeting_type}
+            meetingDate={meeting.meeting_date}
+            meetingTime={meeting.meeting_time ?? null}
+            location={meeting.location ?? null}
+            status={meeting.status}
+            attendees={meeting.attendees ?? []}
+            body={meeting.polished_notes ?? notes ?? meeting.raw_notes ?? null}
+            projectName={project?.name ?? "Project"}
+            companyName={branding?.company_name ?? "APAS Consulting"}
+            logoUrl={branding?.logo_url ?? null}
+            brandAddress={[branding?.address_line1, branding?.address_line2].filter(Boolean).join(", ") || null}
+            brandPhone={branding?.phone ?? null}
+            brandEmail={branding?.email ?? null}
+            brandWebsite={branding?.website ?? null}
+          />
+        </div>
+      </div>
+
+      {/* Email dialog */}
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email meeting minutes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Recipient email</Label>
+            <Input
+              type="email"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              placeholder="name@example.com"
+            />
+            <p className="text-xs text-muted-foreground">A branded PDF of these minutes will be attached.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <Button onClick={handleEmail} disabled={sendEmail.isPending || !emailTo.trim()}>
+              {sendEmail.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</> : <><Mail className="h-4 w-4 mr-2" /> Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
