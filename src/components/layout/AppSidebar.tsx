@@ -188,6 +188,23 @@ export function AppSidebar() {
             <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
           </div>
 
+          {/* ─── Projects — the primary workspace. Clients own projects: open a
+              client to see their projects, then enter each project. ─── */}
+          {isModuleEnabled('projectsEnabled') && canView('projects') && (
+            <>
+              <SectionLabel label="Projects" collapsed={collapsed} />
+              <div className="space-y-px">
+                <NavItem to="/projects" icon={FolderKanban} label="All Projects" collapsed={collapsed} end />
+                <NavItem to="/organizations" icon={Briefcase} label="Clients" collapsed={collapsed} />
+                {isAdmin && (
+                  <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
+                )}
+                {/* Expand a client to reveal its projects; each opens its project workspace. */}
+                <OrgProjectTree collapsed={collapsed} />
+              </div>
+            </>
+          )}
+
           {/* ─── Property Management ─── */}
           {/* Everything tied to operating a property: the property itself, its
               physical assets, grounds inspections, field tools, and the workforce
@@ -238,21 +255,6 @@ export function AppSidebar() {
             <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
           </div>
 
-          {/* ─── Projects (module-gated) ─── */}
-          {isModuleEnabled('projectsEnabled') && canView('projects') && (
-            <>
-              <SectionLabel label="Projects" collapsed={collapsed} />
-              <div className="space-y-px">
-                <NavItem to="/projects" icon={FolderKanban} label="All Projects" collapsed={collapsed} end />
-                {isAdmin && (
-                  <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
-                )}
-                {/* Organizations expand to reveal their own projects */}
-                <OrgProjectTree collapsed={collapsed} />
-              </div>
-            </>
-          )}
-
           {/* ─── People ─── */}
           <SectionLabel label="People" collapsed={collapsed} />
           <div className="space-y-px">
@@ -260,7 +262,6 @@ export function AppSidebar() {
               <NavItem to="/people" icon={Users} label="Team" collapsed={collapsed} />
             )}
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
-            <NavItem to="/organizations" icon={Briefcase} label="Organizations" collapsed={collapsed} />
           </div>
 
           {/* ─── Insights ─── */}
