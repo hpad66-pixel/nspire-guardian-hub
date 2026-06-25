@@ -209,46 +209,44 @@ export async function printReport(elementId: string): Promise<void> {
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    throw new Error('Could not open print window');
-  }
-
   const styles = Array.from(document.styleSheets)
     .map((sheet) => {
       try {
-        return Array.from(sheet.cssRules)
-          .map((rule) => rule.cssText)
-          .join('\n');
+        return Array.from(sheet.cssRules).map((rule) => rule.cssText).join('\n');
       } catch {
         return '';
       }
     })
     .join('\n');
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Print Report</title>
-        <style>${styles}</style>
-        <style>
-          @media print {
-            body { margin: 0; padding: 0; }
-            @page { margin: 0.5in; }
-          }
-        </style>
-      </head>
-      <body>
-        ${element.outerHTML}
-      </body>
-    </html>
-  `);
+  // Print via a hidden same-origin iframe rather than window.open — iframes aren't
+  // blocked by popup blockers (window.open is, especially after an async await),
+  // and we use innerHTML so the off-screen wrapper's positioning isn't carried in.
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+  document.body.appendChild(iframe);
 
-  printWindow.document.close();
+  const doc = iframe.contentWindow?.document;
+  if (!doc) { iframe.remove(); throw new Error('Could not create print frame'); }
 
-  printWindow.onload = () => {
-    printWindow.print();
-    printWindow.close();
-  };
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><title>Print Report</title><style>${styles}</style>` +
+    `<style>@media print { body { margin: 0; padding: 0; } @page { margin: 0.5in; } }</style></head>` +
+    `<body>${element.innerHTML}</body></html>`);
+  doc.close();
+
+  // Wait for the report's images to load inside the frame before printing.
+  await new Promise<void>((resolve) => {
+    const imgs = Array.from(doc.images || []);
+    if (imgs.length === 0) { resolve(); return; }
+    let pending = imgs.length;
+    const done = () => { if (--pending <= 0) resolve(); };
+    imgs.forEach((img) => (img.complete ? done() : (img.onload = img.onerror = done)));
+    setTimeout(resolve, 3000); // safety net
+  });
+
+  iframe.contentWindow?.focus();
+  iframe.contentWindow?.print();
+  setTimeout(() => iframe.remove(), 1000);
 }
