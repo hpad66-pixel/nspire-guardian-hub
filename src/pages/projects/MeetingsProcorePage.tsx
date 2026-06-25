@@ -8,7 +8,9 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useProjectMeetings } from "@/hooks/useProjectMeetings";
 import type { ProjectMeeting } from "@/hooks/useProjectMeetings";
+import { useProject } from "@/hooks/useProjects";
 import { MeetingEditorSheet } from "@/components/projects/MeetingsTab";
+import { MeetingExportMenu } from "@/components/projects/MeetingExportMenu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import { format } from "date-fns";
 export default function MeetingsProcorePage() {
   const { projectId = "" } = useParams();
   const { meetings, isLoading, createMeeting, updateMeeting, finalizeMeeting } = useProjectMeetings(projectId);
+  const { data: project } = useProject(projectId || null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selected, setSelected] = useState<ProjectMeeting | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -103,6 +106,9 @@ export default function MeetingsProcorePage() {
                   <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(m); }}>
                     Open
                   </Button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <MeetingExportMenu meeting={m} projectId={projectId} projectName={project?.name ?? "Project"} />
+                  </span>
                 </div>
               </CardContent>
             </Card>

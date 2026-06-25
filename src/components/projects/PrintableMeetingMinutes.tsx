@@ -54,7 +54,16 @@ export function PrintableMeetingMinutes({
   const minutes = (body ?? '').trim();
 
   return (
-    <div style={{ width: 760, background: '#FFFFFF', color: INK, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0' }}>
+    <div className="meeting-minutes-doc" style={{ width: 760, background: '#FFFFFF', color: INK, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0' }}>
+      {/* Print pagination: keep sections, tables, and rows from splitting across
+          pages, and never orphan a heading at the bottom of a page. */}
+      <style>{`
+        @media print {
+          .meeting-minutes-doc table, .meeting-minutes-doc tr, .meeting-minutes-doc img,
+          .meeting-minutes-doc ul, .meeting-minutes-doc ol, .meeting-minutes-doc li { break-inside: avoid; page-break-inside: avoid; }
+          .meeting-minutes-doc h1, .meeting-minutes-doc h2, .meeting-minutes-doc h3 { break-after: avoid; page-break-after: avoid; break-inside: avoid; }
+        }
+      `}</style>
       {/* ── Branded letterhead ──────────────────────────────────────── */}
       <div style={{ borderTop: `6px solid ${GOLD}`, padding: '24px 40px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
