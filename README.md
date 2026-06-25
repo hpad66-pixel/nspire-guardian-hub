@@ -1,103 +1,35 @@
-# Welcome to your Lovable project
+# Build OS (nspire-guardian-hub)
 
-## Project info
+Construction-management platform — projects, financials (prime contracts, change
+orders, pay apps, commitments), daily field reports, punch lists, RFIs, submittals,
+and client/subcontractor/owner portals.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- **Frontend:** Vite · React 18 · TypeScript · shadcn/ui · Tailwind CSS
+- **Data/State:** TanStack Query v5 · React Router v6 · react-hook-form · zod
+- **Backend:** Supabase (Postgres + RLS + Storage + Edge Functions)
+- **Email:** Resend (via edge functions)
+- **CI/CD:** GitHub Actions → Supabase (migrations + functions) · Cloudflare Pages (frontend)
 
-There are several ways of editing your application.
+## Local development
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install
+npm run dev          # Vite dev server (http://localhost:8080)
+npm run build        # production build
+npm run lint         # ESLint
+npx tsc -p tsconfig.app.json --noEmit   # real type-check
+npm run test         # Vitest
 ```
 
-## ElevenLabs Voice Agent (Edge Function Secrets)
+Environment variables live in `.env.local` (gitignored) — see `.env.example`.
 
-The voice agent uses a Supabase Edge Function to obtain a signed ElevenLabs conversation URL.  
-Set these secrets in Supabase (do not hard-code in the repo):
+## Database & deploy
 
-- `ELEVENLABS_API_KEY`
-- `ELEVENLABS_AGENT_ID`
+Migrations live in `supabase/migrations/` (timestamped, one concern per file); edge
+functions live in `supabase/functions/`. On push to `main`, CI runs the migration
+dry-run + tests, then deploys migrations and functions to Supabase; the frontend
+deploys via Cloudflare Pages.
 
-These are read by `supabase/functions/voice-agent-token/index.ts`.
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-### Cloudflare Pages
-
-Use these settings in Cloudflare Pages:
-
-- Framework preset: `Vite`
-- Build command: `npm run build:cloudflare`
-- Build output directory: `dist`
-- Root directory: `/` (repo root)
-- Node.js version: `20`
-
-Environment variables required in Cloudflare Pages:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
-- `VITE_VAPID_PUBLIC_KEY` (if push notifications are enabled)
-
-Notes:
-
-- SPA fallback is already handled by `public/_redirects`.
-- `wrangler.toml` is included for `wrangler pages deploy` workflows.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+See `CLAUDE.md` for project conventions and standing context.
