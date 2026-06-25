@@ -20,12 +20,17 @@ const features = [
 ];
 
 export default function AuthPage() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [loginEmail, setLoginEmail]       = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [suCompany, setSuCompany]   = useState('');
+  const [suName, setSuName]         = useState('');
+  const [suEmail, setSuEmail]       = useState('');
+  const [suPassword, setSuPassword] = useState('');
 
   useEffect(() => {
     if (user && !loading) navigate('/dashboard');
@@ -47,6 +52,27 @@ export default function AuthPage() {
     } else {
       toast.success('Welcome back!');
       navigate('/dashboard');
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      emailSchema.parse(suEmail);
+      passwordSchema.parse(suPassword);
+    } catch (err) {
+      if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
+    }
+    if (!suCompany.trim()) { toast.error('Enter your company name.'); return; }
+    setIsSubmitting(true);
+    const { error } = await signUp(suEmail, suPassword, suName.trim() || undefined, suCompany.trim());
+    setIsSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Workspace created. Check your email to confirm, then sign in.');
+      setMode('login');
+      setLoginEmail(suEmail);
     }
   };
 
@@ -237,10 +263,12 @@ export default function AuthPage() {
           <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
             <div className="mb-7">
               <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-                Welcome back
+                {mode === 'login' ? 'Welcome back' : 'Create your company'}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Sign in to access your Proj OS workspace
+                {mode === 'login'
+                  ? 'Sign in to access your Proj OS workspace'
+                  : 'Start a fresh, private workspace for your company'}
               </p>
             </div>
 
@@ -271,55 +299,87 @@ export default function AuthPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  value={loginEmail}
-                  onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  disabled={isSubmitting}
-                  className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-medium text-foreground">Password</label>
-                  <Link to="/forgot-password" className="text-xs text-accent hover:underline">
-                    Forgot password?
-                  </Link>
+            {mode === 'login' ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Email address</label>
+                  <input
+                    type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
+                    placeholder="you@example.com" required disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
                 </div>
-                <input
-                  type="password"
-                  value={loginPassword}
-                  onChange={e => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  disabled={isSubmitting}
-                  className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
-              >
-                {isSubmitting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>
-                ) : (
-                  'Sign In to Proj OS'
-                )}
-              </button>
-            </form>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-medium text-foreground">Password</label>
+                    <Link to="/forgot-password" className="text-xs text-accent hover:underline">Forgot password?</Link>
+                  </div>
+                  <input
+                    type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
+                    placeholder="••••••••" required disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
+                </div>
+                <button type="submit" disabled={isSubmitting}
+                  className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign In to Proj OS')}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Company name</label>
+                  <input
+                    type="text" value={suCompany} onChange={e => setSuCompany(e.target.value)}
+                    placeholder="Acme Consulting LLC" required disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Your name</label>
+                  <input
+                    type="text" value={suName} onChange={e => setSuName(e.target.value)}
+                    placeholder="Jane Smith" disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Email address</label>
+                  <input
+                    type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)}
+                    placeholder="you@example.com" required disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
+                  <input
+                    type="password" value={suPassword} onChange={e => setSuPassword(e.target.value)}
+                    placeholder="At least 8 characters" required disabled={isSubmitting}
+                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
+                  />
+                </div>
+                <button type="submit" disabled={isSubmitting}
+                  className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Creating workspace...</>) : ('Create company workspace')}
+                </button>
+              </form>
+            )}
 
             <p className="text-xs text-center mt-5 text-muted-foreground">
-              Access is by invitation only.{' '}
-              <span className="text-foreground font-medium">Contact your administrator</span> for access.
+              {mode === 'login' ? (
+                <>New here?{' '}
+                  <button type="button" onClick={() => setMode('signup')} className="text-accent font-medium hover:underline">
+                    Create a company workspace
+                  </button>
+                </>
+              ) : (
+                <>Already have an account?{' '}
+                  <button type="button" onClick={() => setMode('login')} className="text-accent font-medium hover:underline">
+                    Sign in
+                  </button>
+                </>
+              )}
             </p>
           </div>
 
