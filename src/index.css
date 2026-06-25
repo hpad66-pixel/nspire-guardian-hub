@@ -252,3 +252,49 @@
     }
   }
 }
+
+/* Branded pricing table for AI-generated proposals (.proposal-pricing).
+   Gold header, alternating row shading for readability, right-aligned numerics,
+   and an emphasized total bar. Used in the editor, preview, and PDF export. */
+@layer components {
+  .proposal-pricing {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+  }
+  .proposal-pricing caption {
+    caption-side: bottom;
+    text-align: left;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: hsl(var(--muted-foreground));
+  }
+  .proposal-pricing thead th {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    font-weight: 600;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid hsl(var(--accent));
+  }
+  .proposal-pricing th.num,
+  .proposal-pricing td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .proposal-pricing tbody td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid hsl(var(--border));
+  }
+  .proposal-pricing tbody tr:nth-child(even) {
+    background: hsl(var(--muted) / 0.5);
+  }
+  .proposal-pricing tfoot td {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid hsl(var(--border));
+    font-weight: 700;
+    background: hsl(var(--accent) / 0.15);
+  }
+}

@@ -30,9 +30,11 @@ import {
 } from "@/hooks/useProposals";
 import { useProposalGeneration } from "@/hooks/useProposalGeneration";
 import { useCompanyBranding } from "@/hooks/useCompanyBranding";
-import { Sparkles, Save, Send, Loader2, Settings } from "lucide-react";
+import { Sparkles, Save, Send, Loader2, Settings, Paperclip, X, AlertTriangle, FileText } from "lucide-react";
 import { ProposalSendDialog } from "./ProposalSendDialog";
 import { BrandingSettings } from "./BrandingSettings";
+import { extractFiles } from "@/lib/proposals/extractFileText";
+import { lintStyle, stripHtml, type StyleViolation } from "@/lib/ai/styleGuard";
 
 interface ProposalEditorProps {
   open: boolean;
@@ -73,6 +75,11 @@ export function ProposalEditor({
   const [includeLetterhead, setIncludeLetterhead] = useState(true);
   const [includeLogo, setIncludeLogo] = useState(true);
 
+  // AI context files + style lint
+  const [files, setFiles] = useState<File[]>([]);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [violations, setViolations] = useState<StyleViolation[]>([]);
+
   // Dialogs
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [brandingDialogOpen, setBrandingDialogOpen] = useState(false);
@@ -86,6 +93,8 @@ export function ProposalEditor({
 
   // Initialize form when proposal changes
   useEffect(() => {
+    setFiles([]);
+    setViolations([]);
     if (proposal) {
       setTitle(proposal.title);
       setProposalType(proposal.proposal_type);
@@ -114,8 +123,40 @@ export function ProposalEditor({
     }
   }, [proposal, open]);
 
+  const handleFilesPicked = (picked: FileList | null) => {
+    if (!picked?.length) return;
+    setFiles((prev) => {
+      const seen = new Set(prev.map((f) => f.name + f.size));
+      const next = [...prev];
+      for (const f of Array.from(picked)) {
+        if (!seen.has(f.name + f.size)) next.push(f);
+      }
+      return next;
+    });
+  };
+
   const handleGenerate = async () => {
     if (!projectId) return;
+
+    setViolations([]);
+    let fileContext = "";
+    let images: { media_type: string; data: string }[] = [];
+
+    if (files.length > 0) {
+      setIsExtracting(true);
+      try {
+        const extracted = await extractFiles(files);
+        fileContext = extracted.text;
+        images = extracted.images;
+        if (extracted.skipped.length > 0) {
+          toast.warning(`Skipped ${extracted.skipped.length} file(s): ${extracted.skipped[0].reason}`);
+        }
+      } catch {
+        toast.error("Could not read one or more files");
+      } finally {
+        setIsExtracting(false);
+      }
+    }
 
     let generatedContent = "";
 
@@ -125,6 +166,8 @@ export function ProposalEditor({
         proposalType,
         userNotes,
         subject,
+        fileContext: fileContext || undefined,
+        images: images.length ? images : undefined,
       },
       {
         onDelta: (chunk) => {
@@ -132,7 +175,13 @@ export function ProposalEditor({
           setContent(generatedContent);
         },
         onDone: () => {
-          toast.success("Proposal generated successfully");
+          const found = lintStyle(stripHtml(generatedContent));
+          setViolations(found);
+          if (found.length > 0) {
+            toast.warning(`Generated with ${found.length} style flag(s) to review`);
+          } else {
+            toast.success("Proposal generated successfully");
+          }
         },
         onError: (error) => {
           toast.error(error.message);
@@ -272,25 +321,66 @@ export function ProposalEditor({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Additional Context</Label>
+                    <Label>Describe what you want</Label>
                     <VoiceDictationTextareaWithAI
                       value={userNotes}
                       onValueChange={setUserNotes}
-                      placeholder="Add any specific requirements, key points, or context for the AI to consider..."
+                      placeholder="Dictate or type the narrative: scope, deliverables, pricing, schedule, terms..."
                       rows={3}
                       context="notes"
                     />
                   </div>
 
+                  {/* Multi-file context upload */}
+                  <div className="space-y-2">
+                    <Label>Reference files (optional)</Label>
+                    <label
+                      htmlFor="proposal-files"
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border bg-background/60 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground"
+                    >
+                      <Paperclip className="h-4 w-4 shrink-0" />
+                      Add PDF, spreadsheet, CSV, or image files
+                      <input
+                        id="proposal-files"
+                        type="file"
+                        multiple
+                        accept=".pdf,.csv,.txt,.md,.tsv,.xlsx,.xls,image/*"
+                        className="hidden"
+                        onChange={(e) => { handleFilesPicked(e.target.files); e.target.value = ""; }}
+                      />
+                    </label>
+                    {files.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {files.map((f, i) => (
+                          <span
+                            key={f.name + i}
+                            className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs"
+                          >
+                            <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="max-w-[160px] truncate">{f.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label={`Remove ${f.name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <Button
                     onClick={handleGenerate}
-                    disabled={isGenerating}
+                    disabled={isGenerating || isExtracting}
                     className="w-full"
                   >
-                    {isGenerating ? (
+                    {isGenerating || isExtracting ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
+                        {isExtracting ? "Reading files..." : "Generating..."}
                       </>
                     ) : (
                       <>
@@ -299,6 +389,18 @@ export function ProposalEditor({
                       </>
                     )}
                   </Button>
+
+                  {violations.length > 0 && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-300">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <p className="font-medium">Style check flagged {violations.length} item(s) to review</p>
+                        <p className="text-xs opacity-90">
+                          {Array.from(new Set(violations.map((v) => v.kind === "em-dash" ? "em dash" : `"${v.token}"`))).join(", ")}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
