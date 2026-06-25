@@ -7,7 +7,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const PASS1_MODEL = "claude-opus-4-8";
+const PASS2_MODEL = "claude-sonnet-4-6";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT — core regulatory analysis IP
@@ -469,9 +471,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const body: ReviewRequest = await req.json();
@@ -502,18 +504,17 @@ serve(async (req) => {
       .map((f) => `\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE: ${f.name} ---\n`)
       .join("\n");
 
-    // Build user message content for Lovable AI (OpenAI-compatible format)
-    // For binary files, include them as image_url parts with data URIs
+    // Build user message content for Claude. Images become image blocks; PDFs
+    // become document blocks. Other binary types are skipped.
     const userContentParts: Array<Record<string, unknown>> = [];
+    const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
     for (const f of files) {
-      if (f.isBase64) {
-        userContentParts.push({
-          type: "image_url",
-          image_url: {
-            url: `data:${f.mimeType};base64,${f.content}`,
-          },
-        });
+      if (!f.isBase64) continue;
+      if (IMAGE_TYPES.includes(f.mimeType)) {
+        userContentParts.push({ type: "image", source: { type: "base64", media_type: f.mimeType, data: f.content } });
+      } else if (f.mimeType === "application/pdf") {
+        userContentParts.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: f.content } });
       }
     }
 
@@ -533,21 +534,20 @@ serve(async (req) => {
 
     console.log(`CaseIQ: Starting analysis of ${files.length} files, style=${reportStyle}`);
 
-    // ── PASS 1: Analysis via Lovable AI (Gemini 2.5 Pro for heavy multimodal reasoning) ──
-    const pass1Response = await fetch(LOVABLE_AI_URL, {
+    // ── PASS 1: Analysis via Claude Opus (heavy multimodal reasoning) ──
+    const pass1Response = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: REGULATORY_SYSTEM_PROMPT },
-          { role: "user", content: userContentParts },
-        ],
-        temperature: 0.2,
+        model: PASS1_MODEL,
         max_tokens: 16000,
+        temperature: 0.2,
+        system: REGULATORY_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userContentParts }],
       }),
     });
 
@@ -570,7 +570,7 @@ serve(async (req) => {
     }
 
     const pass1Result = await pass1Response.json();
-    const rawAnalysis = pass1Result.choices?.[0]?.message?.content || "";
+    const rawAnalysis = pass1Result.content?.[0]?.text || "";
 
     if (!rawAnalysis) {
       throw new Error("AI returned empty analysis");
@@ -585,26 +585,24 @@ serve(async (req) => {
     // ── PASS 2: HTML formatting via Lovable AI ──
     const htmlPrompt = reportStyle === "aurum" ? AURUM_REPORT_PROMPT : WHITEPAPER_REPORT_PROMPT;
 
-    const pass2Response = await fetch(LOVABLE_AI_URL, {
+    const pass2Response = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: PASS2_MODEL,
+        max_tokens: 16000,
+        temperature: 0.1,
+        system: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
         messages: [
-          {
-            role: "system",
-            content: "You are an expert HTML formatter. Convert the analysis into professional HTML exactly as instructed. Output only valid HTML starting with <!DOCTYPE html>. No markdown, no code fences, no explanation before or after the HTML.",
-          },
           {
             role: "user",
             content: `Here is the complete regulatory case analysis:\n\n${rawAnalysis}\n\n---\n\nNow format this analysis into a complete, self-contained HTML document using these exact instructions:\n\n${htmlPrompt}`,
           },
         ],
-        temperature: 0.1,
-        max_tokens: 16000,
       }),
     });
 
@@ -621,7 +619,7 @@ serve(async (req) => {
     }
 
     const pass2Result = await pass2Response.json();
-    let reportHtml = pass2Result.choices?.[0]?.message?.content || "";
+    let reportHtml = pass2Result.content?.[0]?.text || "";
 
     // Clean output — strip code fences if present
     reportHtml = reportHtml

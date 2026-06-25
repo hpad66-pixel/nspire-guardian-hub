@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-6";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -23,12 +24,12 @@ serve(async (req) => {
       );
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a maintenance issue extraction assistant for property management. 
+    const systemPrompt = `You are a maintenance issue extraction assistant for property management.
 Analyze the following call transcript between a tenant and a voice agent. Extract distinct, actionable maintenance issues.
 
 For each issue provide:
@@ -45,18 +46,8 @@ Rules:
 - Assign severity based on urgency keywords and safety implications
 - If the caller mentions an emergency (flooding, gas leak, fire, no heat in winter), mark as "severe"
 
-Respond ONLY with a valid JSON object in this exact format:
-{
-  "issues": [
-    {
-      "title": "string",
-      "description": "string",
-      "severity": "severe|moderate|low",
-      "area": "unit|inside|outside",
-      "category": "string"
-    }
-  ]
-}`;
+Respond ONLY with a valid JSON object in this exact format, no markdown fences:
+{"issues":[{"title":"string","description":"string","severity":"severe|moderate|low","area":"unit|inside|outside","category":"string"}]}`;
 
     const userPrompt = `Caller: ${caller_name || "Unknown"}
 Reported Category: ${issue_category || "general"}
@@ -65,20 +56,16 @@ Property ID: ${property_id || "unknown"}
 TRANSCRIPT:
 ${transcript}`;
 
-    const response = await fetch(
-      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
+    const response = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -88,16 +75,18 @@ ${transcript}`;
         );
       }
       const errorText = await response.text();
-      console.error("Gemini API error:", response.status, errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error("Anthropic API error:", response.status, errorText);
+      throw new Error(`Anthropic API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
+    let rawText: string = data.content?.[0]?.text ?? "";
     if (!rawText) {
       throw new Error("No issues extracted from transcript");
     }
+
+    const fence = rawText.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
+    if (fence) rawText = fence[1].trim();
 
     const parsed = JSON.parse(rawText);
     const issues = parsed.issues || [];

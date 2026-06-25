@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { STYLE_RULES } from "../_shared/ai-style-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,24 +13,24 @@ const contextPrompts: Record<string, string> = {
   scope: "Structure this as a professional scope of work. Use numbered or bulleted lists for deliverables if there are multiple items. Be specific about what is included. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
-  ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a seamless professional continuation. Write in a formal, authoritative, and precise tone — the quality of a McKinsey or Bain engagement report. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text — one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
-  meeting_minutes: `You turn raw construction progress-meeting notes into clean, CONCISE meeting minutes as HTML. Be brief and factual — no filler, no padding, no consultant-speak. Every line carries information.
+  ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a professional continuation. Write in a formal, authoritative, and precise tone. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text, one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
+  meeting_minutes: `You turn raw construction progress-meeting notes into clean, CONCISE meeting minutes as HTML. Be brief and factual. Every line carries information.
 
-Output ONLY valid HTML (no markdown, no code fences, no asterisks). Allowed tags: <h2>, <h3>, <p>, <ul>, <li>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>. Keep paragraphs to 1–2 sentences.
+Output ONLY valid HTML (no markdown, no code fences, no asterisks). Allowed tags: <h2>, <h3>, <p>, <ul>, <li>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>. Keep paragraphs to 1-2 sentences.
 
 Produce these sections IN ORDER, and OMIT any section that has no content (do not write "none" or placeholders):
 
 <h2>Summary</h2>
-2–4 tight sentences: what was covered and the headline status.
+2-4 tight sentences: what was covered and the headline status.
 
 <h2>Progress</h2>
-<ul> of what advanced or completed since the last meeting — one crisp bullet each (area/trade + status). Include %, quantities, or dates only if stated.
+<ul> of what advanced or completed since the last meeting, one crisp bullet each (area/trade + status). Include %, quantities, or dates only if stated.
 
 <h2>Decisions</h2>
-<ul> of decisions made — one sentence each, with any condition or date.
+<ul> of decisions made, one sentence each, with any condition or date.
 
 <h2>Risks &amp; Issues</h2>
-<ul> of open risks/issues — each gives the issue, its impact (schedule/cost), and owner if stated.
+<ul> of open risks/issues, each gives the issue, its impact (schedule/cost), and owner if stated.
 
 <h2>Action Items</h2>
 An HTML <table> with columns: Action | Owner | Due | Priority. One row per action. Use "TBD" if no due date is given; infer priority (High/Medium/Low) from context.
@@ -37,30 +38,8 @@ An HTML <table> with columns: Action | Owner | Due | Priority. One row per actio
 <h2>Next Steps</h2>
 Short <ul> of follow-ups, plus the next meeting date/time if mentioned.
 
-Rules: preserve EVERY real fact (names, dates, amounts, trades) from the notes; never invent them. Do NOT add distribution, approval, or signature blocks. Concise above all — when in doubt, cut it.`,
+Rules: preserve EVERY real fact (names, dates, amounts, trades) from the notes; never invent them. Do NOT add distribution, approval, or signature blocks. Concise above all.`,
 };
-
-// Google Gemini API endpoint
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-
-async function callGemini(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
-  const modelMap: Record<string, string> = {
-    "google/gemini-2.5-pro": "gemini-2.0-flash",
-    "google/gemini-3-flash-preview": "gemini-2.0-flash",
-    "google/gemini-2.5-flash": "gemini-2.0-flash",
-    "google/gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
-  };
-  const geminiModel = modelMap[model] || "gemini-2.0-flash";
-
-  return await fetch(`${GEMINI_API_BASE}/${geminiModel}:generateContent?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: userText }] }],
-    }),
-  });
-}
 
 async function callClaude(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
   return await fetch('https://api.anthropic.com/v1/messages', {
@@ -85,8 +64,13 @@ serve(async (req) => {
   }
 
   try {
-    // Gemini key is optional — a Claude (cloud API) model routes below without it.
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'AI service is not configured.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { text, context = 'notes', preferredModel } = await req.json();
 
@@ -97,7 +81,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Polishing text with context: ${context}, preferredModel: ${preferredModel ?? 'default'}, length: ${text.length}`);
+    console.log(`Polishing text with context: ${context}, length: ${text.length}`);
 
     // --- Step 1: Check database for a configurable skill prompt ---
     let systemPrompt = contextPrompts[context] || contextPrompts.notes;
@@ -122,106 +106,45 @@ serve(async (req) => {
         dbModel = skillRow.model;
       }
     } catch (dbErr) {
-      // Non-fatal: fall back to hardcoded prompt
       console.warn('Could not fetch skill prompt from DB, using hardcoded fallback:', dbErr);
     }
 
-    // --- Step 2: Route to Claude if the DB row specifies a claude model ---
-    const resolvedModel = dbModel ?? preferredModel ?? 'google/gemini-2.5-flash';
+    // --- Step 2: Claude only. Legacy/non-claude model values normalize to Sonnet. ---
+    const requested = dbModel ?? preferredModel ?? 'claude-sonnet-4-6';
+    const model = requested.startsWith('claude') ? requested : 'claude-sonnet-4-6';
 
-    if (resolvedModel.startsWith('claude')) {
-      const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
-      if (ANTHROPIC_API_KEY) {
-        console.log(`Routing to Claude: ${resolvedModel}`);
-        const claudeResp = await callClaude(ANTHROPIC_API_KEY, resolvedModel, systemPrompt, text);
+    // Apply the platform style guard to every polished output.
+    const fullSystem = `${systemPrompt}\n\n${STYLE_RULES}`;
 
-        if (claudeResp.ok) {
-          const result = await claudeResp.json();
-          let polished: string = result.content?.[0]?.text || text;
+    const claudeResp = await callClaude(ANTHROPIC_API_KEY, model, fullSystem, text);
 
-          // Strip markdown code fences if Claude wraps HTML
-          const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
-          if (fenceMatch) {
-            polished = fenceMatch[1].trim();
-            console.log('Stripped markdown code fence from Claude HTML response');
-          }
+    if (claudeResp.ok) {
+      const result = await claudeResp.json();
+      let polished: string = result.content?.[0]?.text || text;
 
-          console.log(`Successfully polished text with Claude model: ${resolvedModel}`);
-          return new Response(
-            JSON.stringify({ polished, model: resolvedModel }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+      // Strip markdown code fences if Claude wraps HTML
+      const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
+      if (fenceMatch) polished = fenceMatch[1].trim();
 
-        if (claudeResp.status === 429) {
-          return new Response(
-            JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const claudeErr = await claudeResp.text();
-        console.warn(`Claude ${resolvedModel} returned ${claudeResp.status}, falling through to Gemini:`, claudeErr);
-        // Fall through to Gemini below
-      } else {
-        console.warn('ANTHROPIC_API_KEY not configured — falling through to Gemini');
-      }
-    }
-
-    // --- Step 3: Gemini path (default; also the fallback if a Claude call failed) ---
-    if (!GEMINI_API_KEY) {
-      // No Gemini key — Claude is the only provider. Reaching here means the
-      // request wasn't a Claude model, or the Claude call above didn't return.
+      console.log(`Successfully polished text with Claude model: ${model}`);
       return new Response(
-        JSON.stringify({ error: 'AI service is not configured.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ polished, model }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const defaultModel = 'google/gemini-2.5-flash';
-    const modelsToTry = [defaultModel, 'google/gemini-2.5-flash-lite'];
 
-    for (const model of modelsToTry) {
-      const response = await callGemini(GEMINI_API_KEY, model, systemPrompt, text);
-
-      if (response.ok) {
-        const result = await response.json();
-        let polished: string = result.candidates?.[0]?.content?.parts?.[0]?.text || text;
-
-        // Strip markdown code fences that Gemini wraps around HTML output
-        // e.g. ```html ... ``` or ``` ... ```
-        const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
-        if (fenceMatch) {
-          polished = fenceMatch[1].trim();
-          console.log('Stripped markdown code fence from Gemini HTML response');
-        }
-
-        console.log(`Successfully polished text with Gemini model: ${model}`);
-        return new Response(
-          JSON.stringify({ polished, model }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (response.status === 403 || response.status === 401) {
-        const errorText = await response.text();
-        console.error('Gemini API auth error:', response.status, errorText);
-        throw new Error('Invalid Gemini API key or quota exceeded');
-      }
-
-      const errorText = await response.text();
-      console.warn(`Model ${model} returned ${response.status}, trying next...`, errorText);
+    if (claudeResp.status === 429) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // All models failed — return original text with warning
+    const claudeErr = await claudeResp.text();
+    console.error(`Claude ${model} returned ${claudeResp.status}:`, claudeErr);
+    // Graceful: hand back the original text so the UI can keep going.
     return new Response(
-      JSON.stringify({ polished: null, warning: 'credits_exhausted', original: text }),
+      JSON.stringify({ polished: null, warning: 'generation_failed', original: text }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
