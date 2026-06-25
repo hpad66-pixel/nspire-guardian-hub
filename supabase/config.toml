@@ -25,6 +25,11 @@ verify_jwt = false
 [functions.co-countersign]
 verify_jwt = false
 
+# Daily report action-item notification — authenticated admin invokes; emails the
+# report's submitter a digest of open action items via Resend.
+[functions.daily-report-action-notify]
+verify_jwt = true
+
 # Punch list response — public, token-gated (sub responds with no login)
 [functions.punch-respond]
 verify_jwt = false

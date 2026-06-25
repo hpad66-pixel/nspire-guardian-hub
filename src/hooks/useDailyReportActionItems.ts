@@ -70,7 +70,19 @@ export function useDailyReportActionItems(reportId: string | null) {
     onSuccess: invalidate,
   });
 
-  return { ...list, add, acknowledge, remove };
+  // Email the report's submitter a digest of the open action items.
+  const notify = useMutation({
+    mutationFn: async (note?: string) => {
+      const { data, error } = await supabase.functions.invoke('daily-report-action-notify', {
+        body: { reportId, note: note ?? null },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.ok === false) throw new Error((data as any).error ?? 'Could not notify');
+      return data as { ok: boolean; sentTo: string; count: number };
+    },
+  });
+
+  return { ...list, add, acknowledge, remove, notify };
 }
 
 /** Open-item counts across many reports, for list-row "tickler" badges. */

@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ClipboardList, Check, Trash2, Send } from 'lucide-react';
+import { ClipboardList, Check, Trash2, Plus, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useDailyReportActionItems } from '@/hooks/useDailyReportActionItems';
@@ -14,14 +14,21 @@ const fmt = (d?: string | null) =>
   d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
 
 export function DailyReportActionItems({ reportId, projectId }: { reportId: string; projectId: string }) {
-  const { data: items = [], add, acknowledge, remove } = useDailyReportActionItems(reportId);
+  const { data: items = [], add, acknowledge, remove, notify } = useDailyReportActionItems(reportId);
   const [body, setBody] = useState('');
   const open = items.filter((i) => i.status === 'open').length;
 
   const submit = async () => {
     if (!body.trim()) return;
-    try { await add.mutateAsync({ projectId, body }); setBody(''); toast.success('Sent to the field crew ✓'); }
+    try { await add.mutateAsync({ projectId, body }); setBody(''); toast.success('Action item added ✓'); }
     catch (e: any) { toast.error(e?.message ?? 'Could not add'); }
+  };
+
+  const emailCrew = async () => {
+    try {
+      const r = await notify.mutateAsync(body.trim() || undefined);
+      toast.success(`Emailed ${r.count} item${r.count === 1 ? '' : 's'} to ${r.sentTo}`);
+    } catch (e: any) { toast.error(e?.message ?? 'Could not email the submitter'); }
   };
 
   return (
@@ -55,10 +62,14 @@ export function DailyReportActionItems({ reportId, projectId }: { reportId: stri
         ))}
       </div>
 
-      <div className="flex items-end gap-2">
-        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder="Comment on this report and send it back as an action item the crew must acknowledge…" className="text-sm" />
-        <Button onClick={submit} disabled={!body.trim() || add.isPending} className="gap-1.5 shrink-0"><Send className="h-4 w-4" /> Send back</Button>
+      <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder="Comment on this report — add it as an action item the crew must acknowledge…" className="text-sm mb-2" />
+      <div className="flex items-center gap-2">
+        <Button onClick={submit} disabled={!body.trim() || add.isPending} variant="outline" className="gap-1.5"><Plus className="h-4 w-4" /> Add action item</Button>
+        <Button onClick={emailCrew} disabled={open === 0 || notify.isPending} className="gap-1.5 ml-auto">
+          <Mail className="h-4 w-4" /> {notify.isPending ? 'Sending…' : `Email submitter${open > 0 ? ` (${open})` : ''}`}
+        </Button>
       </div>
+      <p className="text-[11px] text-muted-foreground mt-1.5">Add items, then “Email submitter” to send the open ones to the crew member who filed this report. Any text above is included as a note.</p>
     </div>
   );
 }
