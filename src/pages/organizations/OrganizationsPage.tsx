@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   Briefcase,
@@ -103,12 +104,13 @@ interface OrgCardProps {
   org: Client;
   onEdit: () => void;
   onViewMembers: () => void;
+  onViewProjects: () => void;
   onArchive: () => void;
   onDelete: () => void;
   canManage: boolean;
 }
 
-function OrganizationCard({ org, onEdit, onViewMembers, onArchive, onDelete, canManage }: OrgCardProps) {
+function OrganizationCard({ org, onEdit, onViewMembers, onViewProjects, onArchive, onDelete, canManage }: OrgCardProps) {
   const typeConfig = CLIENT_TYPE_CONFIG[org.client_type];
 
   return (
@@ -198,11 +200,14 @@ function OrganizationCard({ org, onEdit, onViewMembers, onArchive, onDelete, can
               <span className="font-medium">{org.member_count ?? 0}</span>
               <span>member{(org.member_count ?? 0) !== 1 ? 's' : ''}</span>
             </button>
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <button
+              onClick={onViewProjects}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               <FolderKanban className="h-3.5 w-3.5" />
               <span className="font-medium">{org.project_count ?? 0}</span>
               <span>project{(org.project_count ?? 0) !== 1 ? 's' : ''}</span>
-            </span>
+            </button>
           </div>
           {(org.member_count ?? 0) > 0 && (
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onViewMembers}>
@@ -217,6 +222,7 @@ function OrganizationCard({ org, onEdit, onViewMembers, onArchive, onDelete, can
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function OrganizationsPage() {
+  const navigate = useNavigate();
   const { data: organizations, isLoading } = useClientsWithCounts();
   const archiveClient = useArchiveClient();
   const deleteClient = useDeleteClient();
@@ -414,6 +420,7 @@ export default function OrganizationsPage() {
               canManage={canManage}
               onEdit={() => handleEdit(org)}
               onViewMembers={() => handleViewMembers(org)}
+              onViewProjects={() => navigate(`/organizations/${org.id}`)}
               onArchive={() => handleArchive(org)}
               onDelete={() => setDeleteTarget(org)}
             />

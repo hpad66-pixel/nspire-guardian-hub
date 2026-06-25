@@ -56,6 +56,7 @@ const CertificateSharePage = lazy(() => import('./pages/training/CertificateShar
 const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
+const OrganizationDetailPage = lazy(() => import('./pages/organizations/OrganizationDetailPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
@@ -271,6 +272,7 @@ const App = () => (
                               <Route path="/documents/archives" element={<PropertyArchivesPage />} />
                               <Route path="/people" element={<PeoplePage />} />
                               <Route path="/organizations" element={<OrganizationsPage />} />
+                              <Route path="/organizations/:clientId" element={<OrganizationDetailPage />} />
                               <Route path="/inbox" element={<MailboxPage />} />
                               <Route path="/messages" element={<MessagesPage />} />
                               <Route path="/messages/:threadId" element={<MessagesPage />} />
