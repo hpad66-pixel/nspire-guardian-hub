@@ -42,6 +42,7 @@ import {
   Search as SearchIcon,
   QrCode,
   Gavel,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -274,6 +275,9 @@ export function AppSidebar() {
               <div className="space-y-px">
                 {canView('reports') && (
                   <NavItem to="/reports" icon={BarChart3} label="Reports" collapsed={collapsed} />
+                )}
+                {(canView('reports') || isAdmin) && (
+                  <NavItem to="/daily-reports" icon={ClipboardList} label="Daily Reports" collapsed={collapsed} />
                 )}
                 {canView('documents') && (
                   <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />

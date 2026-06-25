@@ -40,6 +40,7 @@ const UnitsPage = lazy(() => import('./pages/core/UnitsPage'));
 const IssuesPage = lazy(() => import('./pages/core/IssuesPage'));
 const WorkOrdersPage = lazy(() => import('./pages/workorders/WorkOrdersPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
+const DailyReportsHubPage = lazy(() => import('./pages/DailyReportsHubPage'));
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'));
 const PropertyArchivesPage = lazy(() => import('./pages/documents/PropertyArchivesPage'));
 const AssetsPage = lazy(() => import('./pages/assets/AssetsPage'));
@@ -273,6 +274,7 @@ const App = () => (
                               <Route path="/messages" element={<MessagesPage />} />
                               <Route path="/messages/:threadId" element={<MessagesPage />} />
                               <Route path="/reports" element={<ReportsPage />} />
+                              <Route path="/daily-reports" element={<DailyReportsHubPage />} />
                               <Route path="/occupancy" element={<OccupancyPage />} />
                               <Route path="/qr-scanner" element={<QRScannerPage />} />
                               <Route path="/training" element={<TrainingDashboardPage />} />
