@@ -17,6 +17,7 @@ import { DailyCategoryTable, type ColumnDef } from "./DailyCategoryTable";
 import { WeatherTab } from "./WeatherTab";
 import { DailyNotesTab } from "./DailyNotesTab";
 import { PhotoAttachPanel } from "@/components/photos/PhotoAttachPanel";
+import { Camera } from "lucide-react";
 
 export interface DailyLogTabsProps {
   dailyReportId: string | null;
@@ -106,11 +107,12 @@ const TAB_TRIGGERS: Array<{ value: string; label: string }> = [
   { value: "notes",     label: "Notes" },
   { value: "dumpster",  label: "Dumpster" },
   { value: "scheduled", label: "Scheduled work" },
-  { value: "photos",    label: "Photos" },
 ];
 
 export function DailyLogTabs({ dailyReportId }: DailyLogTabsProps) {
+  const { projectId } = useParams<{ projectId: string }>();
   return (
+    <>
     <Tabs defaultValue="weather">
       <div className="overflow-x-auto -mx-1 px-1">
         <TabsList className="w-max">
@@ -238,31 +240,29 @@ export function DailyLogTabs({ dailyReportId }: DailyLogTabsProps) {
         />
       </TabsContent>
 
-      <TabsContent value="photos" className="mt-4">
-        <DailyPhotosTab dailyReportId={dailyReportId} />
-      </TabsContent>
-    </Tabs>
-  );
-}
+      </Tabs>
 
-/**
- * Photos pane — lets the user attach existing project photos to this daily
- * report via the `photo_links` table keyed by `linked_record_type="daily"`.
- */
-function DailyPhotosTab({ dailyReportId }: { dailyReportId: string | null }) {
-  const { projectId } = useParams<{ projectId: string }>();
-  if (!dailyReportId || !projectId) {
-    return (
-      <div className="text-sm text-muted-foreground p-6 text-center">
-        Create the daily report first to attach photos.
+      {/* Photos are available from EVERY tab, not just one — attach evidence to
+          back up anything in this daily report. Take a photo with the phone/iPad
+          camera (the picker offers Camera on mobile) or upload from the device. */}
+      <div className="mt-6 rounded-xl border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Camera className="h-4 w-4 text-accent" />
+          <div>
+            <h3 className="text-sm font-semibold leading-none">Photos for this daily report</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Back up anything on any tab. Take a photo with your phone or iPad camera, or upload from your device.
+            </p>
+          </div>
+        </div>
+        {dailyReportId && projectId ? (
+          <PhotoAttachPanel projectId={projectId} recordId={dailyReportId} recordType="daily" />
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Create the daily report first to attach photos.
+          </p>
+        )}
       </div>
-    );
-  }
-  return (
-    <PhotoAttachPanel
-      projectId={projectId}
-      recordId={dailyReportId}
-      recordType="daily"
-    />
+    </>
   );
 }
