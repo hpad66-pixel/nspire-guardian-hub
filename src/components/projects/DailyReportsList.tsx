@@ -58,6 +58,13 @@ export function DailyReportsList({
   const filename = (r: DailyReportRow) => `field-report-${(projectName || 'project').replace(/\s+/g, '-').toLowerCase()}-${reportDate(r)}.pdf`;
   const EXPORT_ID = 'dr-export-root';
 
+  const photoLinks = (r: DailyReportRow) => {
+    const meta = Array.isArray((r as any).photos_meta) ? (r as any).photos_meta : [];
+    const urls = Array.isArray(r.photos) ? r.photos : [];
+    const src = meta.length ? meta : urls.map((u: string) => ({ url: u, caption: '' }));
+    return src.filter((p: any) => p?.url).map((p: any, i: number) => ({ label: p.caption || `Photo ${i + 1}`, url: p.url }));
+  };
+
   // Render the report once, full-width and off-screen (NOT sr-only, which clips to
   // 1px and broke the PDF), wait for its photos to load, then capture / print.
   const withExport = async (r: DailyReportRow, fn: () => Promise<void>) => {
@@ -74,7 +81,7 @@ export function DailyReportsList({
   const handleSavePDF = async (r: DailyReportRow) => {
     setGeneratingId(r.id);
     try {
-      await withExport(r, () => generatePDF({ filename: filename(r), elementId: EXPORT_ID, scale: 2 }));
+      await withExport(r, () => generatePDF({ filename: filename(r), elementId: EXPORT_ID, scale: 2, appendLinks: photoLinks(r) }));
       toast.success('Report saved to your device ✓');
     } catch { toast.error('Failed to generate PDF'); }
     setGeneratingId(null);

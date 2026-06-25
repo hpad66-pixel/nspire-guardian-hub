@@ -6,10 +6,12 @@ export interface PDFOptions {
   elementId: string;
   scale?: number;
   margin?: number;
+  /** Clickable links appended as a final page (html2canvas flattens inline links). */
+  appendLinks?: { label: string; url: string }[];
 }
 
 export async function generatePDF(options: PDFOptions): Promise<void> {
-  const { filename, elementId, scale = 2, margin = 10 } = options;
+  const { filename, elementId, scale = 2, margin = 10, appendLinks } = options;
 
   const element = document.getElementById(elementId);
   if (!element) {
@@ -86,6 +88,27 @@ export async function generatePDF(options: PDFOptions): Promise<void> {
         destHeight
       );
     }
+  }
+
+  // Clickable photo links — a final page of native PDF text links (the inline
+  // photos above are flattened images, so these are what make them click-through).
+  if (appendLinks && appendLinks.length > 0) {
+    pdf.addPage();
+    let y = margin + 6;
+    pdf.setFontSize(14);
+    pdf.setTextColor(26, 23, 20);
+    pdf.text('Site Photos — links', margin, y);
+    y += 8;
+    pdf.setFontSize(11);
+    appendLinks.forEach((l, i) => {
+      if (y > pdfHeight - margin) { pdf.addPage(); y = margin + 6; }
+      pdf.setTextColor(26, 23, 20);
+      pdf.text(`${i + 1}. ${l.label}`.slice(0, 90), margin, y);
+      y += 5.5;
+      pdf.setTextColor(29, 111, 232);
+      pdf.textWithLink('View photo ↗', margin + 4, y, { url: l.url });
+      y += 8;
+    });
   }
 
   pdf.save(filename);

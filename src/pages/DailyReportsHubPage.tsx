@@ -78,7 +78,11 @@ export default function DailyReportsHubPage() {
   const savePDF = async (r: DailyReport) => {
     setBusyId(r.id);
     try {
-      await withExport(r, () => generatePDF({ filename: `field-report-${(r.project?.name || 'project').replace(/\s+/g, '-').toLowerCase()}-${format(safeDate(r.report_date), 'yyyy-MM-dd')}.pdf`, elementId: EXPORT_ID, scale: 2 }));
+      const meta = Array.isArray((r as any).photos_meta) ? (r as any).photos_meta : [];
+      const urls = Array.isArray((r as any).photos) ? (r as any).photos : [];
+      const src = meta.length ? meta : urls.map((u: string) => ({ url: u, caption: '' }));
+      const appendLinks = src.filter((p: any) => p?.url).map((p: any, i: number) => ({ label: p.caption || `Photo ${i + 1}`, url: p.url }));
+      await withExport(r, () => generatePDF({ filename: `field-report-${(r.project?.name || 'project').replace(/\s+/g, '-').toLowerCase()}-${format(safeDate(r.report_date), 'yyyy-MM-dd')}.pdf`, elementId: EXPORT_ID, scale: 2, appendLinks }));
       toast.success('Report saved ✓');
     } catch { toast.error('Failed to generate PDF'); }
     setBusyId(null);
