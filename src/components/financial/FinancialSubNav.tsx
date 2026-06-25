@@ -89,9 +89,10 @@ export function FinancialSubNav() {
         )}
       </nav>
 
-      {/* Stage-grouped ribbon — segmented controls read left→right as the money lifecycle */}
-      <div className="overflow-x-auto -mx-1 px-1 pb-1">
-        <nav className="flex items-end gap-2 w-max">
+      {/* Stage-grouped ribbon — wraps onto multiple rows so every tab stays visible
+          (was a single overflow-x row, which clipped the later groups off-screen). */}
+      <div className="-mx-1 px-1 pb-1">
+        <nav className="flex flex-wrap items-end gap-x-2 gap-y-3">
           {GROUPS.map((group, gi) => (
             <div key={gi} className="flex flex-col gap-1">
               <span className="h-3.5 px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
