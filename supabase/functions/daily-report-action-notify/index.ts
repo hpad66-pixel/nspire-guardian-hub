@@ -61,7 +61,7 @@ serve(async (req) => {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "APAS Consulting <admin@apas.ai>",
+        from: "APAS Consulting <hardeep@apas.ai>",
         to: [email],
         subject: `Action items on your ${esc(project)} report — ${String(report.report_date).slice(0, 10)}`,
         html,

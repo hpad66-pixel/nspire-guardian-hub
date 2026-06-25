@@ -72,7 +72,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "reports@yourdomain.com",
+            from: "hardeep@apas.ai",
             to: emails,
             subject: `Scheduled report: ${(report as any).name}`,
             text: `Your scheduled report ran. File: ${filename}`,

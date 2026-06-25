@@ -118,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Glorieta Gardens <admin@apas.ai>",
+        from: "Glorieta Gardens <hardeep@apas.ai>",
         to: [invitation.email],
         subject: `${inviterName} invited you to Glorieta Gardens Apartments`,
         html: emailHtml,

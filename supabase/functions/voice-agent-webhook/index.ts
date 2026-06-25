@@ -123,7 +123,7 @@ serve(async (req) => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  from: 'Glorieta Gardens <notifications@resend.dev>',
+                  from: 'Glorieta Gardens <hardeep@apas.ai>',
                   to: config.supervisor_notification_emails,
                   subject,
                   html: emailBody,

@@ -83,7 +83,7 @@ serve(async (req) => {
           await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ from: `${fromName} <admin@apas.ai>`, to: [to], subject, html }),
+            body: JSON.stringify({ from: `${fromName} <hardeep@apas.ai>`, to: [to], subject, html }),
           });
         } catch (_) { /* email is best-effort */ }
       }

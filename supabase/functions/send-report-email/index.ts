@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build email payload with BCC support
     const emailPayload: Record<string, unknown> = {
-      from: "NSPIRE Reports <onboarding@resend.dev>",
+      from: "NSPIRE Reports <hardeep@apas.ai>",
       to: recipients,
       subject: subject,
       html: htmlContent,

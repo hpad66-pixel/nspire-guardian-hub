@@ -136,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build email payload
     const emailPayload: Record<string, unknown> = {
-      from: `${senderName} <admin@apas.ai>`,
+      from: `${senderName} <hardeep@apas.ai>`,
       to: recipients,
       subject: subject,
       html: bodyHtml,
