@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Cloud, Users, AlertTriangle, Printer, Download, Loader2, Eye, Search,
-  CheckCircle2, RotateCcw, FileText, ExternalLink,
+  CheckCircle2, RotateCcw, FileText, ExternalLink, ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
