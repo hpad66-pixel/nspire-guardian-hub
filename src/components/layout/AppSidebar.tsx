@@ -34,8 +34,8 @@ import {
   Contact,
   GraduationCap,
   Mail,
-  Globe,
   BadgeCheck,
+  ShieldCheck,
   ShieldAlert,
   Truck,
   Briefcase,
@@ -289,18 +289,12 @@ export function AppSidebar() {
             </>
           )}
 
-          {/* ─── Admin (admin/owner only) ─── */}
+          {/* ─── Admin (admin/owner only) — single entry into the Admin Hub ─── */}
           {isAdminOrOwner && (
             <>
               <SectionLabel label="Admin" collapsed={collapsed} />
               <div className="space-y-px">
-                {isModuleEnabled('clientPortalEnabled') && (
-                  <NavItem to="/portals" icon={Globe} label="Client Portals" collapsed={collapsed} />
-                )}
-                {isAdmin && (
-                  <NavItem to="/admin/schools" icon={GraduationCap} label="LW Schools" collapsed={collapsed} />
-                )}
-                <NavItem to="/settings/workspace" icon={Building2} label="Workspace" collapsed={collapsed} />
+                <NavItem to="/admin" icon={ShieldCheck} label="Admin" collapsed={collapsed} end />
               </div>
             </>
           )}
