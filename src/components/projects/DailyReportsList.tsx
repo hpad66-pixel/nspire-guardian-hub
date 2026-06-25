@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Calendar, Cloud, FileText, Plus, Users, AlertTriangle, ChevronDown, ChevronUp, Printer, Download, Mail, Loader2, Eye } from 'lucide-react';
+import { Calendar, Cloud, FileText, Plus, Users, AlertTriangle, ChevronDown, ChevronUp, Printer, Download, Mail, Loader2, Eye, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ProjectDailyReportPage } from './ProjectDailyReportPage';
 import { PrintableProjectDailyReport } from './PrintableProjectDailyReport';
 import { ProjectReportEmailSheet } from './ProjectReportEmailSheet';
@@ -15,6 +16,10 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
+
+// Parse a date-only value at LOCAL noon so it never shifts to the previous day in
+// negative-UTC timezones (new Date("2026-06-23") is UTC midnight → June 22 locally).
+const safeDate = (d: unknown) => new Date(String(d ?? '').slice(0, 10) + 'T12:00:00');
 
 interface DailyReportsListProps {
   projectId: string;
@@ -42,7 +47,7 @@ export function DailyReportsList({
     setExpandedReports(next);
   };
 
-  const reportDate = (r: DailyReportRow) => format(new Date(r.report_date), 'yyyy-MM-dd');
+  const reportDate = (r: DailyReportRow) => format(safeDate(r.report_date), 'yyyy-MM-dd');
   const filename = (r: DailyReportRow) => `field-report-${(projectName || 'project').replace(/\s+/g, '-').toLowerCase()}-${reportDate(r)}.pdf`;
   const elementId = (r: DailyReportRow) => `printable-report-${r.id}`;
 
@@ -63,8 +68,28 @@ export function DailyReportsList({
   };
 
   const sortedReports = [...reports].sort(
-    (a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime()
+    (a, b) => safeDate(b.report_date).getTime() - safeDate(a.report_date).getTime()
   );
+
+  // Filters: free-text search + quick date range + issues-only.
+  const [query, setQuery] = useState('');
+  const [range, setRange] = useState<'all' | '7' | '30'>('all');
+  const [issuesOnly, setIssuesOnly] = useState(false);
+  const filteredReports = sortedReports.filter((r) => {
+    if (issuesOnly && !r.issues_encountered) return false;
+    if (range !== 'all') {
+      const cutoff = Date.now() - Number(range) * 86400000;
+      if (safeDate(r.report_date).getTime() < cutoff) return false;
+    }
+    if (query.trim()) {
+      const hay = [
+        format(safeDate(r.report_date), 'EEEE, MMMM d, yyyy'),
+        r.work_performed, (r as any).work_performed_html, r.weather, r.issues_encountered, (r as any).safety_notes,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(query.trim().toLowerCase())) return false;
+    }
+    return true;
+  });
 
   if (showNewReport) {
     return (
@@ -104,8 +129,29 @@ export function DailyReportsList({
             </Button>
           </div>
         ) : (
+          <>
+          {/* Filter bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search reports…" className="pl-8 h-9" />
+            </div>
+            <div className="flex items-center gap-1">
+              {(['all', '7', '30'] as const).map((r) => (
+                <Button key={r} size="sm" variant={range === r ? 'default' : 'outline'} onClick={() => setRange(r)}>
+                  {r === 'all' ? 'All' : `Last ${r}d`}
+                </Button>
+              ))}
+              <Button size="sm" variant={issuesOnly ? 'default' : 'outline'} onClick={() => setIssuesOnly((v) => !v)} className="gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Issues
+              </Button>
+            </div>
+          </div>
+          {filteredReports.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">No reports match your filters.</div>
+          ) : (
           <div className="space-y-4">
-            {sortedReports.map((report) => {
+            {filteredReports.map((report) => {
               const isExpanded = expandedReports.has(report.id);
               const workPerformedHtml = (report as any).work_performed_html;
               const safetyNotes = (report as any).safety_notes;
@@ -124,7 +170,7 @@ export function DailyReportsList({
                         <Calendar className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
-                        <h4 className="font-semibold">{format(new Date(report.report_date), 'EEEE, MMMM d, yyyy')}</h4>
+                        <h4 className="font-semibold">{format(safeDate(report.report_date), 'EEEE, MMMM d, yyyy')}</h4>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           {report.weather && <span className="flex items-center gap-1"><Cloud className="h-3 w-3" />{report.weather}</span>}
                           {report.workers_count != null && report.workers_count > 0 && (
@@ -203,6 +249,8 @@ export function DailyReportsList({
               );
             })}
           </div>
+          )}
+          </>
         )}
       </CardContent>
 
@@ -211,7 +259,7 @@ export function DailyReportsList({
         <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
           <SheetHeader className="px-5 py-3 border-b border-border flex-row items-center justify-between space-y-0 shrink-0">
             <SheetTitle className="text-base">
-              {viewReport ? format(new Date(String(viewReport.report_date).slice(0, 10) + 'T12:00:00'), 'EEEE, MMMM d, yyyy') : 'Report'}
+              {viewReport ? format(safeDate(viewReport.report_date), 'EEEE, MMMM d, yyyy') : 'Report'}
             </SheetTitle>
             <div className="flex gap-2 pr-6">
               <Button size="sm" variant="outline" onClick={() => viewReport && handlePrint(viewReport)} disabled={!viewReport || printingId === viewReport?.id} className="gap-1.5">
