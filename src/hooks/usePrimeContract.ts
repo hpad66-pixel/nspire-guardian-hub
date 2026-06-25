@@ -92,11 +92,23 @@ export function usePrimeContractSov(primeContractId: string | null) {
     queryKey: ["prime-contract-sov", primeContractId],
     enabled: Boolean(primeContractId),
     queryFn: async () => {
+      // The unified schedule of values lives in sov_line_items. The legacy
+      // prime_contract_sov_lines table is empty. Read the BASE lines (the original
+      // SOV); folded-in change-order lines are tracked separately in the Change
+      // Orders tab, so excluding them here avoids double-counting. item_no/sort_order
+      // → line_no.
       const { data, error } = await supabase
-        .from("prime_contract_sov_lines" as any).select("*")
-        .eq("prime_contract_id", primeContractId!).order("line_no");
+        .from("sov_line_items" as any).select("*")
+        .eq("prime_contract_id", primeContractId!).eq("kind", "base").order("sort_order");
       if (error) throw error;
-      return (data ?? []) as PrimeContractSovLine[];
+      return ((data ?? []) as any[]).map((r, i) => ({
+        id: r.id,
+        prime_contract_id: r.prime_contract_id,
+        line_no: Number(r.item_no) || (r.sort_order ?? i) + 1,
+        cost_code_id: r.cost_code_id ?? "",
+        description: r.description ?? "",
+        scheduled_value: Number(r.scheduled_value ?? 0),
+      })) as PrimeContractSovLine[];
     },
   });
 

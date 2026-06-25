@@ -115,17 +115,19 @@ describe("usePrimeContractSov", () => {
     expect(result.current.fetchStatus).toBe("idle");
   });
 
-  it("lists SOV lines ordered by line_no", async () => {
+  it("lists base SOV lines from sov_line_items ordered by sort_order", async () => {
     const builder = makeBuilder({
-      data: [{ id: "sov1", prime_contract_id: "pc1", line_no: 1, scheduled_value: 100 }],
+      data: [{ id: "sov1", prime_contract_id: "pc1", item_no: "1", scheduled_value: 100 }],
       error: null,
     });
     __mock.from.mockReturnValue(builder);
     const { result } = renderHookWithClient(() => usePrimeContractSov("pc1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0].scheduled_value).toBe(100);
+    expect(result.current.data?.[0].line_no).toBe(1);
     expect((builder.eq as any).mock.calls[0]).toEqual(["prime_contract_id", "pc1"]);
-    expect((builder.order as any).mock.calls[0][0]).toBe("line_no");
+    expect((builder.eq as any).mock.calls[1]).toEqual(["kind", "base"]);
+    expect((builder.order as any).mock.calls[0][0]).toBe("sort_order");
   });
 
   it("addLine stamps tenant + prime_contract_id and returns the row", async () => {
