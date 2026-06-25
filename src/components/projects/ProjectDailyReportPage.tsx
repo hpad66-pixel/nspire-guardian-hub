@@ -22,6 +22,7 @@ import { SafetySection, type SafetyData } from './report-sections/SafetySection'
 import { DelaysSection, type DelayEntry } from './report-sections/DelaysSection';
 import { VisitorsSection, type VisitorEntry } from './report-sections/VisitorsSection';
 import { NotesSection } from './report-sections/NotesSection';
+import { PhotosSection, type ReportPhoto } from './report-sections/PhotosSection';
 import type { Database } from '@/integrations/supabase/types';
 
 type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
@@ -53,6 +54,7 @@ interface ReportState {
   visitors: VisitorEntry[];
   notesHtml: string;
   notesText: string;
+  photos: ReportPhoto[];
 }
 
 const defaultSafety: SafetyData = {
@@ -66,10 +68,10 @@ const defaultWeather: WeatherData = { condition: '', temperature: 72, windSpeed:
 const defaultState: ReportState = {
   weather: defaultWeather, crew: [], equipment: [], workPerformedHtml: '', workPerformedText: '',
   quantities: [], materials: [], subcontractors: [], incidents: [], safety: defaultSafety,
-  delays: [], visitors: [], notesHtml: '', notesText: '',
+  delays: [], visitors: [], notesHtml: '', notesText: '', photos: [],
 };
 
-type SectionKey = 'weather' | 'crew' | 'equipment' | 'workPerformed' | 'quantities' | 'materials' | 'subcontractors' | 'incidents' | 'safety' | 'delays' | 'visitors' | 'notes' | 'safetyFAB';
+type SectionKey = 'weather' | 'crew' | 'equipment' | 'workPerformed' | 'quantities' | 'materials' | 'subcontractors' | 'incidents' | 'safety' | 'delays' | 'visitors' | 'notes' | 'photos' | 'safetyFAB';
 
 interface SectionConfig {
   key: SectionKey;
@@ -93,6 +95,7 @@ const SECTIONS: SectionConfig[] = [
   { key: 'delays', emoji: '⏱️', name: 'Delays & Impacts', subtitle: 'Weather, material, RFI, design delays', isComplete: s => s.delays.length > 0, hasItems: s => s.delays.length > 0 },
   { key: 'visitors', emoji: '👤', name: 'Visitors & Inspections', subtitle: 'Owner reps, inspectors, officials on site', isComplete: s => s.visitors.length > 0, hasItems: s => s.visitors.length > 0 },
   { key: 'notes', emoji: '📝', name: 'Notes & Open Items', subtitle: 'General notes, action items, follow-ups', isComplete: s => s.notesText.trim().length > 0, hasItems: s => s.notesText.trim().length > 0 },
+  { key: 'photos', emoji: '📸', name: 'Site Photos', subtitle: 'Upload pictures with a caption for each', isComplete: s => s.photos.length > 0, hasItems: s => s.photos.length > 0 },
 ];
 
 function getStatusChip(section: SectionConfig, state: ReportState) {
@@ -172,7 +175,9 @@ export function ProjectDailyReportPage({
     const delaysStr = state.delays.map(d => `${d.type}: ${d.description}`).join('\n');
     const issuesStr = state.incidents.map(i => `${i.type} at ${i.time}: ${i.description}`).join('\n');
     const materialsStr = state.materials.map(m => `${m.description} (${m.quantity} ${m.unit}) from ${m.vendor}`).join('\n');
+    const sitePhotos = state.photos.map(p => ({ url: p.url, caption: p.caption || '' }));
     const allPhotos = [
+      ...state.photos.map(p => p.url),
       ...state.materials.flatMap(m => m.photoUrls),
       ...state.incidents.flatMap(i => i.photoUrls),
       ...state.safety.photoUrls,
@@ -191,6 +196,7 @@ export function ProjectDailyReportPage({
       delays: delaysStr || null,
       issues_encountered: issuesStr || null,
       photos: allPhotos.length > 0 ? allPhotos : null,
+      photos_meta: sitePhotos.length > 0 ? (sitePhotos as any) : [],
       subcontractors: state.subcontractors.length > 0 ? (state.subcontractors as any) : null,
       visitor_log: state.visitors.length > 0 ? (state.visitors as any) : null,
     } as any;
@@ -377,6 +383,7 @@ export function ProjectDailyReportPage({
         onChange={(html, plain) => setState(prev => ({ ...prev, notesHtml: html, notesText: plain }))}
         projectId={projectId}
       />
+      <PhotosSection open={activeSection === 'photos'} onClose={() => setActiveSection(null)} data={state.photos} onChange={v => upd('photos', v)} projectId={projectId} />
     </div>
   );
 }

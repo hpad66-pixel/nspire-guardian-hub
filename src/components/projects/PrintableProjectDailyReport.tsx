@@ -51,6 +51,7 @@ export function PrintableProjectDailyReport({
   const pdfPath = (report as any).pdf_path as string | null | undefined;
   const signature = (report as any).signature as string | null | undefined;
   const photos = asArray<string>(report.photos);
+  const photoMeta = asArray<{ url: string; caption?: string }>((report as any).photos_meta);
 
   // Full Procore payload (weather observations, manpower breakdown, inspector…)
   const pc: any = (report as any).procore_data || {};
@@ -114,7 +115,7 @@ export function PrintableProjectDailyReport({
           { label: 'Workers on Site', value: String(report.workers_count ?? 0) },
           { label: 'Total Hours', value: totalHours != null ? String(totalHours) : '—' },
           { label: 'Weather', value: report.weather || (weatherObs.length ? `${weatherObs.length} obs.` : 'Not recorded') },
-          { label: 'Photos', value: String(photos.length || photoNames.length) },
+          { label: 'Photos', value: String(photoMeta.length || photos.length || photoNames.length) },
           { label: 'Type', value: projectType || '—' },
         ].map((it) => (
           <div key={it.label} style={{ background: 'white', padding: '9px 11px' }}>
@@ -279,14 +280,17 @@ export function PrintableProjectDailyReport({
         </Section>
       )}
 
-      {/* Photos — large 2-up grid */}
-      {photos.length > 0 && (
-        <Section title={`Site Photos (${photos.length})`}>
+      {/* Photos — large 2-up grid, with captions when present (photos_meta) */}
+      {(photoMeta.length > 0 || photos.length > 0) && (
+        <Section title={`Site Photos (${photoMeta.length || photos.length})`}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            {photos.map((url, i) => (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 8, overflow: 'hidden', border: `1px solid ${LINE}`, breakInside: 'avoid' }}>
-                <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </a>
+            {(photoMeta.length > 0 ? photoMeta : photos.map((u) => ({ url: u, caption: '' }))).map((p, i) => (
+              <div key={i} style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${LINE}`, breakInside: 'avoid' }}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                  <img src={p.url} alt={p.caption || `Photo ${i + 1}`} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </a>
+                {p.caption ? <div style={{ fontSize: 11, color: MUTED, padding: '6px 8px', fontFamily: 'system-ui' }}>{p.caption}</div> : null}
+              </div>
             ))}
           </div>
         </Section>
