@@ -291,6 +291,21 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
     },
   ];
 
+  // Live figures shown on the card face, pulled from the F0 financial summary.
+  const s = summary.data;
+  const netCash = Number(s?.net_cash_position ?? 0);
+  const liveMetric: Record<string, { k: string; v: number; tone?: string }> = {
+    'Prime Contract': { k: 'Revised contract', v: Number(s?.revised_contract ?? 0) },
+    'Change Orders': { k: 'Approved COs', v: Number(s?.approved_co_value ?? 0) },
+    'Pay Apps': { k: 'Billed to date', v: Number(s?.billed_to_date ?? 0) },
+    'Payments': { k: 'Received', v: Number(s?.received_to_date ?? 0), tone: 'text-emerald-600' },
+    'Commitments': { k: 'Committed', v: Number(s?.committed_total ?? 0) },
+    'Invoices': { k: 'Sub billed', v: Number(s?.commitment_invoiced ?? 0) },
+    'Direct Costs': { k: 'Logged', v: Number(directCostsTotal) },
+    'Budget': { k: 'Revised contract', v: Number(s?.revised_contract ?? 0) },
+    'Ledger': { k: 'Net cash position', v: netCash, tone: netCash >= 0 ? 'text-emerald-600' : 'text-destructive' },
+  };
+
   return (
     <div className="space-y-6">
       {/* Financial module cards */}
@@ -325,7 +340,14 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
                     <p className="text-xs text-foreground/80 font-medium leading-relaxed">{what}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{how}</p>
                     <div className="pt-1 border-t border-dashed border-muted">
-                      <p className="text-[10px] text-muted-foreground/70 italic">{example}</p>
+                      {liveMetric[label] ? (
+                        <p className="text-xs flex items-baseline justify-between gap-2">
+                          <span className="text-muted-foreground">{liveMetric[label].k}</span>
+                          <span className={`font-bold tabular-nums ${liveMetric[label].tone ?? 'text-foreground'}`}>{formatCurrency(liveMetric[label].v)}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground/70 italic">{example}</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
