@@ -10,7 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: AppRole | null;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string, companyName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -106,9 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, companyName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
+    // company_name (when present, and no workspace_id invite) tells the
+    // handle_new_user trigger to provision a fresh, isolated workspace and make
+    // this user its admin. Invited users carry workspace_id and join instead.
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -116,10 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          ...(companyName ? { company_name: companyName } : {}),
         },
       },
     });
-    
+
     return { error: error as Error | null };
   };
 

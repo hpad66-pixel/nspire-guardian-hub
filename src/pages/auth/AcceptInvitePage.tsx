@@ -58,6 +58,8 @@ export default function AcceptInvitePage() {
     setIsSubmitting(true);
     try {
       // Create the user account
+      // Pass the inviter's workspace_id so handle_new_user JOINS that workspace
+      // as a member (role 'user') instead of provisioning a new company.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password: data.password,
@@ -65,6 +67,7 @@ export default function AcceptInvitePage() {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: data.fullName,
+            ...((invitation as any).workspace_id ? { workspace_id: (invitation as any).workspace_id } : {}),
           },
         },
       });
