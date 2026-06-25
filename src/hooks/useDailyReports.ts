@@ -96,6 +96,27 @@ export function useCreateDailyReport() {
   });
 }
 
+/** Apply / clear the "Reviewed" seal on a submitted daily report (admin sign-off). */
+export function useReviewDailyReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reviewed }: { id: string; reviewed: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const name = (user?.user_metadata as any)?.full_name || user?.email || 'Reviewer';
+      const patch = reviewed
+        ? { reviewed_at: new Date().toISOString(), reviewed_by: user?.id ?? null, reviewed_by_name: name }
+        : { reviewed_at: null, reviewed_by: null, reviewed_by_name: null };
+      const { error } = await supabase.from('daily_reports').update(patch as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-reports'] });
+      toast.success(v.reviewed ? 'Report marked as reviewed ✓' : 'Review cleared');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useUpdateDailyReport() {
   const queryClient = useQueryClient();
   

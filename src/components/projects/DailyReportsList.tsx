@@ -10,6 +10,9 @@ import { Input } from '@/components/ui/input';
 import { ProjectDailyReportPage } from './ProjectDailyReportPage';
 import { PrintableProjectDailyReport } from './PrintableProjectDailyReport';
 import { ProjectReportEmailSheet } from './ProjectReportEmailSheet';
+import { DailyReviewSeal, DailyReviewBadge } from './DailyReviewSeal';
+import { useReviewDailyReport } from '@/hooks/useDailyReports';
+import { CheckCircle2, RotateCcw } from 'lucide-react';
 import { RichTextViewer } from '@/components/ui/rich-text-editor';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 import { toast } from 'sonner';
@@ -40,6 +43,7 @@ export function DailyReportsList({
   const [viewReport, setViewReport] = useState<DailyReportRow | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
+  const review = useReviewDailyReport();
 
   const toggleExpanded = (id: string) => {
     const next = new Set(expandedReports);
@@ -90,6 +94,10 @@ export function DailyReportsList({
     }
     return true;
   });
+
+  // The drawer holds a captured row; re-read it from the live list so the seal /
+  // review button update immediately after marking reviewed.
+  const liveView = viewReport ? (reports.find((r) => r.id === viewReport.id) ?? viewReport) : null;
 
   if (showNewReport) {
     return (
@@ -183,6 +191,7 @@ export function DailyReportsList({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {(report as any).reviewed_at && <DailyReviewBadge />}
                       {report.issues_encountered && (
                         <Badge variant="outline" className="text-amber-500 border-amber-500/20">
                           <AlertTriangle className="h-3 w-3 mr-1" /> Issues
@@ -271,9 +280,24 @@ export function DailyReportsList({
               <Button size="sm" onClick={() => { const r = viewReport; setEmailReport(r); }} disabled={!viewReport} className="gap-1.5">
                 <Mail className="h-4 w-4" /> Email
               </Button>
+              {liveView && ((liveView as any).reviewed_at ? (
+                <Button size="sm" variant="outline" onClick={() => review.mutate({ id: liveView.id, reviewed: false })} disabled={review.isPending} className="gap-1.5">
+                  <RotateCcw className="h-4 w-4" /> Un-review
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => review.mutate({ id: liveView.id, reviewed: true })} disabled={review.isPending}
+                  className="gap-1.5 border-[var(--apas-emerald)] text-[var(--apas-emerald)]">
+                  <CheckCircle2 className="h-4 w-4" /> Mark reviewed
+                </Button>
+              ))}
             </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto bg-white">
+            {liveView && (liveView as any).reviewed_at && (
+              <div className="flex justify-end px-6 pt-4">
+                <DailyReviewSeal name={(liveView as any).reviewed_by_name} at={(liveView as any).reviewed_at} />
+              </div>
+            )}
             {viewReport && (
               <PrintableProjectDailyReport
                 report={viewReport}

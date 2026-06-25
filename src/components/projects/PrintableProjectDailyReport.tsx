@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { RichTextViewer } from '@/components/ui/rich-text-editor';
+import { DailyReviewSeal } from './DailyReviewSeal';
 import type { Database } from '@/integrations/supabase/types';
 
 type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
@@ -316,6 +317,13 @@ export function PrintableProjectDailyReport({
             </object>
           </div>
         </Section>
+      )}
+
+      {/* Reviewed seal */}
+      {(report as any).reviewed_at && (
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+          <DailyReviewSeal name={(report as any).reviewed_by_name} at={(report as any).reviewed_at} />
+        </div>
       )}
 
       {/* Signature */}
