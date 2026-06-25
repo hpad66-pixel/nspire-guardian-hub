@@ -101,7 +101,7 @@ export function useReviewInspection() {
           reviewer_notes: input.reviewer_notes || null,
           reviewed_by: user?.id,
           reviewed_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', input.id)
         .select()
         .single();

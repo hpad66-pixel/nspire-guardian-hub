@@ -152,7 +152,7 @@ export default function ChangeOrderDetailPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
-      <FinancialSubNav projectId={projectId ?? ""} />
+      <FinancialSubNav />
       <div>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap mb-4">
           <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1">

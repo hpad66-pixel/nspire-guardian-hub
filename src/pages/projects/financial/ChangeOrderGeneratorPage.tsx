@@ -210,7 +210,7 @@ export default function ChangeOrderGeneratorPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-4">
-      <FinancialSubNav projectId={projectId ?? ""} />
+      <FinancialSubNav />
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
         <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1"><LayoutDashboard className="h-3.5 w-3.5" />Dashboard</Link>
         <ChevronRight className="h-3.5 w-3.5" />

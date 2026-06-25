@@ -173,9 +173,8 @@ export default function OwnerPayAppApprovalPage() {
             <Badge variant="outline" className="capitalize">{pa.status}</Badge>
             <PayAppPDFExport
               payAppId={pa.id}
-              primeContractId={contract.id}
-              contractNo={contract.contract_no}
-              contractTitle={contract.title}
+              projectId={(contract as any).project_id ?? ""}
+              contract={contract as any}
             />
           </div>
         </div>

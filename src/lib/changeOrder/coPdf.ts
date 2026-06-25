@@ -141,7 +141,7 @@ export async function buildCoPdf(
     const descW = cw - 22 - 40 - 40 - 64 - 74 - 66;
     const C = {
       n: M, desc: M + 22, unit: M + 22 + descW, qty: M + 22 + descW + 40,
-      unit: 0, cost: M + 22 + descW + 40 + 40, ext: M + 22 + descW + 40 + 40 + 64, basis: M + 22 + descW + 40 + 40 + 64 + 74,
+      cost: M + 22 + descW + 40 + 40, ext: M + 22 + descW + 40 + 40 + 64, basis: M + 22 + descW + 40 + 40 + 64 + 74,
     } as any;
     C.unit = M + 22 + descW;
     C.qty = C.unit + 40;

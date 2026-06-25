@@ -20,7 +20,6 @@ async function loadPdfjs(): Promise<any> {
   if (loader) return loader;
   loader = new Promise<any>(async (resolve, reject) => {
     try {
-      // @ts-expect-error dynamic ESM import from CDN
       const mod = await import(/* @vite-ignore */ PDFJS_CDN);
       mod.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
       resolve(mod);

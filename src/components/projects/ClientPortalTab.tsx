@@ -160,9 +160,9 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
     if (access?.magic_link_token) {
       const magicUrl = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${access.magic_link_token}&redirect=schedule`;
       await sendEmail.mutateAsync({
-        to: inviteEmail.trim(),
+        recipients: [inviteEmail.trim()],
         subject: `You've been invited to view the project schedule — ${portal.name}`,
-        html: `
+        bodyHtml: `
           <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 0">
             <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">Project Schedule Access</h2>
             <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px">

@@ -218,7 +218,7 @@ export function RepositoryTab({ projectId }: { projectId: string }) {
                     {SOURCE_LABEL[a.source_system]}
                   </span>
                   {a.extracted_text && (
-                    <Brain className="h-3 w-3 text-[var(--apas-sapphire)]" title="AI-indexed" />
+                    <span title="AI-indexed" className="inline-flex"><Brain className="h-3 w-3 text-[var(--apas-sapphire)]" /></span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-0.5 text-xs text-muted-foreground">

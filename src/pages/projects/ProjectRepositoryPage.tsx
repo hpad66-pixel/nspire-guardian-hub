@@ -248,7 +248,7 @@ export default function ProjectRepositoryPage() {
                     {SOURCE_LABEL[a.source_system]}
                   </span>
                   {a.extracted_text && (
-                    <Brain className="h-3.5 w-3.5 text-[var(--apas-sapphire)] shrink-0" title="AI-indexed" />
+                    <span title="AI-indexed" className="inline-flex shrink-0"><Brain className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /></span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-3 mt-0.5 text-xs text-muted-foreground">
