@@ -7,7 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-6";
 
 interface GenerateReportRequest {
   projectId: string;
@@ -53,9 +54,9 @@ serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const body: GenerateReportRequest = await req.json();
@@ -429,26 +430,21 @@ A formal certification paragraph that the work described herein has been complet
 ${sharedContext}`;
     }
 
-    // ── Call Gemini API ───────────────────────────────────────────────────────
-    const aiResponse = await fetch(
-      `${GEMINI_API_BASE}/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 8192,
-          },
-        }),
-      }
-    );
+    // ── Call Claude ───────────────────────────────────────────────────────────
+    const aiResponse = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Gemini API error:", aiResponse.status, errorText);
+      console.error("Anthropic API error:", aiResponse.status, errorText);
 
       if (aiResponse.status === 429) {
         return new Response(
@@ -457,11 +453,11 @@ ${sharedContext}`;
         );
       }
 
-      throw new Error(`Gemini API error: ${aiResponse.status}`);
+      throw new Error(`Anthropic API error: ${aiResponse.status}`);
     }
 
     const result = await aiResponse.json();
-    const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const content = result.content?.[0]?.text || "";
 
     // ── Stream back as SSE ───────────────────────────────────────────────────
     const encoder = new TextEncoder();

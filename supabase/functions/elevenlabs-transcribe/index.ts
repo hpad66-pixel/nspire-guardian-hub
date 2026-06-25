@@ -74,18 +74,20 @@ serve(async (req) => {
       originalTranscript = transcript;
 
       try {
-        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-        if (!LOVABLE_API_KEY) {
-          console.warn('LOVABLE_API_KEY not configured, skipping translation');
+        const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+        if (!ANTHROPIC_API_KEY) {
+          console.warn('ANTHROPIC_API_KEY not configured, skipping translation');
         } else {
-          const translationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const translationResponse = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'claude-sonnet-4-6',
+              max_tokens: 2000,
               messages: [{
                 role: 'user',
                 content: `Translate the following text to English. Return ONLY the translation, no explanations, no quotes, just the translated text:\n\n${transcript}`
@@ -95,7 +97,7 @@ serve(async (req) => {
 
           if (translationResponse.ok) {
             const translationData = await translationResponse.json();
-            const translatedText = translationData.choices?.[0]?.message?.content;
+            const translatedText = translationData.content?.[0]?.text;
             if (translatedText) {
               transcript = translatedText.trim();
               wasTranslated = true;
