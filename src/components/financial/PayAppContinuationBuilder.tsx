@@ -39,10 +39,12 @@ const G702_ROWS: Array<[string, keyof G702Summary]> = [
 export function PayAppContinuationBuilder({
   payAppId, projectId, primeContractId,
 }: { payAppId: string; projectId: string; primeContractId: string }) {
-  const { detail, lines, g702, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
+  const { detail, lines, g702, isFrozen, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
   const loadCos = useLoadApprovedCos(primeContractId, projectId);
   const status = detail.data?.status as string | undefined;
-  const locked = status === "approved" || status === "paid";
+  // A submitted pay app is a fixed certificate — lock all editing so its figures
+  // stay exactly as submitted (later COs/progress go into the next pay app).
+  const locked = isFrozen;
 
   async function toggleRetainage(line: ContinuationLine) {
     try {
@@ -109,7 +111,7 @@ export function PayAppContinuationBuilder({
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {locked
-            ? "This pay app is locked."
+            ? <>Submitted{status && status !== "submitted" ? ` · ${status}` : ""} — these figures are <strong>frozen exactly as submitted</strong>. Later change orders and progress go onto the next pay app, not this one.</>
             : <>Enter the <strong>quantity completed this period</strong> per line — value computes from the unit price, and to-date carries forward from the prior pay app.</>}
         </p>
         <div className="flex items-center gap-2">

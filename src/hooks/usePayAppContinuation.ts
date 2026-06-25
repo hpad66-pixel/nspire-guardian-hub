@@ -310,7 +310,7 @@ export function usePayAppContinuation(payAppId: string | null) {
     });
   }, [sov.data, thisProgress.data, priorByLineId]);
 
-  const g702: G702Summary = useMemo(
+  const liveG702: G702Summary = useMemo(
     () =>
       computeG702({
         originalContractSum: Number(contract.data?.original_value ?? 0),
@@ -322,6 +322,17 @@ export function usePayAppContinuation(payAppId: string | null) {
       }),
     [contract.data, prior.data, lines],
   );
+
+  // Once a pay app leaves "draft" it's a submitted certificate — a fixed legal
+  // record. Serve the snapshot frozen at submission (pay_app_data) instead of
+  // recomputing live, so later change orders / progress don't rewrite a document
+  // the client already received. New work flows into the next pay app.
+  const status = (detail.data as any)?.status as string | undefined;
+  const isFrozen = Boolean(status && status !== "draft");
+  const snapshot = (detail.data as any)?.pay_app_data as G702Summary | null | undefined;
+  const g702: G702Summary = isFrozen && snapshot && typeof snapshot.contract_sum_to_date === "number"
+    ? snapshot
+    : liveG702;
 
   const upsertLine = useMutation({
     mutationFn: async (input: {
@@ -405,7 +416,7 @@ export function usePayAppContinuation(payAppId: string | null) {
   });
 
   return {
-    detail, contract, lines, g702, retainagePct,
+    detail, contract, lines, g702, retainagePct, isFrozen,
     isLoading: detail.isLoading || sov.isLoading || thisProgress.isLoading,
     upsertLine, submit, setLineRetainage,
     refetch: () => {

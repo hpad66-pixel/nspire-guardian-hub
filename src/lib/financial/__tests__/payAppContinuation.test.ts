@@ -105,7 +105,8 @@ describe("computeG702", () => {
     expect(g.total_earned_less_retainage).toBe(526879.8);
     expect(g.less_previous_certificates).toBe(300000);
     expect(g.current_payment_due).toBe(226879.8);
-    expect(g.balance_to_finish).toBe(93710.23);
+    // Line 9 = line 3 − line 6 (incl. retainage): 679132.23 − 526879.8
+    expect(g.balance_to_finish).toBe(152252.43);
   });
 
   it("zero lines → all zeros with no NaN", () => {

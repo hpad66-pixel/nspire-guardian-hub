@@ -180,7 +180,10 @@ export function computeG702(input: {
   const total_earned_less_retainage = round2(completed_stored_to_date - retainage_total);
   const less_previous_certificates = round2(input.previousCertificates);
   const current_payment_due = round2(total_earned_less_retainage - less_previous_certificates);
-  const balance_to_finish = round2(contract_sum_to_date - completed_stored_to_date);
+  // AIA G702 line 9 = line 3 less line 6 (Contract Sum to Date − Total Earned Less
+  // Retainage). This is "balance to finish INCLUDING retainage" — it carries the
+  // retainage still to be released, matching the form's label.
+  const balance_to_finish = round2(contract_sum_to_date - total_earned_less_retainage);
   return {
     original_contract_sum,
     net_change_orders,
