@@ -59,7 +59,7 @@ export function CellDrillDown({
           </div>
         ) : (
           <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="bg-muted/40 sticky top-0">
                 <tr>
                   <th className="p-2 text-left font-medium">Reference</th>
@@ -78,7 +78,7 @@ export function CellDrillDown({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </DialogContent>

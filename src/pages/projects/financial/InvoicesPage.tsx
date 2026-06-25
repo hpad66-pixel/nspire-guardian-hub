@@ -78,7 +78,7 @@ function VendorInvoiceGroup({
       {ordered.length === 0 ? (
         <div className="px-3 py-2 text-xs text-muted-foreground italic">No invoices submitted yet.</div>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <tbody>
             {ordered.map((inv) => (
               <tr key={inv.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onOpen(inv.id, commitment.id)}>
@@ -95,7 +95,7 @@ function VendorInvoiceGroup({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );
@@ -125,7 +125,7 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
       {ordered.length === 0 ? (
         <div className="px-3 py-2 text-xs text-muted-foreground italic">No pay applications yet.</div>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-t">
               <th className="p-2 pl-3 text-left font-medium">Pay App</th>
@@ -168,7 +168,7 @@ function PrimePayAppGroup({ projectId, primeContractId, label }: { projectId: st
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

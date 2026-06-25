@@ -75,7 +75,7 @@ export default function PayAppsPage() {
             <CardTitle className="text-base">{contract.title} · {contract.contract_no}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3">#</th><th className="text-left p-3">Period ending</th>
                 <th className="text-right p-3">Submitted</th><th className="text-right p-3">Approved</th>
@@ -116,7 +116,7 @@ export default function PayAppsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CardContent>
         </Card>
       )}

@@ -106,7 +106,7 @@ export default function PaymentsPage() {
               <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b bg-muted/30">
                 Reconciliation by pay application
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b">
                     <th className="p-3 text-left">Pay App</th>
@@ -128,14 +128,14 @@ export default function PaymentsPage() {
                   ))}
                   {payApps.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No pay applications yet.</td></tr>}
                 </tbody>
-              </table>
+              </table></div>
             </CardContent>
           </Card>
 
           {/* Receipt log */}
           <Card>
             <CardContent className="p-0">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                     <th className="p-3">Date</th><th className="p-3">From</th><th className="p-3">Reference</th><th className="p-3 text-right">Amount</th>
@@ -157,7 +157,7 @@ export default function PaymentsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -193,7 +193,7 @@ export default function PaymentsPage() {
               <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b bg-muted/30">
                 Reconciliation by subcontractor invoice
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b">
                     <th className="p-3 text-left">Invoice</th>
@@ -219,14 +219,14 @@ export default function PaymentsPage() {
                   ))}
                   {invoices.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No subcontractor invoices yet.</td></tr>}
                 </tbody>
-              </table>
+              </table></div>
             </CardContent>
           </Card>
 
           {/* Disbursement log */}
           <Card>
             <CardContent className="p-0">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                     <th className="p-3">Date</th><th className="p-3">To</th><th className="p-3">Reference</th><th className="p-3 text-right">Amount</th>
@@ -248,7 +248,7 @@ export default function PaymentsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </CardContent>
           </Card>
             </TabsContent>

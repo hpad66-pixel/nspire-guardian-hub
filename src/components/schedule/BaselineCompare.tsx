@@ -169,7 +169,7 @@ export function BaselineCompare({ scheduleId, currentTasks }: BaselineComparePro
 
             <div className="rounded-md border overflow-hidden">
               <div className="max-h-[60vh] overflow-y-auto">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0">
                     <tr>
                       <th className="text-left px-3 py-2">Task</th>
@@ -227,7 +227,7 @@ export function BaselineCompare({ scheduleId, currentTasks }: BaselineComparePro
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             </div>
           </div>

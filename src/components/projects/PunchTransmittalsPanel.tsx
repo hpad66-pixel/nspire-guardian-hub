@@ -57,7 +57,7 @@ function Row({ tx }: { tx: PunchTransmittal }) {
               <Copy className="h-3 w-3" /> Copy link
             </button>
           </div>
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto"><table className="w-full text-xs">
             <tbody>
               {(tx.items ?? []).map((i) => {
                 const ss = i.sub_status ? SUB_STATUS[i.sub_status] : null;
@@ -82,7 +82,7 @@ function Row({ tx }: { tx: PunchTransmittal }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>

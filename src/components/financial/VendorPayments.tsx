@@ -73,7 +73,7 @@ function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: Al
               <ReconciledStamp amount={p.amount} />
             </div>
           )}
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto"><table className="w-full text-xs">
             <tbody>
               {p.allocations.map((a) => (
                 <tr key={a.id} className="border-b border-border/40 last:border-0">
@@ -82,7 +82,7 @@ function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: Al
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>
@@ -137,7 +137,7 @@ function VendorPanel({
           <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Receipt className="h-3.5 w-3.5" /> Invoices
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th className="p-3 text-left">Invoice</th>
@@ -161,7 +161,7 @@ function VendorPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </CardContent>
       </Card>
 

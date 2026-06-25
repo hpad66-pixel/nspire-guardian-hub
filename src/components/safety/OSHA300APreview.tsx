@@ -80,7 +80,7 @@ export function OSHA300APreview({
         {/* Summary totals */}
         <div className="mb-5">
           <p className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">Summary Totals</p>
-          <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto"><table className="w-full text-sm border-collapse">
             <tbody>
               {[
                 { label: 'Total number of deaths', value: totals.totalDeaths },
@@ -97,7 +97,7 @@ export function OSHA300APreview({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
@@ -118,7 +118,7 @@ export function OSHA300APreview({
         {/* Injury and illness types */}
         <div className="mb-5">
           <p className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-700">Injury and Illness Types</p>
-          <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto"><table className="w-full text-sm border-collapse">
             <tbody>
               {[
                 { label: 'Total number of injuries', value: totals.byType.injuries },
@@ -134,7 +134,7 @@ export function OSHA300APreview({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {/* Certification */}

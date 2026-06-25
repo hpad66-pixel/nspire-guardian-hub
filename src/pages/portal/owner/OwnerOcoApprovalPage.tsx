@@ -109,7 +109,7 @@ export default function OwnerOcoApprovalPage() {
           {lines.length === 0 ? (
             <div className="text-muted-foreground text-sm">No lines.</div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="bg-muted/40">
                 <tr>
                   <th className="p-2 text-left font-medium">Cost code</th>
@@ -136,7 +136,7 @@ export default function OwnerOcoApprovalPage() {
                   </td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           )}
         </CardContent>
       </Card>

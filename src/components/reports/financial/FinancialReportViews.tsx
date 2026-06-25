@@ -171,7 +171,7 @@ export function BillingReportView({ data, brand }: { data: ReportData; brand: Re
         </ResponsiveContainer>
       </div>
       <div style={chartCard}>
-        <table style={tableStyle}>
+        <div className="overflow-x-auto"><table style={tableStyle}>
           <thead><tr><th style={thL}>App</th><th style={thL}>Period</th><th style={thR}>This Period</th><th style={thR}>Completed</th><th style={thR}>Retainage</th><th style={thR}>Current Due</th><th style={thL}>Status</th></tr></thead>
           <tbody>
             {rows.map((r) => (
@@ -184,7 +184,7 @@ export function BillingReportView({ data, brand }: { data: ReportData; brand: Re
             ))}
             {!rows.length && <tr><td style={td} colSpan={7}>No pay applications yet.</td></tr>}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );
@@ -217,7 +217,7 @@ export function ChangeOrderReportView({ data, brand }: { data: ReportData; brand
         </ResponsiveContainer>
       </div>
       <div style={chartCard}>
-        <table style={tableStyle}>
+        <div className="overflow-x-auto"><table style={tableStyle}>
           <thead><tr><th style={thL}>CO</th><th style={thL}>Title</th><th style={thR}>Amount</th><th style={thL}>Status</th></tr></thead>
           <tbody>
             {log.rows.map((r) => (
@@ -228,7 +228,7 @@ export function ChangeOrderReportView({ data, brand }: { data: ReportData; brand
             ))}
             {!log.rows.length && <tr><td style={td} colSpan={4}>No change orders.</td></tr>}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );
@@ -295,7 +295,7 @@ export function CommitmentReportView({ data, brand }: { data: ReportData; brand:
         </ResponsiveContainer>
       </div>
       <div style={chartCard}>
-        <table style={tableStyle}>
+        <div className="overflow-x-auto"><table style={tableStyle}>
           <thead><tr><th style={thL}>Subcontract</th><th style={thR}>Committed</th><th style={thR}>Paid</th><th style={thR}>Remaining</th><th style={thR}>% Paid</th></tr></thead>
           <tbody>
             {rows.map((r) => (
@@ -306,7 +306,7 @@ export function CommitmentReportView({ data, brand }: { data: ReportData; brand:
             ))}
             {!rows.length && <tr><td style={td} colSpan={5}>No commitments.</td></tr>}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );

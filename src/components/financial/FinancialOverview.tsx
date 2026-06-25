@@ -156,7 +156,7 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                 <th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Party</th>
@@ -190,7 +190,7 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </CardContent>
       </Card>
 
@@ -226,7 +226,7 @@ function AgingCard({ title, rows }: {
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">{title}</CardTitle></CardHeader>
       <CardContent className="p-0">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
               <th className="p-2.5">Ref</th><th className="p-2.5 text-right">Billed</th>
@@ -253,7 +253,7 @@ function AgingCard({ title, rows }: {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </CardContent>
     </Card>
   );

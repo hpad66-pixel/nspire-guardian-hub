@@ -83,7 +83,7 @@ export function OSHA300Preview({ year, establishmentName, city, state }: OSHA300
         </div>
 
         {/* Table */}
-        <table className="w-full border-collapse border border-black text-[9px]">
+        <div className="overflow-x-auto"><table className="w-full border-collapse border border-black text-[9px]">
           <thead>
             <tr className="bg-gray-100">
               <th className="border border-black px-1 py-1 text-left w-12" rowSpan={2}>A<br /><span className="font-normal">Case No.</span></th>
@@ -161,7 +161,7 @@ export function OSHA300Preview({ year, establishmentName, city, state }: OSHA300
               <td className="border border-black px-1 py-1 text-center">{totals.otherIllness || ''}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
 
         <p className="text-[8px] text-gray-500 mt-2 px-1">
           Public reporting burden for this collection of information is estimated to average 14 minutes per response. Persons are not required to respond to the collection of information unless it displays a currently valid OMB control number. If you have any comments about these estimates or any other aspects of this data collection, contact: US Department of Labor, OSHA Office of Statistics, Room N-3644, 200 Constitution Ave., NW, Washington, DC 20210.
