@@ -194,12 +194,13 @@ export function AppSidebar() {
             <>
               <SectionLabel label="Projects" collapsed={collapsed} />
               <div className="space-y-px">
+                {/* Flat view of every project, and the Clients hub (manage all
+                    clients, create, search). Proposals are NOT here — they live
+                    inside each project. */}
                 <NavItem to="/projects" icon={FolderKanban} label="All Projects" collapsed={collapsed} end />
                 <NavItem to="/organizations" icon={Briefcase} label="Clients" collapsed={collapsed} />
-                {isAdmin && (
-                  <NavItem to="/projects/proposals" icon={FileText} label="Proposals" collapsed={collapsed} />
-                )}
-                {/* Expand a client to reveal its projects; each opens its project workspace. */}
+                {/* Your clients nested to their projects: click a client to open it,
+                    expand to jump straight into any of its projects. */}
                 <OrgProjectTree collapsed={collapsed} />
               </div>
             </>
