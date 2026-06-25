@@ -5,17 +5,24 @@ import { useAssistantEnabled } from "../useAssistantEnabled";
 describe("useAssistantEnabled", () => {
   beforeEach(() => { localStorage.clear(); });
 
-  it("defaults to false and persists when toggled", () => {
+  it("defaults to ON (visible) and persists when toggled", () => {
     const { result } = renderHook(() => useAssistantEnabled());
-    expect(result.current[0]).toBe(false);
-
-    act(() => result.current[1](true));
+    // Default ON: with no stored preference, the assistant is visible to everyone.
     expect(result.current[0]).toBe(true);
-    expect(localStorage.getItem("buildos-assistant-enabled")).toBe("1");
 
     act(() => result.current[1](false));
     expect(result.current[0]).toBe(false);
     expect(localStorage.getItem("buildos-assistant-enabled")).toBe("0");
+
+    act(() => result.current[1](true));
+    expect(result.current[0]).toBe(true);
+    expect(localStorage.getItem("buildos-assistant-enabled")).toBe("1");
+  });
+
+  it("only an explicit opt-out ('0') disables it", () => {
+    localStorage.setItem("buildos-assistant-enabled", "0");
+    const { result } = renderHook(() => useAssistantEnabled());
+    expect(result.current[0]).toBe(false);
   });
 
   it("reads an existing enabled preference on mount", () => {
