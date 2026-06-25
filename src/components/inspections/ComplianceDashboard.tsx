@@ -282,7 +282,7 @@ export function ComplianceDashboard() {
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="py-2 px-4 text-left font-medium">Category</th>
@@ -309,7 +309,7 @@ export function ComplianceDashboard() {
                     <td className="py-2 px-4 text-right font-mono text-destructive">-{scoreBreakdown.totalDeductions.toFixed(2)}</td>
                   </tr>
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </CardContent>
         </Card>

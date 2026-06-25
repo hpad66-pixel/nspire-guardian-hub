@@ -40,7 +40,7 @@ export default function LienReleasesPage() {
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                 <th className="p-3">Direction</th><th className="p-3">Type</th><th className="p-3">Through</th>
@@ -77,7 +77,7 @@ export default function LienReleasesPage() {
                 </tr>
               );})}
             </tbody>
-          </table>
+          </table></div>
         </CardContent>
       </Card>
     </div>

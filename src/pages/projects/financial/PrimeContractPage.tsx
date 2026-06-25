@@ -239,7 +239,7 @@ export default function PrimeContractPage() {
 
         <TabsContent value="sov">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3 w-8">#</th><th className="text-left p-3">Description</th>
                 <th className="text-left p-3">Cost Code</th><th className="text-right p-3">Scheduled</th>
@@ -255,7 +255,7 @@ export default function PrimeContractPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CardContent></Card>
         </TabsContent>
 
@@ -266,7 +266,7 @@ export default function PrimeContractPage() {
               <Button size="sm" onClick={newPayApp} disabled={creating}><Plus className="h-4 w-4 mr-1" /> {creating ? "Generating…" : "Generate Pay App"}</Button>
             </CardHeader>
             <CardContent className="p-0">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                   <th className="text-left p-3">#</th><th className="text-left p-3">Period</th>
                   <th className="text-right p-3">Submitted</th><th className="text-right p-3">Approved</th>
@@ -286,14 +286,14 @@ export default function PrimeContractPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="cos">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3">CO</th><th className="text-left p-3">Title</th>
                 <th className="text-right p-3">Amount</th><th className="text-center p-3">Status</th>
@@ -310,13 +310,13 @@ export default function PrimeContractPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="payments">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3">Date</th><th className="text-left p-3">Reference</th><th className="text-right p-3">Amount</th>
               </tr></thead>
@@ -330,7 +330,7 @@ export default function PrimeContractPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CardContent></Card>
         </TabsContent>
       </Tabs>

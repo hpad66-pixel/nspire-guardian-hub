@@ -82,7 +82,7 @@ export default function WebhookDeliveriesPage() {
           ) : deliveries.length === 0 ? (
             <p className="text-muted-foreground">No deliveries yet.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr className="border-b">
                   <th className="text-left py-2">When</th>
@@ -125,7 +125,7 @@ export default function WebhookDeliveriesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </CardContent>
       </Card>

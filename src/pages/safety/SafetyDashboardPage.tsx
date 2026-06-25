@@ -175,7 +175,7 @@ export default function SafetyDashboardPage() {
             <div className="text-center py-12 text-muted-foreground">No OSHA recordable incidents for {currentYear}</div>
           ) : (
             <div className="rounded-xl border overflow-hidden">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>
                     {['Case #', 'Employee', 'Date', 'Location', 'Recordable Type', 'Status'].map(h => (
@@ -195,7 +195,7 @@ export default function SafetyDashboardPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
 

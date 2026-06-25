@@ -141,7 +141,7 @@ export default function PayAppDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">AIA G702 Summary (as submitted)</CardTitle></CardHeader>
           <CardContent>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <tbody>
                 {[
                   ["1. Original Contract Sum", (pa as any).pay_app_data.original_contract_sum],
@@ -160,7 +160,7 @@ export default function PayAppDetailPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CardContent>
         </Card>
       )}

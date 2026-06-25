@@ -96,7 +96,7 @@ export function BudgetModificationDialog({
           </div>
 
           <div className="rounded-md border">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="bg-muted/40">
                 <tr>
                   <th className="p-2 text-left font-medium">From cost code</th>
@@ -144,7 +144,7 @@ export function BudgetModificationDialog({
                   <td />
                 </tr>
               </tfoot>
-            </table>
+            </table></div>
           </div>
 
           <div className="flex justify-between items-center">

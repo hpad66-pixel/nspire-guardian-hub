@@ -114,7 +114,7 @@ export default function SubmittalRegisterPage() {
             </div>
           ) : (
             <div className="max-h-[70vh] overflow-y-auto">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0">
                   <tr>
                     <th className="text-left px-3 py-2">Type</th>
@@ -139,7 +139,7 @@ export default function SubmittalRegisterPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </CardContent>
