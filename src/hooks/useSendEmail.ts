@@ -36,12 +36,23 @@ export function useSendEmail() {
       if (error) {
         console.error("Error sending email:", error);
         // supabase.functions.invoke surfaces a generic "non-2xx" message; the real
-        // reason (attachment too large, invalid recipient, …) is in the response body.
+        // reason (attachment too large, invalid recipient, unverified domain …) is
+        // in the response body. Read it robustly (json → text), and detect the
+        // platform-level body-size rejection which has no JSON body at all.
         let detail = error.message || "Failed to send email";
         try {
-          const ctx = (error as any).context;
-          const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
-          if (body?.error) detail = body.error;
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.clone === "function") {
+            const raw = await ctx.clone().text().catch(() => "");
+            if (raw) {
+              try { const j = JSON.parse(raw); detail = j?.error || j?.message || raw; }
+              catch { detail = raw.slice(0, 300); }
+            }
+            const status = ctx.status;
+            if (status === 413 || /payload|too large|entity too large/i.test(raw)) {
+              detail = "The attachment is too large for email. Try again — the minutes will be sent in the body without the PDF.";
+            }
+          }
         } catch { /* keep generic message */ }
         throw new Error(detail);
       }
