@@ -24,9 +24,12 @@ import { cn } from '@/lib/utils';
 import { useProjectMeetings, type ProjectMeeting, type MeetingAttendee } from '@/hooks/useProjectMeetings';
 import { useMeetingUnlockRequests } from '@/hooks/useMeetingUnlockRequests';
 import { useTextPolish } from '@/hooks/useTextPolish';
-import { useSendEmail } from '@/hooks/useSendEmail';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { useProject } from '@/hooks/useProjects';
+import { useCompanyBranding } from '@/hooks/useCompanyBranding';
+import { PrintableMeetingMinutes } from './PrintableMeetingMinutes';
+import { MeetingExportMenu } from './MeetingExportMenu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,396 +60,47 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   finalized: { label: 'Finalized', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200 dark:text-emerald-400 dark:border-emerald-800' },
 };
 
-// ─── Letterhead HTML builder (for email/Word/PDF) ────────────────────────────
-function buildMinutesHtml(meeting: ProjectMeeting, polishedHtml: string, companyName = 'Build'): string {
-  const attendeeRows = (meeting.attendees || []).map(a =>
-    `<tr>
-      <td style="padding:8px 12px;border:1px solid #E2E8F0;font-size:13px;">${a.name}</td>
-      <td style="padding:8px 12px;border:1px solid #E2E8F0;font-size:13px;color:#64748B;">${a.role || '—'}</td>
-      <td style="padding:8px 12px;border:1px solid #E2E8F0;font-size:13px;color:#64748B;">${a.company || '—'}</td>
-    </tr>`
-  ).join('');
+// ─── Branded export: Print / PDF / Email all flow through the single
+// PrintableMeetingMinutes document (see MeetingExportMenu), so the on-screen
+// report, the print, the PDF and the email are byte-for-byte identical and
+// fully branded. The old 'Build' letterhead + stripped-text exporters are gone.
 
-  const meetingTypeLabel = MEETING_TYPES.find(t => t.value === meeting.meeting_type)?.label || meeting.meeting_type;
+// ─── Branded minutes viewer — the on-screen report IS the printed/PDF/emailed doc ──
+function MinutesViewer({ meeting, polishedHtml, projectName }: { meeting: ProjectMeeting; polishedHtml: string; projectName: string }) {
+  const { data: branding } = useCompanyBranding();
 
-  return `
-    <div style="font-family:'Segoe UI',system-ui,-apple-system,sans-serif;max-width:820px;margin:0 auto;color:#0F172A;background:#ffffff;">
-      <!-- Slim letterhead -->
-      <div style="border-left:4px solid #1e3a5f;padding:24px 32px 20px 28px;background:#FAFAFA;border-bottom:1px solid #E2E8F0;">
-        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;">
-          <span style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#0F172A;">${companyName}</span>
-        </div>
-        <div style="height:1px;background:#E2E8F0;margin:10px 0;"></div>
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#94A3B8;font-weight:600;margin-bottom:8px;">${meetingTypeLabel}</div>
-        <div style="font-size:22px;font-weight:700;color:#0F172A;line-height:1.2;margin-bottom:6px;">${meeting.title}</div>
-        <div style="font-size:13px;color:#64748B;">
-          ${format(parseISO(meeting.meeting_date), 'EEEE, MMMM d, yyyy')}
-          ${meeting.meeting_time ? ` &nbsp;·&nbsp; ${meeting.meeting_time}` : ''}
-          ${meeting.location ? ` &nbsp;·&nbsp; ${meeting.location}` : ''}
+  if (!polishedHtml || !polishedHtml.trim()) {
+    return (
+      <div className="bg-white dark:bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="text-center py-12">
+          <Sparkles className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No minutes yet — run AI Polish to generate formatted minutes from your raw notes.</p>
         </div>
       </div>
-
-      <!-- Attendees -->
-      ${attendeeRows ? `
-      <div style="padding:24px 32px;border-bottom:1px solid #E2E8F0;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#94A3B8;margin-bottom:12px;">Attendees</div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#F8FAFC;">
-              <th style="padding:8px 12px;border:1px solid #E2E8F0;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;">Name</th>
-              <th style="padding:8px 12px;border:1px solid #E2E8F0;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;">Role / Title</th>
-              <th style="padding:8px 12px;border:1px solid #E2E8F0;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;">Company</th>
-            </tr>
-          </thead>
-          <tbody>${attendeeRows}</tbody>
-        </table>
-      </div>` : ''}
-
-      <!-- Minutes body -->
-      <div style="padding:32px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#94A3B8;margin-bottom:20px;">Meeting Minutes</div>
-        <div style="font-size:14px;line-height:1.8;color:#1E293B;">
-          ${polishedHtml}
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div style="border-top:1px solid #E2E8F0;padding:16px 32px;display:flex;justify-content:space-between;align-items:center;background:#FAFAFA;">
-        <span style="font-size:11px;color:#94A3B8;">${companyName} &nbsp;·&nbsp; Confidential</span>
-        <span style="font-size:11px;color:#94A3B8;">Generated ${format(new Date(), 'MMMM d, yyyy')}</span>
-      </div>
-    </div>
-  `;
-}
-
-// ─── Word export ─────────────────────────────────────────────────────────────
-async function exportToWord(meeting: ProjectMeeting, htmlContent: string) {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = await import('docx');
-  const meetingTypeLabel = MEETING_TYPES.find(t => t.value === meeting.meeting_type)?.label || meeting.meeting_type;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const children: any[] = [
-    new Paragraph({
-      children: [new TextRun({ text: 'Build', bold: true, size: 40, color: '1e3a5f' })],
-      alignment: AlignmentType.LEFT,
-      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E2E8F0' } },
-    }),
-    new Paragraph({ text: '' }),
-    new Paragraph({
-      children: [new TextRun({ text: meetingTypeLabel.toUpperCase(), size: 16, color: '94A3B8' })],
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: meeting.title, bold: true, size: 36, color: '0F172A' })],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({ text: format(parseISO(meeting.meeting_date), 'EEEE, MMMM d, yyyy'), size: 22, color: '64748B' }),
-        ...(meeting.meeting_time ? [new TextRun({ text: `  ·  ${meeting.meeting_time}`, size: 22, color: '64748B' })] : []),
-        ...(meeting.location ? [new TextRun({ text: `  ·  ${meeting.location}`, size: 22, color: '64748B' })] : []),
-      ],
-    }),
-    new Paragraph({ text: '' }),
-  ];
-
-  if (meeting.attendees?.length) {
-    children.push(new Paragraph({ text: 'ATTENDEES', heading: HeadingLevel.HEADING_2 }));
-    children.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: ['Name', 'Role / Title', 'Company'].map(h =>
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 20 })] })] })
-            ),
-          }),
-          ...meeting.attendees.map(a =>
-            new TableRow({
-              children: [a.name, a.role || '—', a.company || '—'].map(cell =>
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: cell, size: 20 })] })] })
-              ),
-            })
-          ),
-        ],
-      })
     );
-    children.push(new Paragraph({ text: '' }));
   }
 
-  children.push(new Paragraph({ text: 'MEETING MINUTES', heading: HeadingLevel.HEADING_2 }));
-  const stripped = htmlContent.replace(/<\/?(h[1-6]|p|li|br|div|tr|td|th)[^>]*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
-  stripped.split('\n').forEach(line => {
-    if (line.trim()) children.push(new Paragraph({ children: [new TextRun({ text: line.trim(), size: 20 })] }));
-  });
-
-  children.push(
-    new Paragraph({ text: '' }),
-    new Paragraph({
-      children: [new TextRun({ text: `Build  ·  Generated ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, color: '94A3B8', italics: true, size: 16 })],
-    })
-  );
-
-  const doc = new Document({ sections: [{ children }] });
-  const blob = await Packer.toBlob(doc);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${meeting.title.replace(/\s+/g, '_')}_Minutes.docx`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── PDF export ───────────────────────────────────────────────────────────────
-async function exportToPDF(meeting: ProjectMeeting, htmlContent: string) {
-  const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = 210;
-  const margin = 18;
-  const contentW = pageW - margin * 2;
-  let y = 0;
-
-  // Left accent bar
-  doc.setFillColor(30, 58, 95);
-  doc.rect(0, 0, 4, 297, 'F');
-
-  // Light background strip
-  doc.setFillColor(250, 250, 250);
-  doc.rect(0, 0, pageW, 42, 'F');
-
-  // Company name
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('Build', margin + 2, 14);
-
-  // Hairline rule
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.3);
-  doc.line(margin + 2, 17, pageW - margin, 17);
-
-  // Meeting type label
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(148, 163, 184);
-  const meetingTypeLabel = MEETING_TYPES.find(t => t.value === meeting.meeting_type)?.label || meeting.meeting_type;
-  doc.text(meetingTypeLabel.toUpperCase(), margin + 2, 23);
-
-  // Title
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(meeting.title, margin + 2, 30);
-
-  // Meta
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  const meta = [
-    format(parseISO(meeting.meeting_date), 'EEEE, MMMM d, yyyy'),
-    meeting.meeting_time ? meeting.meeting_time : '',
-    meeting.location ? meeting.location : '',
-  ].filter(Boolean).join('   ·   ');
-  doc.text(meta, margin + 2, 38);
-  y = 48;
-
-  // Attendees
-  if (meeting.attendees?.length) {
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text('ATTENDEES', margin, y);
-    y += 4;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 41, 59);
-    meeting.attendees.forEach(a => {
-      const line = `${a.name}${a.role ? ` — ${a.role}` : ''}${a.company ? ` (${a.company})` : ''}`;
-      doc.text(line, margin + 2, y);
-      y += 4.5;
-    });
-    y += 3;
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, y, pageW - margin, y);
-    y += 6;
-  }
-
-  // Minutes
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(148, 163, 184);
-  doc.text('MEETING MINUTES', margin, y);
-  y += 5;
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 41, 59);
-  const stripped = htmlContent
-    .replace(/<h[1-6][^>]*>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n')
-    .replace(/<\/?(p|li|br|div|tr)[^>]*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  const lines = doc.splitTextToSize(stripped, contentW);
-  lines.forEach((line: string) => {
-    if (y > 278) { doc.addPage(); y = 16; }
-    doc.text(line, margin, y);
-    y += 4.5;
-  });
-
-  // Footer
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Build  ·  ${format(new Date(), 'MMMM d, yyyy')}  ·  Confidential`, pageW / 2, 291, { align: 'center' });
-
-  doc.save(`${meeting.title.replace(/\s+/g, '_')}_Minutes.pdf`);
-}
-
-// ─── Email dialog ─────────────────────────────────────────────────────────────
-function EmailMinutesDialog({
-  open, onClose, meeting, minutesHtml,
-}: {
-  open: boolean; onClose: () => void; meeting: ProjectMeeting; minutesHtml: string;
-}) {
-  const sendEmail = useSendEmail();
-  const [toField, setToField] = useState('');
-  const [subject, setSubject] = useState(`Meeting Minutes – ${meeting.title} – ${format(parseISO(meeting.meeting_date), 'MMMM d, yyyy')}`);
-  const [message, setMessage] = useState('Please find the meeting minutes for your review below.');
-
-  const handleSend = async () => {
-    const recipients = toField.split(',').map(e => e.trim()).filter(Boolean);
-    if (!recipients.length) { toast.error('Enter at least one recipient email'); return; }
-    const fullHtml = `<p style="font-family:sans-serif;font-size:14px;color:#374151;">${message}</p><hr style="border:none;border-top:1px solid #E2E8F0;margin:24px 0;"/>${buildMinutesHtml(meeting, minutesHtml)}`;
-    await sendEmail.mutateAsync({ recipients, subject, bodyHtml: fullHtml, bodyText: message });
-    onClose();
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" /> Email Meeting Minutes
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <Label>To (comma-separated emails)</Label>
-            <Input className="mt-1" value={toField} onChange={e => setToField(e.target.value)} placeholder="john@example.com, jane@example.com" />
-          </div>
-          <div>
-            <Label>Subject</Label>
-            <Input className="mt-1" value={subject} onChange={e => setSubject(e.target.value)} />
-          </div>
-          <div>
-            <Label>Message</Label>
-            <Textarea className="mt-1" rows={3} value={message} onChange={e => setMessage(e.target.value)} />
-          </div>
-          <p className="text-xs text-muted-foreground">The full formatted meeting minutes will be appended below your message.</p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSend} disabled={sendEmail.isPending}>
-            {sendEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-            Send Minutes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Branded minutes viewer ────────────────────────────────────────────────────
-function MinutesViewer({ meeting, polishedHtml }: { meeting: ProjectMeeting; polishedHtml: string }) {
-  const meetingTypeLabel = MEETING_TYPES.find(t => t.value === meeting.meeting_type)?.label || meeting.meeting_type;
-
-  return (
-    <div className="bg-white dark:bg-card rounded-xl border border-border shadow-sm overflow-hidden font-sans">
-      {/* Slim letterhead — left navy accent */}
-      <div className="border-l-4 border-[#1e3a5f] pl-6 pr-8 py-6 bg-muted/30 border-b border-border">
-        <div className="flex items-baseline gap-2 mb-2">
-          <Building2 className="h-4 w-4 text-[#1e3a5f] shrink-0 mt-0.5" />
-          <span className="text-xl font-extrabold tracking-tight text-foreground">Build</span>
-        </div>
-        <div className="h-px bg-border mb-4" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-2">
-          {meetingTypeLabel}
-        </p>
-        <h2 className="text-2xl font-bold text-foreground leading-tight mb-2">{meeting.title}</h2>
-        <p className="text-sm text-muted-foreground flex flex-wrap gap-x-2">
-          <span>{format(parseISO(meeting.meeting_date), 'EEEE, MMMM d, yyyy')}</span>
-          {meeting.meeting_time && <><span className="opacity-40">·</span><span>{meeting.meeting_time}</span></>}
-          {meeting.location && <><span className="opacity-40">·</span><span>{meeting.location}</span></>}
-        </p>
-      </div>
-
-      {/* Attendees table */}
-      {meeting.attendees?.length > 0 && (
-        <div className="px-8 py-5 border-b border-border">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground mb-3">Attendees</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-muted/30">
-                  <th className="text-left px-3 py-2 border border-border/50 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Name</th>
-                  <th className="text-left px-3 py-2 border border-border/50 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Role / Title</th>
-                  <th className="text-left px-3 py-2 border border-border/50 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Company</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meeting.attendees.map((a, i) => (
-                  <tr key={i} className="even:bg-muted/10">
-                    <td className="px-3 py-2.5 border border-border/30 font-medium">{a.name}</td>
-                    <td className="px-3 py-2.5 border border-border/30 text-muted-foreground">{a.role || '—'}</td>
-                    <td className="px-3 py-2.5 border border-border/30 text-muted-foreground">{a.company || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Minutes body */}
-      <div className="px-8 py-8">
-        {polishedHtml ? (
-          <div
-            className={cn(
-              'prose prose-sm max-w-none text-foreground',
-              'prose-headings:font-bold prose-headings:text-foreground prose-headings:tracking-tight',
-              'prose-h1:text-xl prose-h1:mt-8 prose-h1:mb-4 prose-h1:pb-2 prose-h1:border-b prose-h1:border-border',
-              'prose-h2:text-base prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[#1e3a5f] dark:prose-h2:text-primary',
-              'prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-2',
-              'prose-p:text-sm prose-p:leading-7 prose-p:my-2 prose-p:text-foreground',
-              'prose-ul:my-2 prose-li:my-1 prose-li:text-sm prose-li:leading-6',
-              'prose-ol:my-2',
-              'prose-strong:font-semibold prose-strong:text-foreground',
-              'prose-table:text-sm prose-table:border-collapse prose-table:w-full',
-              'prose-th:bg-muted/40 prose-th:font-semibold prose-th:text-xs prose-th:uppercase prose-th:tracking-wide prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2.5',
-              'prose-td:border prose-td:border-border/60 prose-td:px-3 prose-td:py-2 prose-td:align-top',
-              'prose-blockquote:border-l-4 prose-blockquote:border-primary/60 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground',
-              'prose-hr:border-border',
-            )}
-            dangerouslySetInnerHTML={{ __html: polishedHtml }}
-          />
-        ) : (
-          <div className="text-center py-12">
-            <Sparkles className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No minutes yet — run AI Polish to generate formatted minutes from your raw notes.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-border bg-muted/20 px-8 py-3 flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground">Build &nbsp;·&nbsp; Confidential</p>
-        <p className="text-[10px] text-muted-foreground">{format(new Date(), 'MMMM d, yyyy')}</p>
-      </div>
+    <div className="rounded-xl border border-border shadow-sm overflow-x-auto bg-white p-3 sm:p-5">
+      <PrintableMeetingMinutes
+        fluid
+        id={meeting.id}
+        title={meeting.title}
+        meetingType={meeting.meeting_type}
+        meetingDate={meeting.meeting_date}
+        meetingTime={meeting.meeting_time ?? null}
+        location={meeting.location ?? null}
+        status={meeting.status}
+        attendees={meeting.attendees ?? []}
+        body={polishedHtml}
+        projectName={projectName}
+        companyName={branding?.company_name ?? 'APAS Consulting'}
+        logoUrl={branding?.logo_url ?? null}
+        brandAddress={[branding?.address_line1, branding?.address_line2].filter(Boolean).join(', ') || null}
+        brandPhone={branding?.phone ?? null}
+        brandEmail={branding?.email ?? null}
+        brandWebsite={branding?.website ?? null}
+      />
     </div>
   );
 }
@@ -571,6 +225,8 @@ function UnlockApprovalBanner({
 // ─── Inner editor content (shared by Sheet & full-screen Dialog) ──────────────
 function MeetingEditorInner({
   meeting,
+  projectId,
+  projectName,
   isFinalized,
   isFullScreen,
   onToggleFullScreen,
@@ -594,6 +250,8 @@ function MeetingEditorInner({
   handleAiContinue,
 }: {
   meeting: ProjectMeeting | null;
+  projectId: string;
+  projectName: string;
   isFinalized: boolean;
   isFullScreen: boolean;
   onToggleFullScreen: () => void;
@@ -624,6 +282,8 @@ function MeetingEditorInner({
   const { pendingRequest, requestUnlock } = useMeetingUnlockRequests(meeting?.id || '');
   const { isAdmin, isOwner, isPropertyManager } = useUserPermissions();
   const isSupervisor = isAdmin || isOwner || isPropertyManager;
+  const { data: branding } = useCompanyBranding();
+  const companyName = branding?.company_name ?? 'APAS Consulting';
 
   // Has this user already submitted a pending request?
   const hasPendingRequest = !!pendingRequest;
@@ -654,7 +314,7 @@ function MeetingEditorInner({
         <div className="flex items-center gap-3 min-w-0">
           <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Build</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground truncate">{companyName} · {projectName}</p>
             <p className="text-sm font-semibold text-foreground truncate">{title || 'New Meeting'}</p>
           </div>
           {meeting && (
@@ -667,17 +327,22 @@ function MeetingEditorInner({
 
         <div className="flex items-center gap-1.5 shrink-0">
           {hasMinutes && (
-            <>
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setEmailOpen(true)}>
-                <Mail className="h-3.5 w-3.5 mr-1" /> Email
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportToWord(liveMeeting, polishedHtml)}>
-                <Download className="h-3.5 w-3.5 mr-1" /> Word
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportToPDF(liveMeeting, polishedHtml)}>
-                <FileText className="h-3.5 w-3.5 mr-1" /> PDF
-              </Button>
-            </>
+            <MeetingExportMenu
+              meeting={{
+                id: liveMeeting.id || 'live',
+                title: liveMeeting.title,
+                meeting_type: liveMeeting.meeting_type,
+                meeting_date: liveMeeting.meeting_date,
+                meeting_time: liveMeeting.meeting_time,
+                location: liveMeeting.location,
+                status: liveMeeting.status,
+                attendees: liveMeeting.attendees,
+                polished_notes_html: polishedHtml,
+              }}
+              projectId={projectId}
+              projectName={projectName}
+              triggerVariant="button"
+            />
           )}
           {!isFinalized && (
             <Button size="sm" className="h-8 text-xs" onClick={handleSave}>
@@ -750,7 +415,7 @@ function MeetingEditorInner({
             {/* Right — live branded preview 40% */}
             <div className="overflow-y-auto p-4 bg-muted/10" style={{ width: '40%' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 px-1">Live Preview</p>
-              <MinutesViewer meeting={liveMeeting} polishedHtml={polishedHtml} />
+              <MinutesViewer meeting={liveMeeting} polishedHtml={polishedHtml} projectName={projectName} />
             </div>
           </div>
         ) : (
@@ -880,7 +545,7 @@ function MeetingEditorInner({
                     minHeight="380px"
                   />
                 ) : (
-                  <MinutesViewer meeting={liveMeeting} polishedHtml={polishedHtml} />
+                  <MinutesViewer meeting={liveMeeting} polishedHtml={polishedHtml} projectName={projectName} />
                 )}
               </TabsContent>
             </Tabs>
@@ -965,16 +630,6 @@ function MeetingEditorInner({
         )}
       </div>
 
-      {/* Email dialog */}
-      {hasMinutes && (
-        <EmailMinutesDialog
-          open={emailOpen}
-          onClose={() => setEmailOpen(false)}
-          meeting={liveMeeting}
-          minutesHtml={polishedHtml}
-        />
-      )}
-
       {/* Unlock request dialog */}
       {meeting && (
         <UnlockRequestDialog
@@ -1001,6 +656,8 @@ export function MeetingEditorSheet({
 }) {
   const { polish, isPolishing } = useTextPolish();
   const { updateMeeting } = useProjectMeetings(projectId);
+  const { data: project } = useProject(projectId);
+  const projectName = project?.name ?? 'Project';
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [title, setTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -1084,7 +741,7 @@ export function MeetingEditorSheet({
   }, [meeting, updateMeeting]);
 
   const innerProps = {
-    meeting, isFinalized, isFullScreen, onToggleFullScreen: () => setIsFullScreen(v => !v),
+    meeting, projectId, projectName, isFinalized, isFullScreen, onToggleFullScreen: () => setIsFullScreen(v => !v),
     title, setTitle, meetingDate, setMeetingDate, meetingTime, setMeetingTime,
     meetingType, setMeetingType, location, setLocation, attendees, setAttendees,
     rawNotes, setRawNotes, polishedHtml, setPolishedHtml, previousHtml, setPreviousHtml,
@@ -1137,6 +794,8 @@ function CalendarCell({ day, isCurrentMonth, meetings, today, onSelect }: {
 export function MeetingsTab({ projectId }: { projectId: string }) {
   const { meetings, isLoading, createMeeting, updateMeeting, deleteMeeting, finalizeMeeting } = useProjectMeetings(projectId);
   const { canDelete } = useUserPermissions();
+  const { data: project } = useProject(projectId);
+  const projectName = project?.name ?? 'Project';
   const [view, setView] = useState<'calendar' | 'list'>('list');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedMeeting, setSelectedMeeting] = useState<ProjectMeeting | null>(null);
@@ -1295,24 +954,24 @@ export function MeetingsTab({ projectId }: { projectId: string }) {
                             </div>
                             <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                               {(m.polished_notes_html || m.polished_notes) && (
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); exportToWord(m, m.polished_notes_html || m.polished_notes || ''); }}>
-                                        <Download className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Download Word</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); exportToPDF(m, m.polished_notes_html || m.polished_notes || ''); }}>
-                                        <FileText className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Download PDF</TooltipContent>
-                                  </Tooltip>
-                                </>
+                                <span onClick={e => e.stopPropagation()}>
+                                  <MeetingExportMenu
+                                    meeting={{
+                                      id: m.id,
+                                      title: m.title,
+                                      meeting_type: m.meeting_type,
+                                      meeting_date: m.meeting_date,
+                                      meeting_time: m.meeting_time,
+                                      location: m.location,
+                                      status: m.status,
+                                      attendees: m.attendees,
+                                      polished_notes_html: m.polished_notes_html,
+                                      polished_notes: m.polished_notes,
+                                    }}
+                                    projectId={projectId}
+                                    projectName={projectName}
+                                  />
+                                </span>
                               )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
