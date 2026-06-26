@@ -192,15 +192,18 @@ export function MeetingExportMenu({
   if (layout === "inline") {
     return (
       <>
-        <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handlePrint} disabled={busy}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Printer className="h-3.5 w-3.5 mr-1" />} Print
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs" onClick={handlePrint} disabled={busy} aria-label="Print">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            <span className="ml-1.5 hidden sm:inline">Print</span>
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handlePdf} disabled={busy}>
-            <Download className="h-3.5 w-3.5 mr-1" /> PDF
+          <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs" onClick={handlePdf} disabled={busy} aria-label="Download PDF">
+            <Download className="h-4 w-4" />
+            <span className="ml-1.5 hidden sm:inline">PDF</span>
           </Button>
-          <Button size="sm" className="h-8 text-xs" onClick={() => setEmailOpen(true)} disabled={busy}>
-            <Mail className="h-3.5 w-3.5 mr-1" /> Email
+          <Button size="sm" className="h-9 px-2.5 text-xs" onClick={() => setEmailOpen(true)} disabled={busy} aria-label="Email">
+            <Mail className="h-4 w-4" />
+            <span className="ml-1.5 hidden sm:inline">Email</span>
           </Button>
         </div>
         {hidden}

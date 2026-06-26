@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { MobileNav } from './MobileNav';
+import { Breadcrumbs } from './Breadcrumbs';
 import { useModules } from '@/contexts/ModuleContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -230,6 +231,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </Tooltip>
               </div>
             </header>
+
+            {/* App-wide back + breadcrumb wayfinding (hidden on the dashboard) */}
+            <Breadcrumbs />
 
             {/* Push notification permission banner */}
             <NotificationPermissionBanner />
