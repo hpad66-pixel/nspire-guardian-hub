@@ -117,17 +117,29 @@ export function MeetingExportMenu({
   async function handleEmail() {
     const recipients = emailTo.split(",").map((e) => e.trim()).filter(Boolean);
     if (!recipients.length) { toast.error("Enter a recipient email."); return; }
+
+    // The minutes live in the email BODY, so the PDF attachment is a bonus. Build
+    // it best-effort: if it fails or is too large for the mail provider, send the
+    // branded body alone rather than failing the whole send.
+    let pdfBase64 = "";
+    try { pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 1.5 }); }
+    catch (e) { console.warn("Meeting PDF generation failed; sending body only.", e); }
+
+    const ATTACH_CAP = 8_000_000; // ~6MB PDF; above this most providers reject the message
+    const attachments = pdfBase64 && pdfBase64.length < ATTACH_CAP
+      ? [{ filename: `${fileBase}.pdf`, contentBase64: pdfBase64, contentType: "application/pdf", size: pdfBase64.length }]
+      : [];
+
     try {
-      const pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 2 });
       await sendEmail.mutateAsync({
         recipients,
         subject: `Meeting minutes — ${meeting.title} · ${projectName}`,
         bodyHtml: buildEmailHtml(),
-        attachments: [{ filename: `${fileBase}.pdf`, contentBase64: pdfBase64, contentType: "application/pdf", size: pdfBase64.length }],
+        attachments, // useSendEmail toasts success/failure itself
       });
-      // useSendEmail toasts success/failure itself.
+      if (!attachments.length) toast.message("Minutes sent in the email body (PDF attachment skipped — too large).");
       setEmailOpen(false); setEmailTo("");
-    } catch { /* hook already surfaced the error */ }
+    } catch { /* hook already surfaced the real error */ }
   }
 
   const hidden = (
