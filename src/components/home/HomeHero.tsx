@@ -126,7 +126,7 @@ export function HomeHero() {
               </div>
               <div className="flex-1 flex justify-center">
                 <div className="bg-white/[0.04] rounded-md px-16 py-1 text-[11px] text-white/20" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  build.apas.ai
+                  projos.ai
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import { Smartphone, Apple, ArrowRight, CheckCircle2, Share, Plus, Chrome } from 'lucide-react';
 
-const APP_URL = 'https://apasos.lovable.app';
+const APP_URL = 'https://projos.ai';
 
 const iosSteps = [
   { icon: Share, text: 'Open the app in Safari, then tap the Share button (box with arrow) at the bottom of the screen.' },

@@ -880,12 +880,12 @@ export default function SettingsPage() {
             <CardContent className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
                 <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                <code className="text-sm break-all flex-1">https://build.apas.ai/schedule-demo</code>
+                <code className="text-sm break-all flex-1">https://projos.ai/schedule-demo</code>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    navigator.clipboard.writeText('https://build.apas.ai/schedule-demo');
+                    navigator.clipboard.writeText('https://projos.ai/schedule-demo');
                     toast.success('Link copied');
                   }}
                 >
