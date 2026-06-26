@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { RichTextViewer } from '@/components/ui/rich-text-editor';
 
 export interface MeetingMinutesAttendee {
   name: string;
@@ -60,10 +59,22 @@ export function PrintableMeetingMinutes({
       {/* Print pagination: keep sections, tables, and rows from splitting across
           pages, and never orphan a heading at the bottom of a page. */}
       <style>{`
+        .meeting-minutes-doc .mm-body { font-size: 13px; line-height: 1.6; color: ${INK}; }
+        .meeting-minutes-doc .mm-body h2 { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${INK}; border-bottom: 2px solid ${SAPPHIRE}; padding-bottom: 4px; margin: 20px 0 10px; }
+        .meeting-minutes-doc .mm-body h2:first-child { margin-top: 4px; }
+        .meeting-minutes-doc .mm-body h3 { font-size: 13px; font-weight: 700; color: ${INK}; margin: 14px 0 4px; }
+        .meeting-minutes-doc .mm-body p { margin: 0 0 9px; }
+        .meeting-minutes-doc .mm-body ul, .meeting-minutes-doc .mm-body ol { margin: 0 0 11px; padding-left: 20px; }
+        .meeting-minutes-doc .mm-body li { margin: 0 0 5px; padding-left: 2px; }
+        .meeting-minutes-doc .mm-body strong { font-weight: 700; color: ${INK}; }
+        .meeting-minutes-doc .mm-body table { width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: 11.5px; }
+        .meeting-minutes-doc .mm-body thead th { background: #EEF1F6; border: 1px solid #C9D1DE; padding: 7px 9px; text-align: left; font-weight: 700; color: ${INK}; text-transform: uppercase; letter-spacing: 0.03em; font-size: 10.5px; }
+        .meeting-minutes-doc .mm-body td { border: 1px solid ${LINE}; padding: 7px 9px; vertical-align: top; }
+        .meeting-minutes-doc .mm-body tbody tr:nth-child(even) { background: #FAFBFC; }
         @media print {
-          .meeting-minutes-doc table, .meeting-minutes-doc tr, .meeting-minutes-doc img,
-          .meeting-minutes-doc ul, .meeting-minutes-doc ol, .meeting-minutes-doc li { break-inside: avoid; page-break-inside: avoid; }
-          .meeting-minutes-doc h1, .meeting-minutes-doc h2, .meeting-minutes-doc h3 { break-after: avoid; page-break-after: avoid; break-inside: avoid; }
+          .meeting-minutes-doc tr, .meeting-minutes-doc img,
+          .meeting-minutes-doc li { break-inside: avoid; page-break-inside: avoid; }
+          .meeting-minutes-doc h1, .meeting-minutes-doc .mm-body h2, .meeting-minutes-doc .mm-body h3 { break-after: avoid; page-break-after: avoid; break-inside: avoid; }
         }
       `}</style>
       {/* ── Branded letterhead ──────────────────────────────────────── */}
@@ -143,14 +154,13 @@ export function PrintableMeetingMinutes({
         </div>
       )}
 
-      {/* ── Minutes body (renders HTML with proper formatting) ──────── */}
-      <div style={{ padding: '18px 40px 32px' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: INK, marginBottom: 8 }}>Minutes</div>
+      {/* ── Minutes body — render the report HTML directly (native tables/lists),
+            styled by the scoped .mm-body rules above. NOT through TipTap, which
+            drops <table> nodes it has no extension for. ──────────────────────── */}
+      <div style={{ padding: '8px 40px 32px' }}>
         {minutes ? (
           looksLikeHtml(minutes) ? (
-            <div className="prose prose-sm max-w-none" style={{ color: INK, fontSize: 13, lineHeight: 1.65 }}>
-              <RichTextViewer content={minutes} />
-            </div>
+            <div className="mm-body" dangerouslySetInnerHTML={{ __html: minutes }} />
           ) : (
             <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.65 }}>{minutes}</div>
           )
