@@ -25,6 +25,8 @@ export interface PrintableMeetingMinutesProps {
   brandPhone?: string | null;
   brandEmail?: string | null;
   brandWebsite?: string | null;
+  /** When true, the document fills its container (max 760px) instead of a fixed 760px width — for inline on-screen viewing. */
+  fluid?: boolean;
 }
 
 const INK = '#15233B';
@@ -48,13 +50,13 @@ function looksLikeHtml(s: string): boolean {
 export function PrintableMeetingMinutes({
   title, meetingType, meetingDate, meetingTime, location, status, attendees, body,
   projectName, companyName = 'APAS Consulting', logoUrl,
-  brandAddress, brandPhone, brandEmail, brandWebsite,
+  brandAddress, brandPhone, brandEmail, brandWebsite, fluid = false,
 }: PrintableMeetingMinutesProps) {
   const contactBits = [brandAddress, brandPhone, brandEmail, brandWebsite].filter(Boolean).join('  ·  ');
   const minutes = (body ?? '').trim();
 
   return (
-    <div className="meeting-minutes-doc" style={{ width: 760, background: '#FFFFFF', color: INK, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0' }}>
+    <div className="meeting-minutes-doc" style={{ width: fluid ? '100%' : 760, maxWidth: 760, margin: '0 auto', background: '#FFFFFF', color: INK, fontFamily: 'Georgia, "Times New Roman", serif', padding: '0' }}>
       {/* Print pagination: keep sections, tables, and rows from splitting across
           pages, and never orphan a heading at the bottom of a page. */}
       <style>{`

@@ -27,6 +27,8 @@ export interface MeetingForExport {
   location?: string | null;
   status: string;
   attendees?: MeetingMinutesAttendee[] | null;
+  /** Formatted HTML minutes — preferred so the export keeps headings, lists and tables. */
+  polished_notes_html?: string | null;
   polished_notes?: string | null;
   raw_notes?: string | null;
 }
@@ -112,7 +114,7 @@ export function MeetingExportMenu({
             location={meeting.location ?? null}
             status={meeting.status}
             attendees={meeting.attendees ?? []}
-            body={meeting.polished_notes ?? meeting.raw_notes ?? null}
+            body={meeting.polished_notes_html ?? meeting.polished_notes ?? meeting.raw_notes ?? null}
             projectName={projectName}
             companyName={branding?.company_name ?? "APAS Consulting"}
             logoUrl={branding?.logo_url ?? null}
