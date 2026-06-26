@@ -14,34 +14,39 @@ const contextPrompts: Record<string, string> = {
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
   ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a professional continuation. Write in a formal, authoritative, and precise tone. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text, one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
-  meeting_minutes: `You turn raw construction progress-meeting notes into clean, CONCISE meeting minutes as HTML. Be brief and factual. Every line carries information.
+  meeting_minutes: `You convert a raw construction meeting transcript into a clean, professional set of meeting minutes written for the project owner and client to read. The input is often an auto-generated transcript: messy, with filler, false starts, cross-talk, and no punctuation. Clean it up and turn spoken fragments into clear, declarative written sentences. Be concise and factual. Every line earns its place.
 
-Output ONLY valid HTML (no markdown, no code fences, no asterisks). Allowed tags: <h2>, <h3>, <p>, <ul>, <li>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>. Keep paragraphs to 1-2 sentences.
+Output ONLY valid semantic HTML. NEVER output markdown, asterisks, backticks, or code fences. Use ONLY these tags: <h2>, <h3>, <p>, <ul>, <li>, <table>, <thead>, <tbody>, <tr>, <th>, <td>, <strong>. Do not add class, style, <html>, or <body>. Keep paragraphs to 1-2 sentences.
 
-Produce these sections IN ORDER, and OMIT any section that has no content (do not write "none" or placeholders):
+Produce these sections IN THIS EXACT ORDER. OMIT any section that has no real content (never output an empty section, "none", "N/A", or a placeholder):
 
-<h2>Summary</h2>
-2-4 tight sentences: what was covered and the headline status.
+<h2>Executive Summary</h2>
+A <p> of 2 to 4 tight sentences: what the meeting covered and the headline status (on track, behind, or blocked).
 
-<h2>Progress</h2>
-<ul> of what advanced or completed since the last meeting, one crisp bullet each (area/trade + status). Include %, quantities, or dates only if stated.
+<h2>Progress &amp; Status</h2>
+A <ul>, one <li> per area or trade that advanced. Each: <strong>Area or trade</strong> then its status, including any percentage, quantity, station, or date that was actually stated.
 
 <h2>Decisions</h2>
-<ul> of decisions made, one sentence each, with any condition or date.
+A <ul>, one <li> per decision made, one sentence each, with any condition, owner, or date.
 
 <h2>Risks &amp; Issues</h2>
-<ul> of open risks/issues, each gives the issue, its impact (schedule/cost), and owner if stated.
+A <ul>, one <li> per open risk or issue. Each: <strong>the issue</strong>, its impact on schedule or cost, and the responsible party if stated.
 
 <h2>Action Items</h2>
-An HTML <table> with columns: Action | Owner | Due | Priority. One row per action. Use "TBD" if no due date is given; infer priority (High/Medium/Low) from context.
+A <table> with a <thead> header row of exactly: Action, Owner, Due Date, Priority. Then a <tbody> with one <tr> per action. Owner is the named person or company responsible. Due Date is the stated date or "TBD". Priority is High, Medium, or Low, inferred from urgency. Capture EVERY commitment, task, or follow-up mentioned in the transcript.
 
-<h2>Next Steps</h2>
-Short <ul> of follow-ups, plus the next meeting date/time if mentioned.
+<h2>Next Steps &amp; Next Meeting</h2>
+A <ul> of immediate follow-ups, with a final <li> stating the next meeting date and time if mentioned.
 
-Rules: preserve EVERY real fact (names, dates, amounts, trades) from the notes; never invent them. Do NOT add distribution, approval, or signature blocks. Concise above all.`,
+Hard rules:
+- Preserve every real fact: names, companies, dates, dollar amounts, quantities, station numbers, change-order and RFI numbers, trades. Never invent any.
+- Attribute every action and decision to the correct named owner whenever the transcript makes it clear.
+- Remove filler, repetition, and cross-talk. Do not transcribe verbatim; write polished minutes.
+- No distribution lists, no approval blocks, no signature blocks.
+- Professional, declarative, owner-facing, and to the point.`,
 };
 
-async function callClaude(apiKey: string, model: string, systemPrompt: string, userText: string): Promise<Response> {
+async function callClaude(apiKey: string, model: string, systemPrompt: string, userText: string, maxTokens = 4096): Promise<Response> {
   return await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -51,11 +56,59 @@ async function callClaude(apiKey: string, model: string, systemPrompt: string, u
     },
     body: JSON.stringify({
       model,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userText }],
     }),
   });
+}
+
+/** True if the text already contains block-level HTML we expect from a report. */
+function looksLikeHtml(s: string): boolean {
+  return /<(h2|h3|p|ul|ol|li|table|thead|tbody|tr|th|td|strong)\b/i.test(s);
+}
+
+/** Minimal, safe Markdown -> HTML fallback so a model that slips into Markdown
+ *  (## headings, - bullets, **bold**, | pipe tables |) still renders with real
+ *  headings, bullets and tables instead of garbled raw text. Only used when the
+ *  output is NOT already HTML. */
+function mdToHtml(md: string): string {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (t: string) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/__(.+?)__/g, '<strong>$1</strong>');
+  const lines = md.replace(/\r\n/g, '\n').split('\n');
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const t = lines[i].trim();
+    if (!t) { i++; continue; }
+    const h = t.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { const lvl = Math.min(h[1].length + 1, 3); out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); i++; continue; }
+    if (t.includes('|') && i + 1 < lines.length && /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(lines[i + 1])) {
+      const cells = (r: string) => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
+      const header = cells(t);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim()) { rows.push(cells(lines[i])); i++; }
+      out.push('<table><thead><tr>' + header.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' +
+        rows.map(r => '<tr>' + r.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>');
+      continue;
+    }
+    if (/^[-*+]\s+/.test(t)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*+]\s+/.test(lines[i].trim())) { items.push(`<li>${inline(lines[i].trim().replace(/^[-*+]\s+/, ''))}</li>`); i++; }
+      out.push('<ul>' + items.join('') + '</ul>');
+      continue;
+    }
+    if (/^\d+\.\s+/.test(t)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) { items.push(`<li>${inline(lines[i].trim().replace(/^\d+\.\s+/, ''))}</li>`); i++; }
+      out.push('<ol>' + items.join('') + '</ol>');
+      continue;
+    }
+    out.push(`<p>${inline(t)}</p>`);
+    i++;
+  }
+  return out.join('\n');
 }
 
 serve(async (req) => {
@@ -102,7 +155,9 @@ serve(async (req) => {
 
       if (skillRow) {
         console.log(`Found DB skill prompt for context: ${context}, model: ${skillRow.model}`);
-        systemPrompt = skillRow.system_prompt;
+        // Meeting minutes MUST use the hardcoded, format-strict prompt so a stale or
+        // markdown-y DB row can never garble the report. We still honor the DB model.
+        if (context !== 'meeting_minutes') systemPrompt = skillRow.system_prompt;
         dbModel = skillRow.model;
       }
     } catch (dbErr) {
@@ -116,7 +171,9 @@ serve(async (req) => {
     // Apply the platform style guard to every polished output.
     const fullSystem = `${systemPrompt}\n\n${STYLE_RULES}`;
 
-    const claudeResp = await callClaude(ANTHROPIC_API_KEY, model, fullSystem, text);
+    // Meeting minutes can be long (full transcripts) and must never truncate mid-table.
+    const maxTokens = context === 'meeting_minutes' ? 8000 : 4096;
+    const claudeResp = await callClaude(ANTHROPIC_API_KEY, model, fullSystem, text, maxTokens);
 
     if (claudeResp.ok) {
       const result = await claudeResp.json();
@@ -125,6 +182,12 @@ serve(async (req) => {
       // Strip markdown code fences if Claude wraps HTML
       const fenceMatch = polished.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i);
       if (fenceMatch) polished = fenceMatch[1].trim();
+
+      // Guarantee HTML for the report contexts: if the model slipped into Markdown
+      // (no HTML tags present), convert it so tables/bullets/headings still render.
+      if (context === 'meeting_minutes' && !looksLikeHtml(polished)) {
+        polished = mdToHtml(polished);
+      }
 
       console.log(`Successfully polished text with Claude model: ${model}`);
       return new Response(
