@@ -474,12 +474,12 @@ function MeetingEditorInner({
                   </div>
                 ))}
                 {!isFinalized && (
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    <Input placeholder="Name *" value={newAttendee.name} onChange={e => setNewAttendee(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addAttendee()} className="text-xs h-8" />
-                    <Input placeholder="Role" value={newAttendee.role} onChange={e => setNewAttendee(p => ({ ...p, role: e.target.value }))} className="text-xs h-8" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                    <Input placeholder="Name *" value={newAttendee.name} onChange={e => setNewAttendee(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addAttendee()} className="text-xs h-9" />
+                    <Input placeholder="Role" value={newAttendee.role} onChange={e => setNewAttendee(p => ({ ...p, role: e.target.value }))} className="text-xs h-9" />
                     <div className="flex gap-1.5">
-                      <Input placeholder="Company" value={newAttendee.company} onChange={e => setNewAttendee(p => ({ ...p, company: e.target.value }))} className="text-xs h-8" />
-                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={addAttendee}><Plus className="h-3.5 w-3.5" /></Button>
+                      <Input placeholder="Company" value={newAttendee.company} onChange={e => setNewAttendee(p => ({ ...p, company: e.target.value }))} className="text-xs h-9" />
+                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={addAttendee}><Plus className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
                 )}
