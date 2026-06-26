@@ -125,7 +125,9 @@ export function MeetingExportMenu({
     try { pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 1.5 }); }
     catch (e) { console.warn("Meeting PDF generation failed; sending body only.", e); }
 
-    const ATTACH_CAP = 8_000_000; // ~6MB PDF; above this most providers reject the message
+    const ATTACH_CAP = 3_500_000; // ~2.5MB PDF. Above this the Supabase function request
+                                  // gateway rejects the payload (generic non-2xx, no body),
+                                  // so skip the attachment and send the minutes in the body.
     const attachments = pdfBase64 && pdfBase64.length < ATTACH_CAP
       ? [{ filename: `${fileBase}.pdf`, contentBase64: pdfBase64, contentType: "application/pdf", size: pdfBase64.length }]
       : [];
