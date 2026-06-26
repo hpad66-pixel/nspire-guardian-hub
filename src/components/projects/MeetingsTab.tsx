@@ -309,23 +309,23 @@ function MeetingEditorInner({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-background border-b px-5 py-3.5 flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <FileText className="h-4.5 w-4.5 text-primary shrink-0" />
+      {/* Header — wraps to a second row on phones so actions never crowd the title */}
+      <div className="sticky top-0 z-20 bg-background border-b px-3 py-2.5 sm:px-5 sm:py-3.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <FileText className="h-[18px] w-[18px] text-primary shrink-0" />
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground truncate">{companyName} · {projectName}</p>
             <p className="text-sm font-semibold text-foreground truncate">{title || 'New Meeting'}</p>
           </div>
           {meeting && (
-            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0', STATUS_CONFIG[meeting.status]?.color)}>
+            <span className={cn('hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0', STATUS_CONFIG[meeting.status]?.color)}>
               {isFinalized && <Lock className="h-2.5 w-2.5" />}
               {STATUS_CONFIG[meeting.status]?.label}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {hasMinutes && (
             <MeetingExportMenu
               meeting={{
@@ -345,13 +345,14 @@ function MeetingEditorInner({
             />
           )}
           {!isFinalized && (
-            <Button size="sm" className="h-8 text-xs" onClick={handleSave}>
-              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Save
+            <Button size="sm" className="h-9 px-2.5 text-xs" onClick={handleSave} aria-label="Save">
+              <CheckCircle className="h-4 w-4" />
+              <span className="ml-1.5 hidden sm:inline">Save</span>
             </Button>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleFullScreen}>
+              <Button variant="ghost" size="icon" className="h-9 w-9 hidden sm:inline-flex" onClick={onToggleFullScreen}>
                 {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
