@@ -112,7 +112,7 @@ serve(async (req) => {
               <p><strong>Category:</strong> ${issue_category}</p>
               <p><strong>Description:</strong> ${issue_description}</p>
               <p><strong>Urgency:</strong> ${is_emergency ? 'EMERGENCY' : 'Normal'}</p>
-              <p><a href="https://pm.apas.ai/voice-agent">View in Dashboard</a></p>
+              <p><a href="https://projos.ai/voice-agent">View in Dashboard</a></p>
             `;
 
             try {

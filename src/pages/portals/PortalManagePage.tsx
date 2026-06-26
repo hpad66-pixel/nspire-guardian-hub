@@ -72,7 +72,7 @@ export default function PortalManagePage() {
   const [requestFilter, setRequestFilter] = useState('all');
   const [hydratedContactIds, setHydratedContactIds] = useState<Record<string, boolean>>({});
 
-  const PROD_DOMAIN = 'https://build.apas.ai';
+  const PROD_DOMAIN = 'https://projos.ai';
 
   function hasValidMagicLink(contact: PortalAccess) {
     if (!contact.magic_link_token || !contact.magic_link_expires_at) return false;

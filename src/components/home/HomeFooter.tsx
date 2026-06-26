@@ -23,7 +23,7 @@ export function HomeFooter() {
             <p className="text-[13px] text-white/30 leading-relaxed mb-3" style={{ fontFamily: 'Inter' }}>
               The operating system for property & construction professionals.
             </p>
-            <p className="text-[12px] text-blue-400" style={{ fontFamily: "'JetBrains Mono'" }}>build.apas.ai</p>
+            <p className="text-[12px] text-blue-400" style={{ fontFamily: "'JetBrains Mono'" }}>projos.ai</p>
           </div>
 
           {cols.map(col => (
