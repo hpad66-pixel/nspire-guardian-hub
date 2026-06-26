@@ -298,3 +298,35 @@
     background: hsl(var(--accent) / 0.15);
   }
 }
+
+/* ── Mobile / PWA ergonomics (safe, global) ──────────────────────────────────
+   Keep iOS from inflating text in landscape, never let media overflow its box,
+   give horizontal scroll regions momentum, and use a subtle tap highlight. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+.overflow-x-auto,
+.overflow-auto,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+button,
+a,
+[role='button'] {
+  -webkit-tap-highlight-color: hsl(var(--primary) / 0.12);
+}
+/* Hide scrollbars on horizontal chip/breadcrumb rows without losing scroll. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
