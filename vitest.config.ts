@@ -7,6 +7,15 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // The Supabase client (src/integrations/supabase/client.ts) throws on import
+    // when these are missing. Tests mock the client, so dummy values are correct —
+    // they just satisfy the import-time guard so a bare `npm run test` works
+    // locally without a .env.local. CI injects the real values as secrets.
+    env: {
+      VITE_SUPABASE_URL: "https://test.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
+      VITE_SUPABASE_PROJECT_ID: "test",
+    },
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
