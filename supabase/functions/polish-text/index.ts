@@ -35,6 +35,9 @@ A <ul>, one <li> per open risk or issue. Each: <strong>the issue</strong>, its i
 <h2>Action Items</h2>
 A <table> with a <thead> header row of exactly: Action, Owner, Due Date, Priority. Then a <tbody> with one <tr> per action. Owner is the named person or company responsible. Due Date is the stated date or "TBD". Priority is High, Medium, or Low, inferred from urgency. Capture EVERY commitment, task, or follow-up mentioned in the transcript.
 
+<h2>General Notes</h2>
+A <ul> of any noteworthy items that do not belong in the sections above: clarifications, coordination notes, materials or deliveries, site observations, or money figures mentioned. Omit this section entirely if there is nothing to add.
+
 <h2>Next Steps &amp; Next Meeting</h2>
 A <ul> of immediate follow-ups, with a final <li> stating the next meeting date and time if mentioned.
 

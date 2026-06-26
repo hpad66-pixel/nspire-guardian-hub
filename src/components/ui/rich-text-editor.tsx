@@ -90,11 +90,27 @@ export function RichTextEditor({
 
 export function RichTextViewer({ content, className }: { content: string; className?: string }) {
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    // Table extensions are REQUIRED — without them TipTap silently drops <table>
+    // nodes and renders only the mashed-together cell text.
+    extensions: [
+      StarterKit,
+      Underline,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
     content,
     editable: false,
     editorProps: {
-      attributes: { class: 'prose prose-sm dark:prose-invert max-w-none' },
+      attributes: {
+        class: [
+          'prose prose-sm dark:prose-invert max-w-none',
+          'prose-table:border-collapse prose-table:w-full',
+          'prose-th:border prose-th:border-border prose-th:bg-muted/50 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:font-semibold',
+          'prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-2 prose-td:align-top',
+        ].join(' '),
+      },
     },
   });
 
