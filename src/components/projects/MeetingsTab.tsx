@@ -341,7 +341,7 @@ function MeetingEditorInner({
               }}
               projectId={projectId}
               projectName={projectName}
-              triggerVariant="button"
+              layout="inline"
             />
           )}
           {!isFinalized && (
