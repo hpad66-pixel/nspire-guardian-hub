@@ -233,6 +233,7 @@ export function useUpdateProject() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project'] });
       toast.success('Project updated successfully');
     },
     onError: (error: Error) => {
