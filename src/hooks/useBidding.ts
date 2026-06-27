@@ -13,6 +13,7 @@ export interface BidPackage {
   awarded_invitee_id: string | null;
   commitment_id: string | null;
   estimate: number | null;
+  token: string;
   created_at: string;
 }
 

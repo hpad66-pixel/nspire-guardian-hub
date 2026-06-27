@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Gavel, Plus, Trophy, Trash2, ChevronRight, UserPlus } from 'lucide-react';
+import { Gavel, Plus, Trophy, Trash2, ChevronRight, UserPlus, Link2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import { useBidPackages, useBidInvitees, type BidPackage } from '@/hooks/useBidding';
 
 const money = (n: number | null | undefined) => (n == null ? '—' : `$${Math.round(Number(n)).toLocaleString()}`);
@@ -109,6 +110,9 @@ export function BiddingPanel({ projectId }: { projectId: string }) {
 function PackageDetail({ pkg, projectId, onDelete }: { pkg: BidPackage; projectId: string; onDelete: () => void }) {
   const { data: invitees = [], addInvitee, updateInvitee, removeInvitee, award } = useBidInvitees(pkg.id, projectId);
   const [adding, setAdding] = useState({ vendor_name: '', vendor_company: '', vendor_email: '' });
+  const [showLink, setShowLink] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const bidUrl = `${window.location.origin}/bid/${pkg.token}`;
 
   const bids = invitees.filter((i) => i.bid_amount != null).map((i) => Number(i.bid_amount));
   const lowBid = bids.length ? Math.min(...bids) : null;
@@ -116,6 +120,28 @@ function PackageDetail({ pkg, projectId, onDelete }: { pkg: BidPackage; projectI
   return (
     <div className="border-t bg-muted/20 px-3 py-3 space-y-3">
       {pkg.scope && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{pkg.scope}</p>}
+
+      {/* Public bid link — subs submit without logging in */}
+      <div className="rounded-lg border bg-background p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Link2 className="h-3.5 w-3.5" /> Public bid link — subs submit without logging in</div>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowLink((v) => !v)}>{showLink ? 'Hide' : 'Share'}</Button>
+        </div>
+        {showLink && (
+          <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
+            <div className="shrink-0 rounded border bg-white p-2"><QRCodeGenerator value={bidUrl} size={104} /></div>
+            <div className="w-full min-w-0 flex-1">
+              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1.5">
+                <code className="min-w-0 flex-1 truncate text-xs">{bidUrl}</code>
+                <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={async () => { try { await navigator.clipboard.writeText(bidUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { toast.error('Copy failed'); } }}>
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">Anyone with this link can submit a bid while the package is open. Their bid appears below automatically.</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

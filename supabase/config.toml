@@ -140,3 +140,7 @@ verify_jwt = true
 # Public capture link — anonymous field uploads validated by token, service-role insert.
 [functions.gallery-capture]
 verify_jwt = false
+
+# Public bid submission — anonymous subs submit a bid via token, service-role insert.
+[functions.bid-submit]
+verify_jwt = false
