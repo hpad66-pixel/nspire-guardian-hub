@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession } from '@/hooks/usePortal';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { PortalMessages } from '@/components/portal/PortalMessages';
+import { PortalProjectOverview } from '@/components/portal/PortalProjectOverview';
 import { useAllCredentials } from '@/hooks/useCredentials';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 
@@ -57,6 +58,9 @@ export default function PortalHomePage() {
       {/* HOME TAB */}
       {activeTab === 'home' && (
         <div className="space-y-6">
+          {/* Live project overview — phase, latest update, key dates, punch */}
+          <PortalProjectOverview slug={slug} accent={accent} />
+
           {/* Welcome card */}
           {portal.welcome_message && (
             <div className="bg-white rounded-2xl border border-border p-5 shadow-sm" style={{ borderLeftWidth: 4, borderLeftColor: accent }}>
