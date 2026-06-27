@@ -1,17 +1,24 @@
 import { useState, useMemo, forwardRef } from 'react';
 import { format } from 'date-fns';
-import { Images, Plus, Search, Grid3x3, List, Trash2 } from 'lucide-react';
+import { Images, Plus, Search, Grid3x3, List, Trash2, CheckSquare, X, EyeOff, Eye, Archive, ArchiveRestore, FolderPlus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { usePropertyGallery, useDeleteGalleryPhoto } from '@/hooks/usePropertyGallery';
+import { usePropertyGallery, useDeleteGalleryPhoto, useBulkGalleryActions } from '@/hooks/usePropertyGallery';
 import { useProjectGallery } from '@/hooks/useProjectGallery';
-import type { GalleryPhoto, GalleryFilters } from '@/hooks/usePropertyGallery';
+import type { GalleryPhoto, GalleryFilters, BulkGalleryAction } from '@/hooks/usePropertyGallery';
 import { GalleryPhotoCard } from './GalleryPhotoCard';
 import { GalleryLightbox } from './GalleryLightbox';
 import { AddPhotosSheet } from './AddPhotosSheet';
+import { GalleryAlbumsStrip, AddToAlbumDialog } from './GalleryAlbums';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const VIEW_TABS = [
+  { key: 'active', label: 'All', icon: Images },
+  { key: 'hidden', label: 'Hidden', icon: EyeOff },
+  { key: 'archived', label: 'Archived', icon: Archive },
+] as const;
 
 interface PhotoGalleryProps {
   context: 'property' | 'project';
@@ -94,36 +101,54 @@ const PhotoGridTile = forwardRef<HTMLDivElement, {
   index: number;
   onOpen: () => void;
   onDelete: (photo: GalleryPhoto) => void;
-}>(function PhotoGridTile({ photo, index, onOpen, onDelete }, ref) {
+  selectMode?: boolean;
+  selected?: boolean;
+  selectable?: boolean;
+  onToggleSelect?: () => void;
+}>(function PhotoGridTile({ photo, index, onOpen, onDelete, selectMode, selected, selectable, onToggleSelect }, ref) {
   const isFeatured = index % 7 === 3;
   const isDirect = photo.source === 'direct';
+  const canSelect = selectMode && selectable;
 
   return (
     <div
       ref={ref}
       className={cn(
         'relative group overflow-hidden cursor-pointer bg-muted',
-        isFeatured ? 'col-span-2 aspect-[4/3]' : 'aspect-square'
+        isFeatured ? 'col-span-2 aspect-[4/3]' : 'aspect-square',
+        selected && 'ring-2 ring-primary ring-inset'
       )}
-      onClick={onOpen}
+      onClick={canSelect ? onToggleSelect : onOpen}
     >
       <img
         src={photo.url}
         alt={photo.caption || 'Photo'}
-        className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+        className={cn('w-full h-full object-cover transition-transform duration-300',
+          canSelect ? '' : 'group-hover:scale-[1.02]', selected && 'brightness-90')}
         loading="lazy"
       />
+      {/* Selection checkbox (in select mode) */}
+      {selectMode && (
+        <div className={cn('absolute top-1.5 left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors',
+          selected ? 'bg-primary border-primary text-primary-foreground'
+          : selectable ? 'bg-black/40 border-white/80 text-transparent'
+          : 'bg-black/20 border-white/30 text-transparent')}>
+          <Check className="h-3.5 w-3.5" />
+        </div>
+      )}
       {/* Source badge */}
-      <div className="absolute top-1.5 left-1.5">
-        <span className={cn(
-          'text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white backdrop-blur-sm',
-          sourceColors[photo.source] || 'bg-slate-600'
-        )}>
-          {sourceShortLabels[photo.source] || photo.source}
-        </span>
-      </div>
-      {/* Delete button — only for direct uploads */}
-      {isDirect && (
+      {!selectMode && (
+        <div className="absolute top-1.5 left-1.5">
+          <span className={cn(
+            'text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white backdrop-blur-sm',
+            sourceColors[photo.source] || 'bg-slate-600'
+          )}>
+            {sourceShortLabels[photo.source] || photo.source}
+          </span>
+        </div>
+      )}
+      {/* Delete button — only for direct uploads, not in select mode */}
+      {isDirect && !selectMode && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(photo); }}
           className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
@@ -196,14 +221,22 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [addPhotosOpen, setAddPhotosOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<GalleryPhoto | null>(null);
+  const [view, setView] = useState<'active' | 'hidden' | 'archived'>('active');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [addToAlbumOpen, setAddToAlbumOpen] = useState(false);
   const navigate = useNavigate();
   const deletePhoto = useDeleteGalleryPhoto();
+  const bulk = useBulkGalleryActions();
+
+  const ctx = context === 'property' ? { propertyId: contextId } : { projectId: contextId };
 
   const filters: GalleryFilters = useMemo(() => ({
     source: sourceFilter === 'all' ? undefined : sourceFilter,
     search: search || undefined,
     timeFilter: timeFilter === 'all_time' ? undefined : timeFilter as any,
-  }), [sourceFilter, timeFilter, search]);
+    view,
+  }), [sourceFilter, timeFilter, search, view]);
 
   const propertyResult = usePropertyGallery(
     context === 'property' ? contextId : '',
@@ -248,6 +281,31 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
     );
   };
 
+  const toggleSelect = (id: string) =>
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
+
+  // Only direct uploads carry management state (real photo_gallery ids).
+  const selectableIds = useMemo(() => new Set(photos.filter(p => p.source === 'direct').map(p => p.id)), [photos]);
+  const selectedDirect = useMemo(() => photos.filter(p => p.source === 'direct' && selected.has(p.id)), [photos, selected]);
+
+  const runBulk = (action: BulkGalleryAction) => {
+    const ids = selectedDirect.map(p => p.id);
+    if (!ids.length) return;
+    bulk.mutate(
+      { action, photoIds: ids, propertyId: context === 'property' ? contextId : undefined, projectId: context === 'project' ? contextId : undefined },
+      {
+        onSuccess: () => {
+          const verb = action === 'delete' ? 'Deleted' : action === 'hide' ? 'Hidden' : action === 'unhide' ? 'Unhidden' : action === 'archive' ? 'Archived' : 'Restored';
+          toast.success(`${verb} ${ids.length} photo${ids.length !== 1 ? 's' : ''}`);
+          exitSelect();
+        },
+        onError: () => toast.error('Action failed'),
+      },
+    );
+  };
+
   const monthGroups = useMemo(() => groupByMonth(photos), [photos]);
   const dayGroups = useMemo(() => groupByDay(photos), [photos]);
   const showDayGroups = timeFilter === 'this_week';
@@ -263,16 +321,33 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-muted-foreground font-mono hidden sm:block">{photos.length} photos</span>
+            <Button size="sm" variant={selectMode ? 'default' : 'outline'} onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
+              {selectMode ? <X className="h-3.5 w-3.5 sm:mr-1" /> : <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />}
+              <span className="hidden sm:inline">{selectMode ? 'Done' : 'Select'}</span>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setAddPhotosOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Add Photos
+              <Plus className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Add Photos</span>
             </Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground italic">
-          Visual evidence is your strongest record. Caption every photo.
-        </p>
+        {/* View tabs: All / Hidden / Archived */}
+        <div className="flex items-center gap-1.5 pt-1">
+          {VIEW_TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.key} onClick={() => { setView(t.key); exitSelect(); }}
+                className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                  view === t.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted')}>
+                <Icon className="h-3 w-3" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Albums strip */}
+      <GalleryAlbumsStrip ctx={ctx} />
 
       {/* Filter bars */}
       <div className="px-4 py-3 space-y-2 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
@@ -377,6 +452,10 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
                         index={globalOffset + i}
                         onOpen={() => setLightboxIndex(photos.indexOf(photo))}
                         onDelete={handleDeleteRequest}
+                        selectMode={selectMode}
+                        selectable={selectableIds.has(photo.id)}
+                        selected={selected.has(photo.id)}
+                        onToggleSelect={() => selectableIds.has(photo.id) && toggleSelect(photo.id)}
                       />
                     ))}
                   </div>
@@ -435,6 +514,38 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
         projectId={context === 'project' ? contextId : undefined}
         propertyId={context === 'property' ? contextId : undefined}
         contextName={contextName}
+      />
+
+      {/* Bulk action bar — appears when photos are selected */}
+      {selectMode && selectedDirect.length > 0 && (
+        <div className="sticky bottom-0 z-30 flex flex-wrap items-center gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur-sm"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+          <span className="text-sm font-semibold">{selectedDirect.length} selected</span>
+          <div className="flex-1" />
+          {view === 'active' && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setAddToAlbumOpen(true)}><FolderPlus className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Add to album</span></Button>
+              <Button size="sm" variant="outline" onClick={() => runBulk('hide')} disabled={bulk.isPending}><EyeOff className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Hide</span></Button>
+              <Button size="sm" variant="outline" onClick={() => runBulk('archive')} disabled={bulk.isPending}><Archive className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Archive</span></Button>
+            </>
+          )}
+          {view === 'hidden' && (
+            <Button size="sm" variant="outline" onClick={() => runBulk('unhide')} disabled={bulk.isPending}><Eye className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Unhide</span></Button>
+          )}
+          {view === 'archived' && (
+            <Button size="sm" variant="outline" onClick={() => runBulk('unarchive')} disabled={bulk.isPending}><ArchiveRestore className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Restore</span></Button>
+          )}
+          <Button size="sm" variant="destructive" onClick={() => runBulk('delete')} disabled={bulk.isPending}><Trash2 className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Delete</span></Button>
+        </div>
+      )}
+
+      {/* Add selected photos to an album */}
+      <AddToAlbumDialog
+        ctx={ctx}
+        photoIds={selectedDirect.map(p => p.id)}
+        coverUrl={selectedDirect[0]?.url}
+        open={addToAlbumOpen}
+        onOpenChange={(o) => { setAddToAlbumOpen(o); if (!o) exitSelect(); }}
       />
 
       {/* Delete confirmation dialog — only reachable for direct uploads */}
