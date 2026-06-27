@@ -148,3 +148,7 @@ verify_jwt = false
 # Nightly risk radar — invoked by pg_cron, authorized by a shared secret (not JWT).
 [functions.risk-radar-nightly]
 verify_jwt = false
+
+# Public client-portal data — slug-scoped, service-role, client-safe fields only.
+[functions.portal-data]
+verify_jwt = false
