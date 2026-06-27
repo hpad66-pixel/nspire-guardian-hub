@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BiddingPanel } from '@/components/financial/BiddingPanel';
 import { Plus, Package, DollarSign, Truck } from 'lucide-react';
 import { usePurchaseOrders, useCreatePurchaseOrder, useUpdatePurchaseOrder, useProcurementStats } from '@/hooks/useProjectProcurement';
 
@@ -47,6 +48,9 @@ export function ProcurementTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Bidding & tender — invite subs, level bids, award */}
+      <BiddingPanel projectId={projectId} />
+
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
