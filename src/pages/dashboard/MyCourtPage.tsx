@@ -1,8 +1,25 @@
 import { Link } from "react-router-dom";
-import { useMyCourt } from "@/hooks/useWorkflow";
+import { useMyCourt, type MyCourtRow } from "@/hooks/useWorkflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNowStrict } from "date-fns";
+
+// Map a workflow record type to the project tab that shows it. The project page
+// reads ?tab= to open the right tab. There is no /workflow/* route, so this routes
+// the item to where it actually lives instead of a dead end.
+const TAB_FOR: Record<string, string> = {
+  rfi: "rfis", submittal: "submittals",
+  punch: "punch-list", punch_item: "punch-list", punch_list: "punch-list",
+  change_order: "financials", commitment: "financials", pay_app: "financials",
+  pco: "financials", oco: "financials", co: "financials",
+  meeting: "meetings", daily_report: "daily-logs", daily_log: "daily-logs",
+  proposal: "proposals",
+};
+function destFor(it: MyCourtRow): string | null {
+  if (!it.project_id) return null;
+  const tab = TAB_FOR[it.record_type] ?? "overview";
+  return `/projects/${it.project_id}?tab=${tab}`;
+}
 
 export default function MyCourtPage() {
   const { data: rows = [], isLoading } = useMyCourt();
@@ -36,28 +53,34 @@ export default function MyCourtPage() {
               </h2>
               <Card>
                 <CardContent className="p-0 divide-y">
-                  {items.map((it) => (
-                    <Link
-                      key={it.id}
-                      to={`/workflow/${it.record_type}/${it.record_id}`}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-muted"
-                    >
-                      <div>
-                        <div className="font-medium">{it.workflow_name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Step {it.current_step} · {it.current_state_name ?? "open"}
+                  {items.map((it) => {
+                    const dest = destFor(it);
+                    const inner = (
+                      <>
+                        <div>
+                          <div className="font-medium">{it.workflow_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Step {it.current_step} · {it.current_state_name ?? "open"}
+                          </div>
                         </div>
+                        {it.due_at && (
+                          <Badge variant={new Date(it.due_at) < new Date() ? "destructive" : "secondary"}>
+                            {new Date(it.due_at) < new Date() ? "overdue by " : "due in "}
+                            {formatDistanceToNowStrict(new Date(it.due_at))}
+                          </Badge>
+                        )}
+                      </>
+                    );
+                    return dest ? (
+                      <Link key={it.id} to={dest} className="flex items-center justify-between px-4 py-3 hover:bg-muted">
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div key={it.id} className="flex items-center justify-between px-4 py-3">
+                        {inner}
                       </div>
-                      {it.due_at && (
-                        <Badge
-                          variant={new Date(it.due_at) < new Date() ? "destructive" : "secondary"}
-                        >
-                          {new Date(it.due_at) < new Date() ? "overdue by " : "due in "}
-                          {formatDistanceToNowStrict(new Date(it.due_at))}
-                        </Badge>
-                      )}
-                    </Link>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>
