@@ -11,6 +11,7 @@ export interface BidPackage {
   due_date: string | null;
   status: 'open' | 'awarded' | 'closed';
   awarded_invitee_id: string | null;
+  commitment_id: string | null;
   estimate: number | null;
   created_at: string;
 }
@@ -125,13 +126,37 @@ export function useBidInvitees(packageId: string | null, projectId: string | nul
     onSuccess: bust,
   });
 
-  /** Award a package to one invitee: mark it awarded, others stay, package → awarded. */
+  /** Award a package to one invitee, and auto-create the subcontract commitment.
+   *  Idempotent: if the package already has a commitment, we don't make another. */
   const award = useMutation({
-    mutationFn: async ({ inviteeId, pkgId }: { inviteeId: string; pkgId: string }) => {
+    mutationFn: async ({ inviteeId, pkgId }: { inviteeId: string; pkgId: string }): Promise<{ commitment_no?: string; commitmentError?: string }> => {
       await db().from('bid_invitees').update({ status: 'submitted' }).eq('bid_package_id', pkgId).eq('status', 'awarded');
       await db().from('bid_invitees').update({ status: 'awarded' }).eq('id', inviteeId);
       const { error } = await db().from('bid_packages').update({ status: 'awarded', awarded_invitee_id: inviteeId }).eq('id', pkgId);
       if (error) throw error;
+
+      // Auto-create the subcontract commitment (best-effort; never blocks the award).
+      try {
+        const { data: pkg } = await db().from('bid_packages').select('title, project_id, commitment_id').eq('id', pkgId).single();
+        if (pkg?.commitment_id) return {};
+        const { data: iv } = await db().from('bid_invitees').select('vendor_name, vendor_company, bid_amount').eq('id', inviteeId).single();
+        const tenant_id = await resolveCurrentWorkspaceId();
+        if (!tenant_id) return { commitmentError: 'No workspace' };
+        const { data: { user } } = await supabase.auth.getUser();
+        const { count } = await db().from('commitments').select('id', { count: 'exact', head: true }).eq('project_id', pkg.project_id);
+        const commitment_no = `SC-${String((count ?? 0) + 1).padStart(3, '0')}`;
+        const vendor = iv?.vendor_company || iv?.vendor_name || '';
+        const { data: cmt, error: cErr } = await db().from('commitments').insert({
+          tenant_id, project_id: pkg.project_id, commitment_type: 'subcontract',
+          commitment_no, title: `${pkg.title}${vendor ? ' — ' + vendor : ''}`,
+          original_value: Number(iv?.bid_amount) || 0, status: 'draft', created_by: user?.id,
+        }).select('id, commitment_no').single();
+        if (cErr) throw cErr;
+        await db().from('bid_packages').update({ commitment_id: cmt.id }).eq('id', pkgId);
+        return { commitment_no: cmt.commitment_no };
+      } catch (e) {
+        return { commitmentError: (e as Error).message };
+      }
     },
     onSuccess: bust,
   });
