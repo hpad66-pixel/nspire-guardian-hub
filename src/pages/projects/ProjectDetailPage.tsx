@@ -57,6 +57,7 @@ import { ProposalList } from '@/components/proposals/ProposalList';
 import { SubmittalsTab } from '@/components/projects/SubmittalsTab';
 import { SafetyTab } from '@/components/projects/SafetyTab';
 import { ProcurementTab } from '@/components/projects/ProcurementTab';
+import { RiskRadarPanel } from '@/components/projects/RiskRadarPanel';
 import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
@@ -598,6 +599,7 @@ export default function ProjectDetailPage() {
               {/* RIGHT: Tab content */}
               <div className="flex-1 min-w-0 space-y-4">
                 <TabsContent value="overview" className="space-y-6 mt-0">
+                  <RiskRadarPanel projectId={id!} />
                   {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
                   {!projectLoading && (
                     <div className="rounded-xl border bg-card overflow-hidden">
@@ -920,6 +922,7 @@ export default function ProjectDetailPage() {
             {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
             <div className="lg:hidden mt-2 space-y-4">
               <TabsContent value="overview" className="space-y-6">
+                <RiskRadarPanel projectId={id!} />
                 {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
                 {!projectLoading && (
                   <div className="rounded-xl border bg-card overflow-hidden">
