@@ -74,6 +74,7 @@ export interface SendMessageParams {
   threadId: string;
   content: string;
   contentHtml?: string;
+  attachments?: string[];
 }
 
 export function useSendThreadMessage() {
@@ -91,6 +92,7 @@ export function useSendThreadMessage() {
           sender_id: sessionData.session.user.id,
           content: params.content,
           content_html: params.contentHtml || null,
+          attachments: params.attachments?.length ? params.attachments : null,
         })
         .select()
         .single();

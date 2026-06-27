@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Smile, Paperclip } from "lucide-react";
+import { Send, Smile, Paperclip, X, Loader2, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,8 +19,27 @@ interface MessageComposerProps {
 export function MessageComposer({ threadId }: MessageComposerProps) {
   const [content, setContent] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const sendMessage = useSendThreadMessage();
+
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `messages/${threadId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from("discussion-attachments").upload(path, file, { upsert: false });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from("discussion-attachments").getPublicUrl(path);
+        setAttachments((a) => [...a, { name: file.name, url: publicUrl }]);
+      }
+    } catch (e: any) { toast.error(e?.message || "Upload failed"); }
+    finally { setUploading(false); }
+  }
 
   // Auto-resize textarea
   useEffect(() => {
@@ -33,16 +54,18 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
 
   const handleSend = () => {
     const trimmedContent = content.trim();
-    if (!trimmedContent) return;
+    if (!trimmedContent && attachments.length === 0) return;
 
     sendMessage.mutate(
       {
         threadId,
-        content: trimmedContent,
+        content: trimmedContent || (attachments.length ? "(attachment)" : ""),
+        attachments: attachments.map((a) => a.url),
       },
       {
         onSuccess: () => {
           setContent("");
+          setAttachments([]);
           if (textareaRef.current) {
             textareaRef.current.style.height = "auto";
           }
@@ -67,7 +90,7 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
     textareaRef.current?.focus();
   };
 
-  const canSend = content.trim().length > 0;
+  const canSend = (content.trim().length > 0 || attachments.length > 0) && !uploading;
 
   return (
     <motion.div 
@@ -75,7 +98,20 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
       animate={{ y: 0, opacity: 1 }}
       className="border-t bg-background/80 backdrop-blur-xl p-3"
     >
-      <div 
+      {attachments.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {attachments.map((a, i) => (
+            <span key={i} className="inline-flex max-w-[200px] items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-1 text-xs">
+              <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">{a.name}</span>
+              <button type="button" onClick={() => setAttachments((arr) => arr.filter((_, x) => x !== i))} className="text-muted-foreground hover:text-destructive">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div
         className={cn(
           "flex items-end gap-2 p-2 rounded-2xl border transition-all duration-200",
           isFocused 
@@ -85,23 +121,22 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
       >
         {/* Left actions */}
         <div className="flex items-center gap-1 pb-1">
+          <input ref={fileRef} type="file" multiple hidden
+            onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
           <Tooltip>
             <TooltipTrigger asChild>
-              {/* Attachments require a storage pipeline that isn't wired yet;
-                  disabled rather than silently doing nothing on click. */}
-              <span tabIndex={-1}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled
-                  aria-label="Attach file (coming soon)"
-                  className="h-8 w-8 rounded-full text-muted-foreground"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+                aria-label="Attach file"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </Button>
             </TooltipTrigger>
-            <TooltipContent>File attachments are coming soon</TooltipContent>
+            <TooltipContent>Attach a file</TooltipContent>
           </Tooltip>
         </div>
 

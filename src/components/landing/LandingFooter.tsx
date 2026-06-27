@@ -91,7 +91,7 @@ export function LandingFooter() {
                   {links.map((link) => (
                     <li key={link}>
                       <a
-                        href="#"
+                        href={link.toLowerCase().includes('contact') ? 'mailto:hardeep@apas.ai' : '/login'}
                         style={{ fontFamily: 'DM Sans', fontSize: '14px', color: 'var(--apas-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
                         onMouseEnter={e => (e.currentTarget.style.color = 'var(--apas-white)')}
                         onMouseLeave={e => (e.currentTarget.style.color = 'var(--apas-muted)')}
