@@ -1,6 +1,6 @@
 import { useState, useMemo, forwardRef } from 'react';
 import { format } from 'date-fns';
-import { Images, Plus, Search, Grid3x3, List, Trash2, CheckSquare, X, EyeOff, Eye, Archive, ArchiveRestore, FolderPlus, Check } from 'lucide-react';
+import { Images, Plus, Search, Grid3x3, List, Trash2, CheckSquare, X, EyeOff, Eye, Archive, ArchiveRestore, FolderPlus, Check, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { GalleryPhotoCard } from './GalleryPhotoCard';
 import { GalleryLightbox } from './GalleryLightbox';
 import { AddPhotosSheet } from './AddPhotosSheet';
 import { GalleryAlbumsStrip, AddToAlbumDialog } from './GalleryAlbums';
+import { CaptureLinkDialog } from './CaptureLinkDialog';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -105,8 +106,7 @@ const PhotoGridTile = forwardRef<HTMLDivElement, {
   selected?: boolean;
   selectable?: boolean;
   onToggleSelect?: () => void;
-}>(function PhotoGridTile({ photo, index, onOpen, onDelete, selectMode, selected, selectable, onToggleSelect }, ref) {
-  const isFeatured = index % 7 === 3;
+}>(function PhotoGridTile({ photo, onOpen, onDelete, selectMode, selected, selectable, onToggleSelect }, ref) {
   const isDirect = photo.source === 'direct';
   const canSelect = selectMode && selectable;
 
@@ -114,9 +114,8 @@ const PhotoGridTile = forwardRef<HTMLDivElement, {
     <div
       ref={ref}
       className={cn(
-        'relative group overflow-hidden cursor-pointer bg-muted',
-        isFeatured ? 'col-span-2 aspect-[4/3]' : 'aspect-square',
-        selected && 'ring-2 ring-primary ring-inset'
+        'relative group aspect-square overflow-hidden cursor-pointer rounded-md bg-muted',
+        selected && 'ring-2 ring-primary ring-offset-1 ring-offset-background'
       )}
       onClick={canSelect ? onToggleSelect : onOpen}
     >
@@ -225,6 +224,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [addToAlbumOpen, setAddToAlbumOpen] = useState(false);
+  const [captureLinkOpen, setCaptureLinkOpen] = useState(false);
   const navigate = useNavigate();
   const deletePhoto = useDeleteGalleryPhoto();
   const bulk = useBulkGalleryActions();
@@ -321,6 +321,10 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-muted-foreground font-mono hidden sm:block">{photos.length} photos</span>
+            <Button size="sm" variant="outline" onClick={() => setCaptureLinkOpen(true)} title="Capture link">
+              <QrCode className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Capture link</span>
+            </Button>
             <Button size="sm" variant={selectMode ? 'default' : 'outline'} onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
               {selectMode ? <X className="h-3.5 w-3.5 sm:mr-1" /> : <CheckSquare className="h-3.5 w-3.5 sm:mr-1" />}
               <span className="hidden sm:inline">{selectMode ? 'Done' : 'Select'}</span>
@@ -444,7 +448,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
                     <h3 className="text-sm font-bold tracking-tight uppercase">{group.label}</h3>
                     <span className="text-xs text-muted-foreground">{group.photos.length} photos</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0.5 bg-border">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-1.5 px-2 py-2">
                     {group.photos.map((photo, i) => (
                       <PhotoGridTile
                         key={photo.id}
@@ -538,6 +542,9 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           <Button size="sm" variant="destructive" onClick={() => runBulk('delete')} disabled={bulk.isPending}><Trash2 className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Delete</span></Button>
         </div>
       )}
+
+      {/* Public capture link (QR + URL) */}
+      <CaptureLinkDialog ctx={ctx} open={captureLinkOpen} onOpenChange={setCaptureLinkOpen} />
 
       {/* Add selected photos to an album */}
       <AddToAlbumDialog
