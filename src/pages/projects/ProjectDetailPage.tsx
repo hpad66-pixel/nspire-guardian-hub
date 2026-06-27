@@ -826,6 +826,7 @@ export default function ProjectDetailPage() {
                 </TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
                 <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
+                <TabsContent value="gallery" className="mt-0 p-0 h-[calc(100vh-260px)]"><PhotoGallery context="project" contextId={id!} contextName={project.name} /></TabsContent>
                 <TabsContent value="financials" className="mt-0"><ProjectFinancials project={project} changeOrders={changeOrders || []} projectName={project.name} /></TabsContent>
                 <TabsContent value="rfis" className="mt-0"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="submittals" className="mt-0"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
