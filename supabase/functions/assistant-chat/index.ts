@@ -26,11 +26,57 @@ const TOOLS = [
   { name: "list_change_orders", description: "Prime change orders with amount and status.", input_schema: { type: "object", properties: { filter: { type: "string", enum: ["all", "approved", "pending"], description: "Approved = executed/approved; pending = everything else." } } } },
   { name: "list_commitments", description: "Subcontracts/commitments with committed, paid, and remaining amounts.", input_schema: { type: "object", properties: {} } },
   { name: "get_retainage_held", description: "Retainage currently held, from the latest pay application.", input_schema: { type: "object", properties: {} } },
+  // ── Field tools (GC only) — ask about the actual project work, not just money ──
+  { name: "list_rfis", description: "RFIs (requests for information) on this project with number, subject, status and due date.", input_schema: { type: "object", properties: { filter: { type: "string", enum: ["all", "open", "overdue"], description: "open = open/pending; overdue = open and past due." } } } },
+  { name: "list_submittals", description: "Submittals with title, status and due date.", input_schema: { type: "object", properties: { filter: { type: "string", enum: ["all", "open"] } } } },
+  { name: "list_punch", description: "Open punch-list items (defects/corrections still to be closed out).", input_schema: { type: "object", properties: {} } },
+  { name: "recent_daily_reports", description: "The most recent daily field reports with date and work performed.", input_schema: { type: "object", properties: { limit: { type: "number", description: "How many recent reports, default 7." } } } },
+  { name: "list_meetings", description: "Recent project meetings with title, date and status.", input_schema: { type: "object", properties: { limit: { type: "number" } } } },
 ];
 
 // Owner/client audience: contract, billings, change orders, retainage ONLY.
 // NEVER the contractor's cash position or subcontractor costs/margins.
 const OWNER_SAFE = new Set(["get_financial_summary", "get_retainage_held", "list_pay_apps", "list_change_orders"]);
+
+// Field tools query the DB on demand (RLS-scoped), independent of the financials.
+const FIELD = new Set(["list_rfis", "list_submittals", "list_punch", "recent_daily_reports", "list_meetings"]);
+const EMPTY_FIN: Fin = { contract: { original_value: 0, retainage_pct: 0 }, cos: [], payApps: [], primePayments: [], commitments: [], commitmentPayments: [] };
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** Defensive field-tool runner: a missing table/column returns a note, never throws. */
+async function runFieldTool(supa: SupabaseClient, projectId: string, name: string, input: any): Promise<unknown> {
+  const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => { try { return await fn(); } catch { return fallback; } };
+  switch (name) {
+    case "list_rfis": {
+      const rows = await safe(async () => (await supa.from("rfis").select("rfi_number, subject, status, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
+      const f = input?.filter ?? "all";
+      const open = (r: any) => r.status === "open" || r.status === "pending";
+      const filtered = rows.filter((r: any) => f === "all" ? true : f === "overdue" ? (open(r) && r.due_date && r.due_date < today()) : open(r));
+      return filtered.map((r: any) => ({ rfi: `RFI-${r.rfi_number}`, subject: r.subject, status: r.status, due: r.due_date ?? null }));
+    }
+    case "list_submittals": {
+      const rows = await safe(async () => (await supa.from("submittals").select("title, status, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
+      const f = input?.filter ?? "all";
+      return rows.filter((s: any) => f === "all" ? true : s.status !== "approved" && s.status !== "closed").map((s: any) => ({ title: s.title, status: s.status, due: s.due_date ?? null }));
+    }
+    case "list_punch": {
+      const rows = await safe(async () => (await supa.from("punch_items").select("title, status, trade, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
+      return rows.filter((p: any) => p.status !== "closed" && p.status !== "verified" && p.status !== "completed").map((p: any) => ({ item: p.title, status: p.status, trade: p.trade ?? null, due: p.due_date ?? null }));
+    }
+    case "recent_daily_reports": {
+      const lim = Math.min(Number(input?.limit) || 7, 20);
+      const rows = await safe(async () => (await supa.from("daily_reports").select("report_date, work_performed").eq("project_id", projectId).order("report_date", { ascending: false }).limit(lim)).data ?? [], [] as any[]);
+      return rows.map((d: any) => ({ date: d.report_date, work: typeof d.work_performed === "string" ? d.work_performed.slice(0, 400) : d.work_performed }));
+    }
+    case "list_meetings": {
+      const lim = Math.min(Number(input?.limit) || 8, 20);
+      const rows = await safe(async () => (await supa.from("project_meetings").select("title, meeting_date, status").eq("project_id", projectId).order("meeting_date", { ascending: false }).limit(lim)).data ?? [], [] as any[]);
+      return rows.map((m: any) => ({ title: m.title, date: m.meeting_date, status: m.status }));
+    }
+    default:
+      return { error: `Unknown field tool ${name}` };
+  }
+}
 
 interface Fin {
   contract: { original_value: number; retainage_pct: number };
@@ -141,8 +187,7 @@ serve(async (req) => {
       global: { headers: { Authorization: auth } },
     });
     const { data: project } = await supa.from("projects").select("name").eq("id", projectId).maybeSingle();
-    const fin = await gather(supa, projectId);
-    if (!fin) return json({ reply: "I couldn't find a prime contract for this project, so there are no financials to report yet." });
+    const fin = (await gather(supa, projectId)) ?? EMPTY_FIN;
 
     const system = owner
       ? `You are the client assistant for the project "${project?.name ?? "this project"}", speaking to the OWNER/client.
@@ -150,12 +195,13 @@ Answer the owner's questions about THEIR contract using the provided tools. Rule
 - Scope: the contract value, approved/pending change orders, pay-application billings, amounts due, and retainage held.
 - You do NOT have, and must NEVER discuss or estimate, the contractor's internal costs, subcontractor payments, vendor costs, or profit/margins. If asked, politely say that isn't part of the client view.
 - Use tools for real numbers; NEVER invent figures. Be concise and specific with exact dollars and percentages.`
-      : `You are the Build OS financial assistant for the construction project "${project?.name ?? "this project"}".
-Answer the user's questions about THIS project's finances using the provided tools. Rules:
-- Use tools to get real numbers; NEVER invent or estimate figures the tools didn't return.
-- Be concise and specific. Quote exact dollar amounts and percentages. Prefer a short sentence or a tight bullet list.
-- Money in = owner→us (pay-app payments). Money out = us→subcontractors (commitment payments).
-- If a question is outside these tools (schedule, RFIs, documents, etc.), say what financial data you can see and suggest the relevant app section.
+      : `You are the project assistant for the construction project "${project?.name ?? "this project"}". You can answer about the project's FINANCES and its FIELD work.
+Answer using the provided tools. Rules:
+- Use tools to get real data; NEVER invent or estimate figures or items the tools didn't return.
+- Financial tools: contract summary, cash position, pay apps, change orders, commitments, retainage. Money in = owner→us (pay-app payments). Money out = us→subcontractors (commitment payments).
+- Field tools: RFIs (list_rfis with filter open/overdue), submittals, open punch items, recent daily reports, and meetings. Use these for "what's overdue", "what happened this week", "any open RFIs", "status of the field", etc.
+- Be concise and specific. Quote exact figures, RFI numbers, dates. Prefer a short sentence or a tight bullet list.
+- If the tools genuinely don't cover something (drawings, specs, individual documents), say so briefly and point to the relevant app section.
 - Today's date context comes from the data; don't guess dates.`;
 
     // Convert inbound {role, content:string} → Anthropic messages.
@@ -176,12 +222,13 @@ Answer the user's questions about THIS project's finances using the provided too
 
       if (data.stop_reason === "tool_use" && toolUses.length) {
         convo.push({ role: "assistant", content: blocks });
-        convo.push({
-          role: "user",
-          content: toolUses.map((t: any) => ({
-            type: "tool_result", tool_use_id: t.id, content: JSON.stringify(runTool(t.name, t.input, fin, owner)),
-          })),
-        });
+        const results = await Promise.all(toolUses.map(async (t: any) => {
+          const out = (!owner && FIELD.has(t.name))
+            ? await runFieldTool(supa, projectId, t.name, t.input)
+            : runTool(t.name, t.input, fin, owner);
+          return { type: "tool_result", tool_use_id: t.id, content: JSON.stringify(out) };
+        }));
+        convo.push({ role: "user", content: results });
         continue;
       }
       final = text || "I'm not sure how to answer that from the financial data I can see.";
