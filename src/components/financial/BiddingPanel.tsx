@@ -64,6 +64,9 @@ export function BiddingPanel({ projectId }: { projectId: string }) {
                   <div className="flex items-center gap-2">
                     <span className="font-medium truncate">{p.title}</span>
                     <Badge variant="outline" className={cn('capitalize', statusColor[p.status])}>{p.status}</Badge>
+                    {p.status === 'awarded' && p.commitment_id && (
+                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-200">Commitment created</Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.trade && <>{p.trade} · </>}{p.due_date ? `Due ${format(new Date(p.due_date + 'T12:00:00'), 'MMM d')}` : 'No due date'}{p.estimate != null && <> · Est. {money(p.estimate)}</>}
@@ -147,7 +150,11 @@ function PackageDetail({ pkg, projectId, onDelete }: { pkg: BidPackage; projectI
                   <td className="py-1.5 pl-2">
                     <div className="flex items-center justify-end gap-1">
                       {pkg.status !== 'awarded' && iv.bid_amount != null && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => award.mutate({ inviteeId: iv.id, pkgId: pkg.id }, { onSuccess: () => toast.success(`Awarded to ${iv.vendor_name}`) })}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => award.mutate({ inviteeId: iv.id, pkgId: pkg.id }, { onSuccess: (res) => {
+                          if (res?.commitment_no) toast.success(`Awarded to ${iv.vendor_name} · commitment ${res.commitment_no} created`);
+                          else if (res?.commitmentError) toast.success(`Awarded to ${iv.vendor_name} (couldn’t auto-create the commitment — add it manually)`);
+                          else toast.success(`Awarded to ${iv.vendor_name}`);
+                        } })}>
                           <Trophy className="h-3 w-3 mr-1" /> Award
                         </Button>
                       )}
