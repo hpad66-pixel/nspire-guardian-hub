@@ -12,13 +12,22 @@ export interface GalleryPhoto {
   source_label: string;
   source_route: string;
   uploaded_by?: string;
+  /** Management state (only meaningful for `source === 'direct'` rows). */
+  is_hidden?: boolean;
+  archived_at?: string | null;
+  sort_order?: number;
 }
+
+/** A direct-upload photo is the only kind we can hide/archive/album/arrange. */
+export const isManageable = (p: GalleryPhoto) => p.source === 'direct';
 
 export interface GalleryFilters {
   source?: string;
   search?: string;
   dateRange?: { start: string; end: string };
   timeFilter?: 'this_week' | 'this_month' | 'last_3_months' | 'all_time';
+  /** active (default) hides hidden+archived; hidden / archived show only those. */
+  view?: 'active' | 'hidden' | 'archived';
 }
 
 function getDateRange(timeFilter?: string): { start: string; end: string } | undefined {
@@ -138,12 +147,25 @@ export function usePropertyGallery(propertyId: string, filters?: GalleryFilters)
             source_label: 'Direct Upload',
             source_route: '',
             uploaded_by: gp.uploaded_by,
+            is_hidden: !!gp.is_hidden,
+            archived_at: gp.archived_at ?? null,
+            sort_order: gp.sort_order ?? 0,
           });
         }
       });
 
       // Apply filters
       let filtered = photos;
+
+      // Management view: direct photos carry hide/archive state; aggregated
+      // (inspection/report) photos are always treated as active.
+      const view = filters?.view || 'active';
+      filtered = filtered.filter(p => {
+        if (p.source !== 'direct') return view === 'active';
+        if (view === 'archived') return !!p.archived_at;
+        if (view === 'hidden') return !!p.is_hidden && !p.archived_at;
+        return !p.is_hidden && !p.archived_at; // active
+      });
 
       const dateRange = filters?.dateRange || getDateRange(filters?.timeFilter);
       if (dateRange) {
@@ -242,6 +264,43 @@ export function useUpdatePhotoCaption() {
       } else {
         await supabase.from('photo_gallery').insert(upsertData);
       }
+    },
+    onSuccess: (_, vars) => {
+      if (vars.propertyId) queryClient.invalidateQueries({ queryKey: ['property-gallery', vars.propertyId] });
+      if (vars.projectId) queryClient.invalidateQueries({ queryKey: ['project-gallery', vars.projectId] });
+    },
+  });
+}
+
+export type BulkGalleryAction = 'hide' | 'unhide' | 'archive' | 'unarchive' | 'delete';
+
+/** Bulk hide / archive / delete on direct-upload photos (real photo_gallery ids). */
+export function useBulkGalleryActions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      action,
+      photoIds,
+    }: {
+      action: BulkGalleryAction;
+      photoIds: string[];
+      propertyId?: string;
+      projectId?: string;
+    }) => {
+      if (!photoIds.length) return;
+      const db = supabase.from('photo_gallery') as any;
+      if (action === 'delete') {
+        const { error } = await db.delete().in('id', photoIds);
+        if (error) throw error;
+        return;
+      }
+      const patch: Record<string, unknown> =
+        action === 'hide' ? { is_hidden: true }
+        : action === 'unhide' ? { is_hidden: false }
+        : action === 'archive' ? { archived_at: new Date().toISOString() }
+        : { archived_at: null }; // unarchive
+      const { error } = await db.update(patch).in('id', photoIds);
+      if (error) throw error;
     },
     onSuccess: (_, vars) => {
       if (vars.propertyId) queryClient.invalidateQueries({ queryKey: ['property-gallery', vars.propertyId] });
