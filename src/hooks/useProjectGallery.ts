@@ -78,12 +78,25 @@ export function useProjectGallery(projectId: string, filters?: GalleryFilters) {
             source_label: 'Direct Upload',
             source_route: '',
             uploaded_by: gp.uploaded_by,
+            is_hidden: !!gp.is_hidden,
+            archived_at: gp.archived_at ?? null,
+            sort_order: gp.sort_order ?? 0,
           });
         }
       });
 
       // Apply filters
       let filtered = photos;
+
+      // Management view (mirrors usePropertyGallery): direct photos carry
+      // hide/archive state; aggregated photos are always treated as active.
+      const view = filters?.view || 'active';
+      filtered = filtered.filter(p => {
+        if (p.source !== 'direct') return view === 'active';
+        if (view === 'archived') return !!p.archived_at;
+        if (view === 'hidden') return !!p.is_hidden && !p.archived_at;
+        return !p.is_hidden && !p.archived_at;
+      });
 
       const dateRange = filters?.dateRange || getDateRange(filters?.timeFilter);
       if (dateRange) {
