@@ -155,6 +155,7 @@ const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignCh
 const SignProposalPage = lazy(() => import('./pages/sign/SignProposalPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
+const CaptureUploadPage = lazy(() => import('./pages/CaptureUploadPage'));
 const SubPunchListsPage = lazy(() => import('./pages/portal/sub/SubPunchListsPage'));
 const LienWaiverDetailPage = lazy(() => import('./pages/projects/financial/LienWaiverDetailPage'));
 
@@ -252,6 +253,7 @@ const App = () => (
                      <Route path="/sign/proposal/:token" element={<SignProposalPage />} />
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
+                     <Route path="/capture/:token" element={<CaptureUploadPage />} />
                      
                     {/* Protected Routes */}
                     <Route

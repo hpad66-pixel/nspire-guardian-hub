@@ -136,3 +136,7 @@ verify_jwt = true
 # Microsoft Project XML parser — authenticated; same RLS contract as P6.
 [functions.parse-msp-xml]
 verify_jwt = true
+
+# Public capture link — anonymous field uploads validated by token, service-role insert.
+[functions.gallery-capture]
+verify_jwt = false
