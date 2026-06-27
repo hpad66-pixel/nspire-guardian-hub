@@ -36,6 +36,12 @@ serve(async (req) => {
       .eq("project_id", portal.project_id).eq("status", "published")
       .order("published_at", { ascending: false }).limit(1).maybeSingle()).data, null as any);
 
+    // Client-visible progress photos: GC-curated gallery minus hidden/archived.
+    const photos = await grab(async () => (await db.from("photo_gallery")
+      .select("url, caption, taken_at")
+      .eq("project_id", portal.project_id).eq("is_hidden", false).is("archived_at", null)
+      .order("taken_at", { ascending: false }).limit(8)).data ?? [], [] as any[]);
+
     const count = async (q: any): Promise<number> => { try { const { count } = await q; return count ?? 0; } catch { return 0; } };
     const punchOpen = await count(db.from("punch_items").select("id", { count: "exact", head: true }).eq("project_id", portal.project_id).in("status", ["open", "in_progress"]));
     const punchClosed = await count(db.from("punch_items").select("id", { count: "exact", head: true }).eq("project_id", portal.project_id).in("status", ["completed", "verified"]));
@@ -57,6 +63,7 @@ serve(async (req) => {
         published_at: update.published_at,
       } : null,
       punch: { open: punchOpen, closed: punchClosed },
+      photos: (photos as any[]).map((p) => ({ url: p.url, caption: p.caption, taken_at: p.taken_at })),
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);

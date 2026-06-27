@@ -1,35 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { CalendarDays, ListChecks, Megaphone, Loader2 } from 'lucide-react';
+import { CalendarDays, ListChecks, Megaphone, Loader2, Images } from 'lucide-react';
+import { usePortalData, PHASE_LABEL } from '@/hooks/usePortalData';
 
-const PHASE_LABEL: Record<string, string> = {
-  planning: 'Planning', preconstruction: 'Pre-Con', construction: 'Construction',
-  punch_list: 'Punch List', closeout: 'Closeout',
-};
 const HEALTH: Record<string, { label: string; bg: string; fg: string }> = {
   on_track: { label: 'On track', bg: '#E1F5EE', fg: '#0F6E56' },
   at_risk:  { label: 'At risk',  bg: '#FAEEDA', fg: '#854F0B' },
   delayed:  { label: 'Delayed',  bg: '#FCEBEB', fg: '#A32D2D' },
 };
-
-function usePortalData(slug?: string) {
-  return useQuery({
-    queryKey: ['portal-data', slug],
-    enabled: !!slug,
-    staleTime: 1000 * 60 * 2,
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('portal-data', { body: { slug } });
-      if (error || !data?.ok) throw new Error(data?.error || 'Could not load project');
-      return data as {
-        phases: string[];
-        project: { name: string; phase: string; start_date: string | null; target_end_date: string | null } | null;
-        milestones: { title: string; date: string | null; status: string | null }[];
-        latest_update: { title: string; period: string | null; health: string; summary: string | null } | null;
-        punch: { open: number; closed: number };
-      };
-    },
-  });
-}
 
 const fmtDate = (d?: string | null) => {
   if (!d) return null;
@@ -42,7 +18,7 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data?.project) return null;
 
-  const { phases, project, milestones, latest_update, punch } = data;
+  const { phases, project, milestones, latest_update, punch, photos } = data;
   const curIdx = Math.max(0, phases.indexOf(project.phase));
   const punchTotal = punch.open + punch.closed;
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
@@ -114,6 +90,21 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
           )}
         </div>
       </div>
+
+      {/* Progress photos */}
+      {photos.length > 0 && (
+        <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground"><Images className="h-4 w-4" style={{ color: accent }} /> Progress photos</div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((ph, i) => (
+              <a key={i} href={ph.url} target="_blank" rel="noopener noreferrer" className="group relative shrink-0" title={ph.caption ?? undefined}>
+                <img src={ph.url} alt={ph.caption ?? 'Progress photo'} loading="lazy" className="h-24 w-32 rounded-lg object-cover ring-1 ring-border transition-transform group-hover:scale-[1.02]" />
+                {ph.caption && <span className="absolute inset-x-0 bottom-0 truncate rounded-b-lg bg-black/55 px-1.5 py-0.5 text-[10px] text-white">{ph.caption}</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

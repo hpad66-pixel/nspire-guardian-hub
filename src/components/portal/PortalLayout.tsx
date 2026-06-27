@@ -1,8 +1,23 @@
 import { ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
 import { clearPortalSession, ClientPortal } from '@/hooks/usePortal';
+import { usePortalData, PHASE_LABEL } from '@/hooks/usePortalData';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+
+function PhaseBadge({ slug, accent }: { slug: string; accent: string }) {
+  const { data } = usePortalData(slug);
+  const phase = data?.project?.phase;
+  if (!phase) return null;
+  return (
+    <span
+      className="hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
+      style={{ background: `${accent}1A`, color: accent }}
+    >
+      {PHASE_LABEL[phase] ?? phase}
+    </span>
+  );
+}
 
 interface PortalLayoutProps {
   portal: ClientPortal;
@@ -50,6 +65,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
                 {(portal.client_name ?? portal.name).charAt(0).toUpperCase()}
               </div>
             )}
+            <PhaseBadge slug={portal.portal_slug} accent={accent} />
           </div>
           <button
             onClick={handleSignOut}
