@@ -144,3 +144,7 @@ verify_jwt = false
 # Public bid submission — anonymous subs submit a bid via token, service-role insert.
 [functions.bid-submit]
 verify_jwt = false
+
+# Nightly risk radar — invoked by pg_cron, authorized by a shared secret (not JWT).
+[functions.risk-radar-nightly]
+verify_jwt = false
