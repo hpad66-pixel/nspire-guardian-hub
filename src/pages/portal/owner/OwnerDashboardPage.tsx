@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { FileText, Calendar, BarChart3, FolderOpen, Megaphone } from "lucide-react";
+import { FileText, Calendar, BarChart3, FolderOpen, Megaphone, Bell, CheckCircle2 } from "lucide-react";
 
 /** Most recent published client briefing, shown front and center. */
 function LatestUpdateCard({ projectId }: { projectId: string | null }) {
@@ -74,6 +74,42 @@ export default function OwnerDashboardPage() {
     <div className="container mx-auto p-6 max-w-5xl">
       <h1 className="text-3xl font-bold mb-1">Owner Portal</h1>
       <p className="text-muted-foreground mb-6">Prime contract, change orders, pay apps.</p>
+
+      {/* Command-center hero: what (if anything) needs the owner right now. */}
+      {(() => {
+        const ocos = (data?.pendingOcos as any[]) ?? [];
+        const payApps = (data?.pendingPayApps as any[]) ?? [];
+        const total = ocos.length + payApps.length;
+        if (isLoading) return null;
+        if (total === 0) {
+          return (
+            <Card className="mb-6 border-[var(--apas-emerald)]/30 bg-[var(--apas-emerald)]/5">
+              <CardContent className="flex items-center gap-3 py-4">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--apas-emerald)]" />
+                <div>
+                  <div className="font-semibold">You’re all caught up</div>
+                  <div className="text-sm text-muted-foreground">Nothing is waiting on your approval right now.</div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        }
+        const dollars = ocos.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+          + payApps.reduce((s, p) => s + (Number(p.submitted_amount) || 0), 0);
+        return (
+          <Card className="mb-6 border-[var(--apas-amber)]/40 bg-[var(--apas-amber)]/5">
+            <CardContent className="flex flex-wrap items-center gap-3 py-4">
+              <Bell className="h-5 w-5 shrink-0 text-[var(--apas-amber)]" />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold">{total} item{total !== 1 ? "s" : ""} need your approval</div>
+                <div className="text-sm text-muted-foreground">
+                  {ocos.length} change order{ocos.length !== 1 ? "s" : ""} and {payApps.length} pay app{payApps.length !== 1 ? "s" : ""} · {fmt(dollars)} pending
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <LatestUpdateCard projectId={projectId} />
       <OwnerFinancialHealth projectId={projectId} />
