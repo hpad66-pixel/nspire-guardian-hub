@@ -73,6 +73,15 @@ const statusConfig: Record<string, { label: string; class: string; dot: string }
   closed:    { label: 'Closed',     class: 'bg-muted text-muted-foreground border-border',       dot: 'bg-muted-foreground' },
 };
 
+// Construction lifecycle phase — drives the client portal's phase tracker.
+const PHASES: { value: string; label: string }[] = [
+  { value: 'planning',         label: 'Planning' },
+  { value: 'preconstruction',  label: 'Pre-Construction' },
+  { value: 'construction',     label: 'Construction' },
+  { value: 'punch_list',       label: 'Punch List' },
+  { value: 'closeout',         label: 'Closeout' },
+];
+
 // Group colour tokens — used in both drawer and quick-jump
 const GROUP_ICON_COLORS: Record<string, string> = {
   core:       'text-blue-400',
@@ -442,10 +451,29 @@ export default function ProjectDetailPage() {
             <div className="min-w-0 flex-1">
               <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight mb-1.5 truncate">{project.name}</h1>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border', status.class)}>
-                  <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
-                  {status.label}
-                </span>
+                {/* Construction phase — inline editable; drives the client portal tracker */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] transition-colors hover:bg-[var(--apas-sapphire)]/20"
+                      title="Change project phase"
+                    >
+                      {PHASES.find((p) => p.value === ((project as any).phase ?? 'planning'))?.label ?? 'Planning'}
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {PHASES.map((ph) => (
+                      <DropdownMenuItem
+                        key={ph.value}
+                        onClick={() => updateProject.mutate({ id: id!, phase: ph.value } as any)}
+                        className={cn(((project as any).phase ?? 'planning') === ph.value && 'font-semibold text-[var(--apas-sapphire)]')}
+                      >
+                        {ph.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
                   {isClientProject ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
                   {isClientProject
