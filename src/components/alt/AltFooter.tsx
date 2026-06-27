@@ -39,7 +39,7 @@ export function AltFooter() {
                 {col.links.map(link => (
                   <li key={link}>
                     <a
-                      href="#"
+                      href={link.toLowerCase().includes('contact') ? 'mailto:hardeep@apas.ai' : '/login'}
                       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '14px', color: '#64748B', textDecoration: 'none', transition: 'color 0.2s' }}
                       onMouseEnter={e => (e.currentTarget.style.color = '#0F172A')}
                       onMouseLeave={e => (e.currentTarget.style.color = '#64748B')}

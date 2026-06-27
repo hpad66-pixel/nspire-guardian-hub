@@ -32,7 +32,7 @@ export function HomeFooter() {
               <ul className="space-y-2.5">
                 {col.links.map(link => (
                   <li key={link}>
-                    <a href="#" className="text-[13px] text-white/30 hover:text-white/60 transition-colors" style={{ fontFamily: 'Inter' }}>{link}</a>
+                    <a href={link.toLowerCase().includes('contact') ? 'mailto:hardeep@apas.ai' : '/login'} className="text-[13px] text-white/30 hover:text-white/60 transition-colors" style={{ fontFamily: 'Inter' }}>{link}</a>
                   </li>
                 ))}
               </ul>

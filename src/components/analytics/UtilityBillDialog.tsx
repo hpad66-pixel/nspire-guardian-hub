@@ -13,8 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Zap, Droplets, Flame, Waves, Trash2, MoreHorizontal, FileText, X } from 'lucide-react';
+import { ChevronDown, Zap, Droplets, Flame, Waves, Trash2, MoreHorizontal, FileText, X, Upload, Loader2 } from 'lucide-react';
 import { useAddUtilityBill, useUpdateUtilityBill, type UtilityBill } from '@/hooks/useUtilityBills';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface UtilityBillDialogProps {
@@ -60,8 +62,22 @@ export function UtilityBillDialog({ open, onOpenChange, propertyId, bill }: Util
   const [consumptionValue, setConsumptionValue] = useState(bill?.consumption_value?.toString() ?? '');
   const [consumptionUnit,  setConsumptionUnit]  = useState(bill?.consumption_unit ?? 'kwh');
   const [documentName,     setDocumentName]     = useState(bill?.document_name ?? '');
-  // TODO: wire real Supabase Storage upload when bucket is provisioned
   const [documentUrl,      setDocumentUrl]      = useState(bill?.document_url ?? '');
+  const [uploading,        setUploading]        = useState(false);
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `utility-bills/${propertyId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('daily-report-files').upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('daily-report-files').getPublicUrl(path);
+      setDocumentUrl(publicUrl);
+      setDocumentName(file.name);
+    } catch (e: any) { toast.error(e?.message || 'Upload failed'); }
+    finally { setUploading(false); }
+  }
   const [consumptionOpen,  setConsumptionOpen]  = useState(false);
   const [notesOpen,        setNotesOpen]        = useState(false);
 
@@ -230,20 +246,24 @@ export function UtilityBillDialog({ open, onOpenChange, propertyId, bill }: Util
                   </button>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Paste document URL or upload</p>
+                <div className="space-y-2">
+                  <label className={cn('inline-flex items-center gap-2 cursor-pointer rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted', uploading && 'pointer-events-none opacity-60')}>
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {uploading ? 'Uploading…' : 'Upload a file'}
+                    <input type="file" accept="image/*,application/pdf" hidden disabled={uploading}
+                      onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleUpload(f); }} />
+                  </label>
+                  <p className="text-[11px] text-muted-foreground">PDF or image. Or paste a URL:</p>
                   <Input
-                    placeholder="https://... or paste a URL"
+                    placeholder="https://… (optional)"
                     value={documentUrl}
                     onChange={(e) => {
                       setDocumentUrl(e.target.value);
-                      // Extract filename from URL
                       const parts = e.target.value.split('/');
                       setDocumentName(parts[parts.length - 1] || '');
                     }}
                     className="text-xs"
                   />
-                  {/* TODO: replace with real Supabase Storage upload when bucket is provisioned */}
                 </div>
               )}
             </div>
