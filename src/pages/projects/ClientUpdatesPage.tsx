@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Trash2, Send, Eye, Save, UserPlus, TrendingUp } from "lucide-react";
+import { Plus, X, Trash2, Send, Eye, Save, UserPlus, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { InviteClientDialog } from "@/components/portal/InviteClientDialog";
@@ -65,6 +66,7 @@ export default function ClientUpdatesPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [preview, setPreview] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
 
   const selected = useMemo(() => updates.find((u) => u.id === selectedId) ?? null, [updates, selectedId]);
   useEffect(() => { if (selected) setDraft(fromUpdate(selected)); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -78,6 +80,29 @@ export default function ClientUpdatesPage() {
     const snap = `Financial snapshot — Revised contract ${m0(s.revisedValue)}; billed to date ${m0(s.billedToDate)} (${s.pctComplete.toFixed(0)}% complete); paid to date ${m0(s.paidToDate)}; retainage held ${m0(s.retainageHeld)}; balance to finish ${m0(s.balanceToFinish)}.`;
     set({ summary: draft.summary?.trim() ? `${draft.summary.trim()}\n\n${snap}` : snap });
     toast.success("Financial snapshot added to the summary.");
+  }
+
+  async function aiDraft() {
+    if (!projectId) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-client-update", {
+        body: { projectId, periodLabel: draft.period_label },
+      });
+      if (error || !data?.ok) throw new Error(data?.error || "Could not generate the draft.");
+      const d = data.draft;
+      set({
+        health: d.health,
+        summary: d.summary,
+        accomplishments: d.accomplishments,
+        risks: d.risks,
+        decisions: d.decisions,
+        action_items: d.action_items,
+        next_steps: d.next_steps,
+      });
+      toast.success("AI filled in the update from this week's data — review and edit before publishing.");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setAiBusy(false); }
   }
 
   async function newUpdate() {
@@ -163,6 +188,10 @@ export default function ClientUpdatesPage() {
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="text-base">Edit update</CardTitle>
               <div className="flex items-center gap-2">
+                <Button size="sm" onClick={aiDraft} disabled={aiBusy}>
+                  {aiBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                  Draft with AI
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setPreview(true)}><Eye className="h-4 w-4 mr-1" />Preview</Button>
                 <Button variant="ghost" size="icon" className="text-[var(--apas-rose)]" onClick={doDelete}><Trash2 className="h-4 w-4" /></Button>
               </div>
