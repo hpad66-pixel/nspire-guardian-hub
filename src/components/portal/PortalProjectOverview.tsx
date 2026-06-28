@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PortalQuestions } from '@/components/portal/PortalQuestions';
+import { PortalProjectLog } from '@/components/portal/PortalProjectLog';
 import {
   usePortalData, usePortalAction, PHASE_LABEL,
   type PortalActionItem, type PortalChangeOrder,
@@ -194,6 +195,9 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
           )}
         </div>
       )}
+
+      {/* Project log — read-only incremental updates from the contractor */}
+      <PortalProjectLog slug={slug} accent={accent} />
 
       {/* Questions & concerns */}
       <div>

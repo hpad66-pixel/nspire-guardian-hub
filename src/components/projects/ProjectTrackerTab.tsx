@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
-  CheckCircle2, RotateCcw,
+  CheckCircle2, RotateCcw, Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,7 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
   const { data: items = [], isLoading } = useTrackerItems(projectId);
   const del = useDeleteTrackerItem();
   const setStatus = useSetTrackerStatus();
+  const update = useUpdateTrackerItem();
 
   const [search, setSearch] = useState('');
   const [fStatus, setFStatus] = useState<TrackerStatus | 'all'>('all');
@@ -184,7 +185,8 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
             <ItemRow key={i.id} item={i} open={expanded.has(i.id)} onToggle={() => toggle(i.id)}
               onEdit={() => setEditItem(i)} onUpdate={() => setUpdItem(i)}
               onDelete={() => { if (confirm(`Delete ${i.code || ''} — "${i.title}"? This cannot be undone.`)) del.mutate({ id: i.id, projectId }); }}
-              onStatus={(s) => setStatus.mutate({ id: i.id, projectId, status: s })} />
+              onStatus={(s) => setStatus.mutate({ id: i.id, projectId, status: s })}
+              onToggleClient={() => update.mutate({ id: i.id, projectId, patch: { client_visible: !i.client_visible } as any })} />
           ))}
         </div>
       )}
@@ -197,18 +199,19 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
   );
 }
 
-function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus }: {
-  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void;
+function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient }: {
+  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void;
 }) {
   const st = STATUS[item.status]; const pr = PRIORITY[item.priority];
   const last = item.updates[0]?.created_at;
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card print:break-inside-avoid">
+    <div className={cn('overflow-hidden rounded-xl border bg-card print:break-inside-avoid', item.client_visible ? 'border-border' : 'border-dashed border-muted-foreground/40')}>
       <div className="flex cursor-pointer items-center gap-3 px-3.5 py-3 hover:bg-muted/40" onClick={onToggle}>
         {item.code && <span className="w-10 shrink-0 text-[12px] font-bold text-muted-foreground">{item.code}</span>}
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
         <span className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: pr.bg, color: pr.fg }}>{pr.label}</span>
         <span className="flex-1 font-semibold text-foreground">{item.title}{last && <span className="block text-[12px] font-normal text-muted-foreground">Last update {fmt(last)}</span>}</span>
+        {!item.client_visible && <span className="hidden shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground sm:inline-flex"><EyeOff className="h-3 w-3" /> Internal</span>}
         {item.owner && <span className="hidden w-28 shrink-0 text-right text-[11.5px] text-muted-foreground sm:block">{item.owner}</span>}
         <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} />
       </div>
@@ -230,6 +233,9 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus }:
               ? <Button size="sm" variant="outline" onClick={() => onStatus('done')} className="gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Close</Button>
               : <Button size="sm" variant="outline" onClick={() => onStatus('progress')} className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" /> Reopen</Button>}
             <Button size="sm" variant="outline" onClick={onEdit} className="gap-1.5"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+            <Button size="sm" variant="outline" onClick={onToggleClient} className="gap-1.5" title={item.client_visible ? 'Visible to client — click to hide' : 'Hidden from client — click to show'}>
+              {item.client_visible ? <><Eye className="h-3.5 w-3.5" /> Client sees this</> : <><EyeOff className="h-3.5 w-3.5" /> Internal</>}
+            </Button>
             <Button size="sm" variant="ghost" onClick={onDelete} className="gap-1.5 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
             <div className="ml-auto">
               <Select value="" onValueChange={(v) => onStatus(v as TrackerStatus)}>
@@ -253,15 +259,16 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
   const [description, setDescription] = useState(item?.description ?? '');
   const [priority, setPriority] = useState<TrackerPriority>(item?.priority ?? 'med');
   const [status, setStatus] = useState<TrackerStatus>(item?.status ?? 'open');
+  const [clientVisible, setClientVisible] = useState(item?.client_visible ?? true);
   const [firstNote, setFirstNote] = useState('');
   const busy = create.isPending || update.isPending;
 
   const save = () => {
     if (!title.trim()) { return; }
     if (item) {
-      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status } as any }, { onSuccess: onClose });
+      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status, client_visible: clientVisible } as any }, { onSuccess: onClose });
     } else {
-      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, firstNote }, { onSuccess: onClose });
+      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, firstNote, clientVisible }, { onSuccess: onClose });
     }
   };
 
@@ -285,6 +292,11 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
               <Select value={status} onValueChange={(v) => setStatus(v as TrackerStatus)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(STATUS) as TrackerStatus[]).map(s => <SelectItem key={s} value={s}>{STATUS[s].label}</SelectItem>)}</SelectContent></Select></div>
           </div>
           {!item && <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">First update note (optional)</label><Textarea value={firstNote} onChange={e => setFirstNote(e.target.value)} rows={2} placeholder="Add an initial timestamped note…" /></div>}
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[13px]">
+            <input type="checkbox" checked={clientVisible} onChange={e => setClientVisible(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" />
+            <span className="font-medium">Visible to client on the portal</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">{clientVisible ? 'Client can see this' : 'Internal only'}</span>
+          </label>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

@@ -53,6 +53,21 @@ export interface PortalData {
   questions: PortalQuestion[];
   schedule: { pending_exposure: number; pending_days: number; approved_impact_days: number };
   finance: { original_contract: number | null; approved_changes: number | null; revised_contract: number | null } | null;
+  tracker: PortalTrackerItem[];
+}
+
+export interface PortalTrackerItem {
+  id: string;
+  code: string | null;
+  owner: string | null;
+  category: string;
+  division: string | null;
+  title: string;
+  description: string | null;
+  priority: string;
+  status: string;
+  updated_at: string;
+  updates: { author: string | null; body: string; status_to: string | null; created_at: string }[];
 }
 
 export const PHASE_LABEL: Record<string, string> = {
