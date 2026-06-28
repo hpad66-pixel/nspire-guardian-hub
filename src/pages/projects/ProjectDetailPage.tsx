@@ -54,6 +54,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
+import { useUnreadClientComments } from '@/hooks/useTracker';
 import { ProposalList } from '@/components/proposals/ProposalList';
 import { SubmittalsTab } from '@/components/projects/SubmittalsTab';
 import { SafetyTab } from '@/components/projects/SafetyTab';
@@ -125,6 +126,7 @@ export default function ProjectDetailPage() {
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
   const { data: rfiStats } = useRFIStats(id ?? null);
   const { data: punchStats } = usePunchItemStats(id ?? null);
+  const { data: unreadLogComments = 0 } = useUnreadClientComments(id ?? undefined);
   const { data: rfis = [] } = useRFIsByProject(id ?? null);
   const { data: submittals = [] } = useSubmittalsByProject(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
@@ -292,7 +294,7 @@ export default function ProjectDetailPage() {
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
     { value: 'punch-list',   label: 'Punch List',   shortLabel: 'Punch',    icon: ListChecks,      group: 'compliance', badge: ((punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)) > 0 ? (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) : null },
-    { value: 'project-log',  label: 'Project Log',  shortLabel: 'Log',      icon: ClipboardList,   group: 'compliance', badge: null as number | null },
+    { value: 'project-log',  label: 'Project Log',  shortLabel: 'Log',      icon: ClipboardList,   group: 'compliance', badge: unreadLogComments > 0 ? unreadLogComments : null },
     { value: 'progress',     label: 'Progress',     shortLabel: 'Progress', icon: TrendingUpIcon,  group: 'reports',    badge: null as number | null },
     { value: 'procurement',  label: 'Procurement',  shortLabel: 'Procure',  icon: ShoppingCart,    group: 'reports',    badge: null as number | null },
     { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },

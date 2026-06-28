@@ -159,6 +159,30 @@ export function useAddTrackerUpdate() {
   });
 }
 
+// ── Unread client comments (per-browser "seen" marker) ──────────────────────
+const SEEN_KEY = (pid: string) => `tracker-comments-seen-${pid}`;
+
+export function markTrackerCommentsSeen(projectId: string) {
+  try { localStorage.setItem(SEEN_KEY(projectId), new Date().toISOString()); } catch { /* ignore */ }
+}
+
+// Count of client comments posted since this browser last opened the log.
+export function useUnreadClientComments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['tracker-unread', projectId],
+    enabled: !!projectId,
+    staleTime: 1000 * 30,
+    queryFn: async (): Promise<number> => {
+      let seen = '1970-01-01T00:00:00Z';
+      try { seen = localStorage.getItem(SEEN_KEY(projectId!)) || seen; } catch { /* ignore */ }
+      const { count } = await db.from('tracker_updates')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId).eq('is_client', true).gt('created_at', seen);
+      return count ?? 0;
+    },
+  });
+}
+
 // ── Per-client AI switch (projects.ai_enabled) ───────────────────────────────
 export function useProjectAiEnabled(projectId: string | undefined) {
   const qc = useQueryClient();
