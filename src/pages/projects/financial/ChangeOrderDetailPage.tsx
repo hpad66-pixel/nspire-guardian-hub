@@ -296,6 +296,8 @@ export default function ChangeOrderDetailPage() {
                   <ChangeOrderDocument
                     ref={docRef}
                     spec={spec}
+                    executed={co.status === "executed"}
+                    executedDate={co.executed_date}
                     signatures={{
                       submitted: (co as any).submitted_signature_path ?? null,
                       accepted: (co as any).accepted_signature_path ?? null,
