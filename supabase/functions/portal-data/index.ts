@@ -74,6 +74,11 @@ serve(async (req) => {
       .select("original_contract, approved_co_value, revised_contract")
       .eq("project_id", portal.project_id).maybeSingle()).data, null as any);
 
+    // Documents the contractor shared to the portal.
+    const documents = await grab(async () => (await db.from("client_documents")
+      .select("id, name, url, category, created_at").eq("project_id", portal.project_id)
+      .order("created_at", { ascending: false })).data ?? [], [] as any[]);
+
     // Read-only Project Log for the client: only client-visible items + their log.
     const trackerItems = await grab(async () => (await db.from("tracker_items")
       .select("id, code, owner, category, division, title, description, priority, status, updated_at")
@@ -144,6 +149,7 @@ serve(async (req) => {
         title: i.title, description: i.description, priority: i.priority, status: i.status,
         updated_at: i.updated_at, updates: updByItem[i.id] ?? [],
       })),
+      documents: (documents as any[]).map((d) => ({ id: d.id, name: d.name, url: d.url, category: d.category, created_at: d.created_at })),
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);

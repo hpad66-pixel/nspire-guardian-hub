@@ -54,6 +54,7 @@ export interface PortalData {
   schedule: { pending_exposure: number; pending_days: number; approved_impact_days: number };
   finance: { original_contract: number | null; approved_changes: number | null; revised_contract: number | null } | null;
   tracker: PortalTrackerItem[];
+  documents: { id: string; name: string; url: string; category: string | null; created_at: string }[];
 }
 
 export interface PortalTrackerItem {
