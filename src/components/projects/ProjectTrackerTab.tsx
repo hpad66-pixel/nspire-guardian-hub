@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
   CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText, Image as ImageIcon, X,
+  CheckSquare, GitMerge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ import { toast } from 'sonner';
 import {
   useTrackerItems, useCreateTrackerItem, useUpdateTrackerItem, useDeleteTrackerItem,
   useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
-  markTrackerCommentsSeen, uploadTrackerPhoto,
+  useMergeTrackerItems, useBulkDeleteTrackerItems, markTrackerCommentsSeen, uploadTrackerPhoto,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
@@ -56,6 +57,13 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
   const del = useDeleteTrackerItem();
   const setStatus = useSetTrackerStatus();
   const update = useUpdateTrackerItem();
+  const merge = useMergeTrackerItems();
+  const bulkDelete = useBulkDeleteTrackerItems();
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const toggleSel = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
   const ai = useProjectAiEnabled(projectId);
   const qc = useQueryClient();
   // Opening the log marks client comments seen, clearing the tab badge.
@@ -172,6 +180,7 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
             <Button variant="outline" onClick={() => setSummarizeOpen(true)} className="gap-1.5"><Sparkles className="h-4 w-4" /> Summarize for client</Button>
           </>
         )}
+        <Button variant={selectMode ? 'default' : 'outline'} onClick={() => selectMode ? exitSelect() : setSelectMode(true)} className="gap-1.5"><CheckSquare className="h-4 w-4" /> {selectMode ? 'Done' : 'Select'}</Button>
         <Button variant="outline" onClick={() => setExpanded(new Set(items.map(i => i.id)))} className="hidden sm:inline-flex">Expand all</Button>
         <Button variant="outline" onClick={() => setExpanded(new Set())} className="hidden sm:inline-flex">Collapse all</Button>
         <div className="flex-1" />
@@ -210,6 +219,7 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
         <div className="space-y-2">
           {list.map(i => (
             <ItemRow key={i.id} item={i} open={expanded.has(i.id)} onToggle={() => toggle(i.id)}
+              selectMode={selectMode} selected={selected.has(i.id)} onSelect={() => toggleSel(i.id)}
               onEdit={() => setEditItem(i)} onUpdate={() => setUpdItem(i)}
               onDelete={() => { if (confirm(`Delete ${i.code || ''} — "${i.title}"? This cannot be undone.`)) del.mutate({ id: i.id, projectId }); }}
               onStatus={(s) => setStatus.mutate({ id: i.id, projectId, status: s })}
@@ -222,6 +232,17 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
         <ItemModal projectId={projectId} item={editItem} owners={owners} onClose={() => { setAddOpen(false); setEditItem(null); }} />
       )}
       {updItem && <UpdateModal projectId={projectId} item={updItem} onClose={() => setUpdItem(null)} />}
+      {/* Selection action bar */}
+      {selectMode && selected.size > 0 && (
+        <div className="sticky bottom-3 z-20 mx-auto flex w-fit flex-wrap items-center gap-2 rounded-full border border-border bg-card px-3 py-2 shadow-lg">
+          <span className="px-1 text-[13px] font-semibold">{selected.size} selected</span>
+          <Button size="sm" variant="outline" disabled={selected.size < 2} onClick={() => setMergeOpen(true)} className="gap-1.5"><GitMerge className="h-3.5 w-3.5" /> Merge</Button>
+          <Button size="sm" variant="outline" onClick={() => { if (confirm(`Delete ${selected.size} item(s)? This cannot be undone.`)) { bulkDelete.mutate({ ids: [...selected], projectId }); exitSelect(); } }} className="gap-1.5 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+          <Button size="sm" variant="ghost" onClick={exitSelect}>Cancel</Button>
+        </div>
+      )}
+
+      {mergeOpen && <MergeDialog projectId={projectId} items={items.filter(i => selected.has(i.id))} onDone={() => { setMergeOpen(false); exitSelect(); }} onClose={() => setMergeOpen(false)} mergeFn={merge} />}
       {summarizeOpen && <SummarizeDialog items={items} onClose={() => setSummarizeOpen(false)} />}
       {ingestOpen && <IngestDialog projectId={projectId} items={items} onClose={() => setIngestOpen(false)} />}
       {reportOpen && <ReportDialog items={items} projectName={projectName || 'Project'} onClose={() => setReportOpen(false)} />}
@@ -265,14 +286,16 @@ function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; p
   );
 }
 
-function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient }: {
+function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient, selectMode, selected, onSelect }: {
   item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void;
+  selectMode?: boolean; selected?: boolean; onSelect?: () => void;
 }) {
   const st = STATUS[item.status]; const pr = PRIORITY[item.priority];
   const last = item.updates[0]?.created_at;
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-card print:break-inside-avoid', item.client_visible ? 'border-border' : 'border-dashed border-muted-foreground/40')}>
-      <div className="flex cursor-pointer items-center gap-3 px-3.5 py-3 hover:bg-muted/40" onClick={onToggle}>
+    <div className={cn('overflow-hidden rounded-xl border bg-card print:break-inside-avoid', selected ? 'border-[var(--apas-sapphire)] ring-1 ring-[var(--apas-sapphire)]' : item.client_visible ? 'border-border' : 'border-dashed border-muted-foreground/40')}>
+      <div className="flex cursor-pointer items-center gap-3 px-3.5 py-3 hover:bg-muted/40" onClick={selectMode ? onSelect : onToggle}>
+        {selectMode && <input type="checkbox" checked={!!selected} onChange={onSelect} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 accent-[var(--apas-sapphire)]" />}
         {item.code && <span className="w-10 shrink-0 text-[12px] font-bold text-muted-foreground">{item.code}</span>}
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
         <span className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: pr.bg, color: pr.fg }}>{pr.label}</span>
@@ -377,6 +400,39 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy || !title.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save item'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MergeDialog({ projectId, items, onDone, onClose, mergeFn }: { projectId: string; items: TrackerItem[]; onDone: () => void; onClose: () => void; mergeFn: ReturnType<typeof useMergeTrackerItems> }) {
+  const [targetId, setTargetId] = useState(items[0]?.id ?? '');
+  const target = items.find(i => i.id === targetId);
+  const others = items.filter(i => i.id !== targetId);
+  const run = () => {
+    const summary = `Merged in: ${others.map(o => o.code || o.title).join(', ')}.`;
+    mergeFn.mutate({ targetId, sourceIds: items.map(i => i.id), projectId, summary }, { onSuccess: onDone });
+  };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><GitMerge className="h-4 w-4" /> Merge {items.length} items</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Keep this item (others merge into it)</label>
+            <Select value={targetId} onValueChange={setTargetId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{items.map(i => <SelectItem key={i.id} value={i.id}>{i.code ? `${i.code} · ` : ''}{i.title}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <p className="rounded-lg bg-muted/40 p-3 text-[13px] text-muted-foreground">
+            All updates and photos from {others.length === 1 ? 'the other item' : `the other ${others.length} items`} move into <b className="text-foreground">{target?.code || target?.title}</b>, then {others.length === 1 ? 'it is' : 'they are'} deleted. This can't be undone.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={run} disabled={mergeFn.isPending || !targetId} className="gap-1.5">{mergeFn.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitMerge className="h-4 w-4" />} Merge</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
