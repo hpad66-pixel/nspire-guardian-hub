@@ -43,9 +43,31 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
   const nextMilestone = milestones.find((m) => m.status !== 'completed' && m.date);
   const openItems = action_items.filter((a) => a.status === 'pending' || a.status === 'viewed');
+  const pendingCOs = change_orders.filter((c) => !c.approved && c.status !== 'rejected');
+  const decidedCOs = change_orders.filter((c) => c.approved || c.status === 'rejected');
+  const attentionCount = openItems.length + pendingCOs.length;
 
   return (
     <div className="space-y-5">
+      {/* Action-required banner — the first thing the client sees when something is waiting on them */}
+      {attentionCount > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border-2 p-4" style={{ borderColor: '#F0C97D', background: '#FEF7EA' }}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: '#F6D58A' }}>
+            <AlertCircle className="h-5 w-5 text-[#854F0B]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold text-[#7A4A09]">
+              {attentionCount} {attentionCount === 1 ? 'item needs' : 'items need'} your attention
+            </div>
+            <div className="text-[13px] text-[#9A6A1A]">
+              {pendingCOs.length > 0
+                ? <>{pendingCOs.length} change {pendingCOs.length === 1 ? 'order' : 'orders'} awaiting approval{schedule.pending_exposure > 0 ? <> · <b className="font-semibold">{money(schedule.pending_exposure)} · +{schedule.pending_days} days</b></> : ''} — review to keep the project moving.</>
+                : 'Review the items below so your project stays on schedule.'}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Phase tracker */}
       <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Project phase</p>
@@ -78,18 +100,18 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
         </div>
       )}
 
-      {/* Potential change orders */}
-      {change_orders.length > 0 && (
+      {/* Change orders awaiting your approval — prominent, action-first */}
+      {pendingCOs.length > 0 && (
         <div>
           <SectionHeader
-            icon={<FileDiff className="h-[18px] w-[18px] text-muted-foreground" />}
-            title="Potential change orders"
+            icon={<FileDiff className="h-[18px] w-[18px] text-[#BA7517]" />}
+            title="Change orders awaiting your approval"
             right={schedule.pending_exposure > 0
-              ? <span className="text-[12px] text-muted-foreground">Pending: <b className="font-semibold text-foreground">{money(schedule.pending_exposure)} · +{schedule.pending_days}d</b></span>
+              ? <span className="text-[12px] text-muted-foreground">Total pending: <b className="font-semibold text-foreground">{money(schedule.pending_exposure)} · +{schedule.pending_days}d</b></span>
               : undefined}
           />
-          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-            {change_orders.map((c, i) => <ChangeOrderRow key={c.id} co={c} last={i === change_orders.length - 1} />)}
+          <div className="space-y-2.5">
+            {pendingCOs.map((c) => <PendingChangeOrderCard key={c.id} co={c} accent={accent} />)}
           </div>
         </div>
       )}
@@ -103,6 +125,16 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
           <StatTile label="Punch items" value={`${punch.open} open`} sub={punchTotal ? `${punchPct}% done` : undefined} accent={accent} progress={punchTotal ? punchPct : undefined} />
         </div>
       </div>
+
+      {/* Change order history — decided ones, kept quiet */}
+      {decidedCOs.length > 0 && (
+        <div>
+          <SectionHeader icon={<FileDiff className="h-[18px] w-[18px] text-muted-foreground" />} title="Change order history" />
+          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            {decidedCOs.map((c, i) => <ChangeOrderRow key={c.id} co={c} last={i === decidedCOs.length - 1} />)}
+          </div>
+        </div>
+      )}
 
       {/* Latest update */}
       {latest_update && (
@@ -172,6 +204,50 @@ function statusPill(status: string, approved: boolean): { label: string; bg: str
   if (approved || status === 'approved') return { label: 'Approved', bg: '#E1F5EE', fg: '#0F6E56' };
   if (status === 'rejected') return { label: 'Declined', bg: '#FCEBEB', fg: '#A32D2D' };
   return { label: 'Awaiting you', bg: '#FAEEDA', fg: '#854F0B' };
+}
+
+function PendingChangeOrderCard({ co, accent }: { co: PortalChangeOrder; accent: string }) {
+  return (
+    <div className="rounded-2xl border-2 bg-white p-4 shadow-sm" style={{ borderColor: '#F0C97D' }}>
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">CO #{co.co_no ?? '—'}</span>
+            <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: '#FAEEDA', color: '#854F0B' }}>Awaiting your approval</span>
+          </div>
+          <div className="mt-1.5 text-[15px] font-semibold text-foreground">{co.title}</div>
+          {co.description && <p className="mt-0.5 line-clamp-2 text-[13px] text-muted-foreground">{co.description}</p>}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex items-baseline gap-1.5">
+          <DollarSign className="h-4 w-4 self-center text-muted-foreground" />
+          <span className="text-[20px] font-bold text-foreground">{money(co.amount) ?? '$0'}</span>
+          <span className="text-[12px] text-muted-foreground">cost impact</span>
+        </div>
+        {co.days_impact ? (
+          <div className="flex items-baseline gap-1.5">
+            <Clock className="h-4 w-4 self-center text-muted-foreground" />
+            <span className="text-[20px] font-bold text-foreground">+{co.days_impact}</span>
+            <span className="text-[12px] text-muted-foreground">days</span>
+          </div>
+        ) : null}
+        <div className="flex-1" />
+        {co.sign_token ? (
+          <a href={`/sign/co/${co.sign_token}`}
+            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            style={{ background: accent }}>
+            Review &amp; approve <ChevronRight className="h-4 w-4" />
+          </a>
+        ) : (
+          <span className="text-[12px] text-muted-foreground">Your builder will send this for signature shortly.</span>
+        )}
+      </div>
+
+      {co.sent_at && <p className="mt-2 text-[11px] text-muted-foreground">Sent to you {fmtDate(co.sent_at)}</p>}
+    </div>
+  );
 }
 
 function ChangeOrderRow({ co, last }: { co: PortalChangeOrder; last: boolean }) {
