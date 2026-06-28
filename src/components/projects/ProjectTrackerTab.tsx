@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
-  CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check,
+  CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import {
   useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
+import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
   open:      { label: 'Open',        bg: '#ECEEF1', fg: '#555',    bar: '#cfd4da' },
@@ -48,7 +49,7 @@ const TILES: { key: TrackerStatus | 'all'; label: string }[] = [
 const fmt = (ts?: string | null) => { if (!ts) return '—'; try { return format(new Date(ts), 'MMM d, h:mm a'); } catch { return '—'; } };
 const latestTs = (i: TrackerItem) => i.updates[0]?.created_at ?? i.created_at;
 
-export function ProjectTrackerTab({ projectId }: { projectId: string }) {
+export function ProjectTrackerTab({ projectId, projectName }: { projectId: string; projectName?: string }) {
   const { data: items = [], isLoading } = useTrackerItems(projectId);
   const del = useDeleteTrackerItem();
   const setStatus = useSetTrackerStatus();
@@ -56,6 +57,7 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
   const ai = useProjectAiEnabled(projectId);
   const [summarizeOpen, setSummarizeOpen] = useState(false);
   const [ingestOpen, setIngestOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [fStatus, setFStatus] = useState<TrackerStatus | 'all'>('all');
@@ -168,7 +170,8 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
           <Sparkles className="h-3.5 w-3.5" /> AI
           <Switch checked={ai.enabled} onCheckedChange={(v) => ai.setEnabled(v)} disabled={ai.isSaving} className="scale-90" />
         </label>
-        <Button variant="outline" onClick={print} className="gap-1.5"><Printer className="h-4 w-4" /> Print / PDF</Button>
+        <Button variant="outline" onClick={() => setReportOpen(true)} className="gap-1.5"><FileText className="h-4 w-4" /> Report</Button>
+        <Button variant="outline" onClick={print} className="gap-1.5"><Printer className="h-4 w-4" /> Print</Button>
       </div>
 
       {/* Filters */}
@@ -212,7 +215,44 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
       {updItem && <UpdateModal projectId={projectId} item={updItem} onClose={() => setUpdItem(null)} />}
       {summarizeOpen && <SummarizeDialog items={items} onClose={() => setSummarizeOpen(false)} />}
       {ingestOpen && <IngestDialog projectId={projectId} items={items} onClose={() => setIngestOpen(false)} />}
+      {reportOpen && <ReportDialog items={items} projectName={projectName || 'Project'} onClose={() => setReportOpen(false)} />}
     </div>
+  );
+}
+
+function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; projectName: string; onClose: () => void }) {
+  const [groupBy, setGroupBy] = useState<ReportGroupBy>('owner');
+  const [openOnly, setOpenOnly] = useState(false);
+  const open = () => { openTrackerReport(items, { groupBy, openOnly, projectName }); onClose(); };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-4 w-4" /> Project Log report</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Group by</label>
+            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as ReportGroupBy)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Subcontractor / owner</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="category">Category</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[13px]">
+            <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" />
+            <span className="font-medium">Open items only</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">{openOnly ? 'Excludes done' : 'All items'}</span>
+          </label>
+          <p className="text-[11px] text-muted-foreground">Opens a clean, branded report in a new tab — print or save as PDF from there.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={open} className="gap-1.5"><FileText className="h-4 w-4" /> Open report</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

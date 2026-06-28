@@ -863,7 +863,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="rfis" className="mt-0"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="submittals" className="mt-0"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="punch-list" className="mt-0"><PunchListTab projectId={id!} /></TabsContent>
-                <TabsContent value="project-log" className="mt-0"><ProjectTrackerTab projectId={id!} /></TabsContent>
+                <TabsContent value="project-log" className="mt-0"><ProjectTrackerTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="progress" className="mt-0"><ProgressTab projectId={id!} /></TabsContent>
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
@@ -1150,7 +1150,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>
-              <TabsContent value="project-log"><ProjectTrackerTab projectId={id!} /></TabsContent>
+              <TabsContent value="project-log"><ProjectTrackerTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
