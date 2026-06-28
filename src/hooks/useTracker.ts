@@ -18,7 +18,17 @@ export interface TrackerUpdate {
   body: string;
   status_to: string | null;
   is_client?: boolean;
+  photos?: string[];
   created_at: string;
+}
+
+// Uploads an image for a Project Log update; returns its public URL.
+export async function uploadTrackerPhoto(file: File, projectId: string): Promise<string> {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `tracker/${projectId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from('daily-report-photos').upload(path, file, { upsert: false });
+  if (error) throw error;
+  return supabase.storage.from('daily-report-photos').getPublicUrl(path).data.publicUrl;
 }
 
 export interface TrackerItem {
@@ -138,14 +148,15 @@ export function useDeleteTrackerItem() {
 export function useAddTrackerUpdate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ itemId, projectId, body, statusTo }: { itemId: string; projectId: string; body?: string; statusTo?: TrackerStatus | '' }) => {
+    mutationFn: async ({ itemId, projectId, body, statusTo, photos }: { itemId: string; projectId: string; body?: string; statusTo?: TrackerStatus | ''; photos?: string[] }) => {
       const { uid, name } = await authorName();
       const text = (body ?? '').trim();
-      if (!text && !statusTo) throw new Error('Enter a note or set a status.');
-      if (text || statusTo) {
+      const pics = photos ?? [];
+      if (!text && !statusTo && !pics.length) throw new Error('Enter a note, add a photo, or set a status.');
+      if (text || statusTo || pics.length) {
         await db.from('tracker_updates').insert({
           project_id: projectId, item_id: itemId, author: name, created_by: uid,
-          body: text || `Status set to ${statusTo}.`, status_to: statusTo || null,
+          body: text || (pics.length ? 'Added photos.' : `Status set to ${statusTo}.`), status_to: statusTo || null, photos: pics,
         });
       }
       if (statusTo) {

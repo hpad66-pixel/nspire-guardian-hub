@@ -67,7 +67,7 @@ export interface PortalTrackerItem {
   priority: string;
   status: string;
   updated_at: string;
-  updates: { author: string | null; body: string; status_to: string | null; is_client?: boolean; created_at: string }[];
+  updates: { author: string | null; body: string; status_to: string | null; is_client?: boolean; photos?: string[]; created_at: string }[];
 }
 
 export const PHASE_LABEL: Record<string, string> = {
