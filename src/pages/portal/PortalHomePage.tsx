@@ -3,7 +3,7 @@ import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { usePortalBySlug, usePortalSession } from '@/hooks/usePortal';
 import { PortalLayout } from '@/components/portal/PortalLayout';
-import { PortalMessages } from '@/components/portal/PortalMessages';
+import { PortalQuestions } from '@/components/portal/PortalQuestions';
 import { PortalProjectOverview } from '@/components/portal/PortalProjectOverview';
 import { useAllCredentials } from '@/hooks/useCredentials';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
@@ -52,6 +52,7 @@ export default function PortalHomePage() {
     safety: '⚠️',
     equipment: '🚛',
   };
+  const MODULE_LABELS: Record<string, string> = { messages: 'Questions' };
 
   return (
     <PortalLayout portal={portal} activeTab={activeTab} onTabChange={handleTabChange}>
@@ -80,7 +81,7 @@ export default function PortalHomePage() {
                   <span className="text-xl">{MODULE_ICONS[m] ?? '📋'}</span>
                   <span className="h-2 w-2 rounded-full bg-green-500" />
                 </div>
-                <p className="font-semibold text-sm text-foreground capitalize">{m}</p>
+                <p className="font-semibold text-sm text-foreground capitalize">{MODULE_LABELS[m] ?? m}</p>
                 <p className="text-xs text-muted-foreground mt-1">Tap to view</p>
               </button>
             ))}
@@ -88,13 +89,9 @@ export default function PortalHomePage() {
         </div>
       )}
 
-      {/* MESSAGES TAB */}
-      {activeTab === 'messages' && portal.project_id && (
-        <PortalMessages
-          projectId={portal.project_id}
-          companyName={portal.client_name ?? portal.name}
-          accentColor={accent}
-        />
+      {/* QUESTIONS TAB (formerly Messages — now the single portal-action Q&A) */}
+      {activeTab === 'messages' && (
+        <PortalQuestions slug={slug} accent={accent} withHeader />
       )}
 
       {/* CREDENTIALS TAB */}

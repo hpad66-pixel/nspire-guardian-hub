@@ -1,12 +1,12 @@
-import { useState } from 'react';
 import {
-  CalendarDays, ListChecks, Megaphone, Loader2, Images, AlertCircle, FileDiff,
-  CalendarClock, MessagesSquare, Check, DollarSign, Clock, Send, ChevronRight,
+  Megaphone, Loader2, Images, AlertCircle, FileDiff,
+  CalendarClock, MessagesSquare, Check, DollarSign, Clock, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PortalQuestions } from '@/components/portal/PortalQuestions';
 import {
   usePortalData, usePortalAction, PHASE_LABEL,
-  type PortalData, type PortalActionItem, type PortalChangeOrder,
+  type PortalActionItem, type PortalChangeOrder,
 } from '@/hooks/usePortalData';
 
 const HEALTH: Record<string, { label: string; bg: string; fg: string }> = {
@@ -37,7 +37,7 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data?.project) return null;
 
-  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, questions, schedule } = data;
+  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, schedule } = data;
   const curIdx = Math.max(0, phases.indexOf(project.phase));
   const punchTotal = punch.open + punch.closed;
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
@@ -134,7 +134,7 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
       {/* Questions & concerns */}
       <div>
         <SectionHeader icon={<MessagesSquare className="h-[18px] w-[18px] text-muted-foreground" />} title="Your questions & concerns" />
-        <QuestionsPanel slug={slug} accent={accent} questions={questions} />
+        <PortalQuestions slug={slug} accent={accent} />
       </div>
 
       {/* Progress photos */}
@@ -255,58 +255,6 @@ function ActionItemCard({ item, slug, accent, co }: { item: PortalActionItem; sl
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function QuestionsPanel({ slug, accent, questions }: { slug?: string; accent: string; questions: PortalData['questions'] }) {
-  const act = usePortalAction(slug);
-  const [draft, setDraft] = useState('');
-
-  const send = () => {
-    const message = draft.trim();
-    if (!message) return;
-    act.mutate({ action: 'ask_question', message }, {
-      onSuccess: () => { setDraft(''); toast.success('Sent to your builder'); },
-      onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not send'),
-    });
-  };
-
-  return (
-    <div className="space-y-2.5">
-      {questions.map((q) => {
-        const answered = !!q.response;
-        return (
-          <div key={q.id} className="rounded-2xl border border-border bg-white p-3.5 shadow-sm">
-            <div className="flex items-start justify-between gap-2.5">
-              <div className="text-[14px] font-semibold text-foreground">{q.subject || q.message}</div>
-              <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={answered ? { background: '#E1F5EE', color: '#0F6E56' } : { background: '#F1EFE8', color: '#5F5E5A' }}>
-                {answered ? 'Answered' : 'Pending'}
-              </span>
-            </div>
-            {q.subject && q.message !== q.subject && <p className="mt-1 text-[13px] text-muted-foreground">{q.message}</p>}
-            {answered && (
-              <div className="mt-2.5 rounded-lg bg-muted/50 px-3 py-2 text-[13px] text-foreground">
-                <span className="font-semibold">Builder:</span> {q.response}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      <div className="flex items-center gap-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-          placeholder="Ask your builder a question…"
-          className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-        />
-        <button onClick={send} disabled={act.isPending || !draft.trim()}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50" style={{ background: accent }}>
-          <Send className="h-3.5 w-3.5" /> Send
-        </button>
-      </div>
     </div>
   );
 }

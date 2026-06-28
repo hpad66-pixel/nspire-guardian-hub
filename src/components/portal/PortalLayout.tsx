@@ -28,7 +28,7 @@ interface PortalLayoutProps {
 
 const TAB_LABELS: Record<string, string> = {
   home: 'Home',
-  messages: 'Messages',
+  messages: 'Questions',
   schedule: 'Schedule',
   credentials: 'Credentials',
   training: 'Training',
