@@ -82,11 +82,11 @@ serve(async (req) => {
     const trackerUpdates = await grab(async () => {
       const ids = (trackerItems as any[]).map((i) => i.id);
       if (!ids.length) return [];
-      return (await db.from("tracker_updates").select("item_id, author, body, status_to, created_at")
+      return (await db.from("tracker_updates").select("item_id, author, body, status_to, is_client, created_at")
         .in("item_id", ids).order("created_at", { ascending: false })).data ?? [];
     }, [] as any[]);
     const updByItem: Record<string, any[]> = {};
-    (trackerUpdates as any[]).forEach((u) => { (updByItem[u.item_id] ??= []).push({ author: u.author, body: u.body, status_to: u.status_to, created_at: u.created_at }); });
+    (trackerUpdates as any[]).forEach((u) => { (updByItem[u.item_id] ??= []).push({ author: u.author, body: u.body, status_to: u.status_to, is_client: u.is_client, created_at: u.created_at }); });
 
     const prio: Record<string, number> = { urgent: 0, normal: 1, low: 2 };
     const co = changeOrders as any[];

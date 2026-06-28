@@ -67,7 +67,7 @@ export interface PortalTrackerItem {
   priority: string;
   status: string;
   updated_at: string;
-  updates: { author: string | null; body: string; status_to: string | null; created_at: string }[];
+  updates: { author: string | null; body: string; status_to: string | null; is_client?: boolean; created_at: string }[];
 }
 
 export const PHASE_LABEL: Record<string, string> = {
@@ -94,7 +94,8 @@ export function usePortalData(slug?: string) {
 type PortalActionInput =
   | { action: 'ask_question'; subject?: string; message: string; name?: string; email?: string }
   | { action: 'respond_action_item'; item_id: string; response?: string; selection?: string }
-  | { action: 'mark_viewed'; item_id: string };
+  | { action: 'mark_viewed'; item_id: string }
+  | { action: 'tracker_comment'; item_id: string; body: string; name?: string };
 
 // Client write-path (ask a question, respond to an action item). Invalidates the
 // cached portal-data on success so the UI reflects the change.

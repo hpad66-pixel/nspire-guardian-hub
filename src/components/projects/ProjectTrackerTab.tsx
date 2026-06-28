@@ -278,8 +278,11 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
           <div className="space-y-2">
             {item.updates.length === 0 ? <p className="text-[12.5px] text-muted-foreground">No updates yet.</p> :
               item.updates.map(u => (
-                <div key={u.id} className="rounded-md border border-border border-l-[3px] border-l-[var(--apas-sapphire)] bg-background px-3 py-2">
-                  <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span className="text-[var(--apas-sapphire)]">{u.author || 'Contractor'}</span></div>
+                <div key={u.id} className={cn('rounded-md border border-border border-l-[3px] bg-background px-3 py-2', u.is_client ? 'border-l-[#0F6E56]' : 'border-l-[var(--apas-sapphire)]')}>
+                  <div className="text-[11px] font-semibold text-muted-foreground">
+                    {fmt(u.created_at)} · <span className={u.is_client ? 'text-[#0F6E56]' : 'text-[var(--apas-sapphire)]'}>{u.author || 'Contractor'}</span>
+                    {u.is_client && <span className="ml-1.5 rounded-full bg-[#E1F5EE] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#0F6E56]">Client</span>}
+                  </div>
                   <div className="mt-0.5 text-[13px]">{u.body}</div>
                 </div>
               ))}
