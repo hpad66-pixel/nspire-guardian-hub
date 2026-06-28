@@ -501,8 +501,8 @@ function PMMessageThread({ projectId, accentColor }: { projectId: string; accent
 
 // Create action item dialog
 function CreateActionItemDialog({
-  projectId, open, onOpenChange,
-}: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  projectId, open, onOpenChange, clientEmail,
+}: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void; clientEmail?: string | null }) {
   const createItem = useCreateActionItem();
   const [type, setType] = useState<ActionItemType>('information');
   const [title, setTitle] = useState('');
@@ -598,6 +598,19 @@ function CreateActionItemDialog({
               <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
           </div>
+
+          {/* Notification status — will the client actually be emailed? */}
+          {clientEmail ? (
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <MailIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>We'll email <span className="font-semibold">{clientEmail}</span> a link to their portal so they know to act.</span>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>No client email on file — this will post to the portal but <span className="font-semibold">won't notify anyone</span>. Add a client contact under Overview → Invite to enable email alerts.</span>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
@@ -843,6 +856,10 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
   // #17: a PortalLink is only meaningful when a portal row actually exists —
   // otherwise it contradicts ScheduleAccessSection's "no portal linked" notice.
   const { data: portal } = usePortalByProject(projectId);
+  const { data: accessList = [] } = usePortalAccess(portal?.id);
+  // Whom an action-item / CO notification email would reach. If null, the client
+  // won't be auto-notified — the GC needs a contact on file first.
+  const clientEmail = portal?.client_contact_email || accessList.find(a => a.is_active)?.email || null;
 
   const pendingItems = allItems.filter(i => i.status === 'pending' || i.status === 'viewed');
   const resolvedItems = allItems.filter(i => i.status === 'resolved' || i.status === 'responded' || i.status === 'cancelled');
@@ -1001,7 +1018,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
       )}
 
       {/* Dialogs */}
-      <CreateActionItemDialog projectId={projectId} open={createActionOpen} onOpenChange={setCreateActionOpen} />
+      <CreateActionItemDialog projectId={projectId} open={createActionOpen} onOpenChange={setCreateActionOpen} clientEmail={clientEmail} />
       <PostUpdateDialog projectId={projectId} open={postUpdateOpen} onOpenChange={setPostUpdateOpen} />
     </div>
   );
