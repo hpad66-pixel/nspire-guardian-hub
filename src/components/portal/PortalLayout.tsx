@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
-import { LogOut } from 'lucide-react';
-import { clearPortalSession, ClientPortal } from '@/hooks/usePortal';
+import { LogOut, ShieldCheck } from 'lucide-react';
+import { clearPortalSession, getPortalSession, ClientPortal } from '@/hooks/usePortal';
 import { usePortalData, PHASE_LABEL } from '@/hooks/usePortalData';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -49,8 +49,20 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
     ['messages', 'schedule', 'credentials', 'training', 'safety', 'equipment'].includes(m)
   )];
 
+  const isAdminPreview = getPortalSession()?.isAdminPreview === true;
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#F8FAFC' }}>
+      {/* Admin preview banner */}
+      {isAdminPreview && (
+        <div className="bg-amber-500 text-white text-xs font-semibold">
+          <div className="max-w-4xl mx-auto px-4 py-1.5 flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Admin preview — this is exactly what your client sees. Changes you make here affect live data.
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">

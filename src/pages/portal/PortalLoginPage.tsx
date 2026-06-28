@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { usePortalBySlug, usePortalSession, setPortalSession } from '@/hooks/usePortal';
+import { usePortalBySlug, usePortalSession, usePortalAdminAccess, setPortalSession } from '@/hooks/usePortal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ShieldCheck } from 'lucide-react';
 
 export default function PortalLoginPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -11,6 +12,7 @@ export default function PortalLoginPage() {
   const redirect = searchParams.get('redirect');
   const { data: portal, isLoading } = usePortalBySlug(slug);
   const { isAuthenticated } = usePortalSession();
+  const { data: admin } = usePortalAdminAccess(portal);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +47,19 @@ export default function PortalLoginPage() {
   }
 
   const accent = portal.brand_accent_color ?? '#0F172A';
+
+  function enterAsAdmin() {
+    setPortalSession({
+      portalId: portal!.id,
+      email: admin?.email ?? 'admin',
+      name: 'Admin preview',
+      accessId: 'admin-preview',
+      authenticated: true,
+      portalSlug: slug!,
+      isAdminPreview: true,
+    });
+    window.location.href = redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`;
+  }
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -152,6 +167,18 @@ export default function PortalLoginPage() {
             <h1 className="text-lg font-bold text-foreground mt-0.5">Sign in to {portal.name}</h1>
           </div>
         </div>
+
+        {/* Admin preview — signed-in workspace owner / super admin */}
+        {admin?.canPreview && (
+          <button
+            onClick={enterAsAdmin}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-3 text-sm font-medium text-foreground bg-white shadow-sm transition-colors hover:bg-muted"
+            style={{ borderColor: accent }}
+          >
+            <ShieldCheck className="h-4 w-4" style={{ color: accent }} />
+            Enter as admin — preview what the client sees
+          </button>
+        )}
 
         {/* Magic link card */}
         <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-sm">

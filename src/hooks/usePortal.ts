@@ -93,6 +93,8 @@ export interface PortalSession {
   accessId: string;
   authenticated: boolean;
   portalSlug: string;
+  /** True when a signed-in GC/admin is previewing the portal (not a real client). */
+  isAdminPreview?: boolean;
 }
 
 // ─── Portal Tier Limits ───────────────────────────────────────────────────────
@@ -176,6 +178,36 @@ export function usePortalBySlug(slug: string | undefined) {
       return data as ClientPortal;
     },
     enabled: !!slug,
+  });
+}
+
+/**
+ * Can the currently signed-in app user preview this portal as an admin?
+ * True when their workspace owns the portal (or they're a super admin). Lets the
+ * GC open the public portal link and see exactly what the client sees, without a
+ * magic-link invite. Returns the user's email for the preview session label.
+ */
+export function usePortalAdminAccess(portal?: ClientPortal | null) {
+  return useQuery({
+    queryKey: ['portal-admin-access', portal?.id],
+    enabled: !!portal,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async (): Promise<{ canPreview: boolean; email: string | null }> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { canPreview: false, email: null };
+      const email = user.email ?? null;
+      // Workspace owner?
+      try {
+        const { data: ws } = await supabase.rpc('get_my_workspace_id');
+        if (ws && ws === portal!.workspace_id) return { canPreview: true, email };
+      } catch { /* fall through */ }
+      // Super admin?
+      try {
+        const { data: isSuper } = await supabase.rpc('is_super_admin');
+        if (isSuper === true) return { canPreview: true, email };
+      } catch { /* fall through */ }
+      return { canPreview: false, email };
+    },
   });
 }
 
