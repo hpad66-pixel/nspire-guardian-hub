@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, ClipboardList } from 'lucide-react';
-import { usePortalData, type PortalTrackerItem } from '@/hooks/usePortalData';
+import { ChevronRight, ClipboardList, Send, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { usePortalData, usePortalAction, type PortalTrackerItem } from '@/hooks/usePortalData';
 
 const STATUS: Record<string, { label: string; bg: string; fg: string; bar: string }> = {
   open:      { label: 'Open',        bg: '#ECEEF1', fg: '#555',    bar: '#cfd4da' },
@@ -64,17 +65,29 @@ export function PortalProjectLog({ slug, accent }: { slug?: string; accent: stri
 
         {/* Items */}
         <div className="mt-3 space-y-2">
-          {list.map((i) => <LogRow key={i.id} item={i} accent={accent} />)}
+          {list.map((i) => <LogRow key={i.id} item={i} accent={accent} slug={slug} />)}
         </div>
       </div>
     </div>
   );
 }
 
-function LogRow({ item, accent }: { item: PortalTrackerItem; accent: string }) {
+function LogRow({ item, accent, slug }: { item: PortalTrackerItem; accent: string; slug?: string }) {
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const act = usePortalAction(slug);
   const st = STATUS[item.status] ?? STATUS.open;
   const last = item.updates[0]?.created_at;
+
+  const send = () => {
+    const body = draft.trim();
+    if (!body) return;
+    act.mutate({ action: 'tracker_comment', item_id: item.id, body }, {
+      onSuccess: () => { setDraft(''); toast.success('Comment sent to your builder'); },
+      onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not send'),
+    });
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left hover:bg-muted/40">
@@ -87,18 +100,37 @@ function LogRow({ item, accent }: { item: PortalTrackerItem; accent: string }) {
       {open && (
         <div className="border-t border-border bg-muted/20 p-3">
           {item.description && <p className="mb-2.5 text-[12.5px] text-foreground/80">{item.description}</p>}
-          {item.updates.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground">No updates yet.</p>
-          ) : (
+          {item.updates.length > 0 && (
             <div className="space-y-2">
               {item.updates.map((u, k) => (
-                <div key={k} className="rounded-md border border-border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${accent}` }}>
-                  <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span style={{ color: accent }}>{u.author || 'Contractor'}</span></div>
-                  <div className="mt-0.5 text-[12.5px]">{u.body}</div>
-                </div>
+                u.is_client ? (
+                  <div key={k} className="ml-6 rounded-md border border-border bg-white px-3 py-2" style={{ borderRight: `3px solid ${accent}` }}>
+                    <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span style={{ color: accent }}>{u.author || 'You'}</span> <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">You</span></div>
+                    <div className="mt-0.5 text-[12.5px]">{u.body}</div>
+                  </div>
+                ) : (
+                  <div key={k} className="rounded-md border border-border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${accent}` }}>
+                    <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span style={{ color: accent }}>{u.author || 'Contractor'}</span></div>
+                    <div className="mt-0.5 text-[12.5px]">{u.body}</div>
+                  </div>
+                )
               ))}
             </div>
           )}
+          {/* Client comment composer — controlled write-back channel */}
+          <div className="mt-2.5 flex items-center gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+              placeholder="Add a comment for your builder…"
+              className="flex-1 rounded-lg border border-input bg-white px-2.5 py-1.5 text-[12.5px] outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <button onClick={send} disabled={act.isPending || !draft.trim()}
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-white transition-opacity disabled:opacity-50" style={{ background: accent }}>
+              {act.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
       )}
     </div>

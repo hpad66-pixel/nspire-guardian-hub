@@ -42,6 +42,22 @@ serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "tracker_comment") {
+      const itemId = String(body.item_id ?? "");
+      const text = String(body.body ?? "").trim();
+      if (!itemId || !text) return json({ error: "Missing item or comment" }, 400);
+      // The item must belong to THIS portal's project AND be client-visible.
+      const { data: item } = await db.from("tracker_items")
+        .select("id, project_id, tenant_id, client_visible").eq("id", itemId).maybeSingle();
+      if (!item || item.project_id !== portal.project_id || item.client_visible === false) return json({ error: "Not found" }, 404);
+      const { error } = await db.from("tracker_updates").insert({
+        tenant_id: item.tenant_id, project_id: portal.project_id, item_id: itemId,
+        author: body.name ? String(body.name) : "Client", body: text, is_client: true,
+      });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "respond_action_item" || action === "mark_viewed") {
       const itemId = String(body.item_id ?? "");
       if (!itemId) return json({ error: "Missing item_id" }, 400);

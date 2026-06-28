@@ -17,6 +17,7 @@ export interface TrackerUpdate {
   author: string | null;
   body: string;
   status_to: string | null;
+  is_client?: boolean;
   created_at: string;
 }
 
