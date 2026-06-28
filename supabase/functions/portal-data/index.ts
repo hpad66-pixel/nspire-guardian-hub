@@ -74,6 +74,20 @@ serve(async (req) => {
       .select("original_contract, approved_co_value, revised_contract")
       .eq("project_id", portal.project_id).maybeSingle()).data, null as any);
 
+    // Read-only Project Log for the client: only client-visible items + their log.
+    const trackerItems = await grab(async () => (await db.from("tracker_items")
+      .select("id, code, owner, category, division, title, description, priority, status, updated_at")
+      .eq("project_id", portal.project_id).eq("client_visible", true)
+      .order("created_at", { ascending: true })).data ?? [], [] as any[]);
+    const trackerUpdates = await grab(async () => {
+      const ids = (trackerItems as any[]).map((i) => i.id);
+      if (!ids.length) return [];
+      return (await db.from("tracker_updates").select("item_id, author, body, status_to, created_at")
+        .in("item_id", ids).order("created_at", { ascending: false })).data ?? [];
+    }, [] as any[]);
+    const updByItem: Record<string, any[]> = {};
+    (trackerUpdates as any[]).forEach((u) => { (updByItem[u.item_id] ??= []).push({ author: u.author, body: u.body, status_to: u.status_to, created_at: u.created_at }); });
+
     const prio: Record<string, number> = { urgent: 0, normal: 1, low: 2 };
     const co = changeOrders as any[];
     const pendingCo = co.filter((c) => ["pending", "draft"].includes(c.status) && !c.approved_at);
@@ -125,6 +139,11 @@ serve(async (req) => {
         approved_changes: finance.approved_co_value,
         revised_contract: finance.revised_contract,
       } : null,
+      tracker: (trackerItems as any[]).map((i) => ({
+        id: i.id, code: i.code, owner: i.owner, category: i.category, division: i.division,
+        title: i.title, description: i.description, priority: i.priority, status: i.status,
+        updated_at: i.updated_at, updates: updByItem[i.id] ?? [],
+      })),
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);

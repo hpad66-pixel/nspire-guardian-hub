@@ -33,6 +33,7 @@ export interface TrackerItem {
   status: TrackerStatus;
   due_date: string | null;
   sort_order: number;
+  client_visible: boolean;
   created_at: string;
   updated_at: string;
   closed_at: string | null;
@@ -68,7 +69,7 @@ export interface CreateTrackerItemInput {
   projectId: string;
   code?: string; owner?: string; category?: TrackerCategory; division?: string;
   title: string; description?: string; priority?: TrackerPriority; status?: TrackerStatus;
-  dueDate?: string | null; firstNote?: string;
+  dueDate?: string | null; firstNote?: string; clientVisible?: boolean;
 }
 
 export function useCreateTrackerItem() {
@@ -88,6 +89,7 @@ export function useCreateTrackerItem() {
         priority: input.priority ?? 'med',
         status,
         due_date: input.dueDate || null,
+        client_visible: input.clientVisible ?? true,
         created_by: uid,
         closed_at: status === 'done' ? new Date().toISOString() : null,
       }).select().single();
