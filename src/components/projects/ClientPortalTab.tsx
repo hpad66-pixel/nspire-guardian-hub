@@ -32,7 +32,7 @@ import {
   type ActionItemPriority,
 } from '@/hooks/useClientCommunication';
 import { useAuth } from '@/hooks/useAuth';
-import { usePortalByProject, usePortalAccess, useInviteContact, type PortalAccess } from '@/hooks/usePortal';
+import { usePortalByProject, usePortalAccess, useInviteContact, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useNavigate } from 'react-router-dom';
 import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
@@ -309,7 +309,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
 
 // ─── Portal Link ──────────────────────────────────────────────────────────────
 
-function PortalLink({ slug }: { slug: string }) {
+function PortalLink({ slug, portalId }: { slug: string; portalId: string }) {
   const [copied, setCopied] = useState(false);
   const url = `${window.location.origin}/portal/${slug}`;
 
@@ -317,6 +317,22 @@ function PortalLink({ slug }: { slug: string }) {
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  // One-click admin preview: drop a preview session and open the live portal.
+  // The viewer is the workspace owner (they're on their own project), so this
+  // shows exactly what the client sees, banner and all.
+  function preview() {
+    setPortalSession({
+      portalId,
+      email: 'admin',
+      name: 'Admin preview',
+      accessId: 'admin-preview',
+      authenticated: true,
+      portalSlug: slug,
+      isAdminPreview: true,
+    });
+    window.open(`/portal/${slug}/home`, '_blank');
   }
 
   return (
@@ -342,8 +358,11 @@ function PortalLink({ slug }: { slug: string }) {
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
       </div>
+      <Button size="sm" onClick={preview} className="w-full gap-1.5">
+        <Eye className="h-3.5 w-3.5" /> Preview as client
+      </Button>
       <p className="text-[11px] text-muted-foreground">
-        The client must be signed in (or invited) to view their portal.
+        Opens the live portal in admin preview — exactly what your client sees. Clients sign in (or are invited) to view it themselves.
       </p>
     </div>
   );
@@ -883,7 +902,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
       {activeView === 'overview' && (
         <div className="space-y-5">
           {/* Portal link — only when a portal row exists (#17) */}
-          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} />}
+          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} portalId={portal.id} />}
 
           {/* Interactive Schedule & Access */}
           <ScheduleAccessSection projectId={projectId} />
