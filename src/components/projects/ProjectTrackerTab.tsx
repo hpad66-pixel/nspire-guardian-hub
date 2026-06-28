@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
@@ -19,6 +20,7 @@ import { toast } from 'sonner';
 import {
   useTrackerItems, useCreateTrackerItem, useUpdateTrackerItem, useDeleteTrackerItem,
   useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
+  markTrackerCommentsSeen,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
@@ -55,6 +57,13 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
   const setStatus = useSetTrackerStatus();
   const update = useUpdateTrackerItem();
   const ai = useProjectAiEnabled(projectId);
+  const qc = useQueryClient();
+  // Opening the log marks client comments seen, clearing the tab badge.
+  useEffect(() => {
+    markTrackerCommentsSeen(projectId);
+    qc.invalidateQueries({ queryKey: ['tracker-unread', projectId] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, items.length]);
   const [summarizeOpen, setSummarizeOpen] = useState(false);
   const [ingestOpen, setIngestOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
