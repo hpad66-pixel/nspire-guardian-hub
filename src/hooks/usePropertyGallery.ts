@@ -16,6 +16,8 @@ export interface GalleryPhoto {
   is_hidden?: boolean;
   archived_at?: string | null;
   sort_order?: number;
+  /** Hand-picked for the client portal's highlight reel (direct uploads only). */
+  is_client_highlight?: boolean;
 }
 
 /** A direct-upload photo is the only kind we can hide/archive/album/arrange. */
@@ -150,6 +152,7 @@ export function usePropertyGallery(propertyId: string, filters?: GalleryFilters)
             is_hidden: !!gp.is_hidden,
             archived_at: gp.archived_at ?? null,
             sort_order: gp.sort_order ?? 0,
+            is_client_highlight: !!gp.is_client_highlight,
           });
         }
       });
@@ -272,7 +275,7 @@ export function useUpdatePhotoCaption() {
   });
 }
 
-export type BulkGalleryAction = 'hide' | 'unhide' | 'archive' | 'unarchive' | 'delete';
+export type BulkGalleryAction = 'hide' | 'unhide' | 'archive' | 'unarchive' | 'delete' | 'feature' | 'unfeature';
 
 /** Bulk hide / archive / delete on direct-upload photos (real photo_gallery ids). */
 export function useBulkGalleryActions() {
@@ -298,8 +301,26 @@ export function useBulkGalleryActions() {
         action === 'hide' ? { is_hidden: true }
         : action === 'unhide' ? { is_hidden: false }
         : action === 'archive' ? { archived_at: new Date().toISOString() }
+        : action === 'feature' ? { is_client_highlight: true }
+        : action === 'unfeature' ? { is_client_highlight: false }
         : { archived_at: null }; // unarchive
       const { error } = await db.update(patch).in('id', photoIds);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      if (vars.propertyId) queryClient.invalidateQueries({ queryKey: ['property-gallery', vars.propertyId] });
+      if (vars.projectId) queryClient.invalidateQueries({ queryKey: ['project-gallery', vars.projectId] });
+    },
+  });
+}
+
+/** Toggle a single direct-upload photo into / out of the client highlight reel. */
+export function useToggleClientHighlight() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ photoId, highlight }: { photoId: string; highlight: boolean; propertyId?: string; projectId?: string }) => {
+      const { error } = await (supabase.from('photo_gallery') as any)
+        .update({ is_client_highlight: highlight }).eq('id', photoId);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {

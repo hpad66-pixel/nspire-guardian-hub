@@ -1,6 +1,6 @@
 import { useState, useMemo, forwardRef } from 'react';
 import { format } from 'date-fns';
-import { Images, Plus, Search, Grid3x3, List, Trash2, CheckSquare, X, EyeOff, Eye, Archive, ArchiveRestore, FolderPlus, Check, QrCode } from 'lucide-react';
+import { Images, Plus, Search, Grid3x3, List, Trash2, CheckSquare, X, EyeOff, Eye, Archive, ArchiveRestore, FolderPlus, Check, QrCode, Star, StarOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -297,7 +297,7 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
       { action, photoIds: ids, propertyId: context === 'property' ? contextId : undefined, projectId: context === 'project' ? contextId : undefined },
       {
         onSuccess: () => {
-          const verb = action === 'delete' ? 'Deleted' : action === 'hide' ? 'Hidden' : action === 'unhide' ? 'Unhidden' : action === 'archive' ? 'Archived' : 'Restored';
+          const verb = action === 'delete' ? 'Deleted' : action === 'hide' ? 'Hidden' : action === 'unhide' ? 'Unhidden' : action === 'archive' ? 'Archived' : action === 'feature' ? 'Featured' : action === 'unfeature' ? 'Unfeatured' : 'Restored';
           toast.success(`${verb} ${ids.length} photo${ids.length !== 1 ? 's' : ''}`);
           exitSelect();
         },
@@ -529,6 +529,8 @@ export function PhotoGallery({ context, contextId, contextName, onBack }: PhotoG
           {view === 'active' && (
             <>
               <Button size="sm" variant="outline" onClick={() => setAddToAlbumOpen(true)}><FolderPlus className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Add to album</span></Button>
+              <Button size="sm" variant="outline" onClick={() => runBulk('feature')} disabled={bulk.isPending} title="Show these on the client portal highlight reel"><Star className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Feature</span></Button>
+              <Button size="sm" variant="outline" onClick={() => runBulk('unfeature')} disabled={bulk.isPending}><StarOff className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Unfeature</span></Button>
               <Button size="sm" variant="outline" onClick={() => runBulk('hide')} disabled={bulk.isPending}><EyeOff className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Hide</span></Button>
               <Button size="sm" variant="outline" onClick={() => runBulk('archive')} disabled={bulk.isPending}><Archive className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">Archive</span></Button>
             </>

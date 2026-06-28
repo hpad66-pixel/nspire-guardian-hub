@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, ExternalLink, Check, Trash2 } from 'lucide-react';
-import { useUpdatePhotoCaption, useDeleteGalleryPhoto } from '@/hooks/usePropertyGallery';
+import { CalendarIcon, ExternalLink, Check, Trash2, Star } from 'lucide-react';
+import { useUpdatePhotoCaption, useToggleClientHighlight } from '@/hooks/usePropertyGallery';
 import type { GalleryPhoto } from '@/hooks/usePropertyGallery';
 import { toast } from 'sonner';
 
@@ -51,6 +51,8 @@ export function GalleryPhotoCard({
   const [dateOpen, setDateOpen] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const updateCaption = useUpdatePhotoCaption();
+  const toggleHighlight = useToggleClientHighlight();
+  const featured = !!photo.is_client_highlight;
 
   useEffect(() => { setCaption(photo.caption || ''); }, [photo.caption]);
   useEffect(() => { setTakenAt(photo.taken_at); }, [photo.taken_at]);
@@ -118,15 +120,43 @@ export function GalleryPhotoCard({
             {sourceShortLabels[photo.source] || photo.source}
           </span>
         </div>
-        {/* Delete button — only for direct uploads */}
-        {photo.source === 'direct' && onDelete && (
-          <button
-            onClick={() => onDelete(photo)}
-            className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
-            title="Delete photo"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+        {/* Featured badge — visible to the client on the portal highlight reel */}
+        {featured && (
+          <div className="absolute bottom-2 left-2">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+              <Star className="h-2.5 w-2.5 fill-current" /> Client highlight
+            </span>
+          </div>
+        )}
+        {/* Direct-upload controls: feature toggle + delete */}
+        {photo.source === 'direct' && (
+          <div className="absolute top-2 right-2 flex items-center gap-1.5">
+            <button
+              onClick={() => toggleHighlight.mutate(
+                { photoId: photo.id, highlight: !featured, propertyId, projectId },
+                { onSuccess: () => toast.success(featured ? 'Removed from client highlights' : 'Featured for the client') }
+              )}
+              disabled={toggleHighlight.isPending}
+              className={cn(
+                'h-7 w-7 flex items-center justify-center rounded-full backdrop-blur-sm transition-opacity hover:scale-105',
+                featured
+                  ? 'bg-amber-500 text-white opacity-100'
+                  : 'bg-black/50 text-white opacity-0 group-hover:opacity-100'
+              )}
+              title={featured ? 'Remove from client highlights' : 'Feature for the client'}
+            >
+              <Star className={cn('h-3.5 w-3.5', featured && 'fill-current')} />
+            </button>
+            {onDelete && (
+              <button
+                onClick={() => onDelete(photo)}
+                className="h-7 w-7 flex items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                title="Delete photo"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         )}
         {saved && (
           <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full">

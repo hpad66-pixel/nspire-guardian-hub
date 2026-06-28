@@ -36,11 +36,17 @@ serve(async (req) => {
       .eq("project_id", portal.project_id).eq("status", "published")
       .order("published_at", { ascending: false }).limit(1).maybeSingle()).data, null as any);
 
-    // Client-visible progress photos: GC-curated gallery minus hidden/archived.
-    const photos = await grab(async () => (await db.from("photo_gallery")
-      .select("url, caption, taken_at")
-      .eq("project_id", portal.project_id).eq("is_hidden", false).is("archived_at", null)
-      .order("taken_at", { ascending: false }).limit(8)).data ?? [], [] as any[]);
+    // Client-visible progress photos: prefer the GC-curated highlight reel
+    // (is_client_highlight); if nothing is featured yet, fall back to the most
+    // recent gallery photos that aren't hidden/archived.
+    const fetchPhotos = async (highlightOnly: boolean) => {
+      let q = db.from("photo_gallery").select("url, caption, taken_at")
+        .eq("project_id", portal.project_id).eq("is_hidden", false).is("archived_at", null);
+      if (highlightOnly) q = q.eq("is_client_highlight", true);
+      return (await q.order("taken_at", { ascending: false }).limit(12)).data ?? [];
+    };
+    let photos = await grab(() => fetchPhotos(true), [] as any[]);
+    if (!(photos as any[]).length) photos = await grab(() => fetchPhotos(false), [] as any[]);
 
     const count = async (q: any): Promise<number> => { try { const { count } = await q; return count ?? 0; } catch { return 0; } };
     const punchOpen = await count(db.from("punch_items").select("id", { count: "exact", head: true }).eq("project_id", portal.project_id).in("status", ["open", "in_progress"]));
