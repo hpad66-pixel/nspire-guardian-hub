@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
-  CheckCircle2, RotateCcw, Eye, EyeOff,
+  CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -14,10 +15,11 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   useTrackerItems, useCreateTrackerItem, useUpdateTrackerItem, useDeleteTrackerItem,
-  useAddTrackerUpdate, useSetTrackerStatus,
-  type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory,
+  useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
+  type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
@@ -51,6 +53,9 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
   const del = useDeleteTrackerItem();
   const setStatus = useSetTrackerStatus();
   const update = useUpdateTrackerItem();
+  const ai = useProjectAiEnabled(projectId);
+  const [summarizeOpen, setSummarizeOpen] = useState(false);
+  const [ingestOpen, setIngestOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [fStatus, setFStatus] = useState<TrackerStatus | 'all'>('all');
@@ -150,9 +155,19 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 print:hidden">
         <Button onClick={() => setAddOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add item</Button>
-        <Button variant="outline" onClick={() => setExpanded(new Set(items.map(i => i.id)))}>Expand all</Button>
-        <Button variant="outline" onClick={() => setExpanded(new Set())}>Collapse all</Button>
+        {ai.enabled && (
+          <>
+            <Button variant="outline" onClick={() => setIngestOpen(true)} className="gap-1.5"><Mic className="h-4 w-4" /> Update from transcript</Button>
+            <Button variant="outline" onClick={() => setSummarizeOpen(true)} className="gap-1.5"><Sparkles className="h-4 w-4" /> Summarize for client</Button>
+          </>
+        )}
+        <Button variant="outline" onClick={() => setExpanded(new Set(items.map(i => i.id)))} className="hidden sm:inline-flex">Expand all</Button>
+        <Button variant="outline" onClick={() => setExpanded(new Set())} className="hidden sm:inline-flex">Collapse all</Button>
         <div className="flex-1" />
+        <label className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground" title="Turn AI features on or off for this client">
+          <Sparkles className="h-3.5 w-3.5" /> AI
+          <Switch checked={ai.enabled} onCheckedChange={(v) => ai.setEnabled(v)} disabled={ai.isSaving} className="scale-90" />
+        </label>
         <Button variant="outline" onClick={print} className="gap-1.5"><Printer className="h-4 w-4" /> Print / PDF</Button>
       </div>
 
@@ -195,6 +210,8 @@ export function ProjectTrackerTab({ projectId }: { projectId: string }) {
         <ItemModal projectId={projectId} item={editItem} owners={owners} onClose={() => { setAddOpen(false); setEditItem(null); }} />
       )}
       {updItem && <UpdateModal projectId={projectId} item={updItem} onClose={() => setUpdItem(null)} />}
+      {summarizeOpen && <SummarizeDialog items={items} onClose={() => setSummarizeOpen(false)} />}
+      {ingestOpen && <IngestDialog projectId={projectId} items={items} onClose={() => setIngestOpen(false)} />}
     </div>
   );
 }
@@ -301,6 +318,116 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy || !title.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save item'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SummarizeDialog({ items, onClose }: { items: TrackerItem[]; onClose: () => void }) {
+  const summarize = useTrackerSummarize();
+  const [result, setResult] = useState<{ title: string; summary_html: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const run = () => summarize.mutate({ items, projectName: '' }, { onSuccess: setResult });
+  // kick off once on open
+  useEffect(() => { run(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const copy = () => {
+    const tmp = document.createElement('div'); tmp.innerHTML = result?.summary_html ?? '';
+    navigator.clipboard.writeText((result?.title ? result.title + '\n\n' : '') + (tmp.innerText || '')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> Client update from the log</DialogTitle></DialogHeader>
+        {summarize.isPending && !result ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Writing a client-ready update…</div>
+        ) : result ? (
+          <div className="space-y-2">
+            <div className="text-[15px] font-semibold text-foreground">{result.title}</div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-[13px] leading-relaxed [&_li]:ml-4 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: result.summary_html }} />
+            <p className="text-[11px] text-muted-foreground">AI-drafted from your log — review before sending.</p>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">Couldn't generate a summary. Try again.</p>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={run} disabled={summarize.isPending}>Regenerate</Button>
+          <Button onClick={copy} disabled={!result} className="gap-1.5">{copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IngestDialog({ projectId, items, onClose }: { projectId: string; items: TrackerItem[]; onClose: () => void }) {
+  const ingest = useTrackerIngest();
+  const create = useCreateTrackerItem();
+  const addUpdate = useAddTrackerUpdate();
+  const [transcript, setTranscript] = useState('');
+  const [changes, setChanges] = useState<TrackerAiChange[] | null>(null);
+  const [accepted, setAccepted] = useState<Set<number>>(new Set());
+  const [applying, setApplying] = useState(false);
+
+  const read = () => ingest.mutate({ transcript, items }, { onSuccess: (c) => { setChanges(c); setAccepted(new Set(c.map((_, i) => i))); } });
+
+  const apply = async () => {
+    if (!changes) return;
+    setApplying(true);
+    try {
+      for (let i = 0; i < changes.length; i++) {
+        if (!accepted.has(i)) continue;
+        const c = changes[i];
+        if (c.is_new || !c.item_id) {
+          await create.mutateAsync({ projectId, code: c.code ?? undefined, owner: c.owner ?? undefined, category: 'general', title: c.title, status: c.new_status ?? 'open', firstNote: c.note });
+        } else {
+          await addUpdate.mutateAsync({ itemId: c.item_id, projectId, body: c.note, statusTo: c.new_status ?? '' });
+        }
+      }
+      toast.success('Log updated from transcript');
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not apply some updates');
+    } finally { setApplying(false); }
+  };
+
+  const itemTitle = (id: string | null) => items.find(i => i.id === id)?.title;
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Mic className="h-4 w-4 text-[var(--apas-sapphire)]" /> Update the log from a transcript</DialogTitle></DialogHeader>
+        {!changes ? (
+          <div className="space-y-2">
+            <p className="text-[13px] text-muted-foreground">Paste your Otter (or any) meeting transcript. AI maps what you said to the right items and drafts timestamped updates for you to review.</p>
+            <Textarea value={transcript} onChange={e => setTranscript(e.target.value)} rows={8} placeholder="Paste transcript here…" autoFocus />
+          </div>
+        ) : (
+          <div className="max-h-[55vh] space-y-2 overflow-auto">
+            {changes.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No actionable updates found in the transcript.</p> :
+              changes.map((c, i) => (
+                <label key={i} className="flex cursor-pointer gap-2.5 rounded-lg border border-border p-3 text-[13px]">
+                  <input type="checkbox" checked={accepted.has(i)} onChange={() => setAccepted(s => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; })} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--apas-sapphire)]" />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {c.is_new || !c.item_id
+                        ? <span className="rounded-full bg-[#E1F5EE] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0F6E56]">New item</span>
+                        : <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{c.code || 'Update'} · {itemTitle(c.item_id) ?? c.title}</span>}
+                      {c.new_status && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" style={{ background: STATUS[c.new_status].bg, color: STATUS[c.new_status].fg }}>→ {STATUS[c.new_status].label}</span>}
+                    </div>
+                    {(c.is_new || !c.item_id) && <div className="mt-1 font-semibold text-foreground">{c.title}</div>}
+                    <div className="mt-1 text-foreground/80">{c.note}</div>
+                  </div>
+                </label>
+              ))}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          {!changes
+            ? <Button onClick={read} disabled={ingest.isPending || !transcript.trim()} className="gap-1.5">{ingest.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Reading…</> : <><Sparkles className="h-4 w-4" /> Read transcript</>}</Button>
+            : <Button onClick={apply} disabled={applying || accepted.size === 0} className="gap-1.5">{applying ? <><Loader2 className="h-4 w-4 animate-spin" /> Applying…</> : `Apply ${accepted.size} update${accepted.size !== 1 ? 's' : ''}`}</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

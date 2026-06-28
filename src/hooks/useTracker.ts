@@ -158,6 +158,68 @@ export function useAddTrackerUpdate() {
   });
 }
 
+// ── Per-client AI switch (projects.ai_enabled) ───────────────────────────────
+export function useProjectAiEnabled(projectId: string | undefined) {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['project-ai-enabled', projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<boolean> => {
+      const { data } = await db.from('projects').select('ai_enabled').eq('id', projectId).maybeSingle();
+      return data?.ai_enabled ?? true;
+    },
+  });
+  const setEnabled = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await db.from('projects').update({ ai_enabled: enabled }).eq('id', projectId);
+      if (error) throw error;
+      return enabled;
+    },
+    onSuccess: (enabled) => {
+      qc.setQueryData(['project-ai-enabled', projectId], enabled);
+      toast.success(enabled ? 'AI enabled for this client' : 'AI disabled for this client');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not change AI setting'),
+  });
+  return { enabled: query.data ?? true, isLoading: query.isLoading, setEnabled: setEnabled.mutate, isSaving: setEnabled.isPending };
+}
+
+export interface TrackerAiChange {
+  item_id: string | null;
+  code: string | null;
+  owner: string | null;
+  title: string;
+  note: string;
+  new_status: TrackerStatus | null;
+  is_new: boolean;
+}
+
+// Summarize the log into a client-ready update.
+export function useTrackerSummarize() {
+  return useMutation({
+    mutationFn: async ({ items, projectName }: { items: TrackerItem[]; projectName: string }) => {
+      const slim = items.map(i => ({ status: i.status, owner: i.owner, title: i.title, latest: i.updates[0]?.body ?? '' }));
+      const { data, error } = await supabase.functions.invoke('tracker-ai', { body: { action: 'summarize', items: slim, project_name: projectName } });
+      if (error || !data?.ok) throw new Error(data?.error || 'Could not summarize');
+      return data as { title: string; summary_html: string };
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not summarize'),
+  });
+}
+
+// Parse an Otter/voice transcript into proposed log updates (review before apply).
+export function useTrackerIngest() {
+  return useMutation({
+    mutationFn: async ({ transcript, items }: { transcript: string; items: TrackerItem[] }) => {
+      const slim = items.map(i => ({ id: i.id, code: i.code, owner: i.owner, title: i.title, status: i.status }));
+      const { data, error } = await supabase.functions.invoke('tracker-ai', { body: { action: 'ingest', transcript, items: slim } });
+      if (error || !data?.ok) throw new Error(data?.error || 'Could not read transcript');
+      return (data.changes ?? []) as TrackerAiChange[];
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not read transcript'),
+  });
+}
+
 // Quick status change that also drops a log entry, so the history stays complete.
 export function useSetTrackerStatus() {
   const qc = useQueryClient();
