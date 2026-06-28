@@ -34,6 +34,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { usePortalByProject, usePortalAccess, useInviteContact, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
 import { ClientDocumentsCard } from '@/components/projects/ClientDocumentsCard';
+import { SendDigestDialog } from '@/components/projects/SendDigestDialog';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useNavigate } from 'react-router-dom';
 import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
@@ -124,6 +125,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
   const { data: accessList = [] } = usePortalAccess(portal?.id);
   const inviteContact = useInviteContact(portal?.id ?? '');
   const sendEmail = useSendEmail();
+  const [digestOpen, setDigestOpen] = useState(false);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState('');
@@ -231,6 +233,10 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
             <Settings className="h-3 w-3" />
             Manage Portal
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setDigestOpen(true)} className="text-xs gap-1.5">
+            <MailIcon className="h-3 w-3" />
+            Email update
+          </Button>
           <Button size="sm" onClick={() => setInviteOpen(true)} className="text-xs gap-1.5">
             <UserPlus className="h-3 w-3" />
             Invite
@@ -318,6 +324,17 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {digestOpen && (
+        <SendDigestDialog
+          projectId={projectId}
+          portalName={portal.name}
+          portalSlug={portal.portal_slug}
+          accent={portal.brand_accent_color || '#1D6FE8'}
+          recipients={[...new Set([portal.client_contact_email, ...activeAccess.map(a => a.email)].filter(Boolean) as string[])]}
+          onClose={() => setDigestOpen(false)}
+        />
+      )}
     </div>
   );
 }
