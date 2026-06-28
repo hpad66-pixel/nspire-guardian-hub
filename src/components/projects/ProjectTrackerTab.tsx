@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
-  CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText,
+  CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText, Image as ImageIcon, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import {
   useTrackerItems, useCreateTrackerItem, useUpdateTrackerItem, useDeleteTrackerItem,
   useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
-  markTrackerCommentsSeen,
+  markTrackerCommentsSeen, uploadTrackerPhoto,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
@@ -293,6 +293,13 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
                     {u.is_client && <span className="ml-1.5 rounded-full bg-[#E1F5EE] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#0F6E56]">Client</span>}
                   </div>
                   <div className="mt-0.5 text-[13px]">{u.body}</div>
+                  {u.photos && u.photos.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {u.photos.map((url, k) => (
+                        <a key={k} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" loading="lazy" className="h-16 w-16 rounded-md object-cover ring-1 ring-border transition-transform hover:scale-105" /></a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
@@ -490,12 +497,40 @@ function UpdateModal({ projectId, item, onClose }: { projectId: string; item: Tr
   const add = useAddTrackerUpdate();
   const [body, setBody] = useState('');
   const [statusTo, setStatusTo] = useState<TrackerStatus | ''>('');
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const onFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      const urls = await Promise.all(Array.from(files).map(f => uploadTrackerPhoto(f, projectId)));
+      setPhotos(p => [...p, ...urls]);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Upload failed'); }
+    finally { setUploading(false); }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Add update · {item.code || item.title}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Update note</label><Textarea value={body} onChange={e => setBody(e.target.value)} rows={3} placeholder="What changed? (timestamp added automatically)" autoFocus /></div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Photos</label>
+            <div className="flex flex-wrap items-center gap-2">
+              {photos.map((url, i) => (
+                <div key={i} className="relative">
+                  <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-border" />
+                  <button onClick={() => setPhotos(p => p.filter((_, k) => k !== i))} className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"><X className="h-3 w-3" /></button>
+                </div>
+              ))}
+              <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-border text-muted-foreground hover:bg-muted">
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ImageIcon className="h-4 w-4" /><span className="text-[9px]">Add</span></>}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={e => { onFiles(e.target.files); e.target.value = ''; }} />
+              </label>
+            </div>
+          </div>
           <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Set status to</label>
             <Select value={statusTo || 'keep'} onValueChange={(v) => setStatusTo(v === 'keep' ? '' : v as TrackerStatus)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -504,7 +539,7 @@ function UpdateModal({ projectId, item, onClose }: { projectId: string; item: Tr
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => add.mutate({ itemId: item.id, projectId, body, statusTo }, { onSuccess: onClose })} disabled={add.isPending || (!body.trim() && !statusTo)}>
+          <Button onClick={() => add.mutate({ itemId: item.id, projectId, body, statusTo, photos }, { onSuccess: onClose })} disabled={add.isPending || uploading || (!body.trim() && !statusTo && photos.length === 0)}>
             {add.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Post update'}
           </Button>
         </DialogFooter>

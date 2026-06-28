@@ -72,6 +72,17 @@ export function PortalProjectLog({ slug, accent }: { slug?: string; accent: stri
   );
 }
 
+function UpdatePhotos({ photos }: { photos?: string[] }) {
+  if (!photos || photos.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {photos.map((url, i) => (
+        <a key={i} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" loading="lazy" className="h-16 w-16 rounded-md object-cover ring-1 ring-border transition-transform hover:scale-105" /></a>
+      ))}
+    </div>
+  );
+}
+
 function LogRow({ item, accent, slug }: { item: PortalTrackerItem; accent: string; slug?: string }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -107,11 +118,13 @@ function LogRow({ item, accent, slug }: { item: PortalTrackerItem; accent: strin
                   <div key={k} className="ml-6 rounded-md border border-border bg-white px-3 py-2" style={{ borderRight: `3px solid ${accent}` }}>
                     <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span style={{ color: accent }}>{u.author || 'You'}</span> <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">You</span></div>
                     <div className="mt-0.5 text-[12.5px]">{u.body}</div>
+                    <UpdatePhotos photos={u.photos} />
                   </div>
                 ) : (
                   <div key={k} className="rounded-md border border-border bg-white px-3 py-2" style={{ borderLeft: `3px solid ${accent}` }}>
                     <div className="text-[11px] font-semibold text-muted-foreground">{fmt(u.created_at)} · <span style={{ color: accent }}>{u.author || 'Contractor'}</span></div>
                     <div className="mt-0.5 text-[12.5px]">{u.body}</div>
+                    <UpdatePhotos photos={u.photos} />
                   </div>
                 )
               ))}
