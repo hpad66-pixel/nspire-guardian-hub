@@ -152,3 +152,6 @@ verify_jwt = false
 # Public client-portal data — slug-scoped, service-role, client-safe fields only.
 [functions.portal-data]
 verify_jwt = false
+
+[functions.portal-action]
+verify_jwt = false
