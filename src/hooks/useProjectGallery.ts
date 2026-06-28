@@ -81,6 +81,7 @@ export function useProjectGallery(projectId: string, filters?: GalleryFilters) {
             is_hidden: !!gp.is_hidden,
             archived_at: gp.archived_at ?? null,
             sort_order: gp.sort_order ?? 0,
+            is_client_highlight: !!gp.is_client_highlight,
           });
         }
       });
