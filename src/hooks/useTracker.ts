@@ -157,6 +157,19 @@ export function useDeleteTrackerUpdate() {
   });
 }
 
+// Edit the text of a single update (admin/contractor only).
+export function useEditTrackerUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId, body }: { id: string; projectId: string; body: string }) => {
+      const { error } = await db.from('tracker_updates').update({ body }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['tracker-items', v.projectId] }); toast.success('Update edited'); },
+    onError: (e: Error) => toast.error(e.message || 'Could not edit update'),
+  });
+}
+
 // Merge several items into one: move all their updates onto the target, log the
 // merge, then delete the now-empty source items.
 export function useMergeTrackerItems() {
