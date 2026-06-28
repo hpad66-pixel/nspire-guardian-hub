@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import {
   useTrackerItems, useCreateTrackerItem, useUpdateTrackerItem, useDeleteTrackerItem,
   useAddTrackerUpdate, useSetTrackerStatus, useProjectAiEnabled, useTrackerSummarize, useTrackerIngest,
-  useMergeTrackerItems, useBulkDeleteTrackerItems, markTrackerCommentsSeen, uploadTrackerPhoto,
+  useMergeTrackerItems, useBulkDeleteTrackerItems, useDeleteTrackerUpdate, markTrackerCommentsSeen, uploadTrackerPhoto,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
@@ -59,6 +59,7 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
   const update = useUpdateTrackerItem();
   const merge = useMergeTrackerItems();
   const bulkDelete = useBulkDeleteTrackerItems();
+  const delUpdate = useDeleteTrackerUpdate();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mergeOpen, setMergeOpen] = useState(false);
@@ -223,7 +224,8 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
               onEdit={() => setEditItem(i)} onUpdate={() => setUpdItem(i)}
               onDelete={() => { if (confirm(`Delete ${i.code || ''} — "${i.title}"? This cannot be undone.`)) del.mutate({ id: i.id, projectId }); }}
               onStatus={(s) => setStatus.mutate({ id: i.id, projectId, status: s })}
-              onToggleClient={() => update.mutate({ id: i.id, projectId, patch: { client_visible: !i.client_visible } as any })} />
+              onToggleClient={() => update.mutate({ id: i.id, projectId, patch: { client_visible: !i.client_visible } as any })}
+              onDeleteUpdate={(uid) => { if (confirm('Delete this update? This cannot be undone.')) delUpdate.mutate({ id: uid, projectId }); }} />
           ))}
         </div>
       )}
@@ -286,8 +288,8 @@ function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; p
   );
 }
 
-function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient, selectMode, selected, onSelect }: {
-  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void;
+function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient, onDeleteUpdate, selectMode, selected, onSelect }: {
+  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void; onDeleteUpdate: (updateId: string) => void;
   selectMode?: boolean; selected?: boolean; onSelect?: () => void;
 }) {
   const st = STATUS[item.status]; const pr = PRIORITY[item.priority];
@@ -310,7 +312,13 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
           <div className="space-y-2">
             {item.updates.length === 0 ? <p className="text-[12.5px] text-muted-foreground">No updates yet.</p> :
               item.updates.map(u => (
-                <div key={u.id} className={cn('rounded-md border border-border border-l-[3px] bg-background px-3 py-2', u.is_client ? 'border-l-[#0F6E56]' : 'border-l-[var(--apas-sapphire)]')}>
+                <div key={u.id} className={cn('group/upd relative rounded-md border border-border border-l-[3px] bg-background px-3 py-2', u.is_client ? 'border-l-[#0F6E56]' : 'border-l-[var(--apas-sapphire)]')}>
+                  <button
+                    onClick={() => onDeleteUpdate(u.id)}
+                    title="Delete this update"
+                    className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/upd:opacity-100">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                   <div className="text-[11px] font-semibold text-muted-foreground">
                     {fmt(u.created_at)} · <span className={u.is_client ? 'text-[#0F6E56]' : 'text-[var(--apas-sapphire)]'}>{u.author || 'Contractor'}</span>
                     {u.is_client && <span className="ml-1.5 rounded-full bg-[#E1F5EE] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#0F6E56]">Client</span>}

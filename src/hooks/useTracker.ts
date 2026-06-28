@@ -143,6 +143,20 @@ export function useDeleteTrackerItem() {
   });
 }
 
+// Delete a single timestamped update (admin/contractor only — the portal is
+// read-only). Handy for pruning duplicate notes from Otter transcripts.
+export function useDeleteTrackerUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string; projectId: string }) => {
+      const { error } = await db.from('tracker_updates').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['tracker-items', v.projectId] }); toast.success('Update deleted'); },
+    onError: (e: Error) => toast.error(e.message || 'Could not delete update'),
+  });
+}
+
 // Merge several items into one: move all their updates onto the target, log the
 // merge, then delete the now-empty source items.
 export function useMergeTrackerItems() {
