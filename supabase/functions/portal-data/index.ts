@@ -52,6 +52,30 @@ serve(async (req) => {
     const punchOpen = await count(db.from("punch_items").select("id", { count: "exact", head: true }).eq("project_id", portal.project_id).in("status", ["open", "in_progress"]));
     const punchClosed = await count(db.from("punch_items").select("id", { count: "exact", head: true }).eq("project_id", portal.project_id).in("status", ["completed", "verified"]));
 
+    // Action items the client must act on (or has just acted on). Excludes resolved/cancelled.
+    const actionItems = await grab(async () => (await db.from("client_action_items")
+      .select("id, action_type, title, description, options, client_selection, client_response, amount, due_date, priority, status, linked_change_order_id, sent_at, responded_at")
+      .eq("project_id", portal.project_id).in("status", ["pending", "viewed", "responded"])
+      .order("due_date", { ascending: true, nullsFirst: false })).data ?? [], [] as any[]);
+
+    // Potential / approved change orders the client should see (shared with them).
+    const changeOrders = await grab(async () => (await db.from("change_orders")
+      .select("id, co_no, title, description, amount, days_impact, status, sign_token, sent_to_client_at, approved_at")
+      .eq("project_id", portal.project_id).not("sent_to_client_at", "is", null)
+      .order("co_no", { ascending: false })).data ?? [], [] as any[]);
+
+    // The client's own questions / concerns and the GC's answers.
+    const questions = await grab(async () => (await db.from("portal_document_requests")
+      .select("id, subject, message, request_type, status, response_message, created_at, responded_at")
+      .eq("portal_id", portal.id).order("created_at", { ascending: false }).limit(20)).data ?? [], [] as any[]);
+
+    const prio: Record<string, number> = { urgent: 0, normal: 1, low: 2 };
+    const co = changeOrders as any[];
+    const pendingCo = co.filter((c) => ["pending", "draft"].includes(c.status) && !c.approved_at);
+    const scheduleImpactDays = co.filter((c) => c.status === "approved").reduce((s, c) => s + (c.days_impact || 0), 0);
+    const pendingExposure = pendingCo.reduce((s, c) => s + (c.amount || 0), 0);
+    const pendingDays = pendingCo.reduce((s, c) => s + (c.days_impact || 0), 0);
+
     return json({
       ok: true,
       portal: { name: portal.name, accent: portal.brand_accent_color, welcome: portal.welcome_message },
@@ -70,6 +94,24 @@ serve(async (req) => {
       } : null,
       punch: { open: punchOpen, closed: punchClosed },
       photos: (photos as any[]).map((p) => ({ url: p.url, caption: p.caption, taken_at: p.taken_at })),
+      action_items: (actionItems as any[])
+        .sort((a, b) => (prio[a.priority] ?? 1) - (prio[b.priority] ?? 1))
+        .map((a) => ({
+          id: a.id, action_type: a.action_type, title: a.title, description: a.description,
+          options: Array.isArray(a.options) ? a.options : null, client_selection: a.client_selection,
+          client_response: a.client_response, amount: a.amount, due_date: a.due_date,
+          priority: a.priority, status: a.status, linked_change_order_id: a.linked_change_order_id,
+        })),
+      change_orders: co.map((c) => ({
+        id: c.id, co_no: c.co_no, title: c.title, description: c.description, amount: c.amount,
+        days_impact: c.days_impact, status: c.status, sign_token: c.sign_token,
+        approved: !!c.approved_at, sent_at: c.sent_to_client_at,
+      })),
+      questions: (questions as any[]).map((q) => ({
+        id: q.id, subject: q.subject, message: q.message, request_type: q.request_type,
+        status: q.status, response: q.response_message, created_at: q.created_at, responded_at: q.responded_at,
+      })),
+      schedule: { pending_exposure: pendingExposure, pending_days: pendingDays, approved_impact_days: scheduleImpactDays },
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
