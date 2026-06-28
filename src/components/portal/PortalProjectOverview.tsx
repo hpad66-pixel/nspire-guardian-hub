@@ -43,8 +43,11 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
   const nextMilestone = milestones.find((m) => m.status !== 'completed' && m.date);
   const openItems = action_items.filter((a) => a.status === 'pending' || a.status === 'viewed');
-  const pendingCOs = change_orders.filter((c) => !c.approved && c.status !== 'rejected');
-  const decidedCOs = change_orders.filter((c) => c.approved || c.status === 'rejected');
+  // A CO is "decided" once approved, executed, rejected, or voided — only the
+  // rest are genuinely awaiting the client.
+  const isDecidedCO = (c: PortalChangeOrder) => c.approved || ['approved', 'executed', 'rejected', 'void'].includes(c.status);
+  const pendingCOs = change_orders.filter((c) => !isDecidedCO(c));
+  const decidedCOs = change_orders.filter(isDecidedCO);
   const attentionCount = openItems.length + pendingCOs.length;
 
   return (
@@ -201,8 +204,9 @@ function StatTile({ label, value, sub, subTone, accent, progress }: { label: str
 }
 
 function statusPill(status: string, approved: boolean): { label: string; bg: string; fg: string } {
-  if (approved || status === 'approved') return { label: 'Approved', bg: '#E1F5EE', fg: '#0F6E56' };
+  if (approved || status === 'approved' || status === 'executed') return { label: 'Approved', bg: '#E1F5EE', fg: '#0F6E56' };
   if (status === 'rejected') return { label: 'Declined', bg: '#FCEBEB', fg: '#A32D2D' };
+  if (status === 'void') return { label: 'Voided', bg: '#F1EFE8', fg: '#5F5E5A' };
   return { label: 'Awaiting you', bg: '#FAEEDA', fg: '#854F0B' };
 }
 
@@ -252,7 +256,7 @@ function PendingChangeOrderCard({ co, accent }: { co: PortalChangeOrder; accent:
 
 function ChangeOrderRow({ co, last }: { co: PortalChangeOrder; last: boolean }) {
   const pill = statusPill(co.status, co.approved);
-  const reviewable = !co.approved && co.status !== 'rejected' && co.sign_token;
+  const reviewable = !co.approved && !['approved', 'executed', 'rejected', 'void'].includes(co.status) && co.sign_token;
   return (
     <div className={`flex items-center gap-2.5 px-3.5 py-2.5 ${last ? '' : 'border-b border-border'}`}>
       <span className="w-9 shrink-0 text-[12px] text-muted-foreground">#{co.co_no ?? '—'}</span>

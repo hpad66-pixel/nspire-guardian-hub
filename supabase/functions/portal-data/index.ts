@@ -105,7 +105,10 @@ serve(async (req) => {
       change_orders: co.map((c) => ({
         id: c.id, co_no: c.co_no, title: c.title, description: c.description, amount: c.amount,
         days_impact: c.days_impact, status: c.status, sign_token: c.sign_token,
-        approved: !!c.approved_at, sent_at: c.sent_to_client_at,
+        // Executed/approved are both "decided" to the client — executed is the
+        // more final state (fully countersigned), so it reads as approved.
+        approved: !!c.approved_at || c.status === "approved" || c.status === "executed",
+        sent_at: c.sent_to_client_at,
       })),
       questions: (questions as any[]).map((q) => ({
         id: q.id, subject: q.subject, message: q.message, request_type: q.request_type,
