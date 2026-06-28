@@ -143,6 +143,40 @@ export function useDeleteTrackerItem() {
   });
 }
 
+// Merge several items into one: move all their updates onto the target, log the
+// merge, then delete the now-empty source items.
+export function useMergeTrackerItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ targetId, sourceIds, projectId, summary }: { targetId: string; sourceIds: string[]; projectId: string; summary?: string }) => {
+      const sources = sourceIds.filter(id => id !== targetId);
+      if (!sources.length) return;
+      const { error: e1 } = await db.from('tracker_updates').update({ item_id: targetId }).in('item_id', sources);
+      if (e1) throw e1;
+      if (summary) {
+        const { uid, name } = await authorName();
+        await db.from('tracker_updates').insert({ project_id: projectId, item_id: targetId, author: name, created_by: uid, body: summary });
+      }
+      const { error: e2 } = await db.from('tracker_items').delete().in('id', sources);
+      if (e2) throw e2;
+    },
+    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['tracker-items', v.projectId] }); toast.success('Items merged'); },
+    onError: (e: Error) => toast.error(e.message || 'Merge failed'),
+  });
+}
+
+export function useBulkDeleteTrackerItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids }: { ids: string[]; projectId: string }) => {
+      const { error } = await db.from('tracker_items').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['tracker-items', v.projectId] }); toast.success('Items deleted'); },
+    onError: (e: Error) => toast.error(e.message || 'Delete failed'),
+  });
+}
+
 // Posts a timestamped update, optionally changing the item's status in the same
 // stroke (the way the contractor logs incremental progress).
 export function useAddTrackerUpdate() {
