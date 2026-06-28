@@ -146,7 +146,6 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
     );
   }
 
-  const scheduleUrl = `${window.location.origin}/portal/${portal.portal_slug}/schedule`;
   const activeAccess = accessList.filter((a) => a.is_active);
 
   const handleInvite = async () => {
@@ -158,24 +157,39 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
     });
 
     if (access?.magic_link_token) {
-      const magicUrl = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${access.magic_link_token}&redirect=schedule`;
+      const magicUrl = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${access.magic_link_token}`;
+      const accent = portal.brand_accent_color || '#1D6FE8';
       await sendEmail.mutateAsync({
         recipients: [inviteEmail.trim()],
-        subject: `You've been invited to view the project schedule — ${portal.name}`,
+        subject: `Your project portal — ${portal.name}`,
         bodyHtml: `
-          <div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 0">
-            <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">Project Schedule Access</h2>
-            <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px">
-              ${inviteName.trim() ? `Hi ${inviteName.trim()},` : 'Hi,'}<br/>
-              You've been invited to view the interactive schedule for <strong>${portal.name}</strong>.
-              Click below to access the project milestones, timeline, and Q&A.
-            </p>
-            <a href="${magicUrl}" style="display:inline-block;background:#1A1714;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">
-              Open Schedule →
-            </a>
-            <p style="color:#999;font-size:12px;margin-top:24px">
-              This link expires in 72 hours. If it expires, request a new one from your project team.
-            </p>
+          <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;background:#ffffff">
+            <div style="background:${accent};padding:22px 28px;border-radius:14px 14px 0 0">
+              <div style="color:#fff;font-size:20px;font-weight:700">${portal.name}</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:2px">Your live project portal</div>
+            </div>
+            <div style="border:1px solid #eee;border-top:none;border-radius:0 0 14px 14px;padding:26px 28px">
+              <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px">
+                ${inviteName.trim() ? `Hi ${inviteName.trim()},` : 'Hi,'}<br/>
+                You've been given access to the live portal for <strong>${portal.name}</strong> — one place to follow the whole project.
+              </p>
+              <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+                ${[
+                  ['📋', 'Progress updates &amp; the running project log'],
+                  ['💵', 'Change orders awaiting your approval, with cost &amp; schedule impact'],
+                  ['📅', 'Key dates, milestones, and punch-list status'],
+                  ['📷', 'Progress photos as the work happens'],
+                  ['💬', 'Ask questions and comment — straight to your builder'],
+                ].map(([i, t]) => `<tr><td style="padding:4px 0;font-size:14px;color:#444"><span style="display:inline-block;width:24px">${i}</span> ${t}</td></tr>`).join('')}
+              </table>
+              <a href="${magicUrl}" style="display:inline-block;background:${accent};color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
+                Open your portal →
+              </a>
+              <p style="color:#999;font-size:12px;margin-top:22px;line-height:1.5">
+                This secure sign-in link expires in 72 hours — if it does, just ask your project team for a fresh one.
+              </p>
+            </div>
+            <p style="text-align:center;color:#bbb;font-size:11px;margin-top:14px">Powered by Proj OS · projos.ai</p>
           </div>
         `,
       });
@@ -188,7 +202,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${token}&redirect=schedule`;
+    const url = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${token}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(token);
     setTimeout(() => setCopiedLink(null), 2000);
@@ -203,12 +217,12 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
             <CalendarRange className="h-4 w-4 text-accent" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Interactive Schedule</h3>
-            <p className="text-[11px] text-muted-foreground">Share the project timeline via magic link — no login required</p>
+            <h3 className="font-semibold text-sm">Client portal access</h3>
+            <p className="text-[11px] text-muted-foreground">Email the client a secure magic link to their live portal — no login required</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.open(scheduleUrl, '_blank')} className="text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => window.open(`${window.location.origin}/portal/${portal.portal_slug}`, '_blank')} className="text-xs gap-1.5">
             <ExternalLink className="h-3 w-3" />
             Preview
           </Button>
@@ -271,7 +285,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite to Schedule</DialogTitle>
+            <DialogTitle>Invite client to portal</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
