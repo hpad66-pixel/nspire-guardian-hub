@@ -20,6 +20,7 @@ const fmtDate = (d?: string | null) => {
   try { return new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
 };
 const money = (n?: number | null) => (n == null ? null : `${n < 0 ? '-' : '+'}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
+const usd = (n?: number | null) => (n == null ? '—' : `$${Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
 const isOverdue = (d?: string | null) => { if (!d) return false; try { return new Date(d + 'T23:59:59') < new Date(); } catch { return false; } };
 
 function SectionHeader({ icon, title, right }: { icon: React.ReactNode; title: string; right?: React.ReactNode }) {
@@ -37,7 +38,7 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data?.project) return null;
 
-  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, schedule } = data;
+  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, schedule, finance } = data;
   const curIdx = Math.max(0, phases.indexOf(project.phase));
   const punchTotal = punch.open + punch.closed;
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
@@ -115,6 +116,34 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
           />
           <div className="space-y-2.5">
             {pendingCOs.map((c) => <PendingChangeOrderCard key={c.id} co={c} accent={accent} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Contract summary — original → approved changes → revised, with $ approved to date */}
+      {finance && (finance.original_contract != null || finance.approved_changes != null || finance.revised_contract != null) && (
+        <div>
+          <SectionHeader icon={<DollarSign className="h-[18px] w-[18px] text-muted-foreground" />} title="Contract summary" />
+          <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-border">
+              <div className="pr-3">
+                <div className="text-[11px] text-muted-foreground">Original contract</div>
+                <div className="mt-1 text-[17px] font-bold text-foreground">{usd(finance.original_contract)}</div>
+              </div>
+              <div className="px-3">
+                <div className="text-[11px] text-muted-foreground">Approved changes</div>
+                <div className="mt-1 text-[17px] font-bold text-[#0F6E56]">{money(finance.approved_changes) ?? '$0'}</div>
+              </div>
+              <div className="pl-3">
+                <div className="text-[11px] text-muted-foreground">Revised contract</div>
+                <div className="mt-1 text-[17px] font-bold" style={{ color: accent }}>{usd(finance.revised_contract)}</div>
+              </div>
+            </div>
+            {schedule.pending_exposure > 0 && (
+              <div className="mt-3 border-t border-border pt-2.5 text-[12px] text-muted-foreground">
+                Pending your approval: <b className="font-semibold text-[#854F0B]">{money(schedule.pending_exposure)}</b> — not yet in the revised total.
+              </div>
+            )}
           </div>
         </div>
       )}

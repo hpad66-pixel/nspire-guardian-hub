@@ -340,6 +340,58 @@ export interface CreateActionItemParams {
   attachmentUrls?: string[];
 }
 
+// Emails the project's client a branded "you have something to review" note that
+// links to their portal. Recipient = the portal's client contact, else the first
+// active magic-link contact. Silent no-op when there's no portal/email on file.
+async function notifyClientOfActionItem(params: CreateActionItemParams) {
+  const { data: portal } = await supabase
+    .from('client_portals')
+    .select('id, portal_slug, name, client_contact_email')
+    .eq('project_id', params.projectId)
+    .neq('status', 'archived')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!portal?.portal_slug) return;
+
+  let email = portal.client_contact_email as string | null;
+  if (!email) {
+    const { data: access } = await supabase
+      .from('portal_access')
+      .select('email')
+      .eq('portal_id', portal.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    email = access?.email ?? null;
+  }
+  if (!email) return;
+
+  const link = `${window.location.origin}/portal/${portal.portal_slug}`;
+  const due = params.dueDate
+    ? ` by ${new Date(params.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : '';
+  const bodyHtml = `
+    <div style="font-family:Georgia,serif;color:#1A1714">
+      <p>You have a new item to review on your ${portal.name} portal${due ? `, needed${due}` : ''}:</p>
+      <p style="font-size:16px;font-weight:bold;margin:8px 0">${params.title}</p>
+      ${params.description ? `<p style="color:#444;line-height:1.5">${params.description}</p>` : ''}
+      <p style="margin:18px 0">
+        <a href="${link}" style="background:#1D6FE8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Open your portal</a>
+      </p>
+      <p style="color:#6B6B6B;font-size:13px">You can review and respond right from the portal.</p>
+    </div>`;
+  await supabase.functions.invoke('send-email', {
+    body: {
+      recipients: [email],
+      subject: `Action needed: ${params.title}`,
+      bodyHtml,
+      bodyText: `You have a new item to review on your ${portal.name} portal${due ? `, needed${due}` : ''}:\n\n${params.title}${params.description ? `\n\n${params.description}` : ''}\n\nOpen your portal: ${link}`,
+    },
+  });
+}
+
 export function useCreateActionItem() {
   const queryClient = useQueryClient();
 
@@ -371,6 +423,13 @@ export function useCreateActionItem() {
         .single();
 
       if (error) throw error;
+
+      // Best-effort: pull the client into the portal with an email notification.
+      // Never let a notification failure block creating the action item.
+      try {
+        await notifyClientOfActionItem(params);
+      } catch { /* notification is best-effort */ }
+
       return data as ClientActionItem;
     },
     onSuccess: (_, variables) => {

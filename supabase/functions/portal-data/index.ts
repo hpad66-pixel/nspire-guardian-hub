@@ -69,6 +69,11 @@ serve(async (req) => {
       .select("id, subject, message, request_type, status, response_message, created_at, responded_at")
       .eq("portal_id", portal.id).order("created_at", { ascending: false }).limit(20)).data ?? [], [] as any[]);
 
+    // Client-facing contract picture: original, approved changes to date, revised.
+    const finance = await grab(async () => (await db.from("v_project_financial_summary")
+      .select("original_contract, approved_co_value, revised_contract")
+      .eq("project_id", portal.project_id).maybeSingle()).data, null as any);
+
     const prio: Record<string, number> = { urgent: 0, normal: 1, low: 2 };
     const co = changeOrders as any[];
     const pendingCo = co.filter((c) => ["pending", "draft"].includes(c.status) && !c.approved_at);
@@ -115,6 +120,11 @@ serve(async (req) => {
         status: q.status, response: q.response_message, created_at: q.created_at, responded_at: q.responded_at,
       })),
       schedule: { pending_exposure: pendingExposure, pending_days: pendingDays, approved_impact_days: scheduleImpactDays },
+      finance: finance ? {
+        original_contract: finance.original_contract,
+        approved_changes: finance.approved_co_value,
+        revised_contract: finance.revised_contract,
+      } : null,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);

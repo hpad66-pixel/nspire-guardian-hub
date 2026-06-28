@@ -52,6 +52,7 @@ export interface PortalData {
   change_orders: PortalChangeOrder[];
   questions: PortalQuestion[];
   schedule: { pending_exposure: number; pending_days: number; approved_impact_days: number };
+  finance: { original_contract: number | null; approved_changes: number | null; revised_contract: number | null } | null;
 }
 
 export const PHASE_LABEL: Record<string, string> = {
