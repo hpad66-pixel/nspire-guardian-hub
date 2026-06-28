@@ -40,15 +40,43 @@ function Section({ s }: { s: CoSection }) {
   );
 }
 
-export const ChangeOrderDocument = forwardRef<HTMLDivElement, { spec: CoSpec; signatures?: SignatureImages }>(
-  function ChangeOrderDocument({ spec: specIn, signatures }, ref) {
+const STAMP = "#B0322B"; // classic stamp red
+
+/** Beautiful "EXECUTED" rubber-stamp, rasterizes cleanly via html2canvas
+ *  (solid borders + opacity + transform only — no blend modes or filters). */
+function ExecutedStamp({ date }: { date?: string | null }) {
+  return (
+    <div
+      aria-label="Executed"
+      style={{
+        position: "absolute", top: 28, right: 34, transform: "rotate(-13deg)",
+        opacity: 0.88, color: STAMP, textAlign: "center",
+        border: `3px solid ${STAMP}`, borderRadius: 10, padding: "7px 20px 5px",
+        fontFamily: "Georgia, 'Times New Roman', serif", pointerEvents: "none",
+      }}
+    >
+      <div style={{ position: "absolute", inset: 3, border: `1px solid ${STAMP}`, borderRadius: 7 }} />
+      <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 4, lineHeight: 1 }}>EXECUTED</div>
+      <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 2, marginTop: 4, textTransform: "uppercase" }}>
+        {date ? `Fully executed · ${date}` : "Fully executed"}
+      </div>
+    </div>
+  );
+}
+
+export const ChangeOrderDocument = forwardRef<
+  HTMLDivElement,
+  { spec: CoSpec; signatures?: SignatureImages; executed?: boolean; executedDate?: string | null }
+>(
+  function ChangeOrderDocument({ spec: specIn, signatures, executed, executedDate }, ref) {
     const spec = { ...specIn, pricing: recomputePricing(specIn.pricing) };
     const { from, to } = spec.parties;
     const td: React.CSSProperties = { padding: "5px 8px", fontSize: 11, borderBottom: "1px solid #eee" };
     const th: React.CSSProperties = { padding: "6px 8px", fontSize: 10.5, fontWeight: 700, background: "#F3EFE6", textAlign: "left", borderBottom: `1px solid ${GOLD}` };
 
     return (
-      <div ref={ref} style={{ width: 720, background: "#fff", color: INK, fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box" }}>
+      <div ref={ref} style={{ position: "relative", width: 720, background: "#fff", color: INK, fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box" }}>
+        {executed && <ExecutedStamp date={executedDate} />}
         <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{spec.doc.wordmark || "APAS CONSULTING"}</div>
         <div style={{ height: 3, background: GOLD, margin: "6px 0 18px" }} />
 

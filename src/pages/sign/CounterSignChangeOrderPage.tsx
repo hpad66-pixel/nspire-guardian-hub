@@ -108,7 +108,7 @@ export default function CounterSignChangeOrderPage() {
         {co?.spec ? (
           <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
             <div className="mx-auto" style={{ width: 720, maxWidth: "100%" }}>
-              <ChangeOrderDocument spec={co.spec} signatures={{ submitted: co.submitted_signature_path, accepted: done ? co.accepted_signature_path : null }} />
+              <ChangeOrderDocument spec={co.spec} executed={done || co.status === "executed"} signatures={{ submitted: co.submitted_signature_path, accepted: done ? co.accepted_signature_path : null }} />
             </div>
           </div>
         ) : co?.pdf_url ? (
