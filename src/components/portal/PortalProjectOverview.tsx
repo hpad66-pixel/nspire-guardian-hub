@@ -1,6 +1,6 @@
 import {
   Megaphone, Loader2, Images, AlertCircle, FileDiff,
-  CalendarClock, MessagesSquare, Check, DollarSign, Clock, ChevronRight,
+  CalendarClock, MessagesSquare, Check, DollarSign, Clock, ChevronRight, FileText, Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PortalQuestions } from '@/components/portal/PortalQuestions';
@@ -39,7 +39,7 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data?.project) return null;
 
-  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, schedule, finance } = data;
+  const { phases, project, milestones, latest_update, punch, photos, action_items, change_orders, schedule, finance, documents } = data;
   const curIdx = Math.max(0, phases.indexOf(project.phase));
   const punchTotal = punch.open + punch.closed;
   const punchPct = punchTotal ? Math.round((punch.closed / punchTotal) * 100) : 0;
@@ -198,6 +198,24 @@ export function PortalProjectOverview({ slug, accent }: { slug?: string; accent:
 
       {/* Project log — read-only incremental updates from the contractor */}
       <PortalProjectLog slug={slug} accent={accent} />
+
+      {/* Documents */}
+      {documents.length > 0 && (
+        <div>
+          <SectionHeader icon={<FileText className="h-[18px] w-[18px] text-muted-foreground" />} title="Documents" />
+          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            {documents.map((d, i) => (
+              <a key={d.id} href={d.url} target="_blank" rel="noopener noreferrer"
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-muted/40 ${i < documents.length - 1 ? 'border-b border-border' : ''}`}>
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-[13px] font-medium text-foreground">{d.name}</span>
+                {d.category && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{d.category}</span>}
+                <Download className="h-4 w-4 shrink-0" style={{ color: accent }} />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Questions & concerns */}
       <div>

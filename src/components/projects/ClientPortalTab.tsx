@@ -33,6 +33,7 @@ import {
 } from '@/hooks/useClientCommunication';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortalByProject, usePortalAccess, useInviteContact, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
+import { ClientDocumentsCard } from '@/components/projects/ClientDocumentsCard';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useNavigate } from 'react-router-dom';
 import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
@@ -937,6 +938,9 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
 
           {/* Interactive Schedule & Access */}
           <ScheduleAccessSection projectId={projectId} />
+
+          {/* Documents shared to the client */}
+          <ClientDocumentsCard projectId={projectId} />
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
