@@ -127,7 +127,7 @@ export default function MarginPage() {
 
             {classify && (
               <ClassifyDialog
-                co={classify.co} existing={classify.existing} subCOs={data.subCOs}
+                co={classify.co} existing={classify.existing} subCOs={data.subCOs} subs={data.subs}
                 onClose={() => setClassify(null)}
                 onSave={(treatment, subCost, subLabel, subCoId) => save.mutate(
                   { projectId: projectId!, primeCoId: classify.co.id, treatment, subCost, subLabel, subCoId },
@@ -172,14 +172,15 @@ function Line({ label, value, bold }: { label: string; value: string; bold?: boo
   return <div className={`flex justify-between py-1 text-[13px] ${bold ? 'border-t border-border pt-2 font-semibold' : 'text-muted-foreground'}`}><span>{label}</span><span className="tabular-nums text-foreground">{value}</span></div>;
 }
 
-function ClassifyDialog({ co, existing, subCOs, onSave, onClose, busy }: {
-  co: MarginCO; existing?: MarginClass; subCOs: MarginCO[];
+function ClassifyDialog({ co, existing, subCOs, subs, onSave, onClose, busy }: {
+  co: MarginCO; existing?: MarginClass; subCOs: MarginCO[]; subs: { id: string; name: string }[];
   onSave: (treatment: Treatment, subCost: number, subLabel: string | null, subCoId: string | null) => void; onClose: () => void; busy: boolean;
 }) {
   const [treatment, setTreatment] = useState<Treatment>(existing?.treatment ?? 'markup');
   const [subCost, setSubCost] = useState<string>(existing?.sub_cost ? String(existing.sub_cost) : '');
   const [subLabel, setSubLabel] = useState(existing?.sub_label ?? '');
   const [subCoId, setSubCoId] = useState<string>('');
+  const [customSub, setCustomSub] = useState<boolean>(!!existing?.sub_label && !subs.some((s) => s.name === existing.sub_label));
 
   const prime = Number(co.amount ?? 0);
   const cost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? prime : Number(subCost || 0);
@@ -208,14 +209,24 @@ function ClassifyDialog({ co, existing, subCOs, onSave, onClose, busy }: {
 
           {treatment === 'markup' && (
             <>
-              {subCOs.length > 0 && (
-                <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Use a sub change order (optional)</label>
-                  <Select value={subCoId} onValueChange={onPickSubCO}><SelectTrigger><SelectValue placeholder="Pick to pre-fill…" /></SelectTrigger>
-                    <SelectContent>{subCOs.map((c) => <SelectItem key={c.id} value={c.id}>{coLabel(c)} — {usd(Number(c.amount ?? 0))}</SelectItem>)}</SelectContent></Select></div>
-              )}
+              <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Subcontractor / vendor</label>
+                <Select value={customSub ? '__other__' : subLabel} onValueChange={(v) => { if (v === '__other__') { setCustomSub(true); setSubLabel(''); } else { setCustomSub(false); setSubLabel(v); } }}>
+                  <SelectTrigger><SelectValue placeholder="Choose a subcontractor…" /></SelectTrigger>
+                  <SelectContent>
+                    {subs.map((sub) => <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>)}
+                    <SelectItem value="__other__">Other / type a name…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {customSub && <Input className="mt-1.5" value={subLabel} onChange={(e) => setSubLabel(e.target.value)} placeholder="Vendor name" autoFocus />}
+                {subs.length === 0 && !customSub && <p className="mt-1 text-[11px] text-muted-foreground">No subcontractors in your directory yet — choose "Other" to type one.</p>}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Paid to sub ($)</label><Input type="number" value={subCost} onChange={(e) => setSubCost(e.target.value)} placeholder="1500" /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Sub / vendor</label><Input value={subLabel} onChange={(e) => setSubLabel(e.target.value)} placeholder="Ecotech" /></div>
+                {subCOs.length > 0 && (
+                  <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Pre-fill from sub CO</label>
+                    <Select value={subCoId} onValueChange={onPickSubCO}><SelectTrigger><SelectValue placeholder="Optional…" /></SelectTrigger>
+                      <SelectContent>{subCOs.map((c) => <SelectItem key={c.id} value={c.id}>{coLabel(c)} — {usd(Number(c.amount ?? 0))}</SelectItem>)}</SelectContent></Select></div>
+                )}
               </div>
             </>
           )}
