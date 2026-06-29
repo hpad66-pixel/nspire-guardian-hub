@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useCommitments } from '@/hooks/useCommitments';
-import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, type VendorPayApp } from '@/hooks/useVendorPayApps';
+import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
 import { useLienReleases } from '@/hooks/useLienReleases';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { openVendorPayAppReport } from '@/lib/financial/vendorPayAppReport';
@@ -108,16 +108,25 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
 
 function ReviewDialog({ sub, projectId, commitmentTitle, onClose }: { sub: VendorPayApp; projectId: string; commitmentTitle?: string; onClose: () => void }) {
   const updateStatus = useUpdateVendorPayAppStatus();
+  const convert = useConvertVendorPayApp();
   const lien = useLienReleases(projectId);
+  const [invoiceId, setInvoiceId] = useState<string | null>(sub.commitment_invoice_id);
   const total = Number(sub.total_completed ?? 0);
   const ret = Number(sub.retainage_amount ?? 0);
   const due = Number(sub.current_due ?? 0);
+  const busy = updateStatus.isPending || convert.isPending;
 
-  const approve = () => updateStatus.mutate({ id: sub.id, status: 'approved', projectId }, { onSuccess: () => toast.success('Approved') });
+  const approve = async () => {
+    try {
+      const id = await convert.mutateAsync({ sub, projectId });
+      setInvoiceId(id);
+      toast.success(id ? 'Approved · draft invoice created in Commitments' : 'Approved (link a commitment to create an invoice)');
+    } catch { /* handled */ }
+  };
   const markPaid = async () => {
     updateStatus.mutate({ id: sub.id, status: 'paid', projectId });
     try {
-      await (lien.create as any).mutateAsync({ direction: 'inbound', release_type: 'unconditional_progress', amount: due, through_date: sub.period_to ?? null });
+      await (lien.create as any).mutateAsync({ direction: 'inbound', release_type: 'unconditional_progress', amount: due, through_date: sub.period_to ?? null, commitment_invoice_id: invoiceId ?? null });
       toast.success('Marked paid · unconditional waiver created — send it from Lien Releases.');
     } catch { toast.success('Marked paid'); }
     onClose();
@@ -134,12 +143,12 @@ function ReviewDialog({ sub, projectId, commitmentTitle, onClose }: { sub: Vendo
             <Row label="Less previous payments" value={usd(sub.prior_payments ?? 0)} />
             <div className="mt-1 flex justify-between border-t border-border pt-1.5 text-[14px] font-bold"><span>Current payment due</span><span className="text-[var(--apas-sapphire)]">{usd(due)}</span></div>
           </div>
-          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.</p>
+          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{invoiceId && <span className="ml-1 text-[#0F6E56]">Draft invoice created.</span>}</p>
           <Button variant="outline" size="sm" onClick={() => openVendorPayAppReport(sub, { projectName: 'Project', commitmentTitle })} className="w-full gap-1.5"><FileText className="h-3.5 w-3.5" /> Open AIA G702/G703</Button>
         </div>
         <DialogFooter>
-          {sub.status !== 'paid' && <Button variant="ghost" onClick={approve} disabled={updateStatus.isPending} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> Approve</Button>}
-          <Button onClick={markPaid} disabled={updateStatus.isPending || sub.status === 'paid'} className="gap-1.5"><Banknote className="h-4 w-4" /> Mark paid + waiver</Button>
+          {sub.status !== 'paid' && <Button variant="ghost" onClick={approve} disabled={busy || !!invoiceId} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> {invoiceId ? 'Approved' : 'Approve + invoice'}</Button>}
+          <Button onClick={markPaid} disabled={busy || sub.status === 'paid'} className="gap-1.5"><Banknote className="h-4 w-4" /> Mark paid + waiver</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
