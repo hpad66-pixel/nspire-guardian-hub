@@ -23,6 +23,8 @@ export interface VendorPayApp {
   retainage_amount: number | null;
   conditional_signed_name: string | null;
   conditional_signed_at: string | null;
+  apas_waiver_ack: boolean | null;
+  waiver_type: string | null;
   commitment_invoice_id: string | null;
   submitted_at: string | null;
   created_at: string;
