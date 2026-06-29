@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
   CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText, Image as ImageIcon, X,
-  CheckSquare, GitMerge,
+  CheckSquare, GitMerge, Mail as MailIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,8 @@ import {
   useMergeTrackerItems, useBulkDeleteTrackerItems, useDeleteTrackerUpdate, useEditTrackerUpdate, markTrackerCommentsSeen, uploadTrackerPhoto,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
-import { openTrackerReport, type ReportGroupBy } from '@/lib/tracker/trackerReport';
+import { openTrackerReport, buildTrackerReportHtml, type ReportGroupBy } from '@/lib/tracker/trackerReport';
+import { useSendEmail } from '@/hooks/useSendEmail';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
   open:      { label: 'Open',        bg: '#ECEEF1', fg: '#555',    bar: '#cfd4da' },
@@ -257,7 +258,18 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
 function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; projectName: string; onClose: () => void }) {
   const [groupBy, setGroupBy] = useState<ReportGroupBy>('owner');
   const [openOnly, setOpenOnly] = useState(false);
+  const [email, setEmail] = useState('');
+  const send = useSendEmail();
   const open = () => { openTrackerReport(items, { groupBy, openOnly, projectName }); onClose(); };
+  const sendEmail = () => {
+    const to = email.trim();
+    if (!to) { toast.error('Enter an email'); return; }
+    const html = buildTrackerReportHtml(items, { groupBy, openOnly, projectName });
+    send.mutate({ recipients: [to], subject: `${projectName} — Project Log report`, bodyHtml: html }, {
+      onSuccess: () => { toast.success(`Report emailed to ${to}`); onClose(); },
+      onError: (e: any) => toast.error(e?.message || 'Send failed'),
+    });
+  };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -279,10 +291,15 @@ function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; p
             <span className="font-medium">Open items only</span>
             <span className="ml-auto text-[11px] text-muted-foreground">{openOnly ? 'Excludes done' : 'All items'}</span>
           </label>
-          <p className="text-[11px] text-muted-foreground">Opens a clean, branded report in a new tab — print or save as PDF from there.</p>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email to (optional)</label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" />
+          </div>
+          <p className="text-[11px] text-muted-foreground">Open prints/saves as PDF in a new tab. Email sends the same branded report.</p>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={sendEmail} disabled={send.isPending || !email.trim()} className="gap-1.5">{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailIcon className="h-4 w-4" />} Email</Button>
           <Button onClick={open} className="gap-1.5"><FileText className="h-4 w-4" /> Open report</Button>
         </DialogFooter>
       </DialogContent>
