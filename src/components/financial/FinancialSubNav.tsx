@@ -7,7 +7,7 @@ import {
 import {
   ChevronRight, ChevronDown, LayoutDashboard, FileSignature, GitPullRequest, ReceiptText, Ruler,
   Banknote, Wallet, Handshake, Receipt, Inbox, Coins, ShieldCheck, BookOpen,
-  BarChart3, Megaphone, MoreHorizontal, type LucideIcon,
+  BarChart3, Megaphone, MoreHorizontal, TrendingUp, type LucideIcon,
 } from "lucide-react";
 
 interface Tab { label: string; path: string; icon: LucideIcon }
@@ -39,6 +39,7 @@ const MORE_GROUPS: Group[] = [
     { label: "Ledger", path: "ledger", icon: BookOpen },
   ] },
   { caption: "Insights", tabs: [
+    { label: "Margin", path: "margin", icon: TrendingUp },
     { label: "Reports", path: "reports", icon: BarChart3 },
     { label: "Client Updates", path: "client-updates", icon: Megaphone },
   ] },
