@@ -19,7 +19,7 @@ const STATUS_COLOR: Record<string, string> = {
 interface Props { projectId: string; }
 
 export function VendorSubmissionInbox({ projectId }: Props) {
-  const { data: subs = [], process, reject } = useVendorSubmissions(projectId);
+  const { data: subs = [], process, reject, remove } = useVendorSubmissions(projectId);
   const { data: commitments = [] } = useCommitments(projectId);
   const [selected, setSelected] = useState<VendorSubmission | null>(null);
   const [commitmentId, setCommitmentId] = useState<string>("");
@@ -113,6 +113,14 @@ export function VendorSubmissionInbox({ projectId }: Props) {
                   </div>
                 </div>
               )}
+
+              <div className="pt-2 border-t">
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                  onClick={() => { if (confirm("Delete this submission? This can’t be undone.")) remove.mutate(selected.id, { onSuccess: () => { setSelected(null); toast.success("Deleted"); } }); }}
+                  disabled={remove.isPending}>
+                  Delete submission
+                </Button>
+              </div>
             </>
           )}
         </CardContent>

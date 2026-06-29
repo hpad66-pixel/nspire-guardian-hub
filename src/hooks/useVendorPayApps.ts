@@ -94,6 +94,18 @@ export function useConvertVendorPayApp() {
   });
 }
 
+export function useDeleteVendorPayApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string; projectId: string }) => {
+      const { error } = await db.from('vendor_payapp_submissions').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] }),
+    onError: (e: Error) => toast.error(e.message || 'Could not delete'),
+  });
+}
+
 export function useUpdateVendorPayAppStatus() {
   const qc = useQueryClient();
   return useMutation({

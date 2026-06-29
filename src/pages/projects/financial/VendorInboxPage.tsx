@@ -21,6 +21,12 @@ export default function VendorInboxPage() {
           </p>
         </div>
       </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-3 text-[12.5px] text-muted-foreground">
+        <span className="font-semibold text-foreground">This is your Accounts Payable (A/P)</span> — what you owe your subs &amp; vendors. Invoices they send you get reviewed and paid here.
+        <span className="mx-1.5 text-border">|</span>
+        <span className="font-semibold text-foreground">Accounts Receivable (A/R)</span> is the opposite — what the owner owes you — and lives under Prime Contract &amp; Payments.
+      </div>
       <RequestVendorPayApp projectId={projectId} />
       <UploadParseDocument projectId={projectId} />
       <ProjectIntakeCard projectId={projectId} />

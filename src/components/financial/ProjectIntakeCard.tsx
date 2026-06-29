@@ -60,6 +60,9 @@ export function ProjectIntakeCard({ projectId }: Props) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Vendor Submittal Intake</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          <b>Provisioning</b> sets up a private email address + secure folder for this project. Forward a vendor’s invoice or lien waiver to that address (or drop a file in the folder) and it lands here automatically — no manual upload. It’s a one-time setup per project.
+        </p>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {intake ? (

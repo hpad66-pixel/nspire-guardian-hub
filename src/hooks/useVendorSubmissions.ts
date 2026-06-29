@@ -131,5 +131,16 @@ export function useVendorSubmissions(projectId: string | null) {
     onSuccess: invalidate,
   });
 
-  return { ...list, process, reject };
+  const remove = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const { error } = await supabase
+        .from("vendor_submissions" as any)
+        .delete()
+        .eq("id", submissionId);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { ...list, process, reject, remove };
 }
