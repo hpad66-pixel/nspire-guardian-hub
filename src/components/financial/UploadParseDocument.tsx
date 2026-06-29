@@ -4,9 +4,12 @@ import { Sparkles, Upload, Loader2, FileText, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveCurrentWorkspaceId } from '@/lib/tenant';
 import { useProjectArtifacts } from '@/hooks/useProjectArtifacts';
+import { useCommitments } from '@/hooks/useCommitments';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Fields {
   doc_type?: string; vendor_name?: string; bill_to?: string; project_name?: string;
@@ -36,9 +39,29 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fields, setFields] = useState<Fields | null>(null);
+  const [commitmentId, setCommitmentId] = useState('');
+  const { data: commitments = [] } = useCommitments(projectId);
+  const qc = useQueryClient();
+  const isInvoice = fields?.doc_type === 'invoice' || fields?.doc_type === 'pay_app';
 
-  const reset = () => { setFile(null); setFields(null); if (fileRef.current) fileRef.current.value = ''; };
+  const reset = () => { setFile(null); setFields(null); setCommitmentId(''); if (fileRef.current) fileRef.current.value = ''; };
   const set = (k: keyof Fields, v: any) => setFields(f => ({ ...(f ?? {}), [k]: v }));
+
+  // Upload the file as a project artifact and file a parsed intake row.
+  async function attach(tenant_id: string, commitment_invoice_id?: string) {
+    const docType = toIntakeDoc(fields!.doc_type);
+    const art = await upload.mutateAsync({
+      file: file!, projectId,
+      input: { artifact_type: toArtifactType(fields!.doc_type), source_system: 'manual', title: fields!.vendor_name || file!.name.replace(/\.[^.]+$/, '') } as any,
+    });
+    const { error } = await supabase.from('vendor_submissions' as any).insert({
+      tenant_id, project_id: projectId, source: 'manual_upload',
+      doc_type: docType, status: commitment_invoice_id ? 'processed' : 'parsed', artifact_id: (art as any).id,
+      subject: fields!.vendor_name ? `${fields!.vendor_name}${fields!.invoice_number ? ` · ${fields!.invoice_number}` : ''}` : file!.name,
+      parsed: { ...fields, commitment_invoice_id: commitment_invoice_id ?? null },
+    } as any);
+    if (error) throw error;
+  }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -59,23 +82,36 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
     if (!file || !fields) return;
     setSaving(true);
     try {
-      const docType = toIntakeDoc(fields.doc_type);
-      const art = await upload.mutateAsync({
-        file, projectId,
-        input: { artifact_type: toArtifactType(fields.doc_type), source_system: 'manual', title: fields.vendor_name || file.name.replace(/\.[^.]+$/, '') } as any,
-      });
-      const tenant_id = await resolveCurrentWorkspaceId();
-      const { error } = await supabase.from('vendor_submissions' as any).insert({
-        tenant_id, project_id: projectId, source: 'manual_upload',
-        doc_type: docType, status: 'parsed', artifact_id: (art as any).id,
-        subject: fields.vendor_name ? `${fields.vendor_name}${fields.invoice_number ? ` · ${fields.invoice_number}` : ''}` : file.name,
-        parsed: fields,
-      } as any);
-      if (error) throw error;
+      await attach(await resolveCurrentWorkspaceId());
       toast.success('Attached & parsed — it’s in the Vendor Inbox.');
       reset();
     } catch (e: any) {
       toast.error(e?.message ?? 'Save failed');
+    } finally { setSaving(false); }
+  }
+
+  // One-click: attach the file AND create a draft commitment invoice from the parse.
+  async function createInvoice() {
+    if (!file || !fields) return;
+    if (!commitmentId) return toast.error('Pick the commitment this invoice bills against.');
+    setSaving(true);
+    try {
+      const tenant_id = await resolveCurrentWorkspaceId();
+      const { data: inv, error } = await supabase.from('commitment_invoices' as any).insert({
+        tenant_id, commitment_id: commitmentId,
+        invoice_no: fields.invoice_number || `DOC-${file.name.slice(0, 6)}`,
+        period_end: fields.period_end || fields.invoice_date || new Date().toISOString().slice(0, 10),
+        status: 'draft',
+        submitted_amount: Number(fields.amount ?? 0),
+        retainage_held: Number(fields.retainage_amount ?? 0),
+      } as any).select('id').single();
+      if (error) throw error;
+      await attach(tenant_id, (inv as any).id);
+      qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
+      toast.success('Draft invoice created in Commitments + document attached.');
+      reset();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Could not create invoice');
     } finally { setSaving(false); }
   }
 
@@ -113,8 +149,18 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
             {fields.retainage_amount ? <Field label="Retainage"><Input value={fields.retainage_amount ?? ''} onChange={e => set('retainage_amount', Number(e.target.value) || 0)} /></Field> : <div />}
           </div>
           {!!fields.line_items?.length && <p className="text-[11px] text-muted-foreground">{fields.line_items.length} line item(s) captured · {usd(fields.amount)} total.</p>}
-          <div className="flex gap-2">
-            <Button size="sm" className="gap-1.5" onClick={save} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Attach &amp; save</Button>
+          {isInvoice && (
+            <div className="rounded-lg border border-dashed border-border p-2.5">
+              <Label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Bill against commitment (to create a draft invoice)</Label>
+              <Select value={commitmentId} onValueChange={setCommitmentId}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Select a commitment…" /></SelectTrigger>
+                <SelectContent>{commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}{c.commitment_no ? ` · ${c.commitment_no}` : ''}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {isInvoice && <Button size="sm" className="gap-1.5" onClick={createInvoice} disabled={saving || !commitmentId}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Create draft invoice</Button>}
+            <Button size="sm" variant={isInvoice ? 'outline' : 'default'} className="gap-1.5" onClick={save} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Attach &amp; save</Button>
             <Button size="sm" variant="ghost" className="gap-1.5" onClick={reset} disabled={saving}><X className="h-4 w-4" /> Discard</Button>
           </div>
         </div>
