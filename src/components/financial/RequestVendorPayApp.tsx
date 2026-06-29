@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { FileText, Link2, Copy, Check, Loader2, Eye, CheckCircle2, Banknote } from 'lucide-react';
+import { FileText, Link2, Copy, Check, Loader2, Eye, CheckCircle2, Banknote, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProject } from '@/hooks/useProjects';
 import { useCommitments } from '@/hooks/useCommitments';
-import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
+import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useDeleteVendorPayApp, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
 import { useLienWaivers } from '@/hooks/useLienWaivers';
 import { blankWaiverSpec } from '@/lib/lienWaiver/defaults';
 import { useSendEmail } from '@/hooks/useSendEmail';
@@ -29,6 +30,8 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
   const { data: commitments = [] } = useCommitments(projectId);
   const { data: requests = [] } = useVendorPayApps(projectId);
   const request = useRequestVendorPayApp(projectId);
+  const updateStatus = useUpdateVendorPayAppStatus();
+  const del = useDeleteVendorPayApp();
   const sendEmail = useSendEmail();
   const [commitmentId, setCommitmentId] = useState('');
   const [name, setName] = useState('');
@@ -109,6 +112,21 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
                   <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
                   {r.submitted_at && <button onClick={() => setReview(r)} title="Review" className="shrink-0 text-muted-foreground hover:text-foreground"><Eye className="h-3.5 w-3.5" /></button>}
                   <button onClick={() => copy(r.token)} title="Copy link" className="shrink-0 text-muted-foreground hover:text-foreground">{copied === r.token ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}</button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><button title="More" className="shrink-0 text-muted-foreground hover:text-foreground"><MoreVertical className="h-3.5 w-3.5" /></button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel className="text-[11px]">Set status</DropdownMenuLabel>
+                      {Object.keys(STATUS).map(s => (
+                        <DropdownMenuItem key={s} disabled={r.status === s} onClick={() => updateStatus.mutate({ id: r.id, status: s, projectId }, { onSuccess: () => toast.success(`Marked ${STATUS[s].label}`) })}>
+                          {r.status === s && <Check className="mr-1 h-3.5 w-3.5" />}{STATUS[s].label}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this vendor invoice (${r.vendor_name || 'Vendor'})? This can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: () => toast.success('Deleted') }); }}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               );
             })}
