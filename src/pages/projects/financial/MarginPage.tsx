@@ -1,31 +1,37 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, Link2, X, TrendingUp, ArrowRight, FileText } from 'lucide-react';
+import { Loader2, X, TrendingUp, FileText, Pencil, Tag } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
-import { useProject } from '@/hooks/useProjects';
-import { openMarginReport } from '@/lib/financial/marginReport';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { useProject } from '@/hooks/useProjects';
+import { openMarginReport } from '@/lib/financial/marginReport';
 import {
-  useMargin, useLinkCoMargin, useUnlinkCoMargin, useToggleCoPassThrough,
-  type MarginCO,
+  useMargin, useSaveMarginClass, useDeleteMarginClass,
+  type MarginCO, type MarginClass, type Treatment,
 } from '@/hooks/useMargin';
 
 const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 const signed = (n: number) => `${n < 0 ? '-' : '+'}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 const coLabel = (c: MarginCO | null) => c ? `${c.co_no != null ? `#${c.co_no} · ` : ''}${c.title}` : '—';
+const TREAT: Record<Treatment, { label: string; bg: string; fg: string }> = {
+  markup:       { label: 'Markup',      bg: '#E7F0FD', fg: '#1558b0' },
+  pass_through: { label: 'Pass-through', bg: '#F1EFE8', fg: '#5F5E5A' },
+  apas_100:     { label: '100% APAS',   bg: '#E1F5EE', fg: '#0F6E56' },
+};
 
 export default function MarginPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data, isLoading } = useMargin(projectId);
   const { data: project } = useProject(projectId ?? null);
-  const link = useLinkCoMargin();
-  const unlink = useUnlinkCoMargin();
-  const togglePT = useToggleCoPassThrough();
-  const [linkOpen, setLinkOpen] = useState(false);
+  const del = useDeleteMarginClass();
+  const save = useSaveMarginClass();
+  const [classify, setClassify] = useState<{ co: MarginCO; existing?: MarginClass } | null>(null);
 
   return (
     <div>
@@ -43,52 +49,53 @@ export default function MarginPage() {
           <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
-            {/* Summary */}
             <div className="grid gap-3 sm:grid-cols-4">
-              <Tile label="Owner revenue" value={usd(data.totals.revenue)} hint="Prime contract + COs" />
-              <Tile label="Sub cost" value={usd(data.totals.cost)} hint="Commitments + sub COs" />
+              <Tile label="Owner revenue" value={usd(data.totals.revenue)} hint="Prime + classified COs" />
+              <Tile label="Sub cost" value={usd(data.totals.cost)} hint="Commitments + sub costs" />
               <Tile label="APAS recovery" value={usd(data.totals.margin)} hint="Revenue − cost" accent />
               <Tile label="Margin" value={`${data.totals.revenue ? Math.round((data.totals.margin / data.totals.revenue) * 100) : 0}%`} hint="of owner revenue" />
             </div>
 
-            {/* Base contract */}
             <Section title="Base contract">
               <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <Row3 left="Owner (prime contract)" right={usd(data.base.prime)} />
-                <Row3 left="Sub (commitments)" right={usd(data.base.sub)} muted />
-                <Row3 left="APAS margin on base" right={signed(data.base.delta)} bold accent last />
+                <Row left="Owner (prime contract)" right={usd(data.base.prime)} />
+                <Row left="Sub (commitments)" right={usd(data.base.sub)} muted />
+                <Row left="APAS margin on base" right={signed(data.base.delta)} bold accent last />
               </div>
             </Section>
 
-            {/* Change orders */}
-            <Section title="Change orders" action={(data.unlinkedPrime.length > 0 || data.unlinkedSub.length > 0) && (
-              <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)} className="gap-1.5"><Link2 className="h-3.5 w-3.5" /> Link prime ↔ sub</Button>
-            )}>
-              {data.pairs.length === 0 && data.unlinkedPrime.length === 0 && data.unlinkedSub.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">No executed change orders yet.</p>
+            <Section title="Change orders" hint="Classify each owner change order — markup, pass-through, or 100% APAS.">
+              {data.classified.length === 0 && data.unclassifiedPrime.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">No executed owner change orders yet.</p>
               ) : (
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
-                  <div className="grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-2 border-b border-border bg-muted/40 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <span>Owner (prime)</span><span className="text-right">Bill</span><span>Sub</span><span className="text-right">Pay</span><span className="text-right pr-7">APAS</span>
+                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-muted/40 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span>Owner change order</span><span className="text-right">Bill</span><span>Treatment</span><span className="text-right">Sub cost</span><span className="text-right pr-7">APAS</span>
                   </div>
-                  {data.pairs.map((p) => (
-                    <div key={p.link_id} className="grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-2 border-b border-border px-3.5 py-2.5 text-[13px]">
-                      <span className="truncate" title={coLabel(p.prime)}>{coLabel(p.prime)}</span>
-                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(p.prime?.amount ?? 0))}</span>
-                      <span className="truncate text-muted-foreground" title={coLabel(p.sub)}>{coLabel(p.sub)}</span>
-                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(p.sub?.amount ?? 0))}</span>
+                  {data.classified.map((c) => (
+                    <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border px-3.5 py-2.5 text-[13px]">
+                      <span className="truncate" title={coLabel(c.prime)}>{coLabel(c.prime)}</span>
+                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(c.prime.amount ?? 0))}</span>
+                      <span><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: TREAT[c.treatment].bg, color: TREAT[c.treatment].fg }}>{TREAT[c.treatment].label}</span></span>
+                      <span className="text-right tabular-nums text-muted-foreground">{c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}{c.sub_label ? <span className="ml-1 text-[11px]">→ {c.sub_label}</span> : ''}</span>
                       <span className="flex items-center justify-end gap-1.5">
-                        {p.is_pass_through
-                          ? <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Pass-through</span>
-                          : <b className="tabular-nums" style={{ color: p.delta >= 0 ? '#0F6E56' : '#A32D2D' }}>{signed(p.delta)}</b>}
-                        <button onClick={() => togglePT.mutate({ linkId: p.link_id, value: !p.is_pass_through, projectId: projectId! })} title="Toggle pass-through" className="text-muted-foreground hover:text-foreground"><ArrowRight className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => unlink.mutate({ linkId: p.link_id, projectId: projectId! })} title="Unlink" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+                        <b className="tabular-nums" style={{ color: c.recovery > 0 ? '#0F6E56' : c.recovery < 0 ? '#A32D2D' : '#5F5E5A' }}>{c.treatment === 'pass_through' ? '$0' : signed(c.recovery)}</b>
+                        <button onClick={() => setClassify({ co: c.prime, existing: c })} title="Edit" className="text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => del.mutate({ linkId: c.link_id, projectId: projectId! })} title="Remove classification" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                       </span>
                     </div>
                   ))}
-                  {/* CO totals */}
-                  <div className="grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-2 bg-muted/30 px-3.5 py-2.5 text-[13px] font-semibold">
-                    <span>Change-order totals</span>
+                  {data.unclassifiedPrime.map((co) => (
+                    <div key={co.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-amber-50/40 px-3.5 py-2.5 text-[13px] dark:bg-amber-950/20">
+                      <span className="truncate" title={coLabel(co)}>{coLabel(co)}</span>
+                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(co.amount ?? 0))}</span>
+                      <span className="col-span-3 text-right">
+                        <Button size="sm" variant="outline" onClick={() => setClassify({ co })} className="gap-1.5"><Tag className="h-3.5 w-3.5" /> Classify</Button>
+                      </span>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 bg-muted/30 px-3.5 py-2.5 text-[13px] font-semibold">
+                    <span>Classified CO totals</span>
                     <span className="text-right tabular-nums">{usd(data.totals.coRevenue)}</span>
                     <span />
                     <span className="text-right tabular-nums">{usd(data.totals.coCost)}</span>
@@ -96,17 +103,11 @@ export default function MarginPage() {
                   </div>
                 </div>
               )}
-
-              {/* Unlinked */}
-              {(data.unlinkedPrime.length > 0 || data.unlinkedSub.length > 0) && (
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <UnlinkedList title="Unlinked owner COs" cos={data.unlinkedPrime} />
-                  <UnlinkedList title="Unlinked sub COs" cos={data.unlinkedSub} />
-                </div>
+              {data.totals.unclassifiedAmount > 0 && (
+                <p className="mt-2 text-[12px] text-[#854F0B]">{data.unclassifiedPrime.length} owner CO{data.unclassifiedPrime.length !== 1 ? 's' : ''} ({usd(data.totals.unclassifiedAmount)}) not yet classified — not counted in the totals above.</p>
               )}
             </Section>
 
-            {/* Cash */}
             <Section title="Cash position">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-card p-4">
@@ -124,12 +125,15 @@ export default function MarginPage() {
               </div>
             </Section>
 
-            {linkOpen && (
-              <LinkDialog
-                primeOptions={data.unlinkedPrime} subOptions={data.unlinkedSub}
-                onClose={() => setLinkOpen(false)}
-                onLink={(primeCoId, subCoId, passThrough) => link.mutate({ projectId: projectId!, primeCoId, subCoId, passThrough }, { onSuccess: () => setLinkOpen(false) })}
-                busy={link.isPending}
+            {classify && (
+              <ClassifyDialog
+                co={classify.co} existing={classify.existing} subCOs={data.subCOs}
+                onClose={() => setClassify(null)}
+                onSave={(treatment, subCost, subLabel, subCoId) => save.mutate(
+                  { projectId: projectId!, primeCoId: classify.co.id, treatment, subCost, subLabel, subCoId },
+                  { onSuccess: () => setClassify(null) },
+                )}
+                busy={save.isPending}
               />
             )}
           </>
@@ -148,18 +152,15 @@ function Tile({ label, value, hint, accent }: { label: string; value: string; hi
     </div>
   );
 }
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold">{title}</h2>
-        {action}
-      </div>
+      <div className="mb-2"><h2 className="text-[15px] font-semibold">{title}</h2>{hint && <p className="text-[12px] text-muted-foreground">{hint}</p>}</div>
       {children}
     </div>
   );
 }
-function Row3({ left, right, muted, bold, accent, last }: { left: string; right: string; muted?: boolean; bold?: boolean; accent?: boolean; last?: boolean }) {
+function Row({ left, right, muted, bold, accent, last }: { left: string; right: string; muted?: boolean; bold?: boolean; accent?: boolean; last?: boolean }) {
   return (
     <div className={`flex items-center justify-between px-3.5 py-2.5 text-[13px] ${last ? '' : 'border-b border-border'} ${bold ? 'font-semibold' : ''}`}>
       <span className={muted ? 'text-muted-foreground' : ''}>{left}</span>
@@ -170,43 +171,62 @@ function Row3({ left, right, muted, bold, accent, last }: { left: string; right:
 function Line({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return <div className={`flex justify-between py-1 text-[13px] ${bold ? 'border-t border-border pt-2 font-semibold' : 'text-muted-foreground'}`}><span>{label}</span><span className="tabular-nums text-foreground">{value}</span></div>;
 }
-function UnlinkedList({ title, cos }: { title: string; cos: MarginCO[] }) {
-  if (!cos.length) return <div className="rounded-xl border border-dashed border-border p-3 text-[12px] text-muted-foreground">{title}: none</div>;
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-      <div className="space-y-1">{cos.map(c => <div key={c.id} className="flex justify-between text-[12.5px]"><span className="truncate pr-2">{coLabel(c)}</span><span className="tabular-nums text-muted-foreground">{usd(Number(c.amount ?? 0))}</span></div>)}</div>
-    </div>
-  );
-}
 
-function LinkDialog({ primeOptions, subOptions, onLink, onClose, busy }: {
-  primeOptions: MarginCO[]; subOptions: MarginCO[]; onLink: (primeCoId: string, subCoId: string, passThrough: boolean) => void; onClose: () => void; busy: boolean;
+function ClassifyDialog({ co, existing, subCOs, onSave, onClose, busy }: {
+  co: MarginCO; existing?: MarginClass; subCOs: MarginCO[];
+  onSave: (treatment: Treatment, subCost: number, subLabel: string | null, subCoId: string | null) => void; onClose: () => void; busy: boolean;
 }) {
-  const [prime, setPrime] = useState('');
-  const [sub, setSub] = useState('');
-  const [pt, setPt] = useState(false);
-  const p = primeOptions.find(c => c.id === prime); const s = subOptions.find(c => c.id === sub);
-  const delta = (Number(p?.amount ?? 0) - Number(s?.amount ?? 0));
+  const [treatment, setTreatment] = useState<Treatment>(existing?.treatment ?? 'markup');
+  const [subCost, setSubCost] = useState<string>(existing?.sub_cost ? String(existing.sub_cost) : '');
+  const [subLabel, setSubLabel] = useState(existing?.sub_label ?? '');
+  const [subCoId, setSubCoId] = useState<string>('');
+
+  const prime = Number(co.amount ?? 0);
+  const cost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? prime : Number(subCost || 0);
+  const recovery = prime - cost;
+
+  const onPickSubCO = (id: string) => {
+    setSubCoId(id);
+    const c = subCOs.find((x) => x.id === id);
+    if (c) { setSubCost(String(c.amount ?? 0)); if (!subLabel) setSubLabel(c.title); }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Link2 className="h-4 w-4" /> Link a prime CO to its sub CO</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Tag className="h-4 w-4" /> Classify · {coLabel(co)}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Owner (prime) change order</label>
-            <Select value={prime} onValueChange={setPrime}><SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-              <SelectContent>{primeOptions.map(c => <SelectItem key={c.id} value={c.id}>{coLabel(c)} — {usd(Number(c.amount ?? 0))}</SelectItem>)}</SelectContent></Select></div>
-          <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Subcontractor change order</label>
-            <Select value={sub} onValueChange={setSub}><SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-              <SelectContent>{subOptions.map(c => <SelectItem key={c.id} value={c.id}>{coLabel(c)} — {usd(Number(c.amount ?? 0))}</SelectItem>)}</SelectContent></Select></div>
-          {p && s && (
-            <div className="rounded-lg bg-muted/40 p-3 text-[13px]">APAS recovery on this pair: <b style={{ color: delta >= 0 ? '#0F6E56' : '#A32D2D' }}>{signed(delta)}</b></div>
+          <div className="rounded-lg bg-muted/40 px-3 py-2 text-[13px]">Owner bills <b>{usd(prime)}</b></div>
+          <div className="grid grid-cols-3 gap-2">
+            {(['markup', 'pass_through', 'apas_100'] as Treatment[]).map((t) => (
+              <button key={t} onClick={() => setTreatment(t)}
+                className={cn('rounded-lg border px-2 py-2 text-[12px] font-semibold transition-colors', treatment === t ? 'border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]' : 'border-border text-muted-foreground hover:bg-muted')}>
+                {TREAT[t].label}
+              </button>
+            ))}
+          </div>
+
+          {treatment === 'markup' && (
+            <>
+              {subCOs.length > 0 && (
+                <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Use a sub change order (optional)</label>
+                  <Select value={subCoId} onValueChange={onPickSubCO}><SelectTrigger><SelectValue placeholder="Pick to pre-fill…" /></SelectTrigger>
+                    <SelectContent>{subCOs.map((c) => <SelectItem key={c.id} value={c.id}>{coLabel(c)} — {usd(Number(c.amount ?? 0))}</SelectItem>)}</SelectContent></Select></div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Paid to sub ($)</label><Input type="number" value={subCost} onChange={(e) => setSubCost(e.target.value)} placeholder="1500" /></div>
+                <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Sub / vendor</label><Input value={subLabel} onChange={(e) => setSubLabel(e.target.value)} placeholder="Ecotech" /></div>
+              </div>
+            </>
           )}
-          <label className="flex cursor-pointer items-center gap-2 text-[13px]"><input type="checkbox" checked={pt} onChange={e => setPt(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" /> Pass-through (no margin)</label>
+          {treatment === 'pass_through' && <p className="text-[13px] text-muted-foreground">Sub gets the full {usd(prime)} — no margin to APAS.</p>}
+          {treatment === 'apas_100' && <p className="text-[13px] text-muted-foreground">No sub — 100% of {usd(prime)} is APAS revenue.</p>}
+
+          <div className="rounded-lg bg-muted/40 p-3 text-[13px]">APAS recovery: <b style={{ color: recovery > 0 ? '#0F6E56' : recovery < 0 ? '#A32D2D' : '#5F5E5A' }}>{treatment === 'pass_through' ? '$0' : signed(recovery)}</b></div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onLink(prime, sub, pt)} disabled={busy || !prime || !sub}>Link</Button>
+          <Button onClick={() => onSave(treatment, cost, subLabel.trim() || (treatment === 'apas_100' ? 'APAS (self-performed)' : null), subCoId || null)} disabled={busy || (treatment === 'markup' && !subCost)}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
