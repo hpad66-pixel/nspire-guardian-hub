@@ -34,6 +34,7 @@ export interface MarginData {
   classified: MarginClass[];
   unclassifiedPrime: MarginCO[];
   subCOs: MarginCO[]; // formal sub change orders, for pre-filling markup costs
+  subs: { id: string; name: string }[]; // subcontractors / vendors to pay
   totals: {
     revenue: number; cost: number; margin: number;
     coRevenue: number; coCost: number; coMargin: number;
@@ -47,11 +48,12 @@ export function useMargin(projectId: string | undefined) {
     queryKey: ['margin', projectId],
     enabled: !!projectId,
     queryFn: async (): Promise<MarginData> => {
-      const [summaryR, commitmentsR, cosR, linksR] = await Promise.all([
+      const [summaryR, commitmentsR, cosR, linksR, orgsR] = await Promise.all([
         db.from('v_project_financial_summary').select('original_contract, revised_contract, committed_total, paid_to_subs, billed_to_date, received_to_date').eq('project_id', projectId).maybeSingle(),
         db.from('commitments').select('original_value').eq('project_id', projectId),
         db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id').eq('project_id', projectId),
         db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through').eq('project_id', projectId),
+        db.from('organizations').select('id, name').in('kind', ['sub', 'vendor']).eq('is_active', true).order('name'),
       ]);
       const s = summaryR.data ?? {};
       const cos: MarginCO[] = (cosR.data ?? []).filter((c: MarginCO) => EXECUTED.includes(c.status));
@@ -88,6 +90,7 @@ export function useMargin(projectId: string | undefined) {
         classified,
         unclassifiedPrime,
         subCOs,
+        subs: (orgsR.data ?? []).map((o: any) => ({ id: o.id, name: o.name })),
         totals: {
           revenue, cost, margin: revenue - cost,
           coRevenue, coCost, coMargin: coRevenue - coCost,
