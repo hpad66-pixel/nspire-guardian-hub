@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { ProjectIntakeCard } from "@/components/financial/ProjectIntakeCard";
 import { VendorSubmissionInbox } from "@/components/financial/VendorSubmissionInbox";
+import { RequestVendorPayApp } from "@/components/financial/RequestVendorPayApp";
 import { Inbox } from "lucide-react";
 
 export default function VendorInboxPage() {
@@ -19,6 +20,7 @@ export default function VendorInboxPage() {
           </p>
         </div>
       </div>
+      <RequestVendorPayApp projectId={projectId} />
       <ProjectIntakeCard projectId={projectId} />
       <VendorSubmissionInbox projectId={projectId} />
     </div>
