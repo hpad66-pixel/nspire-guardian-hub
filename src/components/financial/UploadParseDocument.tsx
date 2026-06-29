@@ -43,6 +43,8 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const { data: commitments = [] } = useCommitments(projectId);
   const qc = useQueryClient();
   const isInvoice = fields?.doc_type === 'invoice' || fields?.doc_type === 'pay_app';
+  const isWaiver = fields?.doc_type === 'lien_waiver';
+  const RELEASE_TYPES = ['conditional_progress', 'unconditional_progress', 'conditional_final', 'unconditional_final'];
 
   const reset = () => { setFile(null); setFields(null); setCommitmentId(''); if (fileRef.current) fileRef.current.value = ''; };
   const set = (k: keyof Fields, v: any) => setFields(f => ({ ...(f ?? {}), [k]: v }));
@@ -61,6 +63,7 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
       parsed: { ...fields, commitment_invoice_id: commitment_invoice_id ?? null },
     } as any);
     if (error) throw error;
+    return (art as any).id as string;
   }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -115,6 +118,32 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
     } finally { setSaving(false); }
   }
 
+  // One-click: attach the signed waiver AND record it as a received lien release.
+  async function createLien() {
+    if (!file || !fields) return;
+    setSaving(true);
+    try {
+      const tenant_id = await resolveCurrentWorkspaceId();
+      const artId = await attach(tenant_id);
+      const releaseType = RELEASE_TYPES.includes(fields.waiver_type || '') ? fields.waiver_type : 'conditional_progress';
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('lien_releases' as any).insert({
+        tenant_id, project_id: projectId, direction: 'inbound', release_type: releaseType,
+        status: 'submitted', amount: Number(fields.amount ?? 0),
+        through_date: fields.period_end || fields.invoice_date || null,
+        claimant_name: fields.vendor_name || null, artifact_id: artId,
+        title: `Received ${String(releaseType).replace(/_/g, ' ')} waiver`,
+        created_by: user?.id ?? null,
+      } as any);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['lien-releases', projectId] });
+      toast.success('Recorded as a received lien release + document attached.');
+      reset();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Could not record waiver');
+    } finally { setSaving(false); }
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
@@ -160,7 +189,8 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
           )}
           <div className="flex flex-wrap gap-2">
             {isInvoice && <Button size="sm" className="gap-1.5" onClick={createInvoice} disabled={saving || !commitmentId}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Create draft invoice</Button>}
-            <Button size="sm" variant={isInvoice ? 'outline' : 'default'} className="gap-1.5" onClick={save} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Attach &amp; save</Button>
+            {isWaiver && <Button size="sm" className="gap-1.5" onClick={createLien} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} File as lien release</Button>}
+            <Button size="sm" variant={isInvoice || isWaiver ? 'outline' : 'default'} className="gap-1.5" onClick={save} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Attach &amp; save</Button>
             <Button size="sm" variant="ghost" className="gap-1.5" onClick={reset} disabled={saving}><X className="h-4 w-4" /> Discard</Button>
           </div>
         </div>
