@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.portal-action]
 verify_jwt = false
+
+[functions.vendor-submit]
+verify_jwt = false
