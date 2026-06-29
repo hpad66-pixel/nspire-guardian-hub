@@ -9,10 +9,12 @@ const fmt = (ts: string) => { try { return new Date(ts).toLocaleDateString('en-U
 
 export function buildMarginReportHtml(d: MarginData, projectName: string): string {
   const pct = d.totals.revenue ? Math.round((d.totals.margin / d.totals.revenue) * 100) : 0;
-  const coRows = d.pairs.map(p => `<tr>
-    <td>${coLabel(p.prime)}</td><td class="r">${usd(Number(p.prime?.amount ?? 0))}</td>
-    <td>${coLabel(p.sub)}</td><td class="r">${usd(Number(p.sub?.amount ?? 0))}</td>
-    <td class="r">${p.is_pass_through ? '<span class="pt">Pass-through</span>' : `<b style="color:${p.delta >= 0 ? '#0F6E56' : '#A32D2D'}">${signed(p.delta)}</b>`}</td></tr>`).join('');
+  const TREAT: Record<string, string> = { markup: 'Markup', pass_through: 'Pass-through', apas_100: '100% APAS' };
+  const coRows = d.classified.map(c => `<tr>
+    <td>${coLabel(c.prime)}</td><td class="r">${usd(Number(c.prime.amount ?? 0))}</td>
+    <td>${TREAT[c.treatment] ?? c.treatment}${c.sub_label ? ' · ' + esc(c.sub_label) : ''}</td>
+    <td class="r">${c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}</td>
+    <td class="r">${c.treatment === 'pass_through' ? '<span class="pt">$0</span>' : `<b style="color:${c.recovery >= 0 ? '#0F6E56' : '#A32D2D'}">${signed(c.recovery)}</b>`}</td></tr>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(projectName)} — Margin &amp; Recovery</title>
 <style>
@@ -53,10 +55,10 @@ export function buildMarginReportHtml(d: MarginData, projectName: string): strin
 
   <h2>Change orders</h2>
   ${coRows ? `<table>
-    <thead><tr><th>Owner (prime)</th><th class="r">Bill</th><th>Sub</th><th class="r">Pay</th><th class="r">APAS</th></tr></thead>
+    <thead><tr><th>Owner change order</th><th class="r">Bill</th><th>Treatment</th><th class="r">Sub cost</th><th class="r">APAS</th></tr></thead>
     <tbody>${coRows}</tbody>
     <tfoot><tr><td>Totals</td><td class="r">${usd(d.totals.coRevenue)}</td><td></td><td class="r">${usd(d.totals.coCost)}</td><td class="r" style="color:#0F6E56">${signed(d.totals.coMargin)}</td></tr></tfoot>
-  </table>` : '<p style="color:#6b7280;font-size:12.5px">No linked change orders.</p>'}
+  </table>` : '<p style="color:#6b7280;font-size:12.5px">No classified change orders.</p>'}
 
   <h2>Cash position</h2>
   <div class="two">

@@ -2,12 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Prime↔sub margin reconciliation. APAS (prime) bills the owner the prime amount,
-// pays the sub the sub amount; the delta is APAS's recovery. Tables/views not in
-// generated types → (supabase as any).
+// Prime↔sub margin. APAS (prime) bills the owner; each owner change order is
+// classified: markup (pay a sub X, keep the delta), pass_through (no margin), or
+// apas_100 (100% APAS, no sub). Tables/views not in generated types → (supabase as any).
 const db = supabase as any;
 
 const EXECUTED = ['approved', 'executed'];
+export type Treatment = 'markup' | 'pass_through' | 'apas_100';
 
 export interface MarginCO {
   id: string;
@@ -19,26 +20,24 @@ export interface MarginCO {
   prime_contract_id: string | null;
 }
 
-export interface MarginPair {
+export interface MarginClass {
   link_id: string;
-  is_pass_through: boolean;
-  prime: MarginCO | null;
-  sub: MarginCO | null;
-  delta: number; // prime − sub = APAS recovery
+  prime: MarginCO;
+  treatment: Treatment;
+  sub_cost: number;
+  sub_label: string | null;
+  recovery: number; // prime − sub_cost
 }
 
 export interface MarginData {
   base: { prime: number; sub: number; delta: number };
-  pairs: MarginPair[];
-  unlinkedPrime: MarginCO[];
-  unlinkedSub: MarginCO[];
+  classified: MarginClass[];
+  unclassifiedPrime: MarginCO[];
+  subCOs: MarginCO[]; // formal sub change orders, for pre-filling markup costs
   totals: {
-    revenue: number;      // prime base + prime COs (≈ revised contract)
-    cost: number;         // sub base + sub COs (≈ committed total)
-    margin: number;       // revenue − cost (APAS gross recovery)
-    coRevenue: number;    // prime COs only
-    coCost: number;       // sub COs only
-    coMargin: number;
+    revenue: number; cost: number; margin: number;
+    coRevenue: number; coCost: number; coMargin: number;
+    unclassifiedAmount: number;
   };
   cash: { billedToOwner: number; receivedFromOwner: number; committed: number; paidToSubs: number; owedToSubs: number };
 }
@@ -50,9 +49,9 @@ export function useMargin(projectId: string | undefined) {
     queryFn: async (): Promise<MarginData> => {
       const [summaryR, commitmentsR, cosR, linksR] = await Promise.all([
         db.from('v_project_financial_summary').select('original_contract, revised_contract, committed_total, paid_to_subs, billed_to_date, received_to_date').eq('project_id', projectId).maybeSingle(),
-        db.from('commitments').select('original_value, status').eq('project_id', projectId),
+        db.from('commitments').select('original_value').eq('project_id', projectId),
         db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id').eq('project_id', projectId),
-        db.from('co_margin_links').select('id, prime_co_id, sub_co_id, is_pass_through').eq('project_id', projectId),
+        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through').eq('project_id', projectId),
       ]);
       const s = summaryR.data ?? {};
       const cos: MarginCO[] = (cosR.data ?? []).filter((c: MarginCO) => EXECUTED.includes(c.status));
@@ -63,17 +62,22 @@ export function useMargin(projectId: string | undefined) {
 
       const primeCOs = cos.filter((c) => c.prime_contract_id);
       const subCOs = cos.filter((c) => c.commitment_id);
-      const byId = (id: string) => cos.find((c) => c.id === id) ?? null;
+      const byId = (id: string) => primeCOs.find((c) => c.id === id) ?? null;
 
-      const usedPrime = new Set<string>(), usedSub = new Set<string>();
-      const pairs: MarginPair[] = links.map((l: any) => {
-        const prime = byId(l.prime_co_id); const sub = byId(l.sub_co_id);
-        if (prime) usedPrime.add(prime.id); if (sub) usedSub.add(sub.id);
-        return { link_id: l.id, is_pass_through: l.is_pass_through, prime, sub, delta: Number(prime?.amount ?? 0) - Number(sub?.amount ?? 0) };
+      const classified: MarginClass[] = [];
+      const classifiedIds = new Set<string>();
+      links.forEach((l: any) => {
+        const prime = byId(l.prime_co_id);
+        if (!prime) return;
+        classifiedIds.add(prime.id);
+        const treatment: Treatment = (l.treatment ?? (l.is_pass_through ? 'pass_through' : 'markup')) as Treatment;
+        const subCost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? Number(prime.amount ?? 0) : Number(l.sub_cost ?? 0);
+        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost });
       });
 
-      const coRevenue = primeCOs.reduce((t, c) => t + Number(c.amount ?? 0), 0);
-      const coCost = subCOs.reduce((t, c) => t + Number(c.amount ?? 0), 0);
+      const unclassifiedPrime = primeCOs.filter((c) => !classifiedIds.has(c.id));
+      const coRevenue = classified.reduce((t, c) => t + Number(c.prime.amount ?? 0), 0);
+      const coCost = classified.reduce((t, c) => t + c.sub_cost, 0);
       const revenue = primeBase + coRevenue;
       const cost = subBase + coCost;
       const committed = Number(s.committed_total ?? cost);
@@ -81,35 +85,45 @@ export function useMargin(projectId: string | undefined) {
 
       return {
         base: { prime: primeBase, sub: subBase, delta: primeBase - subBase },
-        pairs,
-        unlinkedPrime: primeCOs.filter((c) => !usedPrime.has(c.id)),
-        unlinkedSub: subCOs.filter((c) => !usedSub.has(c.id)),
-        totals: { revenue, cost, margin: revenue - cost, coRevenue, coCost, coMargin: coRevenue - coCost },
+        classified,
+        unclassifiedPrime,
+        subCOs,
+        totals: {
+          revenue, cost, margin: revenue - cost,
+          coRevenue, coCost, coMargin: coRevenue - coCost,
+          unclassifiedAmount: unclassifiedPrime.reduce((t, c) => t + Number(c.amount ?? 0), 0),
+        },
         cash: {
           billedToOwner: Number(s.billed_to_date ?? 0),
           receivedFromOwner: Number(s.received_to_date ?? 0),
-          committed,
-          paidToSubs,
-          owedToSubs: committed - paidToSubs,
+          committed, paidToSubs, owedToSubs: committed - paidToSubs,
         },
       };
     },
   });
 }
 
-export function useLinkCoMargin() {
+export function useSaveMarginClass() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, primeCoId, subCoId, passThrough }: { projectId: string; primeCoId: string; subCoId: string; passThrough?: boolean }) => {
-      const { error } = await db.from('co_margin_links').insert({ project_id: projectId, prime_co_id: primeCoId, sub_co_id: subCoId, is_pass_through: passThrough ?? false });
+    mutationFn: async ({ projectId, primeCoId, treatment, subCost, subLabel, subCoId }: {
+      projectId: string; primeCoId: string; treatment: Treatment; subCost?: number; subLabel?: string | null; subCoId?: string | null;
+    }) => {
+      const row = {
+        project_id: projectId, prime_co_id: primeCoId, treatment,
+        sub_cost: treatment === 'apas_100' ? 0 : Number(subCost ?? 0),
+        sub_label: subLabel ?? null, sub_co_id: subCoId ?? null,
+        is_pass_through: treatment === 'pass_through',
+      };
+      const { error } = await db.from('co_margin_links').upsert(row, { onConflict: 'prime_co_id' });
       if (error) throw error;
     },
-    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['margin', v.projectId] }); toast.success('Linked'); },
-    onError: (e: Error) => toast.error(e.message || 'Could not link'),
+    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['margin', v.projectId] }); toast.success('Saved'); },
+    onError: (e: Error) => toast.error(e.message || 'Could not save'),
   });
 }
 
-export function useUnlinkCoMargin() {
+export function useDeleteMarginClass() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ linkId }: { linkId: string; projectId: string }) => {
@@ -117,18 +131,6 @@ export function useUnlinkCoMargin() {
       if (error) throw error;
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['margin', v.projectId] }),
-    onError: (e: Error) => toast.error(e.message || 'Could not unlink'),
-  });
-}
-
-export function useToggleCoPassThrough() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ linkId, value }: { linkId: string; value: boolean; projectId: string }) => {
-      const { error } = await db.from('co_margin_links').update({ is_pass_through: value }).eq('id', linkId);
-      if (error) throw error;
-    },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['margin', v.projectId] }),
-    onError: (e: Error) => toast.error(e.message || 'Could not update'),
+    onError: (e: Error) => toast.error(e.message || 'Could not remove'),
   });
 }
