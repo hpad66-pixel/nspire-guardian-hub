@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, Link2, X, TrendingUp, ArrowRight } from 'lucide-react';
+import { Loader2, Link2, X, TrendingUp, ArrowRight, FileText } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
+import { useProject } from '@/hooks/useProjects';
+import { openMarginReport } from '@/lib/financial/marginReport';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -19,6 +21,7 @@ const coLabel = (c: MarginCO | null) => c ? `${c.co_no != null ? `#${c.co_no} ·
 export default function MarginPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data, isLoading } = useMargin(projectId);
+  const { data: project } = useProject(projectId ?? null);
   const link = useLinkCoMargin();
   const unlink = useUnlinkCoMargin();
   const togglePT = useToggleCoPassThrough();
@@ -31,7 +34,9 @@ export default function MarginPage() {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-[var(--apas-sapphire)]" />
           <h1 className="text-lg font-bold">Margin &amp; recovery</h1>
-          <span className="text-sm text-muted-foreground">— what you bill the owner vs what you pay subs</span>
+          <span className="hidden text-sm text-muted-foreground sm:inline">— what you bill the owner vs what you pay subs</span>
+          <div className="flex-1" />
+          {data && <Button size="sm" variant="outline" onClick={() => openMarginReport(data, project?.name || 'Project')} className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Report</Button>}
         </div>
 
         {isLoading || !data ? (

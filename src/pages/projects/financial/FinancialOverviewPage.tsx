@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { FinancialOverview } from "@/components/financial/FinancialOverview";
+import { MarginOverviewCard } from "@/components/financial/MarginOverviewCard";
 import { BookOpen } from "lucide-react";
 
 export default function FinancialOverviewPage() {
@@ -17,6 +18,7 @@ export default function FinancialOverviewPage() {
           </p>
         </div>
       </div>
+      {projectId && <MarginOverviewCard projectId={projectId} />}
       {projectId && <FinancialOverview projectId={projectId} />}
     </div>
   );
