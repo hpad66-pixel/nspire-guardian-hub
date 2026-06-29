@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useProject } from '@/hooks/useProjects';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
-import { useLienReleases } from '@/hooks/useLienReleases';
+import { useLienWaivers } from '@/hooks/useLienWaivers';
+import { blankWaiverSpec } from '@/lib/lienWaiver/defaults';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { openVendorPayAppReport } from '@/lib/financial/vendorPayAppReport';
 import { toast } from 'sonner';
@@ -22,6 +25,7 @@ const usd = (n?: number | null) => (n == null ? '—' : `$${Number(n).toLocaleSt
 
 // GC-side: request an AIA pay app from a vendor via magic link.
 export function RequestVendorPayApp({ projectId }: { projectId: string }) {
+  const { data: project } = useProject(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId);
   const { data: requests = [] } = useVendorPayApps(projectId);
   const request = useRequestVendorPayApp(projectId);
@@ -101,20 +105,21 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      {review && <ReviewDialog sub={review} projectId={projectId} commitmentTitle={titleFor(review.commitment_id)} onClose={() => setReview(null)} />}
+      {review && <ReviewDialog sub={review} projectId={projectId} projectName={project?.name || 'Project'} commitmentTitle={titleFor(review.commitment_id)} onClose={() => setReview(null)} />}
     </div>
   );
 }
 
-function ReviewDialog({ sub, projectId, commitmentTitle, onClose }: { sub: VendorPayApp; projectId: string; commitmentTitle?: string; onClose: () => void }) {
+function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }: { sub: VendorPayApp; projectId: string; projectName: string; commitmentTitle?: string; onClose: () => void }) {
   const updateStatus = useUpdateVendorPayAppStatus();
   const convert = useConvertVendorPayApp();
-  const lien = useLienReleases(projectId);
+  const waivers = useLienWaivers(projectId);
+  const sendEmail = useSendEmail();
   const [invoiceId, setInvoiceId] = useState<string | null>(sub.commitment_invoice_id);
   const total = Number(sub.total_completed ?? 0);
   const ret = Number(sub.retainage_amount ?? 0);
   const due = Number(sub.current_due ?? 0);
-  const busy = updateStatus.isPending || convert.isPending;
+  const busy = updateStatus.isPending || convert.isPending || (waivers.create as any).isPending || sendEmail.isPending;
 
   const approve = async () => {
     try {
@@ -126,8 +131,31 @@ function ReviewDialog({ sub, projectId, commitmentTitle, onClose }: { sub: Vendo
   const markPaid = async () => {
     updateStatus.mutate({ id: sub.id, status: 'paid', projectId });
     try {
-      await (lien.create as any).mutateAsync({ direction: 'inbound', release_type: 'unconditional_progress', amount: due, through_date: sub.period_to ?? null, commitment_invoice_id: invoiceId ?? null });
-      toast.success('Marked paid · unconditional waiver created — send it from Lien Releases.');
+      // Build + create an unconditional progress waiver (with a spec so /sign/lien renders).
+      const spec: any = blankWaiverSpec({ project: projectName, claimant: sub.vendor_name ?? '', type: 'unconditional_progress' });
+      spec.payment.amount = String(due);
+      spec.payment.through_date = sub.period_to ?? '';
+      spec.parties.claimant.email = sub.vendor_email ?? '';
+      const row = await (waivers.create as any).mutateAsync({ spec });
+      if (invoiceId) await supabase.from('lien_releases' as any).update({ commitment_invoice_id: invoiceId }).eq('id', row.id);
+      const link = `${window.location.origin}/sign/lien/${row.sign_token}`;
+      if (sub.vendor_email) {
+        await sendEmail.mutateAsync({
+          recipients: [sub.vendor_email],
+          subject: `Unconditional lien waiver — signature requested`,
+          bodyHtml: `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
+            <div style="background:#1D6FE8;padding:18px 24px;border-radius:12px 12px 0 0;color:#fff"><div style="font-size:18px;font-weight:700">Payment issued — please sign your waiver</div></div>
+            <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:22px 24px">
+              <p style="color:#333;font-size:14px;line-height:1.6">${sub.vendor_name ? `Hi ${sub.vendor_name},` : 'Hi,'}<br/>APAS Consulting has issued payment of <b>$${due.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b> on ${projectName}. Please sign the unconditional lien waiver for our records.</p>
+              <p style="margin:18px 0"><a href="${link}" style="background:#1D6FE8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Sign the waiver →</a></p>
+              <p style="color:#999;font-size:12px">Or paste: ${link}</p>
+            </div></div>`,
+        });
+        await supabase.from('lien_releases' as any).update({ sent_at: new Date().toISOString() }).eq('id', row.id);
+        toast.success(`Marked paid · unconditional waiver emailed to ${sub.vendor_email}`);
+      } else {
+        toast.success('Marked paid · unconditional waiver created — add a vendor email to send it.');
+      }
     } catch { toast.success('Marked paid'); }
     onClose();
   };
@@ -144,7 +172,7 @@ function ReviewDialog({ sub, projectId, commitmentTitle, onClose }: { sub: Vendo
             <div className="mt-1 flex justify-between border-t border-border pt-1.5 text-[14px] font-bold"><span>Current payment due</span><span className="text-[var(--apas-sapphire)]">{usd(due)}</span></div>
           </div>
           <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{invoiceId && <span className="ml-1 text-[#0F6E56]">Draft invoice created.</span>}</p>
-          <Button variant="outline" size="sm" onClick={() => openVendorPayAppReport(sub, { projectName: 'Project', commitmentTitle })} className="w-full gap-1.5"><FileText className="h-3.5 w-3.5" /> Open AIA G702/G703</Button>
+          <Button variant="outline" size="sm" onClick={() => openVendorPayAppReport(sub, { projectName, commitmentTitle })} className="w-full gap-1.5"><FileText className="h-3.5 w-3.5" /> Open AIA G702/G703</Button>
         </div>
         <DialogFooter>
           {sub.status !== 'paid' && <Button variant="ghost" onClick={approve} disabled={busy || !!invoiceId} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> {invoiceId ? 'Approved' : 'Approve + invoice'}</Button>}
