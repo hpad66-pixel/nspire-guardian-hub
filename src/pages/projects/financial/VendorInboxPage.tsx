@@ -3,6 +3,7 @@ import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { ProjectIntakeCard } from "@/components/financial/ProjectIntakeCard";
 import { VendorSubmissionInbox } from "@/components/financial/VendorSubmissionInbox";
 import { RequestVendorPayApp } from "@/components/financial/RequestVendorPayApp";
+import { UploadParseDocument } from "@/components/financial/UploadParseDocument";
 import { Inbox } from "lucide-react";
 
 export default function VendorInboxPage() {
@@ -21,6 +22,7 @@ export default function VendorInboxPage() {
         </div>
       </div>
       <RequestVendorPayApp projectId={projectId} />
+      <UploadParseDocument projectId={projectId} />
       <ProjectIntakeCard projectId={projectId} />
       <VendorSubmissionInbox projectId={projectId} />
     </div>
