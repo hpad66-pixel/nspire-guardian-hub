@@ -40,24 +40,35 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
   const titleFor = (cid: string | null) => commitments.find((c: any) => c.id === cid)?.title as string | undefined;
 
   const create = async () => {
-    const token = await request.mutateAsync({ commitmentId: commitmentId || null, vendorName: name.trim() || undefined, vendorEmail: email.trim() || undefined });
+    let token: string;
+    try {
+      token = await request.mutateAsync({ commitmentId: commitmentId || null, vendorName: name.trim() || undefined, vendorEmail: email.trim() || undefined });
+    } catch (e: any) {
+      return toast.error(e?.message || 'Could not create the request.');
+    }
     const url = linkFor(token);
+    // The link always works and is in the list below. Email is best-effort —
+    // if it fails (provider config, bad address) we copy the link so you can send it.
+    navigator.clipboard?.writeText(url);
     if (email.trim()) {
-      await sendEmail.mutateAsync({
-        recipients: [email.trim()],
-        subject: `Submit your pay application — APAS Consulting`,
-        bodyHtml: `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
-          <div style="background:#1D6FE8;padding:18px 24px;border-radius:12px 12px 0 0;color:#fff"><div style="font-size:18px;font-weight:700">Submit your pay application</div></div>
-          <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:22px 24px">
-            <p style="color:#333;font-size:14px;line-height:1.6">${name.trim() ? `Hi ${name.trim()},` : 'Hi,'}<br/>APAS Consulting has invited you to submit your AIA pay application and conditional lien waiver online — no account needed.</p>
-            <p style="margin:18px 0"><a href="${url}" style="background:#1D6FE8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open the submission portal →</a></p>
-            <p style="color:#999;font-size:12px">Or paste this link: ${url}</p>
-          </div>
-        </div>`,
-      }).catch(() => toast.error('Link created, but email failed to send.'));
-      toast.success(`Invite sent to ${email.trim()}`);
+      try {
+        await sendEmail.mutateAsync({
+          recipients: [email.trim()],
+          subject: `Submit your pay application — APAS Consulting`,
+          bodyHtml: `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
+            <div style="background:#1D6FE8;padding:18px 24px;border-radius:12px 12px 0 0;color:#fff"><div style="font-size:18px;font-weight:700">Submit your pay application</div></div>
+            <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:22px 24px">
+              <p style="color:#333;font-size:14px;line-height:1.6">${name.trim() ? `Hi ${name.trim()},` : 'Hi,'}<br/>APAS Consulting has invited you to submit your AIA pay application and conditional lien waiver online — no account needed.</p>
+              <p style="margin:18px 0"><a href="${url}" style="background:#1D6FE8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open the submission portal →</a></p>
+              <p style="color:#999;font-size:12px">Or paste this link: ${url}</p>
+            </div>
+          </div>`,
+        });
+        toast.success(`Invite sent to ${email.trim()}`);
+      } catch {
+        toast.warning('Request created & link copied — email didn’t send. Paste the link to the vendor.');
+      }
     } else {
-      navigator.clipboard?.writeText(url);
       toast.success('Link created and copied');
     }
     setName(''); setEmail(''); setCommitmentId('');

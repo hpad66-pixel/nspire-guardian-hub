@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Sparkles, Upload, Loader2, FileText, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,16 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const isInvoice = fields?.doc_type === 'invoice' || fields?.doc_type === 'pay_app';
   const isWaiver = fields?.doc_type === 'lien_waiver';
   const RELEASE_TYPES = ['conditional_progress', 'unconditional_progress', 'conditional_final', 'unconditional_final'];
+
+  // When an invoice is parsed, pre-select the commitment: match the parsed vendor
+  // name, else the only commitment if there's just one. The user can still change it.
+  useEffect(() => {
+    if (!isInvoice || commitmentId || !commitments.length) return;
+    const v = (fields?.vendor_name || '').trim().toLowerCase();
+    const match = v ? commitments.find((c: any) => `${c.vendor_name ?? ''} ${c.title ?? ''}`.toLowerCase().includes(v) || v.includes(String(c.vendor_name ?? '').toLowerCase())) : null;
+    if (match) setCommitmentId(match.id);
+    else if (commitments.length === 1) setCommitmentId(commitments[0].id);
+  }, [isInvoice, fields?.vendor_name, commitments, commitmentId]);
 
   const reset = () => { setFile(null); setFields(null); setCommitmentId(''); if (fileRef.current) fileRef.current.value = ''; };
   const set = (k: keyof Fields, v: any) => setFields(f => ({ ...(f ?? {}), [k]: v }));
@@ -171,24 +181,26 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
             <Field label="Vendor / claimant"><Input value={fields.vendor_name ?? ''} onChange={e => set('vendor_name', e.target.value)} /></Field>
             <Field label="Invoice / app #"><Input value={fields.invoice_number ?? ''} onChange={e => set('invoice_number', e.target.value)} /></Field>
             <Field label="Amount"><Input value={fields.amount ?? ''} onChange={e => set('amount', Number(e.target.value) || 0)} /></Field>
-            <Field label="Date"><Input value={fields.invoice_date ?? ''} onChange={e => set('invoice_date', e.target.value)} placeholder="yyyy-mm-dd" /></Field>
+            <Field label="Date"><Input type="date" value={fields.invoice_date ?? ''} onChange={e => set('invoice_date', e.target.value)} /></Field>
             {fields.doc_type === 'lien_waiver'
               ? <Field label="Waiver type"><Input value={fields.waiver_type ?? ''} onChange={e => set('waiver_type', e.target.value)} /></Field>
-              : <Field label="Period end"><Input value={fields.period_end ?? ''} onChange={e => set('period_end', e.target.value)} placeholder="yyyy-mm-dd" /></Field>}
+              : <Field label="Period end"><Input type="date" value={fields.period_end ?? ''} onChange={e => set('period_end', e.target.value)} /></Field>}
             {fields.retainage_amount ? <Field label="Retainage"><Input value={fields.retainage_amount ?? ''} onChange={e => set('retainage_amount', Number(e.target.value) || 0)} /></Field> : <div />}
           </div>
           {!!fields.line_items?.length && <p className="text-[11px] text-muted-foreground">{fields.line_items.length} line item(s) captured · {usd(fields.amount)} total.</p>}
           {isInvoice && (
             <div className="rounded-lg border border-dashed border-border p-2.5">
-              <Label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Bill against commitment (to create a draft invoice)</Label>
-              <Select value={commitmentId} onValueChange={setCommitmentId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Select a commitment…" /></SelectTrigger>
-                <SelectContent>{commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}{c.commitment_no ? ` · ${c.commitment_no}` : ''}</SelectItem>)}</SelectContent>
-              </Select>
+              <Label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Bill against commitment (creates a draft invoice)</Label>
+              {commitments.length === 0
+                ? <p className="text-[12px] text-amber-600">No commitments on this project yet — add a commitment to bill against, or use “Attach &amp; save” to file it in the inbox.</p>
+                : <Select value={commitmentId} onValueChange={setCommitmentId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Select a commitment…" /></SelectTrigger>
+                    <SelectContent>{commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}{c.commitment_no ? ` · ${c.commitment_no}` : ''}</SelectItem>)}</SelectContent>
+                  </Select>}
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            {isInvoice && <Button size="sm" className="gap-1.5" onClick={createInvoice} disabled={saving || !commitmentId}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Create draft invoice</Button>}
+            {isInvoice && <Button size="sm" className="gap-1.5" onClick={createInvoice} disabled={saving || !commitmentId} title={!commitmentId ? 'Pick a commitment first' : undefined}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Create draft invoice</Button>}
             {isWaiver && <Button size="sm" className="gap-1.5" onClick={createLien} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} File as lien release</Button>}
             <Button size="sm" variant={isInvoice || isWaiver ? 'outline' : 'default'} className="gap-1.5" onClick={save} disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Attach &amp; save</Button>
             <Button size="sm" variant="ghost" className="gap-1.5" onClick={reset} disabled={saving}><X className="h-4 w-4" /> Discard</Button>

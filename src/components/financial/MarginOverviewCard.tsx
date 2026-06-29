@@ -21,6 +21,10 @@ export function MarginOverviewCard({ projectId }: { projectId: string }) {
         <div><div className="text-[11px] text-muted-foreground">Sub cost</div><div className="text-[17px] font-bold">{usd(data.totals.cost)}</div></div>
         <div><div className="text-[11px] text-muted-foreground">APAS recovery</div><div className="text-[17px] font-bold text-[var(--apas-sapphire)]">{usd(data.totals.margin)} <span className="text-[12px] font-normal text-muted-foreground">({pct}%)</span></div></div>
       </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3">
+        <div><div className="text-[11px] text-muted-foreground">Paid to date by owner → prime</div><div className="text-[16px] font-bold text-emerald-600">{usd(data.cash.receivedFromOwner)}</div></div>
+        <div><div className="text-[11px] text-muted-foreground">Paid to date to subs</div><div className="text-[16px] font-bold text-[var(--apas-sapphire)]">{usd(data.cash.paidToSubs)}</div></div>
+      </div>
     </Link>
   );
 }
