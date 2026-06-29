@@ -23,6 +23,7 @@ export interface VendorPayApp {
   retainage_amount: number | null;
   conditional_signed_name: string | null;
   conditional_signed_at: string | null;
+  commitment_invoice_id: string | null;
   submitted_at: string | null;
   created_at: string;
 }
@@ -56,6 +57,38 @@ export function useRequestVendorPayApp(projectId: string) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-payapps', projectId] }),
     onError: (e: Error) => toast.error(e.message || 'Could not create link'),
+  });
+}
+
+// Approve a submission and turn it into a draft commitment invoice; returns the
+// invoice id (or null if no commitment is linked). Stores the link back.
+export function useConvertVendorPayApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sub, projectId }: { sub: VendorPayApp; projectId: string }): Promise<string | null> => {
+      if (!sub.commitment_id) { // no commitment → just approve, no invoice
+        await db.from('vendor_payapp_submissions').update({ status: 'approved' }).eq('id', sub.id);
+        return null;
+      }
+      const { data: ws } = await db.rpc('get_my_workspace_id');
+      const { data: inv, error } = await db.from('commitment_invoices').insert({
+        tenant_id: ws,
+        commitment_id: sub.commitment_id,
+        invoice_no: `SUBAPP-${sub.app_no ?? sub.id.slice(0, 6)}`,
+        period_end: sub.period_to ?? new Date().toISOString().slice(0, 10),
+        status: 'draft',
+        submitted_amount: Number(sub.current_due ?? 0),
+        retainage_held: Number(sub.retainage_amount ?? 0),
+      }).select('id').single();
+      if (error) throw error;
+      await db.from('vendor_payapp_submissions').update({ status: 'approved', commitment_invoice_id: inv.id }).eq('id', sub.id);
+      return inv.id as string;
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] });
+      qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not create invoice'),
   });
 }
 
