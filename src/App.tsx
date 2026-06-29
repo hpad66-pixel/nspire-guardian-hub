@@ -147,6 +147,7 @@ const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/Commi
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
 const PayAppsPage = lazy(() => import('./pages/projects/financial/PayAppsPage'));
 const FinancialReportsPage = lazy(() => import('./pages/projects/financial/FinancialReportsPage'));
+const MarginPage = lazy(() => import('./pages/projects/financial/MarginPage'));
 const ChangeEventDetailPage = lazy(() => import('./pages/projects/financial/ChangeEventDetailPage'));
 const ChangeOrderDetailPage = lazy(() => import('./pages/projects/financial/ChangeOrderDetailPage'));
 const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/ChangeOrderGeneratorPage'));
@@ -382,6 +383,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
                               <Route path="/projects/:projectId/financials/pay-apps" element={<PayAppsPage />} />
                               <Route path="/projects/:projectId/financials/reports" element={<FinancialReportsPage />} />
+                              <Route path="/projects/:projectId/financials/margin" element={<MarginPage />} />
                               <Route path="/projects/:projectId/financials/client-updates" element={<ClientUpdatesPage />} />
                               <Route path="/projects/:projectId/financials/quantities" element={<QuantitiesProgressPage />} />
                               <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
