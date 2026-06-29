@@ -14,9 +14,15 @@ export interface VendorPayApp {
   vendor_email: string | null;
   status: string;
   app_no: number | null;
+  period_to: string | null;
+  lines: any[];
+  retainage_pct: number | null;
+  prior_payments: number | null;
   current_due: number | null;
   total_completed: number | null;
+  retainage_amount: number | null;
   conditional_signed_name: string | null;
+  conditional_signed_at: string | null;
   submitted_at: string | null;
   created_at: string;
 }
@@ -50,5 +56,17 @@ export function useRequestVendorPayApp(projectId: string) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-payapps', projectId] }),
     onError: (e: Error) => toast.error(e.message || 'Could not create link'),
+  });
+}
+
+export function useUpdateVendorPayAppStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string; projectId: string }) => {
+      const { error } = await db.from('vendor_payapp_submissions').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] }),
+    onError: (e: Error) => toast.error(e.message || 'Could not update'),
   });
 }
