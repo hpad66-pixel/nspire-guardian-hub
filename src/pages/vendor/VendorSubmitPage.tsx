@@ -23,6 +23,7 @@ export default function VendorSubmitPage() {
   const [prior, setPrior] = useState('0');
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [signName, setSignName] = useState('');
+  const [ackWaiver, setAckWaiver] = useState(true);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -71,6 +72,7 @@ export default function VendorSubmitPage() {
           token, action: 'submit', lines, retainage_pct: numIn(retPct), prior_payments: numIn(prior),
           app_no: appNo ? Number(appNo) : null, period_to: periodTo || null,
           vendor_name: vendorName.trim(), conditional_signed_name: signName.trim(),
+          apas_waiver_ack: ackWaiver, waiver_type: 'conditional_progress',
         },
       });
       if (error || !data?.ok) throw new Error(data?.error || 'Submit failed');
@@ -163,6 +165,10 @@ export default function VendorSubmitPage() {
             <div className="flex-1"><label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Type your full name to sign</label><input className={inputCls} value={signName} onChange={e => setSignName(e.target.value)} placeholder="Donnell …" /></div>
             <div className="text-[11px] text-muted-foreground">Electronic signature · {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
           </div>
+          <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-[12px] text-muted-foreground">
+            <input type="checkbox" checked={ackWaiver} onChange={e => setAckWaiver(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: accent }} />
+            <span>I acknowledge I am using <b className="text-foreground">APAS Consulting's</b> standard lien-waiver document (the form above) for this release. Optional — your signature is valid either way.</span>
+          </label>
         </div>
 
         <button onClick={submit} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[15px] font-semibold text-white transition-opacity disabled:opacity-60" style={{ background: accent }}>

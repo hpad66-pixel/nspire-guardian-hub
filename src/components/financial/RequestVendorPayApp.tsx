@@ -171,7 +171,7 @@ function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }:
             <Row label="Less previous payments" value={usd(sub.prior_payments ?? 0)} />
             <div className="mt-1 flex justify-between border-t border-border pt-1.5 text-[14px] font-bold"><span>Current payment due</span><span className="text-[var(--apas-sapphire)]">{usd(due)}</span></div>
           </div>
-          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{invoiceId && <span className="ml-1 text-[#0F6E56]">Draft invoice created.</span>}</p>
+          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{sub.apas_waiver_ack && <span className="ml-1 text-[#0F6E56]">✓ Acknowledged APAS waiver form.</span>}{invoiceId && <span className="ml-1 text-[#0F6E56]">Draft invoice created.</span>}</p>
           <Button variant="outline" size="sm" onClick={() => openVendorPayAppReport(sub, { projectName, commitmentTitle })} className="w-full gap-1.5"><FileText className="h-3.5 w-3.5" /> Open AIA G702/G703</Button>
         </div>
         <DialogFooter>

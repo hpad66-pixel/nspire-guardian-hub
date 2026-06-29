@@ -20,7 +20,7 @@ serve(async (req) => {
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: sub } = await db.from("vendor_payapp_submissions")
-      .select("id, project_id, commitment_id, status, vendor_name, vendor_email, app_no, period_from, period_to, lines, retainage_pct, prior_payments, conditional_signed_at, conditional_signed_name, submitted_at")
+      .select("id, project_id, commitment_id, status, vendor_name, vendor_email, app_no, period_from, period_to, lines, retainage_pct, prior_payments, conditional_signed_at, conditional_signed_name, submitted_at, apas_waiver_ack, waiver_type")
       .eq("token", token).maybeSingle();
     if (!sub) return json({ error: "Submission not found" }, 404);
 
@@ -37,6 +37,7 @@ serve(async (req) => {
           app_no: sub.app_no, period_from: sub.period_from, period_to: sub.period_to,
           lines: Array.isArray(sub.lines) ? sub.lines : [], retainage_pct: sub.retainage_pct,
           prior_payments: sub.prior_payments, conditional_signed_name: sub.conditional_signed_name,
+          apas_waiver_ack: sub.apas_waiver_ack, waiver_type: sub.waiver_type ?? "conditional_progress",
           submitted: !!sub.submitted_at,
         },
         commitment: commitment ? { title: commitment.title, no: commitment.commitment_no, value: commitment.original_value } : null,
@@ -65,6 +66,8 @@ serve(async (req) => {
         if (!signName) return json({ error: "Sign the conditional lien waiver to submit." }, 400);
         patch.conditional_signed_name = signName;
         patch.conditional_signed_at = new Date().toISOString();
+        patch.apas_waiver_ack = body.apas_waiver_ack === true;
+        if (typeof body.waiver_type === "string" && ["conditional_progress", "unconditional_progress", "conditional_final", "unconditional_final"].includes(body.waiver_type)) patch.waiver_type = body.waiver_type;
         patch.status = "submitted";
         patch.submitted_at = new Date().toISOString();
         if (body.vendor_name) patch.vendor_name = body.vendor_name;
