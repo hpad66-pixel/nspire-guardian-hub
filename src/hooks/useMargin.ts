@@ -28,6 +28,7 @@ export interface MarginClass {
   sub_label: string | null;
   recovery: number; // prime − sub_cost
   sub_co_id: string | null; // the sub CCO this was pushed into, if any
+  sub_commitment_id: string | null; // the sub's commitment this CO is attributed to
 }
 
 export interface MarginData {
@@ -49,12 +50,11 @@ export function useMargin(projectId: string | undefined) {
     queryKey: ['margin', projectId],
     enabled: !!projectId,
     queryFn: async (): Promise<MarginData> => {
-      const [summaryR, commitmentsR, cosR, linksR, orgsR] = await Promise.all([
+      const [summaryR, commitmentsR, cosR, linksR] = await Promise.all([
         db.from('v_project_financial_summary').select('original_contract, revised_contract, committed_total, paid_to_subs, billed_to_date, received_to_date').eq('project_id', projectId).maybeSingle(),
-        db.from('commitments').select('original_value').eq('project_id', projectId),
+        db.from('commitments').select('id, title, original_value').eq('project_id', projectId),
         db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id').eq('project_id', projectId),
-        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id').eq('project_id', projectId),
-        db.from('organizations').select('id, name').in('kind', ['sub', 'vendor']).eq('is_active', true).order('name'),
+        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id, sub_commitment_id').eq('project_id', projectId),
       ]);
       const s = summaryR.data ?? {};
       const cos: MarginCO[] = (cosR.data ?? []).filter((c: MarginCO) => EXECUTED.includes(c.status));
@@ -75,7 +75,7 @@ export function useMargin(projectId: string | undefined) {
         classifiedIds.add(prime.id);
         const treatment: Treatment = (l.treatment ?? (l.is_pass_through ? 'pass_through' : 'markup')) as Treatment;
         const subCost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? Number(prime.amount ?? 0) : Number(l.sub_cost ?? 0);
-        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost, sub_co_id: l.sub_co_id ?? null });
+        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost, sub_co_id: l.sub_co_id ?? null, sub_commitment_id: l.sub_commitment_id ?? null });
       });
 
       const unclassifiedPrime = primeCOs.filter((c) => !classifiedIds.has(c.id));
@@ -91,7 +91,7 @@ export function useMargin(projectId: string | undefined) {
         classified,
         unclassifiedPrime,
         subCOs,
-        subs: (orgsR.data ?? []).map((o: any) => ({ id: o.id, name: o.name })),
+        subs: (commitmentsR.data ?? []).map((c: any) => ({ id: c.id, name: (c.title ?? '').split('—')[0].trim() || c.title })),
         totals: {
           revenue, cost, margin: revenue - cost,
           coRevenue, coCost, coMargin: coRevenue - coCost,
@@ -110,13 +110,14 @@ export function useMargin(projectId: string | undefined) {
 export function useSaveMarginClass() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, primeCoId, treatment, subCost, subLabel, subCoId }: {
-      projectId: string; primeCoId: string; treatment: Treatment; subCost?: number; subLabel?: string | null; subCoId?: string | null;
+    mutationFn: async ({ projectId, primeCoId, treatment, subCost, subLabel, subCoId, subCommitmentId }: {
+      projectId: string; primeCoId: string; treatment: Treatment; subCost?: number; subLabel?: string | null; subCoId?: string | null; subCommitmentId?: string | null;
     }) => {
       const row = {
         project_id: projectId, prime_co_id: primeCoId, treatment,
         sub_cost: treatment === 'apas_100' ? 0 : Number(subCost ?? 0),
         sub_label: subLabel ?? null, sub_co_id: subCoId ?? null,
+        sub_commitment_id: subCommitmentId ?? null,
         is_pass_through: treatment === 'pass_through',
       };
       const { error } = await db.from('co_margin_links').upsert(row, { onConflict: 'prime_co_id' });

@@ -115,6 +115,24 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
         </div>
       )}
 
+      {/* His share of owner change orders (classified in Margin, not yet pushed) */}
+      {r.ownerShares.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold">Share of owner change orders</h3>
+          <div className="divide-y divide-border text-[13px]">
+            {r.ownerShares.map((o) => (
+              <Link key={o.primeCoId} to={`/projects/${projectId}/financials/cos/${o.primeCoId}`} className="-mx-1 flex items-center gap-2 rounded px-1 py-1.5 hover:bg-muted/60">
+                <span className="flex-1 truncate">{o.co_no != null ? `#${o.co_no} · ` : ''}{o.title}</span>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{TREAT_LABEL[o.treatment] ?? o.treatment}</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${o.counted ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>{o.status}</span>
+                <span className={`w-24 text-right font-mono ${o.share > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{o.treatment === 'apas_100' ? '$0.00' : `+ ${usd(o.share)}`}</span>
+              </Link>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">His portion of owner change orders classified to him. 100% APAS = he gets nothing. Push them to his commitment (Margin tool) to make them payable.</p>
+        </div>
+      )}
+
       {/* Base-contract line items */}
       <LineItems commitmentId={commitment.id} base={r.base} />
 
