@@ -90,7 +90,28 @@ export function useCommitmentSov(commitmentId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commitment-sov", commitmentId] }),
   });
 
-  return { ...list, addLine };
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["commitment-sov", commitmentId] });
+    qc.invalidateQueries({ queryKey: ["vendor-reconciliation", commitmentId] });
+  };
+
+  const updateLine = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Pick<CommitmentSovLine, "description" | "scheduled_value">> }) => {
+      const { error } = await supabase.from("commitment_sov_lines" as any).update(patch as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  const removeLine = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("commitment_sov_lines" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { ...list, addLine, updateLine, removeLine };
 }
 
 export function useCommitmentTotals(commitmentId: string | null) {
