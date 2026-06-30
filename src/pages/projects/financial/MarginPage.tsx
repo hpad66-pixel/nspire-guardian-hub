@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, X, TrendingUp, FileText, Pencil, Tag } from 'lucide-react';
+import { Loader2, X, TrendingUp, FileText, Pencil, Tag, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,10 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useProject } from '@/hooks/useProjects';
+import { useCommitments } from '@/hooks/useCommitments';
 import { openMarginReport } from '@/lib/financial/marginReport';
 import {
-  useMargin, useSaveMarginClass, useDeleteMarginClass,
+  useMargin, useSaveMarginClass, useDeleteMarginClass, usePushToCommitment,
   type MarginCO, type MarginClass, type Treatment,
 } from '@/hooks/useMargin';
 
@@ -31,7 +32,10 @@ export default function MarginPage() {
   const { data: project } = useProject(projectId ?? null);
   const del = useDeleteMarginClass();
   const save = useSaveMarginClass();
+  const push = usePushToCommitment();
+  const { data: commitments = [] } = useCommitments(projectId ?? null);
   const [classify, setClassify] = useState<{ co: MarginCO; existing?: MarginClass } | null>(null);
+  const [pushTarget, setPushTarget] = useState<MarginClass | null>(null);
 
   return (
     <div>
@@ -80,6 +84,11 @@ export default function MarginPage() {
                       <span className="text-right tabular-nums text-muted-foreground">{c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}{c.sub_label ? <span className="ml-1 text-[11px]">→ {c.sub_label}</span> : ''}</span>
                       <span className="flex items-center justify-end gap-1.5">
                         <b className="tabular-nums" style={{ color: c.recovery > 0 ? '#0F6E56' : c.recovery < 0 ? '#A32D2D' : '#5F5E5A' }}>{c.treatment === 'pass_through' ? '$0' : signed(c.recovery)}</b>
+                        {c.treatment !== 'apas_100' && c.sub_cost > 0 && (
+                          c.sub_co_id
+                            ? <span title="Already pushed to a commitment as a sub change order"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /></span>
+                            : <button onClick={() => setPushTarget(c)} title="Push to commitment as a sub change order" className="text-[var(--apas-sapphire)] hover:opacity-70"><PlusCircle className="h-3.5 w-3.5" /></button>
+                        )}
                         <button onClick={() => setClassify({ co: c.prime, existing: c })} title="Edit" className="text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => del.mutate({ linkId: c.link_id, projectId: projectId! })} title="Remove classification" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                       </span>
@@ -136,10 +145,63 @@ export default function MarginPage() {
                 busy={save.isPending}
               />
             )}
+
+            {pushTarget && (
+              <PushDialog
+                cls={pushTarget} commitments={commitments}
+                onClose={() => setPushTarget(null)}
+                onPush={(commitmentId, amount, title) => push.mutate(
+                  { projectId: projectId!, linkId: pushTarget.link_id, commitmentId, amount, title },
+                  { onSuccess: () => setPushTarget(null) },
+                )}
+                busy={push.isPending}
+              />
+            )}
           </>
         )}
       </div>
     </div>
+  );
+}
+
+function PushDialog({ cls, commitments, onPush, onClose, busy }: {
+  cls: MarginClass; commitments: any[];
+  onPush: (commitmentId: string, amount: number, title: string) => void; onClose: () => void; busy: boolean;
+}) {
+  const label = (cls.sub_label ?? '').trim().toLowerCase();
+  const match = label ? commitments.find((c) => `${c.title ?? ''}`.toLowerCase().includes(label)) : null;
+  const [commitmentId, setCommitmentId] = useState<string>(match?.id ?? (commitments.length === 1 ? commitments[0].id : ''));
+  const [amount, setAmount] = useState<string>(String(cls.sub_cost || ''));
+  const title = `${coLabel(cls.prime)}${cls.sub_label ? ` — ${cls.sub_label}` : ''}`;
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Push to commitment</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-[13px]">
+          <p className="text-muted-foreground">Creates an <b className="text-foreground">approved sub change order</b> for {cls.sub_label || 'the sub'} on the chosen commitment, so this becomes a payable you can invoice against.</p>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Commitment to add it to</label>
+            <Select value={commitmentId} onValueChange={setCommitmentId}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select a commitment…" /></SelectTrigger>
+              <SelectContent>{commitments.map((c) => <SelectItem key={c.id} value={c.id}>{c.commitment_no} · {c.title}</SelectItem>)}</SelectContent>
+            </Select>
+            {commitments.length === 0 && <p className="mt-1 text-[12px] text-amber-600">No commitments yet — create one for this sub first.</p>}
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-muted-foreground">Sub change-order amount</label>
+            <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+          </div>
+          <p className="rounded-lg bg-muted/40 p-2 text-[12px] text-muted-foreground">{title}</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button onClick={() => onPush(commitmentId, Number(amount) || 0, title)} disabled={busy || !commitmentId || !(Number(amount) > 0)} className="gap-1.5">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />} Create sub CO
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

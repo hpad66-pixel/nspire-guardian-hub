@@ -27,6 +27,7 @@ export interface MarginClass {
   sub_cost: number;
   sub_label: string | null;
   recovery: number; // prime − sub_cost
+  sub_co_id: string | null; // the sub CCO this was pushed into, if any
 }
 
 export interface MarginData {
@@ -52,7 +53,7 @@ export function useMargin(projectId: string | undefined) {
         db.from('v_project_financial_summary').select('original_contract, revised_contract, committed_total, paid_to_subs, billed_to_date, received_to_date').eq('project_id', projectId).maybeSingle(),
         db.from('commitments').select('original_value').eq('project_id', projectId),
         db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id').eq('project_id', projectId),
-        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through').eq('project_id', projectId),
+        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id').eq('project_id', projectId),
         db.from('organizations').select('id, name').in('kind', ['sub', 'vendor']).eq('is_active', true).order('name'),
       ]);
       const s = summaryR.data ?? {};
@@ -74,7 +75,7 @@ export function useMargin(projectId: string | undefined) {
         classifiedIds.add(prime.id);
         const treatment: Treatment = (l.treatment ?? (l.is_pass_through ? 'pass_through' : 'markup')) as Treatment;
         const subCost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? Number(prime.amount ?? 0) : Number(l.sub_cost ?? 0);
-        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost });
+        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost, sub_co_id: l.sub_co_id ?? null });
       });
 
       const unclassifiedPrime = primeCOs.filter((c) => !classifiedIds.has(c.id));
@@ -123,6 +124,37 @@ export function useSaveMarginClass() {
     },
     onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['margin', v.projectId] }); toast.success('Saved'); },
     onError: (e: Error) => toast.error(e.message || 'Could not save'),
+  });
+}
+
+// One-click: turn a classified prime CO's sub portion into a real sub change
+// order (CCO) on the chosen commitment, and link it back on the margin row. This
+// makes the sub cost a payable you can invoice against. Idempotent-ish: re-pushing
+// replaces the link target (old CCO is left for manual cleanup if needed).
+export function usePushToCommitment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, linkId, commitmentId, amount, title }: {
+      projectId: string; linkId: string; commitmentId: string; amount: number; title: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      // CCO trigger requires commitment_id set and prime_contract_id null.
+      const { data: co, error } = await db.from('change_orders').insert({
+        project_id: projectId, title, amount: Number(amount) || 0, status: 'approved',
+        co_type: 'CCO', commitment_id: commitmentId, requested_by: user?.id ?? null,
+      }).select('id').single();
+      if (error) throw error;
+      const { error: linkErr } = await db.from('co_margin_links').update({ sub_co_id: (co as any).id }).eq('id', linkId);
+      if (linkErr) throw linkErr;
+      return (co as any).id as string;
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
+      qc.invalidateQueries({ queryKey: ['commitment-totals'] });
+      qc.invalidateQueries({ queryKey: ['change-orders'] });
+      toast.success('Pushed to commitment as a sub change order.');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not push to commitment'),
   });
 }
 
