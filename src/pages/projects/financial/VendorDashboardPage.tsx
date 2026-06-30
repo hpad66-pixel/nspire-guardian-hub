@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Trash2, ShieldCheck, AlertTriangle, Users, Pencil, Check } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
 import { useCommitments, useCommitmentSov, type Commitment } from '@/hooks/useCommitments';
@@ -81,7 +81,7 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
           <Row label="Deductive change orders" value={`− ${usd(r.deductiveCO)}`} className="text-destructive" />
           <Divider />
           <Row label="Revised contract" value={usd(r.revisedContract)} bold />
-          <Row label={`Less retainage held by owner (${r.retainagePct}%)`} value={`− ${usd(r.retainageHeld)}`} className="text-amber-600" />
+          <Row label={`Less retainage held by owner${r.latestPayAppNo ? ` · live from Pay App #${r.latestPayAppNo}` : ` (${r.retainagePct}%)`}`} value={`− ${usd(r.retainageHeld)}`} className="text-amber-600" />
           <Divider />
           <Row label="Max payable (won't overpay)" value={usd(r.maxPayable)} bold />
           <Row label="Less paid to date" value={`− ${usd(r.paidToDate)}`} className="text-emerald-600" />
@@ -100,17 +100,17 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
           <h3 className="mb-2 text-sm font-semibold">Change orders ({r.cos.length})</h3>
           <div className="divide-y divide-border text-[13px]">
             {r.cos.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-1.5">
+              <Link key={c.id} to={`/projects/${projectId}/financials/cos/${c.id}`} className="-mx-1 flex items-center justify-between rounded px-1 py-1.5 hover:bg-muted/60">
                 <span className="truncate">{c.co_no != null ? `#${c.co_no} · ` : ''}{c.title}</span>
                 <span className={`font-mono ${c.amount < 0 ? 'text-destructive' : 'text-emerald-600'}`}>{c.amount < 0 ? '−' : '+'} {usd(Math.abs(c.amount))}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Base-contract line items (editable → base recomputes) */}
-      <LineItems commitmentId={commitment.id} />
+      {/* Base-contract line items */}
+      <LineItems commitmentId={commitment.id} base={r.base} />
 
       {/* Reconciliation stamp */}
       <ReconcileStamp r={r} vendor={vendorName(commitment)} />
@@ -118,12 +118,13 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
   );
 }
 
-function LineItems({ commitmentId }: { commitmentId: string }) {
+function LineItems({ commitmentId, base }: { commitmentId: string; base: number }) {
   const { data: lines = [], updateLine, removeLine } = useCommitmentSov(commitmentId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [val, setVal] = useState('');
   const total = lines.reduce((t, l) => t + Number(l.scheduled_value ?? 0), 0);
+  const mismatch = lines.length > 0 && Math.abs(total - base) > 0.5;
 
   const save = (id: string) => {
     const n = Number(val);
@@ -164,7 +165,9 @@ function LineItems({ commitmentId }: { commitmentId: string }) {
               ))}
             </div>
           )}
-          <p className="pt-2 text-[11px] text-muted-foreground">Editing a value or deleting a line updates this vendor's base contract everywhere.</p>
+          {mismatch
+            ? <p className="pt-2 text-[11px] text-amber-600">These line items sum to {usd(total)}, which differs from the contract base of {usd(base)}. Clean up the lines so they reconcile to the contract.</p>
+            : <p className="pt-2 text-[11px] text-muted-foreground">Line items break down this vendor's contract base.</p>}
         </div>
       )}
     </div>
