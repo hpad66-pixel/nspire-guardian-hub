@@ -270,8 +270,7 @@ function ClassifyDialog({ co, existing, subCOs, subs, onSave, onClose, busy }: {
             ))}
           </div>
 
-          {treatment !== 'apas_100' && (
-            <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Subcontractor (links to their commitment + dashboard)</label>
+          <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Subcontractor (links to their commitment + dashboard{treatment === 'apas_100' ? ' — optional, shows $0 to them' : ''})</label>
               <Select value={customSub ? '__other__' : (subCommitmentId || '')} onValueChange={(v) => { if (v === '__other__') { setCustomSub(true); setSubCommitmentId(''); setSubLabel(''); } else { setCustomSub(false); setSubCommitmentId(v); const s = subs.find((x) => x.id === v); setSubLabel(s?.name ?? ''); } }}>
                 <SelectTrigger><SelectValue placeholder="Choose a subcontractor…" /></SelectTrigger>
                 <SelectContent>
@@ -282,7 +281,6 @@ function ClassifyDialog({ co, existing, subCOs, subs, onSave, onClose, busy }: {
               {customSub && <Input className="mt-1.5" value={subLabel} onChange={(e) => setSubLabel(e.target.value)} placeholder="Vendor name" autoFocus />}
               {subs.length === 0 && !customSub && <p className="mt-1 text-[11px] text-muted-foreground">No commitments yet — create one for this sub first, or choose "Other".</p>}
             </div>
-          )}
           {treatment === 'markup' && (
             <div className="grid grid-cols-2 gap-2">
               <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Paid to sub ($)</label><Input type="number" value={subCost} onChange={(e) => setSubCost(e.target.value)} placeholder="1500" /></div>

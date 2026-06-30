@@ -120,7 +120,11 @@ export function useSaveMarginClass() {
         sub_commitment_id: subCommitmentId ?? null,
         is_pass_through: treatment === 'pass_through',
       };
-      const { error } = await db.from('co_margin_links').upsert(row, { onConflict: 'prime_co_id' });
+      // Robust replace (no ON CONFLICT dependency): clear any existing
+      // classification for this CO, then insert the fresh one.
+      const { error: delErr } = await db.from('co_margin_links').delete().eq('prime_co_id', primeCoId);
+      if (delErr) throw delErr;
+      const { error } = await db.from('co_margin_links').insert(row);
       if (error) throw error;
     },
     onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['margin', v.projectId] }); toast.success('Saved'); },
