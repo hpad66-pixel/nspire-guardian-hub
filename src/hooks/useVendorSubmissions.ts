@@ -131,13 +131,33 @@ export function useVendorSubmissions(projectId: string | null) {
     onSuccess: invalidate,
   });
 
+  // Delete a submission AND clean up what it produced: the created commitment
+  // invoice (cascades to its lines + linked waiver), the created lien release,
+  // and the uploaded artifact (storage file + row). A paid invoice is
+  // RESTRICT-protected by the DB, so it's kept and reported.
   const remove = useMutation({
-    mutationFn: async (submissionId: string) => {
-      const { error } = await supabase
+    mutationFn: async (submissionId: string): Promise<{ keptInvoice: boolean }> => {
+      const { data: row } = await supabase
         .from("vendor_submissions" as any)
-        .delete()
-        .eq("id", submissionId);
+        .select("created_commitment_invoice_id, created_lien_release_id, artifact_id")
+        .eq("id", submissionId).maybeSingle();
+      const r = row as any;
+      let keptInvoice = false;
+      if (r?.created_commitment_invoice_id) {
+        const { error } = await supabase.from("commitment_invoices" as any).delete().eq("id", r.created_commitment_invoice_id);
+        if (error) { if (/foreign key|violates|restrict/i.test(error.message)) keptInvoice = true; else throw error; }
+      }
+      if (r?.created_lien_release_id) {
+        await supabase.from("lien_releases" as any).delete().eq("id", r.created_lien_release_id); // best-effort (may already cascade)
+      }
+      if (r?.artifact_id) {
+        const { data: art } = await supabase.from("project_artifacts" as any).select("file_path").eq("id", r.artifact_id).maybeSingle();
+        if ((art as any)?.file_path) await supabase.storage.from("project-artifacts").remove([(art as any).file_path]).catch(() => {});
+        await supabase.from("project_artifacts" as any).delete().eq("id", r.artifact_id); // best-effort
+      }
+      const { error } = await supabase.from("vendor_submissions" as any).delete().eq("id", submissionId);
       if (error) throw error;
+      return { keptInvoice };
     },
     onSuccess: invalidate,
   });
