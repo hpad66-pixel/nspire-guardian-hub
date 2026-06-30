@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import { useMargin } from '@/hooks/useMargin';
 
-const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Compact prime↔sub recovery card for the Financial Overview.
 export function MarginOverviewCard({ projectId }: { projectId: string }) {

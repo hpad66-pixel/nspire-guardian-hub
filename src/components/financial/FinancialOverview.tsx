@@ -10,7 +10,7 @@ import { useProjectFinancials } from "@/hooks/useProjectFinancials";
 import { summarizeLedger, type LedgerEntry } from "@/lib/financial/ledger";
 
 const fmt = (n: number | null | undefined) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
 const fmt2 = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n ?? 0);
 const fmtDate = (d: string | null | undefined) =>
