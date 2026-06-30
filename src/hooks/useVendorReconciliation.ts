@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 const db = supabase as any;
 const EXECUTED = ['approved', 'executed'];
 
-export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string }
+export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string; treatment: string | null }
 export interface VendorReconciliation {
   base: number;                 // the vendor's own contract value (commitment)
   sovTotal: number;             // sum of SOV line items (a breakdown, may differ)
@@ -29,24 +29,30 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
     queryKey: ['vendor-reconciliation', commitmentId],
     enabled: !!commitmentId,
     queryFn: async (): Promise<VendorReconciliation> => {
-      const [commitR, sovR, cosR, invR, payR, primeR] = await Promise.all([
+      const [commitR, sovR, cosR, invR, payR, primeR, marginR] = await Promise.all([
         db.from('commitments').select('original_value').eq('id', commitmentId).maybeSingle(),
         db.from('commitment_sov_lines').select('scheduled_value').eq('commitment_id', commitmentId),
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
         db.from('commitment_invoices').select('approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
         db.from('commitment_payments').select('amount').eq('commitment_id', commitmentId),
         projectId ? db.from('prime_contracts').select('id, retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
+        projectId ? db.from('co_margin_links').select('treatment, sub_co_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
       ]);
+      // treatment per pushed sub CO (markup / pass_through / apas_100), deterministic via sub_co_id.
+      const treatmentBySubCo: Record<string, string> = {};
+      for (const l of (marginR.data ?? [])) if (l.sub_co_id) treatmentBySubCo[l.sub_co_id] = l.treatment;
 
       // Base = the VENDOR's own contract value (not the prime / not APAS margin).
       const sov = sovR.data ?? [];
       const sovTotal = sov.reduce((t: number, l: any) => t + Number(l.scheduled_value ?? 0), 0);
       const base = Number(commitR.data?.original_value ?? 0);
 
-      // Only this vendor's sub change orders (CCOs on their commitment).
-      const cosRaw = (cosR.data ?? []).filter((c: any) => EXECUTED.includes(c.status));
-      const additiveCO = cosRaw.filter((c: any) => Number(c.amount) > 0).reduce((t: number, c: any) => t + Number(c.amount), 0);
-      const deductiveCO = cosRaw.filter((c: any) => Number(c.amount) < 0).reduce((t: number, c: any) => t + Math.abs(Number(c.amount)), 0);
+      // All of this vendor's sub change orders (CCOs) — every status shown; only
+      // approved/executed count toward the revised contract.
+      const cosAll = (cosR.data ?? []);
+      const counted = cosAll.filter((c: any) => EXECUTED.includes(c.status));
+      const additiveCO = counted.filter((c: any) => Number(c.amount) > 0).reduce((t: number, c: any) => t + Number(c.amount), 0);
+      const deductiveCO = counted.filter((c: any) => Number(c.amount) < 0).reduce((t: number, c: any) => t + Math.abs(Number(c.amount)), 0);
       const netCO = additiveCO - deductiveCO;
       const revisedContract = base + netCO;
 
@@ -80,7 +86,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         billedToDate, paidToDate, retainageHeld, retainagePct, latestPayAppNo,
         maxPayable, remainingToPay, leftToEarn,
         overpaid: paidToDate > maxPayable + 0.01,
-        cos: cosRaw.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status })),
+        cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null })),
       };
     },
   });
