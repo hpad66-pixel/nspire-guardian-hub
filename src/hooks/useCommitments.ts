@@ -171,16 +171,21 @@ export function useCommitmentInvoices(commitmentId: string | null) {
     onSuccess: invalidate,
   });
 
-  // Deleting an invoice cascades its lines + any linked lien waiver. A paid
-  // invoice with recorded payments is RESTRICT-protected by the DB → surfaced.
+  // Deleting an invoice cascades its lines + any linked lien waiver. The ONLY
+  // thing that blocks it is a recorded payment (commitment_payments → ON DELETE
+  // RESTRICT). Pre-check so we can tell the user exactly what's holding it.
   const remove = useMutation({
-    mutationFn: async (id: string): Promise<{ blocked: boolean }> => {
+    mutationFn: async (id: string): Promise<{ blocked: boolean; payments: { amount: number; paid_date: string; reference: string | null; method: string | null }[] }> => {
+      const { data: pays } = await supabase.from("commitment_payments" as any)
+        .select("amount, paid_date, reference, method").eq("commitment_invoice_id", id);
+      const payments = ((pays ?? []) as any[]).map((p) => ({ amount: Number(p.amount), paid_date: p.paid_date, reference: p.reference ?? null, method: p.method ?? null }));
+      if (payments.length) return { blocked: true, payments };
       const { error } = await supabase.from("commitment_invoices" as any).delete().eq("id", id);
       if (error) {
-        if (/foreign key|violates|restrict/i.test(error.message)) return { blocked: true };
+        if (/foreign key|violates|restrict/i.test(error.message)) return { blocked: true, payments: [] };
         throw error;
       }
-      return { blocked: false };
+      return { blocked: false, payments: [] };
     },
     onSuccess: invalidate,
   });
