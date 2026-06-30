@@ -13,6 +13,7 @@ import { buildCoPdf } from "@/lib/changeOrder/coPdf";
 import { recomputePricing } from "@/lib/changeOrder/pricing";
 import { useCoWorkflow } from "@/hooks/useCoWorkflow";
 import type { ChangeOrder } from "@/hooks/useProcoreChangeOrders";
+import { useRenumberChangeOrder } from "@/hooks/useProcoreChangeOrders";
 import type { CoSpec } from "@/lib/changeOrder/types";
 import { ChangeOrderLineGrid } from "@/components/financial/ChangeOrderLineGrid";
 import { CoPdfExport } from "@/components/financial/CoPdfExport";
@@ -71,6 +72,7 @@ export default function ChangeOrderDetailPage() {
   const [draft, setDraft] = useState<CoSpec | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const { update } = useCoWorkflow(projectId ?? null);
+  const renumber = useRenumberChangeOrder();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -134,15 +136,34 @@ export default function ChangeOrderDetailPage() {
     if (!draft.doc.title.trim()) { toast.error("Add a title for the change order."); return; }
     const finalSpec = structuredClone(draft);
     finalSpec.pricing = recomputePricing(finalSpec.pricing);
-    if (!finalSpec.doc.co_label && finalSpec.doc.co_number) {
+
+    // The co_no column is the single source of truth for the number (the page
+    // title reads it). If the user changed the number in the body, route it
+    // through the canonical renumber so co_no, the spec, the PDF and the title
+    // all change together — and the old number is freed (with audit history).
+    const editedNo = parseInt(String(finalSpec.doc.co_number ?? "").replace(/\D/g, ""), 10);
+    const numberChanged = Number.isFinite(editedNo) && editedNo > 0 && editedNo !== co.co_no;
+    const effectiveNo = numberChanged ? editedNo : co.co_no;
+    if (effectiveNo != null) {
+      finalSpec.doc.co_number = String(effectiveNo);
+      finalSpec.doc.co_label = coLabel(co.co_type, effectiveNo);
+    } else if (!finalSpec.doc.co_label && finalSpec.doc.co_number) {
       finalSpec.doc.co_label = `PCO-${String(finalSpec.doc.co_number).padStart(3, "0")}`;
     }
+
     setSavingEdit(true);
     try {
+      // Renumber first (validates the new number is free) so a clash aborts before
+      // we persist the edited content.
+      if (numberChanged) {
+        await renumber.mutateAsync({ coId, newCoNo: editedNo, reason: "Renumbered while amending the change order." });
+      }
       await update.mutateAsync({ coId, spec: finalSpec });
-      toast.success("Change order saved");
+      toast.success(numberChanged ? `Saved — renumbered to ${coLabel(co.co_type, editedNo)} (${coLabel(co.co_type, co.co_no)} freed)` : "Change order saved");
       setEditing(false);
       setDraft(null);
+      qc.invalidateQueries({ queryKey: ["co", coId] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
