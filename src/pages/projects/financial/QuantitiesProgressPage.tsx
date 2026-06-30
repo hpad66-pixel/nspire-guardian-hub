@@ -14,6 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QuantitiesEmailDialog } from "@/components/financial/QuantitiesEmailDialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useSovLineVendors } from "@/hooks/useSovLineVendors";
+import { useCommitments } from "@/hooks/useCommitments";
 import { Download, Mail, ChevronDown, ChevronRight, Ruler } from "lucide-react";
 
 const money = (n: number) =>
@@ -44,6 +47,8 @@ export default function QuantitiesProgressPage() {
   const { data: project } = useProject(projectId ?? null);
   const { data: rows = [], isLoading } = useSovProgress(projectId ?? null);
   const { data: allCos = [] } = useChangeOrdersByProject(projectId ?? null);
+  const { map: lineVendor, setVendor } = useSovLineVendors(projectId ?? null);
+  const { data: commitments = [] } = useCommitments(projectId ?? null);
   const coMeta = useMemo(
     () => Object.fromEntries(allCos.map((c: any) => [c.id, { co_no: c.co_no, title: c.title }])),
     [allCos],
@@ -94,6 +99,7 @@ export default function QuantitiesProgressPage() {
           {showMoney && <th className="p-2 text-right">Sched Value</th>}
           {showMoney && <th className="p-2 text-right">Earned</th>}
           {showMoney && <th className="p-2 text-right">To Complete</th>}
+          <th className="p-2 text-left print:hidden">Vendor</th>
         </tr>
       </thead>
     );
@@ -142,6 +148,15 @@ export default function QuantitiesProgressPage() {
         {showMoney && <td className="p-2 text-right font-mono text-muted-foreground">{money(r.scheduled_value)}</td>}
         {showMoney && <td className="p-2 text-right font-mono text-emerald-600">{money(r.value_to_date)}</td>}
         {showMoney && <td className="p-2 text-right font-mono">{money(r.value_remaining)}</td>}
+        <td className="p-2 print:hidden">
+          <Select value={lineVendor[r.sov_line_item_id] ?? "__none"} onValueChange={(v) => setVendor.mutate({ sovLineItemId: r.sov_line_item_id, commitmentId: v === "__none" ? null : v })}>
+            <SelectTrigger className="h-7 w-[150px] text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">Unassigned</SelectItem>
+              {commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </td>
       </tr>
     );
   }

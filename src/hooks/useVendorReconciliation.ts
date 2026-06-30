@@ -24,6 +24,8 @@ export interface VendorReconciliation {
   overpaid: boolean;
   cos: VendorCO[];
   ownerShares: OwnerShare[];    // his share of owner COs classified to him (not yet pushed)
+  lineItems: { item_no: string; description: string; scheduled_value: number }[]; // pay-app/SOV lines tagged to him
+  lineItemsTotal: number;
 }
 
 export function useVendorReconciliation(projectId: string | undefined, commitmentId: string | null) {
@@ -31,7 +33,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
     queryKey: ['vendor-reconciliation', commitmentId],
     enabled: !!commitmentId,
     queryFn: async (): Promise<VendorReconciliation> => {
-      const [commitR, sovR, cosR, invR, payR, primeR, marginR, primeCosR] = await Promise.all([
+      const [commitR, sovR, cosR, invR, payR, primeR, marginR, primeCosR, sovLinesR] = await Promise.all([
         db.from('commitments').select('original_value').eq('id', commitmentId).maybeSingle(),
         db.from('commitment_sov_lines').select('scheduled_value').eq('commitment_id', commitmentId),
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
@@ -40,7 +42,10 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         projectId ? db.from('prime_contracts').select('id, retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
         projectId ? db.from('co_margin_links').select('prime_co_id, treatment, sub_cost, sub_co_id, sub_commitment_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
         projectId ? db.from('change_orders').select('id, co_no, title, amount, status').eq('project_id', projectId).not('prime_contract_id', 'is', null) : Promise.resolve({ data: [] }),
+        db.from('sov_line_items').select('item_no, description, scheduled_value').eq('commitment_id', commitmentId).order('sort_order'),
       ]);
+      const lineItems = (sovLinesR.data ?? []).map((l: any) => ({ item_no: l.item_no, description: l.description, scheduled_value: Number(l.scheduled_value ?? 0) }));
+      const lineItemsTotal = lineItems.reduce((t: number, l: any) => t + l.scheduled_value, 0);
       // treatment per pushed sub CO (markup / pass_through / apas_100), deterministic via sub_co_id.
       const treatmentBySubCo: Record<string, string> = {};
       for (const l of (marginR.data ?? [])) if (l.sub_co_id) treatmentBySubCo[l.sub_co_id] = l.treatment;
@@ -106,6 +111,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         overpaid: paidToDate > maxPayable + 0.01,
         cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null })),
         ownerShares,
+        lineItems, lineItemsTotal,
       };
     },
   });
