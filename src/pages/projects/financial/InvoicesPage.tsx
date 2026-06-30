@@ -111,7 +111,16 @@ function VendorInvoiceGroup({
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive focus:text-destructive"
-                        onClick={() => { if (confirm(`Delete invoice #${inv.invoice_no}?\n\nThis also removes its lines and any linked lien waiver. This can’t be undone.`)) remove.mutate(inv.id, { onSuccess: (r) => toast.success(r?.blocked ? "Couldn’t delete — this invoice has payments recorded. Remove the payment first." : "Invoice deleted") }); }}>
+                        onClick={() => { if (confirm(`Delete invoice #${inv.invoice_no}?\n\nThis also removes its lines and any linked lien waiver. This can’t be undone.`)) remove.mutate(inv.id, { onSuccess: (r) => {
+                          if (!r?.blocked) return toast.success("Invoice deleted");
+                          if (r.payments.length) {
+                            const total = r.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+                            const lines = r.payments.map((p) => `• ${money(p.amount)} on ${p.paid_date}${p.reference ? ` (${p.reference})` : ""}`).join("\n");
+                            toast.error(`Can’t delete — ${r.payments.length} payment(s) totaling ${money(total)} are recorded against this invoice:\n${lines}\nOpen this invoice (Commitment → Invoices) to remove them, then delete.`, { duration: 12000 });
+                          } else {
+                            toast.error("Can’t delete — another record references this invoice.");
+                          }
+                        } }); }}>
                         <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete invoice
                       </DropdownMenuItem>
                     </DropdownMenuContent>

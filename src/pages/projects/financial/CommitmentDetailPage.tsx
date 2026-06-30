@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, ChevronRight, LayoutDashboard } from "lucide-react";
+import { Plus, ChevronRight, LayoutDashboard, Trash2 } from "lucide-react";
 import { money } from "@/lib/pdf";
 import { useProject } from "@/hooks/useProjects";
 import { toast } from "sonner";
@@ -253,7 +253,7 @@ function InvoiceDetailDialog({
   open: boolean; onOpenChange: (o: boolean) => void;
 }) {
   const { detail, submit, approve, reject } = useInvoice(invoiceId);
-  const { data: payments = [] } = useCommitmentPayments(invoiceId);
+  const { data: payments = [], remove: removePayment } = useCommitmentPayments(invoiceId);
   const [approveAmt, setApproveAmt] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
   const qc = useQueryClient();
@@ -334,9 +334,18 @@ function InvoiceDetailDialog({
             ) : (
               <div className="divide-y text-sm">
                 {payments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-1.5">
+                  <div key={p.id} className="flex items-center justify-between gap-2 py-1.5">
                     <span className="font-mono">{p.paid_date} · {p.method ?? ""} {p.reference ?? ""}</span>
-                    <span className="font-mono">{money(Number(p.amount))}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono">{money(Number(p.amount))}</span>
+                      <button
+                        title="Delete this payment"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => { if (confirm(`Delete this payment of ${money(Number(p.amount))} on ${p.paid_date}?\n\nThis removes the cash record and lowers paid-to-date. This can’t be undone.`)) removePayment.mutate(p.id, { onSuccess: () => toast.success("Payment deleted") }); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
