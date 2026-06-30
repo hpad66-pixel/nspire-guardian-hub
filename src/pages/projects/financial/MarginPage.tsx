@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, X, TrendingUp, FileText, Pencil, Tag, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, X, TrendingUp, FileText, Pencil, Tag, PlusCircle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ export default function MarginPage() {
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const [classify, setClassify] = useState<{ co: MarginCO; existing?: MarginClass } | null>(null);
   const [pushTarget, setPushTarget] = useState<MarginClass | null>(null);
+  const [showClassified, setShowClassified] = useState(false);
 
   return (
     <div>
@@ -76,7 +77,28 @@ export default function MarginPage() {
                   <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-muted/40 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>Owner change order</span><span className="text-right">Bill</span><span>Treatment</span><span className="text-right">Sub cost</span><span className="text-right pr-7">APAS</span>
                   </div>
-                  {data.classified.map((c) => (
+                  {/* Needs action first */}
+                  {data.unclassifiedPrime.map((co) => (
+                    <div key={co.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-amber-50/40 px-3.5 py-2.5 text-[13px] dark:bg-amber-950/20">
+                      <span className="truncate" title={coLabel(co)}>{coLabel(co)}</span>
+                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(co.amount ?? 0))}</span>
+                      <span className="col-span-3 text-right">
+                        <Button size="sm" variant="outline" onClick={() => setClassify({ co })} className="gap-1.5"><Tag className="h-3.5 w-3.5" /> Classify</Button>
+                      </span>
+                    </div>
+                  ))}
+                  {data.unclassifiedPrime.length === 0 && data.classified.length > 0 && (
+                    <div className="border-b border-border px-3.5 py-2.5 text-center text-[12px] text-emerald-700">All owner change orders are classified. ✓</div>
+                  )}
+
+                  {/* Classified ones collapse out of the way */}
+                  {data.classified.length > 0 && (
+                    <button onClick={() => setShowClassified((s) => !s)} className="flex w-full items-center gap-2 border-b border-border bg-muted/30 px-3.5 py-2 text-[12px] font-semibold text-muted-foreground hover:bg-muted/50">
+                      {showClassified ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> {data.classified.length} classified · {usd(data.totals.coMargin)} APAS recovery — {showClassified ? 'hide' : 'show'}
+                    </button>
+                  )}
+                  {showClassified && data.classified.map((c) => (
                     <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border px-3.5 py-2.5 text-[13px]">
                       <span className="truncate" title={coLabel(c.prime)}>{coLabel(c.prime)}</span>
                       <span className="text-right tabular-nums text-muted-foreground">{usd(Number(c.prime.amount ?? 0))}</span>
@@ -91,15 +113,6 @@ export default function MarginPage() {
                         )}
                         <button onClick={() => setClassify({ co: c.prime, existing: c })} title="Edit" className="text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                         <button onClick={() => del.mutate({ linkId: c.link_id, projectId: projectId! })} title="Remove classification" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
-                      </span>
-                    </div>
-                  ))}
-                  {data.unclassifiedPrime.map((co) => (
-                    <div key={co.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-amber-50/40 px-3.5 py-2.5 text-[13px] dark:bg-amber-950/20">
-                      <span className="truncate" title={coLabel(co)}>{coLabel(co)}</span>
-                      <span className="text-right tabular-nums text-muted-foreground">{usd(Number(co.amount ?? 0))}</span>
-                      <span className="col-span-3 text-right">
-                        <Button size="sm" variant="outline" onClick={() => setClassify({ co })} className="gap-1.5"><Tag className="h-3.5 w-3.5" /> Classify</Button>
                       </span>
                     </div>
                   ))}

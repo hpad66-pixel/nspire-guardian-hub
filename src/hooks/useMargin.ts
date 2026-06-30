@@ -67,7 +67,8 @@ export function useMargin(projectId: string | undefined) {
       // classify (markup / pass-through / 100% APAS). Robust to a missing
       // prime_contract_id so no executed owner CO is hidden from the list.
       const primeCOs = cos.filter((c) => !c.commitment_id);
-      const subCOs = cos.filter((c) => c.commitment_id);
+      // Sub COs for the classify pre-fill — any status (incl. draft) so nothing is hidden.
+      const subCOs = (cosR.data ?? []).filter((c: MarginCO) => c.commitment_id);
       const byId = (id: string) => primeCOs.find((c) => c.id === id) ?? null;
 
       // A CO counts as classified the moment it has a link — so it leaves the
