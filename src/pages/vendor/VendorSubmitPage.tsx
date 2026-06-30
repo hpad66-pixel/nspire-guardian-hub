@@ -19,8 +19,6 @@ export default function VendorSubmitPage() {
   const [vendorName, setVendorName] = useState('');
   const [appNo, setAppNo] = useState('');
   const [periodTo, setPeriodTo] = useState('');
-  const [retPct, setRetPct] = useState('10');
-  const [prior, setPrior] = useState('0');
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [signName, setSignName] = useState('');
   const [ackWaiver, setAckWaiver] = useState(true);
@@ -40,8 +38,6 @@ export default function VendorSubmitPage() {
           setVendorName(s.vendor_name || '');
           setAppNo(s.app_no ? String(s.app_no) : '');
           setPeriodTo(s.period_to || '');
-          setRetPct(s.retainage_pct != null ? String(s.retainage_pct) : '10');
-          setPrior(s.prior_payments != null ? String(s.prior_payments) : '0');
           if (Array.isArray(s.lines) && s.lines.length) setLines(s.lines);
           if (s.submitted) setDone(true);
         }
@@ -51,13 +47,12 @@ export default function VendorSubmitPage() {
   }, [token]);
 
   const totals = useMemo(() => {
+    // The vendor bills the gross amount. Retainage / prior-payment deductions are
+    // applied later by APAS when the pay app is generated — not on this magic link.
     const totalCompleted = lines.reduce((t, l) => t + Number(l.from_previous || 0) + Number(l.this_period || 0) + Number(l.materials || 0), 0);
     const scheduled = lines.reduce((t, l) => t + Number(l.scheduled_value || 0), 0);
-    const retainage = totalCompleted * (numIn(retPct) / 100);
-    const lessPrior = numIn(prior);
-    const currentDue = totalCompleted - retainage - lessPrior;
-    return { totalCompleted, scheduled, retainage, lessPrior, currentDue };
-  }, [lines, retPct, prior]);
+    return { totalCompleted, scheduled, currentDue: totalCompleted };
+  }, [lines]);
 
   const setLine = (i: number, patch: Partial<Line>) => setLines(ls => ls.map((l, k) => k === i ? { ...l, ...patch } : l));
 
@@ -69,7 +64,7 @@ export default function VendorSubmitPage() {
     try {
       const { data, error } = await supabase.functions.invoke('vendor-submit', {
         body: {
-          token, action: 'submit', lines, retainage_pct: numIn(retPct), prior_payments: numIn(prior),
+          token, action: 'submit', lines, retainage_pct: 0, prior_payments: 0,
           app_no: appNo ? Number(appNo) : null, period_to: periodTo || null,
           vendor_name: vendorName.trim(), conditional_signed_name: signName.trim(),
           apas_waiver_ack: ackWaiver, waiver_type: 'conditional_progress',
@@ -109,11 +104,10 @@ export default function VendorSubmitPage() {
       <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5">
         {commitment && <div className="rounded-xl border border-border bg-white p-3 text-[13px] text-muted-foreground shadow-sm">Your contract: <b className="text-foreground">{commitment.no ? commitment.no + ' · ' : ''}{commitment.title}</b> · value {usd(commitment.value)}</div>}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Field label="Your company"><input className={inputCls} value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="D'Shin Plumbing" /></Field>
           <Field label="Application #"><input className={inputCls} value={appNo} onChange={e => setAppNo(e.target.value)} placeholder="5" /></Field>
           <Field label="Period to"><input type="date" className={inputCls} value={periodTo} onChange={e => setPeriodTo(e.target.value)} /></Field>
-          <Field label="Retainage %"><input className={inputCls} value={retPct} onChange={e => setRetPct(e.target.value)} /></Field>
         </div>
 
         {/* G703 continuation */}
@@ -149,10 +143,8 @@ export default function VendorSubmitPage() {
         <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
           <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Application summary (AIA G702)</div>
           <Row label="Total completed & stored to date" value={usd(totals.totalCompleted)} />
-          <Row label={`Less retainage (${retPct || 0}%)`} value={`(${usd(totals.retainage)})`} />
-          <Row label="Total earned less retainage" value={usd(totals.totalCompleted - totals.retainage)} />
-          <div className="flex items-center justify-between py-1 text-[13px]"><span>Less previous payments</span><input className={`${inputCls} w-28 text-right`} value={prior} onChange={e => setPrior(e.target.value)} /></div>
-          <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[15px] font-bold"><span>Current payment due</span><span style={{ color: accent }}>{usd(totals.currentDue)}</span></div>
+          <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[15px] font-bold"><span>Amount of this invoice</span><span style={{ color: accent }}>{usd(totals.currentDue)}</span></div>
+          <p className="mt-2 text-[11.5px] text-muted-foreground">Bill the full amount. Any retainage is applied by APAS when the pay application is generated.</p>
         </div>
 
         {/* Conditional lien waiver */}
