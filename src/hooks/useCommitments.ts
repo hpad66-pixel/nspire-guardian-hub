@@ -107,6 +107,31 @@ export function useCommitmentTotals(commitmentId: string | null) {
   });
 }
 
+export interface CommitmentTotals {
+  commitment_id: string;
+  original_value: number;
+  executed_cco_value: number;       // approved + executed CCOs
+  revised_commitment_value: number; // original + CCOs
+  billed_to_date: number;
+}
+
+/** Per-commitment totals (original + approved/executed COs + billed) for many commitments. */
+export function useCommitmentTotalsMap(commitmentIds: string[]) {
+  const key = [...commitmentIds].sort().join(",");
+  return useQuery<Record<string, CommitmentTotals>>({
+    queryKey: ["commitment-totals", key],
+    enabled: commitmentIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("commitment_totals" as any).select("*").in("commitment_id", commitmentIds);
+      if (error) throw error;
+      const map: Record<string, CommitmentTotals> = {};
+      for (const r of (data ?? []) as any[]) map[r.commitment_id] = r as CommitmentTotals;
+      return map;
+    },
+  });
+}
+
 export function useCommitmentInvoices(commitmentId: string | null) {
   const qc = useQueryClient();
   const list = useQuery<CommitmentInvoice[]>({
