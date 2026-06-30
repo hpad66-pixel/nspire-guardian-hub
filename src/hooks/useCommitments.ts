@@ -133,5 +133,32 @@ export function useCommitmentInvoices(commitmentId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["commitment-invoices", commitmentId] }),
   });
 
-  return { ...list, create };
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["commitment-invoices", commitmentId] });
+    qc.invalidateQueries({ queryKey: ["project-financials"] });
+  };
+
+  const setStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: CommitmentInvoice["status"] }) => {
+      const { error } = await supabase.from("commitment_invoices" as any).update({ status } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  // Deleting an invoice cascades its lines + any linked lien waiver. A paid
+  // invoice with recorded payments is RESTRICT-protected by the DB → surfaced.
+  const remove = useMutation({
+    mutationFn: async (id: string): Promise<{ blocked: boolean }> => {
+      const { error } = await supabase.from("commitment_invoices" as any).delete().eq("id", id);
+      if (error) {
+        if (/foreign key|violates|restrict/i.test(error.message)) return { blocked: true };
+        throw error;
+      }
+      return { blocked: false };
+    },
+    onSuccess: invalidate,
+  });
+
+  return { ...list, create, setStatus, remove };
 }

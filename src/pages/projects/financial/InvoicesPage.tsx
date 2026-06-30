@@ -16,7 +16,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileText, Receipt, Paperclip } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Plus, FileText, Receipt, Paperclip, MoreVertical, Trash2, Check } from "lucide-react";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
 
@@ -50,8 +53,9 @@ function VendorInvoiceGroup({
   projectId: string;
   onOpen: (invoiceId: string, commitmentId: string) => void;
 }) {
-  const { data: invoices = [], isLoading } = useCommitmentInvoices(commitment.id);
+  const { data: invoices = [], isLoading, setStatus, remove } = useCommitmentInvoices(commitment.id);
   if (isLoading) return null;
+  const INV_STATUSES: CommitmentInvoice["status"][] = ["draft", "submitted", "approved", "paid", "rejected"];
 
   // Subcontractor invoices keep the vendor's OWN invoice number — they are NOT
   // pay applications (those belong to the prime contract). Order chronologically
@@ -91,6 +95,27 @@ function VendorInvoiceGroup({
                 <td className="p-3 text-right font-mono text-sm">{inv.approved_amount != null ? money(inv.approved_amount) : "—"}</td>
                 <td className="p-3">
                   <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLOR[inv.status]}`}>{inv.status}</span>
+                </td>
+                <td className="p-3 w-8 text-right" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button title="Manage invoice" className="text-muted-foreground hover:text-foreground"><MoreVertical className="h-4 w-4" /></button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel className="text-[11px]">Set status</DropdownMenuLabel>
+                      {INV_STATUSES.map((s) => (
+                        <DropdownMenuItem key={s} disabled={inv.status === s} className="capitalize"
+                          onClick={() => setStatus.mutate({ id: inv.id, status: s }, { onSuccess: () => toast.success(`Marked ${s}`) })}>
+                          {inv.status === s && <Check className="mr-1 h-3.5 w-3.5" />}{s}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive focus:text-destructive"
+                        onClick={() => { if (confirm(`Delete invoice #${inv.invoice_no}?\n\nThis also removes its lines and any linked lien waiver. This can’t be undone.`)) remove.mutate(inv.id, { onSuccess: (r) => toast.success(r?.blocked ? "Couldn’t delete — this invoice has payments recorded. Remove the payment first." : "Invoice deleted") }); }}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete invoice
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
               </tr>
             ))}
