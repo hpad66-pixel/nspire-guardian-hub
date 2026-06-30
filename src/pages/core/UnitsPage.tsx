@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DoorOpen, Plus, Search, Bed, Bath, Building, Building2, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
+import { useRef } from 'react';
+import { DoorOpen, Plus, Search, Bed, Bath, Building, Building2, Calendar, Upload, Pencil, Trash2, Camera, Loader2 } from 'lucide-react';
 import { useUnitsByProperty, useDeleteUnit, type Unit } from '@/hooks/useUnits';
 import { buildingKey, buildingColor } from '@/lib/units/building';
+import { useSetUnitPhoto, unitPhotoUrl } from '@/hooks/useUnitPhoto';
 import { useManagedProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
@@ -181,7 +183,8 @@ export default function UnitsPage() {
       ) : filteredUnits && filteredUnits.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredUnits.map((unit) => (
-            <Card key={unit.id} className="card-interactive">
+            <Card key={unit.id} className="card-interactive overflow-hidden">
+              <UnitPhotoBanner unit={unit} canEdit={canUpdateUnits} />
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -312,6 +315,48 @@ export default function UnitsPage() {
       />
       {canCreateUnits && (
         <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      )}
+    </div>
+  );
+}
+
+// Door-photo banner with the building + unit number stamped on it. The camera
+// button opens the phone's rear camera (capture="environment") to take the photo.
+function UnitPhotoBanner({ unit, canEdit }: { unit: Unit; canEdit: boolean }) {
+  const setPhoto = useSetUnitPhoto();
+  const ref = useRef<HTMLInputElement>(null);
+  const url = unitPhotoUrl((unit as any).photo_path);
+  const bk = buildingKey(unit.unit_number);
+  const col = buildingColor(bk);
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setPhoto.mutate({ unitId: unit.id, file: f });
+    if (ref.current) ref.current.value = '';
+  };
+  return (
+    <div className="relative h-32 w-full overflow-hidden" style={{ background: url ? undefined : `${col.bg}14` }}>
+      {url ? (
+        <img src={url} alt={`Unit ${unit.unit_number} door`} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center"><DoorOpen className="h-10 w-10" style={{ color: col.bg, opacity: 0.45 }} /></div>
+      )}
+      {/* building + unit stamp */}
+      <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-lg bg-black/55 px-2 py-1 text-white backdrop-blur-sm">
+        <span className="grid h-5 w-5 place-items-center rounded text-[10px] font-extrabold" style={{ background: col.bg, color: col.fg }}>{bk}</span>
+        <span className="text-[12px] font-semibold">Unit {unit.unit_number}</span>
+      </div>
+      {canEdit && (
+        <>
+          <input ref={ref} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPick} />
+          <button
+            onClick={() => ref.current?.click()}
+            disabled={setPhoto.isPending}
+            className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-[11px] font-medium text-foreground shadow hover:bg-white disabled:opacity-60"
+          >
+            {setPhoto.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+            {url ? 'Replace' : 'Add door photo'}
+          </button>
+        </>
       )}
     </div>
   );
