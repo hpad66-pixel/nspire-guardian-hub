@@ -14,7 +14,10 @@ import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { RefreshCw, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { useUnitTurns, useStartUnitTurn, useConductTurnInspection, useDeferTurnInspection, type UnitTurn } from '@/hooks/useUnitTurns';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,8 +38,19 @@ export default function UnitsPage() {
   const [propertyFilter, setPropertyFilter] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const navigate = useNavigate();
   const { data: units = [], isLoading } = useUnitsByProperty(propertyFilter || null);
   const { data: properties } = useManagedProperties();
+  const { data: turnsData } = useUnitTurns(propertyFilter || null);
+  const turnByUnit = turnsData?.byUnit ?? {};
+  const pendingTurns = (turnsData?.turns ?? []).filter((t) => t.nspire_pending && t.status !== 'closed');
+  const startTurn = useStartUnitTurn();
+  const conduct = useConductTurnInspection();
+  const defer = useDeferTurnInspection();
+  const [promptUnitId, setPromptUnitId] = useState<string | null>(null);
+  const promptTurn: UnitTurn | null = promptUnitId ? (turnByUnit[promptUnitId] ?? null) : null;
+  const showPrompt = !!promptTurn && promptTurn.status === 'open' && promptTurn.nspire_required && !promptTurn.inspection_id;
+
   const deleteUnit = useDeleteUnit();
   const { canCreate, canUpdate, canDelete } = useUserPermissions();
   const canCreateUnits = canCreate('properties');
@@ -164,6 +178,16 @@ export default function UnitsPage() {
         </Select>
       </div>
 
+      {/* NSPIRE turnover alert */}
+      {pendingTurns.length > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/20">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            <b>{pendingTurns.length}</b> unit{pendingTurns.length !== 1 ? 's have' : ' has'} turned over and need{pendingTurns.length !== 1 ? '' : 's'} a NSPIRE inspection. These show as pending action items on the property log.
+          </p>
+        </div>
+      )}
+
       {/* Units Grid */}
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -210,15 +234,36 @@ export default function UnitsPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={
-                    unit.status === 'occupied' ? 'secondary' : 
-                    unit.status === 'vacant' ? 'outline' : 'destructive'
-                  }>
-                    {unit.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={
+                      unit.status === 'occupied' ? 'secondary' :
+                      unit.status === 'vacant' ? 'outline' : 'destructive'
+                    }>
+                      {unit.status}
+                    </Badge>
+                    {(() => {
+                      const t = turnByUnit[unit.id];
+                      if (!t) return null;
+                      if (t.nspire_pending) return <button onClick={() => setPromptUnitId(unit.id)}><Badge className="cursor-pointer bg-amber-100 text-amber-800 hover:bg-amber-200">⚑ NSPIRE pending</Badge></button>;
+                      if (t.status === 'inspecting') return <Badge className="bg-blue-100 text-blue-800">Inspecting</Badge>;
+                      return <Badge variant="outline">Turn open</Badge>;
+                    })()}
+                  </div>
                 </div>
                 {(canUpdateUnits || canDeleteUnits) && (
                   <div className="flex items-center gap-2 mb-3">
+                    {canUpdateUnits && !turnByUnit[unit.id] && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={startTurn.isPending}
+                        onClick={() => startTurn.mutate({ unitId: unit.id, propertyId: propertyFilter || null }, { onSuccess: () => setPromptUnitId(unit.id) })}
+                        title="Start a unit turn (triggers a NSPIRE inspection)"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Start turn
+                      </Button>
+                    )}
                     {canUpdateUnits && (
                       <Button
                         variant="outline"
@@ -316,6 +361,37 @@ export default function UnitsPage() {
       {canCreateUnits && (
         <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       )}
+
+      {/* NSPIRE turnover prompt */}
+      <AlertDialog open={showPrompt} onOpenChange={(o) => { if (!o) setPromptUnitId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-[var(--apas-sapphire)]" /> Conduct NSPIRE inspection?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This unit has turned over and NSPIRE is enabled for the property. Would you like to conduct the inspection now? If not, we'll route it as a <b>pending action item on your property log</b> so you can complete it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (promptTurn) defer.mutate({ turn: promptTurn, propertyId: propertyFilter || null }, { onSuccess: () => toast.success('Thank you — routed as a pending item on your property log.') });
+                setPromptUnitId(null);
+              }}
+            >
+              No, later
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (promptTurn) conduct.mutate({ turn: promptTurn, propertyId: propertyFilter || null }, { onSuccess: () => { setPromptUnitId(null); toast.success('NSPIRE inspection started'); navigate('/inspections/units'); } });
+              }}
+            >
+              Yes, conduct now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
