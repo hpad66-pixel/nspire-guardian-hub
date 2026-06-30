@@ -17,6 +17,7 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { RefreshCw, ClipboardCheck, AlertTriangle } from 'lucide-react';
 import { useUnitTurns, useStartUnitTurn, useConductTurnInspection, useDeferTurnInspection, type UnitTurn } from '@/hooks/useUnitTurns';
+import { UnitTurnDrawer } from '@/components/units/UnitTurnDrawer';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -48,6 +49,7 @@ export default function UnitsPage() {
   const conduct = useConductTurnInspection();
   const defer = useDeferTurnInspection();
   const [promptUnitId, setPromptUnitId] = useState<string | null>(null);
+  const [drawerTurnId, setDrawerTurnId] = useState<string | null>(null);
   const promptTurn: UnitTurn | null = promptUnitId ? (turnByUnit[promptUnitId] ?? null) : null;
   const showPrompt = !!promptTurn && promptTurn.status === 'open' && promptTurn.nspire_required && !promptTurn.inspection_id;
 
@@ -264,6 +266,12 @@ export default function UnitsPage() {
                         Start turn
                       </Button>
                     )}
+                    {turnByUnit[unit.id] && (
+                      <Button variant="outline" size="sm" onClick={() => setDrawerTurnId(turnByUnit[unit.id].id)} title="Turn audit log">
+                        <ClipboardCheck className="h-3 w-3 mr-1" />
+                        Turn log
+                      </Button>
+                    )}
                     {canUpdateUnits && (
                       <Button
                         variant="outline"
@@ -360,6 +368,10 @@ export default function UnitsPage() {
       />
       {canCreateUnits && (
         <UnitImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      )}
+
+      {drawerTurnId && (
+        <UnitTurnDrawer turnId={drawerTurnId} open onClose={() => setDrawerTurnId(null)} propertyId={propertyFilter || null} />
       )}
 
       {/* NSPIRE turnover prompt */}
