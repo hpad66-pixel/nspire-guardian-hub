@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveCurrentWorkspaceId } from '@/lib/tenant';
 import { toast } from 'sonner';
 
 const db = supabase as any;
@@ -25,54 +24,31 @@ export interface RecordPaidInvoiceInput {
 export function useRecordPaidInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: RecordPaidInvoiceInput) => {
-      const tenant_id = await resolveCurrentWorkspaceId();
-      if (!tenant_id) throw new Error('No workspace for current user');
-      const { data: { user } } = await supabase.auth.getUser();
+    mutationFn: async (input: RecordPaidInvoiceInput): Promise<{ paidToSubs: number }> => {
       const amount = Number(input.amount) || 0;
       if (amount <= 0) throw new Error('Amount must be greater than 0');
-
-      // 1) the invoice (approved so a payment is allowed)
-      const { data: inv, error: invErr } = await db.from('commitment_invoices').insert({
-        tenant_id, commitment_id: input.commitmentId,
-        invoice_no: input.invoiceNo, period_end: input.paidDate,
-        status: 'approved', submitted_amount: amount, approved_amount: amount, retainage_held: 0,
-      }).select('id').single();
-      if (invErr) throw invErr;
-      const invoiceId = (inv as any).id as string;
-
-      // 2) the lien acknowledgment the DB gate requires (reconciliation record)
-      const { error: lienErr } = await db.from('lien_releases').insert({
-        tenant_id, project_id: input.projectId, direction: 'inbound',
-        release_type: 'unconditional_progress', status: 'approved',
-        commitment_invoice_id: invoiceId, amount, through_date: input.paidDate,
-        claimant_name: input.vendorName ?? null,
-        title: 'Reconciliation acknowledgment (historical payment)',
-        created_by: user?.id ?? null,
+      // One atomic transaction (invoice + lien + payment + mark paid), returns
+      // the project's new paid-to-subs so the user sees the number move.
+      const { data, error } = await db.rpc('record_paid_commitment_invoice', {
+        p_commitment_id: input.commitmentId,
+        p_invoice_no: input.invoiceNo,
+        p_amount: amount,
+        p_paid_date: input.paidDate,
+        p_reference: input.reference ?? null,
+        p_vendor_name: input.vendorName ?? null,
       });
-      if (lienErr) throw lienErr;
-
-      // 3) the payment (passes the lien gate now)
-      const { error: payErr } = await db.from('commitment_payments').insert({
-        tenant_id, commitment_id: input.commitmentId, commitment_invoice_id: invoiceId,
-        amount, paid_date: input.paidDate, method: input.method ?? 'other',
-        reference: input.reference ?? null, notes: 'Reconciliation — reinstated payment',
-        created_by: user?.id ?? null,
-      });
-      if (payErr) throw payErr;
-
-      // 4) mark the invoice paid
-      await db.from('commitment_invoices').update({ status: 'paid' }).eq('id', invoiceId);
-      return invoiceId;
+      if (error) throw error;
+      return { paidToSubs: Number((data as any)?.paid_to_subs ?? 0) };
     },
-    onSuccess: (_id, v) => {
+    onSuccess: (res, v) => {
       qc.invalidateQueries({ queryKey: ['commitment-invoices', v.commitmentId] });
       qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
       qc.invalidateQueries({ queryKey: ['commitment-payments'] });
       qc.invalidateQueries({ queryKey: ['project-financials'] });
       qc.invalidateQueries({ queryKey: ['commitment-totals'] });
       qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
-      toast.success('Recorded — invoice + payment created, dashboard updated.');
+      const fmt = `$${res.paidToSubs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      toast.success(`Recorded. Paid-to-subs is now ${fmt}.`);
     },
     onError: (e: Error) => toast.error(e.message || 'Could not record the paid invoice'),
   });
