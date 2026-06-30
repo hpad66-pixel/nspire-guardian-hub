@@ -5,6 +5,7 @@ const db = supabase as any;
 const EXECUTED = ['approved', 'executed'];
 
 export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string; treatment: string | null }
+export interface OwnerShare { primeCoId: string; co_no: string | number | null; title: string; treatment: string; share: number; status: string; counted: boolean }
 export interface VendorReconciliation {
   base: number;                 // the vendor's own contract value (commitment)
   sovTotal: number;             // sum of SOV line items (a breakdown, may differ)
@@ -22,6 +23,7 @@ export interface VendorReconciliation {
   leftToEarn: number;           // revised − billed
   overpaid: boolean;
   cos: VendorCO[];
+  ownerShares: OwnerShare[];    // his share of owner COs classified to him (not yet pushed)
 }
 
 export function useVendorReconciliation(projectId: string | undefined, commitmentId: string | null) {
@@ -29,18 +31,34 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
     queryKey: ['vendor-reconciliation', commitmentId],
     enabled: !!commitmentId,
     queryFn: async (): Promise<VendorReconciliation> => {
-      const [commitR, sovR, cosR, invR, payR, primeR, marginR] = await Promise.all([
+      const [commitR, sovR, cosR, invR, payR, primeR, marginR, primeCosR] = await Promise.all([
         db.from('commitments').select('original_value').eq('id', commitmentId).maybeSingle(),
         db.from('commitment_sov_lines').select('scheduled_value').eq('commitment_id', commitmentId),
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
         db.from('commitment_invoices').select('approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
         db.from('commitment_payments').select('amount').eq('commitment_id', commitmentId),
         projectId ? db.from('prime_contracts').select('id, retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
-        projectId ? db.from('co_margin_links').select('treatment, sub_co_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
+        projectId ? db.from('co_margin_links').select('prime_co_id, treatment, sub_cost, sub_co_id, sub_commitment_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
+        projectId ? db.from('change_orders').select('id, co_no, title, amount, status').eq('project_id', projectId).not('prime_contract_id', 'is', null) : Promise.resolve({ data: [] }),
       ]);
       // treatment per pushed sub CO (markup / pass_through / apas_100), deterministic via sub_co_id.
       const treatmentBySubCo: Record<string, string> = {};
       for (const l of (marginR.data ?? [])) if (l.sub_co_id) treatmentBySubCo[l.sub_co_id] = l.treatment;
+
+      // His share of OWNER change orders classified to this vendor's commitment but
+      // not yet pushed to a sub CO (deterministic via sub_commitment_id, no fuzzy match).
+      const primeById: Record<string, any> = {};
+      for (const c of (primeCosR.data ?? [])) primeById[c.id] = c;
+      const ownerShares = (marginR.data ?? [])
+        .filter((l: any) => l.sub_commitment_id === commitmentId && !l.sub_co_id)
+        .map((l: any) => {
+          const co = primeById[l.prime_co_id];
+          const primeAmt = Number(co?.amount ?? 0);
+          const share = l.treatment === 'apas_100' ? 0 : l.treatment === 'pass_through' ? primeAmt : Number(l.sub_cost ?? 0);
+          const status = co?.status ?? 'draft';
+          return { primeCoId: l.prime_co_id, co_no: co?.co_no ?? null, title: co?.title ?? 'Owner change order', treatment: l.treatment, share, status, counted: EXECUTED.includes(status) };
+        });
+      const ownerSharesCounted = ownerShares.filter((o: any) => o.counted).reduce((t: number, o: any) => t + o.share, 0);
 
       // Base = the VENDOR's own contract value (not the prime / not APAS margin).
       const sov = sovR.data ?? [];
@@ -54,7 +72,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
       const additiveCO = counted.filter((c: any) => Number(c.amount) > 0).reduce((t: number, c: any) => t + Number(c.amount), 0);
       const deductiveCO = counted.filter((c: any) => Number(c.amount) < 0).reduce((t: number, c: any) => t + Math.abs(Number(c.amount)), 0);
       const netCO = additiveCO - deductiveCO;
-      const revisedContract = base + netCO;
+      const revisedContract = base + netCO + ownerSharesCounted;
 
       const invoices = invR.data ?? [];
       const billedToDate = invoices.reduce((t: number, i: any) => t + Number(i.approved_amount ?? i.submitted_amount ?? 0), 0);
@@ -87,6 +105,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         maxPayable, remainingToPay, leftToEarn,
         overpaid: paidToDate > maxPayable + 0.01,
         cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null })),
+        ownerShares,
       };
     },
   });
