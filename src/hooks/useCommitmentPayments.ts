@@ -85,6 +85,7 @@ export function useCommitmentPayments(invoiceId: string | null) {
       qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       qc.invalidateQueries({ queryKey: ["commitment-invoice-balances"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
+      qc.invalidateQueries({ queryKey: ["margin"] });
     },
   });
 
@@ -96,6 +97,7 @@ export function useCommitmentPayments(invoiceId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["commitment-payments", invoiceId] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
+      qc.invalidateQueries({ queryKey: ["margin"] });
     },
   });
 
