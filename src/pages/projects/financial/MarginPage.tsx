@@ -17,8 +17,8 @@ import {
   type MarginCO, type MarginClass, type Treatment,
 } from '@/hooks/useMargin';
 
-const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-const signed = (n: number) => `${n < 0 ? '-' : '+'}$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const signed = (n: number) => `${n < 0 ? '-' : '+'}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const coLabel = (c: MarginCO | null) => c ? `${c.co_no != null ? `#${c.co_no} · ` : ''}${c.title}` : '—';
 const TREAT: Record<Treatment, { label: string; bg: string; fg: string }> = {
   markup:       { label: 'Markup',      bg: '#E7F0FD', fg: '#1558b0' },

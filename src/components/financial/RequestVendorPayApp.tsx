@@ -22,7 +22,7 @@ const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
   paid:      { label: 'Paid', bg: '#E1F5EE', fg: '#0F6E56' },
   void:      { label: 'Void', bg: '#FCEBEB', fg: '#A32D2D' },
 };
-const usd = (n?: number | null) => (n == null ? '—' : `$${Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
+const usd = (n?: number | null) => (n == null ? '—' : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 // GC-side: request an AIA pay app from a vendor via magic link.
 export function RequestVendorPayApp({ projectId }: { projectId: string }) {
