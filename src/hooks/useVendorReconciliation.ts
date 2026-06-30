@@ -6,15 +6,17 @@ const EXECUTED = ['approved', 'executed'];
 
 export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string }
 export interface VendorReconciliation {
-  base: number;                 // sum of SOV lines (or original_value)
+  base: number;                 // the vendor's own contract value (commitment)
+  sovTotal: number;             // sum of SOV line items (a breakdown, may differ)
   additiveCO: number;
   deductiveCO: number;          // positive number (magnitude of deductions)
   netCO: number;
-  revisedContract: number;      // base + netCO
+  revisedContract: number;      // base + netCO  (only the vendor's money)
   billedToDate: number;         // approved/submitted on the sub's invoices
   paidToDate: number;           // actual payments
-  retainageHeld: number;        // retainage withheld on the sub's invoices
+  retainageHeld: number;        // retainage to date — from the latest pay app
   retainagePct: number;
+  latestPayAppNo: number | null;
   maxPayable: number;           // revised − retainage (won't overpay)
   remainingToPay: number;       // maxPayable − paid
   leftToEarn: number;           // revised − billed
@@ -33,13 +35,15 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
         db.from('commitment_invoices').select('approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
         db.from('commitment_payments').select('amount').eq('commitment_id', commitmentId),
-        projectId ? db.from('prime_contracts').select('retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
+        projectId ? db.from('prime_contracts').select('id, retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
       ]);
 
+      // Base = the VENDOR's own contract value (not the prime / not APAS margin).
       const sov = sovR.data ?? [];
       const sovTotal = sov.reduce((t: number, l: any) => t + Number(l.scheduled_value ?? 0), 0);
-      const base = sov.length ? sovTotal : Number(commitR.data?.original_value ?? 0);
+      const base = Number(commitR.data?.original_value ?? 0);
 
+      // Only this vendor's sub change orders (CCOs on their commitment).
       const cosRaw = (cosR.data ?? []).filter((c: any) => EXECUTED.includes(c.status));
       const additiveCO = cosRaw.filter((c: any) => Number(c.amount) > 0).reduce((t: number, c: any) => t + Number(c.amount), 0);
       const deductiveCO = cosRaw.filter((c: any) => Number(c.amount) < 0).reduce((t: number, c: any) => t + Math.abs(Number(c.amount)), 0);
@@ -48,17 +52,30 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
 
       const invoices = invR.data ?? [];
       const billedToDate = invoices.reduce((t: number, i: any) => t + Number(i.approved_amount ?? i.submitted_amount ?? 0), 0);
-      const retainageHeld = invoices.reduce((t: number, i: any) => t + Number(i.retainage_held ?? 0), 0);
       const paidToDate = (payR.data ?? []).reduce((t: number, p: any) => t + Number(p.amount ?? 0), 0);
       const retainagePct = Number(primeR.data?.retainage_pct ?? 10);
+
+      // Retainage to date wired LIVE from the most recent prime pay app.
+      let retainageHeld = 0;
+      let latestPayAppNo: number | null = null;
+      const primeId = primeR.data?.id;
+      if (primeId) {
+        const pa = await db.from('prime_contract_pay_apps')
+          .select('pay_app_no, retainage_held')
+          .eq('prime_contract_id', primeId)
+          .order('pay_app_no', { ascending: false })
+          .limit(1).maybeSingle();
+        retainageHeld = Number(pa.data?.retainage_held ?? 0);
+        latestPayAppNo = pa.data?.pay_app_no ?? null;
+      }
 
       const maxPayable = revisedContract - retainageHeld;
       const remainingToPay = maxPayable - paidToDate;
       const leftToEarn = revisedContract - billedToDate;
 
       return {
-        base, additiveCO, deductiveCO, netCO, revisedContract,
-        billedToDate, paidToDate, retainageHeld, retainagePct,
+        base, sovTotal, additiveCO, deductiveCO, netCO, revisedContract,
+        billedToDate, paidToDate, retainageHeld, retainagePct, latestPayAppNo,
         maxPayable, remainingToPay, leftToEarn,
         overpaid: paidToDate > maxPayable + 0.01,
         cos: cosRaw.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status })),
