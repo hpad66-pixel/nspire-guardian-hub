@@ -133,6 +133,25 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
         </div>
       )}
 
+      {/* Pay-app / SOV line items attributed to this vendor */}
+      {r.lineItems.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Pay-app line items attributed to you</h3>
+            <span className="font-mono text-[13px] font-semibold">{usd(r.lineItemsTotal)}</span>
+          </div>
+          <div className="divide-y divide-border text-[13px]">
+            {r.lineItems.map((l, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 py-1.5">
+                <span className="truncate"><span className="font-mono text-muted-foreground mr-1.5">{l.item_no}</span>{l.description}</span>
+                <span className="shrink-0 font-mono">{usd(l.scheduled_value)}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">Specific G703 line items tagged to this sub (Quantities &amp; Progress → Vendor). This is the line-level lineage of his scope.</p>
+        </div>
+      )}
+
       {/* Base-contract line items */}
       <LineItems commitmentId={commitment.id} base={r.base} />
 
