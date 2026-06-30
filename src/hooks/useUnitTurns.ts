@@ -3,6 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const db = supabase as any;
+const DOC_BUCKET = 'unit-photos';
+
+export interface TurnLogEntry {
+  id: string;
+  turn_id: string;
+  kind: string;
+  body: string | null;
+  actor_name: string | null;
+  artifact_path: string | null;
+  meta: any;
+  created_at: string;
+}
 
 export interface UnitTurn {
   id: string;
@@ -69,6 +81,69 @@ export function useConductTurnInspection() {
     },
     onSuccess: (_id, v) => { qc.invalidateQueries({ queryKey: ['unit-turns', v.propertyId] }); qc.invalidateQueries({ queryKey: ['inspections'] }); },
     onError: (e: Error) => toast.error(e.message || 'Could not start the inspection'),
+  });
+}
+
+// Full detail for one turn: the turn + its audit log + unit/property labels.
+export function useUnitTurnDetail(turnId: string | null) {
+  return useQuery({
+    queryKey: ['unit-turn-detail', turnId],
+    enabled: !!turnId,
+    queryFn: async () => {
+      const { data: turn, error } = await db.from('unit_turns').select('*').eq('id', turnId).maybeSingle();
+      if (error) throw error;
+      const [logR, unitR] = await Promise.all([
+        db.from('unit_turn_log').select('*').eq('turn_id', turnId).order('created_at', { ascending: true }),
+        db.from('units').select('unit_number, property_id, properties(name)').eq('id', (turn as any)?.unit_id).maybeSingle(),
+      ]);
+      return {
+        turn: turn as UnitTurn,
+        log: (logR.data ?? []) as TurnLogEntry[],
+        unitNumber: (unitR.data as any)?.unit_number ?? '',
+        propertyName: (unitR.data as any)?.properties?.name ?? '',
+      };
+    },
+  });
+}
+
+// Add an audit-log entry (note / finding addressed / equipment / document upload).
+export function useAddTurnLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ turnId, kind, body, actorName, file }: { turnId: string; kind: string; body?: string; actorName?: string; file?: File }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      let artifact_path: string | null = null;
+      if (file) {
+        const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+        artifact_path = `turns/${turnId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from(DOC_BUCKET).upload(artifact_path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+        if (upErr) throw upErr;
+      }
+      const { error } = await db.from('unit_turn_log').insert({ turn_id: turnId, kind, body: body ?? (file ? file.name : null), actor_name: actorName ?? null, artifact_path, created_by: user?.id ?? null });
+      if (error) throw error;
+    },
+    onSuccess: (_r, v) => qc.invalidateQueries({ queryKey: ['unit-turn-detail', v.turnId] }),
+    onError: (e: Error) => toast.error(e.message || 'Could not add entry'),
+  });
+}
+
+// Close out a turn: all findings addressed + signed off. Logs the sign-off + close.
+export function useCloseTurn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ turnId, signoffName, propertyId }: { turnId: string; signoffName: string; propertyId: string | null }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      await db.from('unit_turn_log').insert({ turn_id: turnId, kind: 'signed_off', body: `Signed off by ${signoffName}`, actor_name: signoffName, created_by: user?.id ?? null });
+      await db.from('unit_turn_log').insert({ turn_id: turnId, kind: 'closed', body: 'Turn closed — all findings addressed', actor_name: signoffName, created_by: user?.id ?? null });
+      const { error } = await db.from('unit_turns').update({ status: 'closed', findings_addressed: true, nspire_pending: false, closed_at: new Date().toISOString(), closed_by: user?.id ?? null }).eq('id', turnId);
+      if (error) throw error;
+    },
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ['unit-turn-detail', v.turnId] });
+      qc.invalidateQueries({ queryKey: ['unit-turns', v.propertyId] });
+      toast.success('Turn closed and signed off.');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Could not close the turn'),
   });
 }
 
