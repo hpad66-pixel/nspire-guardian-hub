@@ -71,6 +71,7 @@ export function useRecordPaidInvoice() {
       qc.invalidateQueries({ queryKey: ['commitment-payments'] });
       qc.invalidateQueries({ queryKey: ['project-financials'] });
       qc.invalidateQueries({ queryKey: ['commitment-totals'] });
+      qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
       toast.success('Recorded — invoice + payment created, dashboard updated.');
     },
     onError: (e: Error) => toast.error(e.message || 'Could not record the paid invoice'),
