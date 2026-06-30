@@ -8,11 +8,38 @@ import { useGeneratePayApp } from "@/hooks/usePayAppContinuation";
 import { useDeletePayApp } from "@/hooks/usePayApp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
+import { useCommitments } from "@/hooks/useCommitments";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const fmt2 = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n));
 const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString() : "—");
+
+// Tag a pay app to the subcontractor whose work/retainage it carries. This is the
+// provenance that routes each pay app's retainage to the right vendor dashboard.
+function PayAppVendorSelect({ projectId, payAppId, value }: { projectId: string; payAppId: string; value: string | null }) {
+  const { data: commitments = [] } = useCommitments(projectId);
+  const qc = useQueryClient();
+  const onChange = async (v: string) => {
+    const commitment_id = v === "__none" ? null : v;
+    await (supabase as any).from("prime_contract_pay_apps").update({ commitment_id }).eq("id", payAppId);
+    qc.invalidateQueries({ queryKey: ["pay-apps"] });
+    qc.invalidateQueries({ queryKey: ["vendor-reconciliation"] });
+    toast.success("Vendor tagged");
+  };
+  return (
+    <Select value={value ?? "__none"} onValueChange={onChange}>
+      <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none">Unassigned</SelectItem>
+        {commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function PayAppsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -79,11 +106,12 @@ export default function PayAppsPage() {
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3">#</th><th className="text-left p-3">Period ending</th>
                 <th className="text-right p-3">Submitted</th><th className="text-right p-3">Approved</th>
+                <th className="text-left p-3">Vendor</th>
                 <th className="text-center p-3">Status</th><th className="p-3" />
               </tr></thead>
               <tbody>
                 {(payApps as any[]).length === 0 && (
-                  <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">
+                  <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">
                     No pay apps yet. Click <strong>Generate Pay App</strong> to create the first one from the SOV.
                   </td></tr>
                 )}
@@ -94,6 +122,9 @@ export default function PayAppsPage() {
                     <td className="p-3 text-muted-foreground">{fmtDate(pa.period_end)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.submitted_amount)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.approved_amount)}</td>
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <PayAppVendorSelect projectId={projectId!} payAppId={pa.id} value={pa.commitment_id ?? null} />
+                    </td>
                     <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <PayAppStatusSelect payAppId={pa.id} value={pa.status} />
                     </td>

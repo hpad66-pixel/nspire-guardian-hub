@@ -55,18 +55,20 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
       const paidToDate = (payR.data ?? []).reduce((t: number, p: any) => t + Number(p.amount ?? 0), 0);
       const retainagePct = Number(primeR.data?.retainage_pct ?? 10);
 
-      // Retainage to date wired LIVE from the most recent prime pay app.
+      // Retainage to date wired LIVE from the most recent pay app TAGGED to THIS
+      // vendor (provenance). A pay app with no vendor tag belongs to no one's
+      // dashboard, so vendors without tagged pay apps carry $0 retainage — which
+      // is why Ecotech no longer inherits D'Shin's retainage.
       let retainageHeld = 0;
       let latestPayAppNo: number | null = null;
-      const primeId = primeR.data?.id;
-      if (primeId) {
-        const pa = await db.from('prime_contract_pay_apps')
-          .select('pay_app_no, retainage_held')
-          .eq('prime_contract_id', primeId)
-          .order('pay_app_no', { ascending: false })
-          .limit(1).maybeSingle();
-        retainageHeld = Number(pa.data?.retainage_held ?? 0);
-        latestPayAppNo = pa.data?.pay_app_no ?? null;
+      const pa = await db.from('prime_contract_pay_apps')
+        .select('pay_app_no, retainage_held')
+        .eq('commitment_id', commitmentId)
+        .order('pay_app_no', { ascending: false })
+        .limit(1).maybeSingle();
+      if (pa.data) {
+        retainageHeld = Number(pa.data.retainage_held ?? 0);
+        latestPayAppNo = pa.data.pay_app_no ?? null;
       }
 
       const maxPayable = revisedContract - retainageHeld;
