@@ -116,7 +116,7 @@ export function VendorSubmissionInbox({ projectId }: Props) {
 
               <div className="pt-2 border-t">
                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
-                  onClick={() => { if (confirm("Delete this submission? This can’t be undone.")) remove.mutate(selected.id, { onSuccess: () => { setSelected(null); toast.success("Deleted"); } }); }}
+                  onClick={() => { if (confirm("Delete this submission?\n\nThis also removes anything it created (draft invoice, lien release) and the uploaded file. This can’t be undone.")) remove.mutate(selected.id, { onSuccess: (res: any) => { setSelected(null); toast.success(res?.keptInvoice ? "Deleted — its invoice has payments, so it was kept." : "Deleted (and what it created)"); } }); }}
                   disabled={remove.isPending}>
                   Delete submission
                 </Button>

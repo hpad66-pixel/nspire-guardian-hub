@@ -59,21 +59,24 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const reset = () => { setFile(null); setFields(null); setCommitmentId(''); if (fileRef.current) fileRef.current.value = ''; };
   const set = (k: keyof Fields, v: any) => setFields(f => ({ ...(f ?? {}), [k]: v }));
 
-  // Upload the file as a project artifact and file a parsed intake row.
-  async function attach(tenant_id: string, commitment_invoice_id?: string) {
+  // Upload the file as a project artifact and file a parsed intake row. The
+  // created_* columns let a later delete cascade-clean what this spawned.
+  async function attach(tenant_id: string, links?: { invoiceId?: string; lienId?: string }) {
     const docType = toIntakeDoc(fields!.doc_type);
     const art = await upload.mutateAsync({
       file: file!, projectId,
       input: { artifact_type: toArtifactType(fields!.doc_type), source_system: 'manual', title: fields!.vendor_name || file!.name.replace(/\.[^.]+$/, '') } as any,
     });
-    const { error } = await supabase.from('vendor_submissions' as any).insert({
+    const { data: sub, error } = await supabase.from('vendor_submissions' as any).insert({
       tenant_id, project_id: projectId, source: 'manual_upload',
-      doc_type: docType, status: commitment_invoice_id ? 'processed' : 'parsed', artifact_id: (art as any).id,
+      doc_type: docType, status: links?.invoiceId || links?.lienId ? 'processed' : 'parsed', artifact_id: (art as any).id,
       subject: fields!.vendor_name ? `${fields!.vendor_name}${fields!.invoice_number ? ` · ${fields!.invoice_number}` : ''}` : file!.name,
-      parsed: { ...fields, commitment_invoice_id: commitment_invoice_id ?? null },
-    } as any);
+      created_commitment_invoice_id: links?.invoiceId ?? null,
+      created_lien_release_id: links?.lienId ?? null,
+      parsed: fields,
+    } as any).select('id').single();
     if (error) throw error;
-    return (art as any).id as string;
+    return { artId: (art as any).id as string, submissionId: (sub as any).id as string };
   }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -119,7 +122,7 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
         retainage_held: Number(fields.retainage_amount ?? 0),
       } as any).select('id').single();
       if (error) throw error;
-      await attach(tenant_id, (inv as any).id);
+      await attach(tenant_id, { invoiceId: (inv as any).id });
       qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
       toast.success('Draft invoice created in Commitments + document attached.');
       reset();
@@ -134,18 +137,20 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
     setSaving(true);
     try {
       const tenant_id = await resolveCurrentWorkspaceId();
-      const artId = await attach(tenant_id);
+      const { artId, submissionId } = await attach(tenant_id);
       const releaseType = RELEASE_TYPES.includes(fields.waiver_type || '') ? fields.waiver_type : 'conditional_progress';
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('lien_releases' as any).insert({
+      const { data: lien, error } = await supabase.from('lien_releases' as any).insert({
         tenant_id, project_id: projectId, direction: 'inbound', release_type: releaseType,
         status: 'submitted', amount: Number(fields.amount ?? 0),
         through_date: fields.period_end || fields.invoice_date || null,
         claimant_name: fields.vendor_name || null, artifact_id: artId,
         title: `Received ${String(releaseType).replace(/_/g, ' ')} waiver`,
         created_by: user?.id ?? null,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
+      // Link the intake row to the lien so a later delete cleans both up.
+      await supabase.from('vendor_submissions' as any).update({ created_lien_release_id: (lien as any).id }).eq('id', submissionId);
       qc.invalidateQueries({ queryKey: ['lien-releases', projectId] });
       toast.success('Recorded as a received lien release + document attached.');
       reset();

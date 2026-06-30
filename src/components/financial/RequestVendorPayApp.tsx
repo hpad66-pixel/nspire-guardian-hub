@@ -122,7 +122,7 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
                         </DropdownMenuItem>
                       ))}
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this vendor invoice (${r.vendor_name || 'Vendor'})? This can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: () => toast.success('Deleted') }); }}>
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this vendor invoice (${r.vendor_name || 'Vendor'})?\n\nThis also removes its draft invoice and unconditional waiver. This can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: (res) => toast.success(res?.keptInvoice ? 'Deleted — its invoice has payments recorded, so it was kept. Remove it from Commitments if needed.' : 'Deleted (and its draft invoice + waiver)') }); }}>
                         <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>

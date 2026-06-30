@@ -94,14 +94,32 @@ export function useConvertVendorPayApp() {
   });
 }
 
+// Delete a vendor submission AND clean up what it spawned: its draft commitment
+// invoice (which cascades to the invoice lines + the unconditional waiver linked
+// to it). A paid invoice (with recorded payments) is RESTRICT-protected by the DB,
+// so we keep it and report that.
 export function useDeleteVendorPayApp() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; projectId: string }) => {
+    mutationFn: async ({ id }: { id: string; projectId: string }): Promise<{ keptInvoice: boolean }> => {
+      const { data: sub } = await db.from('vendor_payapp_submissions').select('commitment_invoice_id').eq('id', id).maybeSingle();
+      let keptInvoice = false;
+      if (sub?.commitment_invoice_id) {
+        const { error: invErr } = await db.from('commitment_invoices').delete().eq('id', sub.commitment_invoice_id);
+        if (invErr) {
+          if (/foreign key|violates|restrict/i.test(invErr.message)) keptInvoice = true; // has payments → protected
+          else throw invErr;
+        }
+      }
       const { error } = await db.from('vendor_payapp_submissions').delete().eq('id', id);
       if (error) throw error;
+      return { keptInvoice };
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] });
+      qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
+      qc.invalidateQueries({ queryKey: ['lien-releases', v.projectId] });
+    },
     onError: (e: Error) => toast.error(e.message || 'Could not delete'),
   });
 }
