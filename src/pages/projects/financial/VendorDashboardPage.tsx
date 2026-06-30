@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 
 const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const vendorName = (c: Commitment) => ((c.title ?? '').split('—')[0].trim() || c.commitment_no);
+const TREAT_LABEL: Record<string, string> = { markup: 'Markup', pass_through: 'Pass-through', apas_100: '100% APAS' };
 
 export default function VendorDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -99,13 +100,18 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
         <div className="rounded-xl border border-border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">Change orders ({r.cos.length})</h3>
           <div className="divide-y divide-border text-[13px]">
-            {r.cos.map((c) => (
-              <Link key={c.id} to={`/projects/${projectId}/financials/cos/${c.id}`} className="-mx-1 flex items-center justify-between rounded px-1 py-1.5 hover:bg-muted/60">
-                <span className="truncate">{c.co_no != null ? `#${c.co_no} · ` : ''}{c.title}</span>
-                <span className={`font-mono ${c.amount < 0 ? 'text-destructive' : 'text-emerald-600'}`}>{c.amount < 0 ? '−' : '+'} {usd(Math.abs(c.amount))}</span>
+            {r.cos.map((c) => {
+              const counted = c.status === 'approved' || c.status === 'executed';
+              return (
+              <Link key={c.id} to={`/projects/${projectId}/financials/cos/${c.id}`} className="-mx-1 flex items-center gap-2 rounded px-1 py-1.5 hover:bg-muted/60">
+                <span className="flex-1 truncate">{c.co_no != null ? `#${c.co_no} · ` : ''}{c.title}</span>
+                {c.treatment && <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{TREAT_LABEL[c.treatment] ?? c.treatment}</span>}
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${counted ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>{c.status}</span>
+                <span className={`w-24 text-right font-mono ${!counted ? 'text-muted-foreground' : c.amount < 0 ? 'text-destructive' : 'text-emerald-600'}`}>{c.amount < 0 ? '−' : '+'} {usd(Math.abs(c.amount))}</span>
               </Link>
-            ))}
+            );})}
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">Markup = he gets the sub cost, APAS keeps the delta · Pass-through = he gets it all · 100% APAS = he gets nothing. Only approved/executed COs count toward the contract above.</p>
         </div>
       )}
 
