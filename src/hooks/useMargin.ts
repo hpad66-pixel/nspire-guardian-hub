@@ -63,16 +63,20 @@ export function useMargin(projectId: string | undefined) {
       const primeBase = Number(s.original_contract ?? 0);
       const subBase = (commitmentsR.data ?? []).reduce((t: number, c: any) => t + Number(c.original_value ?? 0), 0);
 
-      const primeCOs = cos.filter((c) => c.prime_contract_id);
+      // Owner-side COs are everything that isn't a sub CO — these are the ones you
+      // classify (markup / pass-through / 100% APAS). Robust to a missing
+      // prime_contract_id so no executed owner CO is hidden from the list.
+      const primeCOs = cos.filter((c) => !c.commitment_id);
       const subCOs = cos.filter((c) => c.commitment_id);
       const byId = (id: string) => primeCOs.find((c) => c.id === id) ?? null;
 
+      // A CO counts as classified the moment it has a link — so it leaves the
+      // "unclassified" list immediately, even if its prime CO can't be re-resolved.
+      const classifiedIds = new Set<string>((links ?? []).map((l: any) => l.prime_co_id));
       const classified: MarginClass[] = [];
-      const classifiedIds = new Set<string>();
       links.forEach((l: any) => {
         const prime = byId(l.prime_co_id);
         if (!prime) return;
-        classifiedIds.add(prime.id);
         const treatment: Treatment = (l.treatment ?? (l.is_pass_through ? 'pass_through' : 'markup')) as Treatment;
         const subCost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? Number(prime.amount ?? 0) : Number(l.sub_cost ?? 0);
         classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost, sub_co_id: l.sub_co_id ?? null, sub_commitment_id: l.sub_commitment_id ?? null });
