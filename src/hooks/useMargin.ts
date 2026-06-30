@@ -57,18 +57,18 @@ export function useMargin(projectId: string | undefined) {
         db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id, sub_commitment_id').eq('project_id', projectId),
       ]);
       const s = summaryR.data ?? {};
-      const cos: MarginCO[] = (cosR.data ?? []).filter((c: MarginCO) => EXECUTED.includes(c.status));
+      const allCos: MarginCO[] = (cosR.data ?? []);
       const links = linksR.data ?? [];
 
       const primeBase = Number(s.original_contract ?? 0);
       const subBase = (commitmentsR.data ?? []).reduce((t: number, c: any) => t + Number(c.original_value ?? 0), 0);
 
-      // Owner-side COs are everything that isn't a sub CO — these are the ones you
-      // classify (markup / pass-through / 100% APAS). Robust to a missing
-      // prime_contract_id so no executed owner CO is hidden from the list.
-      const primeCOs = cos.filter((c) => !c.commitment_id);
+      // Owner-side COs (anything that isn't a sub CO) are what you classify. Show
+      // EVERY active one — executed AND pending — so nothing is hidden; only the
+      // executed/approved ones count toward the totals below.
+      const primeCOs = allCos.filter((c) => !c.commitment_id && c.status !== 'rejected' && c.status !== 'void');
       // Sub COs for the classify pre-fill — any status (incl. draft) so nothing is hidden.
-      const subCOs = (cosR.data ?? []).filter((c: MarginCO) => c.commitment_id);
+      const subCOs = allCos.filter((c: MarginCO) => c.commitment_id);
       const byId = (id: string) => primeCOs.find((c) => c.id === id) ?? null;
 
       // A CO counts as classified the moment it has a link — so it leaves the
@@ -84,8 +84,10 @@ export function useMargin(projectId: string | undefined) {
       });
 
       const unclassifiedPrime = primeCOs.filter((c) => !classifiedIds.has(c.id));
-      const coRevenue = classified.reduce((t, c) => t + Number(c.prime.amount ?? 0), 0);
-      const coCost = classified.reduce((t, c) => t + c.sub_cost, 0);
+      // Only executed/approved classified COs count toward revenue/cost.
+      const counted = classified.filter((c) => EXECUTED.includes(c.prime.status));
+      const coRevenue = counted.reduce((t, c) => t + Number(c.prime.amount ?? 0), 0);
+      const coCost = counted.reduce((t, c) => t + c.sub_cost, 0);
       const revenue = primeBase + coRevenue;
       const cost = subBase + coCost;
       const committed = Number(s.committed_total ?? cost);

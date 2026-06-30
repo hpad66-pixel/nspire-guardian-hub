@@ -80,7 +80,7 @@ export default function MarginPage() {
                   {/* Needs action first */}
                   {data.unclassifiedPrime.map((co) => (
                     <div key={co.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-amber-50/40 px-3.5 py-2.5 text-[13px] dark:bg-amber-950/20">
-                      <span className="truncate" title={coLabel(co)}>{coLabel(co)}</span>
+                      <span className="truncate" title={coLabel(co)}>{coLabel(co)} <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">{co.status}</span></span>
                       <span className="text-right tabular-nums text-muted-foreground">{usd(Number(co.amount ?? 0))}</span>
                       <span className="col-span-3 text-right">
                         <Button size="sm" variant="outline" onClick={() => setClassify({ co })} className="gap-1.5"><Tag className="h-3.5 w-3.5" /> Classify</Button>
