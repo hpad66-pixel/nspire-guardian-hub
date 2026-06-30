@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DoorOpen, Plus, Search, Bed, Bath, Building, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
+import { DoorOpen, Plus, Search, Bed, Bath, Building, Building2, Calendar, Upload, Pencil, Trash2 } from 'lucide-react';
 import { useUnitsByProperty, useDeleteUnit, type Unit } from '@/hooks/useUnits';
+import { buildingKey, buildingColor } from '@/lib/units/building';
 import { useManagedProperties } from '@/hooks/useProperties';
 import { UnitDialog } from '@/components/units/UnitDialog';
 import { UnitImportDialog } from '@/components/units/UnitImportDialog';
@@ -184,14 +185,25 @@ export default function UnitsPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <DoorOpen className="h-5 w-5 text-primary" />
-                    </div>
+                    {(() => {
+                      const bk = buildingKey(unit.unit_number);
+                      const col = buildingColor(bk);
+                      return (
+                        <div
+                          className="grid h-12 w-12 shrink-0 place-items-center rounded-xl shadow-sm"
+                          style={{ background: col.bg, color: col.fg }}
+                          title={`Building ${bk}`}
+                        >
+                          <Building2 className="h-3.5 w-3.5 opacity-90" />
+                          <span className="text-[12px] font-extrabold leading-none">{bk}</span>
+                        </div>
+                      );
+                    })()}
                     <div>
                       <h3 className="font-semibold">Unit {unit.unit_number}</h3>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Building className="h-3 w-3" />
-                        {unit.property?.name}
+                        {unit.property?.name} · Bldg {buildingKey(unit.unit_number)}
                       </p>
                     </div>
                   </div>
