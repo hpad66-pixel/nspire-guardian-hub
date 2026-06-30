@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useCommitments, useCommitmentInvoices, type CommitmentInvoice, type Commitment } from "@/hooks/useCommitments";
+import { useRecordPaidInvoice } from "@/hooks/useRecordPaidInvoice";
 import { usePrimeContract, usePayApps } from "@/hooks/usePrimeContract";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
@@ -223,6 +224,32 @@ export default function InvoicesPage() {
   const [openCommitmentId, setOpenCommitmentId] = useState<string | null>(null);
   const [vendorFilter, setVendorFilter] = useState<string>("all");
 
+  // Reconciliation: record a historical paid invoice (invoice + payment) in one go.
+  const recordPaid = useRecordPaidInvoice();
+  const [reconOpen, setReconOpen] = useState(false);
+  const [rcCommitmentId, setRcCommitmentId] = useState("");
+  const [rcInvoiceNo, setRcInvoiceNo] = useState("");
+  const [rcAmount, setRcAmount] = useState("");
+  const [rcDate, setRcDate] = useState(new Date().toISOString().split("T")[0]);
+  const [rcRef, setRcRef] = useState("");
+
+  async function handleRecordPaid() {
+    if (!projectId) return;
+    if (!rcCommitmentId) return toast.error("Pick the subcontractor commitment");
+    if (!rcInvoiceNo.trim()) return toast.error("Invoice # required");
+    if (!(Number(rcAmount) > 0)) return toast.error("Enter an amount");
+    try {
+      const c = commitments.find((x) => x.id === rcCommitmentId);
+      await recordPaid.mutateAsync({
+        projectId, commitmentId: rcCommitmentId, invoiceNo: rcInvoiceNo.trim(),
+        amount: Number(rcAmount), paidDate: rcDate, reference: rcRef.trim() || undefined,
+        vendorName: c ? vendorName(c) : undefined,
+      });
+      setReconOpen(false);
+      setRcCommitmentId(""); setRcInvoiceNo(""); setRcAmount(""); setRcRef("");
+    } catch { /* toast in hook */ }
+  }
+
   const visibleCommitments = vendorFilter === "all"
     ? commitments
     : commitments.filter((c) => c.id === vendorFilter);
@@ -256,9 +283,14 @@ export default function InvoicesPage() {
           <h1 className="text-2xl font-bold">Invoices</h1>
           <p className="text-muted-foreground text-sm">Your pay applications to the owner, and subcontractor invoices to you.</p>
         </div>
-        <Button onClick={() => setNewOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Record Sub Invoice
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setReconOpen(true)}>
+            <Receipt className="h-4 w-4 mr-2" /> Record Paid Invoice
+          </Button>
+          <Button onClick={() => setNewOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Record Sub Invoice
+          </Button>
+        </div>
       </div>
 
       {/* Vendor Invoices — grouped by vendor, numbered per vendor, filterable */}
@@ -320,6 +352,36 @@ export default function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Record Paid Invoice (reconciliation) Dialog */}
+      <Dialog open={reconOpen} onOpenChange={setReconOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Record a paid invoice</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">For a payment that already happened. This creates the invoice, records the payment, marks it paid, and updates paid‑to‑date on the dashboard.</p>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Subcontractor commitment</Label>
+              <Select value={rcCommitmentId} onValueChange={setRcCommitmentId}>
+                <SelectTrigger><SelectValue placeholder="Select commitment…" /></SelectTrigger>
+                <SelectContent>{commitments.map((c) => <SelectItem key={c.id} value={c.id}>{c.commitment_no} · {c.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Invoice #</Label>
+              <Input value={rcInvoiceNo} onChange={(e) => setRcInvoiceNo(e.target.value)} placeholder="e.g. DSHIN-RECON-25K" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label>Amount</Label><Input value={rcAmount} onChange={(e) => setRcAmount(e.target.value)} inputMode="decimal" placeholder="25000.00" /></div>
+              <div className="space-y-1"><Label>Paid date</Label><Input type="date" value={rcDate} onChange={(e) => setRcDate(e.target.value)} /></div>
+            </div>
+            <div className="space-y-1"><Label>Reference (optional)</Label><Input value={rcRef} onChange={(e) => setRcRef(e.target.value)} placeholder="check / wire #" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReconOpen(false)}>Cancel</Button>
+            <Button onClick={handleRecordPaid} disabled={recordPaid.isPending}>{recordPaid.isPending ? "Recording…" : "Record paid invoice"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Invoice Dialog */}
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
