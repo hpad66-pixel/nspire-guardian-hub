@@ -36,7 +36,7 @@ export default function MarginPage() {
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const [classify, setClassify] = useState<{ co: MarginCO; existing?: MarginClass } | null>(null);
   const [pushTarget, setPushTarget] = useState<MarginClass | null>(null);
-  const [showClassified, setShowClassified] = useState(false);
+  const [showClassified, setShowClassified] = useState(true);
 
   return (
     <div>
@@ -99,7 +99,7 @@ export default function MarginPage() {
                     </button>
                   )}
                   {showClassified && data.classified.map((c) => (
-                    <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border px-3.5 py-2.5 text-[13px]">
+                    <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-muted/20 px-3.5 py-2.5 text-[13px] opacity-60">
                       <span className="truncate" title={coLabel(c.prime)}>{coLabel(c.prime)}</span>
                       <span className="text-right tabular-nums text-muted-foreground">{usd(Number(c.prime.amount ?? 0))}</span>
                       <span><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: TREAT[c.treatment].bg, color: TREAT[c.treatment].fg }}>{TREAT[c.treatment].label}</span></span>
