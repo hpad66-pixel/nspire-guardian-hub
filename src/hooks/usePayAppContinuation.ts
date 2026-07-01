@@ -151,6 +151,14 @@ export function useLoadApprovedCos(primeContractId: string | null, projectId: st
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sov-progress"] });
       qc.invalidateQueries({ queryKey: ["pay-app-continuation"] });
+      // The loader also backfills change_orders.prime_contract_id, which changes
+      // the roll-up views — refresh every consumer so the overview dashboard, CO
+      // list, reconciliation strip, and margin update WITHOUT a page reload.
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["approved-co-value"] });
+      qc.invalidateQueries({ queryKey: ["margin"] });
+      qc.invalidateQueries({ queryKey: ["prime-contract-totals"] });
     },
   });
 }
@@ -243,6 +251,12 @@ export function useGeneratePayApp(primeContractId: string | null, projectId: str
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pay-apps", primeContractId] });
+      // Generate also loads + links approved COs (loadApprovedCosInner) — refresh
+      // the roll-up consumers so the dashboard/CO list reflect the new links.
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["approved-co-value"] });
+      qc.invalidateQueries({ queryKey: ["sov-progress"] });
     },
   });
 }
