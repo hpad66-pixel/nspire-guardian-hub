@@ -20,6 +20,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { InspectionChecklistFields } from './InspectionChecklistFields';
+import { templateFor } from '@/lib/inspections/checklistTemplates';
 
 type DefectSeverity = 'minor' | 'moderate' | 'severe';
 
@@ -30,10 +32,12 @@ interface AssetCheckCardProps {
   photoUrls?: string[];
   notes?: string;
   defectDescription?: string;
+  checklist?: Record<string, string>;
   onStatusChange: (status: InspectionItemStatus) => void;
   onPhotosChange: (urls: string[]) => void;
   onNotesChange: (notes: string) => void;
   onDefectDescriptionChange: (description: string) => void;
+  onChecklistChange: (checklist: Record<string, string>) => void;
   onNext: () => void;
   isLast: boolean;
   nextLabel?: string;
@@ -89,10 +93,12 @@ export function AssetCheckCard({
   photoUrls = [],
   notes = '',
   defectDescription = '',
+  checklist = {},
   onStatusChange,
   onPhotosChange,
   onNotesChange,
   onDefectDescriptionChange,
+  onChecklistChange,
   onNext,
   isLast,
   nextLabel,
@@ -328,6 +334,11 @@ export function AssetCheckCard({
             );
           })}
         </div>
+
+        {/* ── 2b. STRUCTURED CHECKLIST (per asset type — mirrors the paper form) ── */}
+        {templateFor(asset.asset_type).length > 0 && (
+          <InspectionChecklistFields assetType={asset.asset_type} value={checklist} onChange={onChecklistChange} />
+        )}
 
         {/* ── 3. DEFECT AUTO-ESCALATION ── */}
         {status === 'defect_found' && (

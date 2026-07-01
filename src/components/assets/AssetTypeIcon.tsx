@@ -1,4 +1,4 @@
-import { Wrench, Circle, Zap, Droplets, Home } from 'lucide-react';
+import { Wrench, Circle, Zap, Droplets, Home, CircleDot, Waves } from 'lucide-react';
 import { AssetType } from '@/hooks/useAssets';
 import { cn } from '@/lib/utils';
 
@@ -8,20 +8,24 @@ interface AssetTypeIconProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const iconMap = {
+const iconMap: Record<string, typeof Wrench> = {
   cleanout: Wrench,
   catch_basin: Circle,
   lift_station: Zap,
   retention_pond: Droplets,
   general_grounds: Home,
+  manhole: CircleDot,
+  bypass_station: Waves,
 };
 
-const colorMap = {
+const colorMap: Record<string, string> = {
   cleanout: 'text-orange-500 bg-orange-100',
   catch_basin: 'text-gray-600 bg-gray-100',
   lift_station: 'text-yellow-600 bg-yellow-100',
   retention_pond: 'text-blue-500 bg-blue-100',
   general_grounds: 'text-green-600 bg-green-100',
+  manhole: 'text-slate-700 bg-slate-200',
+  bypass_station: 'text-cyan-600 bg-cyan-100',
 };
 
 const sizeMap = {

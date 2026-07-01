@@ -199,6 +199,8 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   lift_station: 'Lift Station',
   retention_pond: 'Retention Pond',
   general_grounds: 'General Grounds',
+  manhole: 'Manhole',
+  bypass_station: 'Sewer By-pass Pump Station',
 };
 
 export const ASSET_TYPE_ICONS: Record<AssetType, string> = {
@@ -207,4 +209,6 @@ export const ASSET_TYPE_ICONS: Record<AssetType, string> = {
   lift_station: '⚡',
   retention_pond: '💧',
   general_grounds: '🏡',
+  manhole: '🛢️',
+  bypass_station: '🚰',
 };

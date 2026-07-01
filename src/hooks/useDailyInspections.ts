@@ -18,6 +18,11 @@ export interface DailyInspection {
   attachments: string[];
   created_at: string;
   completed_at: string | null;
+  // General Observations (structured)
+  property_condition: string | null;      // excellent | good | fair | poor
+  unusual_activity: boolean | null;
+  unusual_activity_detail: string | null;
+  weather_other: string | null;
 }
 
 export interface DailyInspectionItem {
@@ -28,6 +33,7 @@ export interface DailyInspectionItem {
   photo_urls: string[];
   notes: string | null;
   defect_description: string | null;
+  checklist: Record<string, string>;
   checked_at: string;
 }
 
@@ -153,6 +159,7 @@ export function useUpsertInspectionItem() {
       photo_urls?: string[];
       notes?: string;
       defect_description?: string;
+      checklist?: Record<string, string>;
     }) => {
       // Check if item exists
       const { data: existing } = await supabase
@@ -161,7 +168,7 @@ export function useUpsertInspectionItem() {
         .eq('daily_inspection_id', input.daily_inspection_id)
         .eq('asset_id', input.asset_id)
         .maybeSingle();
-      
+
       if (existing) {
         // Update existing
         const { data, error } = await supabase
@@ -171,6 +178,7 @@ export function useUpsertInspectionItem() {
             photo_urls: input.photo_urls,
             notes: input.notes,
             defect_description: input.defect_description,
+            checklist: input.checklist ?? {},
             checked_at: new Date().toISOString(),
           })
           .eq('id', existing.id)
@@ -208,4 +216,5 @@ export const WEATHER_OPTIONS = [
   { value: 'stormy', label: 'Stormy', icon: '⛈️' },
   { value: 'snowy', label: 'Snowy', icon: '❄️' },
   { value: 'foggy', label: 'Foggy', icon: '🌫️' },
+  { value: 'other', label: 'Other', icon: '🌤️' },
 ];

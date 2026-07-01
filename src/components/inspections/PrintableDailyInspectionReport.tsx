@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { DailyInspection, DailyInspectionItem, WEATHER_OPTIONS } from '@/hooks/useDailyInspections';
 import { Asset, ASSET_TYPE_LABELS } from '@/hooks/useAssets';
+import { templateFor, fieldVisible } from '@/lib/inspections/checklistTemplates';
 import { cn } from '@/lib/utils';
 
 interface PrintableDailyInspectionReportProps {
@@ -33,6 +34,21 @@ export const PrintableDailyInspectionReport = forwardRef<
     if (!asset) return '';
     return ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type;
   };
+
+  // Structured checklist answers for an item, in template order (answered only).
+  const checklistRows = (item: DailyInspectionItem) => {
+    const asset = assets.find(a => a.id === item.asset_id);
+    if (!asset) return [] as { label: string; value: string }[];
+    const answers = (item.checklist || {}) as Record<string, string>;
+    return templateFor(asset.asset_type)
+      .filter(f => fieldVisible(f, answers))
+      .map(f => ({ label: f.label, value: (answers[f.id] ?? '').toString().trim() }))
+      .filter(r => r.value !== '');
+  };
+
+  const propertyConditionLabel = inspection.property_condition
+    ? inspection.property_condition.charAt(0).toUpperCase() + inspection.property_condition.slice(1)
+    : null;
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -159,6 +175,42 @@ export const PrintableDailyInspectionReport = forwardRef<
         </div>
       </div>
 
+      {/* General Observations */}
+      {(propertyConditionLabel || inspection.unusual_activity != null || inspection.weather_other) && (
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            General Observations
+          </h2>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <table className="w-full text-sm">
+              <tbody>
+                {propertyConditionLabel && (
+                  <tr className="align-top">
+                    <td className="py-1 pr-3 text-gray-500 w-1/2">Overall property condition</td>
+                    <td className="py-1 font-medium text-gray-900">{propertyConditionLabel}</td>
+                  </tr>
+                )}
+                {inspection.weather_other && (
+                  <tr className="align-top">
+                    <td className="py-1 pr-3 text-gray-500">Weather (other)</td>
+                    <td className="py-1 font-medium text-gray-900">{inspection.weather_other}</td>
+                  </tr>
+                )}
+                {inspection.unusual_activity != null && (
+                  <tr className="align-top">
+                    <td className="py-1 pr-3 text-gray-500">Any unusual activities or issues?</td>
+                    <td className="py-1 font-medium text-gray-900">
+                      {inspection.unusual_activity ? 'Yes' : 'No'}
+                      {inspection.unusual_activity && inspection.unusual_activity_detail ? ` — ${inspection.unusual_activity_detail}` : ''}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Asset Checks */}
       <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
@@ -190,7 +242,20 @@ export const PrintableDailyInspectionReport = forwardRef<
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mb-2">{getAssetType(item.asset_id)}</p>
-                    
+
+                    {checklistRows(item).length > 0 && (
+                      <table className="w-full text-sm mb-2">
+                        <tbody>
+                          {checklistRows(item).map((r) => (
+                            <tr key={r.label} className="align-top">
+                              <td className="py-0.5 pr-3 text-gray-500 w-1/2">{r.label}</td>
+                              <td className="py-0.5 font-medium text-gray-900">{r.value}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+
                     {item.notes && (
                       <p className="text-sm text-gray-700 mt-2">
                         <span className="font-medium">Notes:</span> {item.notes}

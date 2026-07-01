@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { WeatherSelector } from './WeatherSelector';
 import { InspectionProgress } from './InspectionProgress';
 import { AssetCheckCard } from './AssetCheckCard';
+import { PROPERTY_CONDITIONS } from '@/lib/inspections/checklistTemplates';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAssets, Asset } from '@/hooks/useAssets';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -60,6 +63,7 @@ interface AssetCheckData {
   photoUrls: string[];
   notes: string;
   defectDescription: string;
+  checklist: Record<string, string>;
 }
 
 // ── Dot tracker ────────────────────────────────────────────────────────────
@@ -139,6 +143,11 @@ export function DailyInspectionWizard({
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
   const [generalNotes, setGeneralNotes] = useState(existingInspection?.general_notes || '');
   const [generalNotesHtml, setGeneralNotesHtml] = useState(existingInspection?.general_notes_html || '');
+  // General Observations (structured — mirrors the paper form's top section)
+  const [propertyCondition, setPropertyCondition] = useState(existingInspection?.property_condition || '');
+  const [unusualActivity, setUnusualActivity] = useState<boolean | null>(existingInspection?.unusual_activity ?? null);
+  const [unusualDetail, setUnusualDetail] = useState(existingInspection?.unusual_activity_detail || '');
+  const [weatherOther, setWeatherOther] = useState(existingInspection?.weather_other || '');
   const [attachments, setAttachments] = useState<string[]>(existingInspection?.attachments || []);
   const [assetChecks, setAssetChecks] = useState<Record<string, AssetCheckData>>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -169,6 +178,7 @@ export function DailyInspectionWizard({
           photoUrls: item.photo_urls || [],
           notes: item.notes || '',
           defectDescription: item.defect_description || '',
+          checklist: (item.checklist as Record<string, string>) || {},
         };
       });
       setAssetChecks(prev => ({ ...prev, ...checks }));
@@ -215,7 +225,7 @@ export function DailyInspectionWizard({
     setAssetChecks(prev => ({
       ...prev,
       [selectedAsset.id]: {
-        ...prev[selectedAsset.id] || { photoUrls: [], notes: '', defectDescription: '' },
+        ...prev[selectedAsset.id] || { photoUrls: [], notes: '', defectDescription: '', checklist: {} },
         [field]: value,
       },
     }));
@@ -232,6 +242,7 @@ export function DailyInspectionWizard({
         photo_urls: check.photoUrls,
         notes: check.notes || undefined,
         defect_description: check.defectDescription || undefined,
+        checklist: check.checklist || {},
       });
     }
     setAssetDialogOpen(false);
@@ -294,6 +305,7 @@ export function DailyInspectionWizard({
             photo_urls: check.photoUrls,
             notes: check.notes || undefined,
             defect_description: check.defectDescription || undefined,
+            checklist: check.checklist || {},
           })
         );
       if (itemsToSave.length > 0) await Promise.all(itemsToSave);
@@ -325,6 +337,10 @@ export function DailyInspectionWizard({
         id: inspection.id,
         general_notes: generalNotes,
         general_notes_html: generalNotesHtml,
+        property_condition: propertyCondition || null,
+        unusual_activity: unusualActivity,
+        unusual_activity_detail: unusualActivity ? (unusualDetail || null) : null,
+        weather_other: weatherOther || null,
         attachments,
         status: 'completed',
         completed_at: new Date().toISOString(),
@@ -513,6 +529,56 @@ export function DailyInspectionWizard({
                 </span>
               </div>
             </div>
+
+            {/* General Observations (structured — matches the paper form's top section) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">General Observations</CardTitle>
+                <CardDescription>Overall property condition and anything unusual today</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium text-slate-700">Overall property condition</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PROPERTY_CONDITIONS.map(c => {
+                      const active = propertyCondition === c;
+                      return (
+                        <button key={c} type="button" onClick={() => setPropertyCondition(active ? '' : c)}
+                          className={cn('rounded-lg border px-3 py-2 text-sm font-semibold transition-all',
+                            active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')}>
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium text-slate-700">Any unusual activities or issues?</p>
+                  <div className="flex gap-2">
+                    {[{ v: true, l: 'Yes' }, { v: false, l: 'No' }].map(o => {
+                      const active = unusualActivity === o.v;
+                      return (
+                        <button key={o.l} type="button" onClick={() => setUnusualActivity(active ? null : o.v)}
+                          className={cn('rounded-lg border px-4 py-2 text-sm font-semibold transition-all',
+                            active ? (o.v ? 'border-amber-500 bg-amber-500 text-white' : 'border-green-600 bg-green-600 text-white') : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')}>
+                          {o.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {unusualActivity === true && (
+                    <Textarea value={unusualDetail} onChange={e => setUnusualDetail(e.target.value)} rows={2}
+                      placeholder="Describe the unusual activity or issue…" className="mt-2 text-sm" />
+                  )}
+                </div>
+                {(weather === 'other' || weatherOther) && (
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-slate-700">Weather — other</p>
+                    <Input value={weatherOther} onChange={e => setWeatherOther(e.target.value)} placeholder="Describe the weather…" className="text-sm" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Rich text editor */}
             <Card>
@@ -801,10 +867,12 @@ export function DailyInspectionWizard({
                 photoUrls={selectedCheck?.photoUrls || []}
                 notes={selectedCheck?.notes || ''}
                 defectDescription={selectedCheck?.defectDescription || ''}
+                checklist={selectedCheck?.checklist || {}}
                 onStatusChange={(status) => handleAssetCheck('status', status)}
                 onPhotosChange={(urls) => handleAssetCheck('photoUrls', urls)}
                 onNotesChange={(notes) => handleAssetCheck('notes', notes)}
                 onDefectDescriptionChange={(desc) => handleAssetCheck('defectDescription', desc)}
+                onChecklistChange={(cl) => handleAssetCheck('checklist', cl)}
                 onNext={handleSaveAssetCheck}
                 isLast={idx === activeAssets.length - 1}
                 nextLabel="Save & Close"
