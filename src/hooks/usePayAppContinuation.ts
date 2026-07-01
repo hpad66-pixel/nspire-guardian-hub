@@ -55,11 +55,17 @@ async function loadApprovedCosInner(
   primeContractId: string, projectId: string,
 ): Promise<{ inserted: number; updated: number }> {
   const tenant_id = await requireTenantId();
+  // Match exactly what the financial roll-up (v_project_financial_summary) counts
+  // as the approved CO value: every prime-side CO (prime_contract_id set, NOT a
+  // sub CCO) that is approved/executed — REGARDLESS of co_type. The old
+  // `co_type = 'PCO'` filter silently skipped owner COs typed 'OCO' or imported
+  // COs with a null co_type, so the SOV net-change came up short of the dashboard
+  // and "Load approved change orders" appeared to do nothing.
   const { data: cos, error: coErr } = await supabase
     .from("change_orders" as any)
     .select("id, co_no, title, description, amount, status")
     .eq("prime_contract_id", primeContractId)
-    .eq("co_type", "PCO")
+    .is("commitment_id", null)
     .in("status", APPROVED_CO_STATUSES);
   if (coErr) throw coErr;
 
@@ -121,6 +127,30 @@ export function useLoadApprovedCos(primeContractId: string | null, projectId: st
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sov-progress"] });
       qc.invalidateQueries({ queryKey: ["pay-app-continuation"] });
+    },
+  });
+}
+
+/**
+ * The approved change-order value for a prime contract — the SAME definition the
+ * financial roll-up view (v_project_financial_summary.approved_co_value) uses:
+ * every prime-side CO (prime_contract_id set, not a sub CCO) that is
+ * approved/executed. Used to reconcile the pay-app SOV net-change against the
+ * dashboard so a CO that hasn't been loaded into the SOV shows up as a delta.
+ */
+export function useApprovedCoValue(primeContractId: string | null) {
+  return useQuery({
+    queryKey: ["approved-co-value", primeContractId],
+    enabled: Boolean(primeContractId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("change_orders" as any)
+        .select("amount")
+        .eq("prime_contract_id", primeContractId!)
+        .is("commitment_id", null)
+        .in("status", APPROVED_CO_STATUSES);
+      if (error) throw error;
+      return round2((data ?? []).reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0));
     },
   });
 }

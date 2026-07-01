@@ -14,8 +14,10 @@ import { toast } from "sonner";
 import {
   usePayAppContinuation,
   useLoadApprovedCos,
+  useApprovedCoValue,
   type ContinuationLine,
 } from "@/hooks/usePayAppContinuation";
+import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { round2, type G702Summary } from "@/lib/financial/payAppContinuation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,8 @@ export function PayAppContinuationBuilder({
 }: { payAppId: string; projectId: string; primeContractId: string }) {
   const { detail, lines, g702, isFrozen, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
   const loadCos = useLoadApprovedCos(primeContractId, projectId);
+  const { data: contract } = usePrimeContract(projectId);
+  const approvedCoQ = useApprovedCoValue(primeContractId);
   const status = detail.data?.status as string | undefined;
   // A submitted pay app is a fixed certificate — lock all editing so its figures
   // stay exactly as submitted (later COs/progress go into the next pay app).
@@ -95,6 +99,19 @@ export function PayAppContinuationBuilder({
   // A line billed past its scheduled value (over 100%). Not allowed — needs a CO.
   const overbilled = lines.filter((l) => l.value_to_date > l.scheduled_value + 0.01);
 
+  // ── Reconciliation vs the contract / financial dashboard ──────────────────
+  // Base:  contract Original Contract Sum (what the G702 uses)  vs  Σ base SOV lines.
+  // COs:   approved-CO value from change_orders (what the dashboard rolls up)
+  //        vs  Σ CO SOV lines (this pay app's net-change). A CO that hasn't been
+  //        loaded into the SOV shows up here as a positive delta.
+  const reconReady = Boolean(contract) && approvedCoQ.isSuccess;
+  const originalContract = round2(Number((contract as any)?.original_value ?? 0));
+  const baseSov = round2(base.reduce((s, l) => s + l.scheduled_value, 0));
+  const baseDelta = round2(baseSov - originalContract);
+  const approvedCoTotal = round2(approvedCoQ.data ?? 0);
+  const coDelta = round2(approvedCoTotal - g702.net_change_orders);
+  const reconciled = Math.abs(baseDelta) < 0.01 && Math.abs(coDelta) < 0.01;
+
   return (
     <div className="space-y-4">
       {overbilled.length > 0 && (
@@ -125,6 +142,35 @@ export function PayAppContinuationBuilder({
           </Button>
         </div>
       </div>
+
+      {/* Reconciliation strip — flags when the pay app's base / net-change don't
+          match the contract Original Contract Sum and the approved-CO roll-up. */}
+      {reconReady && (
+        reconciled ? (
+          <div className="rounded-md border border-[var(--apas-emerald)]/40 bg-[var(--apas-emerald)]/5 px-3 py-2 text-xs text-[var(--apas-emerald)]">
+            Reconciled — base {money(originalContract)} + approved change orders {money(approvedCoTotal)} = contract sum to date {money(g702.contract_sum_to_date)}.
+          </div>
+        ) : (
+          <div className="rounded-md border border-[var(--apas-amber)] bg-[var(--apas-amber)]/5 px-3 py-2 text-sm space-y-1">
+            <div className="font-medium text-[var(--apas-amber)]">This pay app doesn&apos;t reconcile with the contract yet</div>
+            {Math.abs(coDelta) >= 0.01 && (
+              <div className="text-muted-foreground">
+                <strong className="text-foreground">Change orders:</strong> {money(approvedCoTotal)} approved on the contract vs {money(g702.net_change_orders)} loaded on this pay app —{" "}
+                {coDelta > 0
+                  ? <><span className="text-foreground">{money(coDelta)} not yet loaded.</span>{!locked && <> Click <strong>Load approved change orders</strong> above.</>}</>
+                  : <span className="text-foreground">{money(-coDelta)} more on the pay app than is approved (a CO may have been voided or amended).</span>}
+              </div>
+            )}
+            {Math.abs(baseDelta) >= 0.01 && (
+              <div className="text-muted-foreground">
+                <strong className="text-foreground">Base contract:</strong> Original Contract Sum {money(originalContract)} vs base SOV lines {money(baseSov)} —{" "}
+                <span className="text-foreground">{money(Math.abs(baseDelta))} {baseDelta > 0 ? "more in the line items than the contract value" : "short of the contract value in the line items"}.</span>{" "}
+                The G702 bills against the Original Contract Sum; the base line items should total it.
+              </div>
+            )}
+          </div>
+        )
+      )}
 
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
