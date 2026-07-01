@@ -26,6 +26,7 @@ import {
 } from '@/hooks/useTracker';
 import { openTrackerReport, buildTrackerReportHtml, buildTrackerItemHtml, type ReportGroupBy } from '@/lib/tracker/trackerReport';
 import { ragFor, ragMeta, duePhrase, ragCounts, ageDays, ageLabel, isAging } from '@/lib/tracker/trackerRag';
+import { ProRichTextEditor } from '@/components/ui/rich-text-editor';
 import { useSendEmail } from '@/hooks/useSendEmail';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
@@ -652,49 +653,59 @@ function MergeDialog({ projectId, items, onDone, onClose, mergeFn }: { projectId
 function SummarizeDialog({ items, projectName, onClose }: { items: TrackerItem[]; projectName: string; onClose: () => void }) {
   const summarize = useTrackerSummarize();
   const send = useSendEmail();
-  const [result, setResult] = useState<{ title: string; summary_html: string } | null>(null);
+  const [ready, setReady] = useState(false);
+  const [title, setTitle] = useState('');   // editable headline
+  const [html, setHtml] = useState('');      // editable rich body (TipTap)
   const [groupBy, setGroupBy] = useState<ReportGroupBy>('due');
   const [openOnly, setOpenOnly] = useState(true);
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
-  const run = () => summarize.mutate({ items, projectName }, { onSuccess: setResult });
+  const run = () => summarize.mutate({ items, projectName }, {
+    onSuccess: (r) => { setTitle(r.title || 'Project update'); setHtml(r.summary_html || ''); setReady(true); },
+  });
   // kick off once on open
   useEffect(() => { run(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  // The client update = the AI narrative as a branded callout on top of the
+  // The client update = YOUR edited narrative as a branded callout on top of the
   // grouped, color-coded, flagged Project Log report.
   const opts = () => ({
     groupBy, openOnly, projectName: projectName || 'Project Log',
-    introTitle: result?.title, introHtml: result?.summary_html,
+    introTitle: title.trim() || undefined, introHtml: html.trim() || undefined,
   });
-  const openReport = () => { if (openTrackerReport(items, opts())) onClose(); };
+  const openReport = () => { openTrackerReport(items, opts()); };
   const emailReport = () => {
     const to = email.trim();
     if (!to) { toast.error('Enter an email'); return; }
-    send.mutate({ recipients: [to], subject: `${projectName || 'Project'} — client update`, bodyHtml: buildTrackerReportHtml(items, opts()) }, {
+    send.mutate({ recipients: [to], subject: `${projectName || 'Project'} — ${title.trim() || 'client update'}`, bodyHtml: buildTrackerReportHtml(items, opts()) }, {
       onSuccess: () => { toast.success(`Update emailed to ${to}`); onClose(); },
       onError: (e: any) => toast.error(e?.message || 'Send failed'),
     });
   };
   const copy = () => {
-    const tmp = document.createElement('div'); tmp.innerHTML = result?.summary_html ?? '';
-    navigator.clipboard.writeText((result?.title ? result.title + '\n\n' : '') + (tmp.innerText || '')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+    const tmp = document.createElement('div'); tmp.innerHTML = html;
+    navigator.clipboard.writeText((title ? title + '\n\n' : '') + (tmp.innerText || '')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
   };
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> Client update from the log</DialogTitle></DialogHeader>
-        {summarize.isPending && !result ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Writing a client-ready update…</div>
-        ) : result ? (
-          <div className="space-y-3">
-            <div className="rounded-lg border-l-4 border-[var(--accent)] border border-border bg-[var(--accent)]/5 p-3">
-              <div className="text-[15px] font-semibold text-foreground">{result.title}</div>
-              <div className="mt-1 text-[13px] leading-relaxed text-foreground/80 [&_li]:ml-4 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: result.summary_html }} />
+      <DialogContent className="flex max-h-[92vh] max-w-4xl flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> Client update — edit before you send</DialogTitle>
+        </DialogHeader>
+        {summarize.isPending && !ready ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Writing a client-ready update…</div>
+        ) : ready ? (
+          <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Headline</label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Client update headline…" className="text-[15px] font-semibold" />
             </div>
-            <p className="text-[11px] text-muted-foreground">AI-drafted headline · sits atop the grouped, color-coded log below when you print or email. Review before sending.</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Update — edit freely (bold, highlight, lists, color…)</label>
+              <ProRichTextEditor content={html} onChange={setHtml} minHeight="260px" placeholder="Write the client update…" />
+              <p className="mt-1 text-[11px] text-muted-foreground">This sits at the top of the branded, color-coded log below when you print or email.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">Group the log by</label>
                 <Select value={groupBy} onValueChange={(v) => setGroupBy(v as ReportGroupBy)}>
@@ -712,20 +723,21 @@ function SummarizeDialog({ items, projectName, onClose }: { items: TrackerItem[]
                 <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" />
                 <span className="font-medium">Open items only</span>
               </label>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email to client (optional)</label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" />
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email to client</label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" className="h-9" />
+              </div>
             </div>
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">Couldn't generate a summary. Try again.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">Couldn&apos;t generate a summary. Try Regenerate.</p>
         )}
-        <DialogFooter className="flex-wrap gap-2">
-          <Button variant="ghost" onClick={run} disabled={summarize.isPending} className="gap-1.5"><Sparkles className="h-4 w-4" /> Regenerate</Button>
-          <Button variant="outline" onClick={copy} disabled={!result} className="gap-1.5">{copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy text</>}</Button>
-          <Button variant="outline" onClick={emailReport} disabled={!result || send.isPending || !email.trim()} className="gap-1.5">{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailIcon className="h-4 w-4" />} Email</Button>
-          <Button onClick={openReport} disabled={!result} className="gap-1.5"><Printer className="h-4 w-4" /> Print / PDF</Button>
+        <DialogFooter className="flex-wrap gap-2 border-t pt-3">
+          <Button variant="ghost" onClick={run} disabled={summarize.isPending} className="gap-1.5">{summarize.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Regenerate</Button>
+          <Button variant="outline" onClick={copy} disabled={!ready} className="gap-1.5">{copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy text</>}</Button>
+          <div className="flex-1" />
+          <Button variant="outline" onClick={openReport} disabled={!ready} className="gap-1.5"><Printer className="h-4 w-4" /> Print / PDF</Button>
+          <Button onClick={emailReport} disabled={!ready || send.isPending || !email.trim()} className="gap-1.5">{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailIcon className="h-4 w-4" />} Email to client</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
