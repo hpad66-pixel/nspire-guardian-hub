@@ -25,6 +25,7 @@ import {
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
 import { openTrackerReport, buildTrackerReportHtml, type ReportGroupBy } from '@/lib/tracker/trackerReport';
+import { ragFor, ragMeta, duePhrase, ragCounts } from '@/lib/tracker/trackerRag';
 import { useSendEmail } from '@/hooks/useSendEmail';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
@@ -103,6 +104,7 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [items]);
   const maxLoad = Math.max(1, ...ownerLoad.map(([, n]) => n));
+  const rag = useMemo(() => ragCounts(items), [items]);
 
   const list = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -158,6 +160,22 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
               <span>{pct}% complete</span><span>{counts.done} of {items.length} closed</span>
             </div>
           </div>
+          {(rag.overdue + rag['at-risk'] + rag['due-soon']) > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-border pt-3">
+              {([['overdue', rag.overdue], ['at-risk', rag['at-risk']], ['due-soon', rag['due-soon']]] as const)
+                .filter(([, n]) => n > 0)
+                .map(([k, n]) => {
+                  const m = ragMeta(k);
+                  return (
+                    <span key={k} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold"
+                      style={{ background: `${m.color}1a`, color: m.color }}>
+                      <span className="h-2 w-2 rounded-full" style={{ background: m.color }} />
+                      {n} {m.label.toLowerCase()}
+                    </span>
+                  );
+                })}
+            </div>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Open + in-progress by owner</p>
@@ -283,6 +301,7 @@ function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; p
                 <SelectItem value="owner">Subcontractor / owner</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
                 <SelectItem value="category">Category</SelectItem>
+                <SelectItem value="due">Due status (red / amber / green)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -352,14 +371,31 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
 }) {
   const st = STATUS[item.status]; const pr = PRIORITY[item.priority];
   const last = item.updates[0]?.created_at;
+  const rag = ragFor(item); const rm = ragMeta(rag);
+  // Draw attention to items that need it: overdue / at-risk / due-soon get a
+  // colored left accent on the card. Done / on-track / no-date stay neutral.
+  const accent = rag === 'overdue' || rag === 'at-risk' || rag === 'due-soon' ? rm.color : null;
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-card print:break-inside-avoid', selected ? 'border-[var(--apas-sapphire)] ring-1 ring-[var(--apas-sapphire)]' : item.client_visible ? 'border-border' : 'border-dashed border-muted-foreground/40')}>
+    <div
+      className={cn('overflow-hidden rounded-xl border bg-card print:break-inside-avoid', selected ? 'border-[var(--apas-sapphire)] ring-1 ring-[var(--apas-sapphire)]' : item.client_visible ? 'border-border' : 'border-dashed border-muted-foreground/40')}
+      style={accent ? { borderLeftColor: accent, borderLeftWidth: 4 } : undefined}
+    >
       <div className="flex cursor-pointer items-center gap-3 px-3.5 py-3 hover:bg-muted/40" onClick={selectMode ? onSelect : onToggle}>
         {selectMode && <input type="checkbox" checked={!!selected} onChange={onSelect} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 accent-[var(--apas-sapphire)]" />}
         {item.code && <span className="w-10 shrink-0 text-[12px] font-bold text-muted-foreground">{item.code}</span>}
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
         <span className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: pr.bg, color: pr.fg }}>{pr.label}</span>
         <span className="flex-1 font-semibold text-foreground">{item.title}{last && <span className="block text-[12px] font-normal text-muted-foreground">Last update {fmt(last)}</span>}</span>
+        {(item.due_date && item.status !== 'done') && (
+          <span
+            className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold sm:inline-flex"
+            style={{ background: `${rm.color}1a`, color: rm.color }}
+            title={duePhrase(item.due_date)}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: rm.color }} />
+            {duePhrase(item.due_date)}
+          </span>
+        )}
         {!item.client_visible && <span className="hidden shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground sm:inline-flex"><EyeOff className="h-3 w-3" /> Internal</span>}
         {item.owner && <span className="hidden w-28 shrink-0 text-right text-[11.5px] text-muted-foreground sm:block">{item.owner}</span>}
         <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} />
@@ -405,6 +441,7 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
   const [description, setDescription] = useState(item?.description ?? '');
   const [priority, setPriority] = useState<TrackerPriority>(item?.priority ?? 'med');
   const [status, setStatus] = useState<TrackerStatus>(item?.status ?? 'open');
+  const [dueDate, setDueDate] = useState(item?.due_date ?? '');
   const [clientVisible, setClientVisible] = useState(item?.client_visible ?? true);
   const [firstNote, setFirstNote] = useState('');
   const busy = create.isPending || update.isPending;
@@ -412,9 +449,9 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
   const save = () => {
     if (!title.trim()) { return; }
     if (item) {
-      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status, client_visible: clientVisible } as any }, { onSuccess: onClose });
+      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status, due_date: dueDate || null, client_visible: clientVisible } as any }, { onSuccess: onClose });
     } else {
-      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, firstNote, clientVisible }, { onSuccess: onClose });
+      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, dueDate: dueDate || undefined, firstNote, clientVisible }, { onSuccess: onClose });
     }
   };
 
@@ -423,9 +460,10 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>{item ? 'Edit item' : 'Add item'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Code</label><Input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. D16" /></div>
             <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Owner</label><Input value={owner} onChange={e => setOwner(e.target.value)} placeholder="e.g. Donnell" list="tracker-owners" /><datalist id="tracker-owners">{owners.map(o => <option key={o} value={o} />)}</datalist></div>
+            <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Due date</label><Input type="date" value={dueDate ? String(dueDate).slice(0, 10) : ''} onChange={e => setDueDate(e.target.value)} /></div>
           </div>
           <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Title / scope</label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Short description" /></div>
           <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Detail (optional)</label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Location, conditions, extra detail…" /></div>
