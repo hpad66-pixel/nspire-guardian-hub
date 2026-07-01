@@ -14,7 +14,13 @@ const PRI_LABEL: Record<string, string> = { high: 'High', med: 'Med', low: 'Low'
 const STATUS_ORDER = ['blocked', 'progress', 'scheduled', 'open', 'done'];
 
 export type ReportGroupBy = 'owner' | 'status' | 'category' | 'due';
-export interface ReportOptions { groupBy: ReportGroupBy; openOnly: boolean; projectName: string; preparedBy?: string }
+export interface ReportOptions {
+  groupBy: ReportGroupBy; openOnly: boolean; projectName: string; preparedBy?: string;
+  /** Optional AI-written client summary rendered as a branded callout up top. */
+  introTitle?: string;
+  /** HTML body of the AI summary (from our tracker-ai edge fn — trusted). */
+  introHtml?: string;
+}
 
 const GROUP_LABEL: Record<ReportGroupBy, string> = {
   owner: 'subcontractor', status: 'status', category: 'category', due: 'due status',
@@ -118,6 +124,11 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
   .stats.rag{margin-top:10px}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:11px;color:#6b7280}
   .legend .k{display:inline-flex;align-items:center;gap:5px}
+  .intro{margin:16px 0 2px;border:1px solid #EADFC2;border-left:4px solid #C4A35A;background:#FBF8F1;border-radius:8px;padding:12px 16px}
+  .intro .intro-t{font-family:Georgia,serif;font-size:15px;font-weight:bold;color:#1A1714;margin-bottom:4px}
+  .intro .intro-b{font-family:-apple-system,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#374151}
+  .intro .intro-b ul{margin:6px 0;padding-left:18px}
+  .intro .intro-b li{margin:2px 0}
   .foot{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:11px;color:#9aa1ad}
   @media print{body{padding:0}.noprint{display:none}}
 </style></head><body>
@@ -125,6 +136,7 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
     <div><h1>${esc(opts.projectName)}</h1><div class="sub">Project Log Report${opts.openOnly ? ' · open items' : ''} · grouped by ${GROUP_LABEL[opts.groupBy]}</div></div>
     <div class="meta">Generated ${fmt(new Date().toISOString())}${opts.preparedBy ? `<br>Prepared by ${esc(opts.preparedBy)}` : ''}</div>
   </div>
+  ${opts.introHtml ? `<div class="intro">${opts.introTitle ? `<div class="intro-t">${esc(opts.introTitle)}</div>` : ''}<div class="intro-b">${opts.introHtml}</div></div>` : ''}
   <div class="stats">${summary}</div>
   ${ragStrip}
   <div class="prog">${pct}% complete · ${counts.done} of ${total} closed</div>
