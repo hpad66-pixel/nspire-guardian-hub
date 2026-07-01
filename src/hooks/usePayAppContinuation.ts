@@ -36,15 +36,6 @@ interface ProgressRow {
   pct_complete: number; qty_this_period: number; value_this_period: number; retainage: number;
 }
 
-/** The descriptive label for a CO's SOV line — the change order's title. */
-function coTitle(co: { title?: string | null; description?: string | null; co_no?: number | null }): string {
-  return (
-    (co.title && co.title.trim()) ||
-    (co.description && co.description.trim()) ||
-    `Change Order ${co.co_no ?? ""}`.trim()
-  );
-}
-
 /**
  * Sync executed/approved prime COs into the SOV: create a line for any CO that
  * lacks one, AND refresh the description (= the CO title) on lines that already
@@ -55,23 +46,25 @@ async function loadApprovedCosInner(
   primeContractId: string, projectId: string,
 ): Promise<{ inserted: number; updated: number }> {
   const tenant_id = await requireTenantId();
-  // Match exactly what the financial roll-up (v_project_financial_summary) counts
-  // as the approved CO value: every prime-side CO (prime_contract_id set, NOT a
-  // sub CCO) that is approved/executed — REGARDLESS of co_type. The old
-  // `co_type = 'PCO'` filter silently skipped owner COs typed 'OCO' or imported
-  // COs with a null co_type, so the SOV net-change came up short of the dashboard
-  // and "Load approved change orders" appeared to do nothing.
+  // Every approved/executed OWNER-side change order on the project — i.e. NOT a
+  // sub CCO (those carry commitment_id). We match by project_id and accept COs
+  // whose prime_contract_id is this contract OR null (imported/seeded COs are
+  // often not linked to the prime_contracts row), REGARDLESS of co_type. The old
+  // `prime_contract_id = X AND co_type = 'PCO'` filter silently skipped owner COs
+  // typed 'OCO' and imported COs with a null co_type / null prime_contract_id, so
+  // the SOV net-change came up short and "Load approved change orders" no-op'd.
   const { data: cos, error: coErr } = await supabase
     .from("change_orders" as any)
     .select("id, co_no, title, description, amount, status")
-    .eq("prime_contract_id", primeContractId)
+    .eq("project_id", projectId)
     .is("commitment_id", null)
-    .in("status", APPROVED_CO_STATUSES);
+    .in("status", APPROVED_CO_STATUSES)
+    .or(`prime_contract_id.eq.${primeContractId},prime_contract_id.is.null`);
   if (coErr) throw coErr;
 
   const { data: existing, error: exErr } = await supabase
     .from("sov_line_items" as any)
-    .select("id, item_no, change_order_id, sort_order, description")
+    .select("id, item_no, change_order_id, sort_order, description, scheduled_value")
     .eq("prime_contract_id", primeContractId);
   if (exErr) throw exErr;
 
@@ -79,14 +72,30 @@ async function loadApprovedCosInner(
     (existing ?? []).filter((r: any) => r.change_order_id).map((r: any) => [r.change_order_id, r]),
   );
 
-  // Refresh the title on CO lines that already exist.
+  // Re-sync existing CO lines to the CO's CURRENT title AND amount — so a CO that
+  // was amended, corrected, or re-imported after its SOV line was created gets its
+  // scheduled value refreshed (previously only the title was updated, which left a
+  // stale amount making the net-change never reconcile even after "Load").
   let updated = 0;
   for (const co of (cos ?? []) as any[]) {
     const line = lineByCoId.get(co.id);
-    const title = coTitle(co);
-    if (line && line.description !== title) {
+    if (!line) continue;
+    const synced = coToSovLine(
+      { id: co.id, co_no: co.co_no, title: co.title, description: co.description, amount: Number(co.amount) },
+      { sortOrder: Number(line.sort_order ?? 0), itemNo: String(line.item_no) },
+    );
+    const titleChanged = line.description !== synced.description;
+    const amountChanged = round2(Number(line.scheduled_value ?? 0)) !== round2(synced.scheduled_value);
+    if (titleChanged || amountChanged) {
       const { error: upErr } = await supabase
-        .from("sov_line_items" as any).update({ description: title } as any).eq("id", line.id);
+        .from("sov_line_items" as any)
+        .update({
+          description: synced.description,
+          scheduled_qty: synced.scheduled_qty,
+          unit_price: synced.unit_price,
+          scheduled_value: synced.scheduled_value,
+        } as any)
+        .eq("id", line.id);
       if (upErr) throw upErr;
       updated += 1;
     }
@@ -138,17 +147,18 @@ export function useLoadApprovedCos(primeContractId: string | null, projectId: st
  * approved/executed. Used to reconcile the pay-app SOV net-change against the
  * dashboard so a CO that hasn't been loaded into the SOV shows up as a delta.
  */
-export function useApprovedCoValue(primeContractId: string | null) {
+export function useApprovedCoValue(primeContractId: string | null, projectId: string | null) {
   return useQuery({
-    queryKey: ["approved-co-value", primeContractId],
-    enabled: Boolean(primeContractId),
+    queryKey: ["approved-co-value", primeContractId, projectId],
+    enabled: Boolean(primeContractId) && Boolean(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("change_orders" as any)
         .select("amount")
-        .eq("prime_contract_id", primeContractId!)
+        .eq("project_id", projectId!)
         .is("commitment_id", null)
-        .in("status", APPROVED_CO_STATUSES);
+        .in("status", APPROVED_CO_STATUSES)
+        .or(`prime_contract_id.eq.${primeContractId},prime_contract_id.is.null`);
       if (error) throw error;
       return round2((data ?? []).reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0));
     },
