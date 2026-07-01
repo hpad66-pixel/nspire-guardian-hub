@@ -92,6 +92,13 @@ const PAGE_LANDSCAPE: React.CSSProperties = {
   width: 1040, minHeight: 740, background: "#fff", color: INK,
   fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box", position: "relative",
 };
+// G702 cover — landscape at the exact US-Letter landscape aspect (11 : 8.5 ≈
+// 1.294) so the rasterized PDF page fills edge-to-edge like Procore's cover
+// instead of centering a near-square block with wide side margins.
+const PAGE_COVER: React.CSSProperties = {
+  width: 1320, minHeight: 920, background: "#fff", color: INK,
+  fontFamily: "Georgia, 'Times New Roman', serif", padding: "40px 52px", boxSizing: "border-box", position: "relative",
+};
 const cell: React.CSSProperties = { padding: "5px 7px", fontSize: 11, borderBottom: `1px solid ${RULE}` };
 const numCell: React.CSSProperties = { ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 const th: React.CSSProperties = { padding: "6px 7px", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, textAlign: "right", borderBottom: `2px solid ${INK}` };
@@ -192,14 +199,19 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
         ))}
       </div>
     );
+    // Baseline alignment keeps the dollar amount on the MAIN label line (Procore
+    // style); the parenthetical sub-note flows below without shoving the number
+    // down. The amount rides its own short ruled underline.
     const SumRow = ({ no, label, sub, value, hi }: { no: string; label: string; sub?: string; value: number; hi?: boolean }) => (
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "3px 4px", background: hi ? `${GOLD}22` : undefined }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 4px", background: hi ? `${GOLD}22` : undefined }}>
         <div style={{ width: 16, fontSize: 10.5, fontWeight: hi ? 700 : 400 }}>{no}</div>
-        <div style={{ flex: 1, lineHeight: 1.2 }}>
-          <div style={{ fontSize: 10.5, fontWeight: hi ? 700 : 400 }}>{label}</div>
-          {sub && <div style={{ fontSize: 8.5, color: MUTE }}>{sub}</div>}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10.5, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
+          {sub && <div style={{ fontSize: 8.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
         </div>
-        <div style={{ width: 108, textAlign: "right", fontSize: 11, fontWeight: hi ? 700 : 400, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 1 }}>{money(value)}</div>
+        <div style={{ width: 124, textAlign: "right" }}>
+          <span style={{ fontSize: 11, fontWeight: hi ? 700 : 400, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 28 }}>{money(value)}</span>
+        </div>
       </div>
     );
     const coTd: React.CSSProperties = { border: `1px solid ${INK}`, padding: "3px 6px", fontSize: 9 };
@@ -210,7 +222,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
         {/* ── Page 1 · G702 cover — Procore "Document Summary Sheet" layout ──
              Rendered LANDSCAPE (like Procore's cover and the G703 continuation)
              so the two-column application/certificate split has room to breathe. */}
-        <div data-pdf-page data-orientation="landscape" style={PAGE_LANDSCAPE}>
+        <div data-pdf-page data-orientation="landscape" style={PAGE_COVER}>
           <DraftBanner />
 
           {/* Top bar: title · summary-sheet · page */}
@@ -272,22 +284,23 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               <SumRow no="3." label="Contract Sum to date (Line 1 ± 2)" value={g.contract_sum_to_date} />
               <SumRow no="4." label="Total completed and stored to date" sub="(Column G on detail sheet)" value={g.completed_stored_to_date} />
 
-              {/* 5 · Retainage — blended per-line roll-up */}
-              <div style={{ display: "flex", gap: 8, padding: "3px 4px" }}>
+              {/* 5 · Retainage — blended per-line roll-up. 5a/5b amounts ride an
+                  intermediate column (Procore); the Total aligns to the main column. */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 4px" }}>
                 <div style={{ width: 16, fontSize: 10.5 }}>5.</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10.5 }}>Retainage:</div>
-                  <div style={{ display: "flex", alignItems: "flex-end", marginLeft: 14, marginTop: 3 }}>
+                  <div style={{ fontSize: 10.5, lineHeight: 1.3 }}>Retainage:</div>
+                  <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 10 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div style={{ width: 92, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}` }}>{money(g.retainage_total)}</div>
+                    <div style={{ width: 96, marginRight: 88, textAlign: "right" }}><span style={{ fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 18 }}>{money(g.retainage_total)}</span></div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-end", marginLeft: 14, marginTop: 3 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 10 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
-                    <div style={{ width: 92, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}` }}>{money(0)}</div>
+                    <div style={{ width: 96, marginRight: 88, textAlign: "right" }}><span style={{ fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 18 }}>{money(0)}</span></div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-end", marginTop: 5 }}>
-                    <div style={{ flex: 1, fontSize: 9, color: MUTE, lineHeight: 1.25 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div style={{ width: 92, textAlign: "right", fontSize: 11, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}` }}>{money(g.retainage_total)}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", marginTop: 6 }}>
+                    <div style={{ flex: 1, fontSize: 9, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
+                    <div style={{ width: 124, textAlign: "right" }}><span style={{ fontSize: 11, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 28 }}>{money(g.retainage_total)}</span></div>
                   </div>
                 </div>
               </div>
