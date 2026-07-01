@@ -266,7 +266,7 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
       )}
 
       {mergeOpen && <MergeDialog projectId={projectId} items={items.filter(i => selected.has(i.id))} onDone={() => { setMergeOpen(false); exitSelect(); }} onClose={() => setMergeOpen(false)} mergeFn={merge} />}
-      {summarizeOpen && <SummarizeDialog items={items} onClose={() => setSummarizeOpen(false)} />}
+      {summarizeOpen && <SummarizeDialog items={items} projectName={projectName} onClose={() => setSummarizeOpen(false)} />}
       {ingestOpen && <IngestDialog projectId={projectId} items={items} onClose={() => setIngestOpen(false)} />}
       {reportOpen && <ReportDialog items={items} projectName={projectName || 'Project'} onClose={() => setReportOpen(false)} />}
     </div>
@@ -524,14 +524,33 @@ function MergeDialog({ projectId, items, onDone, onClose, mergeFn }: { projectId
   );
 }
 
-function SummarizeDialog({ items, onClose }: { items: TrackerItem[]; onClose: () => void }) {
+function SummarizeDialog({ items, projectName, onClose }: { items: TrackerItem[]; projectName: string; onClose: () => void }) {
   const summarize = useTrackerSummarize();
+  const send = useSendEmail();
   const [result, setResult] = useState<{ title: string; summary_html: string } | null>(null);
+  const [groupBy, setGroupBy] = useState<ReportGroupBy>('due');
+  const [openOnly, setOpenOnly] = useState(true);
+  const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
-  const run = () => summarize.mutate({ items, projectName: '' }, { onSuccess: setResult });
+  const run = () => summarize.mutate({ items, projectName }, { onSuccess: setResult });
   // kick off once on open
   useEffect(() => { run(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  // The client update = the AI narrative as a branded callout on top of the
+  // grouped, color-coded, flagged Project Log report.
+  const opts = () => ({
+    groupBy, openOnly, projectName: projectName || 'Project Log',
+    introTitle: result?.title, introHtml: result?.summary_html,
+  });
+  const openReport = () => { if (openTrackerReport(items, opts())) onClose(); };
+  const emailReport = () => {
+    const to = email.trim();
+    if (!to) { toast.error('Enter an email'); return; }
+    send.mutate({ recipients: [to], subject: `${projectName || 'Project'} — client update`, bodyHtml: buildTrackerReportHtml(items, opts()) }, {
+      onSuccess: () => { toast.success(`Update emailed to ${to}`); onClose(); },
+      onError: (e: any) => toast.error(e?.message || 'Send failed'),
+    });
+  };
   const copy = () => {
     const tmp = document.createElement('div'); tmp.innerHTML = result?.summary_html ?? '';
     navigator.clipboard.writeText((result?.title ? result.title + '\n\n' : '') + (tmp.innerText || '')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
@@ -544,17 +563,43 @@ function SummarizeDialog({ items, onClose }: { items: TrackerItem[]; onClose: ()
         {summarize.isPending && !result ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Writing a client-ready update…</div>
         ) : result ? (
-          <div className="space-y-2">
-            <div className="text-[15px] font-semibold text-foreground">{result.title}</div>
-            <div className="rounded-lg border border-border bg-muted/30 p-3 text-[13px] leading-relaxed [&_li]:ml-4 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: result.summary_html }} />
-            <p className="text-[11px] text-muted-foreground">AI-drafted from your log — review before sending.</p>
+          <div className="space-y-3">
+            <div className="rounded-lg border-l-4 border-[var(--accent)] border border-border bg-[var(--accent)]/5 p-3">
+              <div className="text-[15px] font-semibold text-foreground">{result.title}</div>
+              <div className="mt-1 text-[13px] leading-relaxed text-foreground/80 [&_li]:ml-4 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: result.summary_html }} />
+            </div>
+            <p className="text-[11px] text-muted-foreground">AI-drafted headline · sits atop the grouped, color-coded log below when you print or email. Review before sending.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Group the log by</label>
+                <Select value={groupBy} onValueChange={(v) => setGroupBy(v as ReportGroupBy)}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="due">Due status (red / amber / green)</SelectItem>
+                    <SelectItem value="owner">Subcontractor / owner</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="category">Category</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <label className="mt-5 flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 text-[13px]">
+                <input type="checkbox" checked={openOnly} onChange={e => setOpenOnly(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" />
+                <span className="font-medium">Open items only</span>
+              </label>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email to client (optional)</label>
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="client@example.com" />
+            </div>
           </div>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">Couldn't generate a summary. Try again.</p>
         )}
-        <DialogFooter>
-          <Button variant="ghost" onClick={run} disabled={summarize.isPending}>Regenerate</Button>
-          <Button onClick={copy} disabled={!result} className="gap-1.5">{copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}</Button>
+        <DialogFooter className="flex-wrap gap-2">
+          <Button variant="ghost" onClick={run} disabled={summarize.isPending} className="gap-1.5"><Sparkles className="h-4 w-4" /> Regenerate</Button>
+          <Button variant="outline" onClick={copy} disabled={!result} className="gap-1.5">{copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy text</>}</Button>
+          <Button variant="outline" onClick={emailReport} disabled={!result || send.isPending || !email.trim()} className="gap-1.5">{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailIcon className="h-4 w-4" />} Email</Button>
+          <Button onClick={openReport} disabled={!result} className="gap-1.5"><Printer className="h-4 w-4" /> Print / PDF</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
