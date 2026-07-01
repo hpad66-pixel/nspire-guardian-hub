@@ -44,7 +44,7 @@ export function PayAppContinuationBuilder({
   const { detail, lines, g702, isFrozen, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
   const loadCos = useLoadApprovedCos(primeContractId, projectId);
   const { data: contract } = usePrimeContract(projectId);
-  const approvedCoQ = useApprovedCoValue(primeContractId);
+  const approvedCoQ = useApprovedCoValue(primeContractId, projectId);
   const status = detail.data?.status as string | undefined;
   // A submitted pay app is a fixed certificate — lock all editing so its figures
   // stay exactly as submitted (later COs/progress go into the next pay app).
