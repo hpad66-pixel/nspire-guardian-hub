@@ -55,12 +55,27 @@ async function loadApprovedCosInner(
   // the SOV net-change came up short and "Load approved change orders" no-op'd.
   const { data: cos, error: coErr } = await supabase
     .from("change_orders" as any)
-    .select("id, co_no, title, description, amount, status")
+    .select("id, co_no, title, description, amount, status, prime_contract_id")
     .eq("project_id", projectId)
     .is("commitment_id", null)
     .in("status", APPROVED_CO_STATUSES)
     .or(`prime_contract_id.eq.${primeContractId},prime_contract_id.is.null`);
   if (coErr) throw coErr;
+
+  // Backfill the prime_contract link on owner COs that were imported/seeded
+  // without one. The roll-up views (v_project_financial_summary.approved_co_value,
+  // prime_contract_totals) count COs by `prime_contract_id IS NOT NULL`, so an
+  // unlinked CO is billed on the pay app but MISSING from the overview dashboard's
+  // "Approved Change Orders" / "Revised Contract". Linking it here makes the
+  // dashboard, the invoices, and the CO list all count the same set.
+  const toLink = (cos ?? []).filter((c: any) => !c.prime_contract_id).map((c: any) => c.id);
+  if (toLink.length) {
+    const { error: linkErr } = await supabase
+      .from("change_orders" as any)
+      .update({ prime_contract_id: primeContractId } as any)
+      .in("id", toLink);
+    if (linkErr) throw linkErr;
+  }
 
   const { data: existing, error: exErr } = await supabase
     .from("sov_line_items" as any)
