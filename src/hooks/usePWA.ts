@@ -71,19 +71,19 @@ export function usePWAUpdate() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
+    let cleanup = () => {};
 
     navigator.serviceWorker.ready.then((reg) => {
       setRegistration(reg);
 
-      // Check for new SW waiting
-      if (reg.waiting) {
-        setNeedRefresh(true);
-      }
+      // Check for a new SW already waiting from a previous visit.
+      if (reg.waiting) setNeedRefresh(true);
 
-      // Force an update check on every load (not just the hourly poll) so a fresh
-      // deploy is detected immediately and the "Update available" banner appears
-      // right away instead of an open tab serving the stale precached app.
-      reg.update().catch(() => {});
+      // Force an update check now so a fresh deploy is detected immediately and
+      // the "Update available" banner appears right away instead of an open tab
+      // serving the stale precached app.
+      const check = () => reg.update().catch(() => {});
+      check();
 
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
@@ -95,9 +95,22 @@ export function usePWAUpdate() {
         });
       });
 
-      // Poll for updates every 60 minutes
-      setInterval(() => reg.update(), 60 * 60 * 1000);
+      // An ALREADY-OPEN tab is the stale-code trap: without this it would only
+      // notice a deploy on the hourly poll. Re-check whenever the user returns to
+      // the tab (or the window regains focus) so returning to projOS after a push
+      // surfaces the reload banner within seconds — plus a 15-minute safety poll.
+      const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+      document.addEventListener('visibilitychange', onVisible);
+      window.addEventListener('focus', check);
+      const poll = window.setInterval(check, 15 * 60 * 1000);
+      cleanup = () => {
+        document.removeEventListener('visibilitychange', onVisible);
+        window.removeEventListener('focus', check);
+        window.clearInterval(poll);
+      };
     });
+
+    return () => cleanup();
   }, []);
 
   const updateServiceWorker = () => {
