@@ -46,10 +46,17 @@ export function buildPayAppSpec(
     project: { name: contract.title, address: contract.project_address || null },
     payAppNo: pa.pay_app_no,
     periodEnd: pa.period_end,
+    periodStart: pa.period_start ?? null,
     applicationDate: pa.approved_date || new Date().toISOString().slice(0, 10),
     contractNo: contract.contract_no,
     contractTitle: contract.title,
     retainagePct: Number(contract.retainage_pct ?? 0),
+    // Procore cover header fields (fall back inside the document if absent).
+    invoiceNo: pa.invoice_no ?? pa.pay_app_no,
+    projectNo: (contract as any).project_no ?? contract.contract_no,
+    contractDate: (contract as any).contract_date ?? (contract as any).start_date ?? null,
+    contractFor: (contract as any).scope_of_work ?? (contract as any).description ?? contract.title,
+    engineer: (contract as any).engineer_name ?? null,
     g702,
     lines: lines.map((l) => ({
       item_no: l.item_no,

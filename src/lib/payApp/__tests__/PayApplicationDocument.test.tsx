@@ -35,8 +35,11 @@ describe("PayApplicationDocument", () => {
     expect(getAllByText("APAS Consulting LLC").length).toBeGreaterThanOrEqual(1);
     expect(getAllByText(/Hardeep Anand/).length).toBeGreaterThanOrEqual(1);
 
-    // G702 highlighted total
-    expect(getByText("8. CURRENT PAYMENT DUE")).toBeTruthy();
+    // G702 highlighted total (Procore cover: numbered "8." + "Current payment due")
+    expect(getByText("Current payment due")).toBeTruthy();
+    // Procore "Document Summary Sheet" header + the blended-retainage sub-line
+    expect(getByText("DOCUMENT SUMMARY SHEET")).toBeTruthy();
+    expect(getByText(/of completed work/)).toBeTruthy();
 
     // Both line sections present
     expect(getByText("Base contract")).toBeTruthy();
