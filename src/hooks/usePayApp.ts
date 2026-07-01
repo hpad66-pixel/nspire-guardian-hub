@@ -228,10 +228,26 @@ export function useDeletePayApp() {
       if ((pa as any).status !== "draft") {
         throw new Error("Only draft pay apps can be deleted.");
       }
+      // Owner payments carry ON DELETE RESTRICT (they protect billing history), so
+      // a draft that ever had a payment recorded against it — e.g. set to "paid"
+      // then reverted to draft — can't be deleted until those rows are cleared.
+      // For a DRAFT being discarded, that payment is anomalous: remove it first
+      // (its allocations cascade), then delete the pay app. Everything else
+      // (lines, progress, attachments, lien releases) already cascades.
+      const { error: payErr } = await supabase
+        .from("prime_contract_payments" as any)
+        .delete().eq("pay_app_id", payAppId);
+      if (payErr) throw payErr;
       const { error } = await supabase
         .from("prime_contract_pay_apps" as any)
         .delete().eq("id", payAppId).eq("status", "draft");
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          /foreign key|violates|constraint/i.test(error.message)
+            ? "Couldn't delete: something still references this pay app. Remove any recorded payments or linked records first."
+            : error.message,
+        );
+      }
       return payAppId;
     },
     onSuccess: () => {
