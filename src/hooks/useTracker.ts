@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ragFor, ageDays } from '@/lib/tracker/trackerRag';
 
 // Project Log — general per-project tracker (punch items, decisions, division
 // tasks…) with a timestamped update log. Tables aren't in generated types yet,
@@ -43,6 +44,7 @@ export interface TrackerItem {
   priority: TrackerPriority;
   status: TrackerStatus;
   due_date: string | null;
+  tags: string[];
   sort_order: number;
   client_visible: boolean;
   created_at: string;
@@ -64,7 +66,7 @@ export function useTrackerItems(projectId: string | undefined) {
       if (e2) throw e2;
       const byItem: Record<string, TrackerUpdate[]> = {};
       (updates ?? []).forEach((u: TrackerUpdate) => { (byItem[u.item_id] ??= []).push(u); });
-      return (items ?? []).map((i: TrackerItem) => ({ ...i, updates: byItem[i.id] ?? [] }));
+      return (items ?? []).map((i: TrackerItem) => ({ ...i, tags: i.tags ?? [], updates: byItem[i.id] ?? [] }));
     },
   });
 }
@@ -80,7 +82,7 @@ export interface CreateTrackerItemInput {
   projectId: string;
   code?: string; owner?: string; category?: TrackerCategory; division?: string;
   title: string; description?: string; priority?: TrackerPriority; status?: TrackerStatus;
-  dueDate?: string | null; firstNote?: string; clientVisible?: boolean;
+  dueDate?: string | null; tags?: string[]; firstNote?: string; clientVisible?: boolean;
 }
 
 export function useCreateTrackerItem() {
@@ -100,6 +102,7 @@ export function useCreateTrackerItem() {
         priority: input.priority ?? 'med',
         status,
         due_date: input.dueDate || null,
+        tags: input.tags ?? [],
         client_visible: input.clientVisible ?? true,
         created_by: uid,
         closed_at: status === 'done' ? new Date().toISOString() : null,
@@ -295,7 +298,12 @@ export interface TrackerAiChange {
 export function useTrackerSummarize() {
   return useMutation({
     mutationFn: async ({ items, projectName }: { items: TrackerItem[]; projectName: string }) => {
-      const slim = items.map(i => ({ status: i.status, owner: i.owner, title: i.title, latest: i.updates[0]?.body ?? '' }));
+      // Give the model the signals it needs to LEAD with what's critical:
+      // rag (overdue/at-risk/…), how long it's been open, tags (program area), due.
+      const slim = items.map(i => ({
+        status: i.status, owner: i.owner, title: i.title, latest: i.updates[0]?.body ?? '',
+        rag: ragFor(i), age_days: ageDays(i.created_at), tags: i.tags ?? [], due: i.due_date ?? null,
+      }));
       const { data, error } = await supabase.functions.invoke('tracker-ai', { body: { action: 'summarize', items: slim, project_name: projectName } });
       if (error || !data?.ok) throw new Error(data?.error || 'Could not summarize');
       return data as { title: string; summary_html: string };

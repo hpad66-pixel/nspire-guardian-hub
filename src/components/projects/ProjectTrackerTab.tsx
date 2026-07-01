@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
   Plus, ChevronRight, Printer, Search, Loader2, Trash2, Pencil, MessageSquarePlus,
   CheckCircle2, RotateCcw, Eye, EyeOff, Sparkles, Mic, Copy, Check, FileText, Image as ImageIcon, X,
-  CheckSquare, GitMerge, Mail as MailIcon,
+  CheckSquare, GitMerge, Mail as MailIcon, Tag as TagIcon, Clock, Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +24,8 @@ import {
   useMergeTrackerItems, useBulkDeleteTrackerItems, useDeleteTrackerUpdate, useEditTrackerUpdate, markTrackerCommentsSeen, uploadTrackerPhoto,
   type TrackerItem, type TrackerStatus, type TrackerPriority, type TrackerCategory, type TrackerAiChange,
 } from '@/hooks/useTracker';
-import { openTrackerReport, buildTrackerReportHtml, type ReportGroupBy } from '@/lib/tracker/trackerReport';
-import { ragFor, ragMeta, duePhrase, ragCounts } from '@/lib/tracker/trackerRag';
+import { openTrackerReport, buildTrackerReportHtml, buildTrackerItemHtml, type ReportGroupBy } from '@/lib/tracker/trackerReport';
+import { ragFor, ragMeta, duePhrase, ragCounts, ageDays, ageLabel, isAging } from '@/lib/tracker/trackerRag';
 import { useSendEmail } from '@/hooks/useSendEmail';
 
 const STATUS: Record<TrackerStatus, { label: string; bg: string; fg: string; bar: string }> = {
@@ -44,6 +44,9 @@ const CATEGORY: { value: TrackerCategory; label: string }[] = [
   { value: 'punch', label: 'Punch' }, { value: 'decision', label: 'Decision' },
   { value: 'division', label: 'Division' }, { value: 'update', label: 'Update' }, { value: 'general', label: 'General' },
 ];
+// Suggested custom categories (teams can type any). Regulatory / program buckets
+// the user tracks — surfaced as autocomplete so tagging stays consistent.
+const TAG_PRESETS = ['Action Item', 'MS4', 'Illicit Discharge', 'Lead & Copper', 'Consent Decree', 'Commission', 'Safety', 'Permit', 'Inspection'];
 const STATUS_ORDER: Record<TrackerStatus, number> = { blocked: 0, progress: 1, scheduled: 2, open: 3, done: 4 };
 const PRI_ORDER: Record<TrackerPriority, number> = { high: 0, med: 1, low: 2 };
 const TILES: { key: TrackerStatus | 'all'; label: string }[] = [
@@ -85,13 +88,18 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
   const [fOwner, setFOwner] = useState('all');
   const [fPriority, setFPriority] = useState<TrackerPriority | 'all'>('all');
   const [fCategory, setFCategory] = useState<TrackerCategory | 'all'>('all');
-  const [sort, setSort] = useState<'code' | 'priority' | 'status' | 'updated'>('status');
+  const [fTag, setFTag] = useState('all');
+  const [sort, setSort] = useState<'code' | 'priority' | 'status' | 'updated' | 'age' | 'due'>('status');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editItem, setEditItem] = useState<TrackerItem | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [updItem, setUpdItem] = useState<TrackerItem | null>(null);
+  const [emailItem, setEmailItem] = useState<TrackerItem | null>(null);
 
   const owners = useMemo(() => [...new Set(items.map(i => i.owner).filter(Boolean))].sort() as string[], [items]);
+  // Distinct custom categories (MS4, illicit discharge, lead & copper, consent
+  // decree, commission…) across the project — powers the tag filter + suggestions.
+  const allTags = useMemo(() => [...new Set(items.flatMap(i => i.tags ?? []))].sort(), [items]);
   const counts = useMemo(() => {
     const c = { all: items.length, open: 0, progress: 0, scheduled: 0, blocked: 0, done: 0 } as Record<string, number>;
     items.forEach(i => { c[i.status]++; });
@@ -113,8 +121,9 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
       if (fOwner !== 'all' && i.owner !== fOwner) return false;
       if (fPriority !== 'all' && i.priority !== fPriority) return false;
       if (fCategory !== 'all' && i.category !== fCategory) return false;
+      if (fTag !== 'all' && !(i.tags ?? []).includes(fTag)) return false;
       if (q) {
-        const hay = `${i.code} ${i.owner} ${i.title} ${i.description} ${i.updates.map(u => u.body).join(' ')}`.toLowerCase();
+        const hay = `${i.code} ${i.owner} ${i.title} ${i.description} ${(i.tags ?? []).join(' ')} ${i.updates.map(u => u.body).join(' ')}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -123,10 +132,15 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
       if (sort === 'priority') return PRI_ORDER[a.priority] - PRI_ORDER[b.priority];
       if (sort === 'status') return STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       if (sort === 'updated') return (latestTs(b)).localeCompare(latestTs(a));
+      if (sort === 'age') return (a.created_at || '').localeCompare(b.created_at || ''); // oldest first
+      if (sort === 'due') { // soonest due first; no-due sinks to the bottom
+        const av = a.due_date || '9999', bv = b.due_date || '9999';
+        return av.localeCompare(bv);
+      }
       return (a.code || '').localeCompare(b.code || '', undefined, { numeric: true });
     });
     return out;
-  }, [items, search, fStatus, fOwner, fPriority, fCategory, sort]);
+  }, [items, search, fStatus, fOwner, fPriority, fCategory, fTag, sort]);
 
   const toggle = (id: string) => setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const print = () => { setExpanded(new Set(items.map(i => i.id))); setTimeout(() => window.print(), 60); };
@@ -223,10 +237,14 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
           <SelectContent><SelectItem value="all">All owners</SelectItem>{owners.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select>
         <Select value={fCategory} onValueChange={(v) => setFCategory(v as any)}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="all">All categories</SelectItem>{CATEGORY.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent></Select>
+        {allTags.length > 0 && (
+          <Select value={fTag} onValueChange={setFTag}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Tag" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All tags</SelectItem>{allTags.map(t => <SelectItem key={t} value={t}>#{t}</SelectItem>)}</SelectContent></Select>
+        )}
         <Select value={fPriority} onValueChange={(v) => setFPriority(v as any)}><SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="all">All priorities</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="med">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent></Select>
-        <Select value={sort} onValueChange={(v) => setSort(v as any)}><SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="status">Sort: status</SelectItem><SelectItem value="priority">Sort: priority</SelectItem><SelectItem value="code">Sort: code</SelectItem><SelectItem value="updated">Sort: recently updated</SelectItem></SelectContent></Select>
+        <Select value={sort} onValueChange={(v) => setSort(v as any)}><SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="status">Sort: status</SelectItem><SelectItem value="due">Sort: due date</SelectItem><SelectItem value="age">Sort: age (oldest)</SelectItem><SelectItem value="priority">Sort: priority</SelectItem><SelectItem value="code">Sort: code</SelectItem><SelectItem value="updated">Sort: recently updated</SelectItem></SelectContent></Select>
       </div>
 
       {/* List */}
@@ -246,15 +264,17 @@ export function ProjectTrackerTab({ projectId, projectName }: { projectId: strin
               onStatus={(s) => setStatus.mutate({ id: i.id, projectId, status: s })}
               onToggleClient={() => update.mutate({ id: i.id, projectId, patch: { client_visible: !i.client_visible } as any })}
               onDeleteUpdate={(uid) => { if (confirm('Delete this update? This cannot be undone.')) delUpdate.mutate({ id: uid, projectId }); }}
-              onEditUpdate={(uid, body) => editUpdate.mutate({ id: uid, projectId, body })} />
+              onEditUpdate={(uid, body) => editUpdate.mutate({ id: uid, projectId, body })}
+              onEmail={() => setEmailItem(i)} onTagClick={(t) => setFTag(t)} />
           ))}
         </div>
       )}
 
       {(addOpen || editItem) && (
-        <ItemModal projectId={projectId} item={editItem} owners={owners} onClose={() => { setAddOpen(false); setEditItem(null); }} />
+        <ItemModal projectId={projectId} item={editItem} owners={owners} allTags={allTags} onClose={() => { setAddOpen(false); setEditItem(null); }} />
       )}
       {updItem && <UpdateModal projectId={projectId} item={updItem} onClose={() => setUpdItem(null)} />}
+      {emailItem && <EmailItemDialog item={emailItem} projectName={projectName || 'Project'} onClose={() => setEmailItem(null)} />}
       {/* Selection action bar */}
       {selectMode && selected.size > 0 && (
         <div className="sticky bottom-3 z-20 mx-auto flex w-fit flex-wrap items-center gap-2 rounded-full border border-border bg-card px-3 py-2 shadow-lg">
@@ -301,6 +321,7 @@ function ReportDialog({ items, projectName, onClose }: { items: TrackerItem[]; p
                 <SelectItem value="owner">Subcontractor / owner</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
                 <SelectItem value="category">Category</SelectItem>
+                <SelectItem value="tag">Tag / program area</SelectItem>
                 <SelectItem value="due">Due status (red / amber / green)</SelectItem>
               </SelectContent>
             </Select>
@@ -365,13 +386,14 @@ function UpdateEntry({ u, onDelete, onSave }: { u: TrackerItem['updates'][number
   );
 }
 
-function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient, onDeleteUpdate, onEditUpdate, selectMode, selected, onSelect }: {
-  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void; onDeleteUpdate: (updateId: string) => void; onEditUpdate: (updateId: string, body: string) => void;
+function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, onToggleClient, onDeleteUpdate, onEditUpdate, onEmail, onTagClick, selectMode, selected, onSelect }: {
+  item: TrackerItem; open: boolean; onToggle: () => void; onEdit: () => void; onUpdate: () => void; onDelete: () => void; onStatus: (s: TrackerStatus) => void; onToggleClient: () => void; onDeleteUpdate: (updateId: string) => void; onEditUpdate: (updateId: string, body: string) => void; onEmail: () => void; onTagClick: (t: string) => void;
   selectMode?: boolean; selected?: boolean; onSelect?: () => void;
 }) {
   const st = STATUS[item.status]; const pr = PRIORITY[item.priority];
   const last = item.updates[0]?.created_at;
   const rag = ragFor(item); const rm = ragMeta(rag);
+  const age = ageDays(item.created_at); const aging = isAging(item);
   // Draw attention to items that need it: overdue / at-risk / due-soon get a
   // colored left accent on the card. Done / on-track / no-date stay neutral.
   const accent = rag === 'overdue' || rag === 'at-risk' || rag === 'due-soon' ? rm.color : null;
@@ -385,7 +407,25 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
         {item.code && <span className="w-10 shrink-0 text-[12px] font-bold text-muted-foreground">{item.code}</span>}
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
         <span className="shrink-0 rounded px-1.5 py-0.5 text-[10.5px] font-bold" style={{ background: pr.bg, color: pr.fg }}>{pr.label}</span>
-        <span className="flex-1 font-semibold text-foreground">{item.title}{last && <span className="block text-[12px] font-normal text-muted-foreground">Last update {fmt(last)}</span>}</span>
+        <span className="min-w-0 flex-1">
+          <span className="font-semibold text-foreground">{item.title}</span>
+          {(item.tags?.length ?? 0) > 0 && (
+            <span className="mt-0.5 flex flex-wrap gap-1">
+              {item.tags.map(t => (
+                <button key={t} onClick={(e) => { e.stopPropagation(); onTagClick(t); }} title={`Filter by #${t}`}
+                  className="rounded-full bg-[var(--apas-sapphire)]/10 px-1.5 py-0 text-[10px] font-semibold text-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/20">#{t}</button>
+              ))}
+            </span>
+          )}
+          {last && <span className="block text-[12px] font-normal text-muted-foreground">Last update {fmt(last)}</span>}
+        </span>
+        {item.status !== 'done' && age > 0 && (
+          <span className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium sm:inline-flex"
+            style={aging ? { background: '#F43F5E1a', color: '#F43F5E' } : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}
+            title={aging ? `Aging — on the list ${age} days` : `On the list ${age} days`}>
+            <Clock className="h-3 w-3" /> {ageLabel(age)}
+          </span>
+        )}
         {(item.due_date && item.status !== 'done') && (
           <span
             className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold sm:inline-flex"
@@ -415,6 +455,7 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
               ? <Button size="sm" variant="outline" onClick={() => onStatus('done')} className="gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Close</Button>
               : <Button size="sm" variant="outline" onClick={() => onStatus('progress')} className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" /> Reopen</Button>}
             <Button size="sm" variant="outline" onClick={onEdit} className="gap-1.5"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+            <Button size="sm" variant="outline" onClick={onEmail} className="gap-1.5" title="Email this item to a stakeholder"><Send className="h-3.5 w-3.5" /> Email item</Button>
             <Button size="sm" variant="outline" onClick={onToggleClient} className="gap-1.5" title={item.client_visible ? 'Visible to client — click to hide' : 'Hidden from client — click to show'}>
               {item.client_visible ? <><Eye className="h-3.5 w-3.5" /> Client sees this</> : <><EyeOff className="h-3.5 w-3.5" /> Internal</>}
             </Button>
@@ -432,7 +473,7 @@ function ItemRow({ item, open, onToggle, onEdit, onUpdate, onDelete, onStatus, o
   );
 }
 
-function ItemModal({ projectId, item, owners, onClose }: { projectId: string; item: TrackerItem | null; owners: string[]; onClose: () => void }) {
+function ItemModal({ projectId, item, owners, allTags, onClose }: { projectId: string; item: TrackerItem | null; owners: string[]; allTags: string[]; onClose: () => void }) {
   const create = useCreateTrackerItem(); const update = useUpdateTrackerItem();
   const [code, setCode] = useState(item?.code ?? '');
   const [owner, setOwner] = useState(item?.owner ?? '');
@@ -442,16 +483,26 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
   const [priority, setPriority] = useState<TrackerPriority>(item?.priority ?? 'med');
   const [status, setStatus] = useState<TrackerStatus>(item?.status ?? 'open');
   const [dueDate, setDueDate] = useState(item?.due_date ?? '');
+  const [tags, setTags] = useState<string[]>(item?.tags ?? []);
+  const [tagInput, setTagInput] = useState('');
   const [clientVisible, setClientVisible] = useState(item?.client_visible ?? true);
   const [firstNote, setFirstNote] = useState('');
   const busy = create.isPending || update.isPending;
 
+  const addTag = (raw: string) => {
+    const t = raw.trim().replace(/^#/, '');
+    if (t && !tags.some(x => x.toLowerCase() === t.toLowerCase())) setTags([...tags, t]);
+    setTagInput('');
+  };
+  const removeTag = (t: string) => setTags(tags.filter(x => x !== t));
+  const tagSuggestions = [...new Set([...allTags, ...TAG_PRESETS])].filter(t => !tags.includes(t));
+
   const save = () => {
     if (!title.trim()) { return; }
     if (item) {
-      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status, due_date: dueDate || null, client_visible: clientVisible } as any }, { onSuccess: onClose });
+      update.mutate({ id: item.id, projectId, patch: { code: code || null, owner: owner || null, category, title: title.trim(), description: description || null, priority, status, due_date: dueDate || null, tags, client_visible: clientVisible } as any }, { onSuccess: onClose });
     } else {
-      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, dueDate: dueDate || undefined, firstNote, clientVisible }, { onSuccess: onClose });
+      create.mutate({ projectId, code, owner, category, title: title.trim(), description, priority, status, dueDate: dueDate || undefined, tags, firstNote, clientVisible }, { onSuccess: onClose });
     }
   };
 
@@ -475,6 +526,32 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
             <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">Status</label>
               <Select value={status} onValueChange={(v) => setStatus(v as TrackerStatus)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(STATUS) as TrackerStatus[]).map(s => <SelectItem key={s} value={s}>{STATUS[s].label}</SelectItem>)}</SelectContent></Select></div>
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Categories / tags</label>
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background p-2">
+              {tags.map(t => (
+                <span key={t} className="inline-flex items-center gap-1 rounded-full bg-[var(--apas-sapphire)]/10 px-2 py-0.5 text-[12px] font-medium text-[var(--apas-sapphire)]">
+                  #{t}<button type="button" onClick={() => removeTag(t)} className="hover:text-[var(--apas-rose)]"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+              <input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); } else if (e.key === 'Backspace' && !tagInput && tags.length) { removeTag(tags[tags.length - 1]); } }}
+                list="tracker-tag-suggestions"
+                placeholder={tags.length ? 'Add another…' : 'e.g. MS4, Illicit Discharge, Consent Decree… (Enter)'}
+                className="min-w-[140px] flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+              />
+              <datalist id="tracker-tag-suggestions">{tagSuggestions.map(t => <option key={t} value={t} />)}</datalist>
+            </div>
+            {tags.length === 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {TAG_PRESETS.slice(0, 6).map(t => (
+                  <button key={t} type="button" onClick={() => addTag(t)} className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-[var(--apas-sapphire)] hover:text-[var(--apas-sapphire)]">+ {t}</button>
+                ))}
+              </div>
+            )}
+          </div>
           {!item && <div><label className="mb-1 block text-xs font-semibold text-muted-foreground">First update note (optional)</label><Textarea value={firstNote} onChange={e => setFirstNote(e.target.value)} rows={2} placeholder="Add an initial timestamped note…" /></div>}
           <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[13px]">
             <input type="checkbox" checked={clientVisible} onChange={e => setClientVisible(e.target.checked)} className="h-4 w-4 accent-[var(--apas-sapphire)]" />
@@ -485,6 +562,54 @@ function ItemModal({ projectId, item, owners, onClose }: { projectId: string; it
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy || !title.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save item'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EmailItemDialog({ item, projectName, onClose }: { item: TrackerItem; projectName: string; onClose: () => void }) {
+  const send = useSendEmail();
+  const [email, setEmail] = useState('');
+  const [note, setNote] = useState('');
+  const [openedPreview, setOpenedPreview] = useState(false);
+  const rag = ragFor(item); const rm = ragMeta(rag);
+  const html = () => buildTrackerItemHtml(item, { projectName, note: note.trim() || undefined });
+  const doSend = () => {
+    const to = email.trim();
+    if (!to) { toast.error('Enter a recipient email'); return; }
+    send.mutate({ recipients: [to], subject: `${item.code ? item.code + ' · ' : ''}${item.title} — ${projectName}`, bodyHtml: html() }, {
+      onSuccess: () => { toast.success(`Item emailed to ${to}`); onClose(); },
+      onError: (e: any) => toast.error(e?.message || 'Send failed'),
+    });
+  };
+  const preview = () => { const w = window.open('', '_blank'); if (w) { w.document.write(html()); w.document.close(); setOpenedPreview(true); } };
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-4 w-4 text-[var(--apas-sapphire)]" /> Email this item</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white" style={{ background: rm.color }}>{rm.label}</span>
+              {item.code && <span className="text-[12px] font-bold text-muted-foreground">{item.code}</span>}
+            </div>
+            <div className="mt-1 font-semibold text-foreground">{item.title}</div>
+            {(item.tags?.length ?? 0) > 0 && <div className="mt-1 flex flex-wrap gap-1">{item.tags.map(t => <span key={t} className="rounded-full bg-[var(--apas-sapphire)]/10 px-1.5 text-[10px] font-semibold text-[var(--apas-sapphire)]">#{t}</span>)}</div>}
+            <div className="mt-1 text-[12px] text-muted-foreground">{item.updates.length} update{item.updates.length === 1 ? '' : 's'} · sends the full context + log</div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Send to (stakeholder / assignee)</label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Add a note (optional)</label>
+            <Textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="e.g. Please prioritize — this is holding up the tie-in." />
+          </div>
+        </div>
+        <DialogFooter className="flex-wrap gap-2">
+          <Button variant="ghost" onClick={preview} className="gap-1.5"><FileText className="h-4 w-4" /> {openedPreview ? 'Preview again' : 'Preview'}</Button>
+          <Button onClick={doSend} disabled={send.isPending || !email.trim()} className="gap-1.5">{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -576,6 +701,7 @@ function SummarizeDialog({ items, projectName, onClose }: { items: TrackerItem[]
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="due">Due status (red / amber / green)</SelectItem>
+                    <SelectItem value="tag">Tag / program area</SelectItem>
                     <SelectItem value="owner">Subcontractor / owner</SelectItem>
                     <SelectItem value="status">Status</SelectItem>
                     <SelectItem value="category">Category</SelectItem>

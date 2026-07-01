@@ -70,3 +70,34 @@ export function ragCounts(
   for (const it of items) out[ragFor(it, now)] += 1;
   return out;
 }
+
+// ── Aging ("On the list since") ──────────────────────────────────────────────
+// This is a running list: items carry forward week to week, so the single most
+// useful signal after RAG is HOW LONG something has been sitting. Age = days
+// since the item was first logged. A still-open item past STALE_DAYS is "aging".
+
+export const STALE_DAYS = 14;
+
+/** Whole days an item has been on the list (since created). */
+export function ageDays(createdAt: string | null | undefined, now: Date = new Date()): number {
+  if (!createdAt) return 0;
+  const c = new Date(createdAt);
+  if (isNaN(c.getTime())) return 0;
+  return Math.max(0, Math.floor((now.getTime() - c.getTime()) / 86_400_000));
+}
+
+/** Compact age label: "3d", "2w", "1mo". */
+export function ageLabel(days: number): string {
+  if (days < 7) return `${days}d`;
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  return `${Math.floor(days / 365)}y`;
+}
+
+/** An open item that has been carried for a while — worth escalating. */
+export function isAging(
+  item: { status: string; created_at?: string | null },
+  now: Date = new Date(),
+): boolean {
+  return item.status !== 'done' && ageDays(item.created_at, now) >= STALE_DAYS;
+}

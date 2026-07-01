@@ -41,11 +41,25 @@ serve(async (req) => {
     if (action === "summarize") {
       const items = (body.items ?? []) as any[];
       const projectName = body.project_name || "the project";
-      const system = `You are a senior construction project manager writing a concise, professional progress update FOR THE CLIENT/OWNER. Warm but businesslike. No fluff, no invented facts — use only what the items say.
-Structure as short HTML: a 1-2 sentence headline of overall status, then a few bullet points of what's done / in progress / needs the client. Mention blockers and anything awaiting the client. Keep under ~180 words. Respond with JSON only, no fences: {"title":"string","summary_html":"string"}`;
-      const user = `Project: ${projectName}\n\nLOG ITEMS (status · owner · title · latest note):\n${items.map((i) =>
-        `- [${i.status}] ${i.owner ? i.owner + " · " : ""}${i.title}${i.latest ? ` — ${i.latest}` : ""}`).join("\n")}`;
-      const parsed = JSON.parse(await claude(system, user, key, 1500));
+      const system = `You are a senior construction / program manager writing a concise, professional progress update FOR THE CLIENT/OWNER. Warm but businesslike. No fluff, no invented facts — use only what the items say.
+
+LEAD WITH WHAT NEEDS A DECISION. Each item may carry a RAG signal:
+- "OVERDUE" (past its due date) and "AT-RISK" (blocked) are CRITICAL — call these out FIRST, by name, and say plainly what is needed to unblock them or who owns them.
+- "DUE-SOON" items are worth a heads-up.
+- Then summarize progress (done / in progress) briefly.
+
+Structure as short HTML: a 1-2 sentence headline that states overall status AND flags whether anything needs the client's attention. Then bullets — put the critical / overdue / at-risk items at the TOP of the bullet list (you may bold "Action needed:" on those), followed by progress. If items carry tags (e.g. MS4, illicit discharge, lead & copper, consent decree, commission), mention them by program area where it helps the client. Note how long a critical item has been open when given ("open Nd"). Keep under ~200 words. Respond with JSON only, no fences: {"title":"string","summary_html":"string"}`;
+      const user = `Project: ${projectName}\n\nLOG ITEMS (rag · status · owner · age · tags · title · (due) · latest note):\n${items.map((i) => {
+        const bits = [
+          i.rag ? String(i.rag).toUpperCase() : null,
+          `[${i.status}]`,
+          i.owner || null,
+          (i.age_days != null) ? `open ${i.age_days}d` : null,
+          (i.tags && i.tags.length) ? `#${i.tags.join(" #")}` : null,
+        ].filter(Boolean).join(" · ");
+        return `- ${bits} :: ${i.title}${i.due ? ` (due ${i.due})` : ""}${i.latest ? ` — ${i.latest}` : ""}`;
+      }).join("\n")}`;
+      const parsed = JSON.parse(await claude(system, user, key, 1600));
       return json({ ok: true, title: parsed.title ?? "Project update", summary_html: parsed.summary_html ?? "" });
     }
 

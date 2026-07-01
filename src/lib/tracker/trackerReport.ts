@@ -2,7 +2,7 @@
 // in a new tab (so it prints clean, with no app chrome). Grouped by subcontractor,
 // status, or category; optionally open-items only.
 import type { TrackerItem } from '@/hooks/useTracker';
-import { ragFor, ragMeta, RAG_ORDER, duePhrase, type Rag } from './trackerRag';
+import { ragFor, ragMeta, RAG_ORDER, duePhrase, ageDays, ageLabel, type Rag } from './trackerRag';
 
 const STATUS_LABEL: Record<string, string> = {
   open: 'Open', progress: 'In progress', scheduled: 'Scheduled', blocked: 'Blocked', done: 'Done',
@@ -13,7 +13,7 @@ const STATUS_COLOR: Record<string, string> = {
 const PRI_LABEL: Record<string, string> = { high: 'High', med: 'Med', low: 'Low' };
 const STATUS_ORDER = ['blocked', 'progress', 'scheduled', 'open', 'done'];
 
-export type ReportGroupBy = 'owner' | 'status' | 'category' | 'due';
+export type ReportGroupBy = 'owner' | 'status' | 'category' | 'due' | 'tag';
 export interface ReportOptions {
   groupBy: ReportGroupBy; openOnly: boolean; projectName: string; preparedBy?: string;
   /** Optional AI-written client summary rendered as a branded callout up top. */
@@ -23,7 +23,7 @@ export interface ReportOptions {
 }
 
 const GROUP_LABEL: Record<ReportGroupBy, string> = {
-  owner: 'subcontractor', status: 'status', category: 'category', due: 'due status',
+  owner: 'subcontractor', status: 'status', category: 'category', due: 'due status', tag: 'tag / program area',
 };
 
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -40,10 +40,16 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
     : opts.groupBy === 'due' ? ragFor(i)
     : i.status;
   const groups: Record<string, TrackerItem[]> = {};
-  scoped.forEach(i => { (groups[keyFor(i)] ??= []).push(i); });
+  if (opts.groupBy === 'tag') {
+    // Items can carry several tags, so they appear under EACH program area.
+    scoped.forEach(i => { const ts = (i.tags && i.tags.length) ? i.tags : ['Untagged']; ts.forEach(t => (groups[t] ??= []).push(i)); });
+  } else {
+    scoped.forEach(i => { (groups[keyFor(i)] ??= []).push(i); });
+  }
   const groupKeys = Object.keys(groups).sort((a, b) =>
     opts.groupBy === 'status' ? STATUS_ORDER.indexOf(a) - STATUS_ORDER.indexOf(b)
     : opts.groupBy === 'due' ? RAG_ORDER.indexOf(a as Rag) - RAG_ORDER.indexOf(b as Rag)
+    : opts.groupBy === 'tag' ? (a === 'Untagged' ? 1 : b === 'Untagged' ? -1 : a.localeCompare(b))
     : a.localeCompare(b));
 
   const groupTitle = (k: string) =>
@@ -69,6 +75,7 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
         <td><div class="t">${esc(i.title)}</div>${last ? `<div class="note">${fmt(last.created_at)} · ${esc(last.author || '')}: ${esc(last.body)}</div>` : ''}</td>
         <td>${esc(i.owner || '—')}</td>
         <td class="due">${dueCell(i)}</td>
+        <td class="age" title="${ageDays(i.created_at)} days on the list">${i.status === 'done' ? '—' : ageLabel(ageDays(i.created_at))}</td>
         <td><span class="pill" style="color:${STATUS_COLOR[i.status]};border-color:${STATUS_COLOR[i.status]}33;background:${STATUS_COLOR[i.status]}14">${STATUS_LABEL[i.status] ?? i.status}</span></td>
         <td>${PRI_LABEL[i.priority] ?? i.priority}</td>
       </tr>`;
@@ -77,7 +84,7 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
   const sections = groupKeys.map(k => `
     <section>
       <h2>${esc(groupTitle(k))} <span class="ct">${groups[k].length}</span></h2>
-      <table><thead><tr><th>Code</th><th>Item</th><th>Owner</th><th>Due</th><th>Status</th><th>Priority</th></tr></thead>
+      <table><thead><tr><th>Code</th><th>Item</th><th>Owner</th><th>Due</th><th title="Days on the list">Age</th><th>Status</th><th>Priority</th></tr></thead>
       <tbody>${rows(groups[k])}</tbody></table>
     </section>`).join('');
 
@@ -120,6 +127,7 @@ export function buildTrackerReportHtml(items: TrackerItem[], opts: ReportOptions
   td .note{font-size:11px;color:#6b7280;margin-top:2px;font-style:italic}
   .pill{font-size:10px;font-weight:bold;text-transform:uppercase;padding:1px 8px;border-radius:10px;border:1px solid;white-space:nowrap}
   td.due{white-space:nowrap;color:#374151}
+  td.age{white-space:nowrap;color:#6b7280;font-variant-numeric:tabular-nums}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
   .stats.rag{margin-top:10px}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:11px;color:#6b7280}
@@ -160,4 +168,55 @@ export function openTrackerReport(items: TrackerItem[], opts: ReportOptions) {
   w.document.write(html);
   w.document.close();
   return true;
+}
+
+// A branded single-item email/handoff — for emailing ONE item to a specific
+// stakeholder (assignee, inspector, owner) with its full context + update log.
+export function buildTrackerItemHtml(item: TrackerItem, opts: { projectName: string; note?: string; preparedBy?: string }): string {
+  const rag = ragFor(item); const rm = ragMeta(rag);
+  const age = ageDays(item.created_at);
+  const meta = [
+    ['Status', STATUS_LABEL[item.status] ?? item.status],
+    ['Owner', item.owner || '—'],
+    ['Priority', PRI_LABEL[item.priority] ?? item.priority],
+    ['Due', item.due_date ? `${fmt(item.due_date)}${item.status !== 'done' ? ` — ${duePhrase(item.due_date)}` : ''}` : '—'],
+    ['On the list', `${ageLabel(age)} (${age} day${age === 1 ? '' : 's'})`],
+  ] as const;
+  const tags = (item.tags ?? []).map(t => `<span class="tag">#${esc(t)}</span>`).join(' ');
+  const log = item.updates.length
+    ? item.updates.map(u => `<div class="u"><div class="um">${fmt(u.created_at)} · ${esc(u.author || '')}${u.is_client ? ' (client)' : ''}</div><div>${esc(u.body)}</div></div>`).join('')
+    : '<p style="color:#9aa1ad">No updates logged yet.</p>';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(item.title)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Georgia,'Times New Roman',serif;color:#1A1714;background:#fff;padding:32px 36px;max-width:720px}
+  .head{border-bottom:3px solid #C4A35A;padding-bottom:10px;margin-bottom:14px}
+  .head .p{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+  .head h1{margin:4px 0 0;font-size:20px}
+  .head .code{color:#6b7280;font-weight:normal}
+  .pill{display:inline-block;font-size:11px;font-weight:bold;text-transform:uppercase;padding:2px 10px;border-radius:12px;color:#fff}
+  .note{border-left:4px solid #C4A35A;background:#FBF8F1;border-radius:8px;padding:10px 14px;margin:12px 0;font-family:-apple-system,Arial,sans-serif;font-size:13px}
+  table.meta{width:100%;border-collapse:collapse;font-family:-apple-system,Arial,sans-serif;margin:12px 0}
+  table.meta td{font-size:12.5px;padding:6px 8px;border-bottom:1px solid #f1f1f1}
+  table.meta td.k{color:#9aa1ad;text-transform:uppercase;font-size:10.5px;letter-spacing:.4px;width:110px}
+  .tag{display:inline-block;font-family:-apple-system,Arial,sans-serif;font-size:11px;font-weight:600;color:#1558b0;background:#E7F0FD;border-radius:10px;padding:1px 8px}
+  .desc{font-family:-apple-system,Arial,sans-serif;font-size:13.5px;line-height:1.5;color:#374151;margin:8px 0}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#1558b0;border-bottom:1px solid #e5e7eb;padding-bottom:5px;margin:18px 0 8px}
+  .u{font-family:-apple-system,Arial,sans-serif;font-size:13px;border-bottom:1px solid #f4f4f4;padding:7px 0}
+  .u .um{font-size:11px;color:#9aa1ad;margin-bottom:2px}
+  .foot{margin-top:22px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:11px;color:#9aa1ad}
+  @media print{body{padding:0}}
+</style></head><body>
+  <div class="head">
+    <div class="p">${esc(opts.projectName)} · Project Log item</div>
+    <h1>${item.code ? `<span class="code">${esc(item.code)} · </span>` : ''}${esc(item.title)}</h1>
+    <div style="margin-top:8px"><span class="pill" style="background:${rm.color}">${esc(rm.label)}</span> ${tags}</div>
+  </div>
+  ${opts.note ? `<div class="note">${esc(opts.note)}</div>` : ''}
+  <table class="meta"><tbody>${meta.map(([k, v]) => `<tr><td class="k">${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+  ${item.description ? `<div class="desc">${esc(item.description)}</div>` : ''}
+  <h2>Update log</h2>
+  ${log}
+  <div class="foot">Sent from ${esc(opts.projectName)} · Project Log · Proj OS${opts.preparedBy ? ` · ${esc(opts.preparedBy)}` : ''}</div>
+</body></html>`;
 }

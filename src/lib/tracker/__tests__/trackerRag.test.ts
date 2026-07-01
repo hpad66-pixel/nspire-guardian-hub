@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ragFor, daysUntilDue, duePhrase, ragCounts, DUE_SOON_DAYS } from '../trackerRag';
+import { ragFor, daysUntilDue, duePhrase, ragCounts, DUE_SOON_DAYS, ageDays, ageLabel, isAging, STALE_DAYS } from '../trackerRag';
 
 // Fixed "now" so the relative-date math is deterministic.
 const NOW = new Date('2026-06-30T12:00:00');
@@ -42,6 +42,22 @@ describe('trackerRag', () => {
     expect(duePhrase('2026-06-30', NOW)).toBe('Due today');
     expect(duePhrase('2026-07-01', NOW)).toBe('Due tomorrow');
     expect(duePhrase('2026-07-03', NOW)).toBe(`Due in ${DUE_SOON_DAYS} days`); // +3 days
+  });
+
+  it('ageDays counts whole days since created; ageLabel compacts', () => {
+    expect(ageDays('2026-06-20T12:00:00', NOW)).toBe(10);
+    expect(ageDays(null, NOW)).toBe(0);
+    expect(ageLabel(3)).toBe('3d');
+    expect(ageLabel(10)).toBe('1w');
+    expect(ageLabel(45)).toBe('1mo');
+  });
+
+  it('isAging flags open items older than STALE_DAYS, never done ones', () => {
+    const old = new Date(NOW.getTime() - (STALE_DAYS + 1) * 86_400_000).toISOString();
+    const fresh = new Date(NOW.getTime() - 2 * 86_400_000).toISOString();
+    expect(isAging({ status: 'open', created_at: old }, NOW)).toBe(true);
+    expect(isAging({ status: 'open', created_at: fresh }, NOW)).toBe(false);
+    expect(isAging({ status: 'done', created_at: old }, NOW)).toBe(false);
   });
 
   it('ragCounts rolls up a mixed list', () => {
