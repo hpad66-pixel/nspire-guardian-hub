@@ -207,8 +207,10 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
 
     return (
       <div ref={ref}>
-        {/* ── Page 1 · G702 cover — Procore "Document Summary Sheet" layout ── */}
-        <div data-pdf-page style={PAGE}>
+        {/* ── Page 1 · G702 cover — Procore "Document Summary Sheet" layout ──
+             Rendered LANDSCAPE (like Procore's cover and the G703 continuation)
+             so the two-column application/certificate split has room to breathe. */}
+        <div data-pdf-page data-orientation="landscape" style={PAGE_LANDSCAPE}>
           <DraftBanner />
 
           {/* Top bar: title · summary-sheet · page */}
