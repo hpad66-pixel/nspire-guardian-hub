@@ -62,8 +62,12 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   if (!meeting) return null;
   const save = (patch: Record<string, unknown>) => update.mutate({ id: meeting.id, ...patch });
 
-  const addItem = async (payload: { title: string; description?: string; priority?: ActionItem['priority'] }) => {
-    const created: any = await createItem.mutateAsync({ ...payload, meeting_id: meeting.id, due_date: meeting.meeting_date });
+  const addItem = async (payload: { title: string; description?: string; priority?: ActionItem['priority']; assigned_to?: string | null; due_date?: string | null }) => {
+    const created: any = await createItem.mutateAsync({
+      ...payload,
+      meeting_id: meeting.id,
+      due_date: payload.due_date ?? meeting.meeting_date,
+    });
     if (clickup?.connected && clickup.autoPush && created?.id) pushClickUp.mutate(created.id);
     return created;
   };
@@ -75,13 +79,19 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
       // Persist the transcript first so it isn't lost.
       save({ transcript });
       const { data, error } = await supabase.functions.invoke('extract-action-items', {
-        body: { text: transcript, projectName },
+        body: {
+          text: transcript,
+          projectName,
+          meetingDate: meeting.meeting_date,
+          teamMembers: (team ?? []).map((m) => ({ id: m.user_id, name: m.profile?.full_name || m.profile?.email || '' })).filter((m) => m.name),
+        },
       });
       if (error) throw error;
-      const items: Array<{ title: string; description?: string; priority?: ActionItem['priority'] }> = data?.items ?? [];
+      const items: Array<{ title: string; description?: string; priority?: ActionItem['priority']; assignee_id?: string | null; due_date?: string | null }> = data?.items ?? [];
       if (!items.length) { toast.message('No action items found in that text.'); return; }
-      for (const it of items) await addItem({ title: it.title, description: it.description, priority: it.priority });
-      toast.success(`Added ${items.length} action item${items.length === 1 ? '' : 's'}`);
+      for (const it of items) await addItem({ title: it.title, description: it.description, priority: it.priority, assigned_to: it.assignee_id ?? null, due_date: it.due_date ?? null });
+      const assigned = items.filter((i) => i.assignee_id).length;
+      toast.success(`Added ${items.length} action item${items.length === 1 ? '' : 's'}${assigned ? ` · ${assigned} assigned` : ''}`);
     } catch (e) {
       toast.error(`Couldn't extract: ${e instanceof Error ? e.message : 'try again'}`);
     } finally {
