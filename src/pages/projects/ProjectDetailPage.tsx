@@ -18,7 +18,7 @@ import {
 import {
   ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
-  AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
+  AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
   MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
@@ -54,6 +54,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
+import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -307,6 +308,7 @@ export default function ProjectDetailPage() {
     { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },
     { value: 'meetings',     label: 'Meetings',     shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
+    { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
     { value: 'repository',   label: 'Repository',   shortLabel: 'Repo',     icon: Brain,           group: 'core',       badge: null as number | null },
     { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
@@ -889,6 +891,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
+                <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
@@ -1178,6 +1181,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
+              <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
             </div>
