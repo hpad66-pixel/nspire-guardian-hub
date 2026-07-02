@@ -24,6 +24,8 @@ export interface ActionItem {
   tags: string[];
   linked_entity_type: string | null;
   linked_entity_id: string | null;
+  scope_id: string | null;
+  meeting_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -344,6 +346,8 @@ export function useCreateActionItem(projectId: string) {
       tags?: string[];
       linked_entity_type?: string | null;
       linked_entity_id?: string | null;
+      scope_id?: string | null;
+      meeting_id?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
@@ -359,7 +363,9 @@ export function useCreateActionItem(projectId: string) {
           tags: payload.tags || [],
           linked_entity_type: payload.linked_entity_type || null,
           linked_entity_id: payload.linked_entity_id || null,
-        })
+          scope_id: payload.scope_id ?? null,
+          meeting_id: payload.meeting_id ?? null,
+        } as never)
         .select()
         .single();
 
@@ -407,6 +413,8 @@ export function useUpdateActionItem(projectId: string) {
       due_date?: string | null;
       tags?: string[];
       completed_at?: string | null;
+      scope_id?: string | null;
+      meeting_id?: string | null;
       previous_assigned_to?: string | null;
     }) => {
       const { id, previous_assigned_to, ...updates } = payload;
@@ -419,7 +427,7 @@ export function useUpdateActionItem(projectId: string) {
 
       const { data, error } = await supabase
         .from('project_action_items')
-        .update(updates)
+        .update(updates as never)
         .eq('id', id)
         .select()
         .single();

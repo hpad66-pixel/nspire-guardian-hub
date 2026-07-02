@@ -55,6 +55,7 @@ import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDi
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
+import { ActionItemsTab } from '@/components/projects/actionItems/ActionItemsTab';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -302,6 +303,7 @@ export default function ProjectDetailPage() {
     { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
     { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
     { value: 'punch-list',   label: 'Punch List',   shortLabel: 'Punch',    icon: ListChecks,      group: 'compliance', badge: ((punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)) > 0 ? (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) : null },
+    { value: 'action-items', label: 'Action Items', shortLabel: 'Actions',  icon: CheckSquare,     group: 'compliance', badge: null as number | null },
     { value: 'project-log',  label: 'Project Log',  shortLabel: 'Log',      icon: ClipboardList,   group: 'compliance', badge: unreadLogComments > 0 ? unreadLogComments : null },
     { value: 'progress',     label: 'Progress',     shortLabel: 'Progress', icon: TrendingUpIcon,  group: 'reports',    badge: null as number | null },
     { value: 'procurement',  label: 'Procurement',  shortLabel: 'Procure',  icon: ShoppingCart,    group: 'reports',    badge: null as number | null },
@@ -885,6 +887,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="rfis" className="mt-0"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="submittals" className="mt-0"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="punch-list" className="mt-0"><PunchListTab projectId={id!} /></TabsContent>
+                <TabsContent value="action-items" className="mt-0"><ActionItemsTab projectId={id!} /></TabsContent>
                 <TabsContent value="project-log" className="mt-0"><ProjectTrackerTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="progress" className="mt-0"><ProgressTab projectId={id!} /></TabsContent>
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
@@ -1175,6 +1178,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="rfis"><RFIList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="submittals"><SubmittalsTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="punch-list"><PunchListTab projectId={id!} /></TabsContent>
+              <TabsContent value="action-items"><ActionItemsTab projectId={id!} /></TabsContent>
               <TabsContent value="project-log"><ProjectTrackerTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>

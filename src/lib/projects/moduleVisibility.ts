@@ -12,6 +12,7 @@
 export type ProjectModuleSlug =
   | 'overview'
   | 'scope'
+  | 'action-items'
   | 'schedule'
   | 'daily-logs'
   | 'gallery'
@@ -45,6 +46,7 @@ export interface ProjectModuleDef {
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview',      label: 'Overview',            description: 'Engagement summary and health',        group: 'core' },
   { slug: 'scope',         label: 'Scope',               description: 'Workstreams, owners, % complete',       group: 'core' },
+  { slug: 'action-items',  label: 'Action items',        description: 'Tasks grouped by date, owners, updates', group: 'compliance' },
   { slug: 'schedule',      label: 'Schedule & timelines', description: 'Milestones, deadlines, timeline',     group: 'core' },
   { slug: 'financials',    label: 'Financials',          description: 'Prime contract, budget, pay apps',     group: 'core' },
   { slug: 'contracts',     label: 'Contracts',           description: 'Prime contract and change orders',     group: 'core' },
@@ -70,6 +72,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
   'scope',
+  'action-items',
   'schedule',
   'gallery',
   'repository',
@@ -90,6 +93,7 @@ export interface ModuleVisibilityProject {
 // projects (but still turn-on-able per project from the admin Modules panel).
 export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'scope',
+  'action-items',
   'invoicing',
 ]);
 
