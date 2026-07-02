@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Send, Printer, Mail, Loader2 } from 'lucide-react';
+import { Trash2, Send, Printer, Mail, Loader2, Link2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   useUpdateActionItem, useDeleteActionItem, useActionItemComments, useCreateActionItemComment,
   type ActionItem,
 } from '@/hooks/useActionItems';
 import { useSendEmail } from '@/hooks/useSendEmail';
+import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import type { ProjectScope } from '@/hooks/useProjectScopes';
 import type { ProjectTeamMember } from '@/hooks/useProjectTeam';
 import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
@@ -36,6 +37,8 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const { data: comments } = useActionItemComments(open && item ? item.id : null);
   const createComment = useCreateActionItemComment();
   const sendEmail = useSendEmail();
+  const { data: clickup } = useClickUpStatus();
+  const pushClickUp = usePushToClickUp();
 
   const [desc, setDesc] = useState('');
   const [comment, setComment] = useState('');
@@ -177,6 +180,12 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
               <Trash2 className="h-4 w-4 mr-1.5" />Delete
             </Button>
             <div className="flex items-center gap-2">
+              {clickup?.connected && (
+                <Button variant="outline" size="sm" onClick={() => pushClickUp.mutate(item.id)} disabled={pushClickUp.isPending} className="gap-1.5">
+                  {pushClickUp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  {item.clickup_task_id ? 'Update in ClickUp' : 'Push to ClickUp'}
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5"><Printer className="h-4 w-4" />Print</Button>
               <Button variant="outline" size="sm" onClick={() => setEmailOpen((v) => !v)} className="gap-1.5"><Mail className="h-4 w-4" />Email</Button>
             </div>

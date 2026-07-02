@@ -27,6 +27,7 @@ export interface ActionItem {
   linked_entity_id: string | null;
   scope_id: string | null;
   meeting_id: string | null;
+  clickup_task_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
