@@ -7,6 +7,7 @@ export interface ClickUpStatus {
   listId: string | null;
   listName: string | null;
   teamName: string | null;
+  autoPush: boolean;
 }
 
 // supabase.functions.invoke surfaces a generic "non-2xx" error; the real reason
@@ -55,6 +56,44 @@ export function useConnectClickUp() {
       toast.success(`ClickUp connected${data?.listName ? ` · ${data.listName}` : ''}`);
     },
     onError: (e: Error) => toast.error(`Couldn't connect ClickUp: ${e.message}`),
+  });
+}
+
+export function useSetClickUpAutoPush() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (value: boolean) => invokeClickup({ action: 'set-auto-push', value }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clickup-status'] }),
+    onError: (e: Error) => toast.error(`Couldn't update auto-push: ${e.message}`),
+  });
+}
+
+export interface ClickUpProjectList { project_id: string; list_id: string; list_name: string | null }
+
+export function useClickUpProjectList(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['clickup-project-list', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      const { data, error } = await (supabase.from('clickup_project_lists' as never) as any)
+        .select('project_id, list_id, list_name').eq('project_id', projectId).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as ClickUpProjectList | null;
+    },
+    enabled: !!projectId,
+  });
+}
+
+export function useSetClickUpProjectList(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (list: { list_id: string; list_name: string | null }) => {
+      const { error } = await (supabase.from('clickup_project_lists' as never) as any)
+        .upsert({ project_id: projectId, list_id: list.list_id, list_name: list.list_name, updated_at: new Date().toISOString() }, { onConflict: 'project_id' });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clickup-project-list', projectId] }); toast.success('ClickUp list set for this project'); },
+    onError: (e: Error) => toast.error(`Couldn't set list: ${e.message}`),
   });
 }
 
