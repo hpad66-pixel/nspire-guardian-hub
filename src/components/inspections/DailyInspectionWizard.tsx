@@ -340,20 +340,30 @@ export function DailyInspectionWizard({
         console.warn('Issue auto-escalation failed (non-blocking):', escalationErr);
       }
 
+      // CRITICAL submit — only long-established columns, so completion can never
+      // be blocked by a newer column not being present.
       await updateInspection.mutateAsync({
         id: inspection.id,
         general_notes: generalNotes,
         general_notes_html: generalNotesHtml,
-        property_condition: propertyCondition || null,
-        unusual_activity: unusualActivity,
-        unusual_activity_detail: unusualActivity ? (unusualDetail || null) : null,
-        weather_other: weatherOther || null,
         attachments,
         status: 'completed',
         completed_at: new Date().toISOString(),
         review_status: 'pending_review',
         submitted_at: new Date().toISOString(),
       } as any);
+
+      // Structured General Observations — best-effort; never blocks submission.
+      try {
+        await supabase.from('daily_inspections').update({
+          property_condition: propertyCondition || null,
+          unusual_activity: unusualActivity,
+          unusual_activity_detail: unusualActivity ? (unusualDetail || null) : null,
+          weather_other: weatherOther || null,
+        } as any).eq('id', inspection.id);
+      } catch (obsErr) {
+        console.warn('General Observations save failed (non-blocking):', obsErr);
+      }
 
       setSubmitTime(format(new Date(), 'h:mm a'));
       setShowConfetti(true);
@@ -366,7 +376,9 @@ export function DailyInspectionWizard({
         toast.warning("You're offline — saved locally and will sync when reconnected.");
         setStep('success');
       } else {
-        toast.error('Failed to submit inspection');
+        // Surface the real cause so a recurring failure is diagnosable.
+        const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
+        toast.error(msg ? `Couldn't submit: ${msg}` : 'Failed to submit inspection');
       }
     }
   };

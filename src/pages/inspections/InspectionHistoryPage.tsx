@@ -9,9 +9,13 @@ import { useManagedProperties } from '@/hooks/useProperties';
 import { useDailyInspections, WEATHER_OPTIONS, type DailyInspection } from '@/hooks/useDailyInspections';
 import { useProfiles } from '@/hooks/useProfiles';
 import { InspectionDetailSheet } from '@/components/inspections/InspectionDetailSheet';
-import { 
+import { InspectionCalendar } from '@/components/inspections/InspectionCalendar';
+import { DailyInspectionWizard } from '@/components/inspections/DailyInspectionWizard';
+import {
   ArrowLeft,
   Calendar,
+  CalendarDays,
+  List as ListIcon,
   CheckCircle2,
   Clock,
   Filter,
@@ -20,7 +24,7 @@ import {
   FileText,
   ChevronRight,
 } from 'lucide-react';
-import { format, parseISO, subDays, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, subDays, isWithinInterval, startOfDay, endOfDay, startOfMonth } from 'date-fns';
 
 type DateFilter = 'all' | '7days' | '30days' | '90days';
 type StatusFilter = 'all' | 'completed' | 'in_progress';
@@ -34,6 +38,9 @@ export default function InspectionHistoryPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('30days');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedInspection, setSelectedInspection] = useState<DailyInspection | null>(null);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [calMonth, setCalMonth] = useState<Date>(startOfMonth(new Date()));
+  const [resumeInspection, setResumeInspection] = useState<DailyInspection | null>(null);
 
   const { data: properties = [], isLoading: propertiesLoading } = useManagedProperties();
   // Passing undefined fetches inspections across every property the user's
@@ -98,6 +105,24 @@ export default function InspectionHistoryPage() {
 
   const isLoading = propertiesLoading || inspectionsLoading;
 
+  // Calendar shows a whole month, so it ignores the date-range filter (which is
+  // for the list) and applies only the status filter.
+  const calendarInspections = allInspections.filter(
+    (i) => statusFilter === 'all' || i.status === statusFilter,
+  );
+
+  // Resuming an in-progress draft opens the full wizard with its saved data.
+  if (resumeInspection) {
+    return (
+      <DailyInspectionWizard
+        propertyId={resumeInspection.property_id}
+        existingInspection={resumeInspection}
+        onComplete={() => setResumeInspection(null)}
+        onCancel={() => setResumeInspection(null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-4 space-y-6">
@@ -108,9 +133,18 @@ export default function InspectionHistoryPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Inspection History</h1>
             <p className="text-muted-foreground">View all past daily grounds inspections</p>
+          </div>
+          {/* Calendar / List toggle */}
+          <div className="inline-flex rounded-lg border border-border p-0.5">
+            <Button variant={viewMode === 'calendar' ? 'default' : 'ghost'} size="sm" className="h-8 gap-1.5" onClick={() => setViewMode('calendar')}>
+              <CalendarDays className="h-4 w-4" /> <span className="hidden sm:inline">Calendar</span>
+            </Button>
+            <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" className="h-8 gap-1.5" onClick={() => setViewMode('list')}>
+              <ListIcon className="h-4 w-4" /> <span className="hidden sm:inline">List</span>
+            </Button>
           </div>
         </div>
 
@@ -165,8 +199,16 @@ export default function InspectionHistoryPage() {
           </CardContent>
         </Card>
 
-        {/* Inspection List */}
-        {isLoading ? (
+        {/* Inspection List / Calendar */}
+        {viewMode === 'calendar' ? (
+          <InspectionCalendar
+            inspections={calendarInspections}
+            month={calMonth}
+            onMonthChange={setCalMonth}
+            onSelect={setSelectedInspection}
+            propertyName={selectedPropertyId === ALL_PROPERTIES ? getPropertyName : undefined}
+          />
+        ) : isLoading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <Skeleton key={i} className="h-24 w-full" />
@@ -252,6 +294,7 @@ export default function InspectionHistoryPage() {
         onClose={() => setSelectedInspection(null)}
         properties={properties}
         profiles={profiles}
+        onResume={(insp) => { setSelectedInspection(null); setResumeInspection(insp); }}
       />
     </div>
   );

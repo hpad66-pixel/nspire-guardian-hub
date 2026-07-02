@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, AlertTriangle, Eye, Printer, Download, Mail, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Eye, Printer, Download, Mail, Loader2, PlayCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useInspectionItems, WEATHER_OPTIONS, type DailyInspection } from '@/hooks/useDailyInspections';
 import { useAssets } from '@/hooks/useAssets';
@@ -27,11 +27,14 @@ export function InspectionDetailSheet({
   onClose,
   properties,
   profiles,
+  onResume,
 }: {
   inspection: DailyInspection | null;
   onClose: () => void;
   properties: any[];
   profiles: any[];
+  /** Resume/finish an in-progress draft — parent opens the wizard. */
+  onResume?: (inspection: DailyInspection) => void;
 }) {
   const { data: items = [], isLoading: itemsLoading } = useInspectionItems(inspection?.id || '');
   const { data: assets = [] } = useAssets(inspection?.property_id || undefined);
@@ -98,9 +101,14 @@ export function InspectionDetailSheet({
               {format(parseISO(inspection.inspection_date), 'EEEE, MMMM d, yyyy')} · {propertyName}
             </SheetDescription>
           </div>
-          {/* One place for every action: View · Print · PDF · Email */}
+          {/* One place for every action: Resume (drafts) · View · Print · PDF · Email */}
           <div className="flex flex-wrap gap-2 pt-3">
-            <Button size="sm" onClick={() => setShowReport(true)} className="gap-1.5">
+            {inspection.status !== 'completed' && onResume && (
+              <Button size="sm" onClick={() => { onResume(inspection); onClose(); }} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+                <PlayCircle className="h-4 w-4" /> Resume &amp; finish
+              </Button>
+            )}
+            <Button size="sm" variant={inspection.status !== 'completed' && onResume ? 'outline' : 'default'} onClick={() => setShowReport(true)} className="gap-1.5">
               <Eye className="h-4 w-4" /> View Report
             </Button>
             <Button size="sm" variant="outline" onClick={handlePrint} disabled={isPrinting || itemsLoading} className="gap-1.5">
