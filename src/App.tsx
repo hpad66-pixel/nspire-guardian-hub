@@ -62,6 +62,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
 const PropertyGalleryPage = lazy(() => import('./pages/core/PropertyGalleryPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const MyDayPage = lazy(() => import('./pages/MyDayPage'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const AdminHubPage = lazy(() => import('./pages/admin/AdminHubPage'));
@@ -271,6 +272,7 @@ const App = () => (
                             <Routes>
                               {/* Dashboard */}
                               <Route path="/dashboard" element={<Dashboard />} />
+                              <Route path="/my-day" element={<MyDayPage />} />
                               {/* Core Platform */}
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
