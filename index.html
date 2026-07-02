@@ -48,6 +48,47 @@
 
   <body>
     <div id="root"></div>
+    <!-- Boot self-heal: if a stale service worker serves an index pointing at a
+         chunk the latest deploy removed, the entry module 404s and nothing mounts
+         (a white screen that a normal refresh can't fix, because chunkReload lives
+         inside the dead chunk). This inline guard runs regardless: on a failed
+         /assets/*.js load, or an empty #root a few seconds after load, it clears
+         the caches + service worker and reloads ONCE (sessionStorage-guarded, so
+         no reload loop). -->
+    <script>
+      (function () {
+        var KEY = 'projos-boot-recovered';
+        function recover() {
+          if (sessionStorage.getItem(KEY)) return;
+          sessionStorage.setItem(KEY, '1');
+          var reload = function () { location.reload(); };
+          try {
+            var jobs = [];
+            if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+            if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+            Promise.all(jobs).then(reload, reload);
+            setTimeout(reload, 2500);
+          } catch (e) { reload(); }
+        }
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (t && t.tagName === 'SCRIPT' && /\/assets\/.*\.js/.test(t.src || '')) recover();
+        }, true);
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && root.childElementCount === 0) recover();
+          }, 6000);
+        });
+        // Clear the one-shot guard once the app actually mounts.
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && root.childElementCount > 0) sessionStorage.removeItem(KEY);
+          }, 8000);
+        });
+      })();
+    </script>
     <script type="module" src="/src/boot.ts"></script>
   </body>
 </html>
