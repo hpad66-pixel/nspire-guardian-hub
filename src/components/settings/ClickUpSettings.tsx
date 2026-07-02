@@ -4,22 +4,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Link2, CheckCircle2, ExternalLink } from 'lucide-react';
-import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp } from '@/hooks/useClickUp';
+import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp, useClickUpLists, type ClickUpList } from '@/hooks/useClickUp';
 
 export function ClickUpSettings() {
   const { data: status, isLoading } = useClickUpStatus();
   const connect = useConnectClickUp();
   const disconnect = useDisconnectClickUp();
+  const loadLists = useClickUpLists();
 
   const [token, setToken] = useState('');
-  const [listId, setListId] = useState('');
+  const [lists, setLists] = useState<ClickUpList[] | null>(null);
+  const [selectedListId, setSelectedListId] = useState('');
+  const [manualMode, setManualMode] = useState(false);
+  const [manualListId, setManualListId] = useState('');
 
   const connected = status?.connected;
+  const tokenLooksValid = token.trim().startsWith('pk_');
+
+  const handleLoadLists = async () => {
+    const res = await loadLists.mutateAsync(token.trim());
+    setLists(res.lists ?? []);
+    setManualMode((res.lists ?? []).length === 0);
+  };
 
   const handleConnect = async () => {
-    await connect.mutateAsync({ token: token.trim(), listId: listId.trim() });
-    setToken('');
+    const listId = manualMode ? manualListId.trim() : selectedListId;
+    await connect.mutateAsync({ token: token.trim(), listId });
+    setToken(''); setLists(null); setSelectedListId(''); setManualListId('');
   };
 
   return (
@@ -77,17 +90,39 @@ export function ClickUpSettings() {
                 ClickUp → your avatar → Settings → Apps → Generate a personal API token (it starts with <code>pk_</code>). Stored securely on the server. {token && !token.startsWith('pk_') ? <span className="text-[var(--apas-rose)]">This value doesn’t start with “pk_” — that’s not a personal API token.</span> : null}
               </p>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cu-list">List ID</Label>
-              <Input id="cu-list" value={listId} onChange={(e) => setListId(e.target.value)} placeholder="901234567" />
-              <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                Open the target List in ClickUp — the number in the URL after <code>/li/</code> or <code>/v/l/</code> is the List ID.
-                <a href="https://help.clickup.com/hc/en-us/articles/6303426241687" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-[var(--apas-sapphire)]">docs <ExternalLink className="h-3 w-3" /></a>
-              </p>
-            </div>
-            <Button onClick={handleConnect} disabled={connect.isPending || !token.trim() || !listId.trim()}>
-              {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}Connect ClickUp
-            </Button>
+            {lists === null ? (
+              <Button variant="outline" onClick={handleLoadLists} disabled={loadLists.isPending || !tokenLooksValid}>
+                {loadLists.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}Load my lists
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                {!manualMode ? (
+                  <div className="grid gap-1.5">
+                    <Label>Target list</Label>
+                    <Select value={selectedListId} onValueChange={setSelectedListId}>
+                      <SelectTrigger><SelectValue placeholder={lists.length ? 'Choose a ClickUp list' : 'No lists found'} /></SelectTrigger>
+                      <SelectContent>
+                        {lists.map((l) => <SelectItem key={l.id} value={l.id}>{l.path}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <button type="button" className="text-xs text-muted-foreground text-left underline w-fit" onClick={() => setManualMode(true)}>Enter a List ID manually instead</button>
+                  </div>
+                ) : (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="cu-list">List ID</Label>
+                    <Input id="cu-list" value={manualListId} onChange={(e) => setManualListId(e.target.value)} placeholder="901234567" className="font-mono text-xs" />
+                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                      In a list URL, the number after <code>/li/</code> is the List ID (the one after <code>/v/l/</code> is a view, not a list).
+                      <a href="https://help.clickup.com/hc/en-us/articles/6303426241687" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-[var(--apas-sapphire)]">docs <ExternalLink className="h-3 w-3" /></a>
+                    </p>
+                    {lists.length > 0 && <button type="button" className="text-xs text-muted-foreground text-left underline w-fit" onClick={() => setManualMode(false)}>Pick from my lists instead</button>}
+                  </div>
+                )}
+                <Button onClick={handleConnect} disabled={connect.isPending || (manualMode ? !manualListId.trim() : !selectedListId)}>
+                  {connect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}Connect ClickUp
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

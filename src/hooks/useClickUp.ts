@@ -36,6 +36,15 @@ export function useClickUpStatus() {
   });
 }
 
+export interface ClickUpList { id: string; name: string; path: string }
+
+export function useClickUpLists() {
+  return useMutation({
+    mutationFn: (token: string) => invokeClickup<{ lists: ClickUpList[] }>({ action: 'lists', token }),
+    onError: (e: Error) => toast.error(`Couldn't load lists: ${e.message}`),
+  });
+}
+
 export function useConnectClickUp() {
   const qc = useQueryClient();
   return useMutation({

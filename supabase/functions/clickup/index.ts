@@ -58,6 +58,48 @@ serve(async (req) => {
       });
     }
 
+    // ── lists ───────────────────────────────────────────────────────────────
+    // Validate the token and enumerate pickable lists (Space / Folder / List)
+    // so the user never has to hunt for a List ID. Token is passed in, not stored.
+    if (action === "lists") {
+      const token = String(body.token ?? "").trim();
+      if (!token) return json({ error: "Enter your ClickUp API token first." }, 400);
+
+      const teamRes = await cuGet(token, "/team");
+      if (!teamRes.ok) {
+        const raw = await teamRes.text().catch(() => "");
+        let reason = ""; try { reason = JSON.parse(raw)?.err || ""; } catch { reason = raw.slice(0, 120); }
+        return json({ error: `ClickUp rejected the token (HTTP ${teamRes.status}${reason ? `: ${reason}` : ""}).` }, 400);
+      }
+      const teams = (await teamRes.json())?.teams ?? [];
+      const out: Array<{ id: string; name: string; path: string }> = [];
+      const CAP = 300;
+
+      for (const team of teams) {
+        if (out.length >= CAP) break;
+        const spRes = await cuGet(token, `/team/${team.id}/space?archived=false`);
+        const spaces = spRes.ok ? ((await spRes.json())?.spaces ?? []) : [];
+        for (const space of spaces) {
+          if (out.length >= CAP) break;
+          // Folders carry their lists inline.
+          const fRes = await cuGet(token, `/space/${space.id}/folder?archived=false`);
+          const folders = fRes.ok ? ((await fRes.json())?.folders ?? []) : [];
+          for (const folder of folders) {
+            for (const list of (folder.lists ?? [])) {
+              out.push({ id: String(list.id), name: list.name, path: `${space.name} / ${folder.name} / ${list.name}` });
+            }
+          }
+          // Folderless lists.
+          const lRes = await cuGet(token, `/space/${space.id}/list?archived=false`);
+          const lists = lRes.ok ? ((await lRes.json())?.lists ?? []) : [];
+          for (const list of lists) {
+            out.push({ id: String(list.id), name: list.name, path: `${space.name} / ${list.name}` });
+          }
+        }
+      }
+      return json({ lists: out });
+    }
+
     // ── connect ─────────────────────────────────────────────────────────────
     if (action === "connect") {
       const token = String(body.token ?? "").trim();
