@@ -55,14 +55,24 @@ serve(async (req) => {
         listId: conn?.default_list_id ?? null,
         listName: conn?.default_list_name ?? null,
         teamName: conn?.team_name ?? null,
+        autoPush: !!conn?.auto_push,
       });
+    }
+
+    // ── set-auto-push ─────────────────────────────────────────────────────────
+    if (action === "set-auto-push") {
+      await admin.from("clickup_connections").update({ auto_push: !!body.value, updated_at: new Date().toISOString() }).eq("tenant_id", tenantId);
+      return json({ autoPush: !!body.value });
     }
 
     // ── lists ───────────────────────────────────────────────────────────────
     // Validate the token and enumerate pickable lists (Space / Folder / List)
     // so the user never has to hunt for a List ID. Token is passed in, not stored.
     if (action === "lists") {
-      const token = String(body.token ?? "").trim();
+      // Pre-connect: token passed in. Post-connect (e.g. per-project list picker):
+      // fall back to the stored token so the user needn't re-enter it.
+      let token = String(body.token ?? "").trim();
+      if (!token) token = (await loadConn())?.token ?? "";
       if (!token) return json({ error: "Enter your ClickUp API token first." }, 400);
 
       const teamRes = await cuGet(token, "/team");
@@ -153,7 +163,6 @@ serve(async (req) => {
     if (action === "push") {
       const conn = await loadConn();
       if (!conn) return json({ error: "Connect ClickUp first." }, 400);
-      if (!conn.default_list_id) return json({ error: "Set a ClickUp List in Settings first." }, 400);
 
       // Read the item through the USER client so RLS enforces access.
       const { data: item, error: itemErr } = await userClient
@@ -162,6 +171,11 @@ serve(async (req) => {
         .eq("id", body.actionItemId)
         .single();
       if (itemErr || !item) return json({ error: "Action item not found." }, 404);
+
+      // Per-project List overrides the connection default.
+      const { data: pmap } = await admin.from("clickup_project_lists").select("list_id").eq("project_id", item.project_id).maybeSingle();
+      const listId = pmap?.list_id || conn.default_list_id;
+      if (!listId) return json({ error: "Set a ClickUp list first." }, 400);
 
       const payload: Record<string, unknown> = {
         name: item.title,
@@ -179,7 +193,7 @@ serve(async (req) => {
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${CU}/list/${conn.default_list_id}/task`, {
+        res = await fetch(`${CU}/list/${listId}/task`, {
           method: "POST",
           headers: { Authorization: conn.token, "Content-Type": "application/json" },
           body: JSON.stringify(payload),

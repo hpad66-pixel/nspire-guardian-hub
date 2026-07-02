@@ -5,14 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Link2, CheckCircle2, ExternalLink } from 'lucide-react';
-import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp, useClickUpLists, type ClickUpList } from '@/hooks/useClickUp';
+import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp, useClickUpLists, useSetClickUpAutoPush, type ClickUpList } from '@/hooks/useClickUp';
 
 export function ClickUpSettings() {
   const { data: status, isLoading } = useClickUpStatus();
   const connect = useConnectClickUp();
   const disconnect = useDisconnectClickUp();
   const loadLists = useClickUpLists();
+  const setAutoPush = useSetClickUpAutoPush();
 
   const [token, setToken] = useState('');
   const [lists, setLists] = useState<ClickUpList[] | null>(null);
@@ -60,8 +62,15 @@ export function ClickUpSettings() {
                 {status?.teamName && <div className="flex justify-between py-1"><span className="text-muted-foreground">Space</span><span>{status.teamName}</span></div>}
               </div>
             </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <div className="text-sm font-medium">Auto-push new action items</div>
+                <div className="text-xs text-muted-foreground">Create a ClickUp task automatically whenever an action item is added.</div>
+              </div>
+              <Switch checked={!!status?.autoPush} onCheckedChange={(v) => setAutoPush.mutate(v)} disabled={setAutoPush.isPending} />
+            </div>
             <p className="text-sm text-muted-foreground">
-              Open any action item and choose <span className="font-medium text-foreground">Push to ClickUp</span> to create or update its task.
+              Open any action item and choose <span className="font-medium text-foreground">Push to ClickUp</span> to create or update its task. Each consulting project can target its own list from the Action Items tab.
             </p>
             <Button variant="outline" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
               {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Disconnect'}

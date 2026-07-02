@@ -16,6 +16,7 @@ import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ActionItemDetailDialog } from '@/components/projects/actionItems/ActionItemDetailDialog';
 import { PRIORITY_META } from '@/components/projects/actionItems/actionItemMeta';
+import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 
 interface Props {
   open: boolean;
@@ -32,6 +33,8 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const { data: team } = useProjectTeamMembers(projectId);
   const createItem = useCreateActionItem(projectId);
   const updateItem = useUpdateActionItem(projectId);
+  const { data: clickup } = useClickUpStatus();
+  const pushClickUp = usePushToClickUp();
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -59,8 +62,11 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   if (!meeting) return null;
   const save = (patch: Record<string, unknown>) => update.mutate({ id: meeting.id, ...patch });
 
-  const addItem = (payload: { title: string; description?: string; priority?: ActionItem['priority'] }) =>
-    createItem.mutateAsync({ ...payload, meeting_id: meeting.id, due_date: meeting.meeting_date });
+  const addItem = async (payload: { title: string; description?: string; priority?: ActionItem['priority'] }) => {
+    const created: any = await createItem.mutateAsync({ ...payload, meeting_id: meeting.id, due_date: meeting.meeting_date });
+    if (clickup?.connected && clickup.autoPush && created?.id) pushClickUp.mutate(created.id);
+    return created;
+  };
 
   const handleExtract = async () => {
     if (!transcript.trim()) { toast.error('Paste the transcript or notes first.'); return; }

@@ -13,7 +13,9 @@ import {
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { groupByDate, BUCKET_META } from '@/lib/actionItems/grouping';
+import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import { ActionItemDetailDialog } from './ActionItemDetailDialog';
+import { ClickUpProjectList } from './ClickUpProjectList';
 import { PRIORITY_META, BUCKET_TONE, BUCKET_DOT } from './actionItemMeta';
 
 const ALL = '__all__';
@@ -25,6 +27,8 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const { data: team } = useProjectTeamMembers(projectId);
   const create = useCreateActionItem(projectId);
   const update = useUpdateActionItem(projectId);
+  const { data: clickup } = useClickUpStatus();
+  const pushClickUp = usePushToClickUp();
 
   const [search, setSearch] = useState('');
   const [owner, setOwner] = useState(ALL);
@@ -57,8 +61,9 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const quickAdd = async () => {
     if (!quickTitle.trim() || create.isPending) return;
     try {
-      await create.mutateAsync({ title: quickTitle.trim() });
+      const created: any = await create.mutateAsync({ title: quickTitle.trim() });
       setQuickTitle('');
+      if (clickup?.connected && clickup.autoPush && created?.id) pushClickUp.mutate(created.id);
     } catch { /* toast surfaced by the hook; keep the text so it isn't lost */ }
   };
 
@@ -72,6 +77,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
           <h2 className="text-lg font-semibold flex items-center gap-2"><CheckSquare className="h-5 w-5 text-muted-foreground" />Action items</h2>
           <p className="text-sm text-muted-foreground">{openCount} open · grouped by when they're due</p>
         </div>
+        <ClickUpProjectList projectId={projectId} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
