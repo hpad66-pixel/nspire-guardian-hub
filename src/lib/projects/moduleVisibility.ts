@@ -11,6 +11,7 @@
 
 export type ProjectModuleSlug =
   | 'overview'
+  | 'scope'
   | 'schedule'
   | 'daily-logs'
   | 'gallery'
@@ -42,6 +43,7 @@ export interface ProjectModuleDef {
 // layout; the sidebar itself keeps its own tab ordering.
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview',      label: 'Overview',            description: 'Engagement summary and health',        group: 'core' },
+  { slug: 'scope',         label: 'Scope',               description: 'Workstreams, owners, % complete',       group: 'core' },
   { slug: 'schedule',      label: 'Schedule & timelines', description: 'Milestones, deadlines, timeline',     group: 'core' },
   { slug: 'financials',    label: 'Financials',          description: 'Prime contract, budget, pay apps',     group: 'core' },
   { slug: 'contracts',     label: 'Contracts',           description: 'Prime contract and change orders',     group: 'core' },
@@ -65,6 +67,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
 // here defaults to hidden for project_type === 'consulting'.
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
+  'scope',
   'schedule',
   'gallery',
   'repository',
@@ -80,13 +83,21 @@ export interface ModuleVisibilityProject {
   module_config?: Record<string, boolean> | null;
 }
 
+// Consulting-native modules — hidden by default on construction/property/client
+// projects (but still turn-on-able per project from the admin Modules panel).
+export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
+  'scope',
+]);
+
 /** Default visibility for a module before any admin override is applied. */
 export function defaultModuleVisible(
   slug: ProjectModuleSlug,
   projectType: string | null | undefined,
 ): boolean {
   if (projectType === 'consulting') return CONSULTING_DEFAULT_MODULES.has(slug);
-  return true;
+  // Everything visible by default on other project types, except the
+  // consulting-native modules (which an admin can still switch on per project).
+  return !CONSULTING_ONLY_MODULES.has(slug);
 }
 
 /** Effective visibility: explicit override wins, else the type default. */
