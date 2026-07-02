@@ -340,18 +340,28 @@ export function DailyInspectionWizard({
         console.warn('Issue auto-escalation failed (non-blocking):', escalationErr);
       }
 
-      // CRITICAL submit — only long-established columns, so completion can never
-      // be blocked by a newer column not being present.
-      await updateInspection.mutateAsync({
+      // CRITICAL submit. Try the full patch (incl. review_status/submitted_at);
+      // if the schema is behind and rejects a column, fall back to the minimal
+      // completion so the report ALWAYS submits (the review metadata catches up
+      // once the migration lands).
+      const corePatch = {
         id: inspection.id,
         general_notes: generalNotes,
         general_notes_html: generalNotesHtml,
         attachments,
         status: 'completed',
         completed_at: new Date().toISOString(),
-        review_status: 'pending_review',
-        submitted_at: new Date().toISOString(),
-      } as any);
+      };
+      try {
+        await updateInspection.mutateAsync({
+          ...corePatch,
+          review_status: 'pending_review',
+          submitted_at: new Date().toISOString(),
+        } as any);
+      } catch (reviewColErr) {
+        console.warn('Submit with review columns failed; completing without them:', reviewColErr);
+        await updateInspection.mutateAsync(corePatch as any);
+      }
 
       // Structured General Observations — best-effort; never blocks submission.
       try {
