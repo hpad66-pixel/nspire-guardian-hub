@@ -106,6 +106,44 @@ export function useProjectScopes(projectId: string | null | undefined) {
   return { ...list, create, update, remove };
 }
 
+/** AI-extract scopes (+ fees) from a won proposal and add them to the project. */
+export function useBuildScopesFromProposal(projectId: string, projectName?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (proposal: { content_text?: string | null; content_html?: string | null }) => {
+      const text = (proposal.content_text || (proposal.content_html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+      if (text.length < 20) throw new Error('This proposal has no content to build scopes from.');
+
+      const { data, error } = await supabase.functions.invoke('extract-proposal-scopes', {
+        body: { text, projectName },
+      });
+      if (error) throw new Error(error.message || 'AI request failed');
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const scopes: Array<{ title: string; description: string; fee_amount: number }> = (data as any)?.scopes ?? [];
+      if (!scopes.length) throw new Error('No scopes were found in this proposal.');
+
+      const { data: auth } = await supabase.auth.getUser();
+      const rows = scopes.map((s, i) => ({
+        project_id: projectId,
+        title: s.title,
+        description: s.description || null,
+        fee_amount: s.fee_amount || 0,
+        scope_no: i + 1,
+        sort_order: i,
+        created_by: auth?.user?.id ?? null,
+      }));
+      const { error: insErr } = await (table() as any).insert(rows);
+      if (insErr) throw insErr;
+      return scopes.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ['project-scopes', projectId] });
+      toast.success(`Added ${n} scope${n === 1 ? '' : 's'} to the Scope tab`);
+    },
+    onError: (e: Error) => toast.error(`Couldn't build scopes: ${e.message}`),
+  });
+}
+
 /** Fee-weighted completion + billing rollup for a set of scopes. */
 export function summarizeScopes(scopes: ProjectScope[] | undefined) {
   const list = scopes ?? [];
