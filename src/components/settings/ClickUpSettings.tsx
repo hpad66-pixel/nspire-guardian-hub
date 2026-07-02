@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Link2, CheckCircle2, ExternalLink } from 'lucide-react';
-import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp, useClickUpLists, useSetClickUpAutoPush, type ClickUpList } from '@/hooks/useClickUp';
+import { useClickUpStatus, useConnectClickUp, useDisconnectClickUp, useClickUpLists, useSetClickUpAutoPush, useSetClickUpSync, type ClickUpList } from '@/hooks/useClickUp';
 
 export function ClickUpSettings() {
   const { data: status, isLoading } = useClickUpStatus();
@@ -15,6 +15,7 @@ export function ClickUpSettings() {
   const disconnect = useDisconnectClickUp();
   const loadLists = useClickUpLists();
   const setAutoPush = useSetClickUpAutoPush();
+  const setSync = useSetClickUpSync();
 
   const [token, setToken] = useState('');
   const [lists, setLists] = useState<ClickUpList[] | null>(null);
@@ -68,6 +69,13 @@ export function ClickUpSettings() {
                 <div className="text-xs text-muted-foreground">Create a ClickUp task automatically whenever an action item is added.</div>
               </div>
               <Switch checked={!!status?.autoPush} onCheckedChange={(v) => setAutoPush.mutate(v)} disabled={setAutoPush.isPending} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <div className="text-sm font-medium">Two-way sync</div>
+                <div className="text-xs text-muted-foreground">Mirror ClickUp status changes back into Build OS (needs a ClickUp plan with webhooks).</div>
+              </div>
+              <Switch checked={!!status?.syncEnabled} onCheckedChange={(v) => setSync.mutate(v)} disabled={setSync.isPending} />
             </div>
             <p className="text-sm text-muted-foreground">
               Open any action item and choose <span className="font-medium text-foreground">Push to ClickUp</span> to create or update its task. Each consulting project can target its own list from the Action Items tab.

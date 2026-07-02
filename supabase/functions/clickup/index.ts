@@ -56,7 +56,57 @@ serve(async (req) => {
         listName: conn?.default_list_name ?? null,
         teamName: conn?.team_name ?? null,
         autoPush: !!conn?.auto_push,
+        syncEnabled: !!conn?.webhook_id,
       });
+    }
+
+    // ── enable-sync ───────────────────────────────────────────────────────────
+    // Register a ClickUp webhook so status changes flow back into Build OS.
+    if (action === "enable-sync") {
+      const conn = await loadConn();
+      if (!conn) return json({ error: "Connect ClickUp first." }, 400);
+
+      let teamId = conn.team_id as string | null;
+      if (!teamId) {
+        const tr = await cuGet(conn.token, "/team");
+        const teams = tr.ok ? ((await tr.json())?.teams ?? []) : [];
+        teamId = teams[0]?.id ? String(teams[0].id) : null;
+        if (teamId) await admin.from("clickup_connections").update({ team_id: teamId, team_name: teams[0]?.name ?? conn.team_name }).eq("tenant_id", tenantId);
+      }
+      if (!teamId) return json({ error: "Couldn't find your ClickUp workspace." }, 400);
+
+      if (conn.webhook_id) {
+        await fetch(`${CU}/webhook/${conn.webhook_id}`, { method: "DELETE", headers: { Authorization: conn.token } }).catch(() => {});
+      }
+      const endpoint = `${url}/functions/v1/clickup-webhook`;
+      const res = await fetch(`${CU}/team/${teamId}/webhook`, {
+        method: "POST",
+        headers: { Authorization: conn.token, "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint, events: ["taskStatusUpdated", "taskUpdated", "taskDeleted"] }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error("ClickUp webhook create failed:", res.status, t);
+        return json({ error: "ClickUp couldn't register the webhook (your plan may not support webhooks)." }, 502);
+      }
+      const wh = await res.json();
+      const webhook = wh?.webhook ?? wh;
+      await admin.from("clickup_connections").update({
+        webhook_id: String(webhook.id),
+        webhook_secret: webhook.secret ?? null,
+        updated_at: new Date().toISOString(),
+      }).eq("tenant_id", tenantId);
+      return json({ syncEnabled: true });
+    }
+
+    // ── disable-sync ──────────────────────────────────────────────────────────
+    if (action === "disable-sync") {
+      const conn = await loadConn();
+      if (conn?.webhook_id) {
+        await fetch(`${CU}/webhook/${conn.webhook_id}`, { method: "DELETE", headers: { Authorization: conn.token } }).catch(() => {});
+      }
+      await admin.from("clickup_connections").update({ webhook_id: null, webhook_secret: null }).eq("tenant_id", tenantId);
+      return json({ syncEnabled: false });
     }
 
     // ── set-auto-push ─────────────────────────────────────────────────────────

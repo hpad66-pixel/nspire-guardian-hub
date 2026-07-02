@@ -8,6 +8,7 @@ export interface ClickUpStatus {
   listName: string | null;
   teamName: string | null;
   autoPush: boolean;
+  syncEnabled: boolean;
 }
 
 // supabase.functions.invoke surfaces a generic "non-2xx" error; the real reason
@@ -65,6 +66,15 @@ export function useSetClickUpAutoPush() {
     mutationFn: (value: boolean) => invokeClickup({ action: 'set-auto-push', value }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clickup-status'] }),
     onError: (e: Error) => toast.error(`Couldn't update auto-push: ${e.message}`),
+  });
+}
+
+export function useSetClickUpSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => invokeClickup({ action: enabled ? 'enable-sync' : 'disable-sync' }),
+    onSuccess: (_d, enabled) => { qc.invalidateQueries({ queryKey: ['clickup-status'] }); toast.success(enabled ? 'Two-way sync enabled' : 'Two-way sync disabled'); },
+    onError: (e: Error) => toast.error(`Couldn't change sync: ${e.message}`),
   });
 }
 
