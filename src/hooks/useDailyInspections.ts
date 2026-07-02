@@ -83,18 +83,41 @@ export function useCreateDailyInspection() {
   return useMutation({
     mutationFn: async (input: { property_id: string; weather?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+      const today = toDateOnly(new Date());
+
       const { data, error } = await supabase
         .from('daily_inspections')
         .insert({
           property_id: input.property_id,
+          inspection_date: today,
           weather: input.weather,
           inspector_id: user?.id,
         })
         .select()
         .single();
-      
-      if (error) throw error;
+
+      // One inspection per property per day (UNIQUE(property_id, inspection_date)).
+      // If today's record already exists (e.g. a prior partial attempt), reuse it
+      // instead of failing so the inspector can always continue and submit.
+      if (error) {
+        if ((error as { code?: string }).code === '23505') {
+          const { data: existing, error: fetchErr } = await supabase
+            .from('daily_inspections')
+            .select('*')
+            .eq('property_id', input.property_id)
+            .eq('inspection_date', today)
+            .maybeSingle();
+          if (fetchErr) throw fetchErr;
+          if (existing) {
+            if (input.weather && (existing as DailyInspection).weather !== input.weather) {
+              await supabase.from('daily_inspections').update({ weather: input.weather }).eq('id', (existing as DailyInspection).id);
+              (existing as DailyInspection).weather = input.weather;
+            }
+            return existing as DailyInspection;
+          }
+        }
+        throw error;
+      }
       return data as DailyInspection;
     },
     onSuccess: () => {

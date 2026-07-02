@@ -310,28 +310,35 @@ export function DailyInspectionWizard({
         );
       if (itemsToSave.length > 0) await Promise.all(itemsToSave);
 
-      const { data: pm } = await supabase
-        .from('property_team_members')
-        .select('user_id')
-        .eq('property_id', propertyId)
-        .eq('role', 'manager')
-        .eq('status', 'active')
-        .maybeSingle();
+      // Auto-escalate attention/defect items into Issues — BEST EFFORT only. A
+      // failure here (RLS, constraint, offline) must never block the inspector
+      // from submitting a completed report.
+      try {
+        const { data: pm } = await supabase
+          .from('property_team_members')
+          .select('user_id')
+          .eq('property_id', propertyId)
+          .eq('role', 'manager')
+          .eq('status', 'active')
+          .maybeSingle();
 
-      const issueCreates = activeAssets.flatMap((asset) => {
-        const check = assetChecks[asset.id];
-        if (!check?.status || check.status === 'ok') return [];
-        const severity: 'severe' | 'moderate' = check.status === 'defect_found' ? 'severe' : 'moderate';
-        const title = check.status === 'defect_found' ? `Defect found: ${asset.name}` : `Needs attention: ${asset.name}`;
-        const descParts = [
-          `Daily Grounds Inspection: ${inspection.id}`,
-          asset.location_description ? `Location: ${asset.location_description}` : null,
-          check.notes ? `Notes: ${check.notes}` : null,
-          check.defectDescription ? `Defect: ${check.defectDescription}` : null,
-        ].filter(Boolean);
-        return [{ property_id: propertyId, title, description: descParts.join('\n'), source_module: 'core' as const, area: 'outside' as const, severity, status: 'open', assigned_to: pm?.user_id || null }];
-      });
-      if (issueCreates.length > 0) await supabase.from('issues').insert(issueCreates);
+        const issueCreates = activeAssets.flatMap((asset) => {
+          const check = assetChecks[asset.id];
+          if (!check?.status || check.status === 'ok') return [];
+          const severity: 'severe' | 'moderate' = check.status === 'defect_found' ? 'severe' : 'moderate';
+          const title = check.status === 'defect_found' ? `Defect found: ${asset.name}` : `Needs attention: ${asset.name}`;
+          const descParts = [
+            `Daily Grounds Inspection: ${inspection.id}`,
+            asset.location_description ? `Location: ${asset.location_description}` : null,
+            check.notes ? `Notes: ${check.notes}` : null,
+            check.defectDescription ? `Defect: ${check.defectDescription}` : null,
+          ].filter(Boolean);
+          return [{ property_id: propertyId, title, description: descParts.join('\n'), source_module: 'core' as const, area: 'outside' as const, severity, status: 'open', assigned_to: pm?.user_id || null }];
+        });
+        if (issueCreates.length > 0) await supabase.from('issues').insert(issueCreates);
+      } catch (escalationErr) {
+        console.warn('Issue auto-escalation failed (non-blocking):', escalationErr);
+      }
 
       await updateInspection.mutateAsync({
         id: inspection.id,
@@ -784,7 +791,14 @@ export function DailyInspectionWizard({
 
             {/* ── Report action buttons ── */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground text-center mb-3 uppercase tracking-wide">Share Your Report</p>
+              <p className="text-xs font-semibold text-muted-foreground text-center mb-3 uppercase tracking-wide">Your Report</p>
+              <Button
+                className="w-full gap-2 h-12 mb-3 bg-slate-900 hover:bg-slate-800 text-white"
+                onClick={() => setShowReportDialog(true)}
+              >
+                <FileText className="h-4 w-4" />
+                View &amp; share today&apos;s report
+              </Button>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="outline"
@@ -821,10 +835,7 @@ export function DailyInspectionWizard({
             </div>
 
             {/* Secondary navigation */}
-            <div className="border-t pt-4 space-y-2">
-              <Button size="sm" variant="ghost" className="w-full gap-2 text-muted-foreground" onClick={() => setShowReportDialog(true)}>
-                <FileText className="h-4 w-4" />View Full Report
-              </Button>
+            <div className="border-t pt-4">
               <Button size="lg" variant="outline" className="w-full" onClick={onComplete}>
                 Back to Dashboard
               </Button>
