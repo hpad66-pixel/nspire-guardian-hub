@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2 } from 'lucide-react';
+import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2, Lightbulb } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
 import { useActiveClients, useCreateClient } from '@/hooks/useClients';
@@ -35,14 +35,15 @@ interface ProjectDialogProps {
   project?: ProjectRow | null;
 }
 
-type ProjectType = 'property' | 'client';
+type ProjectType = 'property' | 'client' | 'consulting';
 
 export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProps) {
   const isEditing = !!project;
 
   // Determine initial type from existing project
+  const existingType = project ? (project as any).project_type : null;
   const initialType: ProjectType =
-    project && (project as any).project_type === 'client' ? 'client' : 'property';
+    existingType === 'client' || existingType === 'consulting' ? existingType : 'property';
 
   const { data: properties } = useProperties();
   const { data: clients } = useActiveClients();
@@ -100,9 +101,10 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
       start_date: formData.start_date || null,
       target_end_date: formData.target_end_date || null,
       project_type: projectType,
-      // Clear whichever is not in use
+      // Clear whichever is not in use. Consulting engagements are client-linked
+      // (or standalone/internal) like the 'client' type — never property-linked.
       property_id: projectType === 'property' ? formData.property_id || null : null,
-      client_id: projectType === 'client' ? formData.client_id || null : null,
+      client_id: projectType !== 'property' ? formData.client_id || null : null,
     };
 
     try {
@@ -149,14 +151,23 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
               <TabsList className="w-full">
                 <TabsTrigger value="property" className="flex-1 gap-1.5">
                   <Building2 className="h-3.5 w-3.5" />
-                  Property Project
+                  Property
                 </TabsTrigger>
                 <TabsTrigger value="client" className="flex-1 gap-1.5">
                   <Briefcase className="h-3.5 w-3.5" />
-                  Client / Standalone
+                  Client
+                </TabsTrigger>
+                <TabsTrigger value="consulting" className="flex-1 gap-1.5">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  Consulting
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            {projectType === 'consulting' && (
+              <p className="text-xs text-muted-foreground">
+                A consulting engagement — scope, action items, meetings, and invoicing, without the construction modules. You can fine-tune what shows under Modules.
+              </p>
+            )}
           </div>
 
           {/* Project Name */}

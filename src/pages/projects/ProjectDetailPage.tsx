@@ -20,7 +20,7 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
   CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2, TriangleAlert,
+  MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature,
@@ -51,6 +51,8 @@ import { DailyReportsList } from '@/components/projects/DailyReportsList';
 import { ChangeOrdersList } from '@/components/projects/ChangeOrdersList';
 import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
+import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -108,6 +110,7 @@ export default function ProjectDetailPage() {
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
@@ -307,10 +310,14 @@ export default function ProjectDetailPage() {
     { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
   ];
 
-  const activeTabDef = PROJECT_TABS.find(t => t.value === activeTab) ?? PROJECT_TABS[0];
+  // Per-project module visibility: hide tabs the admin turned off (or that the
+  // project_type default hides). Empty module_config → every tab visible.
+  const visibleTabs = PROJECT_TABS.filter(t => isModuleVisible(project, t.value));
+
+  const activeTabDef = visibleTabs.find(t => t.value === activeTab) ?? visibleTabs[0] ?? PROJECT_TABS[0];
 
   // Tabs that have active badges — shown as quick-jump buttons on iPhone
-  const badgeTabs = PROJECT_TABS.filter(t => t.badge !== null);
+  const badgeTabs = visibleTabs.filter(t => t.badge !== null);
 
   return (
     <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
@@ -430,6 +437,11 @@ export default function ProjectDetailPage() {
                   <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
                     <Edit className="h-4 w-4 mr-2" />Edit Project
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setModuleDialogOpen(true)}>
+                      <SlidersHorizontal className="h-4 w-4 mr-2" />Modules
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
                     <Archive className="h-4 w-4 mr-2" />Archive Project
                   </DropdownMenuItem>
@@ -583,7 +595,8 @@ export default function ProjectDetailPage() {
               {/* LEFT: Vertical sidebar */}
               <div className="w-[188px] shrink-0 sticky top-4 space-y-1">
                 {TAB_GROUPS.map((group) => {
-                  const groupTabs = PROJECT_TABS.filter(t => t.group === group.key);
+                  const groupTabs = visibleTabs.filter(t => t.group === group.key);
+                  if (groupTabs.length === 0) return null;
                   return (
                     <div key={group.key} className="mb-2">
                       <p className={cn(
@@ -880,7 +893,7 @@ export default function ProjectDetailPage() {
 
             {/* ── TABLET: compact horizontally scrollable pill row (768–1023px) ── */}
             <div ref={tabScrollRef} className="hidden md:flex lg:hidden gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-              {PROJECT_TABS.map(tab => {
+              {visibleTabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
                 return (
@@ -927,7 +940,8 @@ export default function ProjectDetailPage() {
                 </SheetHeader>
                 <div className="overflow-y-auto px-4 pb-8 space-y-4">
                   {TAB_GROUPS.map(group => {
-                    const groupTabs = PROJECT_TABS.filter(t => t.group === group.key);
+                    const groupTabs = visibleTabs.filter(t => t.group === group.key);
+                    if (groupTabs.length === 0) return null;
                     return (
                       <div key={group.key}>
                         <p className={cn('text-[10px] font-semibold uppercase tracking-widest px-1 mb-2', group.color)}>{group.label}</p>
@@ -1168,6 +1182,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
+        <ModuleVisibilityDialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen} project={project as any} />
         <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
         <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
 
