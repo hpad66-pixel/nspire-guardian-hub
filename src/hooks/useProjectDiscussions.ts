@@ -229,8 +229,12 @@ export function useDiscussionRealtime(projectId: string | null) {
   useEffect(() => {
     if (!projectId) return;
 
+    // Unique per-subscriber topic so a remount / second consumer never reuses an
+    // already-subscribed channel (which throws "cannot add postgres_changes
+    // callbacks ... after subscribe()").
+    const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const channel = supabase
-      .channel(`project-discussions:${projectId}`)
+      .channel(`project-discussions:${projectId}:${nonce}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "project_discussion_replies" },

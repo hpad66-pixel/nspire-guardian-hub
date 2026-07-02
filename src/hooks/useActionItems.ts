@@ -44,6 +44,12 @@ export interface ActionItemComment {
   creator?: ActionItemProfile | null;
 }
 
+// Monotonic per-session nonce for realtime channel names — guarantees each
+// subscriber gets its own channel topic so supabase.channel() never returns an
+// already-subscribed instance (which throws on a subsequent .on()).
+let rtSeq = 0;
+const rtNonce = () => `${(++rtSeq).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
 const ITEMS_QUERY_KEY = (projectId: string) => ['action-items', projectId];
 const MY_ITEMS_QUERY_KEY = ['my-action-items'];
 const ASSIGNED_BY_ME_KEY = ['assigned-by-me'];
@@ -185,8 +191,13 @@ export function useActionItemsByProject(projectId: string | null) {
 
   useEffect(() => {
     if (!projectId) return;
+    // Unique channel name per subscriber instance. This hook is used by more than
+    // one component at once (the project task badge AND the Action Items panel);
+    // a shared fixed topic makes supabase.channel() return an already-subscribed
+    // channel, and adding .on() to it throws "cannot add postgres_changes
+    // callbacks ... after subscribe()".
     const channel = supabase
-      .channel(`action-items-${projectId}`)
+      .channel(`action-items-${projectId}-${rtNonce()}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -217,7 +228,7 @@ export function useMyActionItems() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel('my-action-items')
+      .channel(`my-action-items-${rtNonce()}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -247,7 +258,7 @@ export function useAssignedByMe() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel('assigned-by-me')
+      .channel(`assigned-by-me-${rtNonce()}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -300,7 +311,7 @@ export function useActionItemComments(actionItemId: string | null) {
   useEffect(() => {
     if (!actionItemId) return;
     const channel = supabase
-      .channel(`action-item-comments-${actionItemId}`)
+      .channel(`action-item-comments-${actionItemId}-${rtNonce()}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
