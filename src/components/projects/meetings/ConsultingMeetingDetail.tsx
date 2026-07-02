@@ -158,7 +158,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
         </DialogContent>
       </Dialog>
 
-      <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} />
+      <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
     </>
   );
 }
