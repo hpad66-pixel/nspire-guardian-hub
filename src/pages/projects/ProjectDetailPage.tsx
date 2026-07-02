@@ -56,6 +56,7 @@ import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
 import { ActionItemsTab } from '@/components/projects/actionItems/ActionItemsTab';
+import { ConsultingMeetingsTab } from '@/components/projects/meetings/ConsultingMeetingsTab';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -284,6 +285,7 @@ export default function ProjectDetailPage() {
   const primeChangeOrderCount = changeOrders?.filter(co => (co as any).co_type !== 'CCO' && !(co as any).commitment_id).length || 0;
   const status = statusConfig[project.status] ?? statusConfig.planning;
   const isClientProject = (project as any).project_type === 'client';
+  const isConsulting = (project as any).project_type === 'consulting';
 
   const getBadgeCount = (key: string) => {
     if (key === 'rfi') return rfiStats?.open ?? 0;
@@ -892,7 +894,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="progress" className="mt-0"><ProgressTab projectId={id!} /></TabsContent>
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
-                <TabsContent value="meetings" className="mt-0"><MeetingsTab projectId={id!} /></TabsContent>
+                <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
@@ -1183,7 +1185,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
-              <TabsContent value="meetings"><MeetingsTab projectId={id!} /></TabsContent>
+              <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
