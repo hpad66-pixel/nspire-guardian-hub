@@ -58,9 +58,23 @@ export function ClickUpSettings() {
           <div className="space-y-4">
             <div className="grid gap-1.5">
               <Label htmlFor="cu-token">API token</Label>
-              <Input id="cu-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="pk_..." autoComplete="off" />
+              {/* text (not password) + autofill off so a password manager can't
+                  overwrite the pasted value — that produces ClickUp "token not found". */}
+              <Input
+                id="cu-token"
+                name="clickup-api-token"
+                type="text"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="pk_..."
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className="font-mono text-xs"
+              />
               <p className="text-xs text-muted-foreground">
-                ClickUp → your avatar → Settings → Apps → Generate a personal API token. It's stored securely on the server and never shown again.
+                ClickUp → your avatar → Settings → Apps → Generate a personal API token (it starts with <code>pk_</code>). Stored securely on the server. {token && !token.startsWith('pk_') ? <span className="text-[var(--apas-rose)]">This value doesn’t start with “pk_” — that’s not a personal API token.</span> : null}
               </p>
             </div>
             <div className="grid gap-1.5">
