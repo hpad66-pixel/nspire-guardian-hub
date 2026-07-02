@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { useProposalsByProject, useDeleteProposal, type Proposal, type ProposalStatus } from "@/hooks/useProposals";
+import { useBuildScopesFromProposal } from "@/hooks/useProjectScopes";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import {
   Pencil,
   Eye,
   Copy,
+  ListTree,
   Trash2,
   Send,
   Lock,
@@ -67,6 +69,7 @@ export function ProposalList({ projectId, projectName = '' }: ProposalListProps)
   
   const { data: proposals, isLoading } = useProposalsByProject(projectId);
   const deleteProposal = useDeleteProposal();
+  const buildScopes = useBuildScopesFromProposal(projectId, projectName);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -234,6 +237,13 @@ export function ProposalList({ projectId, projectName = '' }: ProposalListProps)
                         <DropdownMenuItem onClick={() => handleDuplicate(proposal)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={buildScopes.isPending}
+                          onClick={() => buildScopes.mutate({ content_text: (proposal as any).content_text, content_html: (proposal as any).content_html })}
+                        >
+                          <ListTree className="h-4 w-4 mr-2" />
+                          Build engagement scopes
                         </DropdownMenuItem>
                         {proposal.status !== "sent" && (
                           <DropdownMenuItem
