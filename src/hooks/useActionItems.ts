@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -350,22 +351,28 @@ export function useCreateActionItem(projectId: string) {
       meeting_id?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      // Build the row without the newer scope_id / meeting_id keys unless they're
+      // actually being set — writing a column the PostgREST schema cache hasn't
+      // picked up yet (right after a migration deploy) makes the whole insert
+      // fail, which previously showed up as "the task was taken but not added".
+      const row: Record<string, unknown> = {
+        project_id: projectId,
+        created_by: user.id,
+        title: payload.title,
+        description: payload.description || null,
+        priority: payload.priority || 'medium',
+        assigned_to: payload.assigned_to || null,
+        due_date: payload.due_date || null,
+        tags: payload.tags || [],
+        linked_entity_type: payload.linked_entity_type || null,
+        linked_entity_id: payload.linked_entity_id || null,
+      };
+      if (payload.scope_id != null) row.scope_id = payload.scope_id;
+      if (payload.meeting_id != null) row.meeting_id = payload.meeting_id;
+
       const { data, error } = await supabase
         .from('project_action_items')
-        .insert({
-          project_id: projectId,
-          created_by: user.id,
-          title: payload.title,
-          description: payload.description || null,
-          priority: payload.priority || 'medium',
-          assigned_to: payload.assigned_to || null,
-          due_date: payload.due_date || null,
-          tags: payload.tags || [],
-          linked_entity_type: payload.linked_entity_type || null,
-          linked_entity_id: payload.linked_entity_id || null,
-          scope_id: payload.scope_id ?? null,
-          meeting_id: payload.meeting_id ?? null,
-        } as never)
+        .insert(row as never)
         .select()
         .single();
 
@@ -395,6 +402,7 @@ export function useCreateActionItem(projectId: string) {
       qc.invalidateQueries({ queryKey: ITEMS_QUERY_KEY(projectId) });
       qc.invalidateQueries({ queryKey: MY_ITEMS_QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Couldn't add action item: ${e.message}`),
   });
 }
 
@@ -462,6 +470,7 @@ export function useUpdateActionItem(projectId: string) {
       qc.invalidateQueries({ queryKey: ITEMS_QUERY_KEY(projectId) });
       qc.invalidateQueries({ queryKey: MY_ITEMS_QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Couldn't save action item: ${e.message}`),
   });
 }
 

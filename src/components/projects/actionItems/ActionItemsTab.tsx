@@ -19,7 +19,7 @@ import { PRIORITY_META, BUCKET_TONE, BUCKET_DOT } from './actionItemMeta';
 const ALL = '__all__';
 const UNASSIGNED_KEY = '__unassigned__';
 
-export function ActionItemsTab({ projectId }: { projectId: string }) {
+export function ActionItemsTab({ projectId, projectName }: { projectId: string; projectName?: string }) {
   const { data: items, isLoading } = useActionItemsByProject(projectId);
   const { data: scopes } = useProjectScopes(projectId);
   const { data: team } = useProjectTeamMembers(projectId);
@@ -54,10 +54,12 @@ export function ActionItemsTab({ projectId }: { projectId: string }) {
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
   const openCount = (items ?? []).filter((i) => i.status !== 'done' && i.status !== 'cancelled').length;
 
-  const quickAdd = () => {
-    if (!quickTitle.trim()) return;
-    create.mutate({ title: quickTitle.trim() });
-    setQuickTitle('');
+  const quickAdd = async () => {
+    if (!quickTitle.trim() || create.isPending) return;
+    try {
+      await create.mutateAsync({ title: quickTitle.trim() });
+      setQuickTitle('');
+    } catch { /* toast surfaced by the hook; keep the text so it isn't lost */ }
   };
 
   const toggleDone = (item: ActionItem) =>
@@ -149,7 +151,7 @@ export function ActionItemsTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} />
+      <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
     </div>
   );
 }

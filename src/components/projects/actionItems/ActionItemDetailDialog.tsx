@@ -5,14 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Send } from 'lucide-react';
+import { Trash2, Send, Printer, Mail, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   useUpdateActionItem, useDeleteActionItem, useActionItemComments, useCreateActionItemComment,
   type ActionItem,
 } from '@/hooks/useActionItems';
+import { useSendEmail } from '@/hooks/useSendEmail';
 import type { ProjectScope } from '@/hooks/useProjectScopes';
 import type { ProjectTeamMember } from '@/hooks/useProjectTeam';
+import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
 import { STATUS_META, STATUS_ORDER, PRIORITY_META, PRIORITY_ORDER } from './actionItemMeta';
 
 interface Props {
@@ -22,22 +24,57 @@ interface Props {
   item: ActionItem | null;
   scopes: ProjectScope[];
   team: ProjectTeamMember[];
+  projectName?: string;
 }
 
 const UNASSIGNED = '__unassigned__';
 const NO_SCOPE = '__no_scope__';
 
-export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, scopes, team }: Props) {
+export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, scopes, team, projectName }: Props) {
   const update = useUpdateActionItem(projectId);
   const del = useDeleteActionItem(projectId);
   const { data: comments } = useActionItemComments(open && item ? item.id : null);
   const createComment = useCreateActionItemComment();
+  const sendEmail = useSendEmail();
 
   const [desc, setDesc] = useState('');
   const [comment, setComment] = useState('');
-  useEffect(() => { if (item) setDesc(item.description ?? ''); }, [item, open]);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailNote, setEmailNote] = useState('');
+  useEffect(() => {
+    if (item) {
+      setDesc(item.description ?? '');
+      setEmailTo(item.assignee?.email ?? '');
+      setEmailNote('');
+      setEmailOpen(false);
+    }
+  }, [item, open]);
 
   if (!item) return null;
+
+  const scopeName = scopes.find((s) => s.id === item.scope_id)?.title ?? null;
+  const assigneeName = item.assignee?.full_name || item.assignee?.email || null;
+
+  const taskHtml = (note?: string) => buildTaskHtml({
+    title: item.title, description: item.description, status: item.status, priority: item.priority,
+    dueDate: item.due_date, assigneeName, projectName, scopeName, note: note ?? null,
+  });
+
+  const handlePrint = () => printTaskHtml(taskHtml());
+
+  const handleSendEmail = async () => {
+    const to = emailTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    if (!to.length) return;
+    try {
+      await sendEmail.mutateAsync({
+        recipients: to,
+        subject: `Action item: ${item.title}`,
+        bodyHtml: taskHtml(emailNote.trim() || undefined),
+      });
+      setEmailOpen(false);
+    } catch { /* toast handled by useSendEmail */ }
+  };
 
   const patch = (updates: Record<string, unknown>) =>
     update.mutate({ id: item.id, previous_assigned_to: item.assigned_to, ...updates } as never);
@@ -121,11 +158,28 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
             </div>
           </div>
 
-          <div className="flex justify-between border-t pt-3">
+          {emailOpen && (
+            <div className="border-t pt-3 space-y-2">
+              <Label className="text-xs">Email this task</Label>
+              <Input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="name@example.com, teammate@example.com" className="h-9" />
+              <Textarea rows={2} value={emailNote} onChange={(e) => setEmailNote(e.target.value)} placeholder="Add a note (optional)…" />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setEmailOpen(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSendEmail} disabled={sendEmail.isPending || !emailTo.trim()} className="gap-1.5">
+                  {sendEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t pt-3">
             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => { del.mutate(item.id); onOpenChange(false); }}>
               <Trash2 className="h-4 w-4 mr-1.5" />Delete
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Close</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5"><Printer className="h-4 w-4" />Print</Button>
+              <Button variant="outline" size="sm" onClick={() => setEmailOpen((v) => !v)} className="gap-1.5"><Mail className="h-4 w-4" />Email</Button>
+            </div>
           </div>
         </div>
       </DialogContent>
