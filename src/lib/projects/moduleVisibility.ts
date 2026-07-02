@@ -28,6 +28,7 @@ export type ProjectModuleSlug =
   | 'closeout'
   | 'proposals'
   | 'repository'
+  | 'invoicing'
   | 'client-portal';
 
 export type ModuleGroup = 'core' | 'compliance' | 'reports';
@@ -59,6 +60,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'procurement',   label: 'Procurement',         description: 'Procurement and buyout tracking',      group: 'reports' },
   { slug: 'safety',        label: 'Safety',              description: 'Safety observations and incidents',    group: 'reports' },
   { slug: 'closeout',      label: 'Closeout',            description: 'Project closeout package',             group: 'reports' },
+  { slug: 'invoicing',     label: 'Invoicing',           description: 'Bill against scope completion',        group: 'reports' },
   { slug: 'proposals',     label: 'Proposals',           description: 'AI proposal generator',                group: 'reports' },
   { slug: 'client-portal', label: 'Client portal',       description: 'External client access',               group: 'core' },
 ];
@@ -73,6 +75,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'repository',
   'project-log',
   'meetings',
+  'invoicing',
   'proposals',
   'client-portal',
 ]);
@@ -87,6 +90,7 @@ export interface ModuleVisibilityProject {
 // projects (but still turn-on-able per project from the admin Modules panel).
 export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'scope',
+  'invoicing',
 ]);
 
 /** Default visibility for a module before any admin override is applied. */
