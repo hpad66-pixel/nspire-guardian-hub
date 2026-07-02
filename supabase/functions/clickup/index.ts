@@ -65,7 +65,14 @@ serve(async (req) => {
       if (!token) return json({ error: "Paste your ClickUp API token." }, 400);
 
       const userRes = await cuGet(token, "/user");
-      if (!userRes.ok) return json({ error: "That token was rejected by ClickUp." }, 400);
+      if (!userRes.ok) {
+        const raw = await userRes.text().catch(() => "");
+        let reason = "";
+        try { reason = JSON.parse(raw)?.err || ""; } catch { reason = raw.slice(0, 120); }
+        return json({
+          error: `ClickUp rejected the token (HTTP ${userRes.status}${reason ? `: ${reason}` : ""}). Use a personal API token from ClickUp → avatar → Settings → Apps (starts with "pk_").`,
+        }, 400);
+      }
       const cuUser = (await userRes.json())?.user;
 
       let listName: string | null = null;
