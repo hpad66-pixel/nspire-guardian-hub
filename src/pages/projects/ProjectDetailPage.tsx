@@ -149,7 +149,9 @@ export default function ProjectDetailPage() {
   // in-page tabs — selecting one (click or ?tab= deep link) redirects to the
   // dedicated route. Keeps a single source of truth for each module's UI.
   const ROUTED_TABS: Record<string, string> = {
-    contracts: `/projects/${id}/contracts`,
+    // Contracts has no dedicated /contracts route — it lives under the financial
+    // cascade (prime contract page). Pointing here avoids a 404.
+    contracts: `/projects/${id}/financials/prime-contract`,
     repository: `/projects/${id}/repository`,
   };
   useEffect(() => {
