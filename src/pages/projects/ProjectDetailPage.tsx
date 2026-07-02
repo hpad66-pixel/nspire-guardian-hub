@@ -19,7 +19,7 @@ import {
   ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers,
-  CalendarDays, ClipboardList, Wallet, ListChecks, PenSquare, FileBarChart2,
+  CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
   MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
@@ -53,6 +53,7 @@ import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
+import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -291,6 +292,7 @@ export default function ProjectDetailPage() {
   // ── Tab definitions ────────────────────────────────────────────────────────
   const PROJECT_TABS = [
     { value: 'overview',     label: 'Overview',     shortLabel: 'Overview', icon: LayoutDashboard, group: 'core',       badge: null as number | null },
+    { value: 'scope',        label: 'Scope',        shortLabel: 'Scope',    icon: ListTree,        group: 'core',       badge: null as number | null },
     { value: 'schedule',     label: 'Schedule',     shortLabel: 'Schedule', icon: CalendarDays,    group: 'core',       badge: null as number | null },
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
     { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
@@ -873,6 +875,7 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                 </TabsContent>
+                <TabsContent value="scope" className="mt-0"><ScopesTab projectId={id!} /></TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
                 <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
                 <TabsContent value="gallery" className="mt-0 p-0 h-[calc(100vh-260px)]"><PhotoGallery context="project" contextId={id!} contextName={project.name} /></TabsContent>
@@ -1155,6 +1158,7 @@ export default function ProjectDetailPage() {
                   ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>)}
                 </div>
               </TabsContent>
+              <TabsContent value="scope"><ScopesTab projectId={id!} /></TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
               <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
               <TabsContent value="gallery" className="p-0 h-[calc(100vh-280px)]">
