@@ -227,26 +227,46 @@ serve(async (req) => {
       const listId = pmap?.list_id || conn.default_list_id;
       if (!listId) return json({ error: "Set a ClickUp list first." }, 400);
 
-      const payload: Record<string, unknown> = {
+      // Resolve the assignee's ClickUp member id by matching email against the
+      // list's members (Build OS user ids aren't ClickUp ids).
+      let assigneeId: number | null = null;
+      if (item.assigned_to) {
+        const { data: prof } = await admin.from("profiles").select("email").eq("user_id", item.assigned_to).maybeSingle();
+        const email = String(prof?.email ?? "").toLowerCase();
+        if (email) {
+          const mRes = await cuGet(conn.token, `/list/${listId}/member`);
+          if (mRes.ok) {
+            const members = (await mRes.json())?.members ?? [];
+            const m = members.find((x: any) => String(x.email ?? "").toLowerCase() === email);
+            if (m?.id != null) assigneeId = m.id;
+          }
+        }
+      }
+
+      const base: Record<string, unknown> = {
         name: item.title,
         description: item.description ?? "",
         priority: PRIORITY[item.priority] ?? 3,
       };
-      if (item.due_date) payload.due_date = new Date(item.due_date + "T12:00:00Z").getTime();
+      if (item.due_date) base.due_date = new Date(item.due_date + "T12:00:00Z").getTime();
 
       let taskId = item.clickup_task_id as string | null;
       let res: Response;
       if (taskId) {
+        // ClickUp update wants assignees as { add: [...] }.
+        const body = assigneeId != null ? { ...base, assignees: { add: [assigneeId] } } : base;
         res = await fetch(`${CU}/task/${taskId}`, {
           method: "PUT",
           headers: { Authorization: conn.token, "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         });
       } else {
+        // ClickUp create wants assignees as a plain array.
+        const body = assigneeId != null ? { ...base, assignees: [assigneeId] } : base;
         res = await fetch(`${CU}/list/${listId}/task`, {
           method: "POST",
           headers: { Authorization: conn.token, "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         });
       }
       if (!res.ok) {
@@ -259,7 +279,27 @@ serve(async (req) => {
       if (taskId && !item.clickup_task_id) {
         await admin.from("project_action_items").update({ clickup_task_id: taskId }).eq("id", item.id);
       }
-      return json({ ok: true, taskId, url: task?.url ?? (taskId ? `https://app.clickup.com/t/${taskId}` : null) });
+
+      // Sync new comments/updates as ClickUp comments (once each).
+      if (taskId) {
+        const { data: cmts } = await admin.from("action_item_comments")
+          .select("id, content, clickup_comment_id").eq("action_item_id", item.id).order("created_at", { ascending: true });
+        for (const c of (cmts ?? [])) {
+          if (c.clickup_comment_id) continue;
+          const cr = await fetch(`${CU}/task/${taskId}/comment`, {
+            method: "POST",
+            headers: { Authorization: conn.token, "Content-Type": "application/json" },
+            body: JSON.stringify({ comment_text: c.content, notify_all: false }),
+          });
+          if (cr.ok) {
+            const cd = await cr.json();
+            const cid = cd?.id ?? cd?.comment?.id ?? null;
+            if (cid != null) await admin.from("action_item_comments").update({ clickup_comment_id: String(cid) }).eq("id", c.id);
+          }
+        }
+      }
+
+      return json({ ok: true, taskId, assigned: assigneeId != null, url: task?.url ?? (taskId ? `https://app.clickup.com/t/${taskId}` : null) });
     }
 
     return json({ error: "Unknown action" }, 400);
