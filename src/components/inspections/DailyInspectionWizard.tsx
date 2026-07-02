@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { WeatherSelector } from './WeatherSelector';
 import { InspectionProgress } from './InspectionProgress';
 import { AssetCheckCard } from './AssetCheckCard';
+import { PrintableDailyInspectionReport } from './PrintableDailyInspectionReport';
+import { useManagedProperties } from '@/hooks/useProperties';
 import { PROPERTY_CONDITIONS } from '@/lib/inspections/checklistTemplates';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAssets, Asset } from '@/hooks/useAssets';
@@ -164,6 +166,8 @@ export function DailyInspectionWizard({
 
   const { data: assets = [] } = useAssets(propertyId);
   const { data: existingItems = [] } = useInspectionItems(inspection?.id || '');
+  const { data: managedProps = [] } = useManagedProperties();
+  const propertyName = managedProps.find((p) => p.id === propertyId)?.name || 'Property';
   const createInspection = useCreateDailyInspection();
   const updateInspection = useUpdateDailyInspection();
   const upsertItem = useUpsertInspectionItem();
@@ -866,6 +870,21 @@ export function DailyInspectionWizard({
         )}
       </div>
 
+      {/* Off-screen printable so Save PDF / Print / Email on the success screen
+          have a report element to capture (id must match the calls above). */}
+      {inspection && (
+        <div className="sr-only print:block" aria-hidden="true">
+          <PrintableDailyInspectionReport
+            id="printable-inspection-report"
+            inspection={inspection}
+            items={existingItems}
+            assets={assets}
+            propertyName={propertyName}
+            inspectorName={inspectorName}
+          />
+        </div>
+      )}
+
       <InspectionReportDialog
         open={showReportDialog}
         onOpenChange={setShowReportDialog}
@@ -878,7 +897,7 @@ export function DailyInspectionWizard({
           open={showEmailDialog}
           onOpenChange={setShowEmailDialog}
           inspectionId={inspection.id}
-          propertyName="Property"
+          propertyName={propertyName}
           inspectorName={inspectorName}
           inspectionDate={inspection.inspection_date}
           reportElementId="printable-inspection-report"
