@@ -29,6 +29,8 @@ import {
   Edit, Archive, Trash2, Filter, X,
 } from 'lucide-react';
 import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
+import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
+import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import { useProperties } from '@/hooks/useProperties';
 import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOrders';
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
@@ -80,6 +82,7 @@ export default function ProjectsDashboard() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | ProjectKind>('all');
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [search, setSearch] = useState('');
@@ -88,6 +91,7 @@ export default function ProjectsDashboard() {
 
   // --- Data ---
   const { data: projects, isLoading } = useProjects();
+  const { financials } = useAllProjectFinancials();
   const { data: stats } = useProjectStats();
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
@@ -158,6 +162,11 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter(isActiveProject);
     }
 
+    // Kind filter (construction vs consulting) — they measure different things.
+    if (kindFilter !== 'all') {
+      filtered = filtered.filter(p => projectKind(p) === kindFilter);
+    }
+
     // Health filter
     if (healthFilter !== 'all') {
       filtered = filtered.filter(p => computeHealth(p) === healthFilter);
@@ -175,7 +184,10 @@ export default function ProjectsDashboard() {
         case 'name': av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
         case 'created': av = a.created_at; bv = b.created_at; break;
         case 'due_date': av = a.target_end_date || '9999'; bv = b.target_end_date || '9999'; break;
-        case 'budget': av = Number(a.budget) || 0; bv = Number(b.budget) || 0; break;
+        case 'budget':
+          av = financials.get(a.id)?.revised_contract || Number(a.budget) || 0;
+          bv = financials.get(b.id)?.revised_contract || Number(b.budget) || 0;
+          break;
         case 'health': av = HEALTH_ORDER[computeHealth(a)]; bv = HEALTH_ORDER[computeHealth(b)]; break;
         default: av = ''; bv = '';
       }
@@ -185,7 +197,14 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, propertyFilterId, search, statusFilter, healthFilter, sectorFilter, sortBy, sortDir]);
+  }, [projects, financials, propertyFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
+
+  // Real portfolio budget/billed from the financial view (projects.budget is never populated).
+  const portfolioMoney = useMemo(() => {
+    let budget = 0, billed = 0;
+    financials.forEach((f) => { budget += f.revised_contract; billed += f.billed_to_date; });
+    return { budget, billed };
+  }, [financials]);
 
   const handleArchive = (project: Project) => {
     updateProject.mutate({ id: project.id, status: 'closed' });
@@ -193,9 +212,12 @@ export default function ProjectsDashboard() {
 
   // --- Card sub-component (inline to avoid prop-drilling) ---
   const ProjectCard = ({ project }: { project: Project }) => {
-    const progress = project.budget && project.spent
-      ? Math.round((Number(project.spent) / Number(project.budget)) * 100)
-      : 0;
+    // Real budget/billed comes from the financial view (prime + approved COs),
+    // not the never-populated projects.budget column.
+    const fin = financials.get(project.id);
+    const budgetVal = fin && fin.revised_contract > 0 ? fin.revised_contract : Number(project.budget) || 0;
+    const spentVal = fin && fin.billed_to_date > 0 ? fin.billed_to_date : Number(project.spent) || 0;
+    const progress = budgetVal ? Math.round((spentVal / budgetVal) * 100) : 0;
     const isClientProject = (project as any).project_type === 'client';
     const parentName = isClientProject ? (project as any).client?.name : project.property?.name;
     const health = computeHealth(project);
@@ -282,7 +304,7 @@ export default function ProjectsDashboard() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Budget</span>
               <span className="text-xs font-medium">
-                {project.spent ? formatCurrency(Number(project.spent)) : '$0'} / {project.budget ? formatCurrency(Number(project.budget)) : '$0'}
+                {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
               </span>
             </div>
             <Progress value={progress} className="h-1.5" />
@@ -346,7 +368,7 @@ export default function ProjectsDashboard() {
       {/* ── Stats ── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Active Projects" value={stats?.active || 0} subtitle={`${stats?.planning || 0} in planning`} icon={FolderKanban} />
-        <StatCard title="Total Budget" value={stats ? formatCurrency(stats.totalBudget) : '$0'} subtitle={stats ? `${formatCurrency(stats.totalSpent)} spent` : '$0 spent'} icon={DollarSign} />
+        <StatCard title="Total Budget" value={formatCurrency(portfolioMoney.budget || stats?.totalBudget || 0)} subtitle={`${formatCurrency(portfolioMoney.billed || stats?.totalSpent || 0)} billed`} icon={DollarSign} />
         <StatCard title="On Schedule" value={stats?.active || 0} subtitle={`${stats?.onHold || 0} on hold`} icon={Calendar} variant="success" />
         <StatCard title="Open Change Orders" value={changeOrderStats?.pendingCount || 0} subtitle={changeOrderStats ? formatCurrency(changeOrderStats.pendingAmount) + ' pending' : '$0 pending'} icon={FileText} variant="moderate" />
       </div>
@@ -452,6 +474,13 @@ export default function ProjectsDashboard() {
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Kind: construction vs consulting */}
+          <ToggleGroup type="single" value={kindFilter} onValueChange={(v) => setKindFilter((v as 'all' | ProjectKind) || 'all')} className="border rounded-lg p-0.5 bg-muted/30 h-9">
+            <ToggleGroupItem value="all" className="h-7 px-2.5 text-xs">All</ToggleGroupItem>
+            <ToggleGroupItem value="construction" className="h-7 px-2.5 text-xs">Construction</ToggleGroupItem>
+            <ToggleGroupItem value="consulting" className="h-7 px-2.5 text-xs">Consulting</ToggleGroupItem>
+          </ToggleGroup>
 
           {/* Sort by */}
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>

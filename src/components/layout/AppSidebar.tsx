@@ -29,6 +29,7 @@ import {
   Shield,
   Home,
   Sunrise,
+  Gauge,
   MessageCircle,
   Phone,
   Box,
@@ -186,6 +187,7 @@ export function AppSidebar() {
           <div className="space-y-px">
             <NavItem to="/dashboard" icon={Home} label="Dashboard" collapsed={collapsed} end />
             <NavItem to="/my-day" icon={Sunrise} label="My Day" collapsed={collapsed} />
+            <NavItem to="/cockpit" icon={Gauge} label="Cockpit" collapsed={collapsed} />
             <NavItem to="/messages" icon={MessageCircle} label="Messages" collapsed={collapsed} badge={unreadCount} />
             <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
           </div>
