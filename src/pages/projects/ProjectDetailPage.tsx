@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban, Lightbulb,
+  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban, FolderTree, Lightbulb,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
@@ -71,6 +71,8 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
+import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
+import { useProjectTree } from '@/hooks/useProjectTree';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -123,7 +125,7 @@ const CONSULTING_TAB_GROUPS = [
   { key: 'client',     label: 'Client',     color: 'text-amber-400' },
 ];
 const CONSULTING_GROUP_OF: Record<string, string> = {
-  overview: 'engagement', scope: 'engagement', schedule: 'engagement',
+  overview: 'engagement', subprojects: 'engagement', scope: 'engagement', schedule: 'engagement',
   'action-items': 'delivery', meetings: 'delivery', 'project-log': 'delivery',
   repository: 'delivery', gallery: 'delivery', 'daily-logs': 'delivery',
   rfis: 'delivery', submittals: 'delivery', 'punch-list': 'delivery',
@@ -153,6 +155,9 @@ export default function ProjectDetailPage() {
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
+  const { tree: projectTree } = useProjectTree();
+  const projectAncestors = id ? projectTree.ancestors(id).reverse() : []; // root → parent
+  const subprojectCount = id ? projectTree.children(id).length : 0;
   const { data: milestones } = useMilestonesByProject(id ?? null);
   const { data: dailyReports } = useDailyReportsByProject(id ?? null);
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
@@ -361,6 +366,7 @@ export default function ProjectDetailPage() {
   // ── Tab definitions ────────────────────────────────────────────────────────
   const PROJECT_TABS = [
     { value: 'overview',     label: 'Overview',     shortLabel: 'Overview', icon: LayoutDashboard, group: 'core',       badge: null as number | null },
+    { value: 'subprojects',  label: 'Subprojects',  shortLabel: 'Subs',     icon: FolderTree,      group: 'core',       badge: subprojectCount > 0 ? subprojectCount : null },
     { value: 'scope',        label: 'Scope',        shortLabel: 'Scope',    icon: ListTree,        group: 'core',       badge: null as number | null },
     { value: 'schedule',     label: 'Schedule',     shortLabel: 'Schedule', icon: CalendarDays,    group: 'core',       badge: null as number | null },
     { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
@@ -549,6 +555,16 @@ export default function ProjectDetailPage() {
               <FolderKanban className="h-6 w-6 md:h-7 md:w-7 text-white" />
             </div>
             <div className="min-w-0 flex-1">
+              {projectAncestors.length > 0 && (
+                <div className="flex items-center gap-1 mb-1 text-xs text-muted-foreground flex-wrap">
+                  {projectAncestors.map((a) => (
+                    <span key={a.id} className="flex items-center gap-1">
+                      <button onClick={() => navigate(`/projects/${a.id}`)} className="hover:text-foreground hover:underline truncate max-w-[160px]">{a.name}</button>
+                      <ChevronRight className="h-3 w-3" />
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2 mb-1.5">
                 <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight truncate">{project.name}</h1>
                 {isConsulting && (
@@ -957,6 +973,7 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                 </TabsContent>
+                <TabsContent value="subprojects" className="mt-0"><SubprojectsTab projectId={id!} project={project} /></TabsContent>
                 <TabsContent value="scope" className="mt-0"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
                 <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
@@ -1230,6 +1247,7 @@ export default function ProjectDetailPage() {
                   ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>)}
                 </div>
               </TabsContent>
+              <TabsContent value="subprojects"><SubprojectsTab projectId={id!} project={project} /></TabsContent>
               <TabsContent value="scope"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
               <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>

@@ -10,6 +10,9 @@ type ProjectRow = Database['public']['Tables']['projects']['Row'];
 type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 
 export interface Project extends ProjectRow {
+  // Hierarchy: null = top-level; else this project is a subproject of the parent.
+  // (Column exists via migration 20260705100000; generated types may lag.)
+  parent_project_id?: string | null;
   property?: { name: string } | null;
   client?: { name: string; client_type?: string } | null;
   milestones?: Array<{

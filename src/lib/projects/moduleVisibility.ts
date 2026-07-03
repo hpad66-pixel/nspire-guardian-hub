@@ -11,6 +11,7 @@
 
 export type ProjectModuleSlug =
   | 'overview'
+  | 'subprojects'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -45,6 +46,7 @@ export interface ProjectModuleDef {
 // layout; the sidebar itself keeps its own tab ordering.
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview',      label: 'Overview',            description: 'Engagement summary and health',        group: 'core' },
+  { slug: 'subprojects',   label: 'Subprojects',         description: 'Child projects rolled up to this one',  group: 'core' },
   { slug: 'scope',         label: 'Scope',               description: 'Workstreams, owners, % complete',       group: 'core' },
   { slug: 'action-items',  label: 'Action items',        description: 'Tasks grouped by date, owners, updates', group: 'compliance' },
   { slug: 'schedule',      label: 'Schedule & timelines', description: 'Milestones, deadlines, timeline',     group: 'core' },
@@ -71,6 +73,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
 // here defaults to hidden for project_type === 'consulting'.
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
+  'subprojects',
   'scope',
   'action-items',
   'schedule',

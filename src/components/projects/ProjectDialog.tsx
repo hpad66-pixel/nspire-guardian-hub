@@ -33,15 +33,19 @@ interface ProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project?: ProjectRow | null;
+  // When set, the dialog creates a SUBPROJECT under this parent: it inherits the
+  // parent's type + client/property and links parent_project_id on save.
+  parentProject?: ProjectRow | null;
 }
 
 type ProjectType = 'property' | 'client' | 'consulting';
 
-export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProps) {
+export function ProjectDialog({ open, onOpenChange, project, parentProject }: ProjectDialogProps) {
   const isEditing = !!project;
+  const isSubproject = !isEditing && !!parentProject;
 
-  // Determine initial type from existing project
-  const existingType = project ? (project as any).project_type : null;
+  // Determine initial type from existing project, or inherit the parent's.
+  const existingType = project ? (project as any).project_type : (parentProject ? (parentProject as any).project_type : null);
   const initialType: ProjectType =
     existingType === 'client' || existingType === 'consulting' ? existingType : 'property';
 
@@ -54,8 +58,8 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
   const [dateError, setDateError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    property_id: project?.property_id || '',
-    client_id: (project as any)?.client_id || '',
+    property_id: project?.property_id || parentProject?.property_id || '',
+    client_id: (project as any)?.client_id || (parentProject as any)?.client_id || '',
     name: project?.name || '',
     description: project?.description || '',
     scope: project?.scope || '',
@@ -106,6 +110,7 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
       property_id: projectType === 'property' ? formData.property_id || null : null,
       client_id: projectType !== 'property' ? formData.client_id || null : null,
     };
+    if (isSubproject && parentProject) payload.parent_project_id = parentProject.id;
 
     try {
       if (isEditing && project) {
@@ -137,9 +142,13 @@ export function ProjectDialog({ open, onOpenChange, project }: ProjectDialogProp
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Project' : 'Create New Project'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Subproject' : 'Create New Project'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the project details below.' : 'Enter the details for the new project.'}
+            {isEditing
+              ? 'Update the project details below.'
+              : isSubproject
+                ? `A subproject of ${parentProject?.name} — its own scope, schedule, and budget, rolled up to the parent.`
+                : 'Enter the details for the new project.'}
           </DialogDescription>
         </DialogHeader>
 
