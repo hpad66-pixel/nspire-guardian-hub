@@ -11,12 +11,13 @@ export interface ConsultingMeeting {
   attendees: string | null;
   minutes: string | null;
   transcript: string | null;
+  agenda: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export type MeetingInput = Partial<Pick<ConsultingMeeting, 'title' | 'meeting_date' | 'attendees' | 'minutes' | 'transcript'>>;
+export type MeetingInput = Partial<Pick<ConsultingMeeting, 'title' | 'meeting_date' | 'attendees' | 'minutes' | 'transcript' | 'agenda'>>;
 
 const table = () => supabase.from('consulting_meetings' as never) as any;
 

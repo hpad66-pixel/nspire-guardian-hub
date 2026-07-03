@@ -46,6 +46,9 @@ Rules:
 - Do NOT duplicate the same task. One item per distinct task.
 - Only ever use an assignee_id that appears in the ROSTER. Never invent an id.
 - Rewrite into clear, professional language — no filler, no speaker names in the title.
+- GLOSSARY: use the exact spellings listed. If a word in the transcript closely matches a glossary
+  "sounds like" variant (a transcription mishear, e.g. "Roman" for "Dhruman"), replace it with the
+  canonical term everywhere (titles, descriptions, minutes). Names matter — get them right.
 
 Respond ONLY with valid JSON in exactly this shape:
 {"minutes":"<html fragment>","items":[{"title":"string","description":"string","assignee_id":"string","due_date":"string","priority":"urgent|high|medium|low"}]}`;
@@ -108,7 +111,11 @@ serve(async (req) => {
       ? `ROSTER (assignee_id → name):\n${roster.map((m) => `- ${m.id} → ${m.name}`).join("\n")}\n\n`
       : "ROSTER: (none — leave assignee_id empty)\n\n";
     const dateBlock = meetingDate ? `MEETING DATE: ${meetingDate}\n\n` : "";
-    const userPrompt = `${projectName ? `Project: ${projectName}\n\n` : ""}${dateBlock}${rosterBlock}MEETING TRANSCRIPT / NOTES:\n${text}`;
+    const glossary: Array<{ term: string; variants: string[] }> = Array.isArray(body.glossary) ? body.glossary : [];
+    const glossaryBlock = glossary.length
+      ? `GLOSSARY (canonical term ← sounds like):\n${glossary.map((g) => `- ${g.term}${(g.variants ?? []).length ? ` ← ${(g.variants).join(", ")}` : ""}`).join("\n")}\n\n`
+      : "";
+    const userPrompt = `${projectName ? `Project: ${projectName}\n\n` : ""}${dateBlock}${glossaryBlock}${rosterBlock}MEETING TRANSCRIPT / NOTES:\n${text}`;
 
     const anthropic = Deno.env.get("ANTHROPIC_API_KEY");
     if (!anthropic) return json({ error: "AI service is not configured." }, 500);
