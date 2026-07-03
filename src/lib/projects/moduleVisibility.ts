@@ -12,6 +12,7 @@
 export type ProjectModuleSlug =
   | 'overview'
   | 'subprojects'
+  | 'env-compliance'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -47,6 +48,7 @@ export interface ProjectModuleDef {
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview',      label: 'Overview',            description: 'Engagement summary and health',        group: 'core' },
   { slug: 'subprojects',   label: 'Subprojects',         description: 'Child projects rolled up to this one',  group: 'core' },
+  { slug: 'env-compliance', label: 'Environmental Compliance', description: 'Sampling, exceedances, obligations, regulatory correspondence', group: 'reports' },
   { slug: 'scope',         label: 'Scope',               description: 'Workstreams, owners, % complete',       group: 'core' },
   { slug: 'action-items',  label: 'Action items',        description: 'Tasks grouped by date, owners, updates', group: 'compliance' },
   { slug: 'schedule',      label: 'Schedule & timelines', description: 'Milestones, deadlines, timeline',     group: 'core' },
@@ -74,6 +76,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
   'subprojects',
+  'env-compliance',
   'scope',
   'action-items',
   'schedule',
@@ -98,6 +101,7 @@ export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<P
   'scope',
   'action-items',
   'invoicing',
+  'env-compliance',
 ]);
 
 /** Default visibility for a module before any admin override is applied. */

@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban, FolderTree, Lightbulb,
+  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FlaskConical, FolderKanban, FolderTree, Lightbulb,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
@@ -73,6 +73,7 @@ import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
 import { ConsultingClientPortalCard } from '@/components/projects/ConsultingClientPortalCard';
 import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
+import { EnvComplianceTab } from '@/components/projects/envcompliance/EnvComplianceTab';
 import { useProjectTree } from '@/hooks/useProjectTree';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -131,6 +132,7 @@ const CONSULTING_GROUP_OF: Record<string, string> = {
   repository: 'delivery', gallery: 'delivery', 'daily-logs': 'delivery',
   rfis: 'delivery', submittals: 'delivery', 'punch-list': 'delivery',
   progress: 'delivery', procurement: 'delivery', safety: 'delivery', closeout: 'delivery',
+  'env-compliance': 'delivery',
   invoicing: 'client', proposals: 'client', 'client-portal': 'client',
   financials: 'client', contracts: 'client',
 };
@@ -382,6 +384,7 @@ export default function ProjectDetailPage() {
     { value: 'progress',     label: 'Progress',     shortLabel: 'Progress', icon: TrendingUpIcon,  group: 'reports',    badge: null as number | null },
     { value: 'procurement',  label: 'Procurement',  shortLabel: 'Procure',  icon: ShoppingCart,    group: 'reports',    badge: null as number | null },
     { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },
+    { value: 'env-compliance', label: 'Environmental Compliance', shortLabel: 'Env', icon: FlaskConical, group: 'reports', badge: null as number | null },
     { value: 'meetings',     label: 'Meetings & Agenda', shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
@@ -988,6 +991,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="progress" className="mt-0"><ProgressTab projectId={id!} /></TabsContent>
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
+                <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
                 <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
@@ -1268,6 +1272,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="progress"><ProgressTab projectId={id!} /></TabsContent>
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
+              <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
               <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
