@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toDateOnly } from '@/lib/date';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -19,7 +20,7 @@ export function ConsultingMeetingsTab({ projectId, projectName }: { projectId: s
   const itemCount = (mid: string) => (items ?? []).filter((i) => i.meeting_id === mid).length;
 
   const addMeeting = async () => {
-    const m = await create.mutateAsync({ title: 'Meeting', meeting_date: new Date().toISOString().slice(0, 10) });
+    const m = await create.mutateAsync({ title: 'Meeting', meeting_date: toDateOnly(new Date()) });
     setOpenId((m as ConsultingMeeting).id);
   };
 

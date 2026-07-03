@@ -146,7 +146,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
               </div>
               <div className="grid gap-1.5">
                 <Label className="text-xs">Date</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} onBlur={() => date !== meeting.meeting_date && save({ meeting_date: date })} />
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} onBlur={() => { if (date && date !== meeting.meeting_date) update.mutate({ id: meeting.id, meeting_date: date } as never, { onSuccess: () => toast.success('Meeting date updated') }); }} />
               </div>
               <div className="grid gap-1.5">
                 <Label className="text-xs">Attendees</Label>
