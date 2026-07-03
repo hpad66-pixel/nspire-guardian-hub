@@ -46,8 +46,8 @@ const CHIP: Record<string, { bg: string; fg: string; label: string }> = {
 };
 
 export function buildAgendaHtml(input: AgendaDocInput): string {
-  const primary = input.brandPrimary || 'EPPIS AI';
-  const powered = input.brandPowered || 'APAS AI';
+  const primary = input.brandPrimary || 'APAS AI';
+  const powered = (input.brandPowered ?? '').trim(); // optional co-brand
 
   let n = 0;
   const groupsHtml = input.groups.map((g) => {
@@ -81,8 +81,8 @@ export function buildAgendaHtml(input: AgendaDocInput): string {
     <!-- co-brand band -->
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
       <tr>
-        <td style="font-family:Georgia,'Playfair Display',serif;font-size:19px;font-weight:700;letter-spacing:.02em;color:#1A1714;">${esc(primary)}</td>
-        <td style="text-align:right;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a877f;">Powered by <span style="color:#1A1714;font-weight:700;">${esc(powered)}</span></td>
+        <td style="font-family:Georgia,'Playfair Display',serif;font-size:20px;font-weight:700;letter-spacing:.02em;color:#1A1714;">${esc(primary)}</td>
+        ${powered ? `<td style="text-align:right;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a877f;">Powered by <span style="color:#1A1714;font-weight:700;">${esc(powered)}</span></td>` : ''}
       </tr>
     </table>
     <div style="height:3px;background:linear-gradient(90deg,#C4A35A,#C4A35A 40%,#e7ded0);border-radius:2px;margin:10px 0 0;"></div>
@@ -97,7 +97,7 @@ export function buildAgendaHtml(input: AgendaDocInput): string {
     ${groupsHtml || '<div style="margin-top:24px;color:#8a877f;font-size:14px;">No agenda items yet.</div>'}
 
     <div style="margin-top:30px;padding-top:14px;border-top:1px solid #efece5;font-size:11.5px;color:#a8a49c;display:flex;justify-content:space-between;">
-      <span>${esc(primary)} &nbsp;·&nbsp; Powered by ${esc(powered)}</span>
+      <span>${esc(primary)}${powered ? ` &nbsp;·&nbsp; Powered by ${esc(powered)}` : ''}</span>
       <span>projos.ai</span>
     </div>
   </div>`;
