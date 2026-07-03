@@ -20,7 +20,7 @@ export interface AgendaItem {
 
 export type NewAgendaItem = Omit<AgendaItem, 'id' | 'meeting_id' | 'project_id' | 'discussed'>;
 
-const table = () => supabase.from('meeting_agenda_items' as never) as any;
+const table = () => supabase.from('consulting_agenda_items' as never) as any;
 
 export function useMeetingAgendaItems(meetingId: string | null | undefined, projectId: string) {
   const qc = useQueryClient();
