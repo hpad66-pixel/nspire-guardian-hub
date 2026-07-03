@@ -20,7 +20,7 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal,
+  MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal, X,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature,
@@ -44,7 +44,7 @@ import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
 import { useRFIStats, useRFIsByProject } from '@/hooks/useRFIs';
 import { useSubmittalsByProject } from '@/hooks/useSubmittals';
 import { usePunchItemStats } from '@/hooks/usePunchItems';
-import { useActionItemsByProject } from '@/hooks/useActionItems';
+import { useActionItemsByProject, useDeleteActionItem } from '@/hooks/useActionItems';
 import { MilestoneTimeline } from '@/components/projects/MilestoneTimeline';
 import { GanttChart } from '@/components/projects/GanttChart';
 import { DailyReportsList } from '@/components/projects/DailyReportsList';
@@ -162,6 +162,8 @@ export default function ProjectDetailPage() {
   const { data: rfis = [] } = useRFIsByProject(id ?? null);
   const { data: submittals = [] } = useSubmittalsByProject(id ?? null);
   const { data: actionItems = [] } = useActionItemsByProject(id ?? null);
+  const deleteActionItem = useDeleteActionItem(id ?? '');
+  const [confirmClearTasks, setConfirmClearTasks] = useState(false);
   const openTaskCount = actionItems.filter(i => i.status !== 'done' && i.status !== 'cancelled').length;
   const { data: teamMembers = [] } = useProjectTeamMembers(id ?? null);
   // No one is explicitly on the team, but people have clearly worked the project —
@@ -198,7 +200,7 @@ export default function ProjectDetailPage() {
   in14Days.setDate(today.getDate() + 14);
 
   // ── Overdue items (past due, still open/pending)
-  const overdueItems: { label: string; sub: string; tab: string; daysLate: number }[] = [
+  const overdueItems: { label: string; sub: string; tab: string; daysLate: number; id?: string; kind?: string }[] = [
     ...rfis
       .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) < today)
       .map(r => ({
@@ -206,6 +208,7 @@ export default function ProjectDetailPage() {
         sub: r.subject,
         tab: 'rfis',
         daysLate: Math.floor((today.getTime() - new Date(r.due_date!).getTime()) / 86400000),
+        id: r.id, kind: 'rfi',
       })),
     ...submittals
       .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) < today)
@@ -214,29 +217,66 @@ export default function ProjectDetailPage() {
         sub: s.title,
         tab: 'submittals',
         daysLate: Math.floor((today.getTime() - new Date(s.due_date!).getTime()) / 86400000),
+        id: s.id, kind: 'submittal',
       })),
     ...actionItems
       .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) < today)
       .map(a => ({
         label: 'Task',
         sub: a.title,
-        tab: 'overview',
+        tab: 'action-items',
         daysLate: Math.floor((today.getTime() - new Date(a.due_date!).getTime()) / 86400000),
+        id: a.id, kind: 'task',
       })),
   ].sort((a, b) => b.daysLate - a.daysLate);
 
   // ── Due this week (due in next 7 days, not overdue)
-  const dueSoonItems: { label: string; sub: string; tab: string; dueDate: Date }[] = [
+  const dueSoonItems: { label: string; sub: string; tab: string; dueDate: Date; id?: string; kind?: string }[] = [
     ...rfis
       .filter(r => (r.status === 'open' || r.status === 'pending') && r.due_date && new Date(r.due_date) >= today && new Date(r.due_date) <= new Date(today.getTime() + 7*86400000))
-      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!) })),
+      .map(r => ({ label: `RFI-${String(r.rfi_number).padStart(3,'0')}`, sub: r.subject, tab: 'rfis', dueDate: new Date(r.due_date!), id: r.id, kind: 'rfi' })),
     ...submittals
       .filter(s => (s.status === 'pending' || s.status === 'revise') && s.due_date && new Date(s.due_date) >= today && new Date(s.due_date) <= new Date(today.getTime() + 7*86400000))
-      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!) })),
+      .map(s => ({ label: `SUB-${String(s.submittal_number).padStart(3,'0')}`, sub: s.title, tab: 'submittals', dueDate: new Date(s.due_date!), id: s.id, kind: 'submittal' })),
     ...actionItems
       .filter(a => !['done','cancelled'].includes(a.status) && a.due_date && new Date(a.due_date) >= today && new Date(a.due_date) <= new Date(today.getTime() + 7*86400000))
-      .map(a => ({ label: 'Task', sub: a.title, tab: 'overview', dueDate: new Date(a.due_date!) })),
+      .map(a => ({ label: 'Task', sub: a.title, tab: 'action-items', dueDate: new Date(a.due_date!), id: a.id, kind: 'task' })),
   ].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+  // Ids of all the "Task" (action-item) chips in the attention lanes — for the
+  // per-chip X and the "clear all tasks" action.
+  const attentionTaskIds = [...overdueItems, ...dueSoonItems].filter(i => i.kind === 'task' && i.id).map(i => i.id!);
+
+  // Shared attention-chip renderer (used by both overdue + due-this-week lanes,
+  // desktop + mobile). Task chips get an X to delete them straight from here.
+  const renderAttentionChip = (
+    item: { label: string; sub: string; tab: string; daysLate?: number; dueDate?: Date; id?: string; kind?: string },
+    tone: 'destructive' | 'warning',
+    key: number,
+  ) => {
+    const border = tone === 'destructive' ? 'border-destructive/20 bg-destructive/5 hover:bg-destructive/10' : 'border-warning/20 bg-warning/5 hover:bg-warning/10';
+    const accent = tone === 'destructive' ? 'text-destructive' : 'text-warning';
+    return (
+      <div key={key} className={cn('group flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-lg border', border)}>
+        <button onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 text-left min-w-0 py-0.5">
+          <span className={cn('text-[10px] font-bold shrink-0', accent)}>{item.label}</span>
+          <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
+          {item.daysLate != null && <span className={cn('text-[10px] font-semibold shrink-0 ml-0.5', accent)}>{item.daysLate}d late</span>}
+          {item.dueDate && <span className="text-[10px] text-muted-foreground shrink-0 ml-0.5">{format(item.dueDate, 'MMM d')}</span>}
+        </button>
+        {item.kind === 'task' && item.id && (
+          <button
+            onClick={() => deleteActionItem.mutate(item.id!)}
+            title="Remove task"
+            aria-label="Remove task"
+            className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   // ── Waiting on others (submitted/answered, awaiting their move)
   const waitingItems: { label: string; sub: string; tab: string }[] = [
@@ -721,11 +761,26 @@ export default function ProjectDetailPage() {
                             </span>
                           )}
                         </div>
-                        {comingUp.length > 0 && (
-                          <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
-                            {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
-                          </span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {comingUp.length > 0 && (
+                            <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                              {comingUp.length} deadline{comingUp.length !== 1 ? 's' : ''} in next 14 days
+                            </span>
+                          )}
+                          {attentionTaskIds.length > 0 && (
+                            confirmClearTasks ? (
+                              <span className="flex items-center gap-1.5 text-[11px]">
+                                <span className="text-muted-foreground">Clear {attentionTaskIds.length} tasks?</span>
+                                <button className="font-semibold text-destructive hover:underline" onClick={() => { attentionTaskIds.forEach((tid) => deleteActionItem.mutate(tid)); setConfirmClearTasks(false); }}>Clear</button>
+                                <button className="text-muted-foreground hover:underline" onClick={() => setConfirmClearTasks(false)}>Cancel</button>
+                              </span>
+                            ) : (
+                              <button className="text-[11px] text-muted-foreground hover:text-destructive inline-flex items-center gap-1" onClick={() => setConfirmClearTasks(true)}>
+                                <Trash2 className="h-3 w-3" />Clear tasks
+                              </button>
+                            )
+                          )}
+                        </div>
                       </div>
                       {/* All clear state */}
                       {allClear && (
@@ -763,20 +818,10 @@ export default function ProjectDetailPage() {
                                 Overdue — action required
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                {overdueItems.slice(0, 5).map((item, i) => (
-                                  <button
-                                    key={i}
-                                    onClick={() => setActiveTab(item.tab)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
-                                  >
-                                    <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
-                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
-                                    <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
-                                  </button>
-                                ))}
-                                {overdueItems.length > 5 && (
+                                {overdueItems.slice(0, 12).map((item, i) => renderAttentionChip(item, 'destructive', i))}
+                                {overdueItems.length > 12 && (
                                   <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">
-                                    +{overdueItems.length - 5} more
+                                    +{overdueItems.length - 12} more
                                   </span>
                                 )}
                               </div>
@@ -790,17 +835,7 @@ export default function ProjectDetailPage() {
                                 Due this week
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                {dueSoonItems.map((item, i) => (
-                                  <button
-                                    key={i}
-                                    onClick={() => setActiveTab(item.tab)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
-                                  >
-                                    <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
-                                    <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
-                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
-                                  </button>
-                                ))}
+                                {dueSoonItems.map((item, i) => renderAttentionChip(item, 'warning', i))}
                               </div>
                             </div>
                           )}
@@ -1083,14 +1118,8 @@ export default function ProjectDetailPage() {
                               Overdue — action required
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {overdueItems.slice(0, 5).map((item, i) => (
-                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left">
-                                  <span className="text-[10px] font-bold text-destructive shrink-0">{item.label}</span>
-                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
-                                  <span className="text-[10px] font-semibold text-destructive shrink-0 ml-1">{item.daysLate}d late</span>
-                                </button>
-                              ))}
-                              {overdueItems.length > 5 && <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">+{overdueItems.length - 5} more</span>}
+                              {overdueItems.slice(0, 12).map((item, i) => renderAttentionChip(item, 'destructive', i))}
+                              {overdueItems.length > 12 && <span className="flex items-center px-3 py-1.5 text-xs text-muted-foreground">+{overdueItems.length - 12} more</span>}
                             </div>
                           </div>
                         )}
@@ -1101,13 +1130,7 @@ export default function ProjectDetailPage() {
                               Due this week
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {dueSoonItems.map((item, i) => (
-                                <button key={i} onClick={() => setActiveTab(item.tab)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-warning/20 bg-warning/5 hover:bg-warning/10 transition-colors text-left">
-                                  <span className="text-[10px] font-bold text-warning shrink-0">{item.label}</span>
-                                  <span className="text-xs text-foreground truncate max-w-[160px]">{item.sub}</span>
-                                  <span className="text-[10px] text-muted-foreground shrink-0 ml-1">{format(item.dueDate, 'MMM d')}</span>
-                                </button>
-                              ))}
+                              {dueSoonItems.map((item, i) => renderAttentionChip(item, 'warning', i))}
                             </div>
                           </div>
                         )}
