@@ -6,6 +6,7 @@ import { useAllProjectFinancials, type ProjectFin } from '@/hooks/useAllProjectF
 import { isActiveProject } from '@/lib/projects';
 import { computeHealth, type HealthStatus } from '@/lib/projectHealth';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
+import { buildProjectTree } from '@/lib/projectTree';
 
 export interface RiskSnapshot {
   project_id: string;
@@ -32,6 +33,15 @@ export interface CockpitProject {
   snapshot: RiskSnapshot | null;
   flags: string[];        // human-readable attention flags
   attentionScore: number; // higher = needs attention more
+  // Hierarchy (rolled over self + descendants)
+  parentId: string | null;
+  childIds: string[];
+  isProgram: boolean;
+  rolledBudget: number;
+  rolledBilled: number;
+  rolledOpen: number;
+  rolledOverdue: number;
+  rolledRag: Rag;
 }
 
 const num = (v: unknown) => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : 0; };
@@ -98,8 +108,28 @@ export function usePortfolioCockpit() {
       (snap?.open_punch ?? 0) * 1 + (health === 'overdue' ? 8 : health === 'stalled' ? 4 : 0) +
       (revisedBudget > 0 && billed > revisedBudget ? 12 : 0) + (rag === 'red' ? 5 : 0);
 
-    return { project, kind, health, rag, openItems: counts.open, overdueItems: counts.overdue, revisedBudget, billed, billedPct, snapshot: snap, flags, attentionScore };
-  }).sort((a, b) => b.attentionScore - a.attentionScore);
+    return {
+      project, kind, health, rag, openItems: counts.open, overdueItems: counts.overdue, revisedBudget, billed, billedPct, snapshot: snap, flags, attentionScore,
+      parentId: (project as any).parent_project_id ?? null, childIds: [], isProgram: false,
+      rolledBudget: revisedBudget, rolledBilled: billed, rolledOpen: counts.open, rolledOverdue: counts.overdue, rolledRag: rag,
+    } as CockpitProject;
+  });
+
+  // Roll subprojects up to their program (shared tree layer).
+  const tree = buildProjectTree(active as any);
+  const rowById = new Map(rows.map((r) => [r.project.id, r]));
+  const ragRank: Record<Rag, number> = { green: 0, amber: 1, red: 2 };
+  for (const r of rows) {
+    const sub = tree.subtree(r.project.id);
+    r.childIds = tree.children(r.project.id).map((c) => c.id);
+    r.isProgram = r.childIds.length > 0;
+    r.rolledBudget = sub.reduce((s, n) => s + (rowById.get(n.id)?.revisedBudget ?? 0), 0);
+    r.rolledBilled = sub.reduce((s, n) => s + (rowById.get(n.id)?.billed ?? 0), 0);
+    r.rolledOpen = sub.reduce((s, n) => s + (rowById.get(n.id)?.openItems ?? 0), 0);
+    r.rolledOverdue = sub.reduce((s, n) => s + (rowById.get(n.id)?.overdueItems ?? 0), 0);
+    r.rolledRag = sub.reduce<Rag>((worst, n) => { const rg = rowById.get(n.id)?.rag ?? 'green'; return ragRank[rg] > ragRank[worst] ? rg : worst; }, 'green');
+  }
+  rows.sort((a, b) => b.attentionScore - a.attentionScore);
 
   const totals = {
     projects: rows.length,

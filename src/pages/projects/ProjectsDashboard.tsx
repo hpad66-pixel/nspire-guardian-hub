@@ -26,8 +26,9 @@ import {
   FolderKanban, Plus, Calendar, DollarSign, FileText, Building2, Briefcase,
   LayoutGrid, List, Table2, Search, ArrowUpDown, ArrowUp, ArrowDown,
   CheckCircle, AlertTriangle, XCircle, PauseCircle, MoreHorizontal,
-  Edit, Archive, Trash2, Filter, X,
+  Edit, Archive, Trash2, Filter, X, FolderTree, ChevronDown, ChevronRight, Network,
 } from 'lucide-react';
+import { buildProjectTree } from '@/lib/projectTree';
 import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
@@ -88,6 +89,8 @@ export default function ProjectsDashboard() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('created');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [groupByProgram, setGroupByProgram] = useState(true);
+  const [collapsedPrograms, setCollapsedPrograms] = useState<Set<string>>(new Set());
 
   // --- Data ---
   const { data: projects, isLoading } = useProjects();
@@ -206,6 +209,19 @@ export default function ProjectsDashboard() {
     return { budget, billed };
   }, [financials]);
 
+  // ── Hierarchy (shared rollup layer) ────────────────────────────────────────
+  const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
+  const ownBudget = (id: string) => { const f = financials.get(id); return f && f.revised_contract > 0 ? f.revised_contract : Number((tree.byId.get(id) as any)?.budget) || 0; };
+  const ownBilled = (id: string) => { const f = financials.get(id); return f && f.billed_to_date > 0 ? f.billed_to_date : Number((tree.byId.get(id) as any)?.spent) || 0; };
+  const rolledBudget = (id: string) => tree.rollup(id, (n) => ownBudget(n.id));
+  const rolledBilled = (id: string) => tree.rollup(id, (n) => ownBilled(n.id));
+
+  const visibleIds = useMemo(() => new Set(displayProjects.map((p) => p.id)), [displayProjects]);
+  const childrenOf = (id: string) => displayProjects.filter((p) => (p as any).parent_project_id === id);
+  const rootProjects = displayProjects.filter((p) => { const pid = (p as any).parent_project_id; return !pid || !visibleIds.has(pid); });
+  const hasHierarchy = displayProjects.some((p) => (p as any).parent_project_id && visibleIds.has((p as any).parent_project_id));
+  const toggleProgram = (pid: string) => setCollapsedPrograms((prev) => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
+
   const handleArchive = (project: Project) => {
     updateProject.mutate({ id: project.id, status: 'closed' });
   };
@@ -321,6 +337,61 @@ export default function ProjectsDashboard() {
       </div>
     );
   };
+
+  // --- Program group: a project with visible children, rolled up + expandable ---
+  const ProgramNode = ({ project, depth = 0 }: { project: Project; depth?: number }) => {
+    const kids = childrenOf(project.id);
+    const leaves = kids.filter((k) => childrenOf(k.id).length === 0);
+    const subPrograms = kids.filter((k) => childrenOf(k.id).length > 0);
+    const collapsed = collapsedPrograms.has(project.id);
+    const rBudget = rolledBudget(project.id);
+    const rBilled = rolledBilled(project.id);
+    const pct = rBudget > 0 ? Math.round((rBilled / rBudget) * 100) : 0;
+    const health = computeHealth(project);
+    const hc = HEALTH_CONFIG[health];
+
+    return (
+      <div className={cn('rounded-xl border bg-muted/20', depth > 0 && 'mt-3')}>
+        {/* Program header */}
+        <div className="flex items-center gap-2.5 p-3">
+          <button onClick={() => toggleProgram(project.id)} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted shrink-0" title={collapsed ? 'Expand' : 'Collapse'}>
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+          <div className="h-8 w-8 rounded-lg bg-module-projects/90 flex items-center justify-center shrink-0"><FolderTree className="h-4 w-4 text-white" /></div>
+          <button onClick={() => navigate(`/projects/${project.id}`)} className="min-w-0 text-left group">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold truncate group-hover:underline">{project.name}</span>
+              <Badge variant="secondary" className="text-[10px] shrink-0">Program</Badge>
+            </div>
+            <div className="text-[11px] text-muted-foreground">{kids.length} subproject{kids.length !== 1 ? 's' : ''}</div>
+          </button>
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            <div className="hidden sm:block w-40">
+              <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5"><span>{formatCurrency(rBilled)}</span><span>{formatCurrency(rBudget)}</span></div>
+              <Progress value={pct} className="h-1.5" />
+            </div>
+            <span className={cn('hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border', hc.bg, hc.text, hc.border)}>{hc.label}</span>
+          </div>
+        </div>
+
+        {/* Children */}
+        {!collapsed && (
+          <div className="px-3 pb-3 pl-6 border-l-2 border-border/60 ml-4 space-y-3">
+            {leaves.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {leaves.map((k) => <ProjectCard key={k.id} project={k} />)}
+              </div>
+            )}
+            {subPrograms.map((sp) => <ProgramNode key={sp.id} project={sp} depth={depth + 1} />)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const grouped = groupByProgram && hasHierarchy;
+  const standaloneRoots = rootProjects.filter((p) => childrenOf(p.id).length === 0);
+  const programRoots = rootProjects.filter((p) => childrenOf(p.id).length > 0);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -511,6 +582,20 @@ export default function ProjectsDashboard() {
 
           <div className="flex-1" />
 
+          {/* Group by program (only when there's a hierarchy to group) */}
+          {hasHierarchy && viewMode === 'cards' && (
+            <Button
+              variant={groupByProgram ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => setGroupByProgram((v) => !v)}
+              title="Group subprojects under their program"
+            >
+              <Network className="h-4 w-4" />
+              <span className="hidden sm:inline">Group by program</span>
+            </Button>
+          )}
+
           {/* View toggle */}
           <ToggleGroup type="single" value={viewMode} onValueChange={handleViewChange} className="border rounded-lg p-0.5 bg-muted/30">
             <ToggleGroupItem value="cards" aria-label="Card view" className="h-8 w-8 p-0">
@@ -554,11 +639,22 @@ export default function ProjectsDashboard() {
             )}
           </div>
         ) : viewMode === 'cards' ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {displayProjects.map(project => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          grouped ? (
+            <div className="space-y-3">
+              {programRoots.map((p) => <ProgramNode key={p.id} project={p} />)}
+              {standaloneRoots.length > 0 && (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {standaloneRoots.map((project) => <ProjectCard key={project.id} project={project} />)}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {displayProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )
         ) : viewMode === 'list' ? (
           <ProjectListView
             projects={displayProjects}
