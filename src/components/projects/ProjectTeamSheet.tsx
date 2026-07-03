@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Users, UserPlus, UserMinus, Search, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ChevronDown, Mail, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import {
   Sheet,
   SheetContent,
@@ -79,12 +81,29 @@ interface ProjectTeamSheetProps {
 export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }: ProjectTeamSheetProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [addRole, setAddRole] = useState<AppRole>('viewer');
+  const [inviteEmail, setInviteEmail] = useState('');
 
   const { data: members = [], isLoading: membersLoading } = useProjectTeamMembers(projectId);
   const { data: allUsers = [], isLoading: usersLoading } = useUsers();
   const addMember = useAddProjectTeamMember();
   const removeMember = useRemoveProjectTeamMember();
   const updateRole = useUpdateProjectTeamMemberRole();
+  const createInvitation = useCreateInvitation();
+  const sendInvitation = useSendInvitation();
+  const inviting = createInvitation.isPending || sendInvitation.isPending;
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast.error('Enter a valid email address.'); return; }
+    try {
+      const inv = await createInvitation.mutateAsync({ email, role: addRole });
+      await sendInvitation.mutateAsync(inv.id);
+      setInviteEmail('');
+      toast.success(`Invitation sent to ${email}. They'll appear here once they join.`);
+    } catch (e) {
+      toast.error(`Couldn't invite: ${e instanceof Error ? e.message : 'try again'}`);
+    }
+  };
 
   const memberUserIds = new Set(members.map(m => m.user_id));
 
@@ -269,7 +288,7 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
               </div>
             ) : availableUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                {searchQuery ? 'No users match your search' : 'All workspace users are already on this project'}
+                {searchQuery ? 'No users match your search' : "No one else in your workspace yet — invite someone below."}
               </p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -299,6 +318,31 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                 ))}
               </div>
             )}
+
+            {/* ── Invite someone new by email ─────────────────────────── */}
+            <div className="mt-5 pt-4 border-t">
+              <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Invite someone new</h4>
+              <p className="text-xs text-muted-foreground mb-2.5">
+                Not in your workspace yet? Send them an invite — they join with the role selected above and then show up here to add.
+              </p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="name@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleInvite(); }}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+                <Button size="sm" className="h-9 gap-1.5 shrink-0" onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
+                  {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+                  Invite
+                </Button>
+              </div>
+            </div>
           </section>
         </div>
       </SheetContent>
