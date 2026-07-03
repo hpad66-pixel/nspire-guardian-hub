@@ -1,15 +1,22 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FolderTree, Plus, ChevronRight, Link2, Loader2, DollarSign, Layers } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FolderTree, Plus, ChevronRight, Link2, Loader2, DollarSign, Layers, LayoutGrid, GanttChartSquare, Sparkles, ArrowRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useSubprojects } from '@/hooks/useProjectTree';
 import { useUpdateProject, type Project } from '@/hooks/useProjects';
+import { useMyDay } from '@/hooks/useMyDay';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { ProgramTimeline } from '@/components/projects/ProgramTimeline';
 import { projectKind } from '@/lib/projectKind';
 import { cn } from '@/lib/utils';
+
+interface Brief { summary: string; topRisks: any[]; recommendations: string[] }
 
 const money = (n: number) => {
   if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -29,8 +36,34 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
   const navigate = useNavigate();
   const { children, tree, ownBudget, ownBilled, rolledBudget, rolledBilled } = useSubprojects(projectId);
   const updateProject = useUpdateProject();
+  const myDay = useMyDay();
   const [addOpen, setAddOpen] = useState(false);
   const [attachId, setAttachId] = useState('');
+  const [view, setView] = useState<'board' | 'timeline'>('board');
+  const [brief, setBrief] = useState<Brief | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+
+  const subtree = tree.subtree(projectId).filter((p) => p.id !== projectId);
+
+  const generateBrief = async () => {
+    setBriefLoading(true);
+    try {
+      const projects = subtree.map((p) => {
+        const counts = myDay.byProject.get(p.id) ?? { open: 0, overdue: 0 };
+        return { name: p.name, kind: projectKind(p), status: p.status, revisedBudget: ownBudget(p.id), billed: ownBilled(p.id), openItems: counts.open, overdueItems: counts.overdue, flags: counts.overdue ? [`${counts.overdue} overdue`] : [] };
+      });
+      const { data, error } = await supabase.functions.invoke('portfolio-briefing', {
+        body: { portfolio: { totals: { projects: subtree.length, contractValue: rolledBudget(projectId), billed: rolledBilled(projectId), overdueItems: projects.reduce((s, p) => s + p.overdueItems, 0) }, projects }, people: [] },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || 'Brief failed');
+      setBrief(data as Brief);
+    } catch (e) { toast.error(`Couldn't generate brief: ${e instanceof Error ? e.message : 'try again'}`); }
+    finally { setBriefLoading(false); }
+  };
+
+  const setDependency = (childId: string, dep: string) => {
+    updateProject.mutate({ id: childId, depends_on_project_id: dep === 'none' ? null : dep } as any);
+  };
 
   const own = ownBudget(projectId);
   const rolled = rolledBudget(projectId);
@@ -87,7 +120,42 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
             </Button>
           </div>
         )}
+        {children.length > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={generateBrief} disabled={briefLoading} className="gap-1.5">
+              {briefLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI program brief
+            </Button>
+            <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as any)} className="border rounded-lg p-0.5 bg-muted/30 h-9">
+              <ToggleGroupItem value="board" className="h-7 px-2.5 text-xs gap-1"><LayoutGrid className="h-3.5 w-3.5" />Board</ToggleGroupItem>
+              <ToggleGroupItem value="timeline" className="h-7 px-2.5 text-xs gap-1"><GanttChartSquare className="h-3.5 w-3.5" />Timeline</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        )}
       </div>
+
+      {/* AI program brief */}
+      {brief && (
+        <div className="rounded-xl border bg-gradient-to-br from-[var(--apas-sapphire)]/[0.05] to-transparent p-4">
+          <div className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" />Program brief</div>
+          {brief.summary && <p className="text-sm leading-relaxed text-foreground/90">{brief.summary}</p>}
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            {brief.topRisks?.length > 0 && (
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Top risks</div>
+                <ul className="space-y-1.5">{brief.topRisks.map((t: any, i: number) => (
+                  <li key={i} className="text-sm flex items-start gap-1.5"><span className={cn('mt-0.5 h-2 w-2 rounded-full shrink-0', t.severity === 'high' ? 'bg-[var(--apas-rose)]' : t.severity === 'medium' ? 'bg-[var(--apas-amber)]' : 'bg-muted-foreground')} /><span><span className="font-medium">{t.project ? `${t.project}: ` : ''}{t.title}</span>{t.action ? <span className="text-muted-foreground"> — {t.action}</span> : null}</span></li>
+                ))}</ul>
+              </div>
+            )}
+            {brief.recommendations?.length > 0 && (
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Recommended</div>
+                <ul className="space-y-1.5">{brief.recommendations.map((rec, i) => <li key={i} className="text-sm flex items-start gap-1.5"><ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[var(--apas-sapphire)]" />{rec}</li>)}</ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Children */}
       {children.length === 0 ? (
@@ -97,6 +165,28 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             Break a large program into subprojects — each with its own scope, schedule, and budget — and they roll up here. e.g. a Stormwater program with Retention Pond and Catch Basin subprojects.
           </p>
+        </div>
+      ) : view === 'timeline' ? (
+        <div className="space-y-4">
+          <ProgramTimeline rootId={projectId} tree={tree as any} />
+          <div className="rounded-xl border bg-card p-4">
+            <div className="text-sm font-semibold mb-2">Sequencing <span className="font-normal text-muted-foreground">· which subproject starts after which</span></div>
+            <div className="space-y-1.5">
+              {children.map((child) => (
+                <div key={child.id} className="flex items-center gap-2 text-sm flex-wrap">
+                  <span className="w-40 truncate font-medium">{child.name}</span>
+                  <span className="text-xs text-muted-foreground">starts after</span>
+                  <Select value={(child as any).depends_on_project_id ?? 'none'} onValueChange={(v) => setDependency(child.id, v)}>
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— nothing (independent)</SelectItem>
+                      {children.filter((c) => c.id !== child.id).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
