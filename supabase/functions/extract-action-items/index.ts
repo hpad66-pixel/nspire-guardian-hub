@@ -17,9 +17,19 @@ const DEFAULT_PROMPT = `You are an assistant for a consulting firm. Turn the mee
 into a clean list of follow-up action items — the concrete things someone agreed to do —
 and assign each to the right team member with a due date when the text implies one.
 
-For each distinct action item output:
+Be THOROUGH — capture EVERY action item. That includes:
+- explicit tasks ("I'll send…", "can you…", "we need to…"),
+- follow-ups implied by a DECISION (if a decision was made that requires someone to do something, create
+  the action item for it — e.g. "we decided to go with vendor B" → "Notify vendor B and close out vendor A"),
+- commitments, next steps, things to check, and anything someone is expected to deliver or follow up on.
+Err on the side of completeness. It is worse to miss a real action item than to include a minor one.
+Only skip pure discussion that produced no task or decision. Never merge two distinct tasks into one.
+
+For each action item output:
 - title: a short imperative task (e.g. "Send the revised sensor spec to the client"). Max ~12 words.
-- description: one sentence of useful context, or empty string.
+- description: 1–2 sentences of real context so someone can act WITHOUT re-reading the transcript — what
+  needs doing and why (the decision or reason behind it, any specifics/numbers/names mentioned). Never
+  leave it empty and never make it cryptic. If there's genuinely no extra context, restate the task fully.
 - assignee_id: the id of the team member responsible, chosen ONLY from the ROSTER below by
   matching the name mentioned in the text (first name is enough). Empty string if unclear or not on the roster.
 - due_date: an ISO date "YYYY-MM-DD" if the text implies a deadline (resolve relative phrases like
@@ -32,10 +42,10 @@ tags — no wrappers, no markdown, no code fences): a 1–2 sentence overview pa
 decisions made (omit the Decisions section if none). Keep it tight and factual.
 
 Rules:
-- One item per distinct commitment. Do NOT invent items, minutes content, or decisions not in the text.
-- Ignore pure discussion with no follow-up (for items). Do NOT duplicate.
+- Do NOT invent items, context, minutes content, or decisions not grounded in the text.
+- Do NOT duplicate the same task. One item per distinct task.
 - Only ever use an assignee_id that appears in the ROSTER. Never invent an id.
-- Rewrite into clear professional language.
+- Rewrite into clear, professional language — no filler, no speaker names in the title.
 
 Respond ONLY with valid JSON in exactly this shape:
 {"minutes":"<html fragment>","items":[{"title":"string","description":"string","assignee_id":"string","due_date":"string","priority":"urgent|high|medium|low"}]}`;
@@ -44,7 +54,7 @@ async function callClaude(key: string, model: string, system: string, user: stri
   return fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model, max_tokens: 4096, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ model, max_tokens: 8192, system, messages: [{ role: "user", content: user }] }),
   });
 }
 
