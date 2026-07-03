@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { toDateOnly } from '@/lib/date';
 
 export interface ConsultingMeeting {
   id: string;
@@ -45,7 +46,7 @@ export function useConsultingMeetings(projectId: string | null | undefined) {
       const { data, error } = await table().insert({
         project_id: projectId,
         title: input.title ?? 'Meeting',
-        meeting_date: input.meeting_date ?? new Date().toISOString().slice(0, 10),
+        meeting_date: input.meeting_date ?? toDateOnly(new Date()),
         attendees: input.attendees ?? null,
         minutes: input.minutes ?? null,
         transcript: input.transcript ?? null,
