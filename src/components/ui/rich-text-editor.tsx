@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -462,6 +462,17 @@ export function ProRichTextEditor({
     },
     onUpdate: ({ editor }) => { onChange(editor.getHTML()); },
   });
+
+  // Keep the editor in sync when `content` is set programmatically after mount
+  // (e.g. an AI-generated draft or a record loading in). The guard prevents a
+  // loop with onUpdate; `false` = don't re-emit an update for this set.
+  useEffect(() => {
+    if (!editor) return;
+    const incoming = content || '';
+    if (incoming !== editor.getHTML()) {
+      editor.commands.setContent(incoming, false);
+    }
+  }, [content, editor]);
 
   const handleAiComplete = useCallback(async () => {
     if (!editor || !onAiComplete) return;
