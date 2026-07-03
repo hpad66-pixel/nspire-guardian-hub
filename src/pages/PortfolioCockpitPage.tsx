@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Gauge, Sparkles, Loader2, AlertTriangle, TrendingUp, DollarSign, ListChecks, Flame,
-  Trophy, Medal, ChevronRight, ShieldAlert, CircleDot, Radar, ArrowRight, Users,
+  Trophy, Medal, ChevronRight, ChevronDown as ChevronDownIcon, Network, ShieldAlert, CircleDot, Radar, ArrowRight, Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -57,6 +57,15 @@ export default function PortfolioCockpitPage() {
 
   const shown = useMemo(() => (kind === 'all' ? rows : rows.filter((r) => r.kind === kind)), [rows, kind]);
 
+  // Hierarchy grouping for the risk tiles.
+  const [groupTiles, setGroupTiles] = useState(true);
+  const [collapsedProg, setCollapsedProg] = useState<Set<string>>(new Set());
+  const visibleIds = useMemo(() => new Set(shown.map((r) => r.project.id)), [shown]);
+  const childRows = (id: string) => shown.filter((r) => r.parentId === id);
+  const rootRows = shown.filter((r) => !r.parentId || !visibleIds.has(r.parentId));
+  const hasHierarchy = shown.some((r) => r.parentId && visibleIds.has(r.parentId));
+  const toggleProg = (id: string) => setCollapsedProg((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   const charts = useMemo(() => {
     const budgetVsBilled = [...shown].filter((r) => r.revisedBudget > 0).sort((a, b) => b.revisedBudget - a.revisedBudget).slice(0, 8)
       .map((r) => ({ name: r.project.name.length > 16 ? r.project.name.slice(0, 15) + '…' : r.project.name, Budget: r.revisedBudget, Billed: r.billed }));
@@ -93,6 +102,66 @@ export default function PortfolioCockpitPage() {
       setRisk({ project: r, risks: (data as any)?.risks ?? [] });
     } catch (e) { toast.error(`Couldn't run risk radar: ${e instanceof Error ? e.message : 'try again'}`); }
     finally { setRiskLoading(null); }
+  };
+
+  // A single project risk tile.
+  const Tile = (r: CockpitProject) => (
+    <div key={r.project.id} className={cn('rounded-xl border p-3.5 transition-all hover:shadow-md', RAG[r.rag].border)}>
+      <div className="flex items-start justify-between gap-2">
+        <button onClick={() => navigate(`/projects/${r.project.id}`)} className="min-w-0 text-left group">
+          <div className="flex items-center gap-1.5"><span className={cn('h-2.5 w-2.5 rounded-full shrink-0', RAG[r.rag].dot)} /><span className="font-semibold truncate group-hover:underline">{r.project.name}</span></div>
+          <div className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{r.kind} · {r.project.status}</div>
+        </button>
+        <span className={cn('text-[10px] font-bold uppercase rounded-full px-2 py-0.5 border shrink-0', RAG[r.rag].text, RAG[r.rag].border)}>{RAG[r.rag].label}</span>
+      </div>
+      {r.revisedBudget > 0 && (
+        <div className="mt-3">
+          <div className="flex justify-between text-[11px] text-muted-foreground mb-1"><span>{money(r.billed)} billed</span><span>{money(r.revisedBudget)}</span></div>
+          <Progress value={Math.min(100, r.billedPct)} className="h-1.5" />
+        </div>
+      )}
+      <div className="mt-3 flex items-center gap-3 text-xs">
+        <span className={cn('flex items-center gap-1', r.overdueItems ? 'text-[var(--apas-rose)] font-semibold' : 'text-muted-foreground')}><AlertTriangle className="h-3.5 w-3.5" />{r.overdueItems} overdue</span>
+        <span className="flex items-center gap-1 text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{r.openItems} open</span>
+      </div>
+      {r.flags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">{r.flags.slice(0, 3).map((f, i) => <span key={i} className="text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">{f}</span>)}</div>
+      )}
+      <Button size="sm" variant="outline" className="mt-3 h-7 w-full gap-1.5 text-xs" onClick={() => runRisk(r)} disabled={riskLoading === r.project.id}>
+        {riskLoading === r.project.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />}AI risk radar
+      </Button>
+    </div>
+  );
+
+  // A program with subprojects: rolled-up header + expandable children.
+  const ProgramTile = (r: CockpitProject) => {
+    const kids = childRows(r.project.id);
+    const leaves = kids.filter((k) => childRows(k.project.id).length === 0);
+    const subs = kids.filter((k) => childRows(k.project.id).length > 0);
+    const collapsed = collapsedProg.has(r.project.id);
+    const pct = r.rolledBudget > 0 ? Math.round((r.rolledBilled / r.rolledBudget) * 100) : 0;
+    return (
+      <div key={r.project.id} className={cn('rounded-xl border bg-muted/20', RAG[r.rolledRag].border)}>
+        <div className="flex items-center gap-2.5 p-3">
+          <button onClick={() => toggleProg(r.project.id)} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted shrink-0">{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}</button>
+          <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', RAG[r.rolledRag].dot)} />
+          <button onClick={() => navigate(`/projects/${r.project.id}`)} className="min-w-0 text-left group">
+            <div className="flex items-center gap-2"><span className="font-semibold truncate group-hover:underline">{r.project.name}</span><span className="text-[10px] font-bold uppercase rounded-full bg-secondary px-1.5 py-0.5 text-secondary-foreground">Program</span></div>
+            <div className="text-[11px] text-muted-foreground">{kids.length} subproject{kids.length !== 1 ? 's' : ''} · {r.rolledOverdue} overdue</div>
+          </button>
+          <div className="ml-auto hidden sm:block w-40 shrink-0">
+            <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5"><span>{money(r.rolledBilled)}</span><span>{money(r.rolledBudget)}</span></div>
+            <Progress value={pct} className="h-1.5" />
+          </div>
+        </div>
+        {!collapsed && (
+          <div className="px-3 pb-3 pl-6 ml-4 border-l-2 border-border/60 space-y-3">
+            {leaves.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{leaves.map(Tile)}</div>}
+            {subs.map(ProgramTile)}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -221,43 +290,25 @@ export default function PortfolioCockpitPage() {
 
           {/* Risk tiles */}
           <div>
-            <div className="mb-2 text-sm font-semibold">Projects <span className="font-normal text-muted-foreground">· sorted by attention</span></div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold">Projects <span className="font-normal text-muted-foreground">· sorted by attention</span></div>
+              {hasHierarchy && (
+                <Button variant={groupTiles ? 'default' : 'outline'} size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setGroupTiles((v) => !v)}>
+                  <Network className="h-3.5 w-3.5" />Group by program
+                </Button>
+              )}
+            </div>
             {isLoading ? <Empty label="Loading projects…" /> : shown.length === 0 ? <Empty label="No projects in this view." /> : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {shown.map((r) => (
-                  <div key={r.project.id} className={cn('rounded-xl border p-3.5 transition-all hover:shadow-md', RAG[r.rag].border)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => navigate(`/projects/${r.project.id}`)} className="min-w-0 text-left group">
-                        <div className="flex items-center gap-1.5"><span className={cn('h-2.5 w-2.5 rounded-full shrink-0', RAG[r.rag].dot)} /><span className="font-semibold truncate group-hover:underline">{r.project.name}</span></div>
-                        <div className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{r.kind} · {r.project.status}</div>
-                      </button>
-                      <span className={cn('text-[10px] font-bold uppercase rounded-full px-2 py-0.5 border shrink-0', RAG[r.rag].text, RAG[r.rag].border)}>{RAG[r.rag].label}</span>
-                    </div>
-
-                    {r.revisedBudget > 0 && (
-                      <div className="mt-3">
-                        <div className="flex justify-between text-[11px] text-muted-foreground mb-1"><span>{money(r.billed)} billed</span><span>{money(r.revisedBudget)}</span></div>
-                        <Progress value={Math.min(100, r.billedPct)} className="h-1.5" />
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex items-center gap-3 text-xs">
-                      <span className={cn('flex items-center gap-1', r.overdueItems ? 'text-[var(--apas-rose)] font-semibold' : 'text-muted-foreground')}><AlertTriangle className="h-3.5 w-3.5" />{r.overdueItems} overdue</span>
-                      <span className="flex items-center gap-1 text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{r.openItems} open</span>
-                    </div>
-
-                    {r.flags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {r.flags.slice(0, 3).map((f, i) => <span key={i} className="text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">{f}</span>)}
-                      </div>
-                    )}
-
-                    <Button size="sm" variant="outline" className="mt-3 h-7 w-full gap-1.5 text-xs" onClick={() => runRisk(r)} disabled={riskLoading === r.project.id}>
-                      {riskLoading === r.project.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />}AI risk radar
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              groupTiles && hasHierarchy ? (
+                <div className="space-y-3">
+                  {rootRows.filter((r) => childRows(r.project.id).length > 0).map(ProgramTile)}
+                  {rootRows.filter((r) => childRows(r.project.id).length === 0).length > 0 && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rootRows.filter((r) => childRows(r.project.id).length === 0).map(Tile)}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{shown.map(Tile)}</div>
+              )
             )}
           </div>
         </TabsContent>
