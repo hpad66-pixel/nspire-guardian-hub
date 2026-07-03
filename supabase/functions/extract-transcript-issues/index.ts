@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +81,7 @@ ${transcript}`;
     }
 
     const data = await response.json();
+    await logAiUsage({ req, skill: "transcript_issues", model: MODEL, anthropicJson: data, projectId: null });
     let rawText: string = data.content?.[0]?.text ?? "";
     if (!rawText) {
       throw new Error("No issues extracted from transcript");

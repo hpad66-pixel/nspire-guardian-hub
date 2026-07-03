@@ -66,6 +66,7 @@ const MyDayPage = lazy(() => import('./pages/MyDayPage'));
 const CredentialsDashboardPage = lazy(() => import('./pages/credentials/CredentialsDashboardPage'));
 const CredentialSharePage = lazy(() => import('./pages/credentials/CredentialSharePage'));
 const AdminHubPage = lazy(() => import('./pages/admin/AdminHubPage'));
+const AiUsageAnalyticsPage = lazy(() => import('./pages/admin/AiUsageAnalyticsPage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
 const FeatureRegistryPage = lazy(() => import('./pages/admin/FeatureRegistryPage'));
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
@@ -325,6 +326,7 @@ const App = () => (
 
                               {/* Admin */}
                               <Route path="/admin" element={<AdminHubPage />} />
+                              <Route path="/admin/ai-usage" element={<AiUsageAnalyticsPage />} />
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
                               <Route path="/admin/registry" element={<FeatureRegistryPage />} />
 

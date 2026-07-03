@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { STYLE_RULES } from "../_shared/ai-style-config.ts";
 
@@ -180,6 +181,7 @@ serve(async (req) => {
 
     if (claudeResp.ok) {
       const result = await claudeResp.json();
+      await logAiUsage({ req, skill: "polish_text", model, anthropicJson: result, projectId: null });
       let polished: string = result.content?.[0]?.text || text;
 
       // Strip markdown code fences if Claude wraps HTML

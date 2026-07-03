@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const cors = {
@@ -64,6 +65,7 @@ Rules: base every risk on the data (overdue RFIs, aging submittals, open punch, 
     });
     if (!resp.ok) return json({ error: "AI request failed." }, 502);
     const result = await resp.json();
+    await logAiUsage({ req, skill: "risk_radar", model: "claude-sonnet-4-6", anthropicJson: result, projectId });
     let text: string = result.content?.[0]?.text ?? "[]";
     const fence = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
     if (fence) text = fence[1].trim();

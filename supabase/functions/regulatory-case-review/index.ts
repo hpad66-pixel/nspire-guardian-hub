@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -570,6 +571,7 @@ serve(async (req) => {
     }
 
     const pass1Result = await pass1Response.json();
+    await logAiUsage({ req, skill: "regulatory_review", model: PASS1_MODEL, anthropicJson: pass1Result, projectId: null });
     const rawAnalysis = pass1Result.content?.[0]?.text || "";
 
     if (!rawAnalysis) {
@@ -619,6 +621,7 @@ serve(async (req) => {
     }
 
     const pass2Result = await pass2Response.json();
+    await logAiUsage({ req, skill: "regulatory_review", model: PASS2_MODEL, anthropicJson: pass2Result, projectId: null });
     let reportHtml = pass2Result.content?.[0]?.text || "";
 
     // Clean output — strip code fences if present

@@ -4,6 +4,7 @@
 // 'consulting_client_update' can override the system prompt.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +81,7 @@ serve(async (req) => {
     const r = await callClaude(anthropic, model, system, lines.join("\n"));
     if (r.ok) {
       const data = await r.json();
+      await logAiUsage({ req, skill: "consulting_client_update", model, anthropicJson: data, projectId: null });
       return json({ html: cleanHtml(data.content?.[0]?.text ?? ""), model });
     }
     if (r.status === 429) return json({ error: "Rate limit — try again in a moment." }, 429);

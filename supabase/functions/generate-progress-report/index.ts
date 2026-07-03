@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -457,6 +458,7 @@ ${sharedContext}`;
     }
 
     const result = await aiResponse.json();
+    await logAiUsage({ req, skill: "progress_report", model: MODEL, anthropicJson: result, projectId });
     const content = result.content?.[0]?.text || "";
 
     // ── Stream back as SSE ───────────────────────────────────────────────────
