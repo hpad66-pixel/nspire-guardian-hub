@@ -175,7 +175,7 @@ export function AgendaBoardDialog({ open, onOpenChange, projectId, projectName, 
       topic: g.topic,
       items: g.items.map((it) => ({ title: it.title, description: it.description, ownerName: it.owner_name, due: it.due_date, category: it.category, discussed: it.discussed })),
     }));
-    return buildAgendaHtml({ projectName, title: meeting.title, date: meeting.meeting_date, attendees: meeting.attendees, groups: docGroups, brandPrimary: 'EPPIS AI', brandPowered: 'APAS AI' });
+    return buildAgendaHtml({ projectName, title: meeting.title, date: meeting.meeting_date, attendees: meeting.attendees, groups: docGroups, brandPrimary: 'APAS AI' });
   };
 
   const addEmail = () => { const e = emailInput.trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { toast.error('Enter a valid email.'); return; } if (!emails.includes(e)) setEmails([...emails, e]); setEmailInput(''); };
