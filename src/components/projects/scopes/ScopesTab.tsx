@@ -9,11 +9,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, ListTree, MoreHorizontal, Pencil, Trash2, ListChecks } from 'lucide-react';
+import { Plus, ListTree, MoreHorizontal, Pencil, Trash2, ListChecks, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { useProjectScopes, summarizeScopes, type ProjectScope } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ScopeDialog } from './ScopeDialog';
+import { ConsultingUpdateDialog } from './ConsultingUpdateDialog';
 import { SCOPE_STATUS_META, money } from './scopeMeta';
 import { cn } from '@/lib/utils';
 
@@ -27,12 +28,13 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
   );
 }
 
-export function ScopesTab({ projectId }: { projectId: string }) {
+export function ScopesTab({ projectId, projectName = '', clientName }: { projectId: string; projectName?: string; clientName?: string | null }) {
   const { data: scopes, isLoading, remove } = useProjectScopes(projectId);
   const { data: team } = useProjectTeamMembers(projectId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectScope | null>(null);
   const [deleting, setDeleting] = useState<ProjectScope | null>(null);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   const summary = useMemo(() => summarizeScopes(scopes), [scopes]);
   const ownerName = (id: string | null) => {
@@ -51,7 +53,10 @@ export function ScopesTab({ projectId }: { projectId: string }) {
           <h2 className="text-lg font-semibold flex items-center gap-2"><ListTree className="h-5 w-5 text-muted-foreground" />Scopes</h2>
           <p className="text-sm text-muted-foreground">Workstreams and deliverables. Each carries a fee and % complete.</p>
         </div>
-        <Button onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" />Add scope</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setUpdateOpen(true)} disabled={(scopes ?? []).length === 0} className="gap-1.5"><Sparkles className="h-4 w-4" />Client update</Button>
+          <Button onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" />Add scope</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -127,6 +132,7 @@ export function ScopesTab({ projectId }: { projectId: string }) {
       )}
 
       <ScopeDialog open={dialogOpen} onOpenChange={setDialogOpen} projectId={projectId} scope={editing} />
+      <ConsultingUpdateDialog open={updateOpen} onOpenChange={setUpdateOpen} projectId={projectId} projectName={projectName} clientName={clientName} />
 
       <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
         <AlertDialogContent>

@@ -915,7 +915,7 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                 </TabsContent>
-                <TabsContent value="scope" className="mt-0"><ScopesTab projectId={id!} /></TabsContent>
+                <TabsContent value="scope" className="mt-0"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
                 <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
                 <TabsContent value="gallery" className="mt-0 p-0 h-[calc(100vh-260px)]"><PhotoGallery context="project" contextId={id!} contextName={project.name} /></TabsContent>
@@ -1200,7 +1200,7 @@ export default function ProjectDetailPage() {
                   ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>)}
                 </div>
               </TabsContent>
-              <TabsContent value="scope"><ScopesTab projectId={id!} /></TabsContent>
+              <TabsContent value="scope"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
               <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
               <TabsContent value="gallery" className="p-0 h-[calc(100vh-280px)]">
