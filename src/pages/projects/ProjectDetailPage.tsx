@@ -375,7 +375,7 @@ export default function ProjectDetailPage() {
     { value: 'progress',     label: 'Progress',     shortLabel: 'Progress', icon: TrendingUpIcon,  group: 'reports',    badge: null as number | null },
     { value: 'procurement',  label: 'Procurement',  shortLabel: 'Procure',  icon: ShoppingCart,    group: 'reports',    badge: null as number | null },
     { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },
-    { value: 'meetings',     label: 'Meetings',     shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
+    { value: 'meetings',     label: 'Meetings & Agenda', shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },

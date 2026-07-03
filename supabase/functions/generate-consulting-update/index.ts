@@ -43,7 +43,7 @@ function cleanHtml(raw: string): string {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { projectName, overallPct, scopes, doneRecently, dueSoon } = await req.json();
+    const { projectName, overallPct, scopes, doneRecently, dueSoon, glossary } = await req.json();
     const scopeList = Array.isArray(scopes) ? scopes : [];
     if (!scopeList.length) return json({ error: "Add some scopes first — there's no progress to report yet." }, 400);
 
@@ -59,6 +59,8 @@ serve(async (req) => {
 
     const lines: string[] = [];
     lines.push(`Project: ${projectName ?? "Engagement"}`);
+    const gl: Array<{ term: string; variants: string[] }> = Array.isArray(glossary) ? glossary : [];
+    if (gl.length) lines.push(`\nGLOSSARY (use these exact spellings; fix mishears):\n${gl.map((g) => `- ${g.term}${(g.variants ?? []).length ? ` ← ${g.variants.join(", ")}` : ""}`).join("\n")}`);
     lines.push(`Overall completion: ${Math.round(Number(overallPct) || 0)}%`);
     lines.push(`\nSCOPES:`);
     for (const s of scopeList) lines.push(`- ${s.title}: ${Math.round(Number(s.pct) || 0)}% (${s.status ?? "in progress"})`);

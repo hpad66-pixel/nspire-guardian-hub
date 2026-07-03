@@ -12,23 +12,25 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const DEFAULT_PROMPT = `You are preparing a meeting agenda for a consulting engagement so the team can run a
-methodical, productive meeting. Use the inputs (open/overdue action items, what's due soon, recent
-updates, and last meeting's notes) to produce a clear agenda.
+const DEFAULT_PROMPT = `You are preparing a meeting agenda for a consulting engagement. The open/overdue action items are
+already tracked separately as their own boxes, so DON'T repeat them. Your job is the narrative agenda
+points that make the meeting methodical.
 
-Output ONLY an HTML fragment (no wrappers, no markdown, no code fences) using only
-<h3>, <p>, <ul>, <ol>, <li>, <strong>. Structure it as:
-- <h3>Objectives</h3> — 2–3 bullets on what this meeting should accomplish.
-- <h3>Open &amp; overdue items</h3> — a <ul>; each <li> names the item, its owner, and how overdue it is
-  (or why it matters). Lead with the most overdue.
-- <h3>Updates since last meeting</h3> — a short <ul> of what moved (from the updates + last notes). Omit if none.
-- <h3>Decisions needed</h3> — a <ul> of the calls to make in this meeting (infer from stuck/overdue items). Omit if none.
-- <h3>Next steps</h3> — a <ul> of what to assign coming out of the meeting.
+Produce concise agenda points in these buckets:
+- objectives: 2–3 short phrases on what this meeting should accomplish.
+- updates: short phrases summarising what moved since last meeting (from the updates + last notes). [] if none.
+- decisions: the calls to make in this meeting (infer from stuck/overdue items). [] if none.
+- nextSteps: things to assign coming out of the meeting. [] if none.
+
+Each point is ONE short line (max ~14 words), no numbering, no owner names in the point unless essential.
 
 Rules:
-- Be specific and concise. Do NOT invent items, owners, dates, or updates not present in the inputs.
-- Use the GLOSSARY spellings for any names/terms; fix obvious mishears to the canonical term.
-- Professional, warm, methodical. No filler.`;
+- Do NOT invent items, owners, dates, or updates not present in the inputs.
+- Use the GLOSSARY spellings for any names/terms; fix obvious mishears to the canonical term. Names matter.
+- Professional and specific. No filler.
+
+Respond ONLY with valid JSON in exactly this shape:
+{"objectives":["string"],"updates":["string"],"decisions":["string"],"nextSteps":["string"]}`;
 
 async function callClaude(key: string, model: string, system: string, user: string) {
   return fetch("https://api.anthropic.com/v1/messages", {
@@ -37,7 +39,17 @@ async function callClaude(key: string, model: string, system: string, user: stri
     body: JSON.stringify({ model, max_tokens: 3072, system, messages: [{ role: "user", content: user }] }),
   });
 }
-const clean = (raw: string) => { const f = raw.match(/^```(?:html)?\s*([\s\S]*?)```\s*$/i); return (f ? f[1] : raw).trim(); };
+function parseSections(raw: string) {
+  const f = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
+  const parsed = JSON.parse((f ? f[1] : raw).trim());
+  const arr = (v: unknown) => Array.isArray(v) ? v.map((s) => String(s).trim()).filter(Boolean).slice(0, 12) : [];
+  return {
+    objectives: arr(parsed?.objectives),
+    updates: arr(parsed?.updates),
+    decisions: arr(parsed?.decisions),
+    nextSteps: arr(parsed?.nextSteps),
+  };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -76,7 +88,7 @@ serve(async (req) => {
     const r = await callClaude(anthropic, model, system, parts.join("\n"));
     if (r.ok) {
       const data = await r.json();
-      return json({ html: clean(data.content?.[0]?.text ?? ""), model });
+      return json({ ...parseSections(data.content?.[0]?.text ?? ""), model });
     }
     if (r.status === 429) return json({ error: "Rate limit — try again in a moment." }, 429);
     console.error(`Claude ${model} returned ${r.status}:`, await r.text());
