@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban,
+  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FolderKanban, Lightbulb,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
@@ -95,11 +95,17 @@ const GROUP_ICON_COLORS: Record<string, string> = {
   core:       'text-blue-400',
   compliance: 'text-amber-400',
   reports:    'text-purple-400',
+  engagement: 'text-blue-400',
+  delivery:   'text-emerald-400',
+  client:     'text-amber-400',
 };
 const GROUP_ICON_BG: Record<string, string> = {
   core:       'bg-blue-500/15',
   compliance: 'bg-amber-500/15',
   reports:    'bg-purple-500/15',
+  engagement: 'bg-blue-500/15',
+  delivery:   'bg-emerald-500/15',
+  client:     'bg-amber-500/15',
 };
 
 const TAB_GROUPS = [
@@ -107,6 +113,23 @@ const TAB_GROUPS = [
   { key: 'compliance', label: 'Compliance', color: 'text-amber-400' },
   { key: 'reports',    label: 'Reports',    color: 'text-purple-400' },
 ];
+
+// Consulting engagements get outcome-oriented section labels instead of the
+// construction Core/Compliance/Reports grouping.
+const CONSULTING_TAB_GROUPS = [
+  { key: 'engagement', label: 'Engagement', color: 'text-blue-400' },
+  { key: 'delivery',   label: 'Delivery',   color: 'text-emerald-400' },
+  { key: 'client',     label: 'Client',     color: 'text-amber-400' },
+];
+const CONSULTING_GROUP_OF: Record<string, string> = {
+  overview: 'engagement', scope: 'engagement', schedule: 'engagement',
+  'action-items': 'delivery', meetings: 'delivery', 'project-log': 'delivery',
+  repository: 'delivery', gallery: 'delivery', 'daily-logs': 'delivery',
+  rfis: 'delivery', submittals: 'delivery', 'punch-list': 'delivery',
+  progress: 'delivery', procurement: 'delivery', safety: 'delivery', closeout: 'delivery',
+  invoicing: 'client', proposals: 'client', 'client-portal': 'client',
+  financials: 'client', contracts: 'client',
+};
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -322,6 +345,10 @@ export default function ProjectDetailPage() {
   // project_type default hides). Empty module_config → every tab visible.
   const visibleTabs = PROJECT_TABS.filter(t => isModuleVisible(project, t.value));
 
+  // Consulting projects use outcome-oriented section labels.
+  const tabGroups = isConsulting ? CONSULTING_TAB_GROUPS : TAB_GROUPS;
+  const groupKeyOf = (value: string) => isConsulting ? (CONSULTING_GROUP_OF[value] ?? 'delivery') : (PROJECT_TABS.find(t => t.value === value)?.group ?? 'core');
+
   const activeTabDef = visibleTabs.find(t => t.value === activeTab) ?? visibleTabs[0] ?? PROJECT_TABS[0];
 
   // Tabs that have active badges — shown as quick-jump buttons on iPhone
@@ -475,7 +502,14 @@ export default function ProjectDetailPage() {
               <FolderKanban className="h-6 w-6 md:h-7 md:w-7 text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight mb-1.5 truncate">{project.name}</h1>
+              <div className="flex items-center gap-2 mb-1.5">
+                <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight truncate">{project.name}</h1>
+                {isConsulting && (
+                  <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] border border-[var(--apas-sapphire)]/20">
+                    <Lightbulb className="h-3 w-3" />Consulting
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Construction phase — inline editable; drives the client portal tracker */}
                 <DropdownMenu>
@@ -602,8 +636,8 @@ export default function ProjectDetailPage() {
 
               {/* LEFT: Vertical sidebar */}
               <div className="w-[188px] shrink-0 sticky top-4 space-y-1">
-                {TAB_GROUPS.map((group) => {
-                  const groupTabs = visibleTabs.filter(t => t.group === group.key);
+                {tabGroups.map((group) => {
+                  const groupTabs = visibleTabs.filter(t => groupKeyOf(t.value) === group.key);
                   if (groupTabs.length === 0) return null;
                   return (
                     <div key={group.key} className="mb-2">
@@ -950,8 +984,8 @@ export default function ProjectDetailPage() {
                   <div><SheetTitle className="text-base font-semibold text-[hsl(215,25%,92%)] text-left">Project Sections</SheetTitle><p className="text-[11px] text-[hsl(215,16%,50%)] mt-0.5 text-left">{project.name}</p></div>
                 </SheetHeader>
                 <div className="overflow-y-auto px-4 pb-8 space-y-4">
-                  {TAB_GROUPS.map(group => {
-                    const groupTabs = visibleTabs.filter(t => t.group === group.key);
+                  {tabGroups.map(group => {
+                    const groupTabs = visibleTabs.filter(t => groupKeyOf(t.value) === group.key);
                     if (groupTabs.length === 0) return null;
                     return (
                       <div key={group.key}>
