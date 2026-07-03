@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell, PieChart, Pie } from 'recharts';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -55,7 +56,21 @@ export default function PortfolioCockpitPage() {
   const [risk, setRisk] = useState<{ project: CockpitProject; risks: any[] } | null>(null);
   const [riskLoading, setRiskLoading] = useState<string | null>(null);
 
-  const shown = useMemo(() => (kind === 'all' ? rows : rows.filter((r) => r.kind === kind)), [rows, kind]);
+  const [ragFilter, setRagFilter] = useState<'all' | Rag>('all');
+  const [clientFilter, setClientFilter] = useState<string>('all');
+
+  const clientNames = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) { const n = (r.project as any).client?.name; if (n) s.add(n); }
+    return [...s].sort();
+  }, [rows]);
+
+  const shown = useMemo(() => rows.filter((r) => {
+    if (kind !== 'all' && r.kind !== kind) return false;
+    if (ragFilter !== 'all' && r.rag !== ragFilter) return false;
+    if (clientFilter !== 'all' && (r.project as any).client?.name !== clientFilter) return false;
+    return true;
+  }), [rows, kind, ragFilter, clientFilter]);
 
   // Hierarchy grouping for the risk tiles.
   const [groupTiles, setGroupTiles] = useState(true);
@@ -175,12 +190,30 @@ export default function PortfolioCockpitPage() {
             <p className="mt-1 text-muted-foreground">Every project, every risk, every teammate — in one glance.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ToggleGroup type="single" value={kind} onValueChange={(v) => v && setKind(v as any)} className="border rounded-lg p-0.5 bg-muted/30">
             <ToggleGroupItem value="all" className="h-8 px-3 text-xs">All</ToggleGroupItem>
             <ToggleGroupItem value="construction" className="h-8 px-3 text-xs">Construction</ToggleGroupItem>
             <ToggleGroupItem value="consulting" className="h-8 px-3 text-xs">Consulting</ToggleGroupItem>
           </ToggleGroup>
+          <Select value={ragFilter} onValueChange={(v) => setRagFilter(v as any)}>
+            <SelectTrigger className="h-9 w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All health</SelectItem>
+              <SelectItem value="red">At risk</SelectItem>
+              <SelectItem value="amber">Watch</SelectItem>
+              <SelectItem value="green">On track</SelectItem>
+            </SelectContent>
+          </Select>
+          {clientNames.length > 0 && (
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All clients</SelectItem>
+                {clientNames.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <Button onClick={generateBriefing} disabled={briefingLoading || isLoading} className="gap-1.5">
             {briefingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI briefing
           </Button>

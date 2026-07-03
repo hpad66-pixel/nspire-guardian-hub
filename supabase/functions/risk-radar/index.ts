@@ -26,7 +26,62 @@ serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
     const grab = async <T>(fn: () => Promise<T>, fb: T): Promise<T> => { try { return (await fn()) ?? fb; } catch { return fb; } };
 
-    const project = await grab(async () => (await supabase.from("projects").select("name").eq("id", projectId).maybeSingle()).data, null as any);
+    const project = await grab(async () => (await supabase.from("projects").select("name, project_type, target_end_date, start_date, budget").eq("id", projectId).maybeSingle()).data, null as any);
+    const days = (d: string) => (Date.now() - new Date(d).getTime()) / 864e5;
+    const nnum = (v: unknown) => { const x = typeof v === "number" ? v : parseFloat(String(v ?? "")); return Number.isFinite(x) ? x : 0; };
+
+    // ── Consulting engagements have no RFIs/submittals/punch. Analyze the signals
+    //    that actually exist: scope %, overdue action items, fee burn, cadence.
+    if (project?.project_type === "consulting" || project?.project_type === "client") {
+      const scopes = await grab(async () => (await supabase.from("project_scopes").select("title, status, pct_complete, fee_amount, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
+      const actions = await grab(async () => (await supabase.from("project_action_items").select("title, status, priority, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
+      const meetings = await grab(async () => (await supabase.from("consulting_meetings").select("meeting_date").eq("project_id", projectId).order("meeting_date", { ascending: false }).limit(1)).data ?? [], [] as any[]);
+      const invoices = await grab(async () => (await supabase.from("consulting_invoices").select("total, status").eq("project_id", projectId)).data ?? [], [] as any[]);
+
+      const openActions = actions.filter((a: any) => a.status !== "done" && a.status !== "cancelled");
+      const overdueActions = openActions.filter((a: any) => a.due_date && a.due_date < today).map((a: any) => ({ title: a.title, due: a.due_date, priority: a.priority }));
+      const scopesBehind = scopes.filter((s: any) => s.status !== "complete" && s.due_date && s.due_date < today).map((s: any) => ({ title: s.title, pct: nnum(s.pct_complete), due: s.due_date }));
+      const totalFee = scopes.reduce((s: number, x: any) => s + nnum(x.fee_amount), 0);
+      const overallPct = totalFee > 0 ? Math.round(scopes.reduce((s: number, x: any) => s + nnum(x.fee_amount) * nnum(x.pct_complete), 0) / totalFee) : (scopes.length ? Math.round(scopes.reduce((s: number, x: any) => s + nnum(x.pct_complete), 0) / scopes.length) : 0);
+      const billed = invoices.filter((i: any) => i.status === "sent" || i.status === "paid").reduce((s: number, i: any) => s + nnum(i.total), 0);
+      const lastMeeting = meetings[0]?.meeting_date ?? null;
+      const daysSinceMeeting = lastMeeting ? Math.round(days(lastMeeting)) : null;
+      const timeElapsedPct = project.start_date && project.target_end_date ? Math.round(((Date.now() - new Date(project.start_date).getTime()) / (new Date(project.target_end_date).getTime() - new Date(project.start_date).getTime())) * 100) : null;
+
+      const ctx = {
+        project: project?.name ?? "the engagement",
+        overall_completion_pct: overallPct,
+        time_elapsed_pct: timeElapsedPct,
+        target_end_date: project.target_end_date,
+        open_action_items: openActions.length,
+        overdue_action_items: overdueActions,
+        scopes_behind_schedule: scopesBehind,
+        total_fee: totalFee,
+        billed_to_date: billed,
+        days_since_last_meeting: daysSinceMeeting,
+      };
+      const sys = `You are a consulting engagement risk analyst. From the signals, surface the risks a principal must act on NOW. ${STYLE.replace("construction PM", "consulting")}
+
+Output ONLY a JSON array (no markdown) of at most 6 risks, most urgent first:
+[{"title":"short risk title","severity":"high"|"medium"|"low","area":"Scope"|"Schedule"|"Actions"|"Fees"|"Cadence"|"Client","detail":"1 sentence with the specific facts/numbers","action":"the single next action"}]
+Rules: base every risk on the data. Key signals: completion % lagging time-elapsed % (behind schedule), scopes past due, overdue action items, no client meeting in 21+ days (cadence gap), and fee burn (billed vs total fee). Never invent items. If healthy, return fewer or an empty array. High = client-facing slip or fee exposure; medium = trending bad; low = watch.`;
+
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": KEY, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1500, system: sys, messages: [{ role: "user", content: JSON.stringify(ctx) }] }),
+      });
+      if (!r.ok) return json({ error: "AI request failed." }, 502);
+      const res = await r.json();
+      await logAiUsage({ req, skill: "risk_radar", model: "claude-sonnet-4-6", anthropicJson: res, projectId });
+      let t: string = res.content?.[0]?.text ?? "[]";
+      const f = t.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i); if (f) t = f[1].trim();
+      const m = t.match(/\[[\s\S]*\]/);
+      let out: any[] = []; try { out = JSON.parse(m ? m[0] : t); } catch { out = []; }
+      out = (Array.isArray(out) ? out : []).slice(0, 6).map((r: any) => ({ title: String(r.title ?? "Risk"), severity: ["high", "medium", "low"].includes(r.severity) ? r.severity : "medium", area: String(r.area ?? "General"), detail: String(r.detail ?? ""), action: String(r.action ?? "") }));
+      return json({ ok: true, risks: out, generated_at: new Date().toISOString() });
+    }
+
     const rfis = await grab(async () => (await supabase.from("rfis").select("rfi_number, subject, status, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
     const submittals = await grab(async () => (await supabase.from("submittals").select("title, status, created_at, due_date").eq("project_id", projectId)).data ?? [], [] as any[]);
     const punch = await grab(async () => (await supabase.from("punch_items").select("status").eq("project_id", projectId)).data ?? [], [] as any[]);
@@ -35,7 +90,6 @@ serve(async (req) => {
 
     const open = (r: any) => r.status === "open" || r.status === "pending";
     const overdueRfis = rfis.filter((r: any) => open(r) && r.due_date && r.due_date < today).map((r: any) => ({ rfi: `RFI-${r.rfi_number}`, subject: r.subject, due: r.due_date }));
-    const days = (d: string) => (Date.now() - new Date(d).getTime()) / 864e5;
     const agingSubmittals = submittals.filter((s: any) => s.status !== "approved" && s.status !== "closed" && s.created_at && days(s.created_at) > 14).map((s: any) => ({ title: s.title, status: s.status, age_days: Math.round(days(s.created_at)) }));
     const openPunch = punch.filter((p: any) => p.status !== "closed" && p.status !== "verified" && p.status !== "completed").length;
     const pendingCos = cos.filter((c: any) => c.status !== "executed" && c.status !== "approved" && c.status !== "rejected" && c.status !== "void");
