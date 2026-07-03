@@ -292,14 +292,14 @@ export default function PortfolioCockpitPage() {
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="text-sm font-semibold">Projects <span className="font-normal text-muted-foreground">· sorted by attention</span></div>
-              {hasHierarchy && (
-                <Button variant={groupTiles ? 'default' : 'outline'} size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setGroupTiles((v) => !v)}>
+              {shown.length > 0 && (
+                <Button variant={groupTiles ? 'default' : 'outline'} size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setGroupTiles((v) => !v)} title={hasHierarchy ? 'Group subprojects under their program' : 'Groups subprojects under their program once you add some'}>
                   <Network className="h-3.5 w-3.5" />Group by program
                 </Button>
               )}
             </div>
             {isLoading ? <Empty label="Loading projects…" /> : shown.length === 0 ? <Empty label="No projects in this view." /> : (
-              groupTiles && hasHierarchy ? (
+              groupTiles ? (
                 <div className="space-y-3">
                   {rootRows.filter((r) => childRows(r.project.id).length > 0).map(ProgramTile)}
                   {rootRows.filter((r) => childRows(r.project.id).length === 0).length > 0 && (

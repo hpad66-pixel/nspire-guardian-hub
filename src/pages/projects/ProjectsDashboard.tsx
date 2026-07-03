@@ -389,7 +389,7 @@ export default function ProjectsDashboard() {
     );
   };
 
-  const grouped = groupByProgram && hasHierarchy;
+  const grouped = groupByProgram;
   const standaloneRoots = rootProjects.filter((p) => childrenOf(p.id).length === 0);
   const programRoots = rootProjects.filter((p) => childrenOf(p.id).length > 0);
 
@@ -582,14 +582,14 @@ export default function ProjectsDashboard() {
 
           <div className="flex-1" />
 
-          {/* Group by program (only when there's a hierarchy to group) */}
-          {hasHierarchy && viewMode === 'cards' && (
+          {/* Group subprojects under their program (renders in cards view) */}
+          {displayProjects.length > 0 && (
             <Button
               variant={groupByProgram ? 'default' : 'outline'}
               size="sm"
               className="h-9 gap-1.5"
-              onClick={() => setGroupByProgram((v) => !v)}
-              title="Group subprojects under their program"
+              onClick={() => { const nv = !groupByProgram; setGroupByProgram(nv); if (nv && viewMode !== 'cards') handleViewChange('cards'); }}
+              title={hasHierarchy ? 'Group subprojects under their program' : 'Once you add subprojects, they nest under their program here'}
             >
               <Network className="h-4 w-4" />
               <span className="hidden sm:inline">Group by program</span>
