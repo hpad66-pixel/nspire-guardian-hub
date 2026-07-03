@@ -1,5 +1,8 @@
 project_id = "xlfwzqpixlrnntzqhvcm"
 
+[functions.client-portal]
+verify_jwt = false
+
 [functions.clickup-webhook]
 verify_jwt = false
 

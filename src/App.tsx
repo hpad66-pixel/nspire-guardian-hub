@@ -162,6 +162,7 @@ const SignProposalPage = lazy(() => import('./pages/sign/SignProposalPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
+const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage'));
 const CaptureUploadPage = lazy(() => import('./pages/CaptureUploadPage'));
 const BidSubmitPage = lazy(() => import('./pages/BidSubmitPage'));
 const SubPunchListsPage = lazy(() => import('./pages/portal/sub/SubPunchListsPage'));
@@ -262,6 +263,7 @@ const App = () => (
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
+                     <Route path="/client/:token" element={<ClientPortalPage />} />
                      <Route path="/capture/:token" element={<CaptureUploadPage />} />
                      <Route path="/bid/:token" element={<BidSubmitPage />} />
                      

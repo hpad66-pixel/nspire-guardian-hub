@@ -71,6 +71,7 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
+import { ConsultingClientPortalCard } from '@/components/projects/ConsultingClientPortalCard';
 import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
 import { useProjectTree } from '@/hooks/useProjectTree';
 import { cn } from '@/lib/utils';
@@ -991,7 +992,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-                <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
+                <TabsContent value="client-portal" className="mt-0 pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
               </div>
             </div>
 
@@ -1271,7 +1272,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
-              <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
+              <TabsContent value="client-portal" className="pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
             </div>
 
           </Tabs>
