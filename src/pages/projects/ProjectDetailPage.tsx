@@ -52,6 +52,7 @@ import { ChangeOrdersList } from '@/components/projects/ChangeOrdersList';
 import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
+import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
@@ -138,6 +139,7 @@ export default function ProjectDetailPage() {
   const isMobile = useIsMobile();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discussionsPanelOpen, setDiscussionsPanelOpen] = useState(false);
@@ -475,6 +477,11 @@ export default function ProjectDetailPage() {
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => setModuleDialogOpen(true)}>
                       <SlidersHorizontal className="h-4 w-4 mr-2" />Modules
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setTypeDialogOpen(true)}>
+                      <Lightbulb className="h-4 w-4 mr-2" />Change type
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
@@ -1231,6 +1238,7 @@ export default function ProjectDetailPage() {
 
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
         <ModuleVisibilityDialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen} project={project as any} />
+        <ProjectTypeDialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen} project={project as any} />
         <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
         <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
 
