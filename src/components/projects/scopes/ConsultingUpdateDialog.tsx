@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProRichTextEditor } from '@/components/ui/rich-text-editor';
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
 import { useActionItemsByProject } from '@/hooks/useActionItems';
+import { useProjectDictionary, glossaryForAI } from '@/hooks/useProjectDictionary';
 import { useSendEmail } from '@/hooks/useSendEmail';
 
 interface Props {
@@ -37,6 +38,7 @@ const brandedShell = (inner: string, title: string) =>
 export function ConsultingUpdateDialog({ open, onOpenChange, projectId, projectName, clientName }: Props) {
   const { data: scopes } = useProjectScopes(projectId);
   const { data: items } = useActionItemsByProject(projectId);
+  const { data: dictionary } = useProjectDictionary(projectId);
   const sendEmail = useSendEmail();
 
   const [draft, setDraft] = useState('');
@@ -56,8 +58,9 @@ export function ConsultingUpdateDialog({ open, onOpenChange, projectId, projectN
       scopes: (scopes ?? []).map((s) => ({ title: s.title, pct: Number(s.pct_complete) || 0, status: s.status })),
       doneRecently,
       dueSoon,
+      glossary: glossaryForAI(dictionary),
     };
-  }, [scopes, items, projectName]);
+  }, [scopes, items, projectName, dictionary]);
 
   const generate = async () => {
     if (!payload.scopes.length) { toast.error('Add some scopes first — there is no progress to report.'); return; }

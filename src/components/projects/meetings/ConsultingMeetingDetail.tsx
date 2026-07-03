@@ -17,7 +17,7 @@ import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ActionItemDetailDialog } from '@/components/projects/actionItems/ActionItemDetailDialog';
 import { MeetingRecapDialog } from './MeetingRecapDialog';
 import { ProjectDictionaryDialog } from '@/components/projects/ProjectDictionaryDialog';
-import { MeetingAgendaDialog } from './MeetingAgendaDialog';
+import { AgendaBoardDialog } from './AgendaBoardDialog';
 import { useProjectDictionary, glossaryForAI } from '@/hooks/useProjectDictionary';
 import { PRIORITY_META } from '@/components/projects/actionItems/actionItemMeta';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
@@ -236,7 +236,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
 
       <ProjectDictionaryDialog open={dictOpen} onOpenChange={setDictOpen} projectId={projectId} projectName={projectName} />
 
-      <MeetingAgendaDialog open={agendaOpen} onOpenChange={setAgendaOpen} projectId={projectId} projectName={projectName} meeting={meeting} team={team ?? []} />
+      <AgendaBoardDialog open={agendaOpen} onOpenChange={setAgendaOpen} projectId={projectId} projectName={projectName} meeting={meeting} team={team ?? []} />
 
       <MeetingRecapDialog
         open={recapOpen}

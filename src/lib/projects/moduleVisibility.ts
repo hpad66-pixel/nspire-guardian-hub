@@ -57,7 +57,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'rfis',          label: 'RFIs',                description: 'Requests for information',             group: 'compliance' },
   { slug: 'submittals',    label: 'Submittals',          description: 'Submittal register and reviews',       group: 'compliance' },
   { slug: 'punch-list',    label: 'Punch list',          description: 'Punch items and closeout tracking',    group: 'compliance' },
-  { slug: 'meetings',      label: 'Meetings & minutes',  description: 'Minutes, transcript, action items',    group: 'reports' },
+  { slug: 'meetings',      label: 'Meetings & agenda',   description: 'Agendas, minutes, transcript → actions', group: 'reports' },
   { slug: 'progress',      label: 'Progress',            description: 'Quantities and progress dashboard',    group: 'reports' },
   { slug: 'procurement',   label: 'Procurement',         description: 'Procurement and buyout tracking',      group: 'reports' },
   { slug: 'safety',        label: 'Safety',              description: 'Safety observations and incidents',    group: 'reports' },
