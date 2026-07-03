@@ -32,7 +32,7 @@ const brandedShell = (inner: string, title: string) =>
     <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#C4A35A;font-weight:700;">Progress update</div>
     <h1 style="font-size:22px;margin:4px 0 16px;font-weight:700;">${title}</h1>
     ${inner}
-    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from Build OS · projos.ai</div>
+    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from projOS · projos.ai</div>
   </div>`;
 
 export function ConsultingUpdateDialog({ open, onOpenChange, projectId, projectName, clientName }: Props) {
