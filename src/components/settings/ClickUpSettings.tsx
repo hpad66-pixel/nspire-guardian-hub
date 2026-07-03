@@ -73,7 +73,7 @@ export function ClickUpSettings() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">Two-way sync</div>
-                <div className="text-xs text-muted-foreground">Mirror ClickUp status changes back into Build OS (needs a ClickUp plan with webhooks).</div>
+                <div className="text-xs text-muted-foreground">Mirror ClickUp status changes back into projOS (needs a ClickUp plan with webhooks).</div>
               </div>
               <Switch checked={!!status?.syncEnabled} onCheckedChange={(v) => setSync.mutate(v)} disabled={setSync.isPending} />
             </div>

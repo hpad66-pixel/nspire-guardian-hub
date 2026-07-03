@@ -48,7 +48,7 @@ export function buildTaskHtml(input: TaskDocInput): string {
       <div style="font-size:12px;color:#878581;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Note</div>
       <div style="font-size:14px;line-height:1.6;color:#1A1714;white-space:pre-wrap;">${esc(input.note)}</div>
     </div>` : ''}
-    <div style="margin-top:24px;padding-top:14px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from Build OS · projos.ai</div>
+    <div style="margin-top:24px;padding-top:14px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from projOS · projos.ai</div>
   </div></body></html>`;
 }
 

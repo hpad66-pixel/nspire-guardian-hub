@@ -86,7 +86,7 @@ export default function ProposalBuilderPage() {
   }
 
   function handleExportPdf() {
-    generateProposalPdf(proposal, lines, `Project ${projectId}`, "Build OS");
+    generateProposalPdf(proposal, lines, `Project ${projectId}`, "projOS");
   }
 
   const sc = STATUS_NEXT[proposal.status];

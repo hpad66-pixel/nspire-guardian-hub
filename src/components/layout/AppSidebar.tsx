@@ -173,7 +173,7 @@ export function AppSidebar() {
                 className="text-[15px] font-semibold text-sidebar-foreground"
                 style={{ letterSpacing: '-0.02em' }}
               >
-                Build <span className="text-accent">OS</span>
+                proj<span className="text-accent">OS</span>
               </span>
             )}
           </NavLink>

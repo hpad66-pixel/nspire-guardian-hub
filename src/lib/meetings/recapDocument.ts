@@ -63,6 +63,6 @@ export function buildMeetingRecapHtml(input: RecapInput): string {
 
     ${transcriptHtml}
 
-    <div style="margin-top:26px;padding-top:12px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from Build OS · projos.ai</div>
+    <div style="margin-top:26px;padding-top:12px;border-top:1px solid #eceae4;font-size:12px;color:#a8a49c;">Sent from projOS · projos.ai</div>
   </div>`;
 }
