@@ -302,6 +302,28 @@ serve(async (req) => {
       return json({ ok: true, taskId, assigned: assigneeId != null, url: task?.url ?? (taskId ? `https://app.clickup.com/t/${taskId}` : null) });
     }
 
+    // ── create-note ─────────────────────────────────────────────────────────
+    // Create a standalone task (e.g. a meeting agenda) in the project's list.
+    if (action === "create-note") {
+      const conn = await loadConn();
+      if (!conn) return json({ error: "Connect ClickUp first." }, 400);
+      let listId = conn.default_list_id as string | null;
+      const projId = String(body.projectId ?? "");
+      if (projId) {
+        const { data: pmap } = await admin.from("clickup_project_lists").select("list_id").eq("project_id", projId).maybeSingle();
+        listId = pmap?.list_id || conn.default_list_id;
+      }
+      if (!listId) return json({ error: "Set a ClickUp list first." }, 400);
+      const res = await fetch(`${CU}/list/${listId}/task`, {
+        method: "POST",
+        headers: { Authorization: conn.token, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: String(body.title ?? "Meeting agenda"), markdown_content: String(body.content ?? "") }),
+      });
+      if (!res.ok) { console.error("ClickUp create-note failed:", res.status, await res.text()); return json({ error: "ClickUp rejected the note." }, 502); }
+      const task = await res.json();
+      return json({ ok: true, url: task?.url ?? null });
+    }
+
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("clickup error:", e);
