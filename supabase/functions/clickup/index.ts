@@ -303,7 +303,8 @@ serve(async (req) => {
     }
 
     // ── create-note ─────────────────────────────────────────────────────────
-    // Create a standalone task (e.g. a meeting agenda) in the project's list.
+    // Push a meeting agenda as ONE task in the project's list. If this meeting
+    // already has an agenda task, UPDATE it in place (no duplicate clutter).
     if (action === "create-note") {
       const conn = await loadConn();
       if (!conn) return json({ error: "Connect ClickUp first." }, 400);
@@ -314,14 +315,43 @@ serve(async (req) => {
         listId = pmap?.list_id || conn.default_list_id;
       }
       if (!listId) return json({ error: "Set a ClickUp list first." }, 400);
+
+      const name = String(body.title ?? "Meeting agenda");
+      const markdown_content = String(body.content ?? "");
+      const meetingId = String(body.meetingId ?? "");
+
+      // Re-use the meeting's existing agenda task if we have one.
+      let existingTaskId: string | null = null;
+      if (meetingId) {
+        const { data: mrow } = await admin.from("consulting_meetings").select("clickup_agenda_task_id").eq("id", meetingId).maybeSingle();
+        existingTaskId = (mrow?.clickup_agenda_task_id as string | null) ?? null;
+      }
+
+      if (existingTaskId) {
+        const up = await fetch(`${CU}/task/${existingTaskId}`, {
+          method: "PUT",
+          headers: { Authorization: conn.token, "Content-Type": "application/json" },
+          body: JSON.stringify({ name, markdown_content }),
+        });
+        if (up.ok) {
+          const task = await up.json();
+          return json({ ok: true, updated: true, url: task?.url ?? null });
+        }
+        // Task was deleted in ClickUp (404) or otherwise stale — fall through to recreate.
+        console.warn("ClickUp agenda update failed, recreating:", up.status, await up.text());
+      }
+
       const res = await fetch(`${CU}/list/${listId}/task`, {
         method: "POST",
         headers: { Authorization: conn.token, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: String(body.title ?? "Meeting agenda"), markdown_content: String(body.content ?? "") }),
+        body: JSON.stringify({ name, markdown_content }),
       });
       if (!res.ok) { console.error("ClickUp create-note failed:", res.status, await res.text()); return json({ error: "ClickUp rejected the note." }, 502); }
       const task = await res.json();
-      return json({ ok: true, url: task?.url ?? null });
+      if (meetingId && task?.id) {
+        await admin.from("consulting_meetings").update({ clickup_agenda_task_id: String(task.id) }).eq("id", meetingId);
+      }
+      return json({ ok: true, updated: false, url: task?.url ?? null });
     }
 
     return json({ error: "Unknown action" }, 400);

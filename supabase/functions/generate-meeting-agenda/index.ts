@@ -51,10 +51,80 @@ function parseSections(raw: string) {
   };
 }
 
+const ORGANIZE_PROMPT = `You are organizing the items on a meeting agenda so it reads like a professional consulting agenda.
+You are given a flat list of agenda items, each with a numeric "ref".
+
+Your job:
+1. GROUP related items under a concise topic heading (2–5 words, Title Case) — e.g. "Budget & Fees",
+   "Schedule & Milestones", "Permitting", "Design Coordination", "Open Decisions", "Next Steps".
+2. Put every item that is about the same subject in the SAME group. Never split one subject across two groups.
+   Use good judgment: two items mentioning the same deliverable, party, or workstream belong together.
+3. Order the groups logically: opening/objectives first, then the substantive workstreams, with decisions
+   and next steps toward the end.
+4. Within each group, keep the most urgent (overdue) items first.
+5. Clean each title: apply the GLOSSARY to fix name spellings and obvious mishears, fix typos, and make it a
+   crisp agenda line. Do NOT change the meaning or invent detail.
+
+Rules:
+- Include EVERY ref exactly once. Do not drop or duplicate any ref.
+- Do not invent new items.
+
+Respond ONLY with valid JSON in exactly this shape:
+{"groups":[{"topic":"string","items":[{"ref":0,"title":"cleaned title"}]}]}`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { projectName, glossary, overdue, dueSoon, updates, priorMinutes } = await req.json();
+    const body = await req.json();
+
+    // ── organize mode: topic-group a flat list of items + tidy titles ──────────
+    if (body?.mode === "organize") {
+      const items: Array<{ ref: number; title: string; owner?: string; category?: string; overdue?: boolean }> =
+        Array.isArray(body.items) ? body.items : [];
+      if (!items.length) return json({ groups: [] });
+      const anthropic = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!anthropic) return json({ error: "AI service is not configured." }, 500);
+
+      let system = ORGANIZE_PROMPT;
+      let model = "claude-sonnet-4-6";
+      try {
+        const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+        const { data } = await admin.from("ai_skill_prompts")
+          .select("model, is_active").eq("skill_key", "meeting_agenda").eq("is_active", true).maybeSingle();
+        if (data?.model) model = data.model;
+      } catch (_) { /* non-fatal */ }
+      if (!model.startsWith("claude")) model = "claude-sonnet-4-6";
+
+      const gl: Array<{ term: string; variants: string[] }> = Array.isArray(body.glossary) ? body.glossary : [];
+      const lines: string[] = [];
+      if (body.projectName) lines.push(`Project: ${body.projectName}`);
+      if (gl.length) lines.push(`\nGLOSSARY (canonical ← mishears):\n${gl.map((g) => `- ${g.term}${(g.variants ?? []).length ? ` ← ${g.variants.join(", ")}` : ""}`).join("\n")}`);
+      lines.push(`\nITEMS:\n${items.map((i) => `- ref ${i.ref}: ${i.title}${i.owner ? ` (owner: ${i.owner})` : ""}${i.overdue ? " [OVERDUE]" : ""}`).join("\n")}`);
+
+      const r = await callClaude(anthropic, model, system, lines.join("\n"));
+      if (!r.ok) {
+        console.error(`organize Claude ${model} returned ${r.status}:`, await r.text());
+        return json({ error: "Could not organize the agenda." }, 502);
+      }
+      const data = await r.json();
+      try {
+        const raw = data.content?.[0]?.text ?? "";
+        const f = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
+        const parsed = JSON.parse((f ? f[1] : raw).trim());
+        const groups = (Array.isArray(parsed?.groups) ? parsed.groups : []).map((g: any) => ({
+          topic: String(g?.topic ?? "General").trim().slice(0, 60) || "General",
+          items: (Array.isArray(g?.items) ? g.items : [])
+            .map((it: any) => ({ ref: Number(it?.ref), title: String(it?.title ?? "").trim() }))
+            .filter((it: any) => Number.isInteger(it.ref) && it.title),
+        })).filter((g: any) => g.items.length);
+        return json({ groups, model });
+      } catch (e) {
+        console.error("organize parse error:", e);
+        return json({ error: "Could not organize the agenda." }, 502);
+      }
+    }
+
+    const { projectName, glossary, overdue, dueSoon, updates, priorMinutes } = body;
     const ov = Array.isArray(overdue) ? overdue : [];
     const ds = Array.isArray(dueSoon) ? dueSoon : [];
     const up = Array.isArray(updates) ? updates : [];
