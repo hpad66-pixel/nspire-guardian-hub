@@ -244,7 +244,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
         projectId={projectId}
         projectName={projectName}
         meeting={{ title: meeting.title, meeting_date: meeting.meeting_date, attendees: meeting.attendees, transcript }}
-        minutesHtml={minutes}
+        minutesHtml={minutes || meeting.minutes || ''}
         items={linkedItems}
         team={team ?? []}
       />
