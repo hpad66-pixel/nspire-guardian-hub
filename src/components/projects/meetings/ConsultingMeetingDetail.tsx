@@ -87,11 +87,20 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
         },
       });
       if (error) throw error;
+      const draftMinutes: string = (data?.minutes as string) || '';
       const items: Array<{ title: string; description?: string; priority?: ActionItem['priority']; assignee_id?: string | null; due_date?: string | null }> = data?.items ?? [];
-      if (!items.length) { toast.message('No action items found in that text.'); return; }
+
+      // Fill the minutes editor with the AI summary, and persist it.
+      if (draftMinutes) { setMinutes(draftMinutes); save({ minutes: draftMinutes }); }
+
       for (const it of items) await addItem({ title: it.title, description: it.description, priority: it.priority, assigned_to: it.assignee_id ?? null, due_date: it.due_date ?? null });
+
       const assigned = items.filter((i) => i.assignee_id).length;
-      toast.success(`Added ${items.length} action item${items.length === 1 ? '' : 's'}${assigned ? ` · ${assigned} assigned` : ''}`);
+      const parts: string[] = [];
+      if (draftMinutes) parts.push('minutes drafted');
+      if (items.length) parts.push(`${items.length} action item${items.length === 1 ? '' : 's'}${assigned ? ` (${assigned} assigned)` : ''}`);
+      if (parts.length) toast.success(parts.join(' · '));
+      else toast.message('Nothing to summarize or extract from that text.');
     } catch (e) {
       toast.error(`Couldn't extract: ${e instanceof Error ? e.message : 'try again'}`);
     } finally {
@@ -138,7 +147,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
               <div className="flex justify-end">
                 <Button size="sm" onClick={handleExtract} disabled={extracting || !transcript.trim()} className="gap-1.5">
                   {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Extract action items
+                  {extracting ? 'Summarizing…' : 'Summarize & extract'}
                 </Button>
               </div>
             </div>

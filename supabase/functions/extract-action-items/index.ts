@@ -26,14 +26,19 @@ For each distinct action item output:
   "by Friday", "next week", "end of month" against the MEETING DATE). Empty string if none.
 - priority: "urgent", "high", "medium", or "low" (best guess; default "medium").
 
+Also write concise meeting MINUTES as an HTML fragment (use only <h3>, <p>, <ul>, <li>, <strong>
+tags — no wrappers, no markdown, no code fences): a 1–2 sentence overview paragraph, then
+<h3>Discussion</h3> with a short <ul> of the key points, and <h3>Decisions</h3> with a <ul> of any
+decisions made (omit the Decisions section if none). Keep it tight and factual.
+
 Rules:
-- One item per distinct commitment. Do NOT invent items not implied by the text.
-- Ignore pure discussion with no follow-up. Do NOT duplicate.
+- One item per distinct commitment. Do NOT invent items, minutes content, or decisions not in the text.
+- Ignore pure discussion with no follow-up (for items). Do NOT duplicate.
 - Only ever use an assignee_id that appears in the ROSTER. Never invent an id.
 - Rewrite into clear professional language.
 
 Respond ONLY with valid JSON in exactly this shape:
-{"items":[{"title":"string","description":"string","assignee_id":"string","due_date":"string","priority":"urgent|high|medium|low"}]}`;
+{"minutes":"<html fragment>","items":[{"title":"string","description":"string","assignee_id":"string","due_date":"string","priority":"urgent|high|medium|low"}]}`;
 
 async function callClaude(key: string, model: string, system: string, user: string) {
   return fetch("https://api.anthropic.com/v1/messages", {
@@ -45,12 +50,13 @@ async function callClaude(key: string, model: string, system: string, user: stri
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function parseItems(raw: string, rosterIds: Set<string>): any[] {
+function parseResult(raw: string, rosterIds: Set<string>): { minutes: string; items: any[] } {
   const fence = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
   const text = (fence ? fence[1] : raw).trim();
   const parsed = JSON.parse(text);
-  const items = Array.isArray(parsed) ? parsed : parsed.items ?? [];
-  return (items as any[])
+  const rawItems = Array.isArray(parsed) ? parsed : parsed.items ?? [];
+  const minutes = typeof parsed?.minutes === "string" ? parsed.minutes.trim() : "";
+  const items = (rawItems as any[])
     .filter((i) => i && typeof i.title === "string" && i.title.trim())
     .map((i) => {
       const assignee = String(i.assignee_id ?? "").trim();
@@ -63,6 +69,7 @@ function parseItems(raw: string, rosterIds: Set<string>): any[] {
         priority: ["urgent", "high", "medium", "low"].includes(String(i.priority)) ? i.priority : "medium",
       };
     });
+  return { minutes, items };
 }
 
 serve(async (req) => {
@@ -101,7 +108,7 @@ serve(async (req) => {
     if (r.ok) {
       const data = await r.json();
       const raw = data.content?.[0]?.text ?? "";
-      return json({ items: parseItems(raw, rosterIds), model });
+      return json({ ...parseResult(raw, rosterIds), model });
     }
     if (r.status === 429) return json({ error: "Rate limit — try again in a moment." }, 429);
     const errText = await r.text();
