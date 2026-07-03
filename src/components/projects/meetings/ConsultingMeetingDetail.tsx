@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sparkles, Plus, Loader2, CheckSquare, MessageSquare } from 'lucide-react';
+import { Sparkles, Plus, Loader2, CheckSquare, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import { useActionItemsByProject, useCreateActionItem, useUpdateActionItem, type
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ActionItemDetailDialog } from '@/components/projects/actionItems/ActionItemDetailDialog';
+import { MeetingRecapDialog } from './MeetingRecapDialog';
 import { PRIORITY_META } from '@/components/projects/actionItems/actionItemMeta';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 
@@ -44,6 +45,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const [extracting, setExtracting] = useState(false);
   const [newItem, setNewItem] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
+  const [recapOpen, setRecapOpen] = useState(false);
 
   useEffect(() => {
     if (!meeting) return;
@@ -115,7 +117,10 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[820px] max-h-[92vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Meeting</DialogTitle></DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-2 pr-8">
+            <DialogTitle>Meeting</DialogTitle>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRecapOpen(true)}><Send className="h-4 w-4" />Send recap</Button>
+          </DialogHeader>
 
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -184,6 +189,17 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
       </Dialog>
 
       <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
+
+      <MeetingRecapDialog
+        open={recapOpen}
+        onOpenChange={setRecapOpen}
+        projectId={projectId}
+        projectName={projectName}
+        meeting={{ title: meeting.title, meeting_date: meeting.meeting_date, attendees: meeting.attendees, transcript }}
+        minutesHtml={minutes}
+        items={linkedItems}
+        team={team ?? []}
+      />
     </>
   );
 }
