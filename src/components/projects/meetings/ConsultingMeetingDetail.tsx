@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sparkles, Plus, Loader2, CheckSquare, MessageSquare, Send } from 'lucide-react';
+import { Sparkles, Plus, Loader2, CheckSquare, MessageSquare, Send, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { ProRichTextEditor } from '@/components/ui/rich-text-editor';
 import { useConsultingMeetings, type ConsultingMeeting } from '@/hooks/useConsultingMeetings';
-import { useActionItemsByProject, useCreateActionItem, useUpdateActionItem, type ActionItem } from '@/hooks/useActionItems';
+import { useActionItemsByProject, useCreateActionItem, useUpdateActionItem, useDeleteActionItem, type ActionItem } from '@/hooks/useActionItems';
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ActionItemDetailDialog } from '@/components/projects/actionItems/ActionItemDetailDialog';
@@ -34,6 +34,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const { data: team } = useProjectTeamMembers(projectId);
   const createItem = useCreateActionItem(projectId);
   const updateItem = useUpdateActionItem(projectId);
+  const deleteItem = useDeleteActionItem(projectId);
   const { data: clickup } = useClickUpStatus();
   const pushClickUp = usePushToClickUp();
 
@@ -46,6 +47,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const [newItem, setNewItem] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
   const [recapOpen, setRecapOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     if (!meeting) return;
@@ -160,7 +162,24 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
             <div className="border-t pt-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-semibold flex items-center gap-2"><CheckSquare className="h-4 w-4 text-muted-foreground" />Action items from this meeting</div>
-                <span className="text-xs text-muted-foreground">{linkedItems.length}</span>
+                <div className="flex items-center gap-2">
+                  {confirmClear ? (
+                    <>
+                      <span className="text-xs text-muted-foreground">Delete all {linkedItems.length}?</span>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" onClick={() => { linkedItems.forEach((i) => deleteItem.mutate(i.id)); setConfirmClear(false); }}>Delete</Button>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setConfirmClear(false)}>Cancel</Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-muted-foreground">{linkedItems.length}</span>
+                      {linkedItems.length > 0 && (
+                        <button className="text-xs text-muted-foreground hover:text-destructive inline-flex items-center gap-1" onClick={() => setConfirmClear(true)}>
+                          <Trash2 className="h-3 w-3" />Clear all
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-lg border divide-y mb-2">
@@ -169,11 +188,19 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
                 ) : linkedItems.map((item) => {
                   const done = item.status === 'done' || item.status === 'cancelled';
                   return (
-                    <div key={item.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(item)}>
+                    <div key={item.id} className="group flex items-center gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(item)}>
                       <div onClick={(e) => e.stopPropagation()}><Checkbox checked={done} onCheckedChange={() => toggleDone(item)} /></div>
                       <span className={cn('h-2 w-2 rounded-full shrink-0', PRIORITY_META[item.priority].dot)} />
                       <span className={cn('text-sm flex-1 truncate', done && 'line-through text-muted-foreground')}>{item.title}</span>
                       {(item.comment_count ?? 0) > 0 && <span className="text-xs text-muted-foreground inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{item.comment_count}</span>}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteItem.mutate(item.id); }}
+                        className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Delete action item"
+                        aria-label="Delete action item"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   );
                 })}
