@@ -85,12 +85,19 @@ export function MeetingRecapDialog({ open, onOpenChange, projectId, projectName,
         bodyHtml: recapHtml,
       });
 
-      // Optionally save the typed emails as a reusable group.
+      // Optionally save the typed emails as a reusable group. Members store the
+      // address in `email_override` (not `email`); that's what resolveDistribution reads.
       if (groupName.trim() && emails.length) {
         try {
           const list = await listsApi.create.mutateAsync({ name: groupName.trim(), scope: 'project', projectId });
-          await supabase.from('distribution_list_members' as never).insert(emails.map((e) => ({ list_id: (list as any).id, email: e })) as never);
-        } catch (e) { /* non-fatal */ }
+          const { error: memErr } = await supabase
+            .from('distribution_list_members' as never)
+            .insert(emails.map((e) => ({ list_id: (list as any).id, email_override: e })) as never);
+          if (memErr) throw memErr;
+          toast.success(`Saved group “${groupName.trim()}”`);
+        } catch (e) {
+          toast.error(`Recap sent, but couldn't save the group: ${e instanceof Error ? e.message : 'try again'}`);
+        }
       }
 
       // Optionally push the action items to ClickUp.

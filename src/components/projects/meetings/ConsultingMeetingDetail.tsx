@@ -49,6 +49,9 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const [recapOpen, setRecapOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
+  // Seed local fields only when the dialog opens or a DIFFERENT meeting is
+  // shown — NOT on every refetch. Otherwise saving one field triggers a refetch
+  // that resets the others mid-edit (the "can't change the date" bug).
   useEffect(() => {
     if (!meeting) return;
     setTitle(meeting.title ?? '');
@@ -56,7 +59,8 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
     setAttendees(meeting.attendees ?? '');
     setMinutes(meeting.minutes ?? '');
     setTranscript(meeting.transcript ?? '');
-  }, [meeting, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meeting?.id, open]);
 
   const linkedItems = useMemo(
     () => (allItems ?? []).filter((i) => i.meeting_id === meeting?.id),
@@ -97,7 +101,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
       // Fill the minutes editor with the AI summary, and persist it.
       if (draftMinutes) { setMinutes(draftMinutes); save({ minutes: draftMinutes }); }
 
-      for (const it of items) await addItem({ title: it.title, description: it.description, priority: it.priority, assigned_to: it.assignee_id ?? null, due_date: it.due_date ?? null });
+      await Promise.all(items.map((it) => addItem({ title: it.title, description: it.description, priority: it.priority, assigned_to: it.assignee_id ?? null, due_date: it.due_date ?? null })));
 
       const assigned = items.filter((i) => i.assignee_id).length;
       const parts: string[] = [];
