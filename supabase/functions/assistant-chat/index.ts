@@ -7,6 +7,7 @@
 // Requires the ANTHROPIC_API_KEY edge-function secret (already used by
 // draft-change-order). projectId + messages come from the client.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const cors = {
@@ -216,6 +217,7 @@ Answer using the provided tools. Rules:
       });
       if (!res.ok) return json({ error: `AI error: ${await res.text()}` }, 502);
       const data = await res.json();
+      await logAiUsage({ req, skill: "assistant_chat", model: MODEL, anthropicJson: data, projectId });
       const blocks = data?.content ?? [];
       const toolUses = blocks.filter((b: any) => b.type === "tool_use");
       const text = blocks.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();

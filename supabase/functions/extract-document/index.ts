@@ -6,6 +6,7 @@
 // Input:  { pdfBase64: string, mediaType?: string }
 // Output: { ok, fields: {...} }
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +91,7 @@ serve(async (req) => {
     });
     if (!res.ok) return json({ error: `AI error: ${await res.text()}` }, 502);
     const data = await res.json();
+    await logAiUsage({ req, skill: "extract_document", model: MODEL, anthropicJson: data, projectId: null });
     const toolUse = (data?.content ?? []).find((c: any) => c.type === "tool_use");
     const fields = toolUse?.input;
     if (!fields) return json({ error: "No fields extracted" }, 502);

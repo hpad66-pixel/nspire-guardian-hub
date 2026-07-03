@@ -4,6 +4,7 @@
 //              shows for review, then applies via the normal (RLS-respecting) hooks.
 // The app passes the items in the body, so this function never touches the DB.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,7 @@ async function claude(system: string, user: string, key: string, maxTokens = 204
     throw new Error(`Anthropic API error: ${r.status}`);
   }
   const data = await r.json();
+  await logAiUsage({ skill: "tracker_ai", model: MODEL, anthropicJson: data, projectId: null });
   let text: string = data.content?.[0]?.text ?? "";
   const fence = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
   if (fence) text = fence[1].trim();

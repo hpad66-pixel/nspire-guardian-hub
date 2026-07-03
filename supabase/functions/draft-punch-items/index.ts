@@ -4,6 +4,7 @@
 // (skill_key='punch_list_draft') can override the system prompt.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +81,7 @@ serve(async (req) => {
     const r = await callClaude(anthropic, model, system, userPrompt);
     if (r.ok) {
       const data = await r.json();
+      await logAiUsage({ req, skill: "punch_list_draft", model, anthropicJson: data, projectId: null });
       const raw = data.content?.[0]?.text ?? "";
       return json({ items: parseItems(raw), model });
     }

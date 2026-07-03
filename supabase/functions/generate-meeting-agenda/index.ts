@@ -3,6 +3,7 @@
 // POST { projectName, glossary, overdue, dueSoon, updates, priorMinutes } → { html }
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -107,6 +108,7 @@ serve(async (req) => {
         return json({ error: "Could not organize the agenda." }, 502);
       }
       const data = await r.json();
+      await logAiUsage({ req, skill: "meeting_agenda", model, anthropicJson: data, projectId: body?.projectId ?? null });
       try {
         const raw = data.content?.[0]?.text ?? "";
         const f = raw.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i);
@@ -158,6 +160,7 @@ serve(async (req) => {
     const r = await callClaude(anthropic, model, system, parts.join("\n"));
     if (r.ok) {
       const data = await r.json();
+      await logAiUsage({ req, skill: "meeting_agenda", model, anthropicJson: data, projectId: body?.projectId ?? null });
       return json({ ...parseSections(data.content?.[0]?.text ?? ""), model });
     }
     if (r.status === 429) return json({ error: "Rate limit — try again in a moment." }, 429);

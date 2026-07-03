@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Plug,
   Boxes,
+  Sparkles,
   ChevronRight,
   LayoutGrid,
   type LucideIcon,
@@ -56,6 +57,7 @@ const PLATFORM_TILES: AdminTile[] = [
   { title: 'Feature Registry', description: 'Enable or disable platform modules.', icon: ToggleRight, to: '/admin/registry', scope: 'admin' },
   { title: 'LearnWorlds Schools', description: 'Training school assignments and sync.', icon: GraduationCap, to: '/admin/schools', scope: 'admin' },
   { title: 'API Clients', description: 'API keys, webhooks, and developer access.', icon: Plug, to: '/settings/api/clients', scope: 'admin' },
+  { title: 'AI Usage & Cost', description: 'Token usage and spend by model, feature, project, and client.', icon: Sparkles, to: '/admin/ai-usage', scope: 'admin' },
 ];
 
 function TileCard({ tile, onOpen }: { tile: AdminTile; onOpen: (to: string) => void }) {
