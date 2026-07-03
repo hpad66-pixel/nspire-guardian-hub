@@ -125,9 +125,9 @@ export function MeetingRecapDialog({ open, onOpenChange, projectId, projectName,
         <div className="grid md:grid-cols-2 gap-5">
           {/* Recipients */}
           <div className="space-y-4">
-            {(lists ?? []).length > 0 && (
-              <div>
-                <Label className="text-xs flex items-center gap-1.5 mb-1.5"><Users className="h-3.5 w-3.5" />Groups</Label>
+            <div>
+              <Label className="text-xs flex items-center gap-1.5 mb-1.5"><Users className="h-3.5 w-3.5" />Groups</Label>
+              {(lists ?? []).length > 0 ? (
                 <div className="rounded-lg border divide-y max-h-40 overflow-y-auto">
                   {(lists ?? []).map((l) => (
                     <label key={l.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
@@ -136,8 +136,10 @@ export function MeetingRecapDialog({ open, onOpenChange, projectId, projectName,
                     </label>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground rounded-lg border border-dashed px-3 py-2.5">No saved groups yet. Add emails below and give them a group name to reuse next time.</p>
+              )}
+            </div>
 
             <div>
               <Label className="text-xs mb-1.5 block">Individual emails</Label>
@@ -153,8 +155,9 @@ export function MeetingRecapDialog({ open, onOpenChange, projectId, projectName,
                 </div>
               )}
               {emails.length > 0 && (
-                <div className="mt-2">
-                  <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Save these as a group (optional name)…" className="h-8 text-xs" />
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Save these emails as a group (name it, e.g. “Fog IQ core team”)…" className="h-8 text-xs" />
                 </div>
               )}
             </div>
