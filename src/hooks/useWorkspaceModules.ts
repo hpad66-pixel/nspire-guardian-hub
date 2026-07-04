@@ -117,11 +117,23 @@ export function useApplyPackage() {
     mutationFn: async ({ workspaceId, packageKey }: { workspaceId: string; packageKey: string }) => {
       const pkg = PACKAGES.find((p) => p.key === packageKey);
       if (!pkg) throw new Error('Unknown package');
+      const has = (k: ModuleKey) => pkg.modules.includes(k);
       const patch: Record<string, any> = { package: pkg.name };
       for (const [mk, col] of Object.entries(MODULE_WS_COLUMN)) {
-        patch[col as string] = pkg.modules.includes(mk as ModuleKey);
+        patch[col as string] = has(mk as ModuleKey);
       }
       await upsertWorkspaceModules(workspaceId, patch);
+
+      // nspire / daily-grounds / projects are read from the PROPERTIES table, not
+      // workspace_modules — set them there too so the package name is truthful.
+      const { error: propErr } = await supabase.from('properties')
+        .update({
+          nspire_enabled: has('nspireEnabled'),
+          daily_grounds_enabled: has('dailyGroundsEnabled'),
+          projects_enabled: has('constructionEnabled') || has('consultingEnabled'),
+        } as any)
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (propErr) throw propErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
