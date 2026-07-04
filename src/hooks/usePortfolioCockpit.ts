@@ -7,6 +7,7 @@ import { isActiveProject } from '@/lib/projects';
 import { computeHealth, type HealthStatus } from '@/lib/projectHealth';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import { buildProjectTree } from '@/lib/projectTree';
+import { computeComplianceScore, type ScoreBand, type ScoreInput } from '@/lib/envcompliance/complianceScore';
 
 export interface RiskSnapshot {
   project_id: string;
@@ -42,6 +43,8 @@ export interface CockpitProject {
   rolledOpen: number;
   rolledOverdue: number;
   rolledRag: Rag;
+  // Environmental Compliance health (only meaningful when the module has data)
+  compliance: { score: number | null; band: ScoreBand; drivers: string[]; hasData: boolean };
 }
 
 const num = (v: unknown) => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : 0; };
@@ -59,6 +62,31 @@ function useRiskSnapshots() {
         open_punch: num(r.open_punch), pending_co_value: num(r.pending_co_value),
         flagged: !!r.flagged, generated_at: r.generated_at,
       });
+      return map;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+// Cross-project compliance inputs (sampling exceedances + obligation timing),
+// aggregated per project so each cockpit row can score with the shared model.
+function useComplianceInputs() {
+  return useQuery({
+    queryKey: ['cockpit-compliance-inputs'],
+    queryFn: async () => {
+      const map = new Map<string, ScoreInput>();
+      const ensure = (pid: string) => { let e = map.get(pid); if (!e) { e = { sampling: { total: 0, exceedances: 0 }, obligations: { total: 0, overdue: 0, dueSoon: 0 } }; map.set(pid, e); } return e; };
+      const [{ data: results }, { data: obligations }] = await Promise.all([
+        supabase.from('sampling_results' as any).select('project_id, is_exceedance'),
+        supabase.from('permit_obligations' as any).select('project_id, status, next_due_date'),
+      ]);
+      for (const r of (results ?? []) as any[]) { const e = ensure(r.project_id); e.sampling.total++; if (r.is_exceedance) e.sampling.exceedances++; }
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      for (const o of (obligations ?? []) as any[]) {
+        if (o.status === 'complete' || o.status === 'waived') continue;
+        const e = ensure(o.project_id); e.obligations.total++;
+        if (o.next_due_date) { const du = Math.round((new Date(o.next_due_date + 'T00:00:00').getTime() - today.getTime()) / 864e5); if (du < 0) e.obligations.overdue++; else if (du <= 30) e.obligations.dueSoon++; }
+      }
       return map;
     },
     staleTime: 5 * 60_000,
@@ -84,6 +112,7 @@ export function usePortfolioCockpit() {
   const myDay = useMyDay();
   const { financials } = useAllProjectFinancials();
   const { data: snapshots } = useRiskSnapshots();
+  const { data: complianceInputs } = useComplianceInputs();
 
   const active = (projects ?? []).filter(isActiveProject);
 
@@ -98,18 +127,26 @@ export function usePortfolioCockpit() {
     const billedPct = revisedBudget > 0 ? Math.round((billed / revisedBudget) * 100) : 0;
     const flags = buildFlags(project, fin, snap, counts.overdue, health);
 
-    // RAG: red if past-due/overdue items/flagged risk/over budget; amber if any softer flag; else green.
-    const hardRisk = health === 'overdue' || counts.overdue > 0 || (snap?.overdue_rfis ?? 0) > 0 || (revisedBudget > 0 && billed > revisedBudget);
-    const softRisk = flags.length > 0 || health === 'at_risk' || health === 'stalled' || (snap?.flagged ?? false);
+    // Environmental Compliance health (shared model). Only bites when the module has data.
+    const compliance = computeComplianceScore(complianceInputs?.get(project.id) ?? { sampling: { total: 0, exceedances: 0 }, obligations: { total: 0, overdue: 0, dueSoon: 0 } });
+    if (compliance.hasData) {
+      if (compliance.band === 'poor') flags.push('compliance at risk');
+      else if (compliance.band === 'watch' && compliance.drivers.length) flags.push(compliance.drivers[0]);
+    }
+
+    // RAG: red if past-due/overdue items/flagged risk/over budget/poor compliance; amber if softer; else green.
+    const hardRisk = health === 'overdue' || counts.overdue > 0 || (snap?.overdue_rfis ?? 0) > 0 || (revisedBudget > 0 && billed > revisedBudget) || compliance.band === 'poor';
+    const softRisk = flags.length > 0 || health === 'at_risk' || health === 'stalled' || (snap?.flagged ?? false) || compliance.band === 'watch';
     const rag: Rag = hardRisk ? 'red' : softRisk ? 'amber' : 'green';
 
     const attentionScore =
       counts.overdue * 10 + (snap?.overdue_rfis ?? 0) * 6 + (snap?.aging_submittals ?? 0) * 3 +
       (snap?.open_punch ?? 0) * 1 + (health === 'overdue' ? 8 : health === 'stalled' ? 4 : 0) +
-      (revisedBudget > 0 && billed > revisedBudget ? 12 : 0) + (rag === 'red' ? 5 : 0);
+      (revisedBudget > 0 && billed > revisedBudget ? 12 : 0) + (rag === 'red' ? 5 : 0) +
+      (compliance.band === 'poor' ? 10 : compliance.band === 'watch' ? 4 : 0);
 
     return {
-      project, kind, health, rag, openItems: counts.open, overdueItems: counts.overdue, revisedBudget, billed, billedPct, snapshot: snap, flags, attentionScore,
+      project, kind, health, rag, openItems: counts.open, overdueItems: counts.overdue, revisedBudget, billed, billedPct, snapshot: snap, flags, attentionScore, compliance,
       parentId: (project as any).parent_project_id ?? null, childIds: [], isProgram: false,
       rolledBudget: revisedBudget, rolledBilled: billed, rolledOpen: counts.open, rolledOverdue: counts.overdue, rolledRag: rag,
     } as CockpitProject;
