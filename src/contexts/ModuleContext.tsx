@@ -16,6 +16,14 @@ interface ModuleContextType {
 }
 
 const defaultModules: ModuleConfig = {
+  // Sellable suites default ON (existing installs keep everything; admins turn OFF what a client didn't buy).
+  constructionEnabled: true,
+  consultingEnabled: true,
+  environmentalEnabled: true,
+  propertyMgmtEnabled: true,
+  cockpitEnabled: true,
+  reportsEnabled: true,
+  aiEnabled: true,
   nspireEnabled: false,
   dailyGroundsEnabled: false,
   projectsEnabled: false,
@@ -28,6 +36,11 @@ const defaultModules: ModuleConfig = {
   equipmentTrackerEnabled: false,
   clientPortalEnabled: false,
 };
+
+// Every module key → null (no per-user override). Derived from defaultModules so
+// new modules can't be forgotten in one of the several places this was duplicated.
+const nullOverrides = (): Record<keyof ModuleConfig, boolean | null> =>
+  Object.fromEntries((Object.keys(defaultModules) as (keyof ModuleConfig)[]).map((k) => [k, null])) as Record<keyof ModuleConfig, boolean | null>;
 
 // Map from ModuleConfig keys to database column names
 const moduleColumnMap: Record<string, string> = {
@@ -42,19 +55,7 @@ const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
 
 export function ModuleProvider({ children }: { children: ReactNode }) {
   const [tenantModules, setTenantModules] = useState<ModuleConfig>(defaultModules);
-  const [userModuleOverrides, setUserModuleOverrides] = useState<Record<keyof ModuleConfig, boolean | null>>({
-    nspireEnabled: null,
-    dailyGroundsEnabled: null,
-    projectsEnabled: null,
-    occupancyEnabled: null,
-    emailInboxEnabled: null,
-    qrScanningEnabled: null,
-    credentialWalletEnabled: null,
-    trainingHubEnabled: null,
-    safetyModuleEnabled: null,
-    equipmentTrackerEnabled: null,
-    clientPortalEnabled: null,
-  });
+  const [userModuleOverrides, setUserModuleOverrides] = useState<Record<keyof ModuleConfig, boolean | null>>(nullOverrides());
   const [userRole, setUserRole] = useState<ModuleContextType['userRole']>('tenant_admin');
   const [isLoading, setIsLoading] = useState(true);
   const { isAdmin } = useUserPermissions();
@@ -90,6 +91,14 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
       // Module is enabled if ANY property has it enabled
       const tenant: ModuleConfig = {
+        // Sellable suites: workspace-level, default ON (column absent → enabled).
+        constructionEnabled: wsEnabled('platform_construction', 'construction_enabled'),
+        consultingEnabled: wsEnabled('platform_consulting', 'consulting_enabled'),
+        environmentalEnabled: wsEnabled('platform_environmental', 'environmental_enabled'),
+        propertyMgmtEnabled: wsEnabled('platform_property_mgmt', 'property_mgmt_enabled'),
+        cockpitEnabled: wsEnabled('platform_cockpit', 'cockpit_enabled'),
+        reportsEnabled: wsEnabled('platform_reports', 'reports_enabled'),
+        aiEnabled: wsEnabled('platform_ai', 'ai_enabled'),
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
@@ -107,19 +116,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setUserModuleOverrides({
-          nspireEnabled: null,
-          dailyGroundsEnabled: null,
-          projectsEnabled: null,
-          occupancyEnabled: null,
-          emailInboxEnabled: null,
-          qrScanningEnabled: null,
-          credentialWalletEnabled: null,
-          trainingHubEnabled: null,
-          safetyModuleEnabled: null,
-          equipmentTrackerEnabled: null,
-          clientPortalEnabled: null,
-        });
+        setUserModuleOverrides(nullOverrides());
         return;
       }
 
@@ -130,19 +127,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
       if (overridesError) throw overridesError;
 
-      const overrideMap: Record<keyof ModuleConfig, boolean | null> = {
-        nspireEnabled: null,
-        dailyGroundsEnabled: null,
-        projectsEnabled: null,
-        occupancyEnabled: null,
-        emailInboxEnabled: null,
-        qrScanningEnabled: null,
-        credentialWalletEnabled: null,
-        trainingHubEnabled: null,
-        safetyModuleEnabled: null,
-        equipmentTrackerEnabled: null,
-        clientPortalEnabled: null,
-      };
+      const overrideMap = nullOverrides();
 
       (overrides || []).forEach((row) => {
         const key = row.module_key as keyof ModuleConfig;

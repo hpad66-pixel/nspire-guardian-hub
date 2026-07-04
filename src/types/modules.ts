@@ -1,11 +1,21 @@
-// Module Feature Flags
+// Module Feature Flags. Sellable capabilities are grouped by domain; a package
+// (see lib/packages) is just a preset that flips a set of these.
 export interface ModuleConfig {
+  // ── Sellable suites (workspace-level; default ON so existing installs are unaffected) ──
+  constructionEnabled: boolean;     // Construction suite: financials cascade, pay apps, COs, RFIs, submittals, punch
+  consultingEnabled: boolean;       // Consulting engagements: scopes, invoicing, meetings, action items, proposals
+  environmentalEnabled: boolean;    // Environmental Compliance: sampling, obligations, correspondence, score
+  propertyMgmtEnabled: boolean;     // Property management: properties, units, assets, work orders, issues, permits
+  cockpitEnabled: boolean;          // Portfolio Cockpit
+  reportsEnabled: boolean;          // Insights: reports, documents, CaseIQ
+  aiEnabled: boolean;               // Cross-cutting AI (assistant, drafting, analysis, briefings)
+  // ── nSpire / field-ops modules ──
   nspireEnabled: boolean;           // Inside unit inspections (NSPIRE compliance)
   dailyGroundsEnabled: boolean;     // Outside/grounds/asset inspections
-  projectsEnabled: boolean;         // Construction/renovation projects
-  occupancyEnabled: boolean;        // Future: tenant management
-  emailInboxEnabled: boolean;       // Future: email integration
-  qrScanningEnabled: boolean;       // Future: QR asset scanning
+  projectsEnabled: boolean;         // Legacy property-derived projects flag (kept for compat)
+  occupancyEnabled: boolean;        // Tenant / occupancy management
+  emailInboxEnabled: boolean;       // Email integration
+  qrScanningEnabled: boolean;       // QR asset scanning
   credentialWalletEnabled: boolean; // Credential & License Wallet
   trainingHubEnabled: boolean;      // Training Hub (LearnWorlds integration)
   safetyModuleEnabled: boolean;     // Safety Incident Log & OSHA recordkeeping

@@ -187,14 +187,14 @@ export function AppSidebar() {
           <div className="space-y-px">
             <NavItem to="/dashboard" icon={Home} label="Dashboard" collapsed={collapsed} end />
             <NavItem to="/my-day" icon={Sunrise} label="My Day" collapsed={collapsed} />
-            <NavItem to="/cockpit" icon={Gauge} label="Cockpit" collapsed={collapsed} />
+            {isModuleEnabled('cockpitEnabled') && <NavItem to="/cockpit" icon={Gauge} label="Cockpit" collapsed={collapsed} />}
             <NavItem to="/messages" icon={MessageCircle} label="Messages" collapsed={collapsed} badge={unreadCount} />
             <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
           </div>
 
           {/* ─── Projects — the primary workspace. Clients own projects: open a
               client to see their projects, then enter each project. ─── */}
-          {isModuleEnabled('projectsEnabled') && canView('projects') && (
+          {(isModuleEnabled('constructionEnabled') || isModuleEnabled('consultingEnabled')) && canView('projects') && (
             <>
               <SectionLabel label="Projects" collapsed={collapsed} />
               <div className="space-y-px">
@@ -210,55 +210,54 @@ export function AppSidebar() {
             </>
           )}
 
-          {/* ─── Property Management ─── */}
-          {/* Everything tied to operating a property: the property itself, its
-              physical assets, grounds inspections, field tools, and the workforce
-              compliance (credentials/training) that keeps it running. */}
-          <SectionLabel label="Property Management" collapsed={collapsed} />
-          <div className="space-y-px">
-            <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
-            <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
-            {isModuleEnabled('occupancyEnabled') && (
-              <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
-            )}
-            <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
-            {isModuleEnabled('equipmentTrackerEnabled') && (
-              <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
-              <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('qrScanningEnabled') && (
-              <NavItem to="/qr-scanner" icon={QrCode} label="Scanner" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('credentialWalletEnabled') && (
-              <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('trainingHubEnabled') && (
-              <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
-            )}
-          </div>
-
-          {/* ─── Operations ─── */}
-          <SectionLabel label="Operations" collapsed={collapsed} />
-          <div className="space-y-px">
-            {canView('issues') && (
-              <NavItem to="/issues" icon={AlertTriangle} label="Issues" collapsed={collapsed} badge={openIssueCount} />
-            )}
-            {canView('work_orders') && (
-              <NavItem to="/work-orders" icon={Wrench} label="Work Orders" collapsed={collapsed} />
-            )}
-            {canView('work_orders') && (
-              <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('nspireEnabled') && canView('inspections') && (
-              <NavItem to="/inspections" icon={ClipboardCheck} label="NSPIRE" collapsed={collapsed} />
-            )}
-            {isModuleEnabled('safetyModuleEnabled') && (
-              <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
-            )}
-            <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
-          </div>
+          {/* ─── Property Management (nSpire / property ops) — one module-gated
+              section for everything tied to operating a property. ─── */}
+          {isModuleEnabled('propertyMgmtEnabled') && (
+            <>
+              <SectionLabel label="Property Management" collapsed={collapsed} />
+              <div className="space-y-px">
+                <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
+                <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
+                {isModuleEnabled('occupancyEnabled') && (
+                  <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
+                )}
+                <NavItem to="/assets" icon={Box} label="Assets" collapsed={collapsed} />
+                {isModuleEnabled('nspireEnabled') && canView('inspections') && (
+                  <NavItem to="/inspections" icon={ClipboardCheck} label="NSPIRE" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
+                  <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
+                )}
+                {canView('issues') && (
+                  <NavItem to="/issues" icon={AlertTriangle} label="Issues" collapsed={collapsed} badge={openIssueCount} />
+                )}
+                {canView('work_orders') && (
+                  <NavItem to="/work-orders" icon={Wrench} label="Work Orders" collapsed={collapsed} />
+                )}
+                {canView('work_orders') && (
+                  <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('safetyModuleEnabled') && (
+                  <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('equipmentTrackerEnabled') && (
+                  <NavItem to="/equipment" icon={Truck} label="Equipment" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('qrScanningEnabled') && (
+                  <NavItem to="/qr-scanner" icon={QrCode} label="Scanner" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('credentialWalletEnabled') && (
+                  <NavItem to="/credentials" icon={BadgeCheck} label="Credentials" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('trainingHubEnabled') && (
+                  <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
+                )}
+                {isModuleEnabled('aiEnabled') && (
+                  <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
+                )}
+              </div>
+            </>
+          )}
 
           {/* ─── People ─── */}
           <SectionLabel label="People" collapsed={collapsed} />
@@ -270,7 +269,7 @@ export function AppSidebar() {
           </div>
 
           {/* ─── Insights ─── */}
-          {(canView('documents') || canView('reports') || isAdmin) && (
+          {isModuleEnabled('reportsEnabled') && (canView('documents') || canView('reports') || isAdmin) && (
             <>
               <SectionLabel label="Insights" collapsed={collapsed} />
               <div className="space-y-px">
@@ -283,7 +282,7 @@ export function AppSidebar() {
                 {canView('documents') && (
                   <NavItem to="/documents" icon={FileText} label="Documents" collapsed={collapsed} />
                 )}
-                {isAdmin && (
+                {isAdmin && isModuleEnabled('aiEnabled') && (
                   <NavItem to="/case-review" icon={Gavel} label="CaseIQ" collapsed={collapsed} />
                 )}
               </div>
