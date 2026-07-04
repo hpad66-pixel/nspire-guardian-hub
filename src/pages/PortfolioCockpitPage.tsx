@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortfolioCockpit, type CockpitProject, type Rag } from '@/hooks/usePortfolioCockpit';
 import { useWorkloadLeaderboard, type LeaderRow } from '@/hooks/useWorkloadLeaderboard';
 import type { ProjectKind } from '@/lib/projectKind';
+import { BAND_META } from '@/lib/envcompliance/complianceScore';
 
 const money = (n: number) => {
   if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -138,6 +139,7 @@ export default function PortfolioCockpitPage() {
       <div className="mt-3 flex items-center gap-3 text-xs">
         <span className={cn('flex items-center gap-1', r.overdueItems ? 'text-[var(--apas-rose)] font-semibold' : 'text-muted-foreground')}><AlertTriangle className="h-3.5 w-3.5" />{r.overdueItems} overdue</span>
         <span className="flex items-center gap-1 text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{r.openItems} open</span>
+        {r.compliance.hasData && <span className="flex items-center gap-1 font-medium" style={{ color: BAND_META[r.compliance.band].color }} title={`Compliance: ${BAND_META[r.compliance.band].label}`}><Gauge className="h-3.5 w-3.5" />{r.compliance.score}</span>}
       </div>
       {r.flags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">{r.flags.slice(0, 3).map((f, i) => <span key={i} className="text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">{f}</span>)}</div>
