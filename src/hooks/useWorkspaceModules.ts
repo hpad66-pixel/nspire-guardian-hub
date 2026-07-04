@@ -10,10 +10,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { MODULE_WS_COLUMN, PACKAGES, type ModuleKey } from '@/lib/packages';
 
 export interface WorkspaceModuleRow {
   id: string;
   workspace_id: string;
+  package: string | null;
+  // sellable-suite flags (workspace-admin)
+  construction_enabled: boolean;
+  consulting_enabled: boolean;
+  environmental_enabled: boolean;
+  property_mgmt_enabled: boolean;
+  cockpit_enabled: boolean;
+  reports_enabled: boolean;
+  ai_enabled: boolean;
   // workspace-admin flags
   credential_wallet_enabled: boolean;
   training_hub_enabled: boolean;
@@ -24,6 +34,13 @@ export interface WorkspaceModuleRow {
   qr_scanning_enabled: boolean;
   occupancy_enabled: boolean;
   // platform (super-admin) gates
+  platform_construction: boolean;
+  platform_consulting: boolean;
+  platform_environmental: boolean;
+  platform_property_mgmt: boolean;
+  platform_cockpit: boolean;
+  platform_reports: boolean;
+  platform_ai: boolean;
   platform_credential_wallet: boolean;
   platform_training_hub: boolean;
   platform_safety_module: boolean;
@@ -87,6 +104,32 @@ export function useToggleWorkspaceModule() {
     onError: (err) => {
       console.error('Failed to toggle workspace module:', err);
       toast.error('Failed to update module setting');
+    },
+  });
+}
+
+// Apply a package preset: turn every workspace-backed module ON iff the package
+// includes it, and record the package name.
+export function useApplyPackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ workspaceId, packageKey }: { workspaceId: string; packageKey: string }) => {
+      const pkg = PACKAGES.find((p) => p.key === packageKey);
+      if (!pkg) throw new Error('Unknown package');
+      const patch: Record<string, any> = { package: pkg.name };
+      for (const [mk, col] of Object.entries(MODULE_WS_COLUMN)) {
+        patch[col as string] = pkg.modules.includes(mk as ModuleKey);
+      }
+      await upsertWorkspaceModules(workspaceId, patch);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success('Package applied');
+    },
+    onError: (err) => {
+      console.error('Failed to apply package:', err);
+      toast.error('Failed to apply package');
     },
   });
 }

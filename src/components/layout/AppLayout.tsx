@@ -259,10 +259,15 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* PWA Install Banner — rendered outside SidebarProvider so it overlays correctly */}
       <PWAInstallBanner />
 
-      {/* Floating financial assistant — only when enabled in Settings + on a project route */}
-      <AssistantLauncher />
-      {/* Client assistant — always available in the owner portal (owner-safe tools) */}
-      <OwnerAssistantLauncher />
+      {/* AI assistants — only when the workspace has the AI module. */}
+      {isModuleEnabled('aiEnabled') && (
+        <>
+          {/* Floating financial assistant — only when enabled in Settings + on a project route */}
+          <AssistantLauncher />
+          {/* Client assistant — always available in the owner portal (owner-safe tools) */}
+          <OwnerAssistantLauncher />
+        </>
+      )}
     </>
   );
 }
