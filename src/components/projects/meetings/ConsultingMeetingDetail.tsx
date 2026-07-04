@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +48,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const [minutes, setMinutes] = useState('');
   const [transcript, setTranscript] = useState('');
   const [extracting, setExtracting] = useState(false);
+  const aiEnabled = useAiEnabled();
   const [newItem, setNewItem] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
   const [recapOpen, setRecapOpen] = useState(false);
@@ -169,10 +171,12 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
                 <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={() => setDictOpen(true)}>
                   <BookMarked className="h-4 w-4" />Vocabulary{(dictionary ?? []).length ? ` (${(dictionary ?? []).length})` : ''}
                 </Button>
-                <Button size="sm" onClick={handleExtract} disabled={extracting || !transcript.trim()} className="gap-1.5">
-                  {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  {extracting ? 'Summarizing…' : 'Summarize & extract'}
-                </Button>
+                {aiEnabled && (
+                  <Button size="sm" onClick={handleExtract} disabled={extracting || !transcript.trim()} className="gap-1.5">
+                    {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {extracting ? 'Summarizing…' : 'Summarize & extract'}
+                  </Button>
+                )}
               </div>
             </div>
 

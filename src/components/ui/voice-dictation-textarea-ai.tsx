@@ -2,6 +2,7 @@ import { forwardRef, useState, useCallback, useRef, useImperativeHandle } from '
 import { Textarea } from '@/components/ui/textarea';
 import { VoiceDictation } from '@/components/ui/voice-dictation';
 import { Button } from '@/components/ui/button';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { cn } from '@/lib/utils';
 import { useTextPolish, type PolishContext } from '@/hooks/useTextPolish';
 import { Sparkles, Loader2, Undo2, Languages, Edit3 } from 'lucide-react';
@@ -22,6 +23,7 @@ interface VoiceDictationTextareaWithAIProps extends React.TextareaHTMLAttributes
 export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, VoiceDictationTextareaWithAIProps>(
   ({ className, value, onChange, onValueChange, context = 'notes', ...props }, ref) => {
     const { polish, isPolishing } = useTextPolish();
+    const aiEnabled = useAiEnabled();
     const [previousValue, setPreviousValue] = useState<string | null>(null);
     const [lastTranslation, setLastTranslation] = useState<{ original: string; language: string } | null>(null);
     const [showEditHint, setShowEditHint] = useState(false);
@@ -198,28 +200,30 @@ export const VoiceDictationTextareaWithAI = forwardRef<HTMLTextAreaElement, Voic
               </Tooltip>
             )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePolish}
-                  disabled={isPolishing || !currentValue.trim()}
-                  className="h-8 px-2"
-                >
-                  {isPolishing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      Polish
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Use AI to polish and professionalize text</TooltipContent>
-            </Tooltip>
+            {aiEnabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePolish}
+                    disabled={isPolishing || !currentValue.trim()}
+                    className="h-8 px-2"
+                  >
+                    {isPolishing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        Polish
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Use AI to polish and professionalize text</TooltipContent>
+              </Tooltip>
+            )}
 
             <VoiceDictation onTranscript={handleTranscript} disabled={isPolishing} />
           </div>

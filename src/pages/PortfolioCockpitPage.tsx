@@ -19,6 +19,7 @@ import { usePortfolioCockpit, type CockpitProject, type Rag } from '@/hooks/useP
 import { useWorkloadLeaderboard, type LeaderRow } from '@/hooks/useWorkloadLeaderboard';
 import type { ProjectKind } from '@/lib/projectKind';
 import { BAND_META } from '@/lib/envcompliance/complianceScore';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 
 const money = (n: number) => {
   if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -50,6 +51,7 @@ export default function PortfolioCockpitPage() {
   const navigate = useNavigate();
   const { rows, totals, isLoading } = usePortfolioCockpit();
   const leaderboard = useWorkloadLeaderboard();
+  const aiEnabled = useAiEnabled();
 
   const [kind, setKind] = useState<'all' | ProjectKind>('all');
   const [briefing, setBriefing] = useState<Briefing | null>(null);
@@ -144,9 +146,11 @@ export default function PortfolioCockpitPage() {
       {r.flags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">{r.flags.slice(0, 3).map((f, i) => <span key={i} className="text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">{f}</span>)}</div>
       )}
-      <Button size="sm" variant="outline" className="mt-3 h-7 w-full gap-1.5 text-xs" onClick={() => runRisk(r)} disabled={riskLoading === r.project.id}>
-        {riskLoading === r.project.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />}AI risk radar
-      </Button>
+      {aiEnabled && (
+        <Button size="sm" variant="outline" className="mt-3 h-7 w-full gap-1.5 text-xs" onClick={() => runRisk(r)} disabled={riskLoading === r.project.id}>
+          {riskLoading === r.project.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />}AI risk radar
+        </Button>
+      )}
     </div>
   );
 
@@ -216,9 +220,11 @@ export default function PortfolioCockpitPage() {
               </SelectContent>
             </Select>
           )}
-          <Button onClick={generateBriefing} disabled={briefingLoading || isLoading} className="gap-1.5">
-            {briefingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI briefing
-          </Button>
+          {aiEnabled && (
+            <Button onClick={generateBriefing} disabled={briefingLoading || isLoading} className="gap-1.5">
+              {briefingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI briefing
+            </Button>
+          )}
         </div>
       </div>
 

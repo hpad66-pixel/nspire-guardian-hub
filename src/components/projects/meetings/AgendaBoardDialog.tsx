@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Sparkles, Printer, Send, Link2, Plus, X, ListChecks, Users, ArrowUp, ArrowDown, Pencil, Check, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { useMeetingAgendaItems, type AgendaCategory, type AgendaItem } from '@/hooks/useMeetingAgendaItems';
 import { useActionItemsByProject, useCreateActionItem } from '@/hooks/useActionItems';
@@ -46,6 +47,7 @@ interface Grp { topic: string; items: AgendaItem[] }
 
 export function AgendaBoardDialog({ open, onOpenChange, projectId, projectName, meeting, team }: Props) {
   const agenda = useMeetingAgendaItems(meeting.id, projectId);
+  const aiEnabled = useAiEnabled();
   const { data: actionItems } = useActionItemsByProject(projectId);
   const meetingsApi = useConsultingMeetings(projectId);
   const { data: meetings } = meetingsApi;
@@ -217,7 +219,7 @@ export function AgendaBoardDialog({ open, onOpenChange, projectId, projectName, 
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={printAgenda} disabled={!items.length} className="gap-1.5"><Printer className="h-4 w-4" />Print</Button>
             {clickup?.connected && <Button size="sm" variant="outline" onClick={pushClickUp} disabled={!items.length || pushing} className="gap-1.5">{pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}ClickUp</Button>}
-            <Button size="sm" onClick={build} disabled={building} className="gap-1.5">{building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{items.length ? 'Rebuild' : 'Build agenda'}</Button>
+            {aiEnabled && <Button size="sm" onClick={build} disabled={building} className="gap-1.5">{building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{items.length ? 'Rebuild' : 'Build agenda'}</Button>}
           </div>
         </div>
 
