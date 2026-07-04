@@ -39,7 +39,7 @@ interface AdminTile {
 
 // Workspace group — org/property admins (owner) and platform admins both manage these.
 const WORKSPACE_TILES: AdminTile[] = [
-  { title: 'Modules', description: 'Turn platform modules on or off, gated by subscription plan.', icon: Boxes, to: '/settings', scope: 'owner' },
+  { title: 'Modules & Packages', description: 'Turn suites on or off, or apply a package, for this workspace.', icon: Boxes, to: '/admin/modules', scope: 'owner' },
   { title: 'Roles & Permissions', description: 'Permission templates and role access across the workspace.', icon: ShieldCheck, to: '/admin/permission-templates', scope: 'owner' },
   { title: 'Workspace Settings', description: 'Organization profile, branding, and enabled modules.', icon: Building2, to: '/settings/workspace', scope: 'owner' },
   { title: 'Cost Code Libraries', description: 'Master cost codes that drive budgets and financials.', icon: Coins, to: '/admin/cost-codes', scope: 'owner' },
