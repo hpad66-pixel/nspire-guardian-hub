@@ -14,6 +14,7 @@ import { useMyDay } from '@/hooks/useMyDay';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ProgramTimeline } from '@/components/projects/ProgramTimeline';
 import { projectKind } from '@/lib/projectKind';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { cn } from '@/lib/utils';
 
 interface Brief { summary: string; topRisks: any[]; recommendations: string[] }
@@ -37,6 +38,7 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
   const { children, tree, ownBudget, ownBilled, rolledBudget, rolledBilled } = useSubprojects(projectId);
   const updateProject = useUpdateProject();
   const myDay = useMyDay();
+  const aiEnabled = useAiEnabled();
   const [addOpen, setAddOpen] = useState(false);
   const [attachId, setAttachId] = useState('');
   const [view, setView] = useState<'board' | 'timeline'>('board');
@@ -122,9 +124,11 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
         )}
         {children.length > 0 && (
           <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={generateBrief} disabled={briefLoading} className="gap-1.5">
-              {briefLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI program brief
-            </Button>
+            {aiEnabled && (
+              <Button size="sm" variant="outline" onClick={generateBrief} disabled={briefLoading} className="gap-1.5">
+                {briefLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}AI program brief
+              </Button>
+            )}
             <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as any)} className="border rounded-lg p-0.5 bg-muted/30 h-9">
               <ToggleGroupItem value="board" className="h-7 px-2.5 text-xs gap-1"><LayoutGrid className="h-3.5 w-3.5" />Board</ToggleGroupItem>
               <ToggleGroupItem value="timeline" className="h-7 px-2.5 text-xs gap-1"><GanttChartSquare className="h-3.5 w-3.5" />Timeline</ToggleGroupItem>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -35,6 +36,7 @@ export function ScopesTab({ projectId, projectName = '', clientName }: { project
   const [editing, setEditing] = useState<ProjectScope | null>(null);
   const [deleting, setDeleting] = useState<ProjectScope | null>(null);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const aiEnabled = useAiEnabled();
 
   const summary = useMemo(() => summarizeScopes(scopes), [scopes]);
   const ownerName = (id: string | null) => {
@@ -54,7 +56,7 @@ export function ScopesTab({ projectId, projectName = '', clientName }: { project
           <p className="text-sm text-muted-foreground">Workstreams and deliverables. Each carries a fee and % complete.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setUpdateOpen(true)} disabled={(scopes ?? []).length === 0} className="gap-1.5"><Sparkles className="h-4 w-4" />Client update</Button>
+          {aiEnabled && <Button variant="outline" onClick={() => setUpdateOpen(true)} disabled={(scopes ?? []).length === 0} className="gap-1.5"><Sparkles className="h-4 w-4" />Client update</Button>}
           <Button onClick={openAdd} className="gap-1.5"><Plus className="h-4 w-4" />Add scope</Button>
         </div>
       </div>

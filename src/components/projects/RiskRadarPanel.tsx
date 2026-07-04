@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShieldAlert, Sparkles, RefreshCw, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 
 interface Risk { title: string; severity: 'high' | 'medium' | 'low'; area: string; detail: string; action: string; }
 
@@ -14,10 +15,10 @@ const sev: Record<string, { dot: string; badge: string; label: string }> = {
   low:    { dot: 'bg-slate-400', badge: 'bg-slate-500/10 text-slate-600 border-slate-200', label: 'Low' },
 };
 
-function useRiskRadar(projectId: string) {
+function useRiskRadar(projectId: string, enabled: boolean) {
   return useQuery({
     queryKey: ['risk-radar', projectId],
-    enabled: !!projectId,
+    enabled: enabled && !!projectId,
     staleTime: 1000 * 60 * 60 * 6, // 6h — proactive but not chatty
     refetchOnWindowFocus: false,
     retry: false,
@@ -30,8 +31,11 @@ function useRiskRadar(projectId: string) {
 }
 
 export function RiskRadarPanel({ projectId }: { projectId: string }) {
-  const { data, isLoading, isError, error, refetch, isFetching } = useRiskRadar(projectId);
+  const aiEnabled = useAiEnabled();
+  const { data, isLoading, isError, error, refetch, isFetching } = useRiskRadar(projectId, aiEnabled);
   const risks = data?.risks ?? [];
+
+  if (!aiEnabled) return null;
 
   return (
     <Card className="border-border/70">

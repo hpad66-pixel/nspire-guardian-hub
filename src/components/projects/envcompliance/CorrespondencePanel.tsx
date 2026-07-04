@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useComplianceCorrespondence, LETTER_TYPE_LABEL, type ComplianceLetter, type LetterType } from '@/hooks/useComplianceCorrespondence';
 import { buildLetterHtml } from '@/lib/envcompliance/letterDocument';
 import { cn } from '@/lib/utils';
+import { useAiEnabled } from '@/hooks/useAiEnabled';
 
 const TYPES: LetterType[] = ['regulatory_notice', 'response', 'transmittal', 'request', 'general'];
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -69,6 +70,7 @@ function LetterEditor({ letter, api, projectName, onBack }: { letter: Compliance
   const [f, setF] = useState({ ...letter });
   const [context, setContext] = useState('');
   const [drafting, setDrafting] = useState(false);
+  const aiEnabled = useAiEnabled();
   useEffect(() => { setF({ ...letter }); }, [letter.id]);
 
   const set = (patch: Partial<ComplianceLetter>) => setF((p) => ({ ...p, ...patch }));
@@ -130,11 +132,13 @@ function LetterEditor({ letter, api, projectName, onBack }: { letter: Compliance
       </div>
 
       {/* AI draft */}
-      <div className="rounded-lg border p-3 space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Sparkles className="h-3.5 w-3.5" />AI draft</div>
-        <Textarea placeholder="Points to cover / context for the letter (facts, permit numbers, what happened, what you're requesting)…" value={context} onChange={(e) => setContext(e.target.value)} rows={2} />
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={aiDraft} disabled={drafting || !f.subject.trim()}>{drafting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Draft with AI</Button>
-      </div>
+      {aiEnabled && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Sparkles className="h-3.5 w-3.5" />AI draft</div>
+          <Textarea placeholder="Points to cover / context for the letter (facts, permit numbers, what happened, what you're requesting)…" value={context} onChange={(e) => setContext(e.target.value)} rows={2} />
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={aiDraft} disabled={drafting || !f.subject.trim()}>{drafting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Draft with AI</Button>
+        </div>
+      )}
 
       {/* Body */}
       <div>
