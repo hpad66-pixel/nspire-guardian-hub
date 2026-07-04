@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { FlaskConical, CalendarClock, Mail, Gauge } from 'lucide-react';
 import type { Project } from '@/hooks/useProjects';
 import { SamplingPanel } from '@/components/projects/envcompliance/SamplingPanel';
+import { ObligationsPanel } from '@/components/projects/envcompliance/ObligationsPanel';
 
 // The Environmental Compliance suite. Sampling is live; the other capabilities
 // are the planned build order (obligations → correspondence → score), shown as
@@ -28,7 +29,7 @@ export function EnvComplianceTab({ projectId }: { projectId: string; project?: P
         </TabsList>
 
         <TabsContent value="sampling" className="mt-4"><SamplingPanel projectId={projectId} /></TabsContent>
-        <TabsContent value="obligations" className="mt-4"><ComingSoon icon={CalendarClock} title="Permit obligations" desc="Track permit conditions and deadlines against the compliance calendar. Next up." /></TabsContent>
+        <TabsContent value="obligations" className="mt-4"><ObligationsPanel projectId={projectId} /></TabsContent>
         <TabsContent value="correspondence" className="mt-4"><ComingSoon icon={Mail} title="Regulatory correspondence" desc="Draft agency letters, route for sign-off, submit, and keep an audit trail." /></TabsContent>
         <TabsContent value="score" className="mt-4"><ComingSoon icon={Gauge} title="Compliance score" desc="A 0–100 compliance health score with a timeline, feeding the portfolio cockpit." /></TabsContent>
       </Tabs>
