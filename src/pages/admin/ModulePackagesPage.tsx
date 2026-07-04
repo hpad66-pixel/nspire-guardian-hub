@@ -14,7 +14,7 @@ export default function ModulePackagesPage() {
   const { data: row, isLoading } = useWorkspaceModules();
   const toggle = useToggleWorkspaceModule();
   const applyPkg = useApplyPackage();
-  const { refetchModules } = useModules();
+  const { refetchModules, isModuleEnabled, toggleModule } = useModules();
   const { currentRole } = useUserPermissions();
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
 
@@ -37,19 +37,23 @@ export default function ModulePackagesPage() {
   }
 
   const r = row as WorkspaceModuleRow | null;
+  // nspire / daily-grounds are stored on the PROPERTIES table (workspace-wide),
+  // toggled via ModuleContext; everything else is a workspace_modules column.
+  const PROPERTY_BACKED = new Set<ModuleKey>(['nspireEnabled', 'dailyGroundsEnabled']);
+
   const state = (key: ModuleKey) => {
     const wsCol = MODULE_WS_COLUMN[key];
-    const managed = !wsCol;
+    const propertyBacked = PROPERTY_BACKED.has(key);
     const platformCol = wsCol ? ('platform_' + wsCol.replace(/_enabled$/, '')) as keyof WorkspaceModuleRow : null;
     const platformOn = !r || !platformCol ? true : (r as any)[platformCol] !== false;
-    const wsOn = !r || !wsCol ? true : (r as any)[wsCol] !== false;
-    return { on: platformOn && wsOn, locked: !platformOn, managed, wsCol };
+    return { on: isModuleEnabled(key), locked: !!wsCol && !platformOn, controllable: !!wsCol || propertyBacked, propertyBacked, wsCol };
   };
 
   const setModule = (key: ModuleKey, value: boolean) => {
-    const { wsCol } = state(key);
-    if (!wsCol || !workspaceId) return;
-    toggle.mutate({ workspaceId, field: wsCol as any, value }, { onSuccess: () => refetchModules() });
+    const s = state(key);
+    if (s.propertyBacked) { void toggleModule(key); return; } // flips across all workspace properties
+    if (!s.wsCol || !workspaceId) return;
+    toggle.mutate({ workspaceId, field: s.wsCol as any, value }, { onSuccess: () => refetchModules() });
   };
   const apply = (packageKey: string) => {
     if (!workspaceId) return;
@@ -100,13 +104,13 @@ export default function ModulePackagesPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{m.label}</span>
                           {s.locked && <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Not in plan</Badge>}
-                          {s.managed && <Badge variant="outline" className="text-[10px] text-muted-foreground">Per property</Badge>}
+                          {s.propertyBacked && <Badge variant="outline" className="text-[10px] text-muted-foreground">Workspace-wide</Badge>}
                         </div>
                         {m.description && <div className="text-xs text-muted-foreground mt-0.5">{m.description}</div>}
                       </div>
                       <Switch
                         checked={s.on}
-                        disabled={s.locked || s.managed || !workspaceId || toggle.isPending}
+                        disabled={s.locked || !s.controllable || (!!s.wsCol && !workspaceId) || toggle.isPending}
                         onCheckedChange={(v) => setModule(m.key, v)}
                       />
                     </div>
