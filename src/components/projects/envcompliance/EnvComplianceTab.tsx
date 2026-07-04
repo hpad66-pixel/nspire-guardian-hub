@@ -5,10 +5,9 @@ import type { Project } from '@/hooks/useProjects';
 import { SamplingPanel } from '@/components/projects/envcompliance/SamplingPanel';
 import { ObligationsPanel } from '@/components/projects/envcompliance/ObligationsPanel';
 import { CorrespondencePanel } from '@/components/projects/envcompliance/CorrespondencePanel';
+import { ScorePanel } from '@/components/projects/envcompliance/ScorePanel';
 
-// The Environmental Compliance suite. Sampling is live; the other capabilities
-// are the planned build order (obligations → correspondence → score), shown as
-// stubs so the shape of the module is visible.
+// The Environmental Compliance suite: Sampling, Obligations, Correspondence, Score.
 export function EnvComplianceTab({ projectId, project }: { projectId: string; project?: Project }) {
   const [sub, setSub] = useState('sampling');
   return (
@@ -32,19 +31,8 @@ export function EnvComplianceTab({ projectId, project }: { projectId: string; pr
         <TabsContent value="sampling" className="mt-4"><SamplingPanel projectId={projectId} /></TabsContent>
         <TabsContent value="obligations" className="mt-4"><ObligationsPanel projectId={projectId} /></TabsContent>
         <TabsContent value="correspondence" className="mt-4"><CorrespondencePanel projectId={projectId} projectName={project?.name} /></TabsContent>
-        <TabsContent value="score" className="mt-4"><ComingSoon icon={Gauge} title="Compliance score" desc="A 0–100 compliance health score with a timeline, feeding the portfolio cockpit." /></TabsContent>
+        <TabsContent value="score" className="mt-4"><ScorePanel projectId={projectId} /></TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function ComingSoon({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
-  return (
-    <div className="rounded-xl border border-dashed p-10 text-center">
-      <Icon className="mx-auto h-9 w-9 text-muted-foreground mb-3" />
-      <div className="font-medium">{title}</div>
-      <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{desc}</p>
-      <div className="mt-2 inline-block rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">Coming next</div>
     </div>
   );
 }
