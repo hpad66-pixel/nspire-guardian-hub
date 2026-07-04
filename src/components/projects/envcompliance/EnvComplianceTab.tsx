@@ -4,11 +4,12 @@ import { FlaskConical, CalendarClock, Mail, Gauge } from 'lucide-react';
 import type { Project } from '@/hooks/useProjects';
 import { SamplingPanel } from '@/components/projects/envcompliance/SamplingPanel';
 import { ObligationsPanel } from '@/components/projects/envcompliance/ObligationsPanel';
+import { CorrespondencePanel } from '@/components/projects/envcompliance/CorrespondencePanel';
 
 // The Environmental Compliance suite. Sampling is live; the other capabilities
 // are the planned build order (obligations → correspondence → score), shown as
 // stubs so the shape of the module is visible.
-export function EnvComplianceTab({ projectId }: { projectId: string; project?: Project }) {
+export function EnvComplianceTab({ projectId, project }: { projectId: string; project?: Project }) {
   const [sub, setSub] = useState('sampling');
   return (
     <div className="space-y-4">
@@ -30,7 +31,7 @@ export function EnvComplianceTab({ projectId }: { projectId: string; project?: P
 
         <TabsContent value="sampling" className="mt-4"><SamplingPanel projectId={projectId} /></TabsContent>
         <TabsContent value="obligations" className="mt-4"><ObligationsPanel projectId={projectId} /></TabsContent>
-        <TabsContent value="correspondence" className="mt-4"><ComingSoon icon={Mail} title="Regulatory correspondence" desc="Draft agency letters, route for sign-off, submit, and keep an audit trail." /></TabsContent>
+        <TabsContent value="correspondence" className="mt-4"><CorrespondencePanel projectId={projectId} projectName={project?.name} /></TabsContent>
         <TabsContent value="score" className="mt-4"><ComingSoon icon={Gauge} title="Compliance score" desc="A 0–100 compliance health score with a timeline, feeding the portfolio cockpit." /></TabsContent>
       </Tabs>
     </div>
