@@ -209,8 +209,8 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
           <div style={{ fontSize: 10.5, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
           {sub && <div style={{ fontSize: 8.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
         </div>
-        <div style={{ width: 124, textAlign: "right" }}>
-          <span style={{ fontSize: 11, fontWeight: hi ? 700 : 400, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 28 }}>{money(value)}</span>
+        <div style={{ width: 124, textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 11, fontWeight: hi ? 700 : 400 }}>
+          {money(value)}
         </div>
       </div>
     );
@@ -292,15 +292,15 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                   <div style={{ fontSize: 10.5, lineHeight: 1.3 }}>Retainage:</div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 10 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div style={{ width: 96, marginRight: 88, textAlign: "right" }}><span style={{ fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 18 }}>{money(g.retainage_total)}</span></div>
+                    <div style={{ width: 96, marginRight: 88, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums" }}>{money(g.retainage_total)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 10 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
-                    <div style={{ width: 96, marginRight: 88, textAlign: "right" }}><span style={{ fontSize: 10.5, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 18 }}>{money(0)}</span></div>
+                    <div style={{ width: 96, marginRight: 88, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums" }}>{money(0)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginTop: 6 }}>
                     <div style={{ flex: 1, fontSize: 9, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div style={{ width: 124, textAlign: "right" }}><span style={{ fontSize: 11, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, paddingBottom: 3, paddingLeft: 28 }}>{money(g.retainage_total)}</span></div>
+                    <div style={{ width: 124, textAlign: "right", fontSize: 11, fontVariantNumeric: "tabular-nums", borderTop: `1px solid ${INK}`, paddingTop: 2 }}>{money(g.retainage_total)}</div>
                   </div>
                 </div>
               </div>
