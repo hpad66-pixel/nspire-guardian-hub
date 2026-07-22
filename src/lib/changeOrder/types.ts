@@ -52,6 +52,14 @@ export interface CoPricingRow {
   unit_cost: string;
   extended: string;
   basis: string;
+  /**
+   * When this priced row adjusts an existing base SOV line (guided
+   * "change order for this line" flow), the id of that base line. The pay-app
+   * loader materializes such a row as a change_order SOV line tied to the base
+   * line, carrying the base unit price and the signed delta quantity. Absent on
+   * free-form CO rows (which fall back to the lump-sum line).
+   */
+  source_sov_line_item_id?: string | null;
 }
 export interface CoPricingGroup {
   label: string;

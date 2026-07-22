@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   coToSovLine,
+  coPricedRowToSovLine,
   computeLineToDate,
   seedContinuationRows,
   computeG702,
@@ -31,6 +32,49 @@ describe("coToSovLine", () => {
     const generic = coToSovLine({ id: "c", co_no: null, title: "  ", description: null, amount: 100 }, { sortOrder: 1, itemNo: "x" });
     expect(generic.description).toBe("Change Order");
     expect(generic.budget_code).toBeNull();
+  });
+});
+
+describe("coPricedRowToSovLine", () => {
+  it("shapes an additive line tied to a base line, inheriting the unit price", () => {
+    const line = coPricedRowToSovLine(
+      { description: "8\" PVC pipe", unit: "LF", qty: 120, unitPrice: 15, sourceSovLineItemId: "base-8in" },
+      { id: "co9", co_no: 9 },
+      { sortOrder: 21, itemNo: "21" },
+    );
+    expect(line).toMatchObject({
+      kind: "change_order",
+      change_order_id: "co9",
+      source_sov_line_item_id: "base-8in",
+      budget_code: "PCO #009",
+      description: '8" PVC pipe',
+      unit: "LF",
+      scheduled_qty: 120,
+      unit_price: 15,
+      scheduled_value: 1800, // 120 × 15
+    });
+  });
+
+  it("carries a signed negative quantity + value for a deductive line", () => {
+    const line = coPricedRowToSovLine(
+      { description: "8\" PVC pipe (credit)", unit: "LF", qty: -120, unitPrice: 15, sourceSovLineItemId: "base-8in" },
+      { id: "co10", co_no: 10 },
+      { sortOrder: 22, itemNo: "22" },
+    );
+    expect(line.scheduled_qty).toBe(-120);
+    expect(line.scheduled_value).toBe(-1800);
+    expect(line.source_sov_line_item_id).toBe("base-8in");
+  });
+
+  it("defaults a blank unit to EA and null budget_code without a co_no", () => {
+    const line = coPricedRowToSovLine(
+      { description: "Misc", unit: "", qty: 2, unitPrice: 50, sourceSovLineItemId: "b" },
+      { id: "c", co_no: null },
+      { sortOrder: 1, itemNo: "x" },
+    );
+    expect(line.unit).toBe("EA");
+    expect(line.budget_code).toBeNull();
+    expect(line.scheduled_value).toBe(100);
   });
 });
 
