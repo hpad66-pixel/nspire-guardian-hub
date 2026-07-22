@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   financialSummary, billingHistory, changeOrderLog, cashFlow, commitmentStatus, lienCompliance,
+  paymentsReceived, subcontractorPayments,
   type ReportData,
 } from "../financialReports";
 
@@ -88,5 +89,69 @@ describe("lienCompliance", () => {
     const lc = lienCompliance(base.liens);
     expect(lc.totalOutbound).toBe(2);
     expect(lc.totalInbound).toBe(1);
+  });
+});
+
+describe("paymentsReceived", () => {
+  it("sorts oldest→newest, accumulates a running total, and rolls up by pay app", () => {
+    const r = paymentsReceived([
+      { amount: 40000, received_date: "2026-05-22", method: "wire", reference: "W-2", pay_app_no: 2 },
+      { amount: 63459.15, received_date: "2025-07-07", method: "check", reference: "1001", pay_app_no: 1 },
+      { amount: 10000, received_date: "2026-05-30", method: "ach", reference: null, pay_app_no: 2 },
+    ]);
+    expect(r.rows.map((x) => x.amount)).toEqual([63459.15, 40000, 10000]); // chronological
+    expect(r.rows.map((x) => x.runningTotal)).toEqual([63459.15, 103459.15, 113459.15]);
+    expect(r.total).toBe(113459.15);
+    expect(r.count).toBe(3);
+    expect(r.firstDate).toBe("2025-07-07");
+    expect(r.lastDate).toBe("2026-05-30");
+    const app2 = r.byPayApp.find((b) => b.payAppNo === 2)!;
+    expect(app2.amount).toBe(50000); // 40000 + 10000
+  });
+
+  it("handles an empty set", () => {
+    const r = paymentsReceived([]);
+    expect(r.total).toBe(0);
+    expect(r.rows).toEqual([]);
+    expect(r.firstDate).toBeNull();
+  });
+});
+
+describe("subcontractorPayments", () => {
+  const commitments = [
+    { id: "c1", title: "Sitework subcontract", original_value: 200000, vendor_name: "D'SHIN Plumbing" },
+    { id: "c2", title: "Bollards PO", original_value: 5000, vendor_name: "D'SHIN Plumbing" }, // same vendor, 2nd commitment
+    { id: "c3", title: "Fencing", original_value: 10450, vendor_name: "Acme Fence Co" },
+  ];
+  const payments = [
+    { commitment_id: "c1", amount: 100000, paid_date: "2026-04-24", method: "ach", reference: "P-1" },
+    { commitment_id: "c2", amount: 1800, paid_date: "2026-05-08", method: "check", reference: "P-2" },
+    { commitment_id: "c3", amount: 10450, paid_date: "2026-05-10", method: "wire", reference: "P-3" },
+    { commitment_id: "c1", amount: 25000, paid_date: "2026-06-01", method: "ach", reference: "P-4" },
+  ];
+
+  it("groups payments per subcontractor (across commitments) with subtotals + a grand total", () => {
+    const r = subcontractorPayments(commitments, payments);
+    expect(r.total).toBe(137250); // 100000 + 1800 + 10450 + 25000
+    expect(r.count).toBe(4);
+    expect(r.vendorCount).toBe(2); // D'SHIN (c1+c2) and Acme
+    const dshin = r.byVendor.find((v) => v.vendor === "D'SHIN Plumbing")!;
+    expect(dshin.subtotal).toBe(126800); // 100000 + 1800 + 25000
+    expect(dshin.count).toBe(3);
+    expect(r.byVendor[0].vendor).toBe("D'SHIN Plumbing"); // largest first
+    expect(dshin.pctOfTotal).toBeCloseTo(92.39, 1);
+  });
+
+  it("falls back to the commitment title, then a placeholder, when the vendor name is missing", () => {
+    const r = subcontractorPayments(
+      [{ id: "c1", title: "Untitled sub", original_value: 0 }],
+      [
+        { commitment_id: "c1", amount: 500, paid_date: "2026-01-01" },
+        { commitment_id: "missing", amount: 200, paid_date: "2026-01-02" },
+      ],
+    );
+    expect(r.byVendor.find((v) => v.vendor === "Untitled sub")).toBeTruthy();
+    expect(r.byVendor.find((v) => v.vendor === "Unassigned vendor")).toBeTruthy();
+    expect(r.total).toBe(700);
   });
 });
