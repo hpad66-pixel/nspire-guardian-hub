@@ -102,43 +102,6 @@ describe("usePrimeContract", () => {
       result.current.update.mutateAsync({ id: "pc1", status: "closed" } as any),
     ).rejects.toBeTruthy();
   });
-
-  it("finalizeSov stamps sov_finalized_at + sov_finalized_by (current user) and targets the id", async () => {
-    const builder = makeBuilder({ data: null, error: null });
-    __mock.from.mockReturnValue(builder);
-    const { result } = renderHookWithClient(() => usePrimeContract("p1"));
-
-    await result.current.finalizeSov.mutateAsync({ id: "pc1" });
-
-    const patch = (builder.update as any).mock.calls[0][0];
-    expect(patch.sov_finalized_at).toBeTruthy();
-    expect(patch.sov_finalized_by).toBe("u1"); // from mocked auth.getUser()
-    expect((builder.eq as any).mock.calls).toContainEqual(["id", "pc1"]);
-  });
-
-  it("finalizeSov surfaces errors as a rejection", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
-    const { result } = renderHookWithClient(() => usePrimeContract("p1"));
-    await expect(result.current.finalizeSov.mutateAsync({ id: "pc1" })).rejects.toBeTruthy();
-  });
-
-  it("unlockSov clears the finalize columns and targets the id", async () => {
-    const builder = makeBuilder({ data: null, error: null });
-    __mock.from.mockReturnValue(builder);
-    const { result } = renderHookWithClient(() => usePrimeContract("p1"));
-
-    await result.current.unlockSov.mutateAsync({ id: "pc1" });
-
-    const patch = (builder.update as any).mock.calls[0][0];
-    expect(patch).toMatchObject({ sov_finalized_at: null, sov_finalized_by: null });
-    expect((builder.eq as any).mock.calls).toContainEqual(["id", "pc1"]);
-  });
-
-  it("unlockSov surfaces errors as a rejection", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
-    const { result } = renderHookWithClient(() => usePrimeContract("p1"));
-    await expect(result.current.unlockSov.mutateAsync({ id: "pc1" })).rejects.toBeTruthy();
-  });
 });
 
 describe("usePrimeContractSov", () => {

@@ -86,24 +86,3 @@ export function usePrimeContractPayments(payAppId: string | null) {
 
   return { ...list, create, remove };
 }
-
-/**
- * Total cash actually received from the client across ALL pay apps on a prime
- * contract — the cumulative "paid to date" figure the pay-app position card
- * shows (distinct from the G702's "less previous certificates", which is billed,
- * not paid).
- */
-export function usePrimeContractPaymentsTotal(primeContractId: string | null) {
-  return useQuery<number>({
-    queryKey: ["prime-contract-payments-total", primeContractId],
-    enabled: Boolean(primeContractId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prime_contract_payments" as any)
-        .select("amount")
-        .eq("prime_contract_id", primeContractId!);
-      if (error) throw error;
-      return (data ?? []).reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
-    },
-  });
-}

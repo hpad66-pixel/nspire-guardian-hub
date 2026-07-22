@@ -14,7 +14,7 @@ vi.mock("@/lib/tenant", () => ({
   resolveCurrentWorkspaceId: vi.fn(async () => "ws-1"),
 }));
 
-import { usePrimeContractPayments, usePrimeContractPaymentsTotal } from "../usePrimeContractPayments";
+import { usePrimeContractPayments } from "../usePrimeContractPayments";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 
@@ -80,42 +80,5 @@ describe("usePrimeContractPayments", () => {
     );
     const { result } = renderHookWithClient(() => usePrimeContractPayments("pa1"));
     await expect(result.current.create.mutateAsync(input as any)).rejects.toBeTruthy();
-  });
-});
-
-describe("usePrimeContractPaymentsTotal", () => {
-  beforeEach(() => {
-    __mock.reset();
-    vi.clearAllMocks();
-  });
-
-  it("is disabled until a primeContractId is provided", () => {
-    const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal(null));
-    expect(result.current.fetchStatus).toBe("idle");
-  });
-
-  it("sums every receipt on the contract (all pay apps)", async () => {
-    const builder = makeBuilder({
-      data: [{ amount: 25000 }, { amount: 40000 }, { amount: 10000.5 }],
-      error: null,
-    });
-    __mock.from.mockReturnValue(builder);
-    const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal("pc1"));
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(75000.5);
-    expect((builder.eq as any).mock.calls[0]).toEqual(["prime_contract_id", "pc1"]);
-  });
-
-  it("returns 0 when there are no receipts", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: [], error: null }));
-    const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal("pc1"));
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(0);
-  });
-
-  it("surfaces query errors as a rejection", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
-    const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal("pc1"));
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

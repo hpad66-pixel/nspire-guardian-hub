@@ -18,9 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { FileSignature, Plus, ExternalLink, Pencil, Lock, LockOpen } from "lucide-react";
-import { isAdminRole } from "@/lib/rbac";
-import { useCurrentUserRole } from "@/hooks/useUserManagement";
+import { FileSignature, Plus, ExternalLink, Pencil } from "lucide-react";
 
 function fmt(n: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n ?? 0);
@@ -40,9 +38,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function PrimeContractPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: contract, isLoading, create, update, finalizeSov, unlockSov } = usePrimeContract(projectId ?? null);
-  const { data: role } = useCurrentUserRole();
-  const canFinalize = isAdminRole(role);
+  const { data: contract, isLoading, create, update } = usePrimeContract(projectId ?? null);
   const { data: totals } = usePrimeContractTotals(contract?.id ?? null);
   const { data: sov = [] } = usePrimeContractSov(contract?.id ?? null);
   const { data: payApps = [] } = usePayApps(contract?.id ?? null);
@@ -185,20 +181,6 @@ export default function PrimeContractPage() {
     { label: "A/R Outstanding", value: fmt(s?.ar_outstanding), color: (s?.ar_outstanding ?? 0) > 0 ? "text-amber-600" : "text-emerald-600" },
   ];
 
-  const sovFinalized = Boolean((contract as any)?.sov_finalized_at);
-  async function toggleFinalize() {
-    if (!contract) return;
-    try {
-      if (sovFinalized) {
-        await unlockSov.mutateAsync({ id: contract.id });
-        toast.success("Schedule of Values unlocked — base lines can be edited. Re-finalize when done.");
-      } else {
-        await finalizeSov.mutateAsync({ id: contract.id });
-        toast.success("Schedule of Values finalized — base lines are locked. Changes now go through change orders.");
-      }
-    } catch (e: any) { toast.error(e.message); }
-  }
-
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
@@ -256,22 +238,7 @@ export default function PrimeContractPage() {
         </TabsContent>
 
         <TabsContent value="sov">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between pb-2">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">Schedule of Values</CardTitle>
-                {sovFinalized
-                  ? <Badge className="gap-1 bg-[var(--apas-emerald)]/10 text-[var(--apas-emerald)]"><Lock className="h-3 w-3" /> Finalized</Badge>
-                  : <Badge variant="outline" className="gap-1 text-muted-foreground"><LockOpen className="h-3 w-3" /> Draft</Badge>}
-              </div>
-              {canFinalize && (
-                <Button size="sm" variant={sovFinalized ? "outline" : "default"}
-                  disabled={finalizeSov.isPending || unlockSov.isPending} onClick={toggleFinalize}>
-                  {sovFinalized ? <><LockOpen className="h-4 w-4 mr-1" /> Unlock SOV</> : <><Lock className="h-4 w-4 mr-1" /> Finalize SOV</>}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="p-0">
+          <Card><CardContent className="p-0">
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase">
                 <th className="text-left p-3 w-8">#</th><th className="text-left p-3">Description</th>

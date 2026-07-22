@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
@@ -79,61 +79,12 @@ export default function ChangeOrderGeneratorPage() {
     return (nums.length ? Math.max(...nums) : 0) + 1;
   }, [existingCos]);
 
-  // Pre-fill from the pay-app builder's "+ Change order" hand-off: a base SOV line
-  // to adjust, its unit price (locked in the editor), and a signed delta quantity.
-  // The approved CO then materializes as a quantity line tied to that base line.
-  const [searchParams] = useSearchParams();
-  const prefill = useMemo(() => {
-    const sourceLine = searchParams.get("sourceLine");
-    if (!sourceLine) return null;
-    const unitPrice = Number(searchParams.get("unitPrice") ?? "0") || 0;
-    const q = Number(searchParams.get("qty") ?? "0") || 0;
-    return {
-      sourceLine,
-      desc: (searchParams.get("desc") ?? "").trim(),
-      unit: (searchParams.get("unit") ?? "").trim(),
-      unitPrice,
-      qty: q,
-    };
-  }, [searchParams]);
-
-  // Build the single line-tied pricing row (no markup — bills at the unit price).
-  const prefillPricing = (base: CoSpec["pricing"]): CoSpec["pricing"] => {
-    if (!prefill) return base;
-    const extended = Math.round(prefill.qty * prefill.unitPrice * 100) / 100;
-    return {
-      ...base,
-      groups: [{
-        ...base.groups[0],
-        rows: [{
-          n: "1",
-          desc: prefill.desc || "Adjustment to base line",
-          unit: prefill.unit,
-          qty: prefill.qty ? String(prefill.qty) : "",
-          unit_cost: String(prefill.unitPrice),
-          extended: prefill.qty ? String(extended) : "",
-          basis: "",
-          source_sov_line_item_id: prefill.sourceLine,
-        }],
-      }, ...base.groups.slice(1)],
-      // Line-tied CO bills at the contract unit price — zero the overhead/profit so
-      // the grand total equals qty × unit price (keeps the CO reconciled with the
-      // SOV line the loader builds). Fields stay editable if the user overrides.
-      markups: base.markups.map((m) => ({ ...m, amount: "0%" })),
-    };
-  };
-
   const [spec, setSpec] = useState<CoSpec>(() => {
     const parties = partiesFromContract(contract as any, (project as any)?.name, company);
     const sigs = signatoriesFromContract(contract as any, company);
     const s = blankSpec(parties, sigs, { company });
     s.doc.date = todayLong();
     s.signatures.submitted.date = todayLong();
-    if (prefill) {
-      s.pricing = prefillPricing(s.pricing);
-      s.doc.title = prefill.desc ? `Adjustment — ${prefill.desc}` : "Change Order";
-      s.parties.subject = prefill.desc ? `Adjustment to ${prefill.desc}` : s.parties.subject;
-    }
     return s;
   });
 
@@ -148,11 +99,8 @@ export default function ChangeOrderGeneratorPage() {
     );
     setSpec((prev) => ({
       ...fresh,
-      // Keep the line-tied pricing (row + no-markup) built from the pre-fill, and
-      // the title, through the contract-load re-seed.
-      doc: { ...fresh.doc, date: prev.doc.date || todayLong(), title: prefill ? prev.doc.title : fresh.doc.title },
+      doc: { ...fresh.doc, date: prev.doc.date || todayLong() },
       parties: { ...fresh.parties, subject: prev.parties.subject, basis: prev.parties.basis },
-      pricing: prefill ? prev.pricing : fresh.pricing,
       signatures: { ...fresh.signatures, submitted: { ...fresh.signatures.submitted, date: prev.signatures.submitted.date || todayLong() } },
     }));
   }
