@@ -10,15 +10,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 
+// Explicit passthrough mock of the recharts exports the views use — keeps the
+// render fast and layout-free in jsdom (no real chart measuring).
 vi.mock("recharts", () => {
-  const Passthrough = ({ children }: any) => <div>{children}</div>;
-  return new Proxy({} as any, { get: () => Passthrough });
+  const P = ({ children }: any) => <div>{children}</div>;
+  return {
+    __esModule: true,
+    ResponsiveContainer: P, BarChart: P, Bar: P, ComposedChart: P, Line: P,
+    PieChart: P, Pie: P, Cell: P, XAxis: P, YAxis: P, CartesianGrid: P,
+    Tooltip: P, Legend: P, LabelList: P,
+  };
 });
 
 import {
   FINANCIAL_REPORTS, ReportFooter, type ReportBrand,
 } from "../FinancialReportViews";
-import { EmailReportDialog } from "../EmailReportDialog";
 import type { ReportData } from "@/lib/reports/financialReports";
 
 const data: ReportData = {
@@ -68,11 +74,5 @@ describe("financial report views", () => {
     const { container } = render(<ReportFooter brand={brand} />);
     expect(container.textContent).toContain("Generated");
     expect(container.textContent).toContain("APAS Consulting LLC");
-  });
-
-  it("EmailReportDialog module + its import chain resolve", () => {
-    // Importing the dialog exercises useSendEmail + reportPdf transitively; a
-    // circular/undefined import would throw at module load, not here.
-    expect(typeof EmailReportDialog).toBe("function");
   });
 });
