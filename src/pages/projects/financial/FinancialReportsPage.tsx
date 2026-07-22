@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   FileBarChart, ReceiptText, FileDiff, TrendingUp, Users, ShieldCheck,
-  Download, ArrowLeft, Loader2,
+  Download, ArrowLeft, Loader2, HandCoins, Wallet,
 } from "lucide-react";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
@@ -21,6 +21,7 @@ import { downloadReportPdf } from "@/lib/reports/reportPdf";
 const ICONS: Record<string, typeof FileBarChart> = {
   summary: FileBarChart, billing: ReceiptText, "change-orders": FileDiff,
   "cash-flow": TrendingUp, commitments: Users, liens: ShieldCheck,
+  "payments-received": HandCoins, "sub-payments": Wallet,
 };
 
 export default function FinancialReportsPage() {

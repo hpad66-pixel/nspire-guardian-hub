@@ -11,7 +11,11 @@ import {
 import type { ReportData } from "@/lib/reports/financialReports";
 import {
   financialSummary, billingHistory, changeOrderLog, cashFlow, commitmentStatus, lienCompliance,
+  paymentsReceived, subcontractorPayments,
 } from "@/lib/reports/financialReports";
+
+const fmtDate = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
+const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "—");
 
 // Build OS brand palette
 export const BRAND = {
@@ -401,6 +405,159 @@ export function OwnerSummaryReportView({ data, brand }: { data: ReportData; bran
   );
 }
 
+// ── 7 · Payments Received (owner → us) ───────────────────────────────────────
+export function PaymentsReceivedReportView({ data, brand }: { data: ReportData; brand: ReportBrand }) {
+  const r = paymentsReceived(data.primePayments);
+  const owner = data.parties?.owner ?? "Owner";
+  const contractor = data.parties?.contractor ?? "Us";
+  const chart = r.rows.map((row, i) => ({ label: fmtDate(row.date), amount: row.amount, runningTotal: row.runningTotal, i }));
+  return (
+    <div>
+      <ReportHeader brand={brand} title="Payments Received" subtitle={`${owner} → ${contractor} · every receipt recorded, with running total`} />
+      <div style={kpiRow}>
+        <Kpi label="Total Received" value={money(r.total)} accent={BRAND.emerald} sub={`${r.count} payment${r.count === 1 ? "" : "s"}`} />
+        <Kpi label="Payments" value={String(r.count)} />
+        <Kpi label="First Receipt" value={fmtDate(r.firstDate)} />
+        <Kpi label="Latest Receipt" value={fmtDate(r.lastDate)} accent={BRAND.sapphire} />
+      </div>
+      <div style={chartCard}>
+        <div style={cardTitle}>Receipts &amp; cumulative total</div>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={chart} margin={{ top: 16, right: 8, bottom: 0, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={BRAND.rule} vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+            <YAxis tickFormatter={kmoney} tick={{ fontSize: 10 }} width={48} />
+            <Tooltip formatter={(v: any) => money2(v)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Bar dataKey="amount" name="Payment" fill={BRAND.emerald} radius={[4, 4, 0, 0]} />
+            <Line dataKey="runningTotal" name="Cumulative received" stroke={BRAND.sapphire} strokeWidth={2.5} dot={{ r: 3 }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <div style={chartCard}>
+        <div className="overflow-x-auto"><table style={tableStyle}>
+          <thead><tr>
+            <th style={thL}>#</th><th style={thL}>Date</th><th style={thL}>Pay App</th>
+            <th style={thL}>Method</th><th style={thL}>Reference</th>
+            <th style={thR}>Amount</th><th style={thR}>Running Total</th>
+          </tr></thead>
+          <tbody>
+            {r.rows.map((row, i) => (
+              <tr key={i}>
+                <td style={td}>{i + 1}</td><td style={td}>{fmtDate(row.date)}</td>
+                <td style={td}>{row.payAppNo != null ? `#${row.payAppNo}` : "—"}</td>
+                <td style={td}>{cap(row.method)}</td><td style={td}>{row.reference || "—"}</td>
+                <td style={tdr}>{money2(row.amount)}</td><td style={tdr}>{money2(row.runningTotal)}</td>
+              </tr>
+            ))}
+            {!r.rows.length && <tr><td style={td} colSpan={7}>No payments recorded yet.</td></tr>}
+          </tbody>
+          {r.rows.length > 0 && (
+            <tfoot><tr>
+              <td style={{ ...td, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }} colSpan={5}>TOTAL RECEIVED</td>
+              <td style={{ ...tdr, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }}>{money2(r.total)}</td>
+              <td style={{ ...tdr, borderTop: `2px solid ${BRAND.ink}` }} />
+            </tr></tfoot>
+          )}
+        </table></div>
+      </div>
+    </div>
+  );
+}
+
+// ── 8 · Subcontractor Payments (us → subs) ───────────────────────────────────
+export function SubcontractorPaymentsReportView({ data, brand }: { data: ReportData; brand: ReportBrand }) {
+  const r = subcontractorPayments(data.commitments, data.commitmentPayments);
+  const contractor = data.parties?.contractor ?? "Us";
+  const top = r.byVendor[0];
+  const chart = r.byVendor.map((v) => ({ name: v.vendor.length > 22 ? v.vendor.slice(0, 21) + "…" : v.vendor, paid: v.subtotal }));
+  return (
+    <div>
+      <ReportHeader brand={brand} title="Subcontractor Payments" subtitle={`${contractor} → subcontractors · individual payments and collective totals`} />
+      <div style={kpiRow}>
+        <Kpi label="Total Paid Out" value={money(r.total)} accent={BRAND.rose} sub={`${r.count} payment${r.count === 1 ? "" : "s"}`} />
+        <Kpi label="Subcontractors" value={String(r.vendorCount)} accent={BRAND.sapphire} />
+        <Kpi label="Payments" value={String(r.count)} />
+        <Kpi label="Largest Sub" value={top ? money(top.subtotal) : "—"} accent={BRAND.amber} sub={top?.vendor} />
+      </div>
+
+      {r.byVendor.length > 0 && (
+        <div style={chartCard}>
+          <div style={cardTitle}>Total paid per subcontractor</div>
+          <ResponsiveContainer width="100%" height={Math.max(150, r.byVendor.length * 48 + 30)}>
+            <BarChart data={chart} layout="vertical" margin={{ top: 8, right: 24, bottom: 0, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={BRAND.rule} horizontal={false} />
+              <XAxis type="number" tickFormatter={kmoney} tick={{ fontSize: 10 }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={150} />
+              <Tooltip formatter={(v: any) => money2(v)} />
+              <Bar dataKey="paid" name="Paid" fill={BRAND.sapphire} radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="paid" position="right" formatter={kmoney} style={{ fontSize: 9, fill: BRAND.ink }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Collective summary — one row per subcontractor */}
+      <div style={chartCard}>
+        <div style={cardTitle}>Summary by subcontractor</div>
+        <div className="overflow-x-auto"><table style={tableStyle}>
+          <thead><tr>
+            <th style={thL}>Subcontractor</th><th style={thR}>Payments</th>
+            <th style={thR}>Total Paid</th><th style={thR}>% of Total</th>
+          </tr></thead>
+          <tbody>
+            {r.byVendor.map((v) => (
+              <tr key={v.vendor}>
+                <td style={td}>{v.vendor}</td><td style={tdr}>{v.count}</td>
+                <td style={tdr}>{money2(v.subtotal)}</td><td style={tdr}>{pct(v.pctOfTotal)}</td>
+              </tr>
+            ))}
+            {!r.byVendor.length && <tr><td style={td} colSpan={4}>No subcontractor payments recorded yet.</td></tr>}
+          </tbody>
+          {r.byVendor.length > 0 && (
+            <tfoot><tr>
+              <td style={{ ...td, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }}>ALL SUBCONTRACTORS</td>
+              <td style={{ ...tdr, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }}>{r.count}</td>
+              <td style={{ ...tdr, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }}>{money2(r.total)}</td>
+              <td style={{ ...tdr, fontWeight: 800, borderTop: `2px solid ${BRAND.ink}` }}>100.0%</td>
+            </tr></tfoot>
+          )}
+        </table></div>
+      </div>
+
+      {/* Individual payments, grouped per subcontractor */}
+      {r.byVendor.map((v) => (
+        <div style={chartCard} key={v.vendor}>
+          <div style={{ ...cardTitle, display: "flex", justifyContent: "space-between" }}>
+            <span>{v.vendor}</span>
+            <span style={{ color: BRAND.emerald }}>{money2(v.subtotal)} · {v.count} payment{v.count === 1 ? "" : "s"}</span>
+          </div>
+          <table style={tableStyle}>
+            <thead><tr>
+              <th style={thL}>Date</th><th style={thL}>Commitment</th>
+              <th style={thL}>Method</th><th style={thL}>Reference</th><th style={thR}>Amount</th>
+            </tr></thead>
+            <tbody>
+              {v.payments.map((p, i) => (
+                <tr key={i}>
+                  <td style={td}>{fmtDate(p.date)}</td><td style={td}>{p.commitment}</td>
+                  <td style={td}>{cap(p.method)}</td><td style={td}>{p.reference || "—"}</td>
+                  <td style={tdr}>{money2(p.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr>
+              <td style={{ ...td, fontWeight: 700, borderTop: `2px solid ${BRAND.ink}` }} colSpan={4}>Subtotal — {v.vendor}</td>
+              <td style={{ ...tdr, fontWeight: 700, borderTop: `2px solid ${BRAND.ink}` }}>{money2(v.subtotal)}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── registry ─────────────────────────────────────────────────────────────────
 export interface ReportDef {
   key: string; title: string; description: string;
@@ -409,6 +566,8 @@ export interface ReportDef {
 export const FINANCIAL_REPORTS: ReportDef[] = [
   { key: "summary", title: "Project Financial Summary", description: "Contract, billings, payments & retainage to date", Component: SummaryReportView },
   { key: "billing", title: "Billing & Pay App History", description: "Per-application billings, retainage & certified amounts", Component: BillingReportView },
+  { key: "payments-received", title: "Payments Received (Owner → Us)", description: "Every owner receipt, incremental, with running total", Component: PaymentsReceivedReportView },
+  { key: "sub-payments", title: "Subcontractor Payments (Us → Subs)", description: "Paid to each subcontractor — individually & collectively", Component: SubcontractorPaymentsReportView },
   { key: "change-orders", title: "Change Order Log", description: "Approved value & pending exposure by status", Component: ChangeOrderReportView },
   { key: "cash-flow", title: "Cash Flow", description: "Money in vs out with running net position", Component: CashFlowReportView },
   { key: "commitments", title: "Subcontractor Status", description: "Committed vs paid vs remaining by subcontract", Component: CommitmentReportView },
