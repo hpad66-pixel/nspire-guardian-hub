@@ -22,7 +22,14 @@ export function isChunkLoadError(err: unknown): boolean {
     /Importing a module script failed/i.test(msg) ||
     /error loading dynamically imported module/i.test(msg) ||
     /Loading chunk \S+ failed/i.test(msg) ||
-    /Loading CSS chunk/i.test(msg)
+    /Loading CSS chunk/i.test(msg) ||
+    // React.lazy over a STALE/mismatched chunk (the SW served an old build whose
+    // chunk resolves to `undefined`) throws when it reads `.default` off it. This
+    // is the same stale-chunk failure wearing a different message — recover the
+    // same way (evict the SW cache + reload) instead of showing the crash screen.
+    /Cannot read propert(?:y|ies) of undefined \(reading 'default'\)/i.test(msg) ||
+    /Cannot read property 'default' of undefined/i.test(msg) ||
+    /undefined is not an object \(evaluating '[^']*\.default'\)/i.test(msg)
   );
 }
 
