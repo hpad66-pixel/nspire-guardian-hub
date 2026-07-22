@@ -13,8 +13,19 @@ describe("isChunkLoadError", () => {
     expect(isChunkLoadError("Failed to fetch dynamically imported module")).toBe(true);
   });
 
+  it("matches React.lazy reading `.default` off a stale/undefined chunk", () => {
+    // Chrome
+    expect(isChunkLoadError(new TypeError("Cannot read properties of undefined (reading 'default')"))).toBe(true);
+    // older Chrome / V8
+    expect(isChunkLoadError(new TypeError("Cannot read property 'default' of undefined"))).toBe(true);
+    // Safari
+    expect(isChunkLoadError(new TypeError("undefined is not an object (evaluating 'n.default')"))).toBe(true);
+  });
+
   it("ignores unrelated errors", () => {
+    // plain undefined-read (no `.default`) is a real bug, NOT a stale chunk
     expect(isChunkLoadError(new Error("Cannot read properties of undefined"))).toBe(false);
+    expect(isChunkLoadError(new TypeError("Cannot read properties of undefined (reading 'foo')"))).toBe(false);
     expect(isChunkLoadError(new TypeError("x is not a function"))).toBe(false);
     expect(isChunkLoadError(null)).toBe(false);
     expect(isChunkLoadError(undefined)).toBe(false);

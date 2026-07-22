@@ -5,6 +5,8 @@ import {
   computeLineToDate,
   seedContinuationRows,
   computeG702,
+  computePaymentPosition,
+  type G702Summary,
 } from "../payAppContinuation";
 
 describe("coToSovLine", () => {
@@ -156,5 +158,47 @@ describe("computeG702", () => {
   it("zero lines → all zeros with no NaN", () => {
     const g = computeG702({ originalContractSum: 0, previousCertificates: 0, lines: [] });
     expect(Object.values(g).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("computePaymentPosition", () => {
+  const g: G702Summary = {
+    original_contract_sum: 523061,
+    net_change_orders: 24050,
+    contract_sum_to_date: 547111,
+    completed_stored_to_date: 400000,
+    retainage_total: 40000,
+    total_earned_less_retainage: 360000,
+    less_previous_certificates: 280000,
+    current_payment_due: 80000,
+    balance_to_finish: 187111,
+  };
+
+  it("folds the certified cover + actual cash received into a plain-language position", () => {
+    const p = computePaymentPosition(g, 300000);
+    expect(p.baseContract).toBe(523061);
+    expect(p.changeOrders).toBe(24050);
+    expect(p.revisedContract).toBe(547111);
+    expect(p.completedToDate).toBe(400000);
+    expect(p.pctComplete).toBe(73.11);
+    expect(p.retainageHeld).toBe(40000);
+    expect(p.earnedLessRetainage).toBe(360000);
+    expect(p.previouslyBilled).toBe(280000);
+    expect(p.thisInvoice).toBe(80000);
+    expect(p.paidToDate).toBe(300000);
+    expect(p.outstanding).toBe(60000);
+    expect(p.balanceToBill).toBe(147111);
+    expect(p.balanceToFinish).toBe(187111);
+  });
+
+  it("handles a zero cover / no cash with no NaN and no divide-by-zero", () => {
+    const zero: G702Summary = {
+      original_contract_sum: 0, net_change_orders: 0, contract_sum_to_date: 0,
+      completed_stored_to_date: 0, retainage_total: 0, total_earned_less_retainage: 0,
+      less_previous_certificates: 0, current_payment_due: 0, balance_to_finish: 0,
+    };
+    const p = computePaymentPosition(zero, 0);
+    expect(p.pctComplete).toBe(0);
+    expect(Object.values(p).every((v) => v === 0)).toBe(true);
   });
 });
