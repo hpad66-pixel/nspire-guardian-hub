@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   FileBarChart, ReceiptText, FileDiff, TrendingUp, Users, ShieldCheck,
-  Download, ArrowLeft, Loader2, HandCoins, Wallet,
+  Download, ArrowLeft, Loader2, HandCoins, Wallet, Mail,
 } from "lucide-react";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
 import { useCoSettings } from "@/hooks/useCoSettings";
-import { FINANCIAL_REPORTS, type ReportBrand } from "@/components/reports/financial/FinancialReportViews";
+import { FINANCIAL_REPORTS, ReportFooter, type ReportBrand } from "@/components/reports/financial/FinancialReportViews";
+import { EmailReportDialog } from "@/components/reports/financial/EmailReportDialog";
 import { downloadReportPdf } from "@/lib/reports/reportPdf";
 
 const ICONS: Record<string, typeof FileBarChart> = {
@@ -30,6 +31,7 @@ export default function FinancialReportsPage() {
   const { data: coSettings } = useCoSettings();
   const [selected, setSelected] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   const s: any = coSettings ?? {};
@@ -40,6 +42,12 @@ export default function FinancialReportsPage() {
         contractTitle: contract.title,
         contractNo: contract.contract_no,
         asOf: new Date().toISOString().slice(0, 10),
+        // Letterhead detail for the branded header/footer (from company settings).
+        companyName: s.company_name ?? null,
+        contact: s.company_contact ?? null,
+        email: s.company_email ?? null,
+        address: [s.company_address, s.company_city].filter(Boolean).join(", ") || null,
+        footer: s.footer ?? null,
       }
     : null;
 
@@ -113,15 +121,30 @@ export default function FinancialReportsPage() {
             <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> All reports
             </Button>
-            <Button size="sm" onClick={exportPdf} disabled={exporting}>
-              <Download className="h-4 w-4 mr-1" />{exporting ? "Exporting…" : "Export branded PDF"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEmailOpen(true)}>
+                <Mail className="h-4 w-4 mr-1" /> Email report
+              </Button>
+              <Button size="sm" onClick={exportPdf} disabled={exporting}>
+                <Download className="h-4 w-4 mr-1" />{exporting ? "Exporting…" : "Export branded PDF"}
+              </Button>
+            </div>
           </div>
           <div className="overflow-x-auto rounded-lg border bg-muted/30 p-4">
             <div ref={reportRef} style={{ width: 780, background: "#fff", padding: 24, margin: "0 auto", borderRadius: 8 }}>
               <def.Component data={data} brand={brand} />
+              <ReportFooter brand={brand} />
             </div>
           </div>
+
+          <EmailReportDialog
+            open={emailOpen}
+            onOpenChange={setEmailOpen}
+            reportTitle={def.title}
+            defaultSubject={`${brand.projectName} — ${def.title}`}
+            filename={`${def.key}-report-${brand.contractNo || "financial"}.pdf`}
+            getNode={() => reportRef.current}
+          />
         </div>
       )}
     </div>

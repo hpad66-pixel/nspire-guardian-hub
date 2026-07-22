@@ -41,6 +41,9 @@ const kmoney = (n: number) => {
 
 export interface ReportBrand {
   wordmark: string; projectName: string; contractTitle: string; contractNo: string; asOf: string;
+  // Optional letterhead fields (from company settings) — enrich the header/footer.
+  companyName?: string | null; contact?: string | null; email?: string | null;
+  address?: string | null; footer?: string | null;
 }
 
 // ── shared chrome ────────────────────────────────────────────────────────────
@@ -56,7 +59,28 @@ function ReportHeader({ brand, title, subtitle }: { brand: ReportBrand; title: s
         <div style={{ fontWeight: 700, color: BRAND.ink }}>{brand.projectName}</div>
         <div>{brand.contractTitle} · {brand.contractNo}</div>
         <div>As of {brand.asOf}</div>
+        {(brand.contact || brand.email) && (
+          <div style={{ marginTop: 2 }}>{[brand.contact, brand.email].filter(Boolean).join(" · ")}</div>
+        )}
       </div>
+    </div>
+  );
+}
+
+/** Branded letterhead footer, rendered once beneath every report (so it appears
+ *  on the exported/emailed PDF). Company line + contact + confidentiality note. */
+export function ReportFooter({ brand }: { brand: ReportBrand }) {
+  const company = brand.companyName || brand.wordmark;
+  const contactLine = [brand.address, brand.contact, brand.email].filter(Boolean).join("  ·  ");
+  const note = (brand.footer && brand.footer.trim())
+    || `${company}  ·  Confidential — prepared for the named recipient only.`;
+  return (
+    <div style={{ marginTop: 18, paddingTop: 8, borderTop: `2px solid ${BRAND.ink}`, fontSize: 9.5, color: BRAND.mute, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div>
+        <span style={{ color: BRAND.gold, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>{company}</span>
+        {contactLine && <span>{"  ·  " + contactLine}</span>}
+      </div>
+      <div style={{ textAlign: "right" }}>{note}  ·  Generated {brand.asOf}</div>
     </div>
   );
 }
