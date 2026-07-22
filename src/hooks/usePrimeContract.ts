@@ -30,6 +30,9 @@ export interface PrimeContract {
   retainage_release_substantial: number | null; retainage_release_final: number | null;
   retainage_warranty_months: number | null; payment_cycle_days: number | null;
   payment_due_within_days: number | null;
+  // Schedule-of-Values finalize/lock (20260722120200). When sov_finalized_at is
+  // set, the base SOV lines are immutable (see guard_base_sov_line_locked).
+  sov_finalized_at: string | null; sov_finalized_by: string | null;
   created_at: string; updated_at: string;
 }
 
@@ -83,7 +86,33 @@ export function usePrimeContract(projectId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
   });
 
-  return { ...one, create, update };
+  // Finalize the Schedule of Values → base lines lock (DB trigger). Unlock reverses
+  // it so an admin can revise, then re-finalize. Refresh the pay-app SOV too so the
+  // builder reflects the lock state.
+  const finalizeSov = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase.from("prime_contracts" as any)
+        .update({ sov_finalized_at: new Date().toISOString(), sov_finalized_by: u?.user?.id ?? null } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["prime-contract", projectId] });
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation", "sov"] });
+    },
+  });
+
+  const unlockSov = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase.from("prime_contracts" as any)
+        .update({ sov_finalized_at: null, sov_finalized_by: null } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["prime-contract", projectId] }),
+  });
+
+  return { ...one, create, update, finalizeSov, unlockSov };
 }
 
 export function usePrimeContractSov(primeContractId: string | null) {
