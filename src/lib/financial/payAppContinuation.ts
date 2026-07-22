@@ -65,6 +65,55 @@ export function coToSovLine(
   };
 }
 
+/**
+ * Shape a single priced CO row that adjusts a base line into an
+ * `sov_line_items` insert payload. Carries the base line's link + inherited
+ * unit price, with the signed delta quantity (positive = additive, negative =
+ * deductive). Used by the guided "change order for this line" flow — unlike
+ * `coToSovLine`, which collapses a whole CO into one lump-sum line.
+ */
+export interface CoPricedRowInput {
+  description: string;
+  unit: string | null;
+  qty: number; // signed: + additive, − deductive
+  unitPrice: number;
+  sourceSovLineItemId: string;
+}
+
+export function coPricedRowToSovLine(
+  row: CoPricedRowInput,
+  co: { id: string; co_no: number | null },
+  opts: { sortOrder: number; itemNo: string },
+): {
+  item_no: string;
+  kind: "change_order";
+  change_order_id: string;
+  source_sov_line_item_id: string;
+  budget_code: string | null;
+  description: string;
+  unit: string;
+  scheduled_qty: number;
+  unit_price: number;
+  scheduled_value: number;
+  sort_order: number;
+} {
+  const qty = round4(row.qty);
+  const unit_price = round4(row.unitPrice);
+  return {
+    item_no: opts.itemNo,
+    kind: "change_order",
+    change_order_id: co.id,
+    source_sov_line_item_id: row.sourceSovLineItemId,
+    budget_code: co.co_no != null ? `PCO #${String(co.co_no).padStart(3, "0")}` : null,
+    description: row.description,
+    unit: (row.unit && row.unit.trim()) || "EA",
+    scheduled_qty: qty,
+    unit_price,
+    scheduled_value: round2(qty * unit_price),
+    sort_order: opts.sortOrder,
+  };
+}
+
 // ── Per-line to-date ─────────────────────────────────────────────────────────
 
 export interface LineToDate {
