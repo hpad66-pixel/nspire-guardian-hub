@@ -26,6 +26,13 @@ import { money } from "@/lib/pdf";
 
 const qty = (n: number) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+/** A line billed past its scheduled value — sign-aware, so a deductive (negative)
+ *  change-order line is "over" when it's billed MORE negative than scheduled. */
+const isOver = (l: ContinuationLine) =>
+  l.scheduled_value >= 0
+    ? l.value_to_date > l.scheduled_value + 0.01
+    : l.value_to_date < l.scheduled_value - 0.01;
+
 const G702_ROWS: Array<[string, keyof G702Summary]> = [
   ["1. Original Contract Sum", "original_contract_sum"],
   ["2. Net change by change orders", "net_change_orders"],
@@ -69,14 +76,35 @@ export function PayAppContinuationBuilder({
     } catch (e: any) { toast.error(e.message); }
   }
 
+  /** Open the change-order generator pre-filled to adjust THIS base line — same
+   *  unit price (locked there), a signed delta quantity (+ additive / − deductive)
+   *  the user confirms, and a link back to the base line so the approved CO
+   *  materializes as a quantity line tied to it. */
+  function createCoForLine(line: ContinuationLine, suggestedQty: number) {
+    const p = new URLSearchParams({
+      sourceLine: line.sov_line_item_id,
+      desc: line.description,
+      unit: line.unit ?? "",
+      unitPrice: String(line.unit_price),
+      qty: String(round2(suggestedQty)),
+    });
+    window.location.href = `/projects/${projectId}/financials/change-orders/new?${p.toString()}`;
+  }
+
   /** Commit a new this-period QUANTITY → value = qty × unit price. Capped at the
-   *  scheduled quantity — billing more requires an approved change order. */
+   *  scheduled quantity in the direction of the line (deductive lines bill a
+   *  NEGATIVE quantity). Billing past scheduled requires an approved change order. */
   async function commitQty(line: ContinuationLine, qtyThisPeriod: number) {
     const remaining = line.scheduled_qty - line.prior_qty_to_date;
-    if (qtyThisPeriod > remaining + 0.0001) {
+    const proposedToDate = line.prior_qty_to_date + qtyThisPeriod;
+    const over = line.scheduled_qty >= 0
+      ? proposedToDate > line.scheduled_qty + 0.0001
+      : proposedToDate < line.scheduled_qty - 0.0001;
+    if (over) {
+      const overBy = proposedToDate - line.scheduled_qty; // signed amount past scheduled
       toast.error(
-        `Exceeds the scheduled quantity — only ${qty(Math.max(0, remaining))} ${line.unit ?? ""} remain on this line. Bill the extra on an approved change order instead.`,
-        { action: { label: "Create CO", onClick: () => { window.location.href = `/projects/${projectId}/financials/change-orders/new`; } } },
+        `Exceeds the scheduled quantity — only ${qty(remaining)} ${line.unit ?? ""} remain on this line. Bill the extra on an approved change order instead.`,
+        { action: { label: "Create CO", onClick: () => createCoForLine(line, overBy) } },
       );
       return;
     }
@@ -97,7 +125,7 @@ export function PayAppContinuationBuilder({
   const base = lines.filter((l) => l.kind === "base");
   const cos = lines.filter((l) => l.kind === "change_order");
   // A line billed past its scheduled value (over 100%). Not allowed — needs a CO.
-  const overbilled = lines.filter((l) => l.value_to_date > l.scheduled_value + 0.01);
+  const overbilled = lines.filter(isOver);
 
   // ── Reconciliation vs the contract / financial dashboard ──────────────────
   // Base:  contract Original Contract Sum (what the G702 uses)  vs  Σ base SOV lines.
@@ -188,7 +216,7 @@ export function PayAppContinuationBuilder({
               <th className="p-2 text-center w-20" title="Hold retainage on this line?">Retainage</th>
             </tr>
           </thead>
-          <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />
+          <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} onCreateCo={createCoForLine} />
           {cos.length > 0 && <LineSection title="Change orders" rows={cos} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />}
         </table>
       </div>
@@ -212,11 +240,12 @@ export function PayAppContinuationBuilder({
 }
 
 function LineSection({
-  title, rows, locked, onCommit, onToggleRetainage,
+  title, rows, locked, onCommit, onToggleRetainage, onCreateCo,
 }: {
   title: string; rows: ContinuationLine[]; locked: boolean;
   onCommit: (line: ContinuationLine, qtyThisPeriod: number) => void;
   onToggleRetainage: (line: ContinuationLine) => void;
+  onCreateCo?: (line: ContinuationLine, suggestedQty: number) => void;
 }) {
   return (
     <tbody>
@@ -227,15 +256,28 @@ function LineSection({
         <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
       )}
       {rows.map((l) => {
-        const over = l.value_to_date > l.scheduled_value + 0.01;
-        const remaining = Math.max(0, l.scheduled_qty - l.prior_qty_to_date);
+        const over = isOver(l);
+        const deductive = l.scheduled_qty < 0;
+        const rawRemaining = l.scheduled_qty - l.prior_qty_to_date; // signed
+        const remaining = deductive ? rawRemaining : Math.max(0, rawRemaining);
         return (
         <tr key={l.sov_line_item_id} className={`border-t ${over ? "bg-[var(--apas-rose)]/5" : ""}`}>
           <td className="p-2 text-muted-foreground">{l.item_no}</td>
           <td className="p-2">
             {l.description}
             {l.kind === "change_order" && <Badge variant="outline" className="ml-2 text-[10px]">CO</Badge>}
+            {deductive && <Badge variant="outline" className="ml-2 text-[10px] border-[var(--apas-amber)] text-[var(--apas-amber)]">Deductive</Badge>}
             {over && <Badge className="ml-2 text-[10px] bg-[var(--apas-rose)] text-white">Over 100%</Badge>}
+            {!locked && onCreateCo && (
+              <button
+                type="button"
+                onClick={() => onCreateCo(l, Math.max(0, rawRemaining))}
+                className="ml-2 text-[10px] text-[var(--apas-sapphire)] hover:underline"
+                title="Raise a change order that adjusts this line (same unit price)"
+              >
+                + Change order
+              </button>
+            )}
           </td>
           <td className="p-2 text-muted-foreground">{l.unit ?? "—"}</td>
           <td className="p-2 text-right font-mono">{qty(l.scheduled_qty)}</td>
@@ -245,7 +287,9 @@ function LineSection({
               <span className="font-mono">{qty(l.qty_this_period)}</span>
             ) : (
               <Input
-                type="number" inputMode="decimal" step="any" max={remaining || undefined}
+                type="number" inputMode="decimal" step="any"
+                max={deductive ? 0 : (remaining || undefined)}
+                min={deductive ? remaining : undefined}
                 defaultValue={l.qty_this_period || ""}
                 placeholder={`${qty(remaining)} left`}
                 className="h-8 text-right font-mono"

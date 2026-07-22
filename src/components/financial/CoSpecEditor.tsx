@@ -82,16 +82,22 @@ export function CoSpecEditor({
         <CardContent className="space-y-3">
           <Input value={spec.pricing.groups[0].label} placeholder="A. Group label" onChange={(e) => onPatch((s) => { s.pricing.groups[0].label = e.target.value; })} />
           <div className="space-y-2">
-            {spec.pricing.groups[0].rows.map((r, ri) => (
+            {spec.pricing.groups[0].rows.map((r, ri) => {
+              // A row tied to a base SOV line (guided "+ Change order" flow) inherits
+              // that line's unit + unit price — lock them so the CO can't drift from
+              // the contract price. Only the (signed) delta quantity is editable.
+              const tied = Boolean(r.source_sov_line_item_id);
+              return (
               <div key={ri} className="grid grid-cols-[1fr_56px_44px_72px_64px_auto] gap-1.5 items-center">
                 <Input className="h-8 text-xs" placeholder="Description" value={r.desc} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].desc = e.target.value; })} />
-                <Input className="h-8 text-xs" placeholder="Unit" value={r.unit} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].unit = e.target.value; })} />
+                <Input className="h-8 text-xs" placeholder="Unit" value={r.unit} disabled={tied} title={tied ? "Inherited from the base line" : undefined} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].unit = e.target.value; })} />
                 <Input className="h-8 text-xs" placeholder="Qty" value={r.qty} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].qty = e.target.value; })} />
-                <Input className="h-8 text-xs" placeholder="Unit $" value={r.unit_cost} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].unit_cost = e.target.value; })} />
+                <Input className="h-8 text-xs" placeholder="Unit $" value={r.unit_cost} disabled={tied} title={tied ? "Locked to the base line's unit price" : undefined} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].unit_cost = e.target.value; })} />
                 <Input className="h-8 text-xs" placeholder="Basis" value={r.basis} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].basis = e.target.value; })} />
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onPatch((s) => { s.pricing.groups[0].rows.splice(ri, 1); })}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
-            ))}
+              );
+            })}
             <Button variant="outline" size="sm" onClick={() => onPatch((s) => { s.pricing.groups[0].rows.push({ n: String(s.pricing.groups[0].rows.length + 1), desc: "", unit: "LS", qty: "1", unit_cost: "", extended: "", basis: "Firm" } as CoPricingRow); })}><Plus className="h-3.5 w-3.5 mr-1" />Line item</Button>
           </div>
 

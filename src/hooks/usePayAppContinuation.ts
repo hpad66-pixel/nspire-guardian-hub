@@ -15,15 +15,48 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
 import {
   coToSovLine,
+  coPricedRowToSovLine,
   computeLineToDate,
   computeG702,
   seedContinuationRows,
   round2,
+  type CoPricedRowInput,
   type G702Summary,
   type PriorProgressLike,
 } from "@/lib/financial/payAppContinuation";
 
 const APPROVED_CO_STATUSES = ["executed", "approved"];
+
+/**
+ * The base-line-tied priced rows carried inside a change order's spec — set by
+ * the guided "change order for this line" flow (each row stores the base line's
+ * id in `source_sov_line_item_id`, its unit price in `unit_cost`, and the signed
+ * delta quantity in `qty`). When present, the loader materializes ONE SOV line
+ * per row (quantity-based, tied to the base line) instead of a single lump-sum
+ * line. Free-form COs have no such rows and fall back to `coToSovLine`.
+ */
+function linkedRowsFromCo(co: any): CoPricedRowInput[] {
+  const groups = co?.spec?.pricing?.groups;
+  if (!Array.isArray(groups)) return [];
+  const out: CoPricedRowInput[] = [];
+  for (const g of groups) {
+    for (const r of (g?.rows ?? []) as any[]) {
+      const src = r?.source_sov_line_item_id;
+      if (!src) continue;
+      const qty = Number(r.qty);
+      if (!Number.isFinite(qty) || qty === 0) continue; // no-op rows are skipped
+      const unitPrice = Number(r.unit_cost);
+      out.push({
+        description: String(r.desc ?? "").trim() || "Change order line",
+        unit: r.unit ?? null,
+        qty, // signed: + additive, − deductive
+        unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+        sourceSovLineItemId: String(src),
+      });
+    }
+  }
+  return out;
+}
 
 interface SovLineRow {
   id: string; item_no: string; kind: "base" | "change_order";
@@ -55,7 +88,7 @@ async function loadApprovedCosInner(
   // the SOV net-change came up short and "Load approved change orders" no-op'd.
   const { data: cos, error: coErr } = await supabase
     .from("change_orders" as any)
-    .select("id, co_no, title, description, amount, status, prime_contract_id")
+    .select("id, co_no, title, description, amount, status, prime_contract_id, spec")
     .eq("project_id", projectId)
     .is("commitment_id", null)
     .in("status", APPROVED_CO_STATUSES)
@@ -95,6 +128,10 @@ async function loadApprovedCosInner(
   for (const co of (cos ?? []) as any[]) {
     const line = lineByCoId.get(co.id);
     if (!line) continue;
+    // Line-tied COs are materialized as one quantity line PER priced row (below);
+    // they are not lump-sum, so skip the lump-sum re-sync — otherwise it would
+    // overwrite a quantity line's scheduled_value with the whole-CO amount.
+    if (linkedRowsFromCo(co).length > 0) continue;
     const synced = coToSovLine(
       { id: co.id, co_no: co.co_no, title: co.title, description: co.description, amount: Number(co.amount) },
       { sortOrder: Number(line.sort_order ?? 0), itemNo: String(line.item_no) },
@@ -126,16 +163,33 @@ async function loadApprovedCosInner(
   }, 0);
   let nextSort = (existing ?? []).reduce((m: number, r: any) => Math.max(m, Number(r.sort_order ?? 0)), 0);
 
-  const rows = missing.map((co: any) => {
-    nextItemNo += 1; nextSort += 1;
-    return {
-      tenant_id, project_id: projectId, prime_contract_id: primeContractId,
-      ...coToSovLine(
-        { id: co.id, co_no: co.co_no, title: co.title, description: co.description, amount: Number(co.amount) },
-        { sortOrder: nextSort, itemNo: String(nextItemNo) },
-      ),
-    };
-  });
+  const rows: any[] = [];
+  for (const co of missing as any[]) {
+    const linked = linkedRowsFromCo(co);
+    if (linked.length > 0) {
+      // Quantity-based, base-line-tied CO: one SOV line per priced row, each
+      // carrying the base line's unit price and the signed delta quantity.
+      for (const lr of linked) {
+        nextItemNo += 1; nextSort += 1;
+        rows.push({
+          tenant_id, project_id: projectId, prime_contract_id: primeContractId,
+          ...coPricedRowToSovLine(lr, { id: co.id, co_no: co.co_no }, {
+            sortOrder: nextSort, itemNo: String(nextItemNo),
+          }),
+        });
+      }
+    } else {
+      // Free-form CO: one lump-sum line valued at the whole CO amount.
+      nextItemNo += 1; nextSort += 1;
+      rows.push({
+        tenant_id, project_id: projectId, prime_contract_id: primeContractId,
+        ...coToSovLine(
+          { id: co.id, co_no: co.co_no, title: co.title, description: co.description, amount: Number(co.amount) },
+          { sortOrder: nextSort, itemNo: String(nextItemNo) },
+        ),
+      });
+    }
+  }
   const { error: insErr } = await supabase.from("sov_line_items" as any).insert(rows as any);
   if (insErr) throw insErr;
   return { inserted: rows.length, updated };
