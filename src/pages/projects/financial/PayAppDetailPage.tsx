@@ -3,7 +3,9 @@ import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { usePayApp, useDeletePayApp } from "@/hooks/usePayApp";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
-import { usePrimeContractPayments } from "@/hooks/usePrimeContractPayments";
+import { computePaymentPosition } from "@/lib/financial/payAppContinuation";
+import { usePrimeContractPayments, usePrimeContractPaymentsTotal } from "@/hooks/usePrimeContractPayments";
+import { ContractPaymentPosition } from "@/components/financial/ContractPaymentPosition";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
 import { AllocatePaymentDialog } from "@/components/financial/AllocatePaymentDialog";
 import { useAllocationTargets, usePaymentAllocations, type AllocationTargets } from "@/hooks/usePaymentAllocations";
@@ -27,9 +29,10 @@ export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { detail, approve, reject } = usePayApp(payAppId ?? null);
-  const { submit } = usePayAppContinuation(payAppId ?? null);
+  const { submit, g702 } = usePayAppContinuation(payAppId ?? null);
   const del = useDeletePayApp();
   const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
+  const { data: receivedTotal = 0 } = usePrimeContractPaymentsTotal(contract?.id ?? null);
   const [approveAmount, setApproveAmount] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -135,6 +138,13 @@ export default function PayAppDetailPage() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Retainage held</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number(pa.retainage_held ?? 0))}</CardContent></Card>
       </div>
+
+      {/* Plain-language contract & payment position (contract, billed, retainage,
+          cash received, this invoice, balance) — the clear summary. */}
+      <ContractPaymentPosition
+        position={computePaymentPosition(g702, Number(receivedTotal))}
+        payAppNo={pa.pay_app_no != null ? Number(pa.pay_app_no) : null}
+      />
 
       {/* Original AIA G702 summary (from the submitted PDF) */}
       {(pa as any).pay_app_data && (
