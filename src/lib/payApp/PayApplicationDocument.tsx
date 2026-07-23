@@ -89,19 +89,19 @@ const PAGE: React.CSSProperties = {
 // Wide landscape sheet for the G703 quantity continuation (Procore-style) so all
 // the quantity + dollar columns fit. Rendered as a landscape PDF page (payAppPdf).
 const PAGE_LANDSCAPE: React.CSSProperties = {
-  width: 1040, minHeight: 740, background: "#fff", color: INK,
-  fontFamily: "Georgia, 'Times New Roman', serif", padding: 40, boxSizing: "border-box", position: "relative",
+  width: 1040, minHeight: 620, background: "#fff", color: INK,
+  fontFamily: "Georgia, 'Times New Roman', serif", padding: "28px 30px", boxSizing: "border-box", position: "relative",
 };
 // G702 cover — landscape at the exact US-Letter landscape aspect (11 : 8.5 ≈
 // 1.294) so the rasterized PDF page fills edge-to-edge like Procore's cover
 // instead of centering a near-square block with wide side margins.
 const PAGE_COVER: React.CSSProperties = {
-  width: 1320, minHeight: 920, background: "#fff", color: INK,
-  fontFamily: "Georgia, 'Times New Roman', serif", padding: "40px 52px", boxSizing: "border-box", position: "relative",
+  width: 1056, minHeight: 620, background: "#fff", color: INK,
+  fontFamily: "Georgia, 'Times New Roman', serif", padding: "26px 34px", boxSizing: "border-box", position: "relative",
 };
-const cell: React.CSSProperties = { padding: "5px 7px", fontSize: 11, borderBottom: `1px solid ${RULE}` };
+const cell: React.CSSProperties = { padding: "5px 7px", fontSize: 12, borderBottom: `1px solid ${RULE}` };
 const numCell: React.CSSProperties = { ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-const th: React.CSSProperties = { padding: "6px 7px", fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, textAlign: "right", borderBottom: `2px solid ${INK}` };
+const th: React.CSSProperties = { padding: "6px 6px", fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.03em", color: MUTE, textAlign: "right", borderBottom: `2px solid ${INK}` };
 
 // Max Schedule-of-Values rows (incl. section headers) per continuation page
 // (landscape is shorter, so fewer rows keep the dense quantity grid legible).
@@ -192,10 +192,10 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
 
     // Procore cover row helpers.
     const HdrCol = ({ label, lines }: { label: string; lines: (string | null | undefined)[] }) => (
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.02em" }}>{label}</div>
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.02em" }}>{label}</div>
         {lines.filter(Boolean).map((t, i) => (
-          <div key={i} style={{ fontSize: 10, color: i === 0 ? INK : MUTE, fontWeight: i === 0 ? 600 : 400 }}>{t}</div>
+          <div key={i} style={{ fontSize: 12, color: i === 0 ? INK : MUTE, fontWeight: i === 0 ? 600 : 400 }}>{t}</div>
         ))}
       </div>
     );
@@ -203,18 +203,18 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     // style); the parenthetical sub-note flows below without shoving the number
     // down. The amount rides its own short ruled underline.
     const SumRow = ({ no, label, sub, value, hi }: { no: string; label: string; sub?: string; value: number; hi?: boolean }) => (
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 4px", background: hi ? `${GOLD}22` : undefined }}>
-        <div style={{ width: 16, fontSize: 10.5, fontWeight: hi ? 700 : 400 }}>{no}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "2.5px 4px", background: hi ? `${GOLD}22` : undefined }}>
+        <div style={{ width: 20, fontSize: 13, fontWeight: hi ? 700 : 400 }}>{no}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10.5, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
-          {sub && <div style={{ fontSize: 8.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
+          <div style={{ fontSize: 13, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
+          {sub && <div style={{ fontSize: 10.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
         </div>
-        <div style={{ width: 124, textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 11, fontWeight: hi ? 700 : 400 }}>
+        <div style={{ width: 150, textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13.5, fontWeight: hi ? 700 : 400 }}>
           {money(value)}
         </div>
       </div>
     );
-    const coTd: React.CSSProperties = { border: `1px solid ${INK}`, padding: "3px 6px", fontSize: 9 };
+    const coTd: React.CSSProperties = { border: `1px solid ${INK}`, padding: "3px 6px", fontSize: 11 };
     const coNum: React.CSSProperties = { ...coTd, textAlign: "right", width: 70, fontVariantNumeric: "tabular-nums" };
 
     return (
@@ -228,11 +228,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
           {/* Top bar: title · summary-sheet · page */}
           <div style={{ borderBottom: `3px solid ${INK}`, paddingBottom: 7 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.02em" }}>APPLICATION AND CERTIFICATE FOR PAYMENT</div>
-              <div style={{ fontSize: 11, fontStyle: "italic", color: MUTE }}>DOCUMENT SUMMARY SHEET</div>
-              <div style={{ fontSize: 10, color: MUTE }}>Page 1 of {totalPages}</div>
+              <div style={{ fontSize: 15.5, fontWeight: 700, letterSpacing: "0.02em" }}>APPLICATION AND CERTIFICATE FOR PAYMENT</div>
+              <div style={{ fontSize: 12, fontStyle: "italic", color: MUTE }}>DOCUMENT SUMMARY SHEET</div>
+              <div style={{ fontSize: 11, color: MUTE }}>Page 1 of {totalPages}</div>
             </div>
-            <div style={{ fontSize: 8.5, color: MUTE, marginTop: 2 }}>{spec.wordmark} · AIA G702 (adapted)</div>
+            <div style={{ fontSize: 10, color: MUTE, marginTop: 2 }}>{spec.wordmark} · AIA G702 (adapted)</div>
           </div>
 
           {spec.reconciled && (
@@ -244,7 +244,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
           )}
 
           {/* Header block: 3 columns (owner/contractor · project/engineer · meta) */}
-          <div style={{ display: "flex", gap: 20, paddingTop: 12, paddingBottom: 10, borderBottom: `2px solid ${INK}` }}>
+          <div style={{ display: "flex", gap: 20, paddingTop: 8, paddingBottom: 6, borderBottom: `2px solid ${INK}` }}>
             <div style={{ flex: 1.1 }}>
               <HdrCol label="TO OWNER/CLIENT:" lines={[spec.owner.name, spec.owner.address, spec.owner.contact]} />
               <HdrCol label="FROM CONTRACTOR:" lines={[spec.contractor.name, spec.contractor.address, spec.contractor.contact]} />
@@ -254,7 +254,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               <HdrCol label="PROJECT:" lines={[spec.project.name, spec.project.address]} />
               <HdrCol label="VIA ARCHITECT/ENGINEER:" lines={[engineer]} />
             </div>
-            <div style={{ width: 210 }}>
+            <div style={{ width: 246 }}>
               {[
                 ["APPLICATION NO:", String(spec.payAppNo)],
                 ["INVOICE NO:", String(invoiceNo)],
@@ -262,20 +262,20 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 ["PROJECT NO:", projectNo],
                 ["CONTRACT DATE:", contractDate],
               ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", gap: 6, fontSize: 9.5, padding: "1.5px 0" }}>
+                <div key={k} style={{ display: "flex", gap: 6, fontSize: 11.5, padding: "1.5px 0" }}>
                   <div style={{ flex: 1, fontWeight: 700, textAlign: "right" }}>{k}</div>
-                  <div style={{ width: 96, fontVariantNumeric: "tabular-nums" }}>{v || "—"}</div>
+                  <div style={{ width: 116, fontVariantNumeric: "tabular-nums" }}>{v || "—"}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Body: left = contractor's application, right = certificates */}
-          <div style={{ display: "flex", gap: 22, marginTop: 12 }}>
+          <div style={{ display: "flex", gap: 22, marginTop: 8 }}>
             {/* LEFT — application + change order summary */}
             <div style={{ flex: 1.15 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700 }}>CONTRACTOR&apos;S APPLICATION FOR PAYMENT</div>
-              <div style={{ fontSize: 9, fontStyle: "italic", color: MUTE, marginTop: 2, marginBottom: 8, lineHeight: 1.35 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700 }}>CONTRACTOR&apos;S APPLICATION FOR PAYMENT</div>
+              <div style={{ fontSize: 10.5, fontStyle: "italic", color: MUTE, marginTop: 2, marginBottom: 8, lineHeight: 1.35 }}>
                 Application is made for payment, as shown below, in connection with the Contract. Continuation Sheet is attached.
               </div>
 
@@ -287,20 +287,20 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               {/* 5 · Retainage — blended per-line roll-up. 5a/5b amounts ride an
                   intermediate column (Procore); the Total aligns to the main column. */}
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 4px" }}>
-                <div style={{ width: 16, fontSize: 10.5 }}>5.</div>
+                <div style={{ width: 20, fontSize: 13 }}>5.</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10.5, lineHeight: 1.3 }}>Retainage:</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.3 }}>Retainage:</div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
-                    <div style={{ flex: 1, fontSize: 10 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div style={{ width: 96, marginRight: 88, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums" }}>{money(g.retainage_total)}</div>
+                    <div style={{ flex: 1, fontSize: 12 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
+                    <div style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{money(g.retainage_total)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
-                    <div style={{ flex: 1, fontSize: 10 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
-                    <div style={{ width: 96, marginRight: 88, textAlign: "right", fontSize: 10.5, fontVariantNumeric: "tabular-nums" }}>{money(0)}</div>
+                    <div style={{ flex: 1, fontSize: 12 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
+                    <div style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{money(0)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginTop: 6 }}>
-                    <div style={{ flex: 1, fontSize: 9, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div style={{ width: 124, textAlign: "right", fontSize: 11, fontVariantNumeric: "tabular-nums", borderTop: `1px solid ${INK}`, paddingTop: 2 }}>{money(g.retainage_total)}</div>
+                    <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
+                    <div style={{ width: 150, textAlign: "right", fontSize: 13, fontVariantNumeric: "tabular-nums", borderTop: `1px solid ${INK}`, paddingTop: 2 }}>{money(g.retainage_total)}</div>
                   </div>
                 </div>
               </div>
@@ -311,10 +311,10 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               <SumRow no="9." label="Balance to finish, including retainage" sub="(Line 3 less Line 6)" value={g.balance_to_finish} />
 
               {/* Change Order Summary */}
-              <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 14 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 9 }}>
                 <thead>
                   <tr>
-                    <th style={{ ...coTd, textAlign: "left", fontWeight: 700, fontSize: 9 }}>CHANGE ORDER SUMMARY</th>
+                    <th style={{ ...coTd, textAlign: "left", fontWeight: 700, fontSize: 11 }}>CHANGE ORDER SUMMARY</th>
                     <th style={{ ...coNum, fontWeight: 700 }}>ADDITIONS</th>
                     <th style={{ ...coNum, fontWeight: 700 }}>DEDUCTIONS</th>
                   </tr>
@@ -344,7 +344,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
             </div>
 
             {/* RIGHT — contractor certification + notary + A/E certificate */}
-            <div style={{ flex: 1, fontSize: 9.5, lineHeight: 1.4 }}>
+            <div style={{ flex: 1, fontSize: 11, lineHeight: 1.4 }}>
               <div style={{ color: INK }}>
                 The undersigned certifies that to the best of the Contractor&apos;s knowledge, information and belief, the
                 Work covered by this Application for Payment has been completed in accordance with the Contract Documents,
@@ -357,11 +357,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                   <div style={{ height: 26, borderBottom: `1px solid ${INK}`, display: "flex", alignItems: "flex-end" }}>
                     {spec.signatureUrl ? <img src={spec.signatureUrl} alt="signature" style={{ maxHeight: 24, maxWidth: "100%" }} /> : null}
                   </div>
-                  <div style={{ fontSize: 8.5, color: MUTE }}>By: {spec.signedName || spec.contractor.contact || ""}</div>
+                  <div style={{ fontSize: 10, color: MUTE }}>By: {spec.signedName || spec.contractor.contact || ""}</div>
                 </div>
                 <div style={{ width: 92 }}>
                   <div style={{ height: 26, borderBottom: `1px solid ${INK}` }} />
-                  <div style={{ fontSize: 8.5, color: MUTE }}>Date: {spec.signedDate || ""}</div>
+                  <div style={{ fontSize: 10, color: MUTE }}>Date: {spec.signedDate || ""}</div>
                 </div>
               </div>
               <div style={{ marginTop: 12, color: MUTE }}>State of:</div>
@@ -411,10 +411,10 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
         {sovPages.map((pageItems, pi) => (
           <div data-pdf-page data-orientation="landscape" style={PAGE_LANDSCAPE} key={pi}>
             <Header sheet="G703" />
-            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 14, marginBottom: 2 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginTop: 12, marginBottom: 3 }}>
               Continuation Sheet — Schedule of Values{sovPages.length > 1 ? ` (${pi + 1}/${sovPages.length})` : ""}
             </div>
-            <div style={{ fontSize: 9.5, color: MUTE, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: MUTE, marginBottom: 6 }}>
               Quantity completed: through the previous application, this application, and total to date.
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -438,7 +438,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 {pageItems.map((it, idx) =>
                   it.kind === "section" ? (
                     <tr key={`s${idx}`}>
-                      <td colSpan={12} style={{ padding: "6px 7px", fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, background: "#faf8f4" }}>{it.title}</td>
+                      <td colSpan={12} style={{ padding: "6px 7px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: MUTE, background: "#faf8f4" }}>{it.title}</td>
                     </tr>
                   ) : (
                     <tr key={`l${it.line.item_no}`}>
