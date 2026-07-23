@@ -1,8 +1,32 @@
 import { Link } from 'react-router-dom';
-import { TrendingUp, ArrowRight } from 'lucide-react';
+import { TrendingUp, ArrowRight, Info } from 'lucide-react';
 import { useMargin } from '@/hooks/useMargin';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function Metric({ label, value, valueCls, tip }: { label: string; value: React.ReactNode; valueCls?: string; tip: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        {label}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              className="cursor-help text-muted-foreground/60 hover:text-foreground"
+              aria-label={`What does "${label}" mean?`}
+            >
+              <Info className="h-3 w-3" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">{tip}</TooltipContent>
+        </Tooltip>
+      </div>
+      <div className={`text-[17px] font-bold ${valueCls ?? ''}`}>{value}</div>
+    </div>
+  );
+}
 
 // Compact prime↔sub recovery card for the Financial Overview.
 export function MarginOverviewCard({ projectId }: { projectId: string }) {
@@ -11,20 +35,31 @@ export function MarginOverviewCard({ projectId }: { projectId: string }) {
   const pct = data.totals.revenue ? Math.round((data.totals.margin / data.totals.revenue) * 100) : 0;
 
   return (
-    <Link to={`/projects/${projectId}/financials/margin`} className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-[var(--apas-sapphire)]/40">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-[var(--apas-sapphire)]" /> Margin &amp; recovery</div>
-        <span className="flex items-center gap-1 text-[12px] text-muted-foreground">Open <ArrowRight className="h-3.5 w-3.5" /></span>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div><div className="text-[11px] text-muted-foreground">Owner revenue</div><div className="text-[17px] font-bold">{usd(data.totals.revenue)}</div></div>
-        <div><div className="text-[11px] text-muted-foreground">Sub cost</div><div className="text-[17px] font-bold">{usd(data.totals.cost)}</div></div>
-        <div><div className="text-[11px] text-muted-foreground">APAS recovery</div><div className="text-[17px] font-bold text-[var(--apas-sapphire)]">{usd(data.totals.margin)} <span className="text-[12px] font-normal text-muted-foreground">({pct}%)</span></div></div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3">
-        <div><div className="text-[11px] text-muted-foreground">Paid to date by owner → prime</div><div className="text-[16px] font-bold text-emerald-600">{usd(data.cash.receivedFromOwner)}</div></div>
-        <div><div className="text-[11px] text-muted-foreground">Paid to date to subs</div><div className="text-[16px] font-bold text-[var(--apas-sapphire)]">{usd(data.cash.paidToSubs)}</div></div>
-      </div>
-    </Link>
+    <TooltipProvider delayDuration={150}>
+      <Link to={`/projects/${projectId}/financials/margin`} className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-[var(--apas-sapphire)]/40">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-[var(--apas-sapphire)]" /> Margin &amp; recovery</div>
+          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">Open <ArrowRight className="h-3.5 w-3.5" /></span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Metric
+            label="Owner revenue"
+            value={usd(data.totals.revenue)}
+            tip="What this job earns you — the revenue side of the prime contract with the owner (your billable contract value, including approved change orders)."
+          />
+          <Metric
+            label="Sub cost"
+            value={usd(data.totals.cost)}
+            tip="What this job costs you — the total you've committed to your subcontractors and suppliers."
+          />
+          <Metric
+            label="APAS recovery"
+            value={<>{usd(data.totals.margin)} <span className="text-[12px] font-normal text-muted-foreground">({pct}%)</span></>}
+            valueCls="text-[var(--apas-sapphire)]"
+            tip="Your margin — owner revenue minus sub cost. The % is margin as a share of revenue: roughly what this job makes for APAS."
+          />
+        </div>
+      </Link>
+    </TooltipProvider>
   );
 }
