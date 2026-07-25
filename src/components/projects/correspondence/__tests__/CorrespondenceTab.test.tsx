@@ -10,6 +10,8 @@ let mockEmails: ProjectEmail[] = [];
 vi.mock("@/hooks/useProjectEmails", () => ({
   useProjectEmails: () => ({ data: mockEmails, isLoading: false, remove: { mutate: vi.fn() } }),
 }));
+// The composer is tested separately; stub it here so its data hooks don't run.
+vi.mock("../CorrespondenceComposer", () => ({ CorrespondenceComposer: () => null }));
 
 import { CorrespondenceTab } from "../CorrespondenceTab";
 

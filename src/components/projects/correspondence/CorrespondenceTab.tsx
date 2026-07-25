@@ -4,12 +4,13 @@
  * timeline. This is the foundation view; Gmail connect + sync (PR3) and the
  * outbound composer (PR2) wire into the two entry points below.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Mail, ArrowDownLeft, ArrowUpRight, Paperclip, PenLine, Loader2, Inbox } from "lucide-react";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
+import { CorrespondenceComposer } from "./CorrespondenceComposer";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -20,8 +21,9 @@ function party(e: ProjectEmail): string {
   return to ? `To ${to}${e.to_emails.length > 1 ? ` +${e.to_emails.length - 1}` : ""}` : "Outbound";
 }
 
-export function CorrespondenceTab({ projectId }: { projectId: string }) {
+export function CorrespondenceTab({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
   const { data: emails = [], isLoading } = useProjectEmails(projectId);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const counts = useMemo(() => ({
     inbound: emails.filter((e) => e.direction === "inbound").length,
@@ -42,12 +44,14 @@ export function CorrespondenceTab({ projectId }: { projectId: string }) {
             <Inbox className="h-4 w-4 mr-1" /> Connect Gmail
             <Badge variant="secondary" className="ml-2 text-[10px]">Soon</Badge>
           </Button>
-          <Button size="sm" disabled title="Draft a branded letter — ships in the next update">
+          <Button size="sm" onClick={() => setComposeOpen(true)}>
             <PenLine className="h-4 w-4 mr-1" /> Compose
-            <Badge variant="secondary" className="ml-2 text-[10px]">Soon</Badge>
           </Button>
         </div>
       </div>
+
+      <CorrespondenceComposer open={composeOpen} onOpenChange={setComposeOpen} projectId={projectId} projectName={projectName} />
+
 
       {/* Not-connected hint (until Gmail OAuth lands) */}
       {!isLoading && emails.length === 0 && (
