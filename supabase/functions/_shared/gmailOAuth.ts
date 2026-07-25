@@ -83,6 +83,23 @@ export function authorizeUrl(state: string, loginHint?: string): string {
 
 export interface GoogleTokens { access_token: string; refresh_token?: string; expires_in: number; scope: string }
 
+/** Exchange a stored refresh_token for a fresh short-lived access token. */
+export async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: env("GOOGLE_OAUTH_CLIENT_ID"),
+      client_secret: env("GOOGLE_OAUTH_CLIENT_SECRET"),
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!r.ok) throw new Error(`token refresh failed: ${r.status} ${await r.text()}`);
+  const d = await r.json();
+  return { access_token: String(d.access_token), expires_in: Number(d.expires_in ?? 3600) };
+}
+
 export async function exchangeCode(code: string): Promise<GoogleTokens> {
   const r = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
