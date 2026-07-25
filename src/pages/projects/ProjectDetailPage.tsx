@@ -995,7 +995,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
                 <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
-                <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} /></TabsContent>
+                <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
@@ -1277,7 +1277,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
               <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
-              <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} /></TabsContent>
+              <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
