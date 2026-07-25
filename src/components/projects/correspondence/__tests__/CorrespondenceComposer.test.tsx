@@ -15,7 +15,7 @@ import { CorrespondenceComposer } from "../CorrespondenceComposer";
 
 describe("CorrespondenceComposer", () => {
   it("renders the composer with the three outbound actions", () => {
-    render(<CorrespondenceComposer open onOpenChange={() => {}} projectId="p1" projectName="Loreato Water Meters" />);
+    render(<CorrespondenceComposer open onOpenChange={() => {}} projectId="p1" projectName="Glorieta Sewer Extension" />);
     const text = document.body.textContent ?? "";
     expect(text).toContain("Compose correspondence");
     expect(text).toContain("AI draft");

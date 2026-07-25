@@ -223,11 +223,11 @@ Environment variables live in `.env.local` (gitignored). Reference `.env.example
 
 ---
 
-## Build OS design tokens (UI)
+## projOS design tokens (UI)
 
 **Source of truth:** `src/index.css`. The table below is just a reference — if it ever drifts from the CSS file, trust the CSS.
 
-The app uses a warm cream light palette with blue + gold accents (the Build OS brand). NOT the "gold on obsidian" AURUM palette older versions of this doc claimed.
+The app uses a warm cream light palette with blue + gold accents (the projOS brand). NOT the "gold on obsidian" AURUM palette older versions of this doc claimed.
 
 | Token / CSS var | Value | Use |
 |-----------------|-------|-----|
