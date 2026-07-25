@@ -69,6 +69,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "docx": "^9.5.3",
+    "docx-preview": "^0.3.7",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.29.2",
     "html2canvas": "^1.4.1",
