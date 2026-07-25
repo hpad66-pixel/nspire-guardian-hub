@@ -44,14 +44,15 @@ export async function verifyState(secret: string, state: string | null): Promise
 // domain). The user should land on whichever domain they started the flow from.
 const ALLOWED_ORIGINS = [
   "https://projos.ai",
-  "https://buildos.apas.ai",
-  "https://build.apas.ai",
   "http://localhost:5173",
   "http://localhost:8080",
 ];
 export function safeOrigin(o?: string | null): string {
   if (o && ALLOWED_ORIGINS.includes(o)) return o;
-  return Deno.env.get("APP_ORIGIN") || "https://projos.ai";
+  // Fall back to the live app domain. Deliberately NOT APP_ORIGIN — that secret
+  // has pointed at a dead domain (buildos.apas.ai → NXDOMAIN), which would land
+  // the user on an unreachable page after connecting.
+  return "https://projos.ai";
 }
 
 export const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";
