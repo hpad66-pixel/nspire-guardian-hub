@@ -18,7 +18,7 @@ const timingSafe = (a: string, b: string) => {
   return d === 0;
 };
 
-export interface StateData { t: string; u: string; r?: string } // tenant, user, returnTo
+export interface StateData { t: string; u: string; r?: string; o?: string } // tenant, user, returnTo, origin
 
 export async function signState(secret: string, data: StateData): Promise<string> {
   const nonce = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -36,8 +36,22 @@ export async function verifyState(secret: string, state: string | null): Promise
   try {
     const p = JSON.parse(unb64url(b));
     if (!p.e || Date.now() > p.e || !p.t || !p.u) return null;
-    return { t: p.t, u: p.u, r: typeof p.r === "string" ? p.r : undefined };
+    return { t: p.t, u: p.u, r: typeof p.r === "string" ? p.r : undefined, o: typeof p.o === "string" ? p.o : undefined };
   } catch { return null; }
+}
+
+// Only redirect back to a known app origin (prevents open-redirect + the wrong
+// domain). The user should land on whichever domain they started the flow from.
+const ALLOWED_ORIGINS = [
+  "https://projos.ai",
+  "https://buildos.apas.ai",
+  "https://build.apas.ai",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+export function safeOrigin(o?: string | null): string {
+  if (o && ALLOWED_ORIGINS.includes(o)) return o;
+  return Deno.env.get("APP_ORIGIN") || "https://projos.ai";
 }
 
 export const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";

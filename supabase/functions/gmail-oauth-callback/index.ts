@@ -3,13 +3,12 @@
 // refresh token (service role, edge-only), and 302s the browser back to the app.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { verifyState, exchangeCode, gmailAddress, safeReturnPath } from "../_shared/gmailOAuth.ts";
+import { verifyState, exchangeCode, gmailAddress, safeReturnPath, safeOrigin } from "../_shared/gmailOAuth.ts";
 
 serve(async (req) => {
-  const appOrigin = Deno.env.get("APP_ORIGIN") || "https://projos.ai";
   const params = new URL(req.url).searchParams;
-  const back = (path: string, status: string) =>
-    new Response(null, { status: 302, headers: { Location: `${appOrigin}${safeReturnPath(path)}?gmail=${status}` } });
+  const back = (origin: string, path: string, status: string) =>
+    new Response(null, { status: 302, headers: { Location: `${safeOrigin(origin)}${safeReturnPath(path)}?gmail=${status}` } });
 
   try {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -17,17 +16,18 @@ serve(async (req) => {
     const code = params.get("code");
     const state = await verifyState(serviceKey, params.get("state"));
     const returnTo = state?.r ?? "/";
+    const origin = state?.o ?? "";
 
     if (err || !code || !state) {
       console.error("gmail-oauth-callback rejected:", { err, hasCode: !!code, validState: !!state });
-      return back(returnTo, "error");
+      return back(origin, returnTo, "error");
     }
 
     const tokens = await exchangeCode(code);
     if (!tokens.refresh_token) {
       // Google only returns a refresh token on first consent; prompt=consent forces it.
       console.error("gmail-oauth-callback: no refresh_token returned");
-      return back(returnTo, "error");
+      return back(origin, returnTo, "error");
     }
     const email = await gmailAddress(tokens.access_token);
 
@@ -45,11 +45,11 @@ serve(async (req) => {
       connected_by: state.u,
       updated_at: new Date().toISOString(),
     }, { onConflict: "tenant_id,user_id" });
-    if (error) { console.error("gmail-oauth-callback upsert:", error.message); return back(returnTo, "error"); }
+    if (error) { console.error("gmail-oauth-callback upsert:", error.message); return back(origin, returnTo, "error"); }
 
-    return back(returnTo, "connected");
+    return back(origin, returnTo, "connected");
   } catch (e) {
     console.error("gmail-oauth-callback error:", e);
-    return back("/", "error");
+    return back("", "/", "error");
   }
 });
