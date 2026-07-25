@@ -11,6 +11,7 @@ export interface ProjectEmail {
   status: string;              // received | draft | sent | signed
   channel: string;             // gmail | resend | manual
   gmail_thread_id: string | null;
+  topic: string | null;         // water_billing | water_meters | sewer_extension | stormwater | other
   subject: string | null;
   from_email: string | null;
   from_name: string | null;

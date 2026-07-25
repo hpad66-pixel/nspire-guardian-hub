@@ -19,13 +19,19 @@ vi.mock("@/hooks/useGmailConnection", () => ({
     disconnect: { mutate: () => {}, isPending: false },
   }),
 }));
+vi.mock("@/hooks/useGmailSync", () => ({
+  useGmailSync: () => ({
+    settings: { data: null },
+    sync: { mutate: () => {}, isPending: false },
+  }),
+}));
 
 import { CorrespondenceTab } from "../CorrespondenceTab";
 
 const email = (o: Partial<ProjectEmail>): ProjectEmail => ({
   id: "e1", project_id: "p1", direction: "inbound", status: "received", channel: "gmail",
-  gmail_thread_id: "t1", subject: "Glorieta sewer extension — schedule", from_email: "pm@r4capital.com",
-  from_name: "R4 Capital", to_emails: ["hardeep@apas.ai"], cc_emails: [], snippet: "Please advise on the meter delivery…",
+  gmail_thread_id: "t1", topic: "water_billing", subject: "Formal Dispute of Water and Sewer Charges", from_email: "csullivan@r4cap.com",
+  from_name: "Chris Sullivan", to_emails: ["hardeep@apas.ai"], cc_emails: [], snippet: "Please advise on the meter delivery…",
   body_html: null, has_attachments: true, labels: [], contact_id: null,
   occurred_at: "2026-07-20T14:00:00Z", created_at: "2026-07-20T14:00:00Z", ...o,
 });
@@ -42,13 +48,26 @@ describe("CorrespondenceTab", () => {
   it("renders inbound + outbound entries in the timeline", () => {
     mockEmails = [
       email({ id: "in", direction: "inbound" }),
-      email({ id: "out", direction: "outbound", status: "sent", subject: "RE: schedule", from_email: "hardeep@apas.ai", to_emails: ["pm@r4capital.com"], snippet: "Meters ship Friday." }),
+      email({ id: "out", direction: "outbound", status: "sent", topic: "water_billing", subject: "RE: schedule", from_email: "hardeep@apas.ai", to_emails: ["pm@r4cap.com"], snippet: "Meters ship Friday." }),
     ];
     const { container } = render(<CorrespondenceTab projectId="p1" />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Glorieta sewer extension — schedule");
+    expect(text).toContain("Formal Dispute of Water and Sewer Charges");
     expect(text).toContain("RE: schedule");
     expect(text).toContain("1 received");
     expect(text).toContain("1 sent");
+  });
+
+  it("filters the timeline by topic", () => {
+    mockEmails = [
+      email({ id: "bill", topic: "water_billing", subject: "Water billing dispute" }),
+      email({ id: "meter", topic: "water_meters", subject: "Second meter install" }),
+    ];
+    const { container } = render(<CorrespondenceTab projectId="p1" />);
+    const text = container.textContent ?? "";
+    // Both topics render, and the topic chips + badges are present.
+    expect(text).toContain("Water billing dispute");
+    expect(text).toContain("Second meter install");
+    expect(text).toContain("Water meters");
   });
 });
