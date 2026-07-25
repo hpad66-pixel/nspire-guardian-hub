@@ -105,8 +105,10 @@ export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<P
   'action-items',
   'invoicing',
   'env-compliance',
-  'correspondence',
 ]);
+// Correspondence (client emails + branded letters) is useful on EVERY project
+// type — construction jobs like Glorieta have R4/agency correspondence too — so it
+// is intentionally NOT consulting-only; it shows by default everywhere.
 
 /** Default visibility for a module before any admin override is applied. */
 export function defaultModuleVisible(
