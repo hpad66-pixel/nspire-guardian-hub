@@ -48,7 +48,8 @@ const ALLOWED_ORIGINS = [
   "http://localhost:8080",
 ];
 export function safeOrigin(o?: string | null): string {
-  if (o && ALLOWED_ORIGINS.includes(o)) return o;
+  const t = (o ?? "").trim();  // pasted values often carry a trailing space → projos.ai%20
+  if (t && ALLOWED_ORIGINS.includes(t)) return t;
   // Fall back to the live app domain. Deliberately NOT APP_ORIGIN — that secret
   // has pointed at a dead domain (buildos.apas.ai → NXDOMAIN), which would land
   // the user on an unreachable page after connecting.
@@ -57,13 +58,17 @@ export function safeOrigin(o?: string | null): string {
 
 export const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";
 
+// Read an env var and strip surrounding whitespace — dashboard-pasted secrets
+// frequently carry a trailing space or newline that silently breaks OAuth.
+const env = (k: string) => (Deno.env.get(k) ?? "").trim();
+
 export function redirectUri(): string {
-  return `${Deno.env.get("SUPABASE_URL")}/functions/v1/gmail-oauth-callback`;
+  return `${env("SUPABASE_URL")}/functions/v1/gmail-oauth-callback`;
 }
 
 export function authorizeUrl(state: string, loginHint?: string): string {
   const p = new URLSearchParams({
-    client_id: Deno.env.get("GOOGLE_OAUTH_CLIENT_ID") ?? "",
+    client_id: env("GOOGLE_OAUTH_CLIENT_ID"),
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: GMAIL_SCOPES,
@@ -83,8 +88,8 @@ export async function exchangeCode(code: string): Promise<GoogleTokens> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: Deno.env.get("GOOGLE_OAUTH_CLIENT_ID") ?? "",
-      client_secret: Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET") ?? "",
+      client_id: env("GOOGLE_OAUTH_CLIENT_ID"),
+      client_secret: env("GOOGLE_OAUTH_CLIENT_SECRET"),
       code,
       redirect_uri: redirectUri(),
       grant_type: "authorization_code",
