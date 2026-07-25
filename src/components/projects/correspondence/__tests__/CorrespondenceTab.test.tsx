@@ -15,6 +15,9 @@ vi.mock("@/hooks/useProjectEmails", () => ({
   useProjectEmails: () => ({ data: mockEmails, isLoading: false }),
 }));
 vi.mock("../CorrespondenceComposer", () => ({ CorrespondenceComposer: () => null }));
+// DocumentWorkspace pulls in pdfjs/mammoth (browser-only) — stub it so the tab's
+// static import doesn't drag those into jsdom.
+vi.mock("../DocumentWorkspace", () => ({ DocumentWorkspace: () => null }));
 vi.mock("@/hooks/useGmailConnection", () => ({
   useGmailConnection: () => ({
     status: { data: { connected: false, email: null }, refetch: () => {} },
