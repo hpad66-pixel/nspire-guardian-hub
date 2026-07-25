@@ -4,12 +4,14 @@
  * timeline. This is the foundation view; Gmail connect + sync (PR3) and the
  * outbound composer (PR2) wire into the two entry points below.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowDownLeft, ArrowUpRight, Paperclip, PenLine, Loader2, Inbox } from "lucide-react";
+import { Mail, ArrowDownLeft, ArrowUpRight, Paperclip, PenLine, Loader2, Inbox, Check } from "lucide-react";
+import { toast } from "sonner";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
+import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { CorrespondenceComposer } from "./CorrespondenceComposer";
 
 const fmtDate = (d: string) =>
@@ -23,7 +25,29 @@ function party(e: ProjectEmail): string {
 
 export function CorrespondenceTab({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
   const { data: emails = [], isLoading } = useProjectEmails(projectId);
+  const gmail = useGmailConnection();
   const [composeOpen, setComposeOpen] = useState(false);
+
+  // Toast the result of the Gmail OAuth round-trip (?gmail=connected|error) and
+  // strip the param so a refresh doesn't re-toast.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const g = p.get("gmail");
+    if (!g) return;
+    if (g === "connected") { toast.success("Gmail connected."); gmail.status.refetch(); }
+    else if (g === "error") toast.error("Couldn't connect Gmail — please try again.");
+    p.delete("gmail");
+    window.history.replaceState({}, "", `${window.location.pathname}${p.toString() ? `?${p}` : ""}`);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const disconnectGmail = () => {
+    if (!window.confirm("Disconnect Gmail? Synced threads stay; no new mail will sync.")) return;
+    gmail.disconnect.mutate(undefined, {
+      onSuccess: () => toast.success("Gmail disconnected."),
+      onError: (e: any) => toast.error(e?.message ?? "Couldn't disconnect."),
+    });
+  };
+  const connected = gmail.status.data?.connected;
 
   const counts = useMemo(() => ({
     inbound: emails.filter((e) => e.direction === "inbound").length,
@@ -40,10 +64,15 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled title="Connect your Gmail to sync threads — ships in the next update">
-            <Inbox className="h-4 w-4 mr-1" /> Connect Gmail
-            <Badge variant="secondary" className="ml-2 text-[10px]">Soon</Badge>
-          </Button>
+          {connected ? (
+            <Button variant="outline" size="sm" onClick={disconnectGmail} title="Gmail connected — click to disconnect" disabled={gmail.disconnect.isPending}>
+              <Check className="h-4 w-4 mr-1 text-emerald-600" /> {gmail.status.data?.email}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => gmail.connect.mutate(undefined)} disabled={gmail.connect.isPending} title="Connect your Gmail to sync R4 & City of Opa-Locka threads">
+              {gmail.connect.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Inbox className="h-4 w-4 mr-1" />} Connect Gmail
+            </Button>
+          )}
           <Button size="sm" onClick={() => setComposeOpen(true)}>
             <PenLine className="h-4 w-4 mr-1" /> Compose
           </Button>

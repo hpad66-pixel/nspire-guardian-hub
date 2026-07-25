@@ -12,6 +12,13 @@ vi.mock("@/hooks/useProjectEmails", () => ({
 }));
 // The composer is tested separately; stub it here so its data hooks don't run.
 vi.mock("../CorrespondenceComposer", () => ({ CorrespondenceComposer: () => null }));
+vi.mock("@/hooks/useGmailConnection", () => ({
+  useGmailConnection: () => ({
+    status: { data: { connected: false, email: null }, refetch: () => {} },
+    connect: { mutate: () => {}, isPending: false },
+    disconnect: { mutate: () => {}, isPending: false },
+  }),
+}));
 
 import { CorrespondenceTab } from "../CorrespondenceTab";
 

@@ -164,3 +164,8 @@ verify_jwt = false
 
 [functions.vendor-submit]
 verify_jwt = false
+
+# Public Gmail OAuth callback — Google redirects here with ?code&state and no
+# Supabase JWT; authenticity is enforced by the signed `state`.
+[functions.gmail-oauth-callback]
+verify_jwt = false
