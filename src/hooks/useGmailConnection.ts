@@ -26,7 +26,7 @@ export function useGmailConnection() {
   const connect = useMutation({
     mutationFn: async (returnTo?: string) => {
       const { data, error } = await supabase.functions.invoke("gmail", {
-        body: { action: "start", returnTo: returnTo ?? window.location.pathname },
+        body: { action: "start", returnTo: returnTo ?? window.location.pathname, origin: window.location.origin },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

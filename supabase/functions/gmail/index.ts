@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (action === "start") {
       if (!Deno.env.get("GOOGLE_OAUTH_CLIENT_ID")) return json({ error: "Gmail is not configured (missing GOOGLE_OAUTH_CLIENT_ID)." }, 500);
-      const state = await signState(serviceKey, { t: tenantId, u: user.id, r: safeReturnPath(body.returnTo) });
+      const state = await signState(serviceKey, { t: tenantId, u: user.id, r: safeReturnPath(body.returnTo), o: typeof body.origin === "string" ? body.origin : undefined });
       return json({ url: authorizeUrl(state, user.email ?? undefined) });
     }
 
