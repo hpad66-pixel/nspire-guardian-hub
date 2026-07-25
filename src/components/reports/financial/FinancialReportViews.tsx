@@ -17,7 +17,7 @@ import {
 const fmtDate = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
 const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "—");
 
-// Build OS brand palette
+// projOS brand palette
 export const BRAND = {
   ink: "#1A1714", sapphire: "#1D6FE8", gold: "#C4A35A",
   emerald: "#10B981", amber: "#F59E0B", rose: "#F43F5E", mute: "#878581", rule: "#e7e2d9",

@@ -166,12 +166,12 @@ export function AppSidebar() {
               collapsed && 'justify-center px-0',
             )}
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground">
-              <div className="h-2.5 w-2.5 rotate-45 border-2 border-background" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-accent shadow-sm ring-1 ring-black/5">
+              <div className="h-3 w-3 rotate-45 rounded-[2px] bg-background" />
             </div>
             {!collapsed && (
               <span
-                className="text-[15px] font-semibold text-sidebar-foreground"
+                className="text-[17px] font-bold text-sidebar-foreground"
                 style={{ letterSpacing: '-0.02em' }}
               >
                 proj<span className="text-accent">OS</span>
