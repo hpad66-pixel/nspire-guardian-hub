@@ -1,22 +1,23 @@
 /**
- * CorrespondenceTab — a project's full correspondence trail: inbound emails
- * synced from Gmail and outbound branded letters drafted/sent from projOS, in one
- * timeline, filterable by topic. Gmail connect (PR3a) + inbound sync (PR3c) feed
- * the inbound side; the composer (PR2) feeds the outbound side.
+ * CorrespondenceTab — a project's correspondence, grouped into threads, each with
+ * an AI intelligence header (summary · status · ball-in-court · entities · action
+ * items) and outbound letters drafted from projOS. Inbound sync (PR3c) fills the
+ * trail; correspondence-intel (PR3d) analyzes each thread; extracted action items
+ * push into the project's Action Items (PR3e).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowDownLeft, ArrowUpRight, Paperclip, PenLine, Loader2, Inbox, Check, RefreshCw } from "lucide-react";
+import { Mail, PenLine, Loader2, Inbox, Check, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { useGmailSync } from "@/hooks/useGmailSync";
+import { useCorrespondenceThreads, type CorrespondenceThread } from "@/hooks/useCorrespondenceThreads";
+import { useActionItemsByProject, useCreateActionItem } from "@/hooks/useActionItems";
+import { useAuth } from "@/hooks/useAuth";
 import { CorrespondenceComposer } from "./CorrespondenceComposer";
-
-const fmtDate = (d: string) =>
-  new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+import { CorrespondenceThreadCard, type AddActionItemArgs } from "./CorrespondenceThreadCard";
 
 const fmtAgo = (d: string): string => {
   const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
@@ -26,31 +27,26 @@ const fmtAgo = (d: string): string => {
   return `${Math.round(s / 86400)}d ago`;
 };
 
-// Topic display metadata. Keys match the classifier / gmail-sync topics.
-const TOPIC_META: Record<string, { label: string; cls: string }> = {
-  water_billing:   { label: "Water billing", cls: "bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] border-[var(--apas-sapphire)]/20" },
-  water_meters:    { label: "Water meters",  cls: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-  sewer_extension: { label: "Sewer",         cls: "bg-amber-100 text-amber-700 border-amber-200" },
-  stormwater:      { label: "Storm water",   cls: "bg-slate-100 text-slate-600 border-slate-200" },
-  other:           { label: "Other",         cls: "bg-muted text-muted-foreground" },
+const TOPIC_LABEL: Record<string, string> = {
+  water_billing: "Water billing", water_meters: "Water meters", sewer_extension: "Sewer", stormwater: "Storm water", other: "Other", untagged: "Untagged",
 };
-const topicLabel = (t?: string | null) => (t && TOPIC_META[t]?.label) || null;
 
-function party(e: ProjectEmail): string {
-  if (e.direction === "inbound") return e.from_name || e.from_email || "Unknown sender";
-  const to = e.to_emails?.[0];
-  return to ? `To ${to}${e.to_emails.length > 1 ? ` +${e.to_emails.length - 1}` : ""}` : "Outbound";
-}
+interface ThreadGroup { key: string; threadId: string | null; messages: ProjectEmail[]; intel?: CorrespondenceThread; topic: string; lastAt: number }
 
 export function CorrespondenceTab({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
   const { data: emails = [], isLoading } = useProjectEmails(projectId);
   const gmail = useGmailConnection();
   const { settings, sync } = useGmailSync(projectId);
+  const { threads, analyze } = useCorrespondenceThreads(projectId);
+  const { data: actionItems = [] } = useActionItemsByProject(projectId);
+  const createActionItem = useCreateActionItem(projectId);
+  const { user } = useAuth();
   const [composeOpen, setComposeOpen] = useState(false);
   const [topicFilter, setTopicFilter] = useState<string>("all");
+  const [pushing, setPushing] = useState<string | null>(null);
+  const autoAnalyzed = useRef(false);
 
-  // Toast the result of the Gmail OAuth round-trip (?gmail=connected|error) and
-  // strip the param so a refresh doesn't re-toast.
+  // Toast the Gmail OAuth round-trip result and strip the ?gmail= param.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const g = p.get("gmail");
@@ -61,6 +57,8 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
     window.history.replaceState({}, "", `${window.location.pathname}${p.toString() ? `?${p}` : ""}`);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const connected = gmail.status.data?.connected;
+
   const disconnectGmail = () => {
     if (!window.confirm("Disconnect Gmail? Synced threads stay; no new mail will sync.")) return;
     gmail.disconnect.mutate(undefined, {
@@ -68,41 +66,96 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
       onError: (e: any) => toast.error(e?.message ?? "Couldn't disconnect."),
     });
   };
-  const connected = gmail.status.data?.connected;
+
+  const runAnalyze = (opts?: { force?: boolean }) =>
+    analyze.mutate(opts, {
+      onSuccess: (r) => { if ((r?.analyzed ?? 0) > 0) toast.success(`Analyzed ${r.analyzed} thread${r.analyzed === 1 ? "" : "s"}.`, { id: "intel" }); },
+      onError: (e: any) => toast.error(e?.message ?? "Analysis failed.", { id: "intel" }),
+    });
 
   const runSync = () => {
     toast.loading("Syncing Gmail…", { id: "gsync" });
     sync.mutate(undefined, {
       onSuccess: (r) => {
-        const parts = Object.entries(r.byTopic || {})
-          .filter(([t]) => (settings.data?.import_topics ?? ["water_billing", "water_meters"]).includes(t))
-          .map(([t, n]) => `${n} ${TOPIC_META[t]?.label ?? t}`);
-        const msg = r.imported > 0
-          ? `Imported ${r.imported} message${r.imported === 1 ? "" : "s"}${parts.length ? ` · ${parts.join(", ")}` : ""}.`
-          : `Scanned ${r.scanned} thread${r.scanned === 1 ? "" : "s"} — nothing new to import.`;
-        toast.success(msg, { id: "gsync" });
+        const imported = r.imported ?? 0;
+        toast.success(imported > 0 ? `Imported ${imported} message${imported === 1 ? "" : "s"}. Analyzing…` : `Scanned ${r.scanned} thread${r.scanned === 1 ? "" : "s"} — nothing new.`, { id: "gsync" });
+        // Chain: analyze the freshly-synced threads.
+        toast.loading("Analyzing threads…", { id: "intel" });
+        runAnalyze();
       },
       onError: (e: any) => toast.error(e?.message ?? "Sync failed.", { id: "gsync" }),
     });
   };
 
-  // Topic counts for the filter chips (only topics actually present).
+  // Auto-analyze once if there are threads with messages but no intelligence yet.
+  const threadIntel = useMemo(() => new Map((threads.data ?? []).map((t) => [t.gmail_thread_id, t])), [threads.data]);
+  useEffect(() => {
+    if (autoAnalyzed.current || threads.isLoading || emails.length === 0) return;
+    const distinctThreads = new Set(emails.filter((e) => e.gmail_thread_id).map((e) => e.gmail_thread_id));
+    const anyUnanalyzed = [...distinctThreads].some((tid) => !threadIntel.has(tid as string));
+    if (anyUnanalyzed && !analyze.isPending) { autoAnalyzed.current = true; runAnalyze(); }
+  }, [emails, threadIntel, threads.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Group messages into threads and attach intelligence.
+  const groups = useMemo<ThreadGroup[]>(() => {
+    const map = new Map<string, ThreadGroup>();
+    for (const e of emails) {
+      const key = e.gmail_thread_id ? `t:${e.gmail_thread_id}` : `m:${e.id}`;
+      let g = map.get(key);
+      if (!g) {
+        g = { key, threadId: e.gmail_thread_id, messages: [], intel: e.gmail_thread_id ? threadIntel.get(e.gmail_thread_id) : undefined, topic: e.topic || "untagged", lastAt: 0 };
+        map.set(key, g);
+      }
+      g.messages.push(e);
+      g.lastAt = Math.max(g.lastAt, new Date(e.occurred_at).getTime());
+      if (e.topic) g.topic = e.topic;
+    }
+    for (const g of map.values()) if (g.intel?.topic) g.topic = g.intel.topic;
+    return [...map.values()].sort((a, b) => b.lastAt - a.lastAt);
+  }, [emails, threadIntel]);
+
+  // Topic filter chips (thread-level).
   const topicCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const e of emails) { const t = e.topic || "untagged"; m.set(t, (m.get(t) ?? 0) + 1); }
+    for (const g of groups) m.set(g.topic, (m.get(g.topic) ?? 0) + 1);
     return m;
-  }, [emails]);
+  }, [groups]);
+  const shown = topicFilter === "all" ? groups : groups.filter((g) => g.topic === topicFilter);
 
-  const shown = useMemo(
-    () => (topicFilter === "all" ? emails : emails.filter((e) => (e.topic || "untagged") === topicFilter)),
-    [emails, topicFilter],
-  );
+  // Which extracted action items are already in Action Items (linked to their thread).
+  const addedByThread = useMemo(() => {
+    const m = new Map<string, Set<string>>(); // intelId → titles
+    for (const it of actionItems) {
+      if (it.linked_entity_type === "correspondence_thread" && it.linked_entity_id) {
+        if (!m.has(it.linked_entity_id)) m.set(it.linked_entity_id, new Set());
+        m.get(it.linked_entity_id)!.add(it.title);
+      }
+    }
+    return m;
+  }, [actionItems]);
+
+  const onAddActionItem = (a: AddActionItemArgs) => {
+    setPushing(a.title);
+    const ownsSelf = /^(you|us|me)$/i.test(a.owner.trim());
+    createActionItem.mutate({
+      title: a.title,
+      description: a.due_hint ? `From correspondence · ${a.owner}${a.due_hint ? ` · ${a.due_hint}` : ""}` : `From correspondence · ${a.owner}`,
+      assigned_to: ownsSelf ? user?.id ?? null : null,
+      tags: ["correspondence"],
+      linked_entity_type: "correspondence_thread",
+      linked_entity_id: a.intelId,
+    }, {
+      onSuccess: () => toast.success("Added to Action Items."),
+      onSettled: () => setPushing(null),
+    });
+  };
+
   const counts = useMemo(() => ({
     inbound: emails.filter((e) => e.direction === "inbound").length,
     outbound: emails.filter((e) => e.direction === "outbound").length,
   }), [emails]);
-
   const lastSynced = settings.data?.last_synced_at;
+  const analyzing = analyze.isPending;
 
   return (
     <div className="space-y-4">
@@ -110,14 +163,15 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2"><Mail className="h-5 w-5 text-[var(--apas-sapphire)]" /> Correspondence</h2>
           <p className="text-sm text-muted-foreground">
-            Every email and letter with the client and agencies, in one trail — {counts.inbound} received · {counts.outbound} sent
-            {lastSynced ? ` · synced ${fmtAgo(lastSynced)}` : ""}.
+            Every email and letter with the client and agencies, in one intelligent trail — {counts.inbound} received · {counts.outbound} sent
+            {lastSynced ? ` · synced ${fmtAgo(lastSynced)}` : ""}
+            {analyzing ? " · analyzing…" : ""}.
           </p>
         </div>
         <div className="flex gap-2">
           {connected ? (
             <>
-              <Button variant="outline" size="sm" onClick={runSync} disabled={sync.isPending} title="Pull the latest water-billing & meter threads from Gmail">
+              <Button variant="outline" size="sm" onClick={runSync} disabled={sync.isPending} title="Pull the latest water-billing & meter threads from Gmail, then analyze them">
                 <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? "animate-spin" : ""}`} /> {sync.isPending ? "Syncing…" : "Sync now"}
               </Button>
               <Button variant="outline" size="sm" onClick={disconnectGmail} title="Gmail connected — click to disconnect" disabled={gmail.disconnect.isPending}>
@@ -137,28 +191,22 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
 
       <CorrespondenceComposer open={composeOpen} onOpenChange={setComposeOpen} projectId={projectId} projectName={projectName} />
 
-      {/* Topic filter chips (shown once there's anything tagged) */}
-      {emails.length > 0 && topicCounts.size > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setTopicFilter("all")}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${topicFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent/40"}`}
-          >
-            All {emails.length}
+      {/* Topic filter chips */}
+      {groups.length > 0 && topicCounts.size > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button onClick={() => setTopicFilter("all")} className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${topicFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent/40"}`}>
+            All {groups.length}
           </button>
-          {[...topicCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => {
-            const meta = TOPIC_META[t];
-            const active = topicFilter === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setTopicFilter(t)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent/40"}`}
-              >
-                {meta?.label ?? (t === "untagged" ? "Untagged" : t)} {n}
-              </button>
-            );
-          })}
+          {[...topicCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+            <button key={t} onClick={() => setTopicFilter(t)} className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${topicFilter === t ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent/40"}`}>
+              {TOPIC_LABEL[t] ?? t} {n}
+            </button>
+          ))}
+          {connected && groups.some((g) => g.threadId && !g.intel) && (
+            <button onClick={() => runAnalyze()} disabled={analyzing} className="ml-auto rounded-full border px-2.5 py-1 text-xs flex items-center gap-1 hover:bg-accent/40 disabled:opacity-60">
+              <Sparkles className={`h-3.5 w-3.5 ${analyzing ? "animate-pulse" : ""}`} /> {analyzing ? "Analyzing…" : "Analyze threads"}
+            </button>
+          )}
         </div>
       )}
 
@@ -170,8 +218,8 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
             <div className="font-medium">No correspondence yet</div>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
               {connected
-                ? "Click Sync now to pull in the water-billing and meter threads with R4 and the City of Opa-Locka — everything is logged here as a complete trail."
-                : "Connect your Gmail to pull in the R4 and City of Opa-Locka threads for this project, or compose a branded letter — everything you send and receive will be logged here as a complete trail."}
+                ? "Click Sync now to pull in the water-billing and meter threads with R4 and the City of Opa-Locka — each thread is analyzed into a summary, status, and action items."
+                : "Connect your Gmail to pull in the R4 and City of Opa-Locka threads for this project, or compose a branded letter — everything is logged here as a complete trail."}
             </p>
             {connected && (
               <Button className="mt-4" size="sm" onClick={runSync} disabled={sync.isPending}>
@@ -188,38 +236,19 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
         </div>
       )}
 
-      {/* Timeline */}
+      {/* Thread cards */}
       {shown.length > 0 && (
-        <div className="space-y-2">
-          {shown.map((e) => {
-            const inbound = e.direction === "inbound";
-            const tl = topicLabel(e.topic);
-            return (
-              <Card key={e.id} className="transition-colors hover:bg-accent/30">
-                <CardContent className="p-3.5">
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${inbound ? "bg-emerald-100 text-emerald-700" : "bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]"}`}>
-                      {inbound ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate">{e.subject || "(no subject)"}</span>
-                        {tl && <Badge variant="outline" className={`text-[10px] ${TOPIC_META[e.topic!]?.cls ?? ""}`}>{tl}</Badge>}
-                        {e.status !== "received" && e.status !== "sent" && (
-                          <Badge variant="outline" className="text-[10px] capitalize">{e.status}</Badge>
-                        )}
-                        {e.has_attachments && <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {party(e)} · {fmtDate(e.occurred_at)}
-                      </div>
-                      {e.snippet && <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{e.snippet}</div>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="space-y-2.5">
+          {shown.map((g) => (
+            <CorrespondenceThreadCard
+              key={g.key}
+              messages={g.messages}
+              intel={g.intel}
+              onAddActionItem={onAddActionItem}
+              pushingActionItem={pushing}
+              addedTitles={g.intel ? addedByThread.get(g.intel.id) : undefined}
+            />
+          ))}
         </div>
       )}
     </div>
