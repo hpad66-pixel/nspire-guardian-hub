@@ -15,6 +15,11 @@ export function useGmailConnection() {
 
   const status = useQuery({
     queryKey: ["gmail-connection"],
+    // Always re-check on mount / tab focus so the button reflects a just-completed
+    // connect without needing a hard refresh.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<GmailStatus> => {
       const { data, error } = await supabase.functions.invoke("gmail", { body: { action: "status" } });
       if (error) throw error;
