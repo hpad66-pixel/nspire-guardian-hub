@@ -32,6 +32,7 @@ export type ProjectModuleSlug =
   | 'proposals'
   | 'repository'
   | 'invoicing'
+  | 'correspondence'
   | 'client-portal';
 
 export type ModuleGroup = 'core' | 'compliance' | 'reports';
@@ -62,6 +63,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'submittals',    label: 'Submittals',          description: 'Submittal register and reviews',       group: 'compliance' },
   { slug: 'punch-list',    label: 'Punch list',          description: 'Punch items and closeout tracking',    group: 'compliance' },
   { slug: 'meetings',      label: 'Meetings & agenda',   description: 'Agendas, minutes, transcript → actions', group: 'reports' },
+  { slug: 'correspondence', label: 'Correspondence',     description: 'Gmail thread sync, branded letters, full trail', group: 'reports' },
   { slug: 'progress',      label: 'Progress',            description: 'Quantities and progress dashboard',    group: 'reports' },
   { slug: 'procurement',   label: 'Procurement',         description: 'Procurement and buyout tracking',      group: 'reports' },
   { slug: 'safety',        label: 'Safety',              description: 'Safety observations and incidents',    group: 'reports' },
@@ -84,6 +86,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'repository',
   'project-log',
   'meetings',
+  'correspondence',
   'invoicing',
   'proposals',
   'client-portal',
@@ -102,6 +105,7 @@ export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<P
   'action-items',
   'invoicing',
   'env-compliance',
+  'correspondence',
 ]);
 
 /** Default visibility for a module before any admin override is applied. */

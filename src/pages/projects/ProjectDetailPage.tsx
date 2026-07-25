@@ -23,7 +23,7 @@ import {
   MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal, X,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
-  FileSignature,
+  FileSignature, Mail,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -58,6 +58,7 @@ import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
 import { ActionItemsTab } from '@/components/projects/actionItems/ActionItemsTab';
 import { ConsultingMeetingsTab } from '@/components/projects/meetings/ConsultingMeetingsTab';
+import { CorrespondenceTab } from '@/components/projects/correspondence/CorrespondenceTab';
 import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
@@ -386,6 +387,7 @@ export default function ProjectDetailPage() {
     { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },
     { value: 'env-compliance', label: 'Environmental Compliance', shortLabel: 'Env', icon: FlaskConical, group: 'reports', badge: null as number | null },
     { value: 'meetings',     label: 'Meetings & Agenda', shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
+    { value: 'correspondence', label: 'Correspondence', shortLabel: 'Mail', icon: Mail, group: 'reports', badge: null as number | null },
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
@@ -993,6 +995,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
                 <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
+                <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
@@ -1274,6 +1277,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
               <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
+              <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
