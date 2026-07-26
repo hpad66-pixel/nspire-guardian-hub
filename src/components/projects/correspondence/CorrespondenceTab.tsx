@@ -29,6 +29,8 @@ const fmtAgo = (d: string): string => {
   return `${Math.round(s / 86400)}d ago`;
 };
 
+// Legacy fallback for projects that predate a configured taxonomy — a project's
+// OWN correspondence_settings.topics (see useGmailSync) always takes priority.
 const TOPIC_LABEL: Record<string, string> = {
   water_billing: "Water billing", water_meters: "Water meters", sewer_extension: "Sewer", stormwater: "Storm water", other: "Other", untagged: "Untagged",
 };
@@ -114,6 +116,14 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
     for (const g of groups) m.set(g.topic, (m.get(g.topic) ?? 0) + 1);
     return m;
   }, [groups]);
+
+  // This project's OWN topic labels (configured in correspondence_settings.topics)
+  // take priority over the legacy hardcoded map, which only covers Glorieta's
+  // original taxonomy — every other project defines its own topics now.
+  const topicLabel = useMemo(() => {
+    const configured = new Map((settings.data?.topics ?? []).map((t) => [t.key, t.label]));
+    return (key: string) => configured.get(key) ?? TOPIC_LABEL[key] ?? key;
+  }, [settings.data?.topics]);
   const shown = topicFilter === "all" ? groups : groups.filter((g) => g.topic === topicFilter);
 
   // Which extracted action items are already in Action Items (linked to their thread).
@@ -209,7 +219,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
               </button>
               {[...topicCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => (
                 <button key={t} onClick={() => setTopicFilter(t)} className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${topicFilter === t ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent/40"}`}>
-                  {TOPIC_LABEL[t] ?? t} {n}
+                  {topicLabel(t)} {n}
                 </button>
               ))}
               <button onClick={() => runAnalyze(unanalyzed === 0 ? { force: true } : undefined)} disabled={analyzing} className="ml-auto rounded-full border px-2.5 py-1 text-xs flex items-center gap-1 hover:bg-accent/40 disabled:opacity-60" title="Run AI analysis on these threads (uses the AI API)">
@@ -253,6 +263,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
                   onAddActionItem={onAddActionItem}
                   pushingActionItem={pushing}
                   addedTitles={g.intel ? addedByThread.get(g.intel.id) : undefined}
+                  topicLabel={topicLabel}
                 />
               ))}
             </div>

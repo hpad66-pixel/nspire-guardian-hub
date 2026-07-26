@@ -40,20 +40,23 @@ function party(e: ProjectEmail): string {
 export interface AddActionItemArgs { title: string; owner: string; due_hint: string; threadId: string | null; intelId: string | null }
 
 export function CorrespondenceThreadCard({
-  messages, intel, onAddActionItem, pushingActionItem, addedTitles,
+  messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel,
 }: {
   messages: ProjectEmail[];
   intel?: CorrespondenceThread;
   onAddActionItem?: (a: AddActionItemArgs) => void;
   pushingActionItem?: string | null;   // title currently being pushed
   addedTitles?: Set<string>;           // action-item titles already in Action Items for this thread
+  /** Resolves a topic key to this project's own configured label — falls back to
+   *  the legacy hardcoded map below for projects that predate a real taxonomy. */
+  topicLabel?: (key: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const ordered = [...messages].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
   const latest = ordered[0];
   const subject = intel?.subject || latest?.subject || "(no subject)";
   const topic = intel?.topic || latest?.topic || null;
-  const tmeta = topic ? TOPIC_META[topic] : null;
+  const tmeta = topic ? (TOPIC_META[topic] ?? { label: topicLabel?.(topic) ?? topic, cls: "bg-muted text-muted-foreground" }) : null;
   const smeta = intel?.status ? STATUS_META[intel.status] : null;
   const ent = intel?.entities;
   const chips = [...(ent?.amounts ?? []), ...(ent?.dates ?? []), ...(ent?.refs ?? [])].slice(0, 6);
