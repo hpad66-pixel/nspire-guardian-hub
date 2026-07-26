@@ -1,12 +1,18 @@
-// gmail-sync (PR3c) — pull a project's in-scope Gmail threads onto the
-// Correspondence tab. Authenticated. POST { project_id, party_domains?, party_emails?,
+// gmail-sync (PR3c, generalized PR3m) — pull a project's in-scope Gmail threads onto
+// the Correspondence tab. Authenticated. POST { project_id, party_domains?, party_emails?,
 // import_topics?, extra_terms?, lookback_days? } → { scanned, imported, byTopic, parties }.
 //
 // Flow: refresh the stored Gmail token → (auto-discover the project's party domains
 // from threads that name the project, if not configured) → search Gmail scoped to
-// those parties + water/billing/meter terms → AI-classify each thread's topic →
-// import only the configured topics (default water_billing + water_meters), skipping
-// messages already stored. The refresh token never leaves the edge function.
+// those parties + the project's own keyword net (if any) → AI-classify each thread
+// into the PROJECT's OWN topic taxonomy (correspondence_settings.topics) → import
+// only the configured topics, skipping messages already stored. The refresh token
+// never leaves the edge function.
+//
+// The topic taxonomy, search keywords, and classifier definitions are all PER
+// PROJECT (read from correspondence_settings), not hardcoded — a water-utility
+// project and an environmental-contamination project need entirely different
+// scoping, and neither should silently inherit the other's language.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { refreshAccessToken } from "../_shared/gmailOAuth.ts";
@@ -21,17 +27,21 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const TOPICS = ["water_billing", "water_meters", "sewer_extension", "stormwater", "other"] as const;
-type Topic = (typeof TOPICS)[number];
-const DEFAULT_IMPORT: Topic[] = ["water_billing", "water_meters"];
-
-// Water-scoped keyword net. Precision comes from the classifier; this just keeps the
-// candidate set small (party + water term) instead of every thread with a party.
-const WATER_TERMS =
-  '(water OR "water meter" OR meter OR meters OR billing OR bill OR utility OR consumption OR dispute OR charges OR WASD OR backflow OR "meter reading" OR "shut off" OR reconnection)';
+interface TopicDef { key: string; label: string; description: string }
+// Fallback for a project that hasn't defined its own taxonomy yet — a project
+// should configure real topics (correspondence_settings.topics) for anything
+// beyond "does this even belong to this project".
+const GENERIC_TOPICS: TopicDef[] = [
+  { key: "relevant", label: "Relevant", description: "Belongs to this project — any subject matter." },
+  { key: "other", label: "Other", description: "A different project, newsletters, internal admin, or unrelated business." },
+];
 
 const FREEMAIL = new Set(["gmail.com", "googlemail.com", "yahoo.com", "aol.com", "hotmail.com", "outlook.com", "icloud.com", "me.com", "msn.com", "live.com"]);
-const STOP = new Set(["water", "meter", "meters", "project", "gardens", "apartments", "the", "and", "for", "phase", "site"]);
+const STOP = new Set(["water", "meter", "meters", "project", "gardens", "apartments", "the", "and", "for", "phase", "site", "building"]);
+// A domain must appear at least this many times across the name-seeded sample
+// before auto-discovery trusts it as a real party — a single incidental match
+// (a newsletter, a CC'd list) shouldn't get treated as a project stakeholder.
+const MIN_DOMAIN_FREQ = 2;
 
 const domainOf = (email: string) => (email.split("@")[1] ?? "").toLowerCase();
 const nameSeed = (projectName: string): string => {
@@ -40,23 +50,25 @@ const nameSeed = (projectName: string): string => {
 };
 const orDomains = (field: string, domains: string[]) => domains.length ? `${field}:(${domains.join(" OR ")})` : "";
 
+// Generic classification INSTRUCTIONS (tunable via ai_skill_prompts like every
+// other skill). The project's own topic definitions are supplied per-call in the
+// user message, not baked in here — that's what makes this reusable across
+// completely different projects.
 const DEFAULT_CLASSIFY = `You classify project email threads by TOPIC so a correspondence system only ingests
-conversations that belong to a given project.
+conversations that belong to a given project, sorted into that project's own topics.
 
-You are given the project name and a list of email threads (subject, participants, snippet).
-For EACH thread choose exactly one topic:
-- "water_billing"    — water/sewer utility BILLING: invoices, charges, meter reads driving a bill, consumption disputes, shut-off/reconnection, formal disputes of water & sewer CHARGES.
-- "water_meters"     — physical water METERS: installation, testing, relocation, meter channels, backflow preventers tied to metering.
-- "sewer_extension"  — SANITARY SEWER construction: sewer main/line replacement or extension, DERM/FDEP certifications, as-builts, manholes, sewer permits. (NOT billing.)
-- "stormwater"       — STORM water / drainage: retention ponds, catch basins, street sweeping, silt fence, stormwater fixtures.
-- "other"            — anything else, including threads about a DIFFERENT project, newsletters, internal admin, or unrelated business.
+You are given: the project name, that project's topic definitions (key + description), and a
+list of candidate email threads (subject, participants, snippet). For EACH thread choose
+exactly one topic key from the given list.
 
 Rules:
-- A dispute about water/sewer CHARGES is "water_billing", even though it says "sewer" — billing, not construction.
-- If the thread is clearly about a different project or not this project at all, use "other".
+- Use the topic definitions exactly as given — they vary per project; do not substitute your
+  own categories.
+- If the thread is clearly about a different project or not relevant to this one, use "other"
+  (or whichever topic key is described as the catch-all/not-relevant option).
 - When genuinely ambiguous between two in-scope topics, pick the dominant one.
 
-Return ONLY a JSON array, no prose: [{"id":"<threadId>","topic":"<one of the topics>"}]`;
+Return ONLY a JSON array, no prose: [{"id":"<threadId>","topic":"<one of the given topic keys>"}]`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -103,8 +115,17 @@ serve(async (req) => {
     // Effective settings: stored row merged with any overrides in the request.
     const { data: existing } = await admin.from("correspondence_settings").select("*").eq("project_id", projectId).maybeSingle();
     const clean = (a: unknown): string[] => Array.isArray(a) ? a.map((x) => String(x).trim().toLowerCase()).filter(Boolean) : [];
+
+    // This project's own topic taxonomy — configure it via correspondence_settings.topics.
+    const rawTopics = Array.isArray(existing?.topics) ? existing.topics as unknown[] : [];
+    const projectTopics: TopicDef[] = rawTopics.filter((t): t is TopicDef => Boolean(t && typeof t === "object" && "key" in (t as object)));
+    const topics = projectTopics.length ? projectTopics : GENERIC_TOPICS;
+    const topicKeys = topics.map((t) => t.key);
+    const otherKey = topics.find((t) => /other|not.?relevant/i.test(t.key) || /other|not.?relevant/i.test(t.label))?.key ?? topicKeys[topicKeys.length - 1] ?? "other";
+    const defaultImport = topicKeys.filter((k) => k !== otherKey);
+
     let partyDomains = clean(body.party_domains).length ? clean(body.party_domains) : ((existing?.party_domains as string[]) ?? []);
-    const importTopics = (clean(body.import_topics).length ? clean(body.import_topics) : ((existing?.import_topics as string[]) ?? DEFAULT_IMPORT)).filter((t) => (TOPICS as readonly string[]).includes(t));
+    const importTopics = (clean(body.import_topics).length ? clean(body.import_topics) : ((existing?.import_topics as string[]) ?? defaultImport)).filter((t) => topicKeys.includes(t));
     const lookbackDays = Number(body.lookback_days ?? existing?.lookback_days ?? 365);
     const extraTerms = typeof body.extra_terms === "string" ? body.extra_terms : (existing?.extra_terms ?? "");
 
@@ -129,17 +150,18 @@ serve(async (req) => {
               }
             }
           }
-          partyDomains = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d]) => d);
+          // Require a minimum frequency so a single incidental CC doesn't get
+          // treated as a real project party — review/correct this in settings.
+          partyDomains = [...freq.entries()].filter(([, n]) => n >= MIN_DOMAIN_FREQ).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d]) => d);
           discovered = partyDomains.length > 0;
         } catch { /* fall back to keyword-only search */ }
       }
     }
 
-    // Scoped search: recent AND water-term AND (involves a party OR names the project).
+    // Scoped search: recent AND (project term, if configured) AND (party OR project name).
     const seed = nameSeed(project.name ?? "");
     const scope = [orDomains("from", partyDomains), orDomains("to", partyDomains), orDomains("cc", partyDomains), seed ? `"${seed}"` : ""].filter(Boolean).join(" OR ");
-    const terms = extraTerms ? `(${WATER_TERMS} OR ${extraTerms})` : WATER_TERMS;
-    const query = `newer_than:${lookbackDays}d ${terms}${scope ? ` (${scope})` : ""}`;
+    const query = `newer_than:${lookbackDays}d ${extraTerms ? `(${extraTerms}) ` : ""}${scope ? `(${scope})` : ""}`.trim();
 
     const refs = await listThreads(accessToken, query, 50);
     const scanned = refs.length;
@@ -155,9 +177,10 @@ serve(async (req) => {
       for (const t of batch) if (t && t.messages.length) threads.push(t);
     }
 
-    // Classify each thread's topic (one model call for the whole candidate set).
+    // Classify each thread's topic (one model call for the whole candidate set),
+    // against THIS project's own topic list.
     const byTopic: Record<string, number> = {};
-    const topicOf = new Map<string, Topic>();
+    const topicOf = new Map<string, string>();
     if (threads.length) {
       let system = DEFAULT_CLASSIFY, model = "claude-sonnet-4-6";
       try {
@@ -176,24 +199,25 @@ serve(async (req) => {
       const anthropic = Deno.env.get("ANTHROPIC_API_KEY");
       if (anthropic) {
         try {
+          const topicSpec = topics.map((t) => `- "${t.key}" (${t.label}): ${t.description}`).join("\n");
           const r = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-api-key": anthropic, "anthropic-version": "2023-06-01" },
-            body: JSON.stringify({ model, max_tokens: 1500, system, messages: [{ role: "user", content: `Project: ${project.name}\n\nThreads:\n${JSON.stringify(digest)}` }] }),
+            body: JSON.stringify({ model, max_tokens: 1500, system, messages: [{ role: "user", content: `Project: ${project.name}\n\nTopics:\n${topicSpec}\n\nThreads:\n${JSON.stringify(digest)}` }] }),
           });
           if (r.ok) {
             const d = await r.json();
             await logAiUsage({ req, skill: "correspondence_classify", model, anthropicJson: d, projectId });
             const txt = String(d.content?.[0]?.text ?? "");
             const arr = JSON.parse(txt.slice(txt.indexOf("["), txt.lastIndexOf("]") + 1));
-            for (const it of arr) if (it?.id && (TOPICS as readonly string[]).includes(it.topic)) topicOf.set(String(it.id), it.topic as Topic);
+            for (const it of arr) if (it?.id && topicKeys.includes(it.topic)) topicOf.set(String(it.id), it.topic as string);
           } else {
             console.error("classify failed:", r.status, await r.text());
           }
         } catch (e) { console.error("classify error:", e); }
       }
-      // Unclassified threads default to 'other' (not imported).
-      for (const t of threads) if (!topicOf.has(t.id)) topicOf.set(t.id, "other");
+      // Unclassified threads default to the project's "other"/catch-all topic (not imported by default).
+      for (const t of threads) if (!topicOf.has(t.id)) topicOf.set(t.id, otherKey);
     }
 
     // Existing message ids for this project → skip on re-sync.
@@ -203,7 +227,7 @@ serve(async (req) => {
     // Import messages of kept threads.
     const rows: Record<string, unknown>[] = [];
     for (const t of threads) {
-      const topic = topicOf.get(t.id) ?? "other";
+      const topic = topicOf.get(t.id) ?? otherKey;
       byTopic[topic] = (byTopic[topic] ?? 0) + 1;
       if (!importTopics.includes(topic)) continue;
       for (const m of t.messages) {
@@ -241,6 +265,7 @@ serve(async (req) => {
     const result = { scanned, imported, byTopic, parties: partyDomains };
     await admin.from("correspondence_settings").upsert({
       tenant_id: tenantId, project_id: projectId, party_domains: partyDomains, import_topics: importTopics,
+      topics: projectTopics, // only persist an explicitly-configured taxonomy, never the generic fallback
       extra_terms: extraTerms || null, lookback_days: lookbackDays, last_synced_at: nowIso, last_result: result, created_by: user.id,
     }, { onConflict: "project_id" });
     await admin.from("gmail_connections").update({ last_synced_at: nowIso }).eq("id", conn.id);
