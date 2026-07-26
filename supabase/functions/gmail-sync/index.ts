@@ -251,18 +251,28 @@ serve(async (req) => {
     }
 
     let imported = 0;
+    const insertErrors: string[] = [];
     if (rows.length) {
-      // Insert in chunks; ignore any residual duplicates from the partial unique index.
+      // Insert in chunks. A single bad/duplicate row fails the WHOLE chunk in one
+      // plain multi-row insert — fall back to inserting that chunk row-by-row so
+      // one collision doesn't silently swallow every other legitimate message
+      // (this is exactly how a real bug — a too-broad unique constraint — showed
+      // up as a quiet "imported: 0" with no visible error).
       for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
         const { error, count } = await admin.from("project_emails").insert(chunk, { count: "exact" });
-        if (error) { console.error("insert error:", error.message); }
-        else imported += count ?? chunk.length;
+        if (!error) { imported += count ?? chunk.length; continue; }
+        console.error("insert chunk error, retrying row-by-row:", error.message);
+        for (const row of chunk) {
+          const { error: rowErr } = await admin.from("project_emails").insert(row);
+          if (rowErr) { if (!insertErrors.includes(rowErr.message)) insertErrors.push(rowErr.message); }
+          else imported += 1;
+        }
       }
     }
 
     const nowIso = new Date().toISOString();
-    const result = { scanned, imported, byTopic, parties: partyDomains };
+    const result = { scanned, imported, byTopic, parties: partyDomains, ...(insertErrors.length ? { insertErrors } : {}) };
     await admin.from("correspondence_settings").upsert({
       tenant_id: tenantId, project_id: projectId, party_domains: partyDomains, import_topics: importTopics,
       topics: projectTopics, // only persist an explicitly-configured taxonomy, never the generic fallback

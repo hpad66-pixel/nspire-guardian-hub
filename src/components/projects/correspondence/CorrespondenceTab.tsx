@@ -86,6 +86,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
       onSuccess: (r) => {
         const imported = r.imported ?? 0;
         toast.success(imported > 0 ? `Imported ${imported} message${imported === 1 ? "" : "s"}.` : `Scanned ${r.scanned} thread${r.scanned === 1 ? "" : "s"} — nothing new.`, { id: "gsync" });
+        if (r.insertErrors?.length) toast.error(`Some messages couldn't be saved: ${r.insertErrors[0]}`, { duration: 8000 });
       },
       onError: (e: any) => toast.error(e?.message ?? "Sync failed.", { id: "gsync" }),
     });

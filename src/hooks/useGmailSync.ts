@@ -23,6 +23,9 @@ export interface SyncResult {
   byTopic: Record<string, number>;
   parties: string[];
   discovered?: boolean;
+  /** Distinct insert error messages, if any row failed to save (surfaced instead
+   *  of silently showing a lower imported count with no explanation). */
+  insertErrors?: string[];
 }
 
 // Per-project inbound Gmail sync + its stored settings. The sync runs entirely in
