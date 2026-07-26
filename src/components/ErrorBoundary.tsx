@@ -2,7 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { isChunkLoadError, reloadOnceForChunkError } from '@/lib/chunkReload';
+import { isChunkLoadError, reloadOnceForChunkError, evictCachesAndReload } from '@/lib/chunkReload';
 
 interface Props {
   children: ReactNode;
@@ -47,6 +47,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
+    // If this crash is the stale-chunk class (a lazy chunk from a build that's
+    // since been replaced by a new deploy), a plain reload isn't enough — the
+    // PWA service worker keeps answering from its stale precache, so the user
+    // clicks "Reload Page" and hits the exact same crash again. Evict the
+    // service worker + caches first so the reload actually pulls the fresh build.
+    if (isChunkLoadError(this.state.error)) {
+      void evictCachesAndReload();
+      return;
+    }
     window.location.reload();
   };
 
@@ -110,13 +119,13 @@ export class ErrorBoundary extends Component<Props, State> {
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Try Again
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1"
                   onClick={this.handleReload}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Reload Page
+                  {isChunkLoadError(this.state.error) ? 'Update & Reload' : 'Reload Page'}
                 </Button>
                 <Button 
                   className="flex-1"
