@@ -1,26 +1,32 @@
 /**
- * DocumentWorkspace — upload a .docx/.pdf, preserved byte-for-byte, and edit the
- * .docx ON its real formatting: docx-preview renders the letterhead/fonts/spacing,
- * and you edit that render in place (contenteditable + native spell-check). Saving
- * keeps the formatting (the edited, still-styled HTML is stored in edited_html);
- * the untouched original is always downloadable. All client-side — no API.
+ * DocumentWorkspace — upload a Word letter, edit it on its real letterhead, save.
+ * Saving simply BECOMES the current version — no separate "replace" step. Real
+ * version control is a browsable history (restore or delete any past snapshot),
+ * not a gate blocking normal use. Export/email use a pixel-perfect rasterized PDF
+ * of the actual rendered letter (same technique as this app's pay-app PDFs) so
+ * what you see is exactly what gets sent — no HTML/Word reinterpretation that can
+ * mangle fonts or add stray shading. All client-side — no API.
  */
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProRichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Printer, Trash2, Check,
-  Replace, Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail,
+  FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Trash2, Check,
+  Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail, History, RotateCcw, X, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuthoredDocuments, type AuthoredDocument } from "@/hooks/useAuthoredDocuments";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthoredDocuments, useDocumentVersions, type AuthoredDocument, type DocumentVersion } from "@/hooks/useAuthoredDocuments";
 import { parseUpload, htmlToText, ACCEPTED_UPLOAD } from "@/lib/docs/parseUpload";
-import { downloadAsWord, printAsPdf, wordDocBase64 } from "@/lib/docs/exportDoc";
-import { fileToBase64, downloadBase64, renderDocxInto, pdfObjectUrl, MIME, extFor, filenameFor } from "@/lib/docs/render";
+import { fileToBase64, downloadBase64, renderDocxInto, pdfObjectUrl, downloadHtmlAsPdf, htmlToPdfAttachment, MIME, extFor, filenameFor } from "@/lib/docs/render";
 import { EmailDocumentDialog, type DocAttachment } from "./EmailDocumentDialog";
-import { Input } from "@/components/ui/input";
+import { DocumentTasksPanel } from "./DocumentTasksPanel";
 
 const fmtAgo = (d: string): string => {
   const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
@@ -34,7 +40,7 @@ const mimeOf = (file: File) => (/\.pdf$/i.test(file.name) || file.type === MIME.
 
 type Docs = ReturnType<typeof useAuthoredDocuments>;
 
-export function DocumentWorkspace({ projectId }: { projectId: string; projectName?: string | null }) {
+export function DocumentWorkspace({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
   const docs = useAuthoredDocuments(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -43,28 +49,35 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
   const list = (docs.data ?? []) as AuthoredDocument[];
   const selected = list.find((d) => d.id === selectedId) ?? null;
 
-  const importFile = async (file: File) => {
-    const mime = mimeOf(file);
-    const [base64, parsed] = await Promise.all([fileToBase64(file), parseUpload(file)]);
-    return docs.create.mutateAsync({
-      title: stripExt(file.name),
-      content_text: parsed.text,
-      content_html: parsed.html,
-      source: mime === MIME.pdf ? "upload_pdf" : "upload_docx",
-      source_file_name: file.name,
-      original_base64: base64,
-      mime_type: mime,
-    });
-  };
-
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     setUploading(true);
     try {
-      const doc = await importFile(file);
-      toast.success(`Imported “${stripExt(file.name)}” — preserved exactly.`);
+      const mime = mimeOf(file);
+      const [base64, parsed] = await Promise.all([fileToBase64(file), parseUpload(file)]);
+      // For Word letters, render the faithful docx-preview HTML now — that render
+      // becomes the current content from the very first moment, so there's only
+      // ever ONE version of "the document," never an upload/edit fork.
+      let editedHtml: string | null = null;
+      if (mime === MIME.docx) {
+        const host = document.createElement("div");
+        host.style.cssText = "position:fixed;left:-99999px;top:0;";
+        document.body.appendChild(host);
+        try { await renderDocxInto(base64, host); editedHtml = host.innerHTML; }
+        finally { host.remove(); }
+      }
+      const doc = await docs.create.mutateAsync({
+        title: stripExt(file.name),
+        content_text: parsed.text,
+        source: mime === MIME.pdf ? "upload_pdf" : "upload_docx",
+        source_file_name: file.name,
+        original_base64: base64,
+        edited_html: editedHtml,
+        mime_type: mime,
+      });
+      toast.success(`Imported “${stripExt(file.name)}.”`);
       setSelectedId(doc.id);
     } catch (err: any) {
       toast.error(err?.message ?? "Couldn't read that file.");
@@ -78,7 +91,7 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
     setSelectedId(doc.id);
   };
 
-  if (selected) return <DocDetail key={selected.id} doc={selected} docs={docs} onBack={() => setSelectedId(null)} />;
+  if (selected) return <DocDetail key={selected.id} doc={selected} docs={docs} projectName={projectName} onBack={() => setSelectedId(null)} />;
 
   return (
     <div className="space-y-4">
@@ -86,7 +99,7 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-[var(--apas-sapphire)]" /> Documents</h3>
-          <p className="text-sm text-muted-foreground">Upload a Word letter — edit it on its real letterhead, save with formatting intact, and download to send. No AI.</p>
+          <p className="text-sm text-muted-foreground">Upload a Word letter, edit it on its real letterhead, save, finalize, and email. No AI.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
@@ -104,7 +117,7 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
         <Card><CardContent className="p-8 text-center">
           <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
           <div className="font-medium">No documents yet</div>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Upload a Word or PDF — kept exactly as-is. Edit Word letters on their real formatting, finalize, and download a copy to send.</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Upload a Word letter — edit it on its real formatting, finalize, and email it straight from here.</p>
         </CardContent></Card>
       ) : (
         <div className="space-y-2">
@@ -118,8 +131,8 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
                     {d.status === "final"
                       ? <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Final</Badge>
                       : <Badge variant="outline" className="text-[10px]">Draft</Badge>}
-                    {d.has_original && <Badge variant="outline" className="text-[10px]">{extFor(d.mime_type).toUpperCase()} · exact</Badge>}
-                    {d.version > 1 && <span className="text-[10px] text-muted-foreground">v{d.version}</span>}
+                    {d.has_original && <Badge variant="outline" className="text-[10px]">{extFor(d.mime_type).toUpperCase()}</Badge>}
+                    <span className="text-[10px] text-muted-foreground">v{d.version}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {d.source === "upload_pdf" ? "From PDF" : d.source === "upload_docx" ? "From Word" : d.source === "ai_draft" ? "AI draft" : "Blank"}
@@ -135,19 +148,17 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
   );
 }
 
-// ── Detail: load the original + any saved edit, then route by type ─────────────
-function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; onBack: () => void }) {
+// ── Detail: load current content, then route by type ────────────────────────
+function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; onBack: () => void }) {
   const [payload, setPayload] = useState<{ b64: string | null; mime: string; edited: string | null } | null>(null);
   const [loading, setLoading] = useState(doc.has_original);
-  const replaceRef = useRef<HTMLInputElement>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailAtt, setEmailAtt] = useState<DocAttachment | null>(null);
-  const [emailHasEdits, setEmailHasEdits] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const isFinal = doc.status === "final";
 
   useEffect(() => {
-    if (!doc.has_original) { setPayload({ b64: null, mime: doc.mime_type || "", edited: null }); return; }
+    if (!doc.has_original) { setPayload({ b64: null, mime: doc.mime_type || "", edited: doc.content_html }); return; }
     let alive = true;
     setLoading(true);
     docs.fetchOriginal(doc.id)
@@ -157,99 +168,48 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
     return () => { alive = false; };
   }, [doc.id, doc.has_original]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const [base64, parsed] = await Promise.all([fileToBase64(file), parseUpload(file)]);
-      await docs.replaceOriginal.mutateAsync({ id: doc.id, original_base64: base64, mime_type: mimeOf(file), source_file_name: file.name, version: doc.version });
-      await docs.update.mutateAsync({ id: doc.id, content_text: parsed.text, edited_html: null } as any);
-      setPayload({ b64: base64, mime: mimeOf(file), edited: null });
-      toast.success(`Updated to v${doc.version + 1} — exact copy preserved.`);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Couldn't replace the file.");
-    }
-  };
-
   const del = async () => {
     if (!window.confirm("Delete this document? This cannot be undone.")) return;
     await docs.remove.mutateAsync(doc.id);
     toast.success("Document deleted.");
     onBack();
   };
-  const finalize = async () => {
-    // An in-place edit (Save on the faithful render) only updates the on-screen
-    // preview — it never touches the exact original file, since an HTML edit
-    // can't be converted back into a perfect .docx. If one exists unreconciled,
-    // finalizing would lock (and later email) the file WITHOUT that edit.
-    if (doc.has_original) {
-      const o = await docs.fetchOriginal(doc.id);
-      if (o.edited_html) {
-        const proceed = window.confirm(
-          "You made in-app text edits, but the exact file on record doesn't include them (an in-app edit can't be converted back into a perfect Word file).\n\n" +
-          "Finalizing now will lock — and later email — the ORIGINAL file without those edits.\n\n" +
-          "To include your edits exactly, use \"Replace version\" with a copy edited in Word/Copilot first.\n\n" +
-          "Finalize the original as-is anyway?"
-        );
-        if (!proceed) return;
-      }
-    }
-    await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true });
-    toast.success("Finalized and locked.");
-  };
+  const finalize = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true }); toast.success("Finalized and locked."); };
   const reopen = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: false }); };
 
-  // Prepare the attachment then open the mailer. Only ever attaches the EXACT
-  // original bytes for an uploaded doc — an HTML→Word conversion of an in-app edit
-  // cannot reproduce fonts/colors/spacing 1:1 (that's what mangled formatting and
-  // added grey highlight bands before). If you edited the letter, use "Replace
-  // version" (edit in Word/Copilot, re-upload) so the exact file reflects the edit,
-  // THEN finalize — Finalize gates sending so the emailed version is locked/known.
+  // Prepare a pixel-perfect PDF of the current content, then open the mailer.
   const openEmail = async () => {
     if (!isFinal) { toast.error("Finalize the document before emailing it — this locks the exact version being sent."); return; }
     setPreparing(true);
     try {
-      let att: DocAttachment | null = null;
-      let hasEdits = false;
-      if (doc.has_original) {
-        const o = await docs.fetchOriginal(doc.id);
-        if (o.original_base64) att = { filename: filenameFor(doc.title, o.mime_type), contentBase64: o.original_base64, contentType: o.mime_type || MIME.docx, size: Math.round((o.original_base64.length * 3) / 4) };
-        hasEdits = Boolean(o.edited_html);
-      } else {
-        att = wordDocBase64(doc.content_html || "<p></p>", doc.title);
-      }
+      const html = payload?.edited ?? doc.content_html;
+      if (!html) { toast.error("Nothing to send yet."); return; }
+      const att = await htmlToPdfAttachment(html, doc.title);
       setEmailAtt(att);
-      setEmailHasEdits(hasEdits);
       setEmailOpen(true);
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't prepare the attachment.");
     } finally { setPreparing(false); }
   };
 
-  const isDocx = doc.has_original && (payload?.mime === MIME.docx || (!payload && doc.mime_type === MIME.docx));
+  const isDocx = doc.has_original ? payload?.mime === MIME.docx : true;
 
   return (
     <div className="space-y-3">
-      <input ref={replaceRef} type="file" accept={ACCEPTED_UPLOAD} className="hidden" onChange={onReplace} />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <span className="font-semibold truncate max-w-[35%]">{doc.title}</span>
+        <span className="font-semibold truncate max-w-[30%]">{doc.title}</span>
         {isFinal
           ? <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Final</Badge>
           : <Badge variant="outline" className="text-[10px]">Draft v{doc.version}</Badge>}
         <div className="flex flex-wrap gap-2 ml-auto">
           {doc.has_original && (
-            <Button variant="outline" size="sm" onClick={() => payload?.b64 && downloadBase64(payload.b64, payload.mime, filenameFor(doc.title, payload.mime))} disabled={!payload?.b64} title="Download the exact original, unchanged">
-              <FileDown className="h-4 w-4 mr-1" /> Original
+            <Button variant="outline" size="sm" onClick={() => payload?.b64 && downloadBase64(payload.b64, payload.mime, filenameFor(`${doc.title} (source)`, payload.mime))} disabled={!payload?.b64} title="Download the untouched uploaded file">
+              <FileDown className="h-4 w-4 mr-1" /> Source
             </Button>
           )}
-          {doc.has_original && !isFinal && (
-            <Button variant="outline" size="sm" onClick={() => replaceRef.current?.click()} title="Replace with a version you edited in Word/Copilot">
-              <Replace className="h-4 w-4 mr-1" /> Replace
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing || !isFinal} title={isFinal ? "Email the exact finalized file" : "Finalize first — sending is locked to a finalized version"}>
+          <VersionHistory documentId={doc.id} onRestored={(html) => setPayload((p) => (p ? { ...p, edited: html } : p))} />
+          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing || !isFinal} title={isFinal ? "Email the finalized letter, attached as a pixel-perfect PDF" : "Finalize first — sending is locked to a finalized version"}>
             {preparing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />} Email
           </Button>
           {isFinal
@@ -261,39 +221,47 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-10 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading document…</div>
-      ) : isDocx && payload?.b64 ? (
-        <FormattedDocEditor doc={doc} docs={docs} base64={payload.b64} editedHtml={payload.edited} locked={isFinal} />
+      ) : isDocx && (payload?.edited || payload?.b64) ? (
+        <FormattedDocEditor doc={doc} docs={docs} projectName={projectName} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
       ) : doc.has_original && payload?.mime === MIME.pdf && payload?.b64 ? (
         <PdfView b64={payload.b64} />
       ) : (
-        <BlankEditor doc={doc} docs={docs} locked={isFinal} />
+        <BlankEditor doc={doc} docs={docs} projectName={projectName} locked={isFinal} />
       )}
 
-      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} staleEditsWarning={emailHasEdits} />
+      <div className="border-t pt-3">
+        <DocumentTasksPanel documentId={doc.id} projectId={doc.project_id} projectName={projectName} />
+      </div>
+
+      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
     </div>
   );
 }
 
-// Edit ON the faithful render — letterhead preserved through edit → save.
-function FormattedDocEditor({ doc, docs, base64, editedHtml, locked }: { doc: AuthoredDocument; docs: Docs; base64: string; editedHtml: string | null; locked: boolean }) {
+// Edit ON the faithful render — letterhead preserved through edit → save. Saving
+// simply becomes the current version (via saveEdit, which also snapshots History).
+function FormattedDocEditor({ doc, docs, projectName, base64, html, locked, onSaved }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; base64: string | null; html: string | null; locked: boolean; onSaved: (html: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const rendered = useRef(false);
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSelection, setAiSelection] = useState<{ range: Range; text: string } | null>(null);
 
-  // Render once: the saved edit if present, else the faithful docx render.
   useEffect(() => {
     if (!ref.current || rendered.current) return;
     rendered.current = true;
     (async () => {
       try {
-        if (editedHtml) ref.current!.innerHTML = editedHtml;
-        else await renderDocxInto(base64, ref.current!);
-      } catch { setErr("Couldn't render a preview — the exact download still works."); }
+        if (html) ref.current!.innerHTML = html;
+        else if (base64) await renderDocxInto(base64, ref.current!);
+      } catch { setErr("Couldn't render a preview — Source download still works."); }
     })();
-  }, [base64, editedHtml]);
+  }, [base64, html]);
 
   const setSectionsEditable = (on: boolean) => {
     ref.current?.querySelectorAll<HTMLElement>(".docx").forEach((s) => {
@@ -303,24 +271,104 @@ function FormattedDocEditor({ doc, docs, base64, editedHtml, locked }: { doc: Au
   };
 
   const startEdit = () => { setEditing(true); setSectionsEditable(true); setTimeout(() => ref.current?.querySelector<HTMLElement>(".docx")?.focus(), 0); };
+
+  // Capture the live selection BEFORE opening the panel — mousedown preventDefault
+  // (like the bold/italic buttons above) keeps the contentEditable's selection
+  // intact instead of the browser blurring it when focus moves to the panel.
+  const openAiPanel = () => {
+    const root = ref.current;
+    const sel = window.getSelection();
+    let captured: { range: Range; text: string } | null = null;
+    if (root && sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (root.contains(range.commonAncestorContainer) && !range.collapsed) {
+        captured = { range: range.cloneRange(), text: sel.toString() };
+      }
+    }
+    setAiSelection(captured);
+    setAiOpen(true);
+  };
+
+  const runAiAssist = async (mode: "continue" | "rewrite" | "custom") => {
+    const root = ref.current;
+    if (!root) return;
+    if (mode === "rewrite" && !aiSelection) { toast.error("Select some text first to rewrite it."); return; }
+    if (mode === "custom" && !aiInstruction.trim()) { toast.error("Say what to add."); return; }
+    setAiLoading(true);
+    try {
+      let insertRange: Range;
+      let contextEnd: Range;
+      if (mode === "rewrite" && aiSelection) {
+        insertRange = aiSelection.range;
+        contextEnd = document.createRange();
+        contextEnd.selectNodeContents(root);
+        contextEnd.setEnd(aiSelection.range.startContainer, aiSelection.range.startOffset);
+      } else {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && root.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+          insertRange = sel.getRangeAt(0).cloneRange();
+        } else {
+          insertRange = document.createRange();
+          insertRange.selectNodeContents(root);
+          insertRange.collapse(false);
+        }
+        contextEnd = document.createRange();
+        contextEnd.selectNodeContents(root);
+        contextEnd.setEnd(insertRange.startContainer, insertRange.startOffset);
+      }
+      const context = contextEnd.toString().slice(-4000);
+
+      const { data, error } = await supabase.functions.invoke("document-ai-assist", {
+        body: { projectName, mode, context, selection: mode === "rewrite" ? aiSelection?.text : undefined, instruction: aiInstruction.trim() || undefined, projectId: doc.project_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const text = String(data?.text ?? "").trim();
+      if (!text) { toast.error("AI returned nothing."); return; }
+
+      if (mode === "rewrite") {
+        insertRange.deleteContents();
+        insertRange.insertNode(document.createTextNode(text));
+      } else {
+        const frag = document.createDocumentFragment();
+        text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).forEach((p) => {
+          const el = document.createElement("p");
+          el.textContent = p;
+          frag.appendChild(el);
+        });
+        insertRange.collapse(false);
+        insertRange.insertNode(frag);
+      }
+      setDirty(true);
+      setAiOpen(false);
+      setAiInstruction("");
+      toast.success("Added — click Save to keep it.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't generate that.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const save = async () => {
     if (!ref.current) return;
     setSaving(true);
     try {
-      await docs.update.mutateAsync({ id: doc.id, edited_html: ref.current.innerHTML, content_text: ref.current.innerText } as any);
+      const nextHtml = ref.current.innerHTML;
+      await docs.saveEdit.mutateAsync({ id: doc.id, html: nextHtml, text: ref.current.innerText });
+      onSaved(nextHtml);
       setDirty(false);
-      toast.success("Saved — formatting preserved.");
+      toast.success("Saved — this is now the current version.");
     } catch (e: any) { toast.error(e?.message ?? "Couldn't save."); }
     finally { setSaving(false); }
   };
   const done = async () => { if (dirty) await save(); setSectionsEditable(false); setEditing(false); };
 
   const fmt = (cmd: string) => document.execCommand(cmd);
-  const currentHtml = () => ref.current?.innerHTML ?? editedHtml ?? "";
+  const currentHtml = () => ref.current?.innerHTML ?? html ?? "";
 
   return (
     <div className="space-y-2">
-      {/* Edit toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         {!editing ? (
           <Button size="sm" onClick={startEdit} disabled={locked} title={locked ? "Reopen to edit" : "Edit this letter on its real formatting"}>
@@ -333,6 +381,9 @@ function FormattedDocEditor({ doc, docs, base64, editedHtml, locked }: { doc: Au
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("italic")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Italic"><Italic className="h-3.5 w-3.5" /></button>
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("underline")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Underline"><Underline className="h-3.5 w-3.5" /></button>
             </div>
+            <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={openAiPanel} title="Ask AI to continue writing, rewrite a selection, or draft a paragraph">
+              <Sparkles className="h-3.5 w-3.5 mr-1 text-[var(--apas-sapphire)]" /> Ask AI
+            </Button>
             <Button size="sm" onClick={save} disabled={saving || !dirty}>
               {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />} Save
             </Button>
@@ -341,39 +392,107 @@ function FormattedDocEditor({ doc, docs, base64, editedHtml, locked }: { doc: Au
           </>
         )}
         <div className="flex gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={() => downloadAsWord(currentHtml(), doc.title)} title="Download the edited letter as Word"><FileDown className="h-4 w-4 mr-1" /> Word</Button>
-          <Button variant="outline" size="sm" onClick={() => printAsPdf(currentHtml(), doc.title)}><Printer className="h-4 w-4 mr-1" /> PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => downloadHtmlAsPdf(currentHtml(), doc.title)} title="Download exactly what's shown, as PDF">
+            <FileDown className="h-4 w-4 mr-1" /> Download PDF
+          </Button>
         </div>
       </div>
 
+      {aiOpen && (
+        <Card className="border-[var(--apas-sapphire)]/30">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /> Ask AI</span>
+              <button onClick={() => setAiOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("continue")} disabled={aiLoading}>
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null} Continue writing
+              </Button>
+              <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("rewrite")} disabled={aiLoading || !aiSelection} title={aiSelection ? "Rewrite the selected text" : "Select some text first"}>
+                Rewrite selection
+              </Button>
+            </div>
+            {!aiSelection && <p className="text-[11px] text-muted-foreground">Select text in the letter to enable “Rewrite selection.”</p>}
+            <div className="flex gap-2">
+              <Textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Or tell it what to add, e.g. “add a closing paragraph about next steps”" rows={2} className="text-sm" />
+              <Button size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("custom")} disabled={aiLoading || !aiInstruction.trim()} className="shrink-0 self-end">
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Generate"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {err && <div className="text-sm text-amber-700 flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> {err}</div>}
 
-      {/* The faithful document — editable in place when editing */}
       <div className={`rounded border ${editing ? "ring-2 ring-[var(--apas-sapphire)]/40" : ""} bg-neutral-100 max-h-[72vh] overflow-auto p-4`}>
-        <div
-          ref={ref}
-          onInput={() => setDirty(true)}
-          className="mx-auto bg-white shadow-sm [&_.docx]:outline-none"
-        />
+        <div ref={ref} onInput={() => setDirty(true)} className="mx-auto bg-white shadow-sm [&_.docx]:outline-none" />
       </div>
-      {editing && <p className="text-xs text-muted-foreground">Editing the real letter — the letterhead, fonts and layout stay. Save keeps them; your untouched original is always under “Original”.</p>}
+      {editing && <p className="text-xs text-muted-foreground">Editing the real letter — the letterhead, fonts and layout stay. Save makes this the current version; History lets you go back to an earlier one.</p>}
     </div>
+  );
+}
+
+// Browsable version history: restore any past snapshot (non-destructive — it
+// appends a new version) or delete old ones you don't want kept.
+function VersionHistory({ documentId, onRestored }: { documentId: string; onRestored: (html: string) => void }) {
+  const { data: versions = [], isLoading, restore, deleteVersion } = useDocumentVersions(documentId);
+  const [open, setOpen] = useState(false);
+
+  const doRestore = async (v: DocumentVersion) => {
+    await restore.mutateAsync(v);
+    onRestored(v.html);
+    toast.success(`Restored from v${v.version}.`);
+    setOpen(false);
+  };
+  const doDelete = async (v: DocumentVersion) => {
+    if (!window.confirm(`Delete version ${v.version} (${v.label})? This only removes it from history.`)) return;
+    await deleteVersion.mutateAsync(v.id);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" title="Browse, restore, or delete past versions">
+          <History className="h-4 w-4 mr-1" /> History
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="px-3 py-2 border-b text-sm font-medium">Version history</div>
+        {isLoading ? (
+          <div className="p-4 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
+        ) : versions.length === 0 ? (
+          <div className="p-4 text-sm text-muted-foreground">No history yet.</div>
+        ) : (
+          <ScrollArea className="max-h-72">
+            <div className="divide-y">
+              {versions.map((v) => (
+                <div key={v.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">v{v.version} · {v.label}</div>
+                    <div className="text-xs text-muted-foreground">{fmtAgo(v.created_at)}</div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => doRestore(v)} title="Restore this version"><RotateCcw className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-rose-600" onClick={() => doDelete(v)} title="Delete this version"><X className="h-3.5 w-3.5" /></Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
 function PdfView({ b64 }: { b64: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { const u = pdfObjectUrl(b64); setUrl(u); return () => URL.revokeObjectURL(u); }, [b64]);
-  return (
-    <>
-      <p className="text-xs text-muted-foreground">PDFs are preserved and previewed exactly. To edit, use “Replace” with a version edited in your tools.</p>
-      <iframe title="PDF preview" src={url ?? ""} className="w-full h-[72vh] rounded border bg-white" />
-    </>
-  );
+  return <iframe title="PDF preview" src={url ?? ""} className="w-full h-[72vh] rounded border bg-white" />;
 }
 
-// Plain editor for blank documents (no uploaded original to preserve).
-function BlankEditor({ doc, docs, locked }: { doc: AuthoredDocument; docs: Docs; locked: boolean }) {
+// Plain editor for blank documents (no uploaded letterhead to preserve).
+function BlankEditor({ doc, docs, projectName, locked }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; locked: boolean }) {
   const [title, setTitle] = useState(doc.title);
   const [html, setHtml] = useState(doc.content_html || "<p></p>");
   const [dirty, setDirty] = useState(false);
@@ -384,15 +503,25 @@ function BlankEditor({ doc, docs, locked }: { doc: AuthoredDocument; docs: Docs;
     setDirty(false);
   };
   const schedule = () => { setDirty(true); if (timer.current) window.clearTimeout(timer.current); timer.current = window.setTimeout(persist, 1400); };
+
+  // "Ask AI" continuation — opt-in (the editor's own AI Continue button).
+  const aiContinue = async (context: string): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke("document-ai-assist", {
+      body: { projectName, mode: "continue", context, projectId: doc.project_id },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return String(data?.text ?? "");
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} onBlur={persist} disabled={locked} placeholder="Document title" className="text-base font-semibold" />
-        <Button variant="outline" size="sm" onClick={() => downloadAsWord(html, title || "document")}><FileDown className="h-4 w-4 mr-1" /> Word</Button>
-        <Button variant="outline" size="sm" onClick={() => printAsPdf(html, title || "document")}><Printer className="h-4 w-4 mr-1" /> PDF</Button>
+        <Button variant="outline" size="sm" onClick={() => downloadHtmlAsPdf(html, title || "document")}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
       </div>
       {dirty ? <div className="text-xs text-muted-foreground">Saving…</div> : <div className="text-xs text-muted-foreground flex items-center gap-1"><Check className="h-3 w-3 text-emerald-600" /> Saved</div>}
-      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!locked} minHeight="440px" placeholder="Write or paste your document…" />
+      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!locked} minHeight="440px" placeholder="Write or paste your document…" onAiComplete={locked ? undefined : aiContinue} />
     </div>
   );
 }
