@@ -12,13 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { ProRichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Printer, Trash2, Check,
-  Replace, Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save,
+  Replace, Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthoredDocuments, type AuthoredDocument } from "@/hooks/useAuthoredDocuments";
 import { parseUpload, htmlToText, ACCEPTED_UPLOAD } from "@/lib/docs/parseUpload";
-import { downloadAsWord, printAsPdf } from "@/lib/docs/exportDoc";
+import { downloadAsWord, printAsPdf, wordDocBase64 } from "@/lib/docs/exportDoc";
 import { fileToBase64, downloadBase64, renderDocxInto, pdfObjectUrl, MIME, extFor, filenameFor } from "@/lib/docs/render";
+import { EmailDocumentDialog, type DocAttachment } from "./EmailDocumentDialog";
 import { Input } from "@/components/ui/input";
 
 const fmtAgo = (d: string): string => {
@@ -139,6 +140,9 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
   const [payload, setPayload] = useState<{ b64: string | null; mime: string; edited: string | null } | null>(null);
   const [loading, setLoading] = useState(doc.has_original);
   const replaceRef = useRef<HTMLInputElement>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailAtt, setEmailAtt] = useState<DocAttachment | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const isFinal = doc.status === "final";
 
   useEffect(() => {
@@ -176,6 +180,25 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
   const finalize = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true }); toast.success("Finalized and locked."); };
   const reopen = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: false }); };
 
+  // Prepare the attachment (freshest saved edit, else the exact original) then open the mailer.
+  const openEmail = async () => {
+    setPreparing(true);
+    try {
+      let att: DocAttachment | null = null;
+      if (doc.has_original) {
+        const o = await docs.fetchOriginal(doc.id);
+        if (o.edited_html) att = wordDocBase64(o.edited_html, doc.title);
+        else if (o.original_base64) att = { filename: filenameFor(doc.title, o.mime_type), contentBase64: o.original_base64, contentType: o.mime_type || MIME.docx, size: Math.round((o.original_base64.length * 3) / 4) };
+      } else {
+        att = wordDocBase64(doc.content_html || "<p></p>", doc.title);
+      }
+      setEmailAtt(att);
+      setEmailOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't prepare the attachment.");
+    } finally { setPreparing(false); }
+  };
+
   const isDocx = doc.has_original && (payload?.mime === MIME.docx || (!payload && doc.mime_type === MIME.docx));
 
   return (
@@ -198,6 +221,9 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
               <Replace className="h-4 w-4 mr-1" /> Replace
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing} title="Email this letter with the file attached">
+            {preparing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />} Email
+          </Button>
           {isFinal
             ? <Button variant="outline" size="sm" onClick={reopen}><Unlock className="h-4 w-4 mr-1" /> Reopen</Button>
             : <Button size="sm" onClick={finalize} disabled={docs.setFinalized.isPending}><Lock className="h-4 w-4 mr-1" /> Finalize</Button>}
@@ -214,6 +240,8 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
       ) : (
         <BlankEditor doc={doc} docs={docs} locked={isFinal} />
       )}
+
+      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
     </div>
   );
 }
