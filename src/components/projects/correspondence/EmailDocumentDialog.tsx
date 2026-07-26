@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Send, Paperclip, AlertTriangle } from "lucide-react";
+import { Loader2, Send, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails } from "@/hooks/useProjectEmails";
@@ -20,15 +20,13 @@ const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
 const parseRecipients = (s: string) => s.split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
 
 export function EmailDocumentDialog({
-  open, onOpenChange, projectId, defaultSubject, attachment, staleEditsWarning,
+  open, onOpenChange, projectId, defaultSubject, attachment,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: string;
   defaultSubject: string;
   attachment: DocAttachment | null;
-  /** True when an in-app text edit exists that the attached exact file does NOT include. */
-  staleEditsWarning?: boolean;
 }) {
   const sendEmail = useSendEmail();
   const projectEmails = useProjectEmails(projectId);
@@ -68,12 +66,6 @@ export function EmailDocumentDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Email this letter</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          {staleEditsWarning && (
-            <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>The attached file is the exact original — it does <span className="font-medium">not</span> include your in-app text edits (those can't be converted back into a perfect Word file). To send your edited text with 100% formatting, use “Replace version” with a copy edited in Word/Copilot, then Finalize again.</span>
-            </div>
-          )}
           <div>
             <Label htmlFor="email-to" className="text-xs">To</Label>
             <Input id="email-to" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@example.com, another@…" autoFocus />
