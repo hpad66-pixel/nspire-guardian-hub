@@ -8,7 +8,8 @@ export interface AuthoredDocument {
   doc_type: string;
   category: string | null;
   status: "draft" | "final";
-  content_html: string | null;   // only for the optional best-effort "edit copy"
+  content_html: string | null;   // legacy plain "edit copy" (blank docs)
+  edited_html: string | null;    // faithful render, edited + saved (styles inline) — fetched on demand
   content_text: string | null;   // knowledge base / search
   source: string;                // blank | upload_docx | upload_pdf | ai_draft
   source_file_name: string | null;
@@ -57,11 +58,11 @@ export function useAuthoredDocuments(projectId: string | null) {
     },
   });
 
-  // Fetch the exact original file (base64 + mime) for one document, on demand.
-  const fetchOriginal = async (id: string): Promise<{ original_base64: string | null; mime_type: string | null }> => {
+  // Fetch the exact original + any saved formatted edit for one document, on demand.
+  const fetchOriginal = async (id: string): Promise<{ original_base64: string | null; mime_type: string | null; edited_html: string | null }> => {
     const { data, error } = await supabase
       .from("authored_documents" as any)
-      .select("original_base64,mime_type")
+      .select("original_base64,mime_type,edited_html")
       .eq("id", id)
       .single();
     if (error) throw error;
