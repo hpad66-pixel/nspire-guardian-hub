@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ProRichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Printer, Trash2, Check, Replace, Pencil, Eye, AlertTriangle,
 } from "lucide-react";
@@ -224,7 +224,7 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
           ? <div className="flex items-center gap-2 text-muted-foreground p-10 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading document…</div>
           : <FaithfulPreview b64={original.b64} mime={original.mime} />
       ) : (
-        <EditCopy doc={doc} docs={docs} readOnly={isFinal} />
+        <EditCopy doc={doc} docs={docs} />
       )}
     </div>
   );
@@ -259,9 +259,10 @@ function FaithfulPreview({ b64, mime }: { b64: string; mime: string }) {
   );
 }
 
-// Best-effort in-browser edit — a PLAIN copy (letterhead not preserved). The
-// original stays intact; this saves content_html and downloads an unformatted doc.
-function EditCopy({ doc, docs, readOnly }: { doc: AuthoredDocument; docs: Docs; readOnly: boolean }) {
+// Best-effort in-browser edit — a PLAIN copy (letterhead not preserved), ALWAYS
+// editable (it's a separate working copy; finalizing the original never locks it).
+// Saves content_html and downloads an unformatted doc; the original stays intact.
+function EditCopy({ doc, docs }: { doc: AuthoredDocument; docs: Docs }) {
   const [title, setTitle] = useState(doc.title);
   const [html, setHtml] = useState(doc.content_html || "<p></p>");
   const [dirty, setDirty] = useState(false);
@@ -282,14 +283,12 @@ function EditCopy({ doc, docs, readOnly }: { doc: AuthoredDocument; docs: Docs; 
         </div>
       )}
       <div className="flex items-center gap-2">
-        <Input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} onBlur={persist} disabled={readOnly} placeholder="Document title" className="text-base font-semibold" />
+        <Input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} onBlur={persist} placeholder="Document title" className="text-base font-semibold" />
         <Button variant="outline" size="sm" onClick={() => downloadAsWord(html, title || "document")}><FileDown className="h-4 w-4 mr-1" /> Word</Button>
         <Button variant="outline" size="sm" onClick={() => printAsPdf(html, title || "document")}><Printer className="h-4 w-4 mr-1" /> PDF</Button>
       </div>
       {dirty ? <div className="text-xs text-muted-foreground">Saving…</div> : <div className="text-xs text-muted-foreground flex items-center gap-1"><Check className="h-3 w-3 text-emerald-600" /> Saved</div>}
-      <div className={readOnly ? "opacity-90 pointer-events-none" : ""}>
-        <RichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!readOnly} placeholder="Write or paste your document…" />
-      </div>
+      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable minHeight="440px" placeholder="Write or paste your document…" />
     </div>
   );
 }
