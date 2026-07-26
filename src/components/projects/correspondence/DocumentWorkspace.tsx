@@ -15,15 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProRichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import {
   FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Trash2, Check,
-  Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail, History, RotateCcw, X,
+  Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail, History, RotateCcw, X, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuthoredDocuments, useDocumentVersions, type AuthoredDocument, type DocumentVersion } from "@/hooks/useAuthoredDocuments";
 import { parseUpload, htmlToText, ACCEPTED_UPLOAD } from "@/lib/docs/parseUpload";
 import { fileToBase64, downloadBase64, renderDocxInto, pdfObjectUrl, downloadHtmlAsPdf, htmlToPdfAttachment, MIME, extFor, filenameFor } from "@/lib/docs/render";
 import { EmailDocumentDialog, type DocAttachment } from "./EmailDocumentDialog";
+import { DocumentTasksPanel } from "./DocumentTasksPanel";
 
 const fmtAgo = (d: string): string => {
   const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
@@ -37,7 +40,7 @@ const mimeOf = (file: File) => (/\.pdf$/i.test(file.name) || file.type === MIME.
 
 type Docs = ReturnType<typeof useAuthoredDocuments>;
 
-export function DocumentWorkspace({ projectId }: { projectId: string; projectName?: string | null }) {
+export function DocumentWorkspace({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
   const docs = useAuthoredDocuments(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -88,7 +91,7 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
     setSelectedId(doc.id);
   };
 
-  if (selected) return <DocDetail key={selected.id} doc={selected} docs={docs} onBack={() => setSelectedId(null)} />;
+  if (selected) return <DocDetail key={selected.id} doc={selected} docs={docs} projectName={projectName} onBack={() => setSelectedId(null)} />;
 
   return (
     <div className="space-y-4">
@@ -146,7 +149,7 @@ export function DocumentWorkspace({ projectId }: { projectId: string; projectNam
 }
 
 // ── Detail: load current content, then route by type ────────────────────────
-function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; onBack: () => void }) {
+function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; onBack: () => void }) {
   const [payload, setPayload] = useState<{ b64: string | null; mime: string; edited: string | null } | null>(null);
   const [loading, setLoading] = useState(doc.has_original);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -219,12 +222,16 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-10 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading document…</div>
       ) : isDocx && (payload?.edited || payload?.b64) ? (
-        <FormattedDocEditor doc={doc} docs={docs} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
+        <FormattedDocEditor doc={doc} docs={docs} projectName={projectName} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
       ) : doc.has_original && payload?.mime === MIME.pdf && payload?.b64 ? (
         <PdfView b64={payload.b64} />
       ) : (
-        <BlankEditor doc={doc} docs={docs} locked={isFinal} />
+        <BlankEditor doc={doc} docs={docs} projectName={projectName} locked={isFinal} />
       )}
+
+      <div className="border-t pt-3">
+        <DocumentTasksPanel documentId={doc.id} projectId={doc.project_id} projectName={projectName} />
+      </div>
 
       <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
     </div>
@@ -233,13 +240,17 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
 
 // Edit ON the faithful render — letterhead preserved through edit → save. Saving
 // simply becomes the current version (via saveEdit, which also snapshots History).
-function FormattedDocEditor({ doc, docs, base64, html, locked, onSaved }: { doc: AuthoredDocument; docs: Docs; base64: string | null; html: string | null; locked: boolean; onSaved: (html: string) => void }) {
+function FormattedDocEditor({ doc, docs, projectName, base64, html, locked, onSaved }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; base64: string | null; html: string | null; locked: boolean; onSaved: (html: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const rendered = useRef(false);
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSelection, setAiSelection] = useState<{ range: Range; text: string } | null>(null);
 
   useEffect(() => {
     if (!ref.current || rendered.current) return;
@@ -260,6 +271,85 @@ function FormattedDocEditor({ doc, docs, base64, html, locked, onSaved }: { doc:
   };
 
   const startEdit = () => { setEditing(true); setSectionsEditable(true); setTimeout(() => ref.current?.querySelector<HTMLElement>(".docx")?.focus(), 0); };
+
+  // Capture the live selection BEFORE opening the panel — mousedown preventDefault
+  // (like the bold/italic buttons above) keeps the contentEditable's selection
+  // intact instead of the browser blurring it when focus moves to the panel.
+  const openAiPanel = () => {
+    const root = ref.current;
+    const sel = window.getSelection();
+    let captured: { range: Range; text: string } | null = null;
+    if (root && sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (root.contains(range.commonAncestorContainer) && !range.collapsed) {
+        captured = { range: range.cloneRange(), text: sel.toString() };
+      }
+    }
+    setAiSelection(captured);
+    setAiOpen(true);
+  };
+
+  const runAiAssist = async (mode: "continue" | "rewrite" | "custom") => {
+    const root = ref.current;
+    if (!root) return;
+    if (mode === "rewrite" && !aiSelection) { toast.error("Select some text first to rewrite it."); return; }
+    if (mode === "custom" && !aiInstruction.trim()) { toast.error("Say what to add."); return; }
+    setAiLoading(true);
+    try {
+      let insertRange: Range;
+      let contextEnd: Range;
+      if (mode === "rewrite" && aiSelection) {
+        insertRange = aiSelection.range;
+        contextEnd = document.createRange();
+        contextEnd.selectNodeContents(root);
+        contextEnd.setEnd(aiSelection.range.startContainer, aiSelection.range.startOffset);
+      } else {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && root.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+          insertRange = sel.getRangeAt(0).cloneRange();
+        } else {
+          insertRange = document.createRange();
+          insertRange.selectNodeContents(root);
+          insertRange.collapse(false);
+        }
+        contextEnd = document.createRange();
+        contextEnd.selectNodeContents(root);
+        contextEnd.setEnd(insertRange.startContainer, insertRange.startOffset);
+      }
+      const context = contextEnd.toString().slice(-4000);
+
+      const { data, error } = await supabase.functions.invoke("document-ai-assist", {
+        body: { projectName, mode, context, selection: mode === "rewrite" ? aiSelection?.text : undefined, instruction: aiInstruction.trim() || undefined, projectId: doc.project_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const text = String(data?.text ?? "").trim();
+      if (!text) { toast.error("AI returned nothing."); return; }
+
+      if (mode === "rewrite") {
+        insertRange.deleteContents();
+        insertRange.insertNode(document.createTextNode(text));
+      } else {
+        const frag = document.createDocumentFragment();
+        text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).forEach((p) => {
+          const el = document.createElement("p");
+          el.textContent = p;
+          frag.appendChild(el);
+        });
+        insertRange.collapse(false);
+        insertRange.insertNode(frag);
+      }
+      setDirty(true);
+      setAiOpen(false);
+      setAiInstruction("");
+      toast.success("Added — click Save to keep it.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't generate that.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const save = async () => {
     if (!ref.current) return;
     setSaving(true);
@@ -291,6 +381,9 @@ function FormattedDocEditor({ doc, docs, base64, html, locked, onSaved }: { doc:
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("italic")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Italic"><Italic className="h-3.5 w-3.5" /></button>
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("underline")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Underline"><Underline className="h-3.5 w-3.5" /></button>
             </div>
+            <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={openAiPanel} title="Ask AI to continue writing, rewrite a selection, or draft a paragraph">
+              <Sparkles className="h-3.5 w-3.5 mr-1 text-[var(--apas-sapphire)]" /> Ask AI
+            </Button>
             <Button size="sm" onClick={save} disabled={saving || !dirty}>
               {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />} Save
             </Button>
@@ -304,6 +397,32 @@ function FormattedDocEditor({ doc, docs, base64, html, locked, onSaved }: { doc:
           </Button>
         </div>
       </div>
+
+      {aiOpen && (
+        <Card className="border-[var(--apas-sapphire)]/30">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /> Ask AI</span>
+              <button onClick={() => setAiOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("continue")} disabled={aiLoading}>
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null} Continue writing
+              </Button>
+              <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("rewrite")} disabled={aiLoading || !aiSelection} title={aiSelection ? "Rewrite the selected text" : "Select some text first"}>
+                Rewrite selection
+              </Button>
+            </div>
+            {!aiSelection && <p className="text-[11px] text-muted-foreground">Select text in the letter to enable “Rewrite selection.”</p>}
+            <div className="flex gap-2">
+              <Textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Or tell it what to add, e.g. “add a closing paragraph about next steps”" rows={2} className="text-sm" />
+              <Button size="sm" onMouseDown={(e) => e.preventDefault()} onClick={() => runAiAssist("custom")} disabled={aiLoading || !aiInstruction.trim()} className="shrink-0 self-end">
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Generate"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {err && <div className="text-sm text-amber-700 flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> {err}</div>}
 
@@ -373,7 +492,7 @@ function PdfView({ b64 }: { b64: string }) {
 }
 
 // Plain editor for blank documents (no uploaded letterhead to preserve).
-function BlankEditor({ doc, docs, locked }: { doc: AuthoredDocument; docs: Docs; locked: boolean }) {
+function BlankEditor({ doc, docs, projectName, locked }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; locked: boolean }) {
   const [title, setTitle] = useState(doc.title);
   const [html, setHtml] = useState(doc.content_html || "<p></p>");
   const [dirty, setDirty] = useState(false);
@@ -384,6 +503,17 @@ function BlankEditor({ doc, docs, locked }: { doc: AuthoredDocument; docs: Docs;
     setDirty(false);
   };
   const schedule = () => { setDirty(true); if (timer.current) window.clearTimeout(timer.current); timer.current = window.setTimeout(persist, 1400); };
+
+  // "Ask AI" continuation — opt-in (the editor's own AI Continue button).
+  const aiContinue = async (context: string): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke("document-ai-assist", {
+      body: { projectName, mode: "continue", context, projectId: doc.project_id },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return String(data?.text ?? "");
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -391,7 +521,7 @@ function BlankEditor({ doc, docs, locked }: { doc: AuthoredDocument; docs: Docs;
         <Button variant="outline" size="sm" onClick={() => downloadHtmlAsPdf(html, title || "document")}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
       </div>
       {dirty ? <div className="text-xs text-muted-foreground">Saving…</div> : <div className="text-xs text-muted-foreground flex items-center gap-1"><Check className="h-3 w-3 text-emerald-600" /> Saved</div>}
-      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!locked} minHeight="440px" placeholder="Write or paste your document…" />
+      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!locked} minHeight="440px" placeholder="Write or paste your document…" onAiComplete={locked ? undefined : aiContinue} />
     </div>
   );
 }
