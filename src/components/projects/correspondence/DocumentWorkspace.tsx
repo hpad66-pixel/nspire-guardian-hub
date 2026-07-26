@@ -142,6 +142,7 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
   const replaceRef = useRef<HTMLInputElement>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailAtt, setEmailAtt] = useState<DocAttachment | null>(null);
+  const [emailHasEdits, setEmailHasEdits] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const isFinal = doc.status === "final";
 
@@ -177,22 +178,49 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
     toast.success("Document deleted.");
     onBack();
   };
-  const finalize = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true }); toast.success("Finalized and locked."); };
+  const finalize = async () => {
+    // An in-place edit (Save on the faithful render) only updates the on-screen
+    // preview — it never touches the exact original file, since an HTML edit
+    // can't be converted back into a perfect .docx. If one exists unreconciled,
+    // finalizing would lock (and later email) the file WITHOUT that edit.
+    if (doc.has_original) {
+      const o = await docs.fetchOriginal(doc.id);
+      if (o.edited_html) {
+        const proceed = window.confirm(
+          "You made in-app text edits, but the exact file on record doesn't include them (an in-app edit can't be converted back into a perfect Word file).\n\n" +
+          "Finalizing now will lock — and later email — the ORIGINAL file without those edits.\n\n" +
+          "To include your edits exactly, use \"Replace version\" with a copy edited in Word/Copilot first.\n\n" +
+          "Finalize the original as-is anyway?"
+        );
+        if (!proceed) return;
+      }
+    }
+    await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true });
+    toast.success("Finalized and locked.");
+  };
   const reopen = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: false }); };
 
-  // Prepare the attachment (freshest saved edit, else the exact original) then open the mailer.
+  // Prepare the attachment then open the mailer. Only ever attaches the EXACT
+  // original bytes for an uploaded doc — an HTML→Word conversion of an in-app edit
+  // cannot reproduce fonts/colors/spacing 1:1 (that's what mangled formatting and
+  // added grey highlight bands before). If you edited the letter, use "Replace
+  // version" (edit in Word/Copilot, re-upload) so the exact file reflects the edit,
+  // THEN finalize — Finalize gates sending so the emailed version is locked/known.
   const openEmail = async () => {
+    if (!isFinal) { toast.error("Finalize the document before emailing it — this locks the exact version being sent."); return; }
     setPreparing(true);
     try {
       let att: DocAttachment | null = null;
+      let hasEdits = false;
       if (doc.has_original) {
         const o = await docs.fetchOriginal(doc.id);
-        if (o.edited_html) att = wordDocBase64(o.edited_html, doc.title);
-        else if (o.original_base64) att = { filename: filenameFor(doc.title, o.mime_type), contentBase64: o.original_base64, contentType: o.mime_type || MIME.docx, size: Math.round((o.original_base64.length * 3) / 4) };
+        if (o.original_base64) att = { filename: filenameFor(doc.title, o.mime_type), contentBase64: o.original_base64, contentType: o.mime_type || MIME.docx, size: Math.round((o.original_base64.length * 3) / 4) };
+        hasEdits = Boolean(o.edited_html);
       } else {
         att = wordDocBase64(doc.content_html || "<p></p>", doc.title);
       }
       setEmailAtt(att);
+      setEmailHasEdits(hasEdits);
       setEmailOpen(true);
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't prepare the attachment.");
@@ -221,7 +249,7 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
               <Replace className="h-4 w-4 mr-1" /> Replace
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing} title="Email this letter with the file attached">
+          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing || !isFinal} title={isFinal ? "Email the exact finalized file" : "Finalize first — sending is locked to a finalized version"}>
             {preparing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />} Email
           </Button>
           {isFinal
@@ -241,7 +269,7 @@ function DocDetail({ doc, docs, onBack }: { doc: AuthoredDocument; docs: Docs; o
         <BlankEditor doc={doc} docs={docs} locked={isFinal} />
       )}
 
-      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
+      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} staleEditsWarning={emailHasEdits} />
     </div>
   );
 }
