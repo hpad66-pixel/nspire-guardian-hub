@@ -23,14 +23,25 @@ const DOC_CSS = `
   blockquote{border-left:3px solid #ccc;margin-left:0;padding-left:12px;color:#555;}
 `;
 
-/** Download the editor HTML as a Word-openable .doc file. */
-export function downloadAsWord(html: string, title: string) {
+function wordHtml(html: string, title: string): string {
   const pre =
     `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>` +
     `<head><meta charset='utf-8'><title>${title}</title><style>${DOC_CSS}</style></head><body>`;
-  const post = "</body></html>";
-  const blob = new Blob(["﻿", pre, html, post], { type: "application/msword" });
+  return `${pre}${html}</body></html>`;
+}
+
+/** Download the editor HTML as a Word-openable .doc file. */
+export function downloadAsWord(html: string, title: string) {
+  const blob = new Blob(["﻿", wordHtml(html, title)], { type: "application/msword" });
   download(blob, `${sanitizeName(title)}.doc`);
+}
+
+/** Build a Word (.doc) email attachment (base64) from the editor HTML. */
+export function wordDocBase64(html: string, title: string): { filename: string; contentBase64: string; contentType: string; size: number } {
+  const bytes = new TextEncoder().encode("﻿" + wordHtml(html, title));
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return { filename: `${sanitizeName(title)}.doc`, contentBase64: btoa(bin), contentType: "application/msword", size: bytes.length };
 }
 
 /** Open a clean print view of the document so the user can Save as PDF. */
