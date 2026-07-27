@@ -1,7 +1,9 @@
 /**
  * WeeklyStatusReportDialog — wrangle open tasks into a status update, with real
  * choices instead of one fixed shape:
- *   • Report on: the whole project, or one specific scope/workstream.
+ *   • Report on: the whole project, one specific scope/workstream, or an exact
+ *     set of hand-picked tasks (pass `preselectedItems` — e.g. from checkbox
+ *     selection in the task list — to skip the scope filter entirely).
  *   • Style: a flowing narrative, or a scannable "task — status: update" list.
  * AI drafts from the raw task list; the draft is always shown as plain editable
  * text before anything is sent — human in the loop.
@@ -15,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { ActionItem } from "@/hooks/useActionItems";
 import { useProjectScopes } from "@/hooks/useProjectScopes";
 import { useTaskUpdateDraft } from "@/hooks/useTaskUpdateDraft";
@@ -26,14 +29,18 @@ const parseRecipients = (s: string) => s.split(/[,;\s]+/).map((x) => x.trim()).f
 const WHOLE_PROJECT = "__whole__";
 
 export function WeeklyStatusReportDialog({
-  open, onOpenChange, projectId, projectName, items,
+  open, onOpenChange, projectId, projectName, items, preselectedItems,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: string;
   projectName?: string;
   items: ActionItem[];
+  /** Exact tasks to report on (e.g. checkbox-selected in the task list) — when
+   *  given, the "Report on" scope filter is skipped and these are used as-is. */
+  preselectedItems?: ActionItem[];
 }) {
+  const isSelection = !!preselectedItems && preselectedItems.length > 0;
   const { data: scopes = [] } = useProjectScopes(projectId);
   const draftUpdate = useTaskUpdateDraft();
   const sendEmail = useSendEmail();
@@ -46,14 +53,14 @@ export function WeeklyStatusReportDialog({
   const [subject, setSubject] = useState(`${projectName ? `${projectName} — ` : ""}Weekly update`);
 
   const openAll = useMemo(() => items.filter((i) => i.status !== "done" && i.status !== "cancelled"), [items]);
-  const scopeName = reportOn === WHOLE_PROJECT ? null : scopes.find((s) => s.id === reportOn)?.title ?? null;
-  const openItems = useMemo(
-    () => (reportOn === WHOLE_PROJECT ? openAll : openAll.filter((i) => i.scope_id === reportOn)),
-    [openAll, reportOn],
-  );
+  const scopeName = isSelection || reportOn === WHOLE_PROJECT ? null : scopes.find((s) => s.id === reportOn)?.title ?? null;
+  const openItems = useMemo(() => {
+    if (isSelection) return preselectedItems!;
+    return reportOn === WHOLE_PROJECT ? openAll : openAll.filter((i) => i.scope_id === reportOn);
+  }, [isSelection, preselectedItems, openAll, reportOn]);
 
   const generate = async () => {
-    if (!openItems.length) { toast.error(scopeName ? `No open tasks in "${scopeName}".` : "No open tasks to report on."); return; }
+    if (!openItems.length) { toast.error(scopeName ? `No open tasks in "${scopeName}".` : "No tasks to report on."); return; }
     try {
       const result = await draftUpdate.mutateAsync({
         project_id: projectId, project_name: projectName, mode: "weekly", audience, format,
@@ -96,17 +103,19 @@ export function WeeklyStatusReportDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Status report</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Report on</Label>
-              <Select value={reportOn} onValueChange={setReportOn}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={WHOLE_PROJECT}>Whole project</SelectItem>
-                  {scopes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className={cn("grid gap-2", isSelection ? "grid-cols-1" : "grid-cols-2")}>
+            {!isSelection && (
+              <div>
+                <Label className="text-xs">Report on</Label>
+                <Select value={reportOn} onValueChange={setReportOn}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={WHOLE_PROJECT}>Whole project</SelectItem>
+                    {scopes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label className="text-xs">Style</Label>
               <Select value={format} onValueChange={(v) => setFormat(v as "narrative" | "list")}>
@@ -119,7 +128,9 @@ export function WeeklyStatusReportDialog({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            {openItems.length} open task{openItems.length === 1 ? "" : "s"}{scopeName ? ` in "${scopeName}"` : " across the whole project"}.
+            {isSelection
+              ? `${openItems.length} selected task${openItems.length === 1 ? "" : "s"}.`
+              : `${openItems.length} open task${openItems.length === 1 ? "" : "s"}${scopeName ? ` in "${scopeName}"` : " across the whole project"}.`}
           </p>
 
           <div className="flex items-end gap-2">
