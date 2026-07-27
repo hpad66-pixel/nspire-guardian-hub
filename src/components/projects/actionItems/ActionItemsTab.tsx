@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckSquare, MessageSquare, Search } from 'lucide-react';
+import { Plus, CheckSquare, MessageSquare, Search, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -15,6 +15,7 @@ import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { groupByDate, BUCKET_META } from '@/lib/actionItems/grouping';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import { ActionItemDetailDialog } from './ActionItemDetailDialog';
+import { WeeklyStatusReportDialog } from './WeeklyStatusReportDialog';
 import { ClickUpProjectList } from './ClickUpProjectList';
 import { PRIORITY_META, BUCKET_TONE, BUCKET_DOT } from './actionItemMeta';
 
@@ -36,6 +37,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const [showDone, setShowDone] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
 
   const scopeName = (id: string | null) => scopes?.find((s) => s.id === id)?.title ?? null;
   const ownerName = (id: string | null) => {
@@ -77,7 +79,12 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
           <h2 className="text-lg font-semibold flex items-center gap-2"><CheckSquare className="h-5 w-5 text-muted-foreground" />Action items</h2>
           <p className="text-sm text-muted-foreground">{openCount} open · grouped by when they're due</p>
         </div>
-        <ClickUpProjectList projectId={projectId} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setWeeklyOpen(true)} className="gap-1.5">
+            <Mail className="h-4 w-4" /> Weekly update
+          </Button>
+          <ClickUpProjectList projectId={projectId} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -158,6 +165,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
       )}
 
       <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
+      <WeeklyStatusReportDialog open={weeklyOpen} onOpenChange={setWeeklyOpen} projectId={projectId} projectName={projectName} items={items ?? []} />
     </div>
   );
 }
