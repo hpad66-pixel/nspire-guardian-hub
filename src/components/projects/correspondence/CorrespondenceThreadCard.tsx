@@ -8,9 +8,10 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check } from "lucide-react";
+import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check, Pencil } from "lucide-react";
 import type { ProjectEmail } from "@/hooks/useProjectEmails";
 import type { CorrespondenceThread } from "@/hooks/useCorrespondenceThreads";
+import { ReassignThreadDialog } from "./ReassignThreadDialog";
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -40,8 +41,9 @@ function party(e: ProjectEmail): string {
 export interface AddActionItemArgs { title: string; owner: string; due_hint: string; threadId: string | null; intelId: string | null }
 
 export function CorrespondenceThreadCard({
-  messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel,
+  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel,
 }: {
+  projectId: string;
   messages: ProjectEmail[];
   intel?: CorrespondenceThread;
   onAddActionItem?: (a: AddActionItemArgs) => void;
@@ -52,10 +54,12 @@ export function CorrespondenceThreadCard({
   topicLabel?: (key: string) => string;
 }) {
   const [open, setOpen] = useState(false);
+  const [fixOpen, setFixOpen] = useState(false);
   const ordered = [...messages].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
   const latest = ordered[0];
   const subject = intel?.subject || latest?.subject || "(no subject)";
   const topic = intel?.topic || latest?.topic || null;
+  const threadId = latest?.gmail_thread_id ?? null;
   const tmeta = topic ? (TOPIC_META[topic] ?? { label: topicLabel?.(topic) ?? topic, cls: "bg-muted text-muted-foreground" }) : null;
   const smeta = intel?.status ? STATUS_META[intel.status] : null;
   const ent = intel?.entities;
@@ -65,8 +69,14 @@ export function CorrespondenceThreadCard({
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
-        {/* Header (click to expand messages) */}
-        <button className="w-full text-left p-3.5 hover:bg-accent/30 transition-colors" onClick={() => setOpen((o) => !o)}>
+        {/* Header (click to expand messages) — a div, not a button, so it can
+            contain the real nested "Fix" button below without invalid HTML. */}
+        <div
+          role="button" tabIndex={0}
+          className="w-full text-left p-3.5 hover:bg-accent/30 transition-colors cursor-pointer"
+          onClick={() => setOpen((o) => !o)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((o) => !o); } }}
+        >
           <div className="flex items-start gap-2.5">
             <ChevronRight className={`h-4 w-4 mt-1 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
             <div className="min-w-0 flex-1">
@@ -76,6 +86,15 @@ export function CorrespondenceThreadCard({
                 {tmeta && <Badge variant="outline" className={`text-[10px] ${tmeta.cls}`}>{tmeta.label}</Badge>}
                 {smeta && <Badge variant="outline" className={`text-[10px] ${smeta.cls}`}>{smeta.label}</Badge>}
                 {hasAttach && <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />}
+                {threadId && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setFixOpen(true); }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    title="Wrong project or topic? Fix it"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <span className="text-xs text-muted-foreground ml-auto shrink-0">{messages.length} msg{messages.length === 1 ? "" : "s"} · {latest ? fmtDate(latest.occurred_at) : ""}</span>
               </div>
 
@@ -106,7 +125,7 @@ export function CorrespondenceThreadCard({
               )}
             </div>
           </div>
-        </button>
+        </div>
 
         {/* Action items (extracted) */}
         {intel && intel.action_items.length > 0 && (
@@ -163,6 +182,10 @@ export function CorrespondenceThreadCard({
           </div>
         )}
       </CardContent>
+
+      {threadId && (
+        <ReassignThreadDialog open={fixOpen} onOpenChange={setFixOpen} projectId={projectId} gmailThreadId={threadId} currentTopic={topic} />
+      )}
     </Card>
   );
 }

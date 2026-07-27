@@ -38,6 +38,12 @@ vi.mock("@/hooks/useActionItems", () => ({
   useActionItemsByProject: () => ({ data: [] }),
   useCreateActionItem: () => ({ mutate: () => {}, isPending: false }),
 }));
+// The reassign dialog's hooks hit supabase.from() directly — stub them so the
+// thread card's static import doesn't fire a real network call in jsdom.
+vi.mock("@/hooks/useCorrespondenceReassign", () => ({
+  useAllProjectTopics: () => ({ data: [], isLoading: false }),
+  useCorrespondenceReassign: () => ({ mutate: () => {}, isPending: false }),
+}));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
 
 import { CorrespondenceTab } from "../CorrespondenceTab";

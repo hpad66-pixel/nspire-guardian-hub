@@ -40,6 +40,17 @@ export async function getThread(token: string, id: string): Promise<GmailThread>
   return await g<GmailThread>(token, `/threads/${id}?format=full`);
 }
 
+/** Add/remove Gmail labels on a whole thread (used to push a correction — e.g. the
+ *  user moved a thread to the right project and wants Gmail to reflect it). */
+export async function modifyThreadLabels(token: string, threadId: string, addLabelIds: string[], removeLabelIds: string[] = []): Promise<void> {
+  const r = await fetch(`${API}/threads/${threadId}/modify`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ addLabelIds, removeLabelIds }),
+  });
+  if (!r.ok) throw new Error(`gmail label modify failed: ${r.status} ${await r.text()}`);
+}
+
 // ── MIME flattening ──────────────────────────────────────────────────────────
 const b64urlDecode = (data: string): string => {
   try {
