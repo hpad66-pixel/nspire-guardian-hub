@@ -158,10 +158,18 @@ serve(async (req) => {
       }
     }
 
-    // Scoped search: recent AND (project term, if configured) AND (party OR project name).
+    // Scoped search: recent AND [ (this project's Gmail label) OR (project term AND
+    // party/name match) ]. The label is a deliberate, standalone signal — a
+    // manually-labeled thread with NO matching party at all (e.g. an all-internal
+    // thread) must still be found, so it's never ANDed with the keyword/domain
+    // requirement below it.
     const seed = nameSeed(project.name ?? "");
-    const scope = [orDomains("from", partyDomains), orDomains("to", partyDomains), orDomains("cc", partyDomains), seed ? `"${seed}"` : ""].filter(Boolean).join(" OR ");
-    const query = `newer_than:${lookbackDays}d ${extraTerms ? `(${extraTerms}) ` : ""}${scope ? `(${scope})` : ""}`.trim();
+    const domainOrNameScope = [orDomains("from", partyDomains), orDomains("to", partyDomains), orDomains("cc", partyDomains), seed ? `"${seed}"` : ""].filter(Boolean).join(" OR ");
+    const keywordAndScopeClause = [extraTerms ? `(${extraTerms})` : "", domainOrNameScope ? `(${domainOrNameScope})` : ""].filter(Boolean).join(" ");
+    const labelName = typeof existing?.gmail_label_name === "string" ? existing.gmail_label_name : "";
+    const labelClause = labelName ? `label:"${labelName}"` : "";
+    const combined = [labelClause, keywordAndScopeClause].filter(Boolean).join(" OR ");
+    const query = `newer_than:${lookbackDays}d ${combined ? `(${combined})` : ""}`.trim();
 
     const refs = await listThreads(accessToken, query, 50);
     const scanned = refs.length;
@@ -220,9 +228,13 @@ serve(async (req) => {
       for (const t of threads) if (!topicOf.has(t.id)) topicOf.set(t.id, otherKey);
     }
 
-    // Existing message ids for this project → skip on re-sync.
+    // Existing message ids for this project → skip on re-sync. Deliberately
+    // deleted messages are tombstoned separately — without this, deleting a
+    // message from the app would just free it up to be re-imported on the very
+    // next sync, resurrecting exactly what the user removed.
     const { data: seenRows } = await admin.from("project_emails").select("gmail_message_id").eq("project_id", projectId).not("gmail_message_id", "is", null);
-    const seen = new Set((seenRows ?? []).map((r) => r.gmail_message_id as string));
+    const { data: deletedRows } = await admin.from("correspondence_deleted_messages").select("gmail_message_id").eq("project_id", projectId);
+    const seen = new Set([...(seenRows ?? []), ...(deletedRows ?? [])].map((r) => r.gmail_message_id as string));
 
     // Import messages of kept threads.
     const rows: Record<string, unknown>[] = [];

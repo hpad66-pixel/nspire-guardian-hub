@@ -12,6 +12,12 @@ export interface CorrespondenceSettings {
    *  and the sync falls back to a generic relevant/other split. */
   topics: CorrespondenceTopicDef[];
   extra_terms: string | null;
+  /** Gmail's internal label id — used to PUSH a label (modifyThreadLabels). */
+  gmail_label_id?: string | null;
+  /** The label's exact display name — used to SEARCH by label (Gmail's `label:`
+   *  query operator matches by name, not by id). Keep both in sync if the label
+   *  is ever renamed. */
+  gmail_label_name?: string | null;
   lookback_days: number;
   last_synced_at: string | null;
   last_result: { scanned?: number; imported?: number; byTopic?: Record<string, number>; parties?: string[] } | null;

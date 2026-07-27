@@ -101,13 +101,42 @@ export function useProjectEmails(projectId: string | null) {
     onSettled: invalidate,
   });
 
+  // Tombstone a set of Gmail message ids so a future sync never resurrects them —
+  // without this, deleting a synced message just frees its id up to be
+  // re-imported on the very next sync.
+  const tombstone = async (messageIds: string[]) => {
+    if (!projectId || !messageIds.length) return;
+    const { data: auth } = await supabase.auth.getUser();
+    const rows = messageIds.map((gmail_message_id) => ({ project_id: projectId, gmail_message_id, deleted_by: auth?.user?.id ?? null }));
+    try { await supabase.from("correspondence_deleted_messages" as any).upsert(rows, { onConflict: "project_id,gmail_message_id" }); }
+    catch { /* tombstoning is best-effort — the row is deleted either way */ }
+  };
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      const { data: row } = await supabase.from("project_emails" as any).select("gmail_message_id").eq("id", id).maybeSingle();
       const { error } = await supabase.from("project_emails" as any).delete().eq("id", id);
       if (error) throw error;
+      if ((row as any)?.gmail_message_id) await tombstone([(row as any).gmail_message_id]);
     },
     onSettled: invalidate,
   });
 
-  return { ...list, create, update, remove };
+  // Delete every message in a synced thread (the natural unit in the UI — a
+  // "thread card" — rather than one message row at a time).
+  const removeThread = useMutation({
+    mutationFn: async (gmailThreadId: string) => {
+      const { data: rows } = await supabase.from("project_emails" as any).select("id,gmail_message_id").eq("project_id", projectId!).eq("gmail_thread_id", gmailThreadId);
+      const ids = (rows ?? []).map((r: any) => r.id as string);
+      const messageIds = (rows ?? []).map((r: any) => r.gmail_message_id as string).filter(Boolean);
+      if (ids.length) {
+        const { error } = await supabase.from("project_emails" as any).delete().in("id", ids);
+        if (error) throw error;
+      }
+      await tombstone(messageIds);
+    },
+    onSettled: invalidate,
+  });
+
+  return { ...list, create, update, remove, removeThread };
 }
