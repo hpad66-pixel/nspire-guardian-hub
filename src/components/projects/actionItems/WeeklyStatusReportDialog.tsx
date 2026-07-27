@@ -1,8 +1,10 @@
 /**
- * WeeklyStatusReportDialog — wrangle every currently-open task in a project into
- * one succinct, branded status update. AI drafts from the raw task list; the
- * draft is always shown as plain editable text before anything is sent — human
- * in the loop, same principle as every other AI feature in this app.
+ * WeeklyStatusReportDialog — wrangle open tasks into a status update, with real
+ * choices instead of one fixed shape:
+ *   • Report on: the whole project, or one specific scope/workstream.
+ *   • Style: a flowing narrative, or a scannable "task — status: update" list.
+ * AI drafts from the raw task list; the draft is always shown as plain editable
+ * text before anything is sent — human in the loop.
  */
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,12 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { ActionItem } from "@/hooks/useActionItems";
+import { useProjectScopes } from "@/hooks/useProjectScopes";
 import { useTaskUpdateDraft } from "@/hooks/useTaskUpdateDraft";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails } from "@/hooks/useProjectEmails";
 import { buildStatusReportHtml } from "@/lib/correspondence/statusReportEmail";
 
 const parseRecipients = (s: string) => s.split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+const WHOLE_PROJECT = "__whole__";
 
 export function WeeklyStatusReportDialog({
   open, onOpenChange, projectId, projectName, items,
@@ -30,21 +34,30 @@ export function WeeklyStatusReportDialog({
   projectName?: string;
   items: ActionItem[];
 }) {
+  const { data: scopes = [] } = useProjectScopes(projectId);
   const draftUpdate = useTaskUpdateDraft();
   const sendEmail = useSendEmail();
   const projectEmails = useProjectEmails(projectId);
+  const [reportOn, setReportOn] = useState(WHOLE_PROJECT);
+  const [format, setFormat] = useState<"narrative" | "list">("narrative");
   const [audience, setAudience] = useState<"client" | "internal">("client");
   const [draft, setDraft] = useState("");
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState(`${projectName ? `${projectName} — ` : ""}Weekly update`);
 
-  const openItems = useMemo(() => items.filter((i) => i.status !== "done" && i.status !== "cancelled"), [items]);
+  const openAll = useMemo(() => items.filter((i) => i.status !== "done" && i.status !== "cancelled"), [items]);
+  const scopeName = reportOn === WHOLE_PROJECT ? null : scopes.find((s) => s.id === reportOn)?.title ?? null;
+  const openItems = useMemo(
+    () => (reportOn === WHOLE_PROJECT ? openAll : openAll.filter((i) => i.scope_id === reportOn)),
+    [openAll, reportOn],
+  );
 
   const generate = async () => {
-    if (!openItems.length) { toast.error("No open tasks to report on."); return; }
+    if (!openItems.length) { toast.error(scopeName ? `No open tasks in "${scopeName}".` : "No open tasks to report on."); return; }
     try {
       const result = await draftUpdate.mutateAsync({
-        project_id: projectId, project_name: projectName, mode: "weekly", audience,
+        project_id: projectId, project_name: projectName, mode: "weekly", audience, format,
+        scope_name: scopeName ?? undefined,
         tasks: openItems.map((i) => ({
           title: i.title, description: i.description, status: i.status, priority: i.priority,
           due_date: i.due_date, assignee: i.assignee?.full_name || i.assignee?.email || undefined,
@@ -81,9 +94,33 @@ export function WeeklyStatusReportDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Weekly status report</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Status report</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{openItems.length} open task{openItems.length === 1 ? "" : "s"} in this project.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Report on</Label>
+              <Select value={reportOn} onValueChange={setReportOn}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={WHOLE_PROJECT}>Whole project</SelectItem>
+                  {scopes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Style</Label>
+              <Select value={format} onValueChange={(v) => setFormat(v as "narrative" | "list")}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="narrative">Narrative summary</SelectItem>
+                  <SelectItem value="list">Action item list</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {openItems.length} open task{openItems.length === 1 ? "" : "s"}{scopeName ? ` in "${scopeName}"` : " across the whole project"}.
+          </p>
 
           <div className="flex items-end gap-2">
             <div className="flex-1">

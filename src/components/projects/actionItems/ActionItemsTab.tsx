@@ -81,7 +81,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setWeeklyOpen(true)} className="gap-1.5">
-            <Mail className="h-4 w-4" /> Weekly update
+            <Mail className="h-4 w-4" /> Status report
           </Button>
           <ClickUpProjectList projectId={projectId} />
         </div>

@@ -30,14 +30,21 @@ Rules:
 - For a SINGLE task: write 1 short paragraph (or a couple of tight sentences) summarizing the
   latest status, grounded in the comment(s) given — this reads like "here's where things stand
   on X", not a generic task description.
-- For a WEEKLY rollup: group logically (e.g. what moved forward, what's still open, anything
-  blocked/overdue) and keep each item to one line. Prioritize what the reader actually needs to
-  know — skip housekeeping tasks with nothing new to report unless asked to include everything.
+- For a WEEKLY rollup in "narrative" format: group logically (e.g. what moved forward, what's
+  still open, anything blocked/overdue) and keep each item to one line, blended into short
+  flowing paragraphs. Prioritize what the reader actually needs to know — skip housekeeping
+  tasks with nothing new to report unless asked to include everything.
+- For a WEEKLY rollup in "list" format: do NOT blend items into prose. Output ONE line per task,
+  each its own paragraph (so put a blank line between each), in the exact shape:
+  "**<task title>** — <status>: <one-line update, grounded in the task's own detail — never
+  invented>". No intro, no grouping commentary, no summary paragraph before or after the list —
+  just the tasks, one per line, in the order given.
 - If audience is "client": omit internal-only details (who's assigned internally, internal tags);
   write about outcomes and next steps, not process.
 - If audience is "internal": can be more procedural/direct.
-- Return ONLY the update body as plain paragraphs (blank line between paragraphs). No markdown,
-  no subject line, no greeting/sign-off (the email template adds those), no preamble.`;
+- Return ONLY the update body as plain paragraphs (blank line between paragraphs). No markdown
+  besides the **bold** task title in "list" format, no subject line, no greeting/sign-off (the
+  email template adds those), no preamble.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -66,9 +73,12 @@ serve(async (req) => {
     if (!model.startsWith("claude")) model = "claude-sonnet-4-6";
 
     const parts: string[] = [];
-    parts.push(`Mode: ${mode === "single" ? "single task update" : "weekly rollup of all open tasks"}`);
+    const format = mode === "weekly" && body.format === "list" ? "list" : "narrative";
+    parts.push(`Mode: ${mode === "single" ? "single task update" : "weekly rollup"}`);
+    if (mode === "weekly") parts.push(`Format: ${format}`);
     parts.push(`Audience: ${audience}`);
     if (body.project_name) parts.push(`Project: ${body.project_name}`);
+    if (body.scope_name) parts.push(`Reporting on: ${body.scope_name} (only this part of the project — do not reference other workstreams)`);
     if (body.topic) parts.push(`Topic: ${body.topic}`);
     parts.push(`\nTASKS:\n${JSON.stringify(tasks).slice(0, 12000)}`);
 
