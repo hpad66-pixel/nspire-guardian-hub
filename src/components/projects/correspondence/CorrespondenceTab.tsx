@@ -259,6 +259,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
               {shown.map((g) => (
                 <CorrespondenceThreadCard
                   key={g.key}
+                  projectId={projectId}
                   messages={g.messages}
                   intel={g.intel}
                   onAddActionItem={onAddActionItem}
