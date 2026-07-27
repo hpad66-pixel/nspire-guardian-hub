@@ -16,6 +16,12 @@ export interface TaskUpdateDraftArgs {
   project_name?: string | null;
   mode: "single" | "weekly";
   audience?: "client" | "internal";
+  /** Weekly only: "narrative" (flowing paragraphs, default) or "list" (one line
+   *  per task — "**Title** — status: update", no summary prose). */
+  format?: "narrative" | "list";
+  /** Weekly only: narrows the report to one scope/workstream instead of the
+   *  whole project — the AI is told not to reference other workstreams. */
+  scope_name?: string;
   topic?: string;
   tasks: DraftTaskInput[];
 }

@@ -13,11 +13,14 @@ export interface StatusReportEmailInput {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const fmtDate = (s?: string | null) =>
   (s ? new Date(s) : new Date()).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+// The AI's "list" format bolds each task title with **markdown** — render it as
+// real emphasis (escape first, so this only ever touches text we just escaped).
+const mdBold = (s: string) => s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
 export function buildStatusReportHtml(input: StatusReportEmailInput): string {
   const brand = input.brand || "APAS";
   const paras = (input.body || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-    .map((p) => `<p style="margin:0 0 12px;">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+    .map((p) => `<p style="margin:0 0 12px;">${mdBold(esc(p)).replace(/\n/g, "<br>")}</p>`).join("");
 
   return `<div style="max-width:640px;margin:0 auto;font-family:'DM Sans',Georgia,serif;color:#1A1714;font-size:14px;line-height:1.6;background:#fff;padding:8px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #C4A35A;padding-bottom:10px;">
