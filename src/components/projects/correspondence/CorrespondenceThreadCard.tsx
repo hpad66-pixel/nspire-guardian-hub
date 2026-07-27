@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check, Pencil } from "lucide-react";
+import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check, Pencil, Trash2 } from "lucide-react";
 import type { ProjectEmail } from "@/hooks/useProjectEmails";
 import type { CorrespondenceThread } from "@/hooks/useCorrespondenceThreads";
 import { ReassignThreadDialog } from "./ReassignThreadDialog";
@@ -41,7 +41,7 @@ function party(e: ProjectEmail): string {
 export interface AddActionItemArgs { title: string; owner: string; due_hint: string; threadId: string | null; intelId: string | null }
 
 export function CorrespondenceThreadCard({
-  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel,
+  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel, onDelete,
 }: {
   projectId: string;
   messages: ProjectEmail[];
@@ -52,6 +52,9 @@ export function CorrespondenceThreadCard({
   /** Resolves a topic key to this project's own configured label — falls back to
    *  the legacy hardcoded map below for projects that predate a real taxonomy. */
   topicLabel?: (key: string) => string;
+  /** Deletes every message in this thread from the project — permanently
+   *  (a future re-sync will never bring it back). Gmail is never touched. */
+  onDelete?: (gmailThreadId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fixOpen, setFixOpen] = useState(false);
@@ -93,6 +96,18 @@ export function CorrespondenceThreadCard({
                     title="Wrong project or topic? Fix it"
                   >
                     <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {threadId && onDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm("Delete this thread from the project? This only removes it here — your Gmail is never touched, and it won't come back on a future sync.")) onDelete(threadId);
+                    }}
+                    className="text-muted-foreground hover:text-rose-600 shrink-0"
+                    title="Delete from this project (Gmail is never affected)"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto shrink-0">{messages.length} msg{messages.length === 1 ? "" : "s"} · {latest ? fmtDate(latest.occurred_at) : ""}</span>

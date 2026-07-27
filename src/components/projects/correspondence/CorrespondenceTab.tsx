@@ -38,7 +38,7 @@ const TOPIC_LABEL: Record<string, string> = {
 interface ThreadGroup { key: string; threadId: string | null; messages: ProjectEmail[]; intel?: CorrespondenceThread; topic: string; lastAt: number }
 
 export function CorrespondenceTab({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
-  const { data: emails = [], isLoading } = useProjectEmails(projectId);
+  const { data: emails = [], isLoading, removeThread } = useProjectEmails(projectId);
   const gmail = useGmailConnection();
   const { settings, sync } = useGmailSync(projectId);
   const { threads, analyze } = useCorrespondenceThreads(projectId);
@@ -266,6 +266,10 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
                   pushingActionItem={pushing}
                   addedTitles={g.intel ? addedByThread.get(g.intel.id) : undefined}
                   topicLabel={topicLabel}
+                  onDelete={(threadId) => removeThread.mutate(threadId, {
+                    onSuccess: () => toast.success("Deleted — this won't come back on a future sync."),
+                    onError: (e: any) => toast.error(e?.message ?? "Couldn't delete this thread."),
+                  })}
                 />
               ))}
             </div>
