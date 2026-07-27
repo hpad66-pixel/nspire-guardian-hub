@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// A single thread by its correspondence_threads.id — used where a task/action
+// item is linked back to the thread it was extracted from (linked_entity_id),
+// e.g. to show/pass along the thread's topic when drafting an update.
+export function useCorrespondenceThreadById(id: string | null) {
+  return useQuery({
+    queryKey: ["correspondence-thread", id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<CorrespondenceThread | null> => {
+      const { data, error } = await supabase.from("correspondence_threads" as any).select("*").eq("id", id!).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as CorrespondenceThread | null;
+    },
+  });
+}
+
 export interface ThreadActionItem { title: string; owner: string; due_hint: string }
 export interface ThreadEntities { people: string[]; orgs: string[]; amounts: string[]; dates: string[]; refs: string[] }
 

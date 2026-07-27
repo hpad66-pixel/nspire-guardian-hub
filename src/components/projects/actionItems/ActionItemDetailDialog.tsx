@@ -5,17 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Send, Printer, Mail, Loader2, Link2 } from 'lucide-react';
+import { Trash2, Send, Printer, Mail, Loader2, Link2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {
   useUpdateActionItem, useDeleteActionItem, useActionItemComments, useCreateActionItemComment,
   type ActionItem,
 } from '@/hooks/useActionItems';
 import { useSendEmail } from '@/hooks/useSendEmail';
+import { useProjectEmails } from '@/hooks/useProjectEmails';
+import { useCorrespondenceThreadById } from '@/hooks/useCorrespondenceThreads';
+import { useTaskUpdateDraft } from '@/hooks/useTaskUpdateDraft';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import type { ProjectScope } from '@/hooks/useProjectScopes';
 import type { ProjectTeamMember } from '@/hooks/useProjectTeam';
 import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
+import { buildTaskUpdateHtml } from '@/lib/correspondence/taskUpdateEmail';
 import { STATUS_META, STATUS_ORDER, PRIORITY_META, PRIORITY_ORDER } from './actionItemMeta';
 
 interface Props {
@@ -37,6 +42,11 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const { data: comments } = useActionItemComments(open && item ? item.id : null);
   const createComment = useCreateActionItemComment();
   const sendEmail = useSendEmail();
+  const projectEmails = useProjectEmails(projectId);
+  const linkedThread = useCorrespondenceThreadById(
+    item?.linked_entity_type === 'correspondence_thread' ? item.linked_entity_id : null,
+  );
+  const draftUpdate = useTaskUpdateDraft();
   const { data: clickup } = useClickUpStatus();
   const pushClickUp = usePushToClickUp();
 
@@ -66,17 +76,45 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
 
   const handlePrint = () => printTaskHtml(taskHtml());
 
+  const brandedStatus = (): 'done' | 'in_progress' | 'todo' =>
+    item.status === 'done' ? 'done' : (item.status === 'in_progress' || item.status === 'in_review') ? 'in_progress' : 'todo';
+
   const handleSendEmail = async () => {
     const to = emailTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
     if (!to.length) return;
+    const subject = `${item.status === 'done' ? 'Completed' : 'Update'}: ${item.title}`;
+    const bodyHtml = buildTaskUpdateHtml({ projectName, taskTitle: item.title, status: brandedStatus(), note: emailNote.trim() || undefined, date: new Date().toISOString() });
     try {
       await sendEmail.mutateAsync({
-        recipients: to,
-        subject: `Action item: ${item.title}`,
-        bodyHtml: taskHtml(emailNote.trim() || undefined),
+        recipients: to, subject, bodyHtml,
+        bodyText: `${item.title} — ${item.status === 'done' ? 'Completed' : 'Update'}${emailNote.trim() ? `\n\n${emailNote.trim()}` : ''}`,
       });
+      try {
+        await projectEmails.create.mutateAsync({
+          direction: 'outbound', status: 'sent', channel: 'resend', subject, to_emails: to,
+          snippet: (emailNote.trim() || item.title).slice(0, 200), body_text: emailNote.trim() || null,
+        } as any);
+      } catch { /* logging is best-effort */ }
       setEmailOpen(false);
+      setEmailNote('');
     } catch { /* toast handled by useSendEmail */ }
+  };
+
+  const handlePolishWithAI = async () => {
+    const topic = linkedThread.data?.subject || linkedThread.data?.topic || undefined;
+    try {
+      const result = await draftUpdate.mutateAsync({
+        project_id: projectId, project_name: projectName, mode: 'single', audience: 'client', topic,
+        tasks: [{
+          title: item.title, description: item.description, status: item.status, priority: item.priority,
+          due_date: item.due_date, assignee: assigneeName ?? undefined,
+          comments: (comments ?? []).map((c) => ({ author: commenterName(c.created_by), content: c.content, created_at: c.created_at })),
+        }],
+      });
+      setEmailNote(result.draft);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't draft that update.");
+    }
   };
 
   const patch = (updates: Record<string, unknown>) =>
@@ -163,9 +201,19 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
 
           {emailOpen && (
             <div className="border-t pt-3 space-y-2">
-              <Label className="text-xs">Email this task</Label>
+              <Label className="text-xs">Send a branded update</Label>
+              {linkedThread.data && (
+                <p className="text-xs text-muted-foreground">Topic: <span className="font-medium text-foreground">{linkedThread.data.subject || linkedThread.data.topic}</span></p>
+              )}
               <Input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="name@example.com, teammate@example.com" className="h-9" />
-              <Textarea rows={2} value={emailNote} onChange={(e) => setEmailNote(e.target.value)} placeholder="Add a note (optional)…" />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Note</Label>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={handlePolishWithAI} disabled={draftUpdate.isPending}>
+                  {draftUpdate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" />}
+                  {comments?.length ? 'Draft from comments' : 'Draft with AI'}
+                </Button>
+              </div>
+              <Textarea rows={3} value={emailNote} onChange={(e) => setEmailNote(e.target.value)} placeholder="Add a note, or draft with AI from the comments above…" />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setEmailOpen(false)}>Cancel</Button>
                 <Button size="sm" onClick={handleSendEmail} disabled={sendEmail.isPending || !emailTo.trim()} className="gap-1.5">
