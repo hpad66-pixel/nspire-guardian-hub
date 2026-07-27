@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, CheckSquare, ChevronDown, ChevronRight, MessageSquare,
   Calendar, User, Flag, Trash2, Send, Loader2, Filter, Check,
-  AlertCircle, Clock, Circle, MoreHorizontal,
+  AlertCircle, Clock, Circle, MoreHorizontal, Mail, ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useProject } from '@/hooks/useProjects';
 import {
   useActionItemsByProject,
   useCreateActionItem,
@@ -31,6 +32,7 @@ import {
   type ActionItem,
   type ActionItemComment,
 } from '@/hooks/useActionItems';
+import { WeeklyStatusReportDialog } from '@/components/projects/actionItems/WeeklyStatusReportDialog';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 
@@ -158,12 +160,18 @@ function TaskCard({
   currentUserId,
   expanded,
   onToggleExpand,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   item: ActionItem;
   projectId: string;
   currentUserId: string;
   expanded: boolean;
   onToggleExpand: () => void;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const updateItem = useUpdateActionItem(projectId);
   const deleteItem = useDeleteActionItem(projectId);
@@ -231,23 +239,33 @@ function TaskCard({
       className={cn(
         'rounded-xl border bg-card border-l-4 transition-shadow hover:shadow-md',
         pri.border,
-        isDone && 'opacity-60'
+        isDone && !selectMode && 'opacity-60',
+        selectMode && selected && 'ring-2 ring-[var(--apas-sapphire)] border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/5'
       )}
     >
       {/* ── Main row ── */}
-      <div className="flex items-start gap-2.5 p-3 cursor-pointer" onClick={onToggleExpand}>
-        {/* Checkbox */}
+      <div
+        className="flex items-start gap-2.5 p-3 cursor-pointer"
+        onClick={() => (selectMode ? onToggleSelect?.() : onToggleExpand())}
+      >
+        {/* Checkbox — toggles "done" normally, becomes the report-selection
+            checkbox while selecting (same spot, so there's only ever ONE
+            checkbox on the row and its meaning is unambiguous). */}
         <button
-          onClick={e => { e.stopPropagation(); handleCheck(); }}
+          onClick={e => { e.stopPropagation(); selectMode ? onToggleSelect?.() : handleCheck(); }}
           className={cn(
-            'mt-0.5 h-4.5 w-4.5 rounded border-2 shrink-0 flex items-center justify-center transition-all',
-            isDone
-              ? 'bg-green-500 border-green-500 text-white'
-              : 'border-border hover:border-module-projects'
+            'mt-0.5 h-5 w-5 rounded border-2 shrink-0 flex items-center justify-center transition-all',
+            selectMode
+              ? selected
+                ? 'bg-[var(--apas-sapphire)] border-[var(--apas-sapphire)] text-white'
+                : 'border-[var(--apas-sapphire)]/50 hover:border-[var(--apas-sapphire)]'
+              : isDone
+                ? 'bg-green-500 border-green-500 text-white'
+                : 'border-border hover:border-module-projects'
           )}
-          style={{ minWidth: 18, minHeight: 18 }}
+          style={{ minWidth: 20, minHeight: 20 }}
         >
-          {isDone && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+          {(selectMode ? selected : isDone) && <Check className="h-3 w-3" strokeWidth={3} />}
         </button>
 
         {/* Title */}
@@ -295,10 +313,12 @@ function TaskCard({
           </div>
         </div>
 
-        {/* Expand chevron */}
-        <button className="shrink-0 text-muted-foreground hover:text-foreground mt-1" onClick={onToggleExpand}>
-          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </button>
+        {/* Expand chevron — hidden while selecting, the row itself is the target then */}
+        {!selectMode && (
+          <button className="shrink-0 text-muted-foreground hover:text-foreground mt-1" onClick={e => { e.stopPropagation(); onToggleExpand(); }}>
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+        )}
       </div>
 
       {/* ── Expanded detail ── */}
@@ -586,12 +606,29 @@ interface ActionItemsPanelProps {
 
 export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelProps) {
   const { user } = useAuth();
+  const { data: project } = useProject(open ? projectId : null);
   const { data: items = [], isLoading } = useActionItemsByProject(open ? projectId : null);
   const [tab, setTab] = useState<'all' | 'mine'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [filterPriority, setFilterPriority] = useState<ActionItem['priority'] | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<ActionItem['status'] | 'all'>('all');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reportOpen, setReportOpen] = useState(false);
+
+  const toggleSelectMode = () => {
+    setSelectMode(v => !v);
+    setSelectedIds(new Set());
+  };
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const selectedItems = useMemo(() => items.filter(i => selectedIds.has(i.id)), [items, selectedIds]);
 
   const filtered = useMemo(() => {
     return items.filter(i => {
@@ -632,7 +669,20 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {/* Select-for-report toggle — labeled, not icon-only, so it's actually discoverable */}
+            <Button
+              variant={selectMode ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                'h-7 text-xs gap-1.5 px-2.5',
+                selectMode && 'bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90 border-[var(--apas-sapphire)]'
+              )}
+              onClick={toggleSelectMode}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              {selectMode ? 'Cancel' : 'Select'}
+            </Button>
             {/* Filter dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -682,10 +732,32 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
         </div>
       </div>
 
+      {/* ── Selection banner (report mode) — always visible right under the
+          header, no scrolling required to find the action. ── */}
+      {selectMode && (
+        <div className="shrink-0 px-4 py-2.5 border-b bg-[var(--apas-sapphire)]/10 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold text-[var(--apas-sapphire)]">
+            {selectedIds.size === 0
+              ? 'Tap tasks below to select them'
+              : `${selectedIds.size} task${selectedIds.size === 1 ? '' : 's'} selected`}
+          </span>
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90 text-white gap-1.5"
+            disabled={selectedIds.size === 0}
+            onClick={() => setReportOpen(true)}
+          >
+            <Mail className="h-3 w-3" /> Generate report
+          </Button>
+        </div>
+      )}
+
       {/* ── Quick Add ── */}
-      <div className="px-3 pt-3 pb-2 shrink-0">
-        <QuickAddBar projectId={projectId} />
-      </div>
+      {!selectMode && (
+        <div className="px-3 pt-3 pb-2 shrink-0">
+          <QuickAddBar projectId={projectId} />
+        </div>
+      )}
 
       {/* ── Task List ── */}
       <ScrollArea className="flex-1">
@@ -727,6 +799,9 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
                           currentUserId={user?.id || ''}
                           expanded={expandedId === item.id}
                           onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                          selectMode={selectMode}
+                          selected={selectedIds.has(item.id)}
+                          onToggleSelect={() => toggleSelectItem(item.id)}
                         />
                       ))}
                     </AnimatePresence>
@@ -760,6 +835,9 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
                             currentUserId={user?.id || ''}
                             expanded={expandedId === item.id}
                             onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                            selectMode={selectMode}
+                            selected={selectedIds.has(item.id)}
+                            onToggleSelect={() => toggleSelectItem(item.id)}
                           />
                         ))}
                       </motion.div>
@@ -771,6 +849,18 @@ export function ActionItemsPanel({ projectId, open, onClose }: ActionItemsPanelP
           )}
         </div>
       </ScrollArea>
+
+      <WeeklyStatusReportDialog
+        open={reportOpen}
+        onOpenChange={(v) => {
+          setReportOpen(v);
+          if (!v) { setSelectMode(false); setSelectedIds(new Set()); }
+        }}
+        projectId={projectId}
+        projectName={project?.name}
+        items={items}
+        preselectedItems={selectedItems}
+      />
     </div>
   );
 }
