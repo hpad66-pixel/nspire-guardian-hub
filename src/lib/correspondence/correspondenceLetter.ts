@@ -15,11 +15,11 @@ export interface CorrespondenceLetterInput {
   recipientAddress?: string | null;
   referenceNo?: string | null;
   subject: string;
-  /** Rich HTML from the letter editor (paragraphs, greeting, bold, lists,
-   *  headings…) — rendered as-is, not escaped or reformatted. */
+  /** Rich HTML from the letter editor (paragraphs, greeting, sign-off, bold,
+   *  lists, headings…) — rendered as-is, not escaped or reformatted. There is
+   *  no separate auto-generated "Sincerely," block: if you want a closing and
+   *  signature, type it as the last part of the body, same as the greeting. */
   body?: string | null;
-  signedBy?: string | null;
-  signedTitle?: string | null;
   projectName?: string | null;
 }
 
@@ -80,19 +80,16 @@ export function buildCorrespondenceHtml(input: CorrespondenceLetterInput): strin
     <div style="margin-top:32px;font-size:14px;">${fmtDate(input.date)}</div>
     ${input.referenceNo ? `<div style="margin-top:4px;font-size:13.5px;color:#5f5c57;">Re: ${esc(input.referenceNo)}</div>` : ''}
 
-    ${toBlock ? `<div style="margin-top:22px;font-size:14px;">${toBlock}</div>` : ''}
+    ${toBlock ? `<div style="margin-top:20px;font-size:14px;">${toBlock}</div>` : ''}
 
-    <div style="margin-top:24px;font-weight:600;font-size:15.5px;">Subject: ${esc(input.subject)}</div>
+    <div style="margin-top:18px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#8a877f;">Subject: ${esc(input.subject)}</div>
 
-    <div style="margin-top:22px;">
+    <div style="margin-top:20px;">
       ${bodyHtml || '<p style="color:#8a877f;">[Letter body]</p>'}
     </div>
 
-    <div style="margin-top:30px;">
-      <p style="margin:0 0 44px;">Sincerely,</p>
-      <div style="border-top:1px solid #cfccc6;width:240px;padding-top:5px;font-size:13.5px;">${esc(input.signedBy || '')}</div>
-      ${input.signedTitle ? `<div style="font-size:12.5px;color:#5f5c57;">${esc(input.signedTitle)}</div>` : ''}
-      <div style="font-size:12.5px;color:#5f5c57;">${esc(brand)}${input.projectName ? ` · ${esc(input.projectName)}` : ''}</div>
+    <div style="margin-top:36px;border-top:1px solid #e8e5df;padding-top:10px;font-size:11.5px;color:#a8a49c;">
+      ${esc(brand)}${input.projectName ? ` · ${esc(input.projectName)}` : ''}
     </div>
   </div>`;
 }
