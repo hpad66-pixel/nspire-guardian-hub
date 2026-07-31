@@ -113,12 +113,21 @@ async function fetchExistingContacts() {
   return data ?? [];
 }
 
+// Teammates aren't "contacts" — correspondence/property records naturally
+// mention the current user and colleagues (e.g. a property's own point of
+// contact is often a teammate), so exclude every internal profile's email.
+async function fetchTeamEmails(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('profiles').select('email');
+  if (error) throw error;
+  return new Set((data ?? []).map((p) => (p.email ?? '').trim().toLowerCase()).filter(Boolean));
+}
+
 export function useSuggestedContacts(enabled: boolean) {
   return useQuery<ContactCandidate[]>({
     queryKey: ['suggested-contacts'],
     enabled,
     queryFn: async () => {
-      const [mentionGroups, existing] = await Promise.all([
+      const [mentionGroups, existing, teamEmails] = await Promise.all([
         Promise.all([
           safeMentions(fromCorrespondence),
           safeMentions(fromMeetings),
@@ -130,9 +139,11 @@ export function useSuggestedContacts(enabled: boolean) {
           safeMentions(fromProperties),
         ]),
         fetchExistingContacts(),
+        fetchTeamEmails().catch(() => new Set<string>()),
       ]);
 
-      const candidates = buildCandidates(mentionGroups.flat());
+      const candidates = buildCandidates(mentionGroups.flat())
+        .filter((c) => !c.email || !teamEmails.has(c.email.toLowerCase()));
       return excludeExisting(candidates, existing);
     },
     staleTime: 60_000,
