@@ -141,46 +141,51 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         
-        {/* Quick Navigation */}
-        <CommandGroup heading="Quick Navigation">
-          <CommandItem onSelect={() => handleSelect('/')}>
-            <Home className="mr-2 h-4 w-4" />
-            Dashboard
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/properties')}>
-            <Building2 className="mr-2 h-4 w-4" />
-            Properties
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/projects')}>
-            <FolderKanban className="mr-2 h-4 w-4" />
-            Projects
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/issues')}>
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Issues
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/work-orders')}>
-            <Wrench className="mr-2 h-4 w-4" />
-            Work Orders
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/inspections')}>
-            <ClipboardCheck className="mr-2 h-4 w-4" />
-            Inspections
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/documents')}>
-            <FileText className="mr-2 h-4 w-4" />
-            Documents
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/reports')}>
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Reports
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect('/settings')}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </CommandItem>
-        </CommandGroup>
-        
+        {/* Quick Navigation — shortcuts only, so only shown before the user
+            starts typing a search (cmdk's own filter is disabled above, since
+            it drops async-loaded result groups; without that guard these would
+            stay visible under every query too). */}
+        {!search && (
+          <CommandGroup heading="Quick Navigation">
+            <CommandItem onSelect={() => handleSelect('/')}>
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/properties')}>
+              <Building2 className="mr-2 h-4 w-4" />
+              Properties
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/projects')}>
+              <FolderKanban className="mr-2 h-4 w-4" />
+              Projects
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/issues')}>
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Issues
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/work-orders')}>
+              <Wrench className="mr-2 h-4 w-4" />
+              Work Orders
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/inspections')}>
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+              Inspections
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/documents')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Documents
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/reports')}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Reports
+            </CommandItem>
+            <CommandItem onSelect={() => handleSelect('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </CommandItem>
+          </CommandGroup>
+        )}
+
         {/* Properties */}
         {filteredProperties && filteredProperties.length > 0 && search && (
           <>
