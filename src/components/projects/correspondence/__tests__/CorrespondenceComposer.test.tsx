@@ -8,8 +8,15 @@ import { render } from "@testing-library/react";
 vi.mock("@/hooks/useSendEmail", () => ({ useSendEmail: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
 vi.mock("@/hooks/useProjectEmails", () => ({ useProjectEmails: () => ({ create: { mutateAsync: vi.fn() }, update: { mutateAsync: vi.fn() } }) }));
 vi.mock("@/hooks/useCorrespondenceTemplates", () => ({ useCorrespondenceTemplates: () => ({ data: [], create: { mutateAsync: vi.fn() } }) }));
-vi.mock("@/lib/reports/reportPdf", () => ({ downloadReportPdf: vi.fn(), reportPdfBase64: vi.fn() }));
+vi.mock("@/lib/correspondence/letterPdf", () => ({ downloadLetterPdf: vi.fn(), letterPdfBase64: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() }, auth: { getUser: vi.fn() } } }));
+// The real rich-text editor mounts a TipTap instance — heavier than a render
+// smoke test needs and not the thing under test here, so stub it.
+vi.mock("@/components/ui/rich-text-editor", () => ({
+  ProRichTextEditor: ({ content, onChange }: { content: string; onChange: (v: string) => void }) => (
+    <textarea data-testid="letter-body" value={content} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
 
 import { CorrespondenceComposer } from "../CorrespondenceComposer";
 
