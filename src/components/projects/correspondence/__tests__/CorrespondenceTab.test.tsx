@@ -12,7 +12,11 @@ let mockEmails: ProjectEmail[] = [];
 let mockThreads: CorrespondenceThread[] = [];
 
 vi.mock("@/hooks/useProjectEmails", () => ({
-  useProjectEmails: () => ({ data: mockEmails, isLoading: false, removeThread: { mutate: () => {}, isPending: false } }),
+  useProjectEmails: () => ({
+    data: mockEmails, isLoading: false,
+    remove: { mutate: () => {}, isPending: false },
+    removeThread: { mutate: () => {}, isPending: false },
+  }),
 }));
 vi.mock("../CorrespondenceComposer", () => ({ CorrespondenceComposer: () => null }));
 // DocumentWorkspace pulls in pdfjs/mammoth (browser-only) — stub it so the tab's
