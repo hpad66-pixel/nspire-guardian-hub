@@ -20,10 +20,34 @@ import {
   List, ListOrdered, Quote, Heading1, Heading2, Heading3,
   Undo, Redo, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Table as TableIcon, Image as ImageIcon, Highlighter, Minus,
-  Sparkles, Loader2, Palette,
+  Sparkles, Loader2, Palette, SpellCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditorToolsBar } from '@/components/ui/editor-tools';
+import { FontFamily, FontSize, LineHeight, TabHandler } from '@/components/ui/editor-extensions';
+
+// Font family / size / line-spacing options for the toolbar dropdowns. Families
+// are stacks that degrade gracefully; the first is what shows on screen and in
+// the PDF. "Single / 1.5 / Double" are the paragraph line-spacing choices.
+const FONT_FAMILIES: { label: string; value: string }[] = [
+  { label: 'Default', value: '' },
+  { label: 'Serif (Georgia)', value: "Georgia, 'Times New Roman', serif" },
+  { label: 'Times New Roman', value: "'Times New Roman', Times, serif" },
+  { label: 'Sans (Arial)', value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Calibri', value: "Calibri, 'Segoe UI', sans-serif" },
+  { label: 'Garamond', value: "Garamond, 'EB Garamond', serif" },
+  { label: 'Courier', value: "'Courier New', Courier, monospace" },
+];
+const FONT_SIZES = ['10px', '11px', '12px', '13px', '14px', '16px', '18px', '24px'];
+const LINE_HEIGHTS: { label: string; value: string }[] = [
+  { label: 'Single', value: '1.15' },
+  { label: '1.5 lines', value: '1.5' },
+  { label: 'Double', value: '2' },
+];
+
+const TOOLBAR_SELECT_CLASS =
+  'h-7 rounded border border-input bg-background px-1.5 text-xs text-foreground ' +
+  'focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer';
 
 // ─── Basic editor (backward-compatible) ─────────────────────────────────────
 
@@ -203,8 +227,37 @@ function ProMenuBar({
   onImageUpload?: () => void;
 }) {
   const [openPicker, setOpenPicker] = useState<'text' | 'highlight' | null>(null);
+  const [spellcheckOn, setSpellcheckOn] = useState(true);
 
   if (!editor) return null;
+
+  // Current formatting at the cursor, so the dropdowns reflect the selection.
+  const curFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) ?? '';
+  const curSize = (editor.getAttributes('textStyle').fontSize as string | undefined) ?? '';
+  const curLineHeight =
+    (editor.getAttributes('paragraph').lineHeight as string | undefined) ??
+    (editor.getAttributes('heading').lineHeight as string | undefined) ??
+    '';
+
+  const applyFont = (v: string) => {
+    if (v) editor.chain().focus().setFontFamily(v).run();
+    else editor.chain().focus().unsetFontFamily().run();
+  };
+  const applySize = (v: string) => {
+    if (v) editor.chain().focus().setFontSize(v).run();
+    else editor.chain().focus().unsetFontSize().run();
+  };
+  const applyLineHeight = (v: string) => {
+    if (v) editor.chain().focus().setLineHeight(v).run();
+    else editor.chain().focus().unsetLineHeight().run();
+  };
+  const toggleSpellcheck = () => {
+    const next = !spellcheckOn;
+    setSpellcheckOn(next);
+    // Toggle the browser's native spell-check live on the editable surface.
+    editor.view.dom.setAttribute('spellcheck', next ? 'true' : 'false');
+    editor.view.dom.focus();
+  };
 
   const ToolBtn = ({
     active, onClick, disabled, children, label,
@@ -240,6 +293,36 @@ function ProMenuBar({
       <ToolBtn label="Heading 3" active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
         <Heading3 className="h-3.5 w-3.5" />
       </ToolBtn>
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
+      {/* Font family / size / line spacing */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <select aria-label="Font" className={cn(TOOLBAR_SELECT_CLASS, 'max-w-[7.5rem]')} value={curFont} onChange={(e) => applyFont(e.target.value)}>
+            {FONT_FAMILIES.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
+          </select>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Font</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <select aria-label="Font size" className={TOOLBAR_SELECT_CLASS} value={curSize} onChange={(e) => applySize(e.target.value)}>
+            <option value="">Size</option>
+            {FONT_SIZES.map((s) => <option key={s} value={s}>{s.replace('px', '')}</option>)}
+          </select>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Font size</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <select aria-label="Line spacing" className={TOOLBAR_SELECT_CLASS} value={curLineHeight} onChange={(e) => applyLineHeight(e.target.value)}>
+            <option value="">Spacing</option>
+            {LINE_HEIGHTS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Line spacing (single / 1.5 / double)</TooltipContent>
+      </Tooltip>
 
       <Separator orientation="vertical" className="mx-1 h-5" />
 
@@ -370,6 +453,27 @@ function ProMenuBar({
 
       <Separator orientation="vertical" className="mx-1 h-5" />
 
+      {/* Spell-check toggle (native browser spell-check: red underlines +
+          right-click "Add to Dictionary"). On by default. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Toggle
+            size="sm"
+            pressed={spellcheckOn}
+            onPressedChange={toggleSpellcheck}
+            aria-label="Spell check"
+            className={cn('h-7 w-7 p-0', spellcheckOn && 'bg-primary/10 text-primary')}
+          >
+            <SpellCheck className="h-3.5 w-3.5" />
+          </Toggle>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          Spell check {spellcheckOn ? 'on' : 'off'} — right-click a red-underlined word for suggestions
+        </TooltipContent>
+      </Tooltip>
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
       {/* Undo / Redo */}
       <ToolBtn label="Undo" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
         <Undo className="h-3.5 w-3.5" />
@@ -425,6 +529,10 @@ export function ProRichTextEditor({
       Placeholder.configure({ placeholder }),
       Underline,
       TextStyle,
+      FontFamily,
+      FontSize,
+      LineHeight,
+      TabHandler,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
