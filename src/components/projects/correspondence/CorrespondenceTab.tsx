@@ -325,6 +325,11 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
                     onSuccess: () => toast.success("Deleted — this won't come back on a future sync."),
                     onError: (e: any) => toast.error(e?.message ?? "Couldn't delete this thread."),
                   })}
+                  onEditLetter={openDraft}
+                  onDeleteLetter={(id) => remove.mutate(id, {
+                    onSuccess: () => toast.success("Letter deleted."),
+                    onError: (e: any) => toast.error(e?.message ?? "Couldn't delete this letter."),
+                  })}
                 />
               ))}
             </div>

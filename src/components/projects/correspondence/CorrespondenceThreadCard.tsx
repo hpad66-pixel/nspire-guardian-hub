@@ -41,7 +41,7 @@ function party(e: ProjectEmail): string {
 export interface AddActionItemArgs { title: string; owner: string; due_hint: string; threadId: string | null; intelId: string | null }
 
 export function CorrespondenceThreadCard({
-  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel, onDelete,
+  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel, onDelete, onEditLetter, onDeleteLetter,
 }: {
   projectId: string;
   messages: ProjectEmail[];
@@ -55,6 +55,11 @@ export function CorrespondenceThreadCard({
   /** Deletes every message in this thread from the project — permanently
    *  (a future re-sync will never bring it back). Gmail is never touched. */
   onDelete?: (gmailThreadId: string) => void;
+  /** Reopens a letter composed in-app (no gmail_thread_id — never a synced
+   *  thread) so it can keep being edited, sent or not. */
+  onEditLetter?: (email: ProjectEmail) => void;
+  /** Permanently deletes a letter composed in-app, draft or sent. */
+  onDeleteLetter?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fixOpen, setFixOpen] = useState(false);
@@ -63,6 +68,10 @@ export function CorrespondenceThreadCard({
   const subject = intel?.subject || latest?.subject || "(no subject)";
   const topic = intel?.topic || latest?.topic || null;
   const threadId = latest?.gmail_thread_id ?? null;
+  // A single row with no Gmail thread is a letter composed in this app
+  // (draft or sent) — not synced correspondence, so it gets Edit/Delete
+  // instead of the Fix/Delete-by-thread actions below.
+  const isComposedLetter = !threadId && messages.length === 1;
   const tmeta = topic ? (TOPIC_META[topic] ?? { label: topicLabel?.(topic) ?? topic, cls: "bg-muted text-muted-foreground" }) : null;
   const smeta = intel?.status ? STATUS_META[intel.status] : null;
   const ent = intel?.entities;
@@ -106,6 +115,27 @@ export function CorrespondenceThreadCard({
                     }}
                     className="text-muted-foreground hover:text-rose-600 shrink-0"
                     title="Delete from this project (Gmail is never affected)"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {isComposedLetter && onEditLetter && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEditLetter(latest); }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    title="Edit this letter"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {isComposedLetter && onDeleteLetter && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete "${subject}"? This can't be undone.`)) onDeleteLetter(latest.id);
+                    }}
+                    className="text-muted-foreground hover:text-rose-600 shrink-0"
+                    title="Delete this letter"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
