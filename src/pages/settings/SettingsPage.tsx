@@ -1,16 +1,12 @@
 import { useModules } from '@/contexts/ModuleContext';
-import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
+import { useProperties } from '@/hooks/useProperties';
 import { useCurrentUserRole } from '@/hooks/useUserManagement';
 import { useClientsWithCounts } from '@/hooks/useClients';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useWorkspaceModules, useToggleWorkspaceModule } from '@/hooks/useWorkspaceModules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +14,6 @@ import {
   Settings,
   ClipboardCheck,
   FolderKanban,
-  Users,
-  Mail,
-  QrCode,
   CreditCard,
   Building2,
   Sun,
@@ -29,12 +22,6 @@ import {
   Briefcase,
   Home,
   Shield,
-  BadgeCheck,
-  GraduationCap,
-  ShieldAlert,
-  Truck,
-  Share2,
-  Lock,
   History,
   Link2,
   ExternalLink,
@@ -94,48 +81,16 @@ function DeferredOrganizations({
 }
 
 export default function SettingsPage() {
-  const { modules, toggleModule, isLoading: modulesLoading, refetchModules } = useModules();
-  const { data: properties, isLoading: propertiesLoading } = useProperties();
+  // Module config now lives entirely on /admin/modules — kept here only for the
+  // "Enabled/Disabled" status read-outs on the Billing tab below.
+  const { modules } = useModules();
+  const { data: properties } = useProperties();
   const { data: currentUserRole } = useCurrentUserRole();
-  const updateProperty = useUpdateProperty();
   const navigate = useNavigate();
   const { workspace, isLoading: workspaceLoading, isTrialing, trialDaysLeft } = useWorkspaceContext();
-  const { data: wsModules, isLoading: wsModulesLoading } = useWorkspaceModules();
-  const toggleWsModule = useToggleWorkspaceModule();
 
   const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
   const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
-
-  // Helper: toggle a workspace-level module field
-  const handleWsToggle = async (
-    field: Parameters<typeof toggleWsModule.mutate>[0]['field'],
-    currentValue: boolean
-  ) => {
-    if (!workspace?.id) {
-      toast.error('Workspace not loaded');
-      return;
-    }
-    toggleWsModule.mutate(
-      { workspaceId: workspace.id, field, value: !currentValue },
-      { onSuccess: () => { refetchModules(); } }
-    );
-  };
-
-  const handlePropertyModuleChange = async (
-    propertyId: string, 
-    module: 'nspire_enabled' | 'daily_grounds_enabled' | 'projects_enabled',
-    checked: boolean
-  ) => {
-    try {
-      await updateProperty.mutateAsync({
-        id: propertyId,
-        [module]: checked,
-      });
-      await refetchModules();
-    } catch (error) {
-      toast.error('Failed to update property module');
-    }
-  };
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -168,9 +123,8 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="modules" className="space-y-6">
+      <Tabs defaultValue="billing" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="modules">Modules</TabsTrigger>
           {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
           <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -192,436 +146,6 @@ export default function SettingsPage() {
 
         <TabsContent value="integrations" className="space-y-6">
           <ClickUpSettings />
-        </TabsContent>
-
-        <TabsContent value="modules" className="space-y-6">
-          {!isAdmin && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Module Management</CardTitle>
-                <CardDescription>Only admins and owners can manage module access.</CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-
-          {isAdmin && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Tenant-Wide Module Defaults</CardTitle>
-                    <CardDescription>Enable or disable paid add-on modules for all properties</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-              {/* Daily Grounds */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-emerald-500 flex items-center justify-center">
-                    <Sun className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="dailyGrounds" className="font-medium">Daily Grounds Inspections</Label>
-                      <Badge variant="outline">Paid Add-On</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Ongoing daily inspections of exterior grounds, assets, and infrastructure
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="dailyGrounds"
-                  checked={modules.dailyGroundsEnabled}
-                  onCheckedChange={() => toggleModule('dailyGroundsEnabled')}
-                  disabled={!isAdmin || modulesLoading}
-                />
-              </div>
-
-              <Separator />
-
-              {/* NSPIRE Inspections */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-module-inspections flex items-center justify-center">
-                    <ClipboardCheck className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="nspire" className="font-medium">NSPIRE Compliance</Label>
-                      <Badge variant="outline">Paid Add-On</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      HUD NSPIRE-compliant inside unit inspections with mandated defect catalogs
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="nspire"
-                  checked={modules.nspireEnabled}
-                  onCheckedChange={() => toggleModule('nspireEnabled')}
-                  disabled={!isAdmin || modulesLoading}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Projects */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-module-projects flex items-center justify-center">
-                    <FolderKanban className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="projects" className="font-medium">Projects</Label>
-                      <Badge variant="outline">Paid Add-On</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Capital improvements, daily reports, change orders, and closeout
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="projects"
-                  checked={modules.projectsEnabled}
-                  onCheckedChange={() => toggleModule('projectsEnabled')}
-                  disabled={!isAdmin || modulesLoading}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Occupancy Tracking */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="occupancy" className="font-medium">Occupancy Tracking</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Tenant management and lease tracking
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="occupancy"
-                  checked={modules.occupancyEnabled}
-                  onCheckedChange={() => handleWsToggle('occupancy_enabled', wsModules?.occupancy_enabled ?? true)}
-                  disabled={!isAdmin}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Email Inbox */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <Mail className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="email" className="font-medium">Email Inbox Integration</Label>
-                      <Badge variant="secondary">Phase 2</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Unified email inbox with AI-powered triage
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="email"
-                  checked={modules.emailInboxEnabled}
-                  onCheckedChange={() => handleWsToggle('email_inbox_enabled', wsModules?.email_inbox_enabled ?? true)}
-                  disabled={!isAdmin}
-                />
-              </div>
-
-              <Separator />
-
-              {/* QR Scanning */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <QrCode className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="qr" className="font-medium">QR Asset Scanning</Label>
-                      <Badge variant="secondary">Phase 2</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Mobile QR code scanning for asset identification
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="qr"
-                  checked={modules.qrScanningEnabled}
-                  onCheckedChange={() => handleWsToggle('qr_scanning_enabled', wsModules?.qr_scanning_enabled ?? true)}
-                  disabled={!isAdmin}
-                />
-              </div>
-
-              {/* ─── PLATFORM ADD-ON MODULES ──────────────────────────────────── */}
-              <div className="pt-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-                  Platform Add-On Modules
-                </p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  These modules are activated based on your subscription tier. Your account admin enables them at the platform level; 
-                  workspace admins can optionally disable them for their team.
-                </p>
-              </div>
-
-              <Separator />
-
-              {/* Credential Wallet */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <BadgeCheck className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="credentialWallet" className="font-medium">Credential & License Wallet</Label>
-                      <Badge variant="outline">Add-On</Badge>
-                      {wsModules && !wsModules.platform_credential_wallet && (
-                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Track team certifications, licenses, and compliance credentials
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="credentialWallet"
-                  checked={wsModules?.credential_wallet_enabled ?? true}
-                  onCheckedChange={() =>
-                    handleWsToggle('credential_wallet_enabled', wsModules?.credential_wallet_enabled ?? true)
-                  }
-                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_credential_wallet : false)}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Training Hub */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <GraduationCap className="h-5 w-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="trainingHub" className="font-medium">Training Hub</Label>
-                      <Badge variant="outline">Add-On</Badge>
-                      {wsModules && !wsModules.platform_training_hub && (
-                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Course assignments, completion tracking, and compliance training
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="trainingHub"
-                  checked={wsModules?.training_hub_enabled ?? true}
-                  onCheckedChange={() =>
-                    handleWsToggle('training_hub_enabled', wsModules?.training_hub_enabled ?? true)
-                  }
-                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_training_hub : false)}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Safety Module */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <ShieldAlert className="h-5 w-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="safetyModule" className="font-medium">Safety Incident Log</Label>
-                      <Badge variant="outline">Add-On</Badge>
-                      {wsModules && !wsModules.platform_safety_module && (
-                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      OSHA recordkeeping, incident reporting, and safety classification
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="safetyModule"
-                  checked={wsModules?.safety_module_enabled ?? true}
-                  onCheckedChange={() =>
-                    handleWsToggle('safety_module_enabled', wsModules?.safety_module_enabled ?? true)
-                  }
-                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_safety_module : false)}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Equipment Tracker */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <Truck className="h-5 w-5 text-orange-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="equipmentTracker" className="font-medium">Equipment Tracker</Label>
-                      <Badge variant="outline">Add-On</Badge>
-                      {wsModules && !wsModules.platform_equipment_tracker && (
-                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Fleet, tools, and equipment management with document expiry tracking
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="equipmentTracker"
-                  checked={wsModules?.equipment_tracker_enabled ?? true}
-                  onCheckedChange={() =>
-                    handleWsToggle('equipment_tracker_enabled', wsModules?.equipment_tracker_enabled ?? true)
-                  }
-                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_equipment_tracker : false)}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Client Portals */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                    <Share2 className="h-5 w-5 text-teal-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="clientPortal" className="font-medium">Client Portals</Label>
-                      <Badge variant="outline">Add-On</Badge>
-                      {wsModules && !wsModules.platform_client_portal && (
-                        <Badge variant="secondary" className="gap-1"><Lock className="h-2.5 w-2.5" /> Not Activated</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      White-labeled portals for sharing compliance data with clients and stakeholders
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="clientPortal"
-                  checked={wsModules?.client_portal_enabled ?? true}
-                  onCheckedChange={() =>
-                    handleWsToggle('client_portal_enabled', wsModules?.client_portal_enabled ?? true)
-                  }
-                  disabled={!isAdmin || wsModulesLoading || toggleWsModule.isPending || (wsModules ? !wsModules.platform_client_portal : false)}
-                />
-              </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Per-Property Module Configuration */}
-          {isAdmin && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Per-Property Module Overrides</CardTitle>
-                <CardDescription>
-                  Enable or disable modules for specific properties
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-              {propertiesLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))}
-                </div>
-              ) : properties && properties.length > 0 ? (
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-muted/50 rounded-lg text-sm font-medium text-muted-foreground">
-                    <div>Property</div>
-                    <div className="text-center flex items-center justify-center gap-1">
-                      <Sun className="h-3 w-3" />
-                      Daily Grounds
-                    </div>
-                    <div className="text-center flex items-center justify-center gap-1">
-                      <ClipboardCheck className="h-3 w-3" />
-                      NSPIRE
-                    </div>
-                    <div className="text-center flex items-center justify-center gap-1">
-                      <FolderKanban className="h-3 w-3" />
-                      Projects
-                    </div>
-                  </div>
-                  
-                  {/* Property rows */}
-                  {properties.map((property) => (
-                    <div 
-                      key={property.id} 
-                      className="grid grid-cols-4 gap-4 px-4 py-3 border rounded-lg items-center"
-                    >
-                      <div>
-                        <p className="font-medium">{property.name}</p>
-                        <p className="text-xs text-muted-foreground">{property.city}, {property.state}</p>
-                      </div>
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={property.daily_grounds_enabled || false}
-                          onCheckedChange={(checked) => 
-                            handlePropertyModuleChange(property.id, 'daily_grounds_enabled', checked as boolean)
-                          }
-                          disabled={!isAdmin || updateProperty.isPending}
-                        />
-                      </div>
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={property.nspire_enabled || false}
-                          onCheckedChange={(checked) => 
-                            handlePropertyModuleChange(property.id, 'nspire_enabled', checked as boolean)
-                          }
-                          disabled={!isAdmin || updateProperty.isPending}
-                        />
-                      </div>
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={property.projects_enabled || false}
-                          onCheckedChange={(checked) => 
-                            handlePropertyModuleChange(property.id, 'projects_enabled', checked as boolean)
-                          }
-                          disabled={!isAdmin || updateProperty.isPending}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No properties found</p>
-                  <p className="text-sm">Add properties to configure module access</p>
-                </div>
-              )}
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {canManageUsers && (
