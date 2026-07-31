@@ -1,11 +1,14 @@
 /**
- * CorrespondenceComposer — draft a branded project letter, AI-assisted, then
- * take it out three ways: download a branded PDF, send by email (Resend), or send
- * via Gmail (lights up once Gmail is connected in PR3). Every save/send is logged
- * to the project trail (project_emails). Body is plain text (the letter renderer
- * lays it out); the PDF is produced from an off-screen rendered node.
+ * CorrespondenceComposer — draft a branded project letter, AI-assisted or typed/
+ * pasted by hand — either way the subject, greeting, and body are fully editable
+ * before saving. Take it out three ways: download a branded PDF, send by email
+ * (Resend, PDF attached), or send via Gmail (lights up once Gmail is connected
+ * in PR3). Every save/send is logged to the project trail (project_emails);
+ * pass `draft` to reopen a previously-saved one and keep editing the same row
+ * instead of creating a duplicate. Body is plain text (the letter renderer lays
+ * it out); the PDF is produced from an off-screen rendered node.
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -18,7 +21,7 @@ import { Sparkles, Loader2, Download, Send, Inbox, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSendEmail } from "@/hooks/useSendEmail";
-import { useProjectEmails } from "@/hooks/useProjectEmails";
+import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
 import { buildCorrespondenceHtml } from "@/lib/correspondence/correspondenceLetter";
 import { downloadReportPdf, reportPdfBase64 } from "@/lib/reports/reportPdf";
@@ -32,12 +35,16 @@ const CATEGORIES = [
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function CorrespondenceComposer({
-  open, onOpenChange, projectId, projectName,
+  open, onOpenChange, projectId, projectName, draft,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   projectId: string;
   projectName?: string | null;
+  /** Reopen an existing saved draft (from project_emails) to keep editing it —
+   *  populates every field from its letter_meta and continues updating the
+   *  same row instead of creating a duplicate. Omit/null for a fresh letter. */
+  draft?: ProjectEmail | null;
 }) {
   const sendEmail = useSendEmail();
   const emails = useProjectEmails(projectId);
@@ -49,6 +56,8 @@ export function CorrespondenceComposer({
   const [recipientOrg, setRecipientOrg] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
+  const [salutation, setSalutation] = useState("To Whom It May Concern:");
+  const [salutationTouched, setSalutationTouched] = useState(false);
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
   const [body, setBody] = useState("");
@@ -56,12 +65,42 @@ export function CorrespondenceComposer({
   const [busy, setBusy] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
 
+  // The greeting defaults from the recipient's name until the user edits it
+  // directly — after that it's fully theirs, even if the recipient changes.
+  useEffect(() => {
+    if (salutationTouched) return;
+    setSalutation(recipient.trim() ? `Dear ${recipient.split(",")[0].trim()}:` : "To Whom It May Concern:");
+  }, [recipient, salutationTouched]);
+
+  // Populate every field from a saved draft when it's opened, or reset to a
+  // blank letter otherwise — so Save/Send continue updating the same row.
+  useEffect(() => {
+    if (!open) return;
+    if (draft) {
+      const meta = (draft.letter_meta ?? {}) as Record<string, string>;
+      setCategory(meta.category || "r4");
+      setRecipient(meta.recipient || "");
+      setRecipientOrg(meta.recipientOrg || "");
+      setRecipientEmail(draft.to_emails?.[0] || "");
+      setReferenceNo(meta.referenceNo || "");
+      setSalutation(meta.salutation || "To Whom It May Concern:");
+      setSalutationTouched(true);
+      setSubject(draft.subject || "");
+      setBody(draft.body_text || "");
+      setSavedId(draft.id);
+    } else {
+      setCategory("r4"); setRecipient(""); setRecipientOrg(""); setRecipientEmail("");
+      setReferenceNo(""); setSalutation("To Whom It May Concern:"); setSalutationTouched(false);
+      setSubject(""); setContext(""); setBody(""); setSavedId(null);
+    }
+  }, [open, draft]);
+
   const letterHtml = useMemo(
     () => buildCorrespondenceHtml({
       subtitle: category === "city" ? "Agency correspondence" : "Project correspondence",
-      recipient, recipientOrg, referenceNo, subject, body, projectName,
+      recipient, recipientOrg, referenceNo, salutation, subject, body, projectName,
     }),
-    [category, recipient, recipientOrg, referenceNo, subject, body, projectName],
+    [category, recipient, recipientOrg, referenceNo, salutation, subject, body, projectName],
   );
 
   const loadTemplate = (id: string) => {
@@ -98,6 +137,7 @@ export function CorrespondenceComposer({
       status, channel, subject: subject || "(no subject)",
       to_emails: recipientEmail ? [recipientEmail] : [],
       body_html: letterHtml, body_text: body,
+      letter_meta: { category, recipient, recipientOrg, referenceNo, salutation },
     };
     if (savedId) {
       await emails.update.mutateAsync({ id: savedId, ...(payload as any) });
@@ -159,7 +199,7 @@ export function CorrespondenceComposer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Compose correspondence</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{draft ? "Edit draft" : "Compose correspondence"}</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
           {/* Template + category */}
@@ -187,6 +227,10 @@ export function CorrespondenceComposer({
             <Input placeholder="Reference no. (optional)" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
           </div>
           <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Greeting <span className="text-muted-foreground">(fully editable — "To Whom It May Concern:" by default)</span></Label>
+            <Input value={salutation} onChange={(e) => { setSalutation(e.target.value); setSalutationTouched(true); }} />
+          </div>
 
           {/* AI draft */}
           <div className="rounded-lg border p-3 space-y-2">

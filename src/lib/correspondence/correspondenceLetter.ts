@@ -11,6 +11,10 @@ export interface CorrespondenceLetterInput {
   recipientOrg?: string | null;    // company / agency (e.g. R4 Capital, City of Opa-Locka)
   recipientAddress?: string | null;
   referenceNo?: string | null;
+  /** Fully overridable greeting line (no trailing punctuation added — include
+   *  it yourself). Falls back to "Dear {recipient}:" / "To Whom It May
+   *  Concern:" only when not given. */
+  salutation?: string | null;
   subject: string;
   body?: string | null;            // plain text
   signedBy?: string | null;
@@ -43,7 +47,7 @@ export function buildCorrespondenceHtml(input: CorrespondenceLetterInput): strin
     <div style="margin-top:20px;font-weight:600;">Subject: ${esc(input.subject)}</div>
 
     <div style="margin-top:16px;">
-      ${input.recipient ? `<p style="margin:0 0 12px;">Dear ${esc(input.recipient.split(',')[0])}:</p>` : `<p style="margin:0 0 12px;">To Whom It May Concern:</p>`}
+      <p style="margin:0 0 12px;">${esc(input.salutation ?? (input.recipient ? `Dear ${input.recipient.split(',')[0]}:` : 'To Whom It May Concern:'))}</p>
       ${paras || '<p style="color:#8a877f;">[Letter body]</p>'}
     </div>
 

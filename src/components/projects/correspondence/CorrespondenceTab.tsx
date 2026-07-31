@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, PenLine, Loader2, Inbox, Check, RefreshCw, Sparkles, FileText, MessagesSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Mail, PenLine, Loader2, Inbox, Check, RefreshCw, Sparkles, FileText, MessagesSquare, Pencil, Trash2, FileEdit } from "lucide-react";
 import { toast } from "sonner";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
@@ -38,7 +39,7 @@ const TOPIC_LABEL: Record<string, string> = {
 interface ThreadGroup { key: string; threadId: string | null; messages: ProjectEmail[]; intel?: CorrespondenceThread; topic: string; lastAt: number }
 
 export function CorrespondenceTab({ projectId, projectName }: { projectId: string; projectName?: string | null }) {
-  const { data: emails = [], isLoading, removeThread } = useProjectEmails(projectId);
+  const { data: emails = [], isLoading, remove, removeThread } = useProjectEmails(projectId);
   const gmail = useGmailConnection();
   const { settings, sync } = useGmailSync(projectId);
   const { threads, analyze } = useCorrespondenceThreads(projectId);
@@ -46,9 +47,13 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
   const createActionItem = useCreateActionItem(projectId);
   const { user } = useAuth();
   const [composeOpen, setComposeOpen] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<ProjectEmail | null>(null);
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [pushing, setPushing] = useState<string | null>(null);
   const [view, setView] = useState<"threads" | "documents">("threads");
+
+  const openNewLetter = () => { setEditingDraft(null); setComposeOpen(true); };
+  const openDraft = (d: ProjectEmail) => { setEditingDraft(d); setComposeOpen(true); };
 
   // Toast the Gmail OAuth round-trip result and strip the ?gmail= param.
   useEffect(() => {
@@ -94,10 +99,18 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
 
   const threadIntel = useMemo(() => new Map((threads.data ?? []).map((t) => [t.gmail_thread_id, t])), [threads.data]);
 
+  // Draft letters (composed, not yet sent) get their own section — they're not
+  // real correspondence yet, so they're excluded from the thread list below.
+  const drafts = useMemo(
+    () => emails.filter((e) => e.status === "draft").sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()),
+    [emails],
+  );
+
   // Group messages into threads and attach intelligence.
   const groups = useMemo<ThreadGroup[]>(() => {
     const map = new Map<string, ThreadGroup>();
     for (const e of emails) {
+      if (e.status === "draft") continue;
       const key = e.gmail_thread_id ? `t:${e.gmail_thread_id}` : `m:${e.id}`;
       let g = map.get(key);
       if (!g) {
@@ -189,7 +202,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
             </Button>
           ))}
           {view === "threads" && (
-            <Button size="sm" onClick={() => setComposeOpen(true)}>
+            <Button size="sm" onClick={openNewLetter}>
               <PenLine className="h-4 w-4 mr-1" /> Compose
             </Button>
           )}
@@ -206,12 +219,54 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
         </button>
       </div>
 
-      <CorrespondenceComposer open={composeOpen} onOpenChange={setComposeOpen} projectId={projectId} projectName={projectName} />
+      <CorrespondenceComposer
+        open={composeOpen}
+        onOpenChange={(v) => { setComposeOpen(v); if (!v) setEditingDraft(null); }}
+        projectId={projectId}
+        projectName={projectName}
+        draft={editingDraft}
+      />
 
       {view === "documents" ? (
         <DocumentWorkspace projectId={projectId} projectName={projectName} />
       ) : (
         <>
+          {/* Draft letters — saved but not yet sent; click to keep editing */}
+          {drafts.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <FileEdit className="h-3.5 w-3.5" /> Drafts ({drafts.length})
+              </div>
+              {drafts.map((d) => (
+                <Card key={d.id} className="border-dashed">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{d.subject || "(no subject)"}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">Draft</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {d.to_emails?.[0] ? `To ${d.to_emails[0]} · ` : ""}{d.snippet || "Empty letter"}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0" onClick={() => openDraft(d)}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-rose-600"
+                      onClick={() => {
+                        if (!window.confirm("Delete this draft? This can't be undone.")) return;
+                        remove.mutate(d.id, { onSuccess: () => toast.success("Draft deleted.") });
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {/* Topic filter chips + opt-in Analyze */}
           {groups.length > 0 && topicCounts.size > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
