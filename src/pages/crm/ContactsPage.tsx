@@ -23,6 +23,7 @@ import {
   List,
   X,
   Filter,
+  Sparkles,
 } from "lucide-react";
 import {
   useCRMContacts,
@@ -38,6 +39,7 @@ import { ContactCard } from "@/components/crm/ContactCard";
 import { ContactDetailSheet } from "@/components/crm/ContactDetailSheet";
 import { AlphabetNav } from "@/components/crm/AlphabetNav";
 import { ContactsEmptyState } from "@/components/crm/ContactsEmptyState";
+import { ImportContactsDialog } from "@/components/crm/ImportContactsDialog";
 import { useProperties } from "@/hooks/useProperties";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +57,7 @@ export default function ContactsPage() {
   const [editingContact, setEditingContact] = useState<CRMContact | null>(null);
   const [selectedContact, setSelectedContact] = useState<CRMContact | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
@@ -157,16 +160,21 @@ export default function ContactsPage() {
             Manage your network of vendors, regulators, and partners
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingContact(null);
-            setDialogOpen(true);
-          }}
-          className="shrink-0"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Contact
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Import from activity
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingContact(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Contact
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -484,6 +492,8 @@ export default function ContactsPage() {
         onDelete={handleDelete}
         onToggleFavorite={handleToggleFavorite}
       />
+
+      <ImportContactsDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   );
 }
