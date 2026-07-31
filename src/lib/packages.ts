@@ -25,6 +25,7 @@ export const MODULE_CATALOG: ModuleCategory[] = [
     { key: 'nspireEnabled', label: 'NSPIRE inspections', description: 'Unit inspections and REAC scoring' },
     { key: 'dailyGroundsEnabled', label: 'Daily grounds', description: 'Grounds and asset inspections' },
     { key: 'occupancyEnabled', label: 'Occupancy', description: 'Tenant / occupancy management' },
+    { key: 'projectsEnabled', label: 'Projects (legacy)', description: 'Capital improvements, daily reports, change orders, and closeout' },
   ] },
   { key: 'field', label: 'Field ops', modules: [
     { key: 'equipmentTrackerEnabled', label: 'Equipment & fleet', description: 'Equipment and fleet tracking' },
@@ -35,6 +36,9 @@ export const MODULE_CATALOG: ModuleCategory[] = [
   ] },
   { key: 'portals', label: 'Portals', modules: [
     { key: 'clientPortalEnabled', label: 'Client portal', description: 'White-labeled client sharing' },
+  ] },
+  { key: 'communication', label: 'Communication', modules: [
+    { key: 'emailInboxEnabled', label: 'Email inbox integration', description: 'Unified email inbox with AI-powered triage' },
   ] },
   { key: 'insights', label: 'Insights', modules: [
     { key: 'reportsEnabled', label: 'Reports & documents', description: 'Reports center, documents, CaseIQ' },

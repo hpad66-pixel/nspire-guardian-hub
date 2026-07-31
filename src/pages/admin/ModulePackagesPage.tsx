@@ -3,10 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Boxes, Lock, Check, ShieldCheck } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Boxes, Lock, Check, ShieldCheck, Building2, Sun, ClipboardCheck, FolderKanban } from 'lucide-react';
 import { useWorkspaceModules, useToggleWorkspaceModule, useApplyPackage, type WorkspaceModuleRow } from '@/hooks/useWorkspaceModules';
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
 import { MODULE_CATALOG, PACKAGES, MODULE_WS_COLUMN, type ModuleKey } from '@/lib/packages';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +20,8 @@ export default function ModulePackagesPage() {
   const { refetchModules, isModuleEnabled, toggleModule } = useModules();
   const { currentRole } = useUserPermissions();
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
+  const { data: properties, isLoading: propertiesLoading } = useProperties();
+  const updateProperty = useUpdateProperty();
 
   // Fall back to querying the workspace id when no module row exists yet.
   const { data: wsId } = useQuery({
@@ -37,9 +42,10 @@ export default function ModulePackagesPage() {
   }
 
   const r = row as WorkspaceModuleRow | null;
-  // nspire / daily-grounds are stored on the PROPERTIES table (workspace-wide),
-  // toggled via ModuleContext; everything else is a workspace_modules column.
-  const PROPERTY_BACKED = new Set<ModuleKey>(['nspireEnabled', 'dailyGroundsEnabled']);
+  // nspire / daily-grounds / projects are stored on the PROPERTIES table
+  // (workspace-wide), toggled via ModuleContext; everything else is a
+  // workspace_modules column.
+  const PROPERTY_BACKED = new Set<ModuleKey>(['nspireEnabled', 'dailyGroundsEnabled', 'projectsEnabled']);
 
   const state = (key: ModuleKey) => {
     const wsCol = MODULE_WS_COLUMN[key];
@@ -58,6 +64,14 @@ export default function ModulePackagesPage() {
   const apply = (packageKey: string) => {
     if (!workspaceId) return;
     applyPkg.mutate({ workspaceId, packageKey }, { onSuccess: () => refetchModules() });
+  };
+
+  const setPropertyModule = (
+    propertyId: string,
+    column: 'nspire_enabled' | 'daily_grounds_enabled' | 'projects_enabled',
+    checked: boolean,
+  ) => {
+    updateProperty.mutate({ id: propertyId, [column]: checked }, { onSuccess: () => refetchModules() });
   };
 
   return (
@@ -122,7 +136,62 @@ export default function ModulePackagesPage() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">“Not in plan” means a super-admin platform gate is off (upsell). “Per property” modules (NSPIRE, Daily Grounds) are turned on inside each property.</p>
+      <p className="text-xs text-muted-foreground">“Not in plan” means a super-admin platform gate is off (upsell). “Per property” modules (NSPIRE, Daily Grounds, Projects) are turned on inside each property.</p>
+
+      {/* Per-property overrides — Daily Grounds / NSPIRE / Projects are also toggleable per property, on top of the workspace-wide switches above. */}
+      <div>
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">Per-property overrides</div>
+        {propertiesLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+          </div>
+        ) : properties && properties.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <div className="grid grid-cols-4 gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">
+              <div>Property</div>
+              <div className="flex items-center justify-center gap-1"><Sun className="h-3 w-3" />Daily Grounds</div>
+              <div className="flex items-center justify-center gap-1"><ClipboardCheck className="h-3 w-3" />NSPIRE</div>
+              <div className="flex items-center justify-center gap-1"><FolderKanban className="h-3 w-3" />Projects</div>
+            </div>
+            <div className="divide-y">
+              {properties.map((property) => (
+                <div key={property.id} className="grid grid-cols-4 items-center gap-2 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-sm">{property.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{property.city}, {property.state}</p>
+                  </div>
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={property.daily_grounds_enabled || false}
+                      onCheckedChange={(checked) => setPropertyModule(property.id, 'daily_grounds_enabled', checked as boolean)}
+                      disabled={updateProperty.isPending}
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={property.nspire_enabled || false}
+                      onCheckedChange={(checked) => setPropertyModule(property.id, 'nspire_enabled', checked as boolean)}
+                      disabled={updateProperty.isPending}
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={property.projects_enabled || false}
+                      onCheckedChange={(checked) => setPropertyModule(property.id, 'projects_enabled', checked as boolean)}
+                      disabled={updateProperty.isPending}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border py-8 text-center text-muted-foreground">
+            <Building2 className="mx-auto mb-3 h-10 w-10 opacity-40" />
+            <p className="text-sm">No properties found</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
