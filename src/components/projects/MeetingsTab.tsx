@@ -684,12 +684,20 @@ export function MeetingEditorSheet({
     setRawNotes(meeting?.raw_notes || '');
     setPolishedHtml(meeting?.polished_notes_html || meeting?.polished_notes || '');
     setPreviousHtml(null);
-    // Open straight to the finalized minutes when they already exist.
-    setActiveTab((meeting?.polished_notes_html || meeting?.polished_notes) ? 'minutes' : 'notes');
-    setIsEditing(false);
+    const existingMinutes = !!(meeting?.polished_notes_html || meeting?.polished_notes);
+    const locked = meeting?.status === 'finalized';
+    // Open straight to the minutes when they already exist — and straight into
+    // the editor, not the read-only preview, so there's no extra "Edit" click
+    // to find before you can pick up where you left off.
+    setActiveTab(existingMinutes ? 'minutes' : 'notes');
+    setIsEditing(existingMinutes && !locked);
     setIsFullScreen(false);
+  // Deliberately NOT keyed on meeting?.id — a save turns a brand-new meeting
+  // (meeting=null) into an existing one in place, without the sheet closing,
+  // and re-running this on that transition would reset the editor back to
+  // read-only right after the user just saved. Only re-sync on open/close.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, meeting?.id]);
+  }, [open]);
 
   const handlePolish = useCallback(async () => {
     if (!rawNotes.trim()) { toast.error('Enter some notes first'); return; }
@@ -717,7 +725,9 @@ export function MeetingEditorSheet({
       polished_notes: polishedHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
       polished_notes_html: polishedHtml,
     });
-    onClose();
+    // Deliberately stays open — Save persists in place so editing can continue
+    // right away, instead of closing and forcing the user to reopen the
+    // meeting (and re-find the Edit toggle) to keep working on the minutes.
   };
 
   const handleFinalize = () => {
@@ -815,7 +825,10 @@ export function MeetingsTab({ projectId }: { projectId: string }) {
 
   const handleSave = async (data: Partial<ProjectMeeting>) => {
     if (isCreating) {
-      await createMeeting.mutateAsync({
+      // The editor stays open after a save (see MeetingEditorInner.handleSave)
+      // — so the very next Save on this same meeting must update it, not
+      // create a duplicate. Flip to edit-mode on the row we just inserted.
+      const created = await createMeeting.mutateAsync({
         project_id: projectId,
         title: data.title || 'Untitled Meeting',
         meeting_date: data.meeting_date || format(new Date(), 'yyyy-MM-dd'),
@@ -828,8 +841,11 @@ export function MeetingsTab({ projectId }: { projectId: string }) {
         polished_notes_html: data.polished_notes_html,
         status: 'draft',
       });
+      setSelectedMeeting(created as unknown as ProjectMeeting);
+      setIsCreating(false);
     } else if (selectedMeeting) {
-      await updateMeeting.mutateAsync({ id: selectedMeeting.id, ...data });
+      const updated = await updateMeeting.mutateAsync({ id: selectedMeeting.id, ...data });
+      setSelectedMeeting(updated as unknown as ProjectMeeting);
     }
   };
 
