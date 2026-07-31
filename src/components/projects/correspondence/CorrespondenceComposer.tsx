@@ -1,12 +1,16 @@
 /**
- * CorrespondenceComposer — draft a branded project letter, AI-assisted or typed/
- * pasted by hand — either way the subject, greeting, and body are fully editable
- * before saving. Take it out three ways: download a branded PDF, send by email
- * (Resend, PDF attached), or send via Gmail (lights up once Gmail is connected
- * in PR3). Every save/send is logged to the project trail (project_emails);
- * pass `draft` to reopen a previously-saved one and keep editing the same row
- * instead of creating a duplicate. Body is plain text (the letter renderer lays
- * it out); the PDF is produced from an off-screen rendered node.
+ * CorrespondenceComposer — draft a branded project letter, AI-assisted, typed,
+ * or pasted by hand. The body is ONE rich-text editor (bold, headings, bullets,
+ * sub-bullets…) and it is the single source of truth: whatever the greeting/
+ * body says in the editor is exactly what goes into the document — nothing is
+ * auto-composited on top of it (no hidden "To Whom It May Concern" that isn't
+ * actually in your text). A Preview toggle shows the exact branded rendering
+ * before you send — what you see there is pixel-for-pixel what the PDF/email
+ * produce. Take it out three ways: download a branded PDF (paginated, not
+ * shrunk to fit one page), send by email (Resend, PDF attached), or send via
+ * Gmail (lights up once Gmail is connected in PR3). Every save/send is logged
+ * to the project trail (project_emails); pass `draft` to reopen a previously-
+ * saved one and keep editing the same row instead of creating a duplicate.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,14 +21,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Download, Send, Inbox, Save } from "lucide-react";
+import { ProRichTextEditor } from "@/components/ui/rich-text-editor";
+import { Sparkles, Loader2, Download, Send, Inbox, Save, Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
 import { buildCorrespondenceHtml } from "@/lib/correspondence/correspondenceLetter";
-import { downloadReportPdf, reportPdfBase64 } from "@/lib/reports/reportPdf";
+import { downloadLetterPdf, letterPdfBase64 } from "@/lib/correspondence/letterPdf";
 
 const CATEGORIES = [
   { value: "r4", label: "Client / Owner (R4)" },
@@ -33,6 +39,14 @@ const CATEGORIES = [
   { value: "general", label: "General" },
 ];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// AI drafts come back as plain text (blank line = new paragraph) — wrap it into
+// the same paragraph markup the rich editor itself produces, so it drops in as
+// normal editable content, not a special case.
+const plainTextToHtml = (text: string) =>
+  text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
 
 export function CorrespondenceComposer({
   open, onOpenChange, projectId, projectName, draft,
@@ -56,21 +70,13 @@ export function CorrespondenceComposer({
   const [recipientOrg, setRecipientOrg] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
-  const [salutation, setSalutation] = useState("To Whom It May Concern:");
-  const [salutationTouched, setSalutationTouched] = useState(false);
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
-  const [body, setBody] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [drafting, setDrafting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-
-  // The greeting defaults from the recipient's name until the user edits it
-  // directly — after that it's fully theirs, even if the recipient changes.
-  useEffect(() => {
-    if (salutationTouched) return;
-    setSalutation(recipient.trim() ? `Dear ${recipient.split(",")[0].trim()}:` : "To Whom It May Concern:");
-  }, [recipient, salutationTouched]);
 
   // Populate every field from a saved draft when it's opened, or reset to a
   // blank letter otherwise — so Save/Send continue updating the same row.
@@ -83,24 +89,24 @@ export function CorrespondenceComposer({
       setRecipientOrg(meta.recipientOrg || "");
       setRecipientEmail(draft.to_emails?.[0] || "");
       setReferenceNo(meta.referenceNo || "");
-      setSalutation(meta.salutation || "To Whom It May Concern:");
-      setSalutationTouched(true);
       setSubject(draft.subject || "");
-      setBody(draft.body_text || "");
+      // Prefer the raw rich content saved alongside the draft; fall back to
+      // wrapping the flattened plain body for drafts saved before this shipped.
+      setBodyHtml(meta.bodyHtml || (draft.body_text ? plainTextToHtml(draft.body_text) : ""));
       setSavedId(draft.id);
     } else {
       setCategory("r4"); setRecipient(""); setRecipientOrg(""); setRecipientEmail("");
-      setReferenceNo(""); setSalutation("To Whom It May Concern:"); setSalutationTouched(false);
-      setSubject(""); setContext(""); setBody(""); setSavedId(null);
+      setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setSavedId(null);
     }
+    setMode("edit");
   }, [open, draft]);
 
   const letterHtml = useMemo(
     () => buildCorrespondenceHtml({
       subtitle: category === "city" ? "Agency correspondence" : "Project correspondence",
-      recipient, recipientOrg, referenceNo, salutation, subject, body, projectName,
+      recipient, recipientOrg, referenceNo, subject, body: bodyHtml, projectName,
     }),
-    [category, recipient, recipientOrg, referenceNo, salutation, subject, body, projectName],
+    [category, recipient, recipientOrg, referenceNo, subject, bodyHtml, projectName],
   );
 
   const loadTemplate = (id: string) => {
@@ -109,7 +115,7 @@ export function CorrespondenceComposer({
     setCategory(t.category || "general");
     if (t.recipient) setRecipient(t.recipient);
     if (t.subject_template) setSubject(t.subject_template);
-    if (t.body_template) setBody(t.body_template);
+    if (t.body_template) setBodyHtml(t.body_template);
     toast.success(`Loaded "${t.name}"`);
   };
 
@@ -122,7 +128,8 @@ export function CorrespondenceComposer({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setBody(String(data?.body ?? ""));
+      setBodyHtml(plainTextToHtml(String(data?.body ?? "")));
+      setMode("edit");
       toast.success("Draft ready — review and edit.");
     } catch (e: any) {
       toast.error(`Couldn't draft: ${e?.message ?? "try again"}`);
@@ -133,11 +140,12 @@ export function CorrespondenceComposer({
 
   // Create the trail row on first save; update it thereafter (avoids duplicates).
   async function persist(status: "draft" | "sent", channel: string) {
+    const plain = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const payload = {
       status, channel, subject: subject || "(no subject)",
       to_emails: recipientEmail ? [recipientEmail] : [],
-      body_html: letterHtml, body_text: body,
-      letter_meta: { category, recipient, recipientOrg, referenceNo, salutation },
+      body_html: letterHtml, body_text: plain,
+      letter_meta: { category, recipient, recipientOrg, referenceNo, bodyHtml },
     };
     if (savedId) {
       await emails.update.mutateAsync({ id: savedId, ...(payload as any) });
@@ -161,7 +169,7 @@ export function CorrespondenceComposer({
     setBusy(true);
     const t = toast.loading("Building branded PDF…");
     try {
-      await downloadReportPdf(docRef.current, filename());
+      await downloadLetterPdf(docRef.current, filename());
       toast.success("Downloaded.", { id: t });
     } catch (e: any) { toast.error(`PDF failed: ${e?.message}`, { id: t }); }
     finally { setBusy(false); }
@@ -175,10 +183,10 @@ export function CorrespondenceComposer({
     try {
       let attachments;
       if (docRef.current) {
-        const { base64, size } = await reportPdfBase64(docRef.current);
+        const { base64, size } = await letterPdfBase64(docRef.current);
         attachments = [{ filename: filename(), contentBase64: base64, contentType: "application/pdf", size }];
       }
-      await sendEmail.mutateAsync({ recipients: [recipientEmail], subject, bodyHtml: letterHtml, bodyText: body, attachments });
+      await sendEmail.mutateAsync({ recipients: [recipientEmail], subject, bodyHtml: letterHtml, bodyText: bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(), attachments });
       await persist("sent", "resend");
       toast.success(`Sent to ${recipientEmail}.`, { id: t });
       onOpenChange(false);
@@ -191,14 +199,14 @@ export function CorrespondenceComposer({
     const name = window.prompt("Template name (e.g. \"R4 status letter\"):", `${CATEGORIES.find((c) => c.value === category)?.label} letter`);
     if (!name) return;
     try {
-      await templates.create.mutateAsync({ name, category, subject_template: subject, body_template: body, recipient });
+      await templates.create.mutateAsync({ name, category, subject_template: subject, body_template: bodyHtml, recipient });
       toast.success(`Saved template "${name}".`);
     } catch (e: any) { toast.error(e?.message ?? "Couldn't save template."); }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{draft ? "Edit draft" : "Compose correspondence"}</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
@@ -227,10 +235,6 @@ export function CorrespondenceComposer({
             <Input placeholder="Reference no. (optional)" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
           </div>
           <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          <div className="space-y-1">
-            <Label className="text-xs">Greeting <span className="text-muted-foreground">(fully editable — "To Whom It May Concern:" by default)</span></Label>
-            <Input value={salutation} onChange={(e) => { setSalutation(e.target.value); setSalutationTouched(true); }} />
-          </div>
 
           {/* AI draft */}
           <div className="rounded-lg border p-3 space-y-2">
@@ -241,15 +245,45 @@ export function CorrespondenceComposer({
             </Button>
           </div>
 
-          {/* Body */}
+          {/* Body — edit (rich text: bold, headings, bullets, sub-bullets…) or
+              preview the exact branded rendering before you send. */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Letter body</Label>
-              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={saveTemplate} disabled={!body.trim()}>
-                <Save className="h-3.5 w-3.5" /> Save as template
-              </Button>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Letter body — includes your own greeting, exactly as typed</Label>
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={saveTemplate} disabled={!bodyHtml.trim()}>
+                  <Save className="h-3.5 w-3.5" /> Save as template
+                </Button>
+                <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+                  <button
+                    onClick={() => setMode("edit")}
+                    className={cn("h-6 px-2 rounded text-xs font-medium flex items-center gap-1 transition-colors", mode === "edit" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                  <button
+                    onClick={() => setMode("preview")}
+                    className={cn("h-6 px-2 rounded text-xs font-medium flex items-center gap-1 transition-colors", mode === "preview" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <Eye className="h-3 w-3" /> Preview
+                  </button>
+                </div>
+              </div>
             </div>
-            <Textarea rows={12} value={body} onChange={(e) => setBody(e.target.value)} placeholder="The letter body — draft with AI above, or write it here." className="font-[Georgia,serif] leading-relaxed" />
+
+            {mode === "edit" ? (
+              <ProRichTextEditor
+                content={bodyHtml}
+                onChange={setBodyHtml}
+                placeholder={'Start typing — your greeting ("Dear …," or "To Whom It May Concern:"), then the letter body. Use the toolbar for bold, bullets, sub-bullets, and headings.'}
+                editable
+                minHeight="320px"
+              />
+            ) : (
+              <div className="rounded-lg border bg-muted/20 p-4 overflow-x-auto">
+                <div className="mx-auto bg-white shadow-sm" style={{ maxWidth: 700 }} dangerouslySetInnerHTML={{ __html: letterHtml }} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -263,7 +297,9 @@ export function CorrespondenceComposer({
           </Button>
         </DialogFooter>
 
-        {/* Off-screen branded letter — rasterized to PDF (download / attachment). */}
+        {/* Off-screen branded letter — always kept in sync with letterHtml so
+            Download/Send rasterize the exact current content regardless of
+            whether Edit or Preview is on screen right now. */}
         <div style={{ position: "fixed", left: -99999, top: 0, width: 720, background: "#fff" }} aria-hidden>
           <div ref={docRef} dangerouslySetInnerHTML={{ __html: letterHtml }} />
         </div>
