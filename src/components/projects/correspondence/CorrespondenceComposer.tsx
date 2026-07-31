@@ -29,8 +29,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
-import { buildCorrespondenceHtml } from "@/lib/correspondence/correspondenceLetter";
+import { useSavedRecipients } from "@/hooks/useSavedRecipients";
+import { buildCorrespondenceHtml, buildCoverNoteHtml } from "@/lib/correspondence/correspondenceLetter";
 import { downloadLetterPdf, letterPdfBase64 } from "@/lib/correspondence/letterPdf";
+import { RecipientsInput } from "./RecipientsInput";
 
 const CATEGORIES = [
   { value: "r4", label: "Client / Owner (R4)" },
@@ -38,8 +40,6 @@ const CATEGORIES = [
   { value: "transmittal", label: "Transmittal" },
   { value: "general", label: "General" },
 ];
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 // AI drafts come back as plain text (blank line = new paragraph) — wrap it into
 // the same paragraph markup the rich editor itself produces, so it drops in as
@@ -63,16 +63,21 @@ export function CorrespondenceComposer({
   const sendEmail = useSendEmail();
   const emails = useProjectEmails(projectId);
   const templates = useCorrespondenceTemplates(projectId);
+  const savedRecipients = useSavedRecipients();
   const docRef = useRef<HTMLDivElement>(null);
 
   const [category, setCategory] = useState("r4");
   const [recipient, setRecipient] = useState("");
   const [recipientOrg, setRecipientOrg] = useState("");
-  const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [ccRecipients, setCcRecipients] = useState<string[]>([]);
+  const [bccRecipients, setBccRecipients] = useState<string[]>([]);
   const [referenceNo, setReferenceNo] = useState("");
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
+  const [message, setMessage] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [drafting, setDrafting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,20 +88,25 @@ export function CorrespondenceComposer({
   useEffect(() => {
     if (!open) return;
     if (draft) {
-      const meta = (draft.letter_meta ?? {}) as Record<string, string>;
+      const meta = (draft.letter_meta ?? {}) as Record<string, any>;
       setCategory(meta.category || "r4");
       setRecipient(meta.recipient || "");
       setRecipientOrg(meta.recipientOrg || "");
-      setRecipientEmail(draft.to_emails?.[0] || "");
+      setRecipients(draft.to_emails ?? []);
+      setCcRecipients((draft as any).cc_emails ?? []);
+      setBccRecipients([]); // never stored — bcc stays private, not resumable
+      setShowCcBcc(((draft as any).cc_emails ?? []).length > 0);
       setReferenceNo(meta.referenceNo || "");
       setSubject(draft.subject || "");
+      setMessage(meta.message || "");
       // Prefer the raw rich content saved alongside the draft; fall back to
       // wrapping the flattened plain body for drafts saved before this shipped.
       setBodyHtml(meta.bodyHtml || (draft.body_text ? plainTextToHtml(draft.body_text) : ""));
       setSavedId(draft.id);
     } else {
-      setCategory("r4"); setRecipient(""); setRecipientOrg(""); setRecipientEmail("");
-      setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setSavedId(null);
+      setCategory("r4"); setRecipient(""); setRecipientOrg("");
+      setRecipients([]); setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
+      setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     }
     setMode("edit");
   }, [open, draft]);
@@ -139,13 +149,14 @@ export function CorrespondenceComposer({
   const filename = () => `${(subject || "letter").replace(/[^\w.-]+/g, "-").slice(0, 60)}.pdf`;
 
   // Create the trail row on first save; update it thereafter (avoids duplicates).
+  // bcc is deliberately never persisted here — that's what makes it blind.
   async function persist(status: "draft" | "sent", channel: string) {
     const plain = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const payload = {
       status, channel, subject: subject || "(no subject)",
-      to_emails: recipientEmail ? [recipientEmail] : [],
+      to_emails: recipients, cc_emails: ccRecipients,
       body_html: letterHtml, body_text: plain,
-      letter_meta: { category, recipient, recipientOrg, referenceNo, bodyHtml },
+      letter_meta: { category, recipient, recipientOrg, referenceNo, bodyHtml, message },
     };
     if (savedId) {
       await emails.update.mutateAsync({ id: savedId, ...(payload as any) });
@@ -176,7 +187,7 @@ export function CorrespondenceComposer({
   };
 
   const sendResend = async () => {
-    if (!EMAIL_RE.test(recipientEmail)) { toast.error("Add a valid recipient email."); return; }
+    if (!recipients.length) { toast.error("Add at least one recipient."); return; }
     if (!subject.trim()) { toast.error("Add a subject first."); return; }
     setBusy(true);
     const t = toast.loading("Sending…");
@@ -186,9 +197,20 @@ export function CorrespondenceComposer({
         const { base64, size } = await letterPdfBase64(docRef.current);
         attachments = [{ filename: filename(), contentBase64: base64, contentType: "application/pdf", size }];
       }
-      await sendEmail.mutateAsync({ recipients: [recipientEmail], subject, bodyHtml: letterHtml, bodyText: bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(), attachments });
+      // A separate cover note (if written) becomes the email body, with the
+      // full branded letter going out as the PDF attachment only — instead of
+      // rendering the whole letter twice (inline AND attached).
+      const emailBodyHtml = message.trim()
+        ? buildCoverNoteHtml({ message, attachmentName: filename(), projectName })
+        : letterHtml;
+      const emailBodyText = message.trim() ? message : bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      await sendEmail.mutateAsync({
+        recipients, ccRecipients: ccRecipients.length ? ccRecipients : undefined, bccRecipients: bccRecipients.length ? bccRecipients : undefined,
+        subject, bodyHtml: emailBodyHtml, bodyText: emailBodyText, attachments,
+      });
       await persist("sent", "resend");
-      toast.success(`Sent to ${recipientEmail}.`, { id: t });
+      savedRecipients.rememberAll([...recipients, ...ccRecipients, ...bccRecipients]).catch(() => {});
+      toast.success(`Sent to ${recipients.join(", ")}.`, { id: t });
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Send failed.", { id: t });
@@ -229,12 +251,42 @@ export function CorrespondenceComposer({
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            <Input placeholder="Recipient name / title" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+            <Input placeholder="Recipient name / title (for the letter's address block)" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
             <Input placeholder="Recipient org (e.g. R4 Capital)" value={recipientOrg} onChange={(e) => setRecipientOrg(e.target.value)} />
-            <Input placeholder="Recipient email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} />
+          </div>
+
+          {/* Send-to addresses — email only, no name required. Autocompletes
+              from every address you've sent to before; anything you send to
+              here is remembered automatically for next time. */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">To</Label>
+              {!showCcBcc && (
+                <button type="button" onClick={() => setShowCcBcc(true)} className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+                  Add Cc/Bcc
+                </button>
+              )}
+            </div>
+            <RecipientsInput value={recipients} onChange={setRecipients} placeholder="email@example.com — press Enter to add" />
+            {showCcBcc && (
+              <>
+                <Label className="text-xs">Cc</Label>
+                <RecipientsInput value={ccRecipients} onChange={setCcRecipients} placeholder="Visible to every recipient" />
+                <Label className="text-xs">Bcc</Label>
+                <RecipientsInput value={bccRecipients} onChange={setBccRecipients} placeholder="Hidden from every other recipient" />
+              </>
+            )}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
             <Input placeholder="Reference no. (optional)" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
           </div>
-          <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+
+          <div className="space-y-1">
+            <Label className="text-xs">Message <span className="text-muted-foreground">(optional cover note — becomes the email body, with the letter sent as a PDF attachment instead of inline. Leave blank to send the full letter inline as before.)</span></Label>
+            <Textarea rows={2} placeholder="A short note to go with the attached letter…" value={message} onChange={(e) => setMessage(e.target.value)} />
+          </div>
 
           {/* AI draft */}
           <div className="rounded-lg border p-3 space-y-2">

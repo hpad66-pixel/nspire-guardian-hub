@@ -93,3 +93,29 @@ export function buildCorrespondenceHtml(input: CorrespondenceLetterInput): strin
     </div>
   </div>`;
 }
+
+export interface CoverNoteInput {
+  brand?: string;
+  message: string;            // plain text, paragraphs split on blank lines
+  attachmentName?: string | null;
+  projectName?: string | null;
+}
+
+// A short email wrapper for when the actual document goes out as a PDF
+// attachment — the email body is just your note, not the whole letter
+// rendered twice. Falls back to buildCorrespondenceHtml's full inline
+// rendering when there's no separate message (see CorrespondenceComposer).
+export function buildCoverNoteHtml(input: CoverNoteInput): string {
+  const brand = input.brand || 'APAS';
+  const paras = (input.message || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    .map((p) => `<p style="margin:0 0 14px;">${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+
+  return `<div style="max-width:600px;margin:0 auto;font-family:'DM Sans',Georgia,serif;color:#1A1714;font-size:15px;line-height:1.7;background:#fff;padding:28px 32px;">
+    <div style="font-family:Georgia,'Playfair Display',serif;font-size:19px;font-weight:700;border-bottom:2px solid #C4A35A;padding-bottom:10px;">${esc(brand)}</div>
+    <div style="margin-top:20px;">${paras}</div>
+    ${input.attachmentName ? `<div style="margin-top:8px;font-size:13px;color:#5f5c57;">📎 Attached: ${esc(input.attachmentName)}</div>` : ''}
+    <div style="margin-top:28px;border-top:1px solid #e8e5df;padding-top:10px;font-size:11.5px;color:#a8a49c;">
+      ${esc(brand)}${input.projectName ? ` · ${esc(input.projectName)}` : ''}
+    </div>
+  </div>`;
+}

@@ -8,6 +8,9 @@ import { render } from "@testing-library/react";
 vi.mock("@/hooks/useSendEmail", () => ({ useSendEmail: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
 vi.mock("@/hooks/useProjectEmails", () => ({ useProjectEmails: () => ({ create: { mutateAsync: vi.fn() }, update: { mutateAsync: vi.fn() } }) }));
 vi.mock("@/hooks/useCorrespondenceTemplates", () => ({ useCorrespondenceTemplates: () => ({ data: [], create: { mutateAsync: vi.fn() } }) }));
+vi.mock("@/hooks/useSavedRecipients", () => ({
+  useSavedRecipients: () => ({ data: [], remember: { mutateAsync: vi.fn() }, rememberAll: vi.fn(), remove: { mutateAsync: vi.fn() } }),
+}));
 vi.mock("@/lib/correspondence/letterPdf", () => ({ downloadLetterPdf: vi.fn(), letterPdfBase64: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() }, auth: { getUser: vi.fn() } } }));
 // The real rich-text editor mounts a TipTap instance — heavier than a render
