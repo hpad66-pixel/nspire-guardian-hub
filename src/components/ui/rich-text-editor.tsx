@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
@@ -17,13 +18,50 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
-  List, ListOrdered, Quote, Heading1, Heading2, Heading3,
+  List, ListOrdered, Quote, Heading1, Heading2, Heading3, Pilcrow,
   Undo, Redo, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Table as TableIcon, Image as ImageIcon, Highlighter, Minus,
-  Sparkles, Loader2, Palette,
+  Sparkles, Loader2, Palette, SpellCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditorToolsBar } from '@/components/ui/editor-tools';
+
+// ─── Font size — layered on the already-installed TextStyle mark (its own
+// extension point for exactly this), so no new dependency is needed. ────────
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    fontSize: {
+      setFontSize: (size: string) => ReturnType;
+      unsetFontSize: () => ReturnType;
+    };
+  }
+}
+
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addOptions() {
+    return { types: ['textStyle'] };
+  },
+  addGlobalAttributes() {
+    return [{
+      types: this.options.types,
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: (el: HTMLElement) => el.style.fontSize || null,
+          renderHTML: (attrs: { fontSize?: string | null }) =>
+            attrs.fontSize ? { style: `font-size: ${attrs.fontSize}` } : {},
+        },
+      },
+    }];
+  },
+  addCommands() {
+    return {
+      setFontSize: (size: string) => ({ chain }) => chain().setMark('textStyle', { fontSize: size }).run(),
+      unsetFontSize: () => ({ chain }) => chain().setMark('textStyle', { fontSize: null }).run(),
+    };
+  },
+});
 
 // ─── Basic editor (backward-compatible) ─────────────────────────────────────
 
@@ -131,6 +169,9 @@ export interface ProRichTextEditorProps {
   editable?: boolean;
   onAiComplete?: (context: string) => Promise<string>;
   isAiLoading?: boolean;
+  /** Opt-in AI proofreading pass — receives the full current HTML, returns
+   *  corrected HTML (spelling/grammar only, same wording/tone/formatting). */
+  onAiFix?: (html: string) => Promise<string>;
   minHeight?: string;
 }
 
@@ -196,11 +237,15 @@ function ProMenuBar({
   onAiComplete,
   isAiLoading,
   onImageUpload,
+  onAiFix,
+  isAiFixing,
 }: {
   editor: Editor | null;
   onAiComplete?: () => void;
   isAiLoading?: boolean;
   onImageUpload?: () => void;
+  onAiFix?: () => void;
+  isAiFixing?: boolean;
 }) {
   const [openPicker, setOpenPicker] = useState<'text' | 'highlight' | null>(null);
 
@@ -240,6 +285,36 @@ function ProMenuBar({
       <ToolBtn label="Heading 3" active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
         <Heading3 className="h-3.5 w-3.5" />
       </ToolBtn>
+      {/* Reverts a heading (or anything else) back to normal paragraph text —
+          the un-do for "I picked a heading and now everything after it keeps
+          coming out as a heading too". */}
+      <ToolBtn label="Normal text" active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()}>
+        <Pilcrow className="h-3.5 w-3.5" />
+      </ToolBtn>
+
+      <Separator orientation="vertical" className="mx-1 h-5" />
+
+      {/* Font size */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <select
+            className="h-7 text-xs rounded-md border border-input bg-background px-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+            value={editor.getAttributes('textStyle').fontSize || ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) editor.chain().focus().setFontSize(v).run();
+              else editor.chain().focus().unsetFontSize().run();
+            }}
+          >
+            <option value="">Normal</option>
+            <option value="12px">Small</option>
+            <option value="18px">Large</option>
+            <option value="22px">X-Large</option>
+            <option value="28px">Huge</option>
+          </select>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Font size</TooltipContent>
+      </Tooltip>
 
       <Separator orientation="vertical" className="mx-1 h-5" />
 
@@ -399,6 +474,31 @@ function ProMenuBar({
           </Tooltip>
         </>
       )}
+
+      {/* AI grammar & spelling fix — a proofreading pass, not a rewrite: fixes
+          errors only, preserves wording/tone/formatting. Native browser
+          spell-check (red underlines) is already on for every letter body;
+          this is the second, AI-powered pass on top of that. */}
+      {onAiFix && (
+        <>
+          <Separator orientation="vertical" className="mx-1 h-5" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="h-7 px-2 flex items-center gap-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={onAiFix}
+                disabled={isAiFixing}
+              >
+                {isAiFixing
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <SpellCheck className="h-3.5 w-3.5" />}
+                <span>Fix Grammar</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Fixes spelling &amp; grammar only — doesn't rewrite or change your wording</TooltipContent>
+          </Tooltip>
+        </>
+      )}
     </div>
   );
 }
@@ -411,9 +511,11 @@ export function ProRichTextEditor({
   editable = true,
   onAiComplete,
   isAiLoading,
+  onAiFix,
   minHeight = '400px',
 }: ProRichTextEditorProps) {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
@@ -425,6 +527,7 @@ export function ProRichTextEditor({
       Placeholder.configure({ placeholder }),
       Underline,
       TextStyle,
+      FontSize,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -493,6 +596,19 @@ export function ProRichTextEditor({
     }
   }, [editor, onAiComplete]);
 
+  const handleAiFix = useCallback(async () => {
+    if (!editor || !onAiFix) return;
+    const html = editor.getHTML();
+    if (!html.trim()) return;
+    setIsFixing(true);
+    try {
+      const fixed = await onAiFix(html);
+      if (fixed && fixed !== html) editor.commands.setContent(fixed, true);
+    } finally {
+      setIsFixing(false);
+    }
+  }, [editor, onAiFix]);
+
   const handleImageUpload = () => { imageInputRef.current?.click(); };
 
   const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -517,6 +633,8 @@ export function ProRichTextEditor({
               onAiComplete={onAiComplete ? handleAiComplete : undefined}
               isAiLoading={isAiLoading || isAiProcessing}
               onImageUpload={handleImageUpload}
+              onAiFix={onAiFix ? handleAiFix : undefined}
+              isAiFixing={isFixing}
             />
             <EditorToolsBar editor={editor} />
           </>
