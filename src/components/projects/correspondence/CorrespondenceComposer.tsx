@@ -29,7 +29,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
-import { useTextPolish } from "@/hooks/useTextPolish";
 import { buildCorrespondenceHtml } from "@/lib/correspondence/correspondenceLetter";
 import { downloadLetterPdf, letterPdfBase64 } from "@/lib/correspondence/letterPdf";
 
@@ -64,7 +63,6 @@ export function CorrespondenceComposer({
   const sendEmail = useSendEmail();
   const emails = useProjectEmails(projectId);
   const templates = useCorrespondenceTemplates(projectId);
-  const { polish } = useTextPolish();
   const docRef = useRef<HTMLDivElement>(null);
 
   const [category, setCategory] = useState("r4");
@@ -136,14 +134,6 @@ export function CorrespondenceComposer({
     } catch (e: any) {
       toast.error(`Couldn't draft: ${e?.message ?? "try again"}`);
     } finally { setDrafting(false); }
-  };
-
-  // Proofreading pass, not a rewrite — fixes spelling/grammar only, preserves
-  // wording, tone, and every bit of formatting (bold, headings, bullets…).
-  const aiFix = async (html: string) => {
-    const result = await polish(html, { context: "letter_grammar_fix", model: "claude-sonnet-4-6" });
-    if (result && result !== html) toast.success("Grammar & spelling fixed.");
-    return result;
   };
 
   const filename = () => `${(subject || "letter").replace(/[^\w.-]+/g, "-").slice(0, 60)}.pdf`;
@@ -282,17 +272,12 @@ export function CorrespondenceComposer({
             </div>
 
             {mode === "edit" ? (
-              // Bounded height so the editor scrolls WITHIN itself — the toolbar
-              // is sticky to that inner scroll region, not the outer dialog, so
-              // it stays visible instead of scrolling away while you type.
               <ProRichTextEditor
                 content={bodyHtml}
                 onChange={setBodyHtml}
                 placeholder={'Start typing — your greeting ("Dear …," or "To Whom It May Concern:"), then the letter body. Use the toolbar for bold, bullets, sub-bullets, and headings.'}
                 editable
                 minHeight="320px"
-                className="max-h-[52vh]"
-                onAiFix={aiFix}
               />
             ) : (
               <div className="rounded-lg border bg-muted/20 p-4 overflow-x-auto">
