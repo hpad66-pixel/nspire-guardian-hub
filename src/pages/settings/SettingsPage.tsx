@@ -311,7 +311,7 @@ export default function SettingsPage() {
                 <Switch
                   id="occupancy"
                   checked={modules.occupancyEnabled}
-                  onCheckedChange={() => toggleModule('occupancyEnabled')}
+                  onCheckedChange={() => handleWsToggle('occupancy_enabled', wsModules?.occupancy_enabled ?? true)}
                   disabled={!isAdmin}
                 />
               </div>
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                 <Switch
                   id="email"
                   checked={modules.emailInboxEnabled}
-                  onCheckedChange={() => toggleModule('emailInboxEnabled')}
+                  onCheckedChange={() => handleWsToggle('email_inbox_enabled', wsModules?.email_inbox_enabled ?? true)}
                   disabled={!isAdmin}
                 />
               </div>
@@ -363,7 +363,7 @@ export default function SettingsPage() {
                 <Switch
                   id="qr"
                   checked={modules.qrScanningEnabled}
-                  onCheckedChange={() => toggleModule('qrScanningEnabled')}
+                  onCheckedChange={() => handleWsToggle('qr_scanning_enabled', wsModules?.qr_scanning_enabled ?? true)}
                   disabled={!isAdmin}
                 />
               </div>

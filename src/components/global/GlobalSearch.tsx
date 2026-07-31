@@ -25,13 +25,14 @@ import {
   HelpCircle,
   Package,
   Contact,
+  ListChecks,
 } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useProjects } from '@/hooks/useProjects';
 import { useIssues } from '@/hooks/useIssues';
 import { useCRMContacts } from '@/hooks/useCRMContacts';
 import { useOrganizationDocuments } from '@/hooks/useDocuments';
-import { matchesQuery, rfiRoute, submittalRoute, contactsRoute, documentsRoute } from '@/lib/global-search';
+import { matchesQuery, rfiRoute, submittalRoute, punchItemRoute, contactsRoute, documentsRoute } from '@/lib/global-search';
 
 interface GlobalSearchProps {
   open: boolean;
@@ -76,6 +77,19 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       return data;
     },
   });
+  const { data: punchItems } = useQuery({
+    queryKey: ['global-search', 'punch-items'],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('punch_items')
+        .select('id, description, location, project_id, status')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleSelect = (path: string) => {
     navigate(path);
@@ -103,6 +117,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   const filteredSubmittals = submittals?.filter(s =>
     matchesQuery([s.title, `sub-${s.submittal_number}`], search)
+  ).slice(0, 5);
+
+  const filteredPunchItems = punchItems?.filter(p =>
+    matchesQuery([p.description, p.location], search)
   ).slice(0, 5);
 
   const filteredContacts = contacts?.filter(c =>
@@ -261,6 +279,27 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                   <div>
                     <p>SUB-{String(sub.submittal_number).padStart(3, '0')}</p>
                     <p className="text-xs text-muted-foreground">{sub.title}</p>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* Punch List */}
+        {filteredPunchItems && filteredPunchItems.length > 0 && search && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Punch List">
+              {filteredPunchItems.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  onSelect={() => handleSelect(punchItemRoute(item.project_id))}
+                >
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  <div>
+                    <p>{item.description}</p>
+                    <p className="text-xs text-muted-foreground">{item.location}</p>
                   </div>
                 </CommandItem>
               ))}

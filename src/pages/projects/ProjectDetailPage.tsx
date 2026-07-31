@@ -37,6 +37,7 @@ import { ActionItemsPanel } from '@/components/projects/ActionItemsPanel';
 import { ReportGeneratorDialog } from '@/components/projects/ReportGeneratorDialog';
 
 import { useProject } from '@/hooks/useProjects';
+import { useProjectFinancials } from '@/hooks/useProjectFinancials';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { useMilestonesByProject } from '@/hooks/useMilestones';
 import { useDailyReportsByProject } from '@/hooks/useDailyReports';
@@ -159,6 +160,7 @@ export default function ProjectDetailPage() {
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
+  const { summary: financialSummary } = useProjectFinancials(id ?? null);
   const { tree: projectTree } = useProjectTree();
   const projectAncestors = id ? projectTree.ancestors(id).reverse() : []; // root → parent
   const subprojectCount = id ? projectTree.children(id).length : 0;
@@ -345,8 +347,11 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const budget = Number(project.budget) || 0;
-  const spent = Number(project.spent) || 0;
+  // Prefer the live financial-cascade rollup (v_project_financial_summary) over
+  // projects.budget/spent, which are dead columns never populated after creation.
+  const fin = financialSummary.data;
+  const budget = fin && fin.revised_contract > 0 ? fin.revised_contract : Number(project.budget) || 0;
+  const spent = fin && fin.billed_to_date > 0 ? fin.billed_to_date : Number(project.spent) || 0;
   const spentProgress = budget > 0 ? Math.round((spent / budget) * 100) : 0;
   const completedMilestones = milestones?.filter(m => m.status === 'completed').length || 0;
   const totalMilestones = milestones?.length || 0;
@@ -1354,18 +1359,21 @@ export default function ProjectDetailPage() {
       {/* ── Mobile discussion/activity/action sheets ────────────────── */}
       <Sheet open={isMobile && discussionsPanelOpen} onOpenChange={open => { if (!open) setDiscussionsPanelOpen(false); }}>
         <SheetContent side="bottom" className="h-[90vh] p-0">
+          <SheetTitle className="sr-only">Discussions</SheetTitle>
           {id && <DiscussionPanel projectId={id} open={discussionsPanelOpen} onClose={() => setDiscussionsPanelOpen(false)} />}
         </SheetContent>
       </Sheet>
 
       <Sheet open={isMobile && activityFeedOpen} onOpenChange={open => { if (!open) setActivityFeedOpen(false); }}>
         <SheetContent side="bottom" className="h-[90vh] p-0">
+          <SheetTitle className="sr-only">Activity Feed</SheetTitle>
           {id && <ActivityFeedPanel projectId={id} open={activityFeedOpen} onClose={() => setActivityFeedOpen(false)} />}
         </SheetContent>
       </Sheet>
 
       <Sheet open={isMobile && actionItemsOpen} onOpenChange={open => { if (!open) setActionItemsOpen(false); }}>
         <SheetContent side="bottom" className="h-[90vh] p-0">
+          <SheetTitle className="sr-only">Action Items</SheetTitle>
           {id && <ActionItemsPanel projectId={id} open={actionItemsOpen} onClose={() => setActionItemsOpen(false)} />}
         </SheetContent>
       </Sheet>

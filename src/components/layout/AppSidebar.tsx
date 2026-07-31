@@ -189,7 +189,7 @@ export function AppSidebar() {
             <NavItem to="/my-day" icon={Sunrise} label="My Day" collapsed={collapsed} />
             {isModuleEnabled('cockpitEnabled') && <NavItem to="/cockpit" icon={Gauge} label="Cockpit" collapsed={collapsed} />}
             <NavItem to="/messages" icon={MessageCircle} label="Messages" collapsed={collapsed} badge={unreadCount} />
-            <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />
+            {isModuleEnabled('emailInboxEnabled') && <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />}
           </div>
 
           {/* ─── Projects — the primary workspace. Clients own projects: open a

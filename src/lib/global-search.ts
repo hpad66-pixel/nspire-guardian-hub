@@ -23,6 +23,11 @@ export function submittalRoute(projectId: string): string {
   return `/projects/${projectId}?tab=submittals`;
 }
 
+/** Detail route for a punch item — deep-links to the project's Punch List tab. */
+export function punchItemRoute(projectId: string): string {
+  return `/projects/${projectId}?tab=punch-list`;
+}
+
 /** Contacts and documents are org-level list pages. */
 export const contactsRoute = '/contacts';
 export const documentsRoute = '/documents';

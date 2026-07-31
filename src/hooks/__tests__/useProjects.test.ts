@@ -201,7 +201,9 @@ describe("useProjectStats", () => {
     const { result } = renderHookWithClient(() => useProjectStats());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toMatchObject({
-      active: 1,
+      // "active" = every non-terminal project (completed/closed excluded), not
+      // just status === 'active' — matches the rest of the dashboard's rollups.
+      active: 3,
       planning: 1,
       onHold: 1,
       completed: 1,
