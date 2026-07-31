@@ -14,6 +14,7 @@ const contextPrompts: Record<string, string> = {
   scope: "Structure this as a professional scope of work. Use numbered or bulleted lists for deliverables if there are multiple items. Be specific about what is included. Keep the same meaning but make it polished and professional. Output only the improved text, no explanations.",
   notes: "Polish these notes for professional documentation. Fix grammar, improve clarity, and maintain the original meaning. Make it suitable for formal records. Output only the improved text, no explanations.",
   correspondence: "Refine this into professional business correspondence. Maintain a formal yet friendly tone. Ensure proper structure and professional language. Output only the improved text, no explanations.",
+  letter_grammar_fix: "You are a meticulous proofreader, not a rewriter. The input is HTML from a rich-text letter editor. Fix ONLY spelling and grammar errors — typos, subject-verb agreement, punctuation, capitalization. Do NOT rewrite, rephrase, paraphrase, or change the tone, style, word choice, structure, or meaning. Preserve every HTML tag and attribute exactly as given (paragraphs, headings, bold, bullet lists, sub-bullets, tables…) — only correct the text content inside them. If a sentence has no errors, leave it completely untouched. If nothing in the input needs fixing, return it unchanged. Output ONLY the corrected HTML — no explanations, no markdown code fences, no commentary.",
   ai_continue: `You are a senior project management consultant with 30 years of experience writing formal project documentation. Continue writing the following text naturally, as a professional continuation. Write in a formal, authoritative, and precise tone. Do not repeat any of the existing text. Do not add headings or labels. Output ONLY the continuation text, one to three complete, well-constructed sentences that flow naturally from what was written. No explanations, no preamble.`,
   meeting_minutes: `You convert a raw construction meeting transcript into a clean, professional set of meeting minutes written for the project owner and client to read. The input is often an auto-generated transcript: messy, with filler, false starts, cross-talk, and no punctuation. Clean it up and turn spoken fragments into clear, declarative written sentences. Be concise and factual. Every line earns its place.
 
@@ -190,7 +191,7 @@ serve(async (req) => {
 
       // Guarantee HTML for the report contexts: if the model slipped into Markdown
       // (no HTML tags present), convert it so tables/bullets/headings still render.
-      if (context === 'meeting_minutes' && !looksLikeHtml(polished)) {
+      if ((context === 'meeting_minutes' || context === 'letter_grammar_fix') && !looksLikeHtml(polished)) {
         polished = mdToHtml(polished);
       }
 
