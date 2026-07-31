@@ -6,9 +6,6 @@ verify_jwt = false
 [functions.clickup-webhook]
 verify_jwt = false
 
-[functions.ai-transcribe]
-verify_jwt = false
-
 [functions.send-report-email]
 verify_jwt = false
 

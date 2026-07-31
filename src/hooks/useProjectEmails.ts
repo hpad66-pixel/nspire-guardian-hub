@@ -19,11 +19,18 @@ export interface ProjectEmail {
   cc_emails: string[];
   snippet: string | null;
   body_html: string | null;
+  body_text: string | null;
+  /** Structured fields for a letter authored in CorrespondenceComposer
+   *  (recipient/org/referenceNo/category/salutation) — null for synced Gmail
+   *  messages. Lets a saved draft be reopened with full context, not just the
+   *  flattened subject/body_text. */
+  letter_meta: Record<string, string> | null;
   has_attachments: boolean;
   labels: string[];
   contact_id: string | null;
   occurred_at: string;
   created_at: string;
+  updated_at: string | null;
 }
 
 // Fields accepted when logging an outbound letter/email into the trail.
@@ -37,6 +44,7 @@ export interface OutboundEmailInput {
   from_email?: string | null;
   body_html?: string | null;
   body_text?: string | null;
+  letter_meta?: Record<string, string> | null;
   snippet?: string | null;
   template_id?: string | null;
   occurred_at?: string;
@@ -77,6 +85,7 @@ export function useProjectEmails(projectId: string | null) {
           from_email: input.from_email ?? null,
           body_html: input.body_html ?? null,
           body_text: input.body_text ?? null,
+          letter_meta: input.letter_meta ?? null,
           snippet: input.snippet ?? ((input.body_text ?? "").slice(0, 200) || null),
           template_id: input.template_id ?? null,
           occurred_at: input.occurred_at ?? new Date().toISOString(),
