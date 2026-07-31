@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useModules } from '@/contexts/ModuleContext';
 import type { DateRange } from '@/hooks/useReports';
 
 // Admin Reports
@@ -47,6 +48,8 @@ export default function ReportsPage() {
     to: endOfMonth(new Date()),
   });
   const [activePreset, setActivePreset] = useState('Last 3 Months');
+  const { isModuleEnabled } = useModules();
+  const propertyMgmtEnabled = isModuleEnabled('propertyMgmtEnabled');
 
   const handlePresetClick = (preset: typeof presetRanges[0]) => {
     setDateRange(preset.getValue());
@@ -128,12 +131,14 @@ export default function ReportsPage() {
         <TabsContent value="admin" className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Report Cards */}
-            <ReportCard
-              title="Property Portfolio"
-              description="Overview of all properties, units, and occupancy"
-              icon={Building2}
-              color="bg-blue-500"
-            />
+            {propertyMgmtEnabled && (
+              <ReportCard
+                title="Property Portfolio"
+                description="Overview of all properties, units, and occupancy"
+                icon={Building2}
+                color="bg-blue-500"
+              />
+            )}
             <ReportCard
               title="Inspection Summary"
               description="Inspection activity by area and completion rates"
@@ -168,7 +173,7 @@ export default function ReportsPage() {
 
           {/* Detailed Reports */}
           <div className="space-y-6">
-            <PropertyPortfolioReport dateRange={dateRange} />
+            {propertyMgmtEnabled && <PropertyPortfolioReport dateRange={dateRange} />}
             <InspectionSummaryReport dateRange={dateRange} />
             <DefectsAnalysisReport dateRange={dateRange} />
             <IssuesOverviewReport dateRange={dateRange} />

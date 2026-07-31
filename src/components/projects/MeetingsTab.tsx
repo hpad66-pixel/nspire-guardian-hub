@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -760,10 +760,13 @@ export function MeetingEditorSheet({
     isPolishing, handlePolish, handleSave, handleFinalize, handleSupervisorUnlock, handleAiContinue,
   };
 
+  const editorTitle = title.trim() || 'Meeting minutes editor';
+
   if (isFullScreen) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="w-screen h-screen max-w-full rounded-none p-0 border-0 [&>button]:hidden" style={{ maxHeight: '100vh' }}>
+          <DialogTitle className="sr-only">{editorTitle}</DialogTitle>
           <MeetingEditorInner {...innerProps} />
         </DialogContent>
       </Dialog>
@@ -773,6 +776,7 @@ export function MeetingEditorSheet({
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl overflow-hidden p-0 flex flex-col">
+        <SheetTitle className="sr-only">{editorTitle}</SheetTitle>
         <MeetingEditorInner {...innerProps} />
       </SheetContent>
     </Sheet>

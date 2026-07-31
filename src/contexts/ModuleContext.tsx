@@ -42,13 +42,16 @@ const defaultModules: ModuleConfig = {
 const nullOverrides = (): Record<keyof ModuleConfig, boolean | null> =>
   Object.fromEntries((Object.keys(defaultModules) as (keyof ModuleConfig)[]).map((k) => [k, null])) as Record<keyof ModuleConfig, boolean | null>;
 
-// Map from ModuleConfig keys to database column names
+// Map from ModuleConfig keys to `properties` table column names. Only for
+// modules that are genuinely property-backed (read AND written per-property).
+// occupancyEnabled/qrScanningEnabled/emailInboxEnabled are workspace-level —
+// they live in workspace_modules and must be toggled via useToggleWorkspaceModule,
+// not here (this map previously wrote them to `properties`, a table the read
+// path never consulted for those three keys, so the toggle silently reverted).
 const moduleColumnMap: Record<string, string> = {
   nspireEnabled: 'nspire_enabled',
   dailyGroundsEnabled: 'daily_grounds_enabled',
   projectsEnabled: 'projects_enabled',
-  occupancyEnabled: 'occupancy_enabled',
-  qrScanningEnabled: 'qr_scanning_enabled',
 };
 
 const ModuleContext = createContext<ModuleContextType | undefined>(undefined);

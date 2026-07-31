@@ -512,13 +512,34 @@ export function usePeopleStats() {
 
       if (rolesError) throw rolesError;
 
-      const activeMembers = (teamMembers || []).filter(tm => tm.status === 'active').length;
-      const archivedMembers = (teamMembers || []).filter(tm => tm.status === 'archived').length;
-      const uniqueUsers = new Set((teamMembers || []).map((tm) => tm.user_id).filter(Boolean));
+      // "Active members" counts distinct people (profiles), matching what the
+      // People list itself renders — not property_team_members rows, which are
+      // per-property assignment records and undercount anyone without one
+      // (property_team_members.status also defaults differently than
+      // profiles.status, which is what the list's "Active" badge reflects).
+      const relatedUserIds = [...new Set((teamMembers || []).map((tm) => tm.user_id).filter(Boolean))];
+      let profilesQuery = supabase.from('profiles').select('user_id, status');
+      if (!isAdmin) {
+        if (relatedUserIds.length === 0) {
+          return {
+            totalPeople: 0,
+            activeMembers: 0,
+            archivedMembers: 0,
+            propertiesWithTeam: 0,
+            rolesCount: roles?.length || 0,
+          };
+        }
+        profilesQuery = profilesQuery.in('user_id', relatedUserIds);
+      }
+      const { data: profiles, error: profilesError } = await profilesQuery;
+      if (profilesError) throw profilesError;
+
+      const activeMembers = (profiles || []).filter(p => ((p as any).status || 'active') === 'active').length;
+      const archivedMembers = (profiles || []).filter(p => (p as any).status === 'archived').length;
       const propertiesWithTeam = new Set((teamMembers || []).map((tm) => tm.property_id).filter(Boolean));
 
       return {
-        totalPeople: uniqueUsers.size,
+        totalPeople: (profiles || []).length,
         activeMembers,
         archivedMembers,
         propertiesWithTeam: isAdmin ? properties.length : propertiesWithTeam.size,

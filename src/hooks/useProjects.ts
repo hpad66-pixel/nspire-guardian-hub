@@ -186,10 +186,17 @@ export function useProjectStats() {
       const { data, error } = await query;
       if (error) throw error;
 
-      const active = data.filter(p => p.status === 'active').length;
+      // "Active" here means "still an open, ongoing engagement" — matches how
+      // the rest of the dashboard (portfolio health pills, totals) already
+      // treats every non-terminal project as active, planning included. A
+      // strict `status === 'active'` check undercounts every project that's
+      // legitimately underway but never had its lifecycle stage explicitly
+      // flipped past 'planning' — real-world workspaces routinely leave most
+      // projects there for their whole run.
       const planning = data.filter(p => p.status === 'planning').length;
       const onHold = data.filter(p => p.status === 'on_hold').length;
       const completed = data.filter(p => p.status === 'completed' || p.status === 'closed').length;
+      const active = data.length - completed;
       const totalBudget = data.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
       const totalSpent = data.reduce((sum, p) => sum + (Number(p.spent) || 0), 0);
 
