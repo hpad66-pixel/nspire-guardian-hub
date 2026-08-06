@@ -40,14 +40,16 @@ function vendorName(c?: Commitment) {
 }
 
 export function RecordSubPaymentDialog({
-  open, onOpenChange, commitments, invoiceBalances,
+  open, onOpenChange, commitments, invoiceBalances, defaultCommitmentId,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   commitments: Commitment[];
   invoiceBalances: CommitmentInvoiceBalance[];
+  /** Pre-select a vendor — set when opening from that vendor's own page. */
+  defaultCommitmentId?: string;
 }) {
-  const [commitmentId, setCommitmentId] = useState<string>("");
+  const [commitmentId, setCommitmentId] = useState<string>(defaultCommitmentId ?? "");
   const [invoiceId, setInvoiceId] = useState<string>("");
   const [paidDate, setPaidDate] = useState(today());
   const [amount, setAmount] = useState("");
@@ -72,10 +74,10 @@ export function RecordSubPaymentDialog({
   }, [selected]);
   useEffect(() => {
     if (!open) {
-      setCommitmentId(""); setInvoiceId(""); setPaidDate(today());
+      setCommitmentId(defaultCommitmentId ?? ""); setInvoiceId(""); setPaidDate(today());
       setAmount(""); setMethod("check"); setReference(""); setNotes(""); setAllocations([]);
     }
-  }, [open]);
+  }, [open, defaultCommitmentId]);
 
   const amt = Number(amount);
   const overpays = selected != null && amt > selected.balance_due + 0.004;
