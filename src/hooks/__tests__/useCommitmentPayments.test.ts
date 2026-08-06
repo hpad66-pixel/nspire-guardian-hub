@@ -83,4 +83,24 @@ describe("useCommitmentPayments", () => {
       CommitmentPaymentError,
     );
   });
+
+  it("remove deletes the payment by id", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useCommitmentPayments("inv1"));
+
+    await result.current.remove.mutateAsync("pay1");
+    expect((builder.delete as any)).toHaveBeenCalled();
+    expect((builder.eq as any).mock.calls).toEqual(
+      expect.arrayContaining([["id", "pay1"]]),
+    );
+  });
+
+  it("remove surfaces a delete error as a rejection", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "denied" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useCommitmentPayments("inv1"));
+    await expect(result.current.remove.mutateAsync("pay1")).rejects.toBeTruthy();
+  });
 });

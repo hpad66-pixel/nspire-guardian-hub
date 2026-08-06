@@ -19,6 +19,8 @@ export interface VendorPayment {
   id: string;
   commitment_id: string;
   commitment_invoice_id: string | null;
+  /** Invoice this payment was made against — shown in the vendor payment ledger. */
+  invoice_no: string | null;
   amount: number;
   paid_date: string;
   method: string | null;
@@ -41,6 +43,17 @@ export function useVendorPayments(commitmentId: string | null) {
       const list = (pays ?? []) as any[];
       if (!list.length) return [];
 
+      // Invoice numbers for display (the payments table only carries the FK).
+      const invoiceIds = [...new Set(list.map((p) => p.commitment_invoice_id).filter(Boolean))] as string[];
+      const invoiceNoById = new Map<string, string | null>();
+      if (invoiceIds.length) {
+        const { data: invs } = await supabase
+          .from("commitment_invoices" as any)
+          .select("id, invoice_no")
+          .in("id", invoiceIds);
+        for (const i of (invs ?? []) as any[]) invoiceNoById.set(i.id, i.invoice_no ?? null);
+      }
+
       const { data: allocs } = await supabase
         .from("commitment_payment_allocations" as any)
         .select("id, payment_id, kind, change_order_id, commitment_sov_line_id, amount")
@@ -57,6 +70,7 @@ export function useVendorPayments(commitmentId: string | null) {
 
       return list.map((p) => ({
         id: p.id, commitment_id: p.commitment_id, commitment_invoice_id: p.commitment_invoice_id,
+        invoice_no: p.commitment_invoice_id ? invoiceNoById.get(p.commitment_invoice_id) ?? null : null,
         amount: Number(p.amount), paid_date: p.paid_date, method: p.method,
         reference: p.reference, notes: p.notes, allocations: byPayment.get(p.id) ?? [],
       }));
