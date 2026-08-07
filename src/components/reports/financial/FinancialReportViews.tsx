@@ -559,20 +559,21 @@ export function SubcontractorPaymentsReportView({ data, brand }: { data: ReportD
           </div>
           <table style={tableStyle}>
             <thead><tr>
-              <th style={thL}>Date</th><th style={thL}>Commitment</th>
+              <th style={thL}>Date</th><th style={thL}>Commitment</th><th style={thL}>Invoice</th>
               <th style={thL}>Method</th><th style={thL}>Reference</th><th style={thR}>Amount</th>
             </tr></thead>
             <tbody>
               {v.payments.map((p, i) => (
                 <tr key={i}>
                   <td style={td}>{fmtDate(p.date)}</td><td style={td}>{p.commitment}</td>
+                  <td style={td}>{p.invoiceNo ? `#${p.invoiceNo}` : "—"}</td>
                   <td style={td}>{cap(p.method)}</td><td style={td}>{p.reference || "—"}</td>
                   <td style={tdr}>{money2(p.amount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot><tr>
-              <td style={{ ...td, fontWeight: 700, borderTop: `2px solid ${BRAND.ink}` }} colSpan={4}>Subtotal — {v.vendor}</td>
+              <td style={{ ...td, fontWeight: 700, borderTop: `2px solid ${BRAND.ink}` }} colSpan={5}>Subtotal — {v.vendor}</td>
               <td style={{ ...tdr, fontWeight: 700, borderTop: `2px solid ${BRAND.ink}` }}>{money2(v.subtotal)}</td>
             </tr></tfoot>
           </table>

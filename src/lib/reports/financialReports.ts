@@ -30,6 +30,8 @@ export interface RCommitment {
 export interface RCommitmentPayment {
   commitment_id: string; amount: number; paid_date: string | null;
   method?: string | null; reference?: string | null;
+  commitment_invoice_id?: string | null; invoice_no?: string | null;
+  invoice_status?: string | null; invoice_period_end?: string | null;
 }
 export interface RLien { direction: string | null; status: string | null; }
 export interface RParties { owner: string; contractor: string; }
@@ -254,6 +256,7 @@ export function paymentsReceived(primePayments: RPayment[]): PaymentsReceivedRep
 // ── 8 · Subcontractor Payments (us → subs), individual + collective ───────────
 export interface SubPaymentRow {
   date: string | null; vendor: string; commitment: string;
+  invoiceId: string | null; invoiceNo: string | null; invoiceStatus: string | null;
   method: string | null; reference: string | null; amount: number;
 }
 export interface SubPaymentsByVendor {
@@ -282,6 +285,9 @@ export function subcontractorPayments(
         date: p.paid_date,
         vendor: (c?.vendor_name && c.vendor_name.trim()) || (c?.title && c.title.trim()) || "Unassigned vendor",
         commitment: (c?.title && c.title.trim()) || "—",
+        invoiceId: p.commitment_invoice_id ?? null,
+        invoiceNo: p.invoice_no ?? null,
+        invoiceStatus: p.invoice_status ?? null,
         method: p.method ?? null, reference: p.reference ?? null,
         amount: round2(p.amount),
       };

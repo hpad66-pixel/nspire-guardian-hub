@@ -122,12 +122,18 @@ export function useProjectArtifacts(
 
   const remove = useMutation({
     mutationFn: async (artifact: ProjectArtifact) => {
-      await supabase.storage.from(BUCKET).remove([artifact.file_path]);
+      // Delete the guarded database row first. Finalized paid-invoice artifacts
+      // are protected by a DB trigger; removing storage before that check could
+      // leave an immutable invoice record pointing at a missing PDF.
       const { error } = await (supabase as any)
         .from("project_artifacts")
         .delete()
         .eq("id", artifact.id);
       if (error) throw error;
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET)
+        .remove([artifact.file_path]);
+      if (storageError) throw storageError;
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["project-artifacts", projectId] }),

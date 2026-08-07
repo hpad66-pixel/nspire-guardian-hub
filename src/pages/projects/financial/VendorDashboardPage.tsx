@@ -61,11 +61,6 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
   const { data: r } = useVendorReconciliation(projectId, commitment.id);
   if (!r) return <p className="text-muted-foreground">Loading…</p>;
 
-  // Executed owner COs classified to this vendor but not yet pushed to his own
-  // commitment. They're already inside revisedContract, so the waterfall has to
-  // show them or the rows above won't add up to the total below them.
-  const ownerShareCounted = r.ownerShares.filter((o) => o.counted).reduce((t, o) => t + o.share, 0);
-
   return (
     <div className="space-y-5">
       <div className="flex items-baseline justify-between">
@@ -88,12 +83,9 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
           <Row label="Base contract" value={usd(r.base)} />
           <Row label="Additive change orders" value={`+ ${usd(r.additiveCO)}`} className="text-emerald-600" />
           <Row label="Deductive change orders" value={`− ${usd(r.deductiveCO)}`} className="text-destructive" />
-          {ownerShareCounted !== 0 && (
-            <Row label="Share of executed owner change orders" value={`+ ${usd(ownerShareCounted)}`} className="text-emerald-600" />
-          )}
           <Divider />
           <Row label="Revised contract" value={usd(r.revisedContract)} bold />
-          <Row label={`Less retainage held by owner${r.latestPayAppNo ? ` · live from Pay App #${r.latestPayAppNo}` : ` (${r.retainagePct}%)`}`} value={`− ${usd(r.retainageHeld)}`} className="text-amber-600" />
+          <Row label={`Less subcontract retainage held (${r.retainagePct}%)`} value={`− ${usd(r.retainageHeld)}`} className="text-amber-600" />
           <Divider />
           <Row label="Max payable (won't overpay)" value={usd(r.maxPayable)} bold />
           <Row label="Less paid to date" value={`− ${usd(r.paidToDate)}`} className="text-emerald-600" />
@@ -229,6 +221,7 @@ function PaymentLedger({ commitmentId, projectId, paidToDate }: { commitmentId: 
                       <th className="py-2 text-left font-medium">Date</th>
                       <th className="py-2 text-left font-medium">Method</th>
                       <th className="py-2 text-left font-medium">Bank reference</th>
+                      <th className="py-2 text-left font-medium">Invoice</th>
                       <th className="py-2 text-right font-medium">Amount</th>
                     </tr>
                   </thead>
@@ -241,13 +234,25 @@ function PaymentLedger({ commitmentId, projectId, paidToDate }: { commitmentId: 
                           <span className="font-mono text-[11px] text-muted-foreground">{p.reference || '—'}</span>
                           {p.notes && <div className="text-[11px] italic text-muted-foreground">{p.notes}</div>}
                         </td>
+                        <td className="whitespace-nowrap py-2 pr-3">
+                          {p.commitment_invoice_id ? (
+                            <Link
+                              to={`/projects/${projectId}/financials/commitments/${p.commitment_id}?tab=invoices&invoice=${p.commitment_invoice_id}`}
+                              className="text-[12px] font-medium text-[var(--apas-sapphire)] hover:underline"
+                            >
+                              Invoice #{p.invoice_no ?? '—'}
+                            </Link>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-destructive">Unlinked invoice</span>
+                          )}
+                        </td>
                         <td className="whitespace-nowrap py-2 text-right font-mono">{usd(p.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-border font-bold">
-                      <td className="py-2" colSpan={3}>Total paid to date</td>
+                      <td className="py-2" colSpan={4}>Total paid to date</td>
                       <td className="py-2 text-right font-mono text-emerald-600">{usd(paidToDate)}</td>
                     </tr>
                   </tfoot>
@@ -320,7 +325,7 @@ function LineItems({ commitmentId, base }: { commitmentId: string; base: number 
   );
 }
 
-function ReconcileStamp({ r, vendor }: { r: VendorReconciliation; vendor: string }) {
+export function ReconcileStamp({ r, vendor }: { r: VendorReconciliation; vendor: string }) {
   if (r.overpaid) {
     return (
       <div className="flex items-center gap-3 rounded-xl border-2 border-destructive/40 bg-destructive/5 p-4">
@@ -332,15 +337,45 @@ function ReconcileStamp({ r, vendor }: { r: VendorReconciliation; vendor: string
       </div>
     );
   }
+  if (r.control?.isReconciled) {
+    const c = r.control;
+    return (
+      <div className="flex items-center gap-3 rounded-xl border-2 border-emerald-500/40 bg-emerald-50/60 p-4 dark:bg-emerald-950/20">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-emerald-600 text-emerald-700">
+          <ShieldCheck className="h-7 w-7" />
+        </div>
+        <div>
+          <div className="text-sm font-bold uppercase tracking-wide text-emerald-700">Independently reconciled · QC checked</div>
+          <div className="text-[12.5px] text-muted-foreground">
+            Through {paidOn(c.asOfDate)}, the control total and ledger both equal <b className="text-foreground">{usd(c.actualPaidToDate)}</b> across {c.actualPaymentCount} payment{c.actualPaymentCount === 1 ? '' : 's'} and {c.actualInvoiceCount} invoice{c.actualInvoiceCount === 1 ? '' : 's'}. Variance: {usd(c.variance)}. {c.controlNote ?? ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (r.control) {
+    const c = r.control;
+    return (
+      <div className="flex items-center gap-3 rounded-xl border-2 border-amber-500/40 bg-amber-50/60 p-4 dark:bg-amber-950/20">
+        <AlertTriangle className="h-8 w-8 shrink-0 text-amber-700" />
+        <div>
+          <div className="text-sm font-bold uppercase tracking-wide text-amber-800">Control variance · not reconciled</div>
+          <div className="text-[12.5px] text-muted-foreground">
+            Through {paidOn(c.asOfDate)}, expected paid is <b className="text-foreground">{usd(c.expectedPaidToDate)}</b> and the ledger contains <b className="text-foreground">{usd(c.actualPaidToDate)}</b>; variance {usd(c.variance)}. Expected/actual payments: {c.expectedPaymentCount}/{c.actualPaymentCount}; invoices: {c.expectedInvoiceCount}/{c.actualInvoiceCount}; missing bank references: {c.missingReferenceCount}. {c.controlNote ?? ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="flex items-center gap-3 rounded-xl border-2 border-emerald-500/40 bg-emerald-50/60 p-4 dark:bg-emerald-950/20">
-      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-emerald-600 text-emerald-700">
+    <div className="flex items-center gap-3 rounded-xl border-2 border-amber-500/30 bg-amber-50/50 p-4 dark:bg-amber-950/20">
+      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-amber-600 text-amber-700">
         <ShieldCheck className="h-7 w-7" />
       </div>
       <div>
-        <div className="text-sm font-bold uppercase tracking-wide text-emerald-700">Reconciled · QC Checked</div>
+        <div className="text-sm font-bold uppercase tracking-wide text-amber-800">Within contract · not independently reconciled</div>
         <div className="text-[12.5px] text-muted-foreground">
-          {vendor} is within contract. Paid {usd(r.paidToDate)} of {usd(r.maxPayable)} payable; <b className="text-foreground">{usd(r.remainingToPay)}</b> remaining to pay (retainage of {usd(r.retainageHeld)} held by owner, released later). No overpayment.
+          {vendor} is below the contract ceiling: paid {usd(r.paidToDate)} of {usd(r.maxPayable)} payable, with <b className="text-foreground">{usd(r.remainingToPay)}</b> remaining. This contract check does not certify the payment population against bank records and linked invoices.
         </div>
       </div>
     </div>

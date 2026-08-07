@@ -4,7 +4,7 @@
  * and the DB lien-gate guard surfacing as a typed CommitmentPaymentError.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", async () => {
   const m = await import("@/test/fixtures/supabase");
@@ -15,7 +15,7 @@ vi.mock("@/lib/tenant", () => ({
 }));
 
 import { useCommitmentPayments, CommitmentPaymentError } from "../useCommitmentPayments";
-import { renderHookWithClient } from "@/test/utils";
+import { makeClient, renderHookWithClient, withClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 
 const input = {
@@ -61,6 +61,22 @@ describe("useCommitmentPayments", () => {
       paid_date: "2026-06-01",
       tenant_id: "ws-1",
       created_by: "u1",
+    });
+  });
+
+  it("refreshes the selected invoice balance after a payment", async () => {
+    const builder = makeBuilder({ data: { id: "pay-new" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const client = makeClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useCommitmentPayments("inv1"), {
+      wrapper: withClient(client),
+    });
+
+    await result.current.create.mutateAsync(input as any);
+
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["commitment-invoice-balance", "inv1"],
     });
   });
 

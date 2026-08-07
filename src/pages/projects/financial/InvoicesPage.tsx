@@ -1,26 +1,23 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useCommitments, useCommitmentInvoices, type CommitmentInvoice, type Commitment } from "@/hooks/useCommitments";
-import { useRecordPaidInvoice } from "@/hooks/useRecordPaidInvoice";
 import { usePrimeContract, usePayApps } from "@/hooks/usePrimeContract";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
 import { InvoicePDFExport } from "@/components/financial/InvoicePDFExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Plus, FileText, Receipt, Paperclip, MoreVertical, Trash2, Check } from "lucide-react";
+import { Inbox, FileText, Paperclip, MoreVertical, Trash2 } from "lucide-react";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
 
@@ -54,9 +51,8 @@ function VendorInvoiceGroup({
   projectId: string;
   onOpen: (invoiceId: string, commitmentId: string) => void;
 }) {
-  const { data: invoices = [], isLoading, setStatus, remove } = useCommitmentInvoices(commitment.id);
+  const { data: invoices = [], isLoading, remove } = useCommitmentInvoices(commitment.id);
   if (isLoading) return null;
-  const INV_STATUSES: CommitmentInvoice["status"][] = ["draft", "submitted", "approved", "paid", "rejected"];
 
   // Subcontractor invoices keep the vendor's OWN invoice number — they are NOT
   // pay applications (those belong to the prime contract). Order chronologically
@@ -103,14 +99,7 @@ function VendorInvoiceGroup({
                       <button title="Manage invoice" className="text-muted-foreground hover:text-foreground"><MoreVertical className="h-4 w-4" /></button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel className="text-[11px]">Set status</DropdownMenuLabel>
-                      {INV_STATUSES.map((s) => (
-                        <DropdownMenuItem key={s} disabled={inv.status === s} className="capitalize"
-                          onClick={() => setStatus.mutate({ id: inv.id, status: s }, { onSuccess: () => toast.success(`Marked ${s}`) })}>
-                          {inv.status === s && <Check className="mr-1 h-3.5 w-3.5" />}{s}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[11px]">Invoice actions</DropdownMenuLabel>
                       <DropdownMenuItem className="text-destructive focus:text-destructive"
                         onClick={() => { if (confirm(`Delete invoice #${inv.invoice_no}?\n\nThis also removes its lines and any linked lien waiver. This can’t be undone.`)) remove.mutate(inv.id, { onSuccess: (r) => {
                           if (!r?.blocked) return toast.success("Invoice deleted");
@@ -216,59 +205,13 @@ export default function InvoicesPage() {
   const { data: primeContract } = usePrimeContract(projectId ?? null);
   const primeLabel = (primeContract as any)?.contractor_name || (primeContract as any)?.contract_no || "Prime Contract";
 
-  const [newOpen, setNewOpen] = useState(false);
-  const [selectedCommitmentId, setSelectedCommitmentId] = useState("");
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().split("T")[0]);
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
   const [openCommitmentId, setOpenCommitmentId] = useState<string | null>(null);
   const [vendorFilter, setVendorFilter] = useState<string>("all");
 
-  // Reconciliation: record a historical paid invoice (invoice + payment) in one go.
-  const recordPaid = useRecordPaidInvoice();
-  const [reconOpen, setReconOpen] = useState(false);
-  const [rcCommitmentId, setRcCommitmentId] = useState("");
-  const [rcInvoiceNo, setRcInvoiceNo] = useState("");
-  const [rcAmount, setRcAmount] = useState("");
-  const [rcDate, setRcDate] = useState(new Date().toISOString().split("T")[0]);
-  const [rcRef, setRcRef] = useState("");
-
-  async function handleRecordPaid() {
-    if (!projectId) return;
-    if (!rcCommitmentId) return toast.error("Pick the subcontractor commitment");
-    if (!rcInvoiceNo.trim()) return toast.error("Invoice # required");
-    if (!(Number(rcAmount) > 0)) return toast.error("Enter an amount");
-    try {
-      const c = commitments.find((x) => x.id === rcCommitmentId);
-      await recordPaid.mutateAsync({
-        projectId, commitmentId: rcCommitmentId, invoiceNo: rcInvoiceNo.trim(),
-        amount: Number(rcAmount), paidDate: rcDate, reference: rcRef.trim() || undefined,
-        vendorName: c ? vendorName(c) : undefined,
-      });
-      setReconOpen(false);
-      setRcCommitmentId(""); setRcInvoiceNo(""); setRcAmount(""); setRcRef("");
-    } catch { /* toast in hook */ }
-  }
-
   const visibleCommitments = vendorFilter === "all"
     ? commitments
     : commitments.filter((c) => c.id === vendorFilter);
-
-  const selectedCommitment = commitments.find((c) => c.id === selectedCommitmentId) ?? null;
-  const { create: createInvoice } = useCommitmentInvoices(selectedCommitmentId || null);
-
-  async function handleCreate() {
-    if (!selectedCommitmentId) { toast.error("Select a commitment"); return; }
-    if (!invoiceNo.trim()) { toast.error("Invoice # required"); return; }
-    try {
-      const row = await createInvoice.mutateAsync({ invoice_no: invoiceNo.trim(), period_end: periodEnd });
-      setNewOpen(false);
-      setInvoiceNo(""); setSelectedCommitmentId(""); setPeriodEnd(new Date().toISOString().split("T")[0]);
-      setOpenInvoiceId(row.id);
-      setOpenCommitmentId(selectedCommitmentId);
-      toast.success(`Invoice ${row.invoice_no} created`);
-    } catch (e: any) { toast.error(e.message); }
-  }
 
   const openInvoice = openInvoiceId
     ? commitments.find((c) => c.id === openCommitmentId)
@@ -284,11 +227,10 @@ export default function InvoicesPage() {
           <p className="text-muted-foreground text-sm">Your pay applications to the owner, and subcontractor invoices to you.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setReconOpen(true)}>
-            <Receipt className="h-4 w-4 mr-2" /> Record Paid Invoice
-          </Button>
-          <Button onClick={() => setNewOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Record Sub Invoice
+          <Button asChild>
+            <Link to={`/projects/${projectId}/financials/vendor-inbox`}>
+              <Inbox className="h-4 w-4 mr-2" /> Request / Upload Invoice
+            </Link>
           </Button>
         </div>
       </div>
@@ -346,82 +288,12 @@ export default function InvoicesPage() {
               ))}
               <div className="p-3 text-center text-muted-foreground text-xs border-t">
                 Prime pay apps auto-number #1, #2, #3… · subcontractor invoices keep the sub's own number ·{" "}
-                <button className="underline" onClick={() => setNewOpen(true)}>Record a sub invoice</button>
+                <Link className="underline" to={`/projects/${projectId}/financials/vendor-inbox`}>open Vendor Inbox</Link>
               </div>
             </>
           )}
         </CardContent>
       </Card>
-
-      {/* Record Paid Invoice (reconciliation) Dialog */}
-      <Dialog open={reconOpen} onOpenChange={setReconOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Record a paid invoice</DialogTitle></DialogHeader>
-          <p className="text-xs text-muted-foreground">For a payment that already happened. This creates the invoice, records the payment, marks it paid, and updates paid‑to‑date on the dashboard.</p>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <Label>Subcontractor commitment</Label>
-              <Select value={rcCommitmentId} onValueChange={setRcCommitmentId}>
-                <SelectTrigger><SelectValue placeholder="Select commitment…" /></SelectTrigger>
-                <SelectContent>{commitments.map((c) => <SelectItem key={c.id} value={c.id}>{c.commitment_no} · {c.title}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Invoice #</Label>
-              <Input value={rcInvoiceNo} onChange={(e) => setRcInvoiceNo(e.target.value)} placeholder="e.g. DSHIN-RECON-25K" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Amount</Label><Input value={rcAmount} onChange={(e) => setRcAmount(e.target.value)} inputMode="decimal" placeholder="25000.00" /></div>
-              <div className="space-y-1"><Label>Paid date</Label><Input type="date" value={rcDate} onChange={(e) => setRcDate(e.target.value)} /></div>
-            </div>
-            <div className="space-y-1"><Label>Reference (optional)</Label><Input value={rcRef} onChange={(e) => setRcRef(e.target.value)} placeholder="check / wire #" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReconOpen(false)}>Cancel</Button>
-            <Button onClick={handleRecordPaid} disabled={recordPaid.isPending}>{recordPaid.isPending ? "Recording…" : "Record paid invoice"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Invoice Dialog */}
-      <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Record Subcontractor Invoice</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <Label>Commitment</Label>
-              <Select value={selectedCommitmentId} onValueChange={setSelectedCommitmentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select commitment…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {commitments.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.commitment_no} · {c.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Sub's Invoice # (use their number)</Label>
-              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-001" />
-            </div>
-            <div className="space-y-1">
-              <Label>Period End</Label>
-              <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createInvoice.isPending}>
-              {createInvoice.isPending ? "Creating…" : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Invoice Builder Drawer */}
       <Dialog
@@ -446,9 +318,11 @@ export default function InvoicesPage() {
               <div className="flex justify-end pt-2 border-t">
                 <InvoicePDFExport
                   invoiceId={openInvoiceId}
+                  projectId={projectId!}
                   commitmentId={openCommitmentId}
                   commitmentNo={openInvoice?.commitment_no ?? ""}
                   commitmentTitle={openInvoice?.title ?? ""}
+                  commitmentRetainagePct={Number(openInvoice?.retainage_pct ?? 0)}
                 />
               </div>
             </div>

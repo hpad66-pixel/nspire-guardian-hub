@@ -38,8 +38,21 @@ export function useFinancialReportData(projectId: string | null) {
       const commitmentIds = commitmentRows.map((c) => c.id);
       const commitmentPayments = commitmentIds.length
         ? await supabase.from("commitment_payments" as any)
-            .select("commitment_id, amount, paid_date, method, reference").in("commitment_id", commitmentIds)
+            .select("commitment_id, commitment_invoice_id, amount, paid_date, method, reference").in("commitment_id", commitmentIds)
         : { data: [] as any[] };
+
+      // Resolve the invoice behind every AP disbursement.  Keeping this as a
+      // separate, keyed read avoids relying on PostgREST relationship aliases
+      // and makes the report lineage explicit: payment -> invoice -> commitment.
+      const invoiceIds = [...new Set(((commitmentPayments.data ?? []) as any[])
+        .map((p) => p.commitment_invoice_id).filter(Boolean))];
+      const commitmentInvoices = invoiceIds.length
+        ? await supabase.from("commitment_invoices" as any)
+            .select("id, invoice_no, status, period_end").in("id", invoiceIds)
+        : { data: [] as any[] };
+      const invoiceById = new Map<string, any>(
+        ((commitmentInvoices.data ?? []) as any[]).map((invoice) => [invoice.id, invoice]),
+      );
 
       // Resolve subcontractor display names from organizations (commitments only
       // carry vendor_org_id). One extra fetch keyed by the distinct vendor ids.
@@ -78,7 +91,12 @@ export function useFinancialReportData(projectId: string | null) {
           vendor_name: c.vendor_org_id ? (orgName.get(c.vendor_org_id) ?? null) : null,
         })),
         commitmentPayments: ((commitmentPayments.data ?? []) as any[]).map((p) => ({
-          commitment_id: p.commitment_id, amount: Number(p.amount), paid_date: p.paid_date,
+          commitment_id: p.commitment_id,
+          commitment_invoice_id: p.commitment_invoice_id,
+          invoice_no: invoiceById.get(p.commitment_invoice_id)?.invoice_no ?? null,
+          invoice_status: invoiceById.get(p.commitment_invoice_id)?.status ?? null,
+          invoice_period_end: invoiceById.get(p.commitment_invoice_id)?.period_end ?? null,
+          amount: Number(p.amount), paid_date: p.paid_date,
           method: p.method ?? null, reference: p.reference ?? null,
         })),
         liens: ((liens.data ?? []) as any[]).map((l) => ({ direction: l.direction, status: l.status })),

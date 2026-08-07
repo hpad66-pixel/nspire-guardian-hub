@@ -113,16 +113,16 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
     setSaving(true);
     try {
       const tenant_id = await resolveCurrentWorkspaceId();
-      const { data: inv, error } = await supabase.from('commitment_invoices' as any).insert({
-        tenant_id, commitment_id: commitmentId,
-        invoice_no: fields.invoice_number || `DOC-${file.name.slice(0, 6)}`,
-        period_end: fields.period_end || fields.invoice_date || new Date().toISOString().slice(0, 10),
-        status: 'draft',
-        submitted_amount: Number(fields.amount ?? 0),
-        retainage_held: Number(fields.retainage_amount ?? 0),
-      } as any).select('id').single();
+      const { submissionId } = await attach(tenant_id);
+      const { error } = await (supabase as any).rpc('process_vendor_submission_invoice', {
+        p_submission_id: submissionId,
+        p_commitment_id: commitmentId,
+        p_invoice_no: fields.invoice_number || `DOC-${file.name.slice(0, 6)}`,
+        p_period_end: fields.period_end || fields.invoice_date || new Date().toISOString().slice(0, 10),
+        p_submitted_amount: Number(fields.amount ?? 0),
+        p_retainage_held: Number(fields.retainage_amount ?? 0),
+      });
       if (error) throw error;
-      await attach(tenant_id, { invoiceId: (inv as any).id });
       qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
       toast.success('Draft invoice created in Commitments + document attached.');
       reset();

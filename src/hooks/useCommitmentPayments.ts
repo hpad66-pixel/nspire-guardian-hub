@@ -83,23 +83,16 @@ export function useCommitmentPayments(invoiceId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["commitment-payments", invoiceId] });
       qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+      // `useInvoice()` caches the selected invoice balance under the singular
+      // key. Refresh it after every disbursement so a final payment immediately
+      // enables the processed-and-paid PDF instead of leaving a stale open
+      // balance in the invoice drawer.
+      qc.invalidateQueries({ queryKey: ["commitment-invoice-balance", invoiceId] });
       qc.invalidateQueries({ queryKey: ["commitment-invoice-balances"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
       qc.invalidateQueries({ queryKey: ["margin"] });
     },
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("commitment_payments" as any).delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["commitment-payments", invoiceId] });
-      qc.invalidateQueries({ queryKey: ["project-financials"] });
-      qc.invalidateQueries({ queryKey: ["margin"] });
-    },
-  });
-
-  return { ...list, create, remove };
+  return { ...list, create };
 }

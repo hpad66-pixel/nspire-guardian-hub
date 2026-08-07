@@ -6,6 +6,22 @@ const EXECUTED = ['approved', 'executed'];
 
 export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string; treatment: string | null }
 export interface OwnerShare { primeCoId: string; co_no: string | number | null; title: string; treatment: string; share: number; status: string; counted: boolean }
+export interface VendorReconciliationControl {
+  commitmentId: string;
+  tenantId: string;
+  asOfDate: string;
+  expectedPaidToDate: number;
+  expectedPaymentCount: number;
+  expectedInvoiceCount: number;
+  actualPaidToDate: number;
+  actualPaymentCount: number;
+  actualInvoiceCount: number;
+  missingReferenceCount: number;
+  variance: number;
+  isReconciled: boolean;
+  certifiedAt: string | null;
+  controlNote: string | null;
+}
 export interface VendorReconciliation {
   base: number;                 // the vendor's own contract value (commitment)
   sovTotal: number;             // sum of SOV line items (a breakdown, may differ)
@@ -15,9 +31,8 @@ export interface VendorReconciliation {
   revisedContract: number;      // base + netCO  (only the vendor's money)
   billedToDate: number;         // approved/submitted on the sub's invoices
   paidToDate: number;           // actual payments
-  retainageHeld: number;        // retainage to date — from the latest pay app
+  retainageHeld: number;        // outstanding retainage on approved/paid sub invoices
   retainagePct: number;
-  latestPayAppNo: number | null;
   maxPayable: number;           // revised − retainage (won't overpay)
   remainingToPay: number;       // maxPayable − paid
   leftToEarn: number;           // revised − billed
@@ -26,23 +41,24 @@ export interface VendorReconciliation {
   ownerShares: OwnerShare[];    // his share of owner COs classified to him (not yet pushed)
   lineItems: { item_no: string; description: string; scheduled_value: number }[]; // pay-app/SOV lines tagged to him
   lineItemsTotal: number;
+  control: VendorReconciliationControl | null;
 }
 
 export function useVendorReconciliation(projectId: string | undefined, commitmentId: string | null) {
   return useQuery({
-    queryKey: ['vendor-reconciliation', commitmentId],
+    queryKey: ['vendor-reconciliation', projectId, commitmentId],
     enabled: !!commitmentId,
     queryFn: async (): Promise<VendorReconciliation> => {
-      const [commitR, sovR, cosR, invR, payR, primeR, marginR, primeCosR, sovLinesR] = await Promise.all([
-        db.from('commitments').select('original_value').eq('id', commitmentId).maybeSingle(),
+      const [commitR, sovR, cosR, invR, payR, marginR, primeCosR, sovLinesR, controlR] = await Promise.all([
+        db.from('commitments').select('original_value, retainage_pct').eq('id', commitmentId).maybeSingle(),
         db.from('commitment_sov_lines').select('scheduled_value').eq('commitment_id', commitmentId),
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
-        db.from('commitment_invoices').select('approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
+        db.from('commitment_invoices').select('status, approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
         db.from('commitment_payments').select('amount').eq('commitment_id', commitmentId),
-        projectId ? db.from('prime_contracts').select('id, retainage_pct').eq('project_id', projectId).maybeSingle() : Promise.resolve({ data: null }),
         projectId ? db.from('co_margin_links').select('prime_co_id, treatment, sub_cost, sub_co_id, sub_commitment_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
         projectId ? db.from('change_orders').select('id, co_no, title, amount, status').eq('project_id', projectId).not('prime_contract_id', 'is', null) : Promise.resolve({ data: [] }),
         db.from('sov_line_items').select('item_no, description, scheduled_value').eq('commitment_id', commitmentId).order('sort_order'),
+        db.from('v_vendor_reconciliation_status').select('*').eq('commitment_id', commitmentId).maybeSingle(),
       ]);
       const lineItems = (sovLinesR.data ?? []).map((l: any) => ({ item_no: l.item_no, description: l.description, scheduled_value: Number(l.scheduled_value ?? 0) }));
       const lineItemsTotal = lineItems.reduce((t: number, l: any) => t + l.scheduled_value, 0);
@@ -63,8 +79,6 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
           const status = co?.status ?? 'draft';
           return { primeCoId: l.prime_co_id, co_no: co?.co_no ?? null, title: co?.title ?? 'Owner change order', treatment: l.treatment, share, status, counted: EXECUTED.includes(status) };
         });
-      const ownerSharesCounted = ownerShares.filter((o: any) => o.counted).reduce((t: number, o: any) => t + o.share, 0);
-
       // Base = the VENDOR's own contract value (not the prime / not APAS margin).
       const sov = sovR.data ?? [];
       const sovTotal = sov.reduce((t: number, l: any) => t + Number(l.scheduled_value ?? 0), 0);
@@ -77,41 +91,51 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
       const additiveCO = counted.filter((c: any) => Number(c.amount) > 0).reduce((t: number, c: any) => t + Number(c.amount), 0);
       const deductiveCO = counted.filter((c: any) => Number(c.amount) < 0).reduce((t: number, c: any) => t + Math.abs(Number(c.amount)), 0);
       const netCO = additiveCO - deductiveCO;
-      const revisedContract = base + netCO + ownerSharesCounted;
+      // Unpushed owner-side allocations are visibility only.  They do not
+      // amend the subcontract or become payable until an approved/executed CCO
+      // exists on this commitment, matching the database payment ceiling.
+      const revisedContract = base + netCO;
 
-      const invoices = invR.data ?? [];
-      const billedToDate = invoices.reduce((t: number, i: any) => t + Number(i.approved_amount ?? i.submitted_amount ?? 0), 0);
+      const billedInvoices = (invR.data ?? []).filter((i: any) => ['submitted', 'approved', 'paid'].includes(i.status));
+      const approvedInvoices = (invR.data ?? []).filter((i: any) => ['approved', 'paid'].includes(i.status));
+      const billedToDate = billedInvoices.reduce((t: number, i: any) => t + Number(i.approved_amount ?? i.submitted_amount ?? 0), 0);
       const paidToDate = (payR.data ?? []).reduce((t: number, p: any) => t + Number(p.amount ?? 0), 0);
-      const retainagePct = Number(primeR.data?.retainage_pct ?? 10);
-
-      // Retainage to date wired LIVE from the most recent pay app TAGGED to THIS
-      // vendor (provenance). A pay app with no vendor tag belongs to no one's
-      // dashboard, so vendors without tagged pay apps carry $0 retainage — which
-      // is why Ecotech no longer inherits D'Shin's retainage.
-      let retainageHeld = 0;
-      let latestPayAppNo: number | null = null;
-      const pa = await db.from('prime_contract_pay_apps')
-        .select('pay_app_no, retainage_held')
-        .eq('commitment_id', commitmentId)
-        .order('pay_app_no', { ascending: false })
-        .limit(1).maybeSingle();
-      if (pa.data) {
-        retainageHeld = Number(pa.data.retainage_held ?? 0);
-        latestPayAppNo = pa.data.pay_app_no ?? null;
-      }
+      const retainagePct = Number(commitR.data?.retainage_pct ?? 0);
+      const retainageHeld = approvedInvoices.reduce(
+        (total: number, invoice: any) => total + Math.max(0, Number(invoice.retainage_held ?? 0)),
+        0,
+      );
 
       const maxPayable = revisedContract - retainageHeld;
       const remainingToPay = maxPayable - paidToDate;
       const leftToEarn = revisedContract - billedToDate;
+      const rawControl = controlR.data as any;
+      const control: VendorReconciliationControl | null = rawControl ? {
+        commitmentId: rawControl.commitment_id,
+        tenantId: rawControl.tenant_id,
+        asOfDate: rawControl.as_of_date,
+        expectedPaidToDate: Number(rawControl.expected_paid_to_date ?? 0),
+        expectedPaymentCount: Number(rawControl.expected_payment_count ?? 0),
+        expectedInvoiceCount: Number(rawControl.expected_invoice_count ?? 0),
+        actualPaidToDate: Number(rawControl.actual_paid_to_date ?? 0),
+        actualPaymentCount: Number(rawControl.actual_payment_count ?? 0),
+        actualInvoiceCount: Number(rawControl.actual_invoice_count ?? 0),
+        missingReferenceCount: Number(rawControl.missing_reference_count ?? 0),
+        variance: Number(rawControl.variance ?? 0),
+        isReconciled: rawControl.is_reconciled === true,
+        certifiedAt: rawControl.certified_at ?? null,
+        controlNote: rawControl.control_note ?? null,
+      } : null;
 
       return {
         base, sovTotal, additiveCO, deductiveCO, netCO, revisedContract,
-        billedToDate, paidToDate, retainageHeld, retainagePct, latestPayAppNo,
+        billedToDate, paidToDate, retainageHeld, retainagePct,
         maxPayable, remainingToPay, leftToEarn,
         overpaid: paidToDate > maxPayable + 0.01,
         cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null })),
         ownerShares,
         lineItems, lineItemsTotal,
+        control,
       };
     },
   });

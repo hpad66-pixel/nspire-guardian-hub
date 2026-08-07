@@ -4,7 +4,9 @@
  */
 import { useMemo } from "react";
 import { useCommitmentSov } from "@/hooks/useCommitments";
+import { useCommitmentPayments } from "@/hooks/useCommitmentPayments";
 import { useInvoice, type CommitmentInvoiceLine } from "@/hooks/useInvoices";
+import { ProcessedPaidStamp } from "@/components/financial/ProcessedPaidStamp";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
@@ -18,11 +20,21 @@ export function InvoiceBuilder({
   readOnly?: boolean;
 }) {
   const { data: sov = [] } = useCommitmentSov(commitmentId);
-  const { detail, lines, upsertLine } = useInvoice(invoiceId);
-  const detailData = detail.data as { status?: string } | null | undefined;
-  const locked = readOnly
-    || detailData?.status === "approved"
-    || detailData?.status === "paid";
+  const { detail, lines, upsertLine, balance } = useInvoice(invoiceId);
+  const { data: payments = [] } = useCommitmentPayments(invoiceId);
+  const detailData = detail.data as {
+    status?: string;
+    approved_amount?: number | null;
+    submitted_amount?: number | null;
+    retainage_held?: number | null;
+    processed_at?: string | null;
+    paid_at?: string | null;
+    updated_at?: string | null;
+    created_at?: string | null;
+  } | null | undefined;
+  // Once submitted, the line detail is accounting evidence. Revisions happen
+  // only after the workflow returns a rejected invoice to draft.
+  const locked = readOnly || detailData?.status !== "draft";
 
   const lineByS = useMemo(() => {
     const m = new Map<string, CommitmentInvoiceLine>();
@@ -39,6 +51,21 @@ export function InvoiceBuilder({
     }
     return { scheduled, thisP, mats, completed: thisP + mats };
   }, [sov, lineByS]);
+
+  const paymentState = useMemo(() => {
+    const ordered = [...payments].sort((a, b) =>
+      `${a.paid_date}|${a.created_at ?? ""}`.localeCompare(`${b.paid_date}|${b.created_at ?? ""}`),
+    );
+    const totalPaid = ordered.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    const ceiling = Number(detailData?.approved_amount ?? detailData?.submitted_amount ?? 0);
+    const netPayable = Math.max(0, ceiling - Number(detailData?.retainage_held ?? 0));
+    const remaining = Number((balance.data as any)?.balance_due ?? netPayable - totalPaid);
+    return {
+      latest: ordered[ordered.length - 1],
+      totalPaid,
+      fullyPaid: detailData?.status === "paid" && ordered.length > 0 && remaining <= 0.005,
+    };
+  }, [balance.data, detailData?.approved_amount, detailData?.retainage_held, detailData?.status, detailData?.submitted_amount, payments]);
 
   async function handle(
     sovId: string, sv: number,
@@ -60,6 +87,16 @@ export function InvoiceBuilder({
 
   return (
     <div className="space-y-3">
+      {paymentState.fullyPaid && paymentState.latest && (
+        <div className="flex justify-end pb-1 pt-1">
+          <ProcessedPaidStamp
+            processedDate={detailData?.processed_at ?? detailData?.updated_at ?? detailData?.created_at}
+            paidDate={paymentState.latest.paid_date}
+            totalPaid={paymentState.totalPaid}
+            latestReference={paymentState.latest.reference}
+          />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="outline" className="font-mono">Scheduled {money(totals.scheduled)}</Badge>
         <Badge variant="outline" className="font-mono">This period {money(totals.thisP)}</Badge>

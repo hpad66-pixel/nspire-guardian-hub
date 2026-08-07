@@ -45,27 +45,39 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: s
   );
 }
 
-function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: AllocationTargets; reconciled: boolean }) {
+function PaymentRow({ p, targets, reconciled, projectId }: { p: VendorPayment; targets?: AllocationTargets; reconciled: boolean; projectId: string }) {
   const [open, setOpen] = useState(false);
   const hasSplit = p.allocations.length > 0;
+  const invoiceHref = p.commitment_invoice_id
+    ? `/projects/${projectId}/financials/commitments/${p.commitment_id}?tab=invoices&invoice=${p.commitment_invoice_id}`
+    : null;
   return (
     <div className="border-t first:border-t-0">
-      <button
-        type="button"
-        onClick={() => hasSplit && setOpen((v) => !v)}
-        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm ${hasSplit ? "hover:bg-muted/30" : "cursor-default"}`}
-      >
-        <span className="text-muted-foreground">
-          {hasSplit ? (open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="inline-block w-4" />}
-        </span>
-        <span className="w-28 shrink-0 whitespace-nowrap">{fmtDate(p.paid_date)}</span>
-        <span className="flex-1 truncate text-muted-foreground">
-          <span className="capitalize">{p.method ?? "payment"}</span>{p.reference ? ` · ${p.reference}` : ""}
-        </span>
+      <div className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm ${hasSplit ? "hover:bg-muted/30" : ""}`}>
+        <button
+          type="button"
+          onClick={() => hasSplit && setOpen((v) => !v)}
+          className={`flex min-w-0 flex-1 items-center gap-3 text-left ${hasSplit ? "cursor-pointer" : "cursor-default"}`}
+        >
+          <span className="text-muted-foreground">
+            {hasSplit ? (open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="inline-block w-4" />}
+          </span>
+          <span className="w-28 shrink-0 whitespace-nowrap">{fmtDate(p.paid_date)}</span>
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+            <span className="capitalize">{p.method ?? "payment"}</span>{p.reference ? ` · ${p.reference}` : ""}
+          </span>
+        </button>
+        {invoiceHref ? (
+          <Link to={invoiceHref} className="shrink-0 text-xs font-medium text-[var(--apas-sapphire)] hover:underline">
+            Invoice #{p.invoice_no ?? "—"}
+          </Link>
+        ) : (
+          <Badge variant="outline" className="shrink-0 text-[10px] font-normal text-destructive">Unlinked invoice</Badge>
+        )}
         {reconciled && <ReconciledBadge />}
         {!reconciled && hasSplit && <Badge variant="outline" className="text-[10px] font-normal text-amber-600">Partly split</Badge>}
         <span className="w-28 shrink-0 text-right font-mono font-medium text-[var(--apas-sapphire)]">{fmt(p.amount)}</span>
-      </button>
+      </div>
       {open && hasSplit && (
         <div className="bg-muted/20 px-4 pb-3 pl-11">
           {reconciled && (
@@ -174,7 +186,7 @@ function VendorPanel({
           {isLoading && <div className="p-5 text-center text-sm text-muted-foreground">Loading payments…</div>}
           {!isLoading && payments.length === 0 && <div className="p-5 text-center text-sm text-muted-foreground">No payments recorded for this vendor yet.</div>}
           {payments.map((p) => (
-            <PaymentRow key={p.id} p={p} targets={targets} reconciled={reconciledIds.has(p.id)} />
+            <PaymentRow key={p.id} p={p} targets={targets} reconciled={reconciledIds.has(p.id)} projectId={projectId} />
           ))}
         </CardContent>
       </Card>

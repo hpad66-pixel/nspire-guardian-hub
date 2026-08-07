@@ -17,8 +17,8 @@ import { gateExplainer } from "@/lib/financial/lien";
 const schema = z.object({
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   paid_date: z.string().min(1, "Date required"),
-  method: z.string().optional(),
-  reference: z.string().optional(),
+  method: z.string().min(1, "Payment method required"),
+  reference: z.string().trim().min(1, "Bank reference required"),
   notes: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
@@ -57,13 +57,13 @@ export function RecordCommitmentPaymentDialog({ open, onOpenChange, invoiceId }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, bal?.balance_due]);
 
-  const blocked = !invoiceId || gated;
+  const blocked = !invoiceId || gated || (bal != null && bal.status !== "approved");
 
   const onSubmit = async (v: FormValues) => {
     try {
       await recordPayment.mutateAsync({
         amount: v.amount, paid_date: v.paid_date,
-        method: v.method || null, reference: v.reference || null, notes: v.notes || null,
+        method: v.method, reference: v.reference.trim(), notes: v.notes || null,
       });
       toast.success(`Recorded ${fmt(v.amount)} paid`);
       onOpenChange(false);
@@ -98,6 +98,12 @@ export function RecordCommitmentPaymentDialog({ open, onOpenChange, invoiceId }:
             <span>{gateExplainer("progress")} Approve an inbound lien release first.</span>
           </div>
         )}
+        {invoiceId && bal && bal.status !== "approved" && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>Payment blocked: this invoice must be processed and approved first. Current status: {bal.status}.</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <fieldset disabled={blocked} className="space-y-4 disabled:opacity-50">
@@ -127,8 +133,9 @@ export function RecordCommitmentPaymentDialog({ open, onOpenChange, invoiceId }:
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label>Reference</Label>
+                <Label>Bank reference <span className="text-destructive">*</span></Label>
                 <Input placeholder="Check # / wire WT+SRF / Zelle ref #" {...register("reference")} />
+                {errors.reference && <p className="text-xs text-destructive">{errors.reference.message}</p>}
               </div>
             </div>
             <div className="space-y-1.5">
