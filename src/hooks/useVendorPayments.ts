@@ -19,6 +19,7 @@ export interface VendorPayment {
   id: string;
   commitment_id: string;
   commitment_invoice_id: string | null;
+  invoice_no: string | null;
   amount: number;
   paid_date: string;
   method: string | null;
@@ -41,12 +42,25 @@ export function useVendorPayments(commitmentId: string | null) {
       const list = (pays ?? []) as any[];
       if (!list.length) return [];
 
-      const { data: allocs } = await supabase
-        .from("commitment_payment_allocations" as any)
-        .select("id, payment_id, kind, change_order_id, commitment_sov_line_id, amount")
-        .in("payment_id", list.map((p) => p.id));
+      const invoiceIds = [...new Set(list.map((p) => p.commitment_invoice_id).filter(Boolean))] as string[];
+      const [allocR, invoiceR] = await Promise.all([
+        supabase
+          .from("commitment_payment_allocations" as any)
+          .select("id, payment_id, kind, change_order_id, commitment_sov_line_id, amount")
+          .in("payment_id", list.map((p) => p.id)),
+        invoiceIds.length
+          ? supabase.from("commitment_invoices" as any).select("id, invoice_no").in("id", invoiceIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (allocR.error) throw allocR.error;
+      if (invoiceR.error) throw invoiceR.error;
+
+      const invoiceNoById = new Map<string, string>();
+      for (const invoice of (invoiceR.data ?? []) as any[]) {
+        invoiceNoById.set(invoice.id, String(invoice.invoice_no ?? ""));
+      }
       const byPayment = new Map<string, VendorPaymentAllocation[]>();
-      for (const a of (allocs ?? []) as any[]) {
+      for (const a of (allocR.data ?? []) as any[]) {
         const arr = byPayment.get(a.payment_id) ?? [];
         arr.push({
           id: a.id, kind: a.kind, change_order_id: a.change_order_id,
@@ -57,6 +71,7 @@ export function useVendorPayments(commitmentId: string | null) {
 
       return list.map((p) => ({
         id: p.id, commitment_id: p.commitment_id, commitment_invoice_id: p.commitment_invoice_id,
+        invoice_no: p.commitment_invoice_id ? invoiceNoById.get(p.commitment_invoice_id) || null : null,
         amount: Number(p.amount), paid_date: p.paid_date, method: p.method,
         reference: p.reference, notes: p.notes, allocations: byPayment.get(p.id) ?? [],
       }));

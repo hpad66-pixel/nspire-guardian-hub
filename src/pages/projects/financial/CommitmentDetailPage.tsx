@@ -1,4 +1,3 @@
-import { toDateOnly } from "@/lib/date";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useState } from "react";
 import {
@@ -15,13 +14,12 @@ import { LienReleasePanel } from "@/components/financial/LienReleasePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ChevronRight, LayoutDashboard, Trash2 } from "lucide-react";
+import { Inbox, ChevronRight, LayoutDashboard } from "lucide-react";
 import { money } from "@/lib/pdf";
 import { useProject } from "@/hooks/useProjects";
 import { toast } from "sonner";
@@ -37,27 +35,13 @@ export default function CommitmentDetailPage() {
   const { data: commitments = [] } = useCommitments(projectId ?? null);
   const commitment = commitments.find((c) => c.id === commitmentId);
   const { data: totals } = useCommitmentTotals(commitmentId ?? null);
-  const { data: invoices = [], create: createInvoice } = useCommitmentInvoices(commitmentId ?? null);
+  const { data: invoices = [] } = useCommitmentInvoices(commitmentId ?? null);
   const { data: ccos = [] } = useChangeOrdersByType(projectId ?? null, "CCO");
   const filteredCcos = ccos.filter((co) => co.commitment_id === commitmentId);
 
-  const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [periodEnd, setPeriodEnd] = useState(toDateOnly(new Date()));
-  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(() => searchParams.get("invoice"));
 
   if (!commitment) return <div className="p-6 text-muted-foreground">Loading commitment…</div>;
-
-  async function handleCreateInvoice() {
-    if (!invoiceNo.trim()) { toast.error("Invoice # required"); return; }
-    try {
-      const row = await createInvoice.mutateAsync({ invoice_no: invoiceNo.trim(), period_end: periodEnd });
-      setNewInvoiceOpen(false);
-      setInvoiceNo(""); setPeriodEnd(toDateOnly(new Date()));
-      setOpenInvoiceId(row.id);
-      toast.success(`Invoice ${row.invoice_no} created`);
-    } catch (e: any) { toast.error(e.message); }
-  }
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
@@ -144,8 +128,10 @@ export default function CommitmentDetailPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Invoices</CardTitle>
-              <Button size="sm" onClick={() => setNewInvoiceOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> New invoice
+              <Button size="sm" asChild>
+                <Link to={`/projects/${projectId}/financials/vendor-inbox`}>
+                  <Inbox className="h-4 w-4 mr-1" /> Request / upload invoice
+                </Link>
               </Button>
             </CardHeader>
             <CardContent>
@@ -209,27 +195,6 @@ export default function CommitmentDetailPage() {
         </TabsContent>
       </Tabs>
 
-      {/* New invoice dialog */}
-      <Dialog open={newInvoiceOpen} onOpenChange={setNewInvoiceOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>New invoice</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Invoice #</Label>
-              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-001" />
-            </div>
-            <div>
-              <Label>Period end</Label>
-              <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewInvoiceOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateInvoice}>Create</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Invoice detail dialog */}
       {openInvoiceId && (
         <InvoiceDetailDialog
@@ -238,6 +203,7 @@ export default function CommitmentDetailPage() {
           commitmentId={commitment.id}
           commitmentNo={commitment.commitment_no}
           commitmentTitle={commitment.title}
+          commitmentRetainagePct={Number(commitment.retainage_pct ?? 0)}
           open={!!openInvoiceId}
           onOpenChange={(o) => !o && setOpenInvoiceId(null)}
         />
@@ -247,13 +213,14 @@ export default function CommitmentDetailPage() {
 }
 
 function InvoiceDetailDialog({
-  invoiceId, projectId, commitmentId, commitmentNo, commitmentTitle, open, onOpenChange,
+  invoiceId, projectId, commitmentId, commitmentNo, commitmentTitle, commitmentRetainagePct, open, onOpenChange,
 }: {
   invoiceId: string; projectId: string; commitmentId: string; commitmentNo: string; commitmentTitle: string;
+  commitmentRetainagePct: number;
   open: boolean; onOpenChange: (o: boolean) => void;
 }) {
-  const { detail, submit, approve, reject } = useInvoice(invoiceId);
-  const { data: payments = [], remove: removePayment } = useCommitmentPayments(invoiceId);
+  const { detail, submit, approve, reject, revise } = useInvoice(invoiceId);
+  const { data: payments = [] } = useCommitmentPayments(invoiceId);
   const [approveAmt, setApproveAmt] = useState<number | "">("");
   const [payOpen, setPayOpen] = useState(false);
   const qc = useQueryClient();
@@ -271,6 +238,9 @@ function InvoiceDetailDialog({
     if (!reason) return;
     try { await reject.mutateAsync(reason); toast.success("Rejected"); } catch (e: any) { toast.error(e.message); }
   }
+  async function doRevise() {
+    try { await revise.mutateAsync(); toast.success("Invoice reopened for revision"); } catch (e: any) { toast.error(e.message); }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -282,9 +252,11 @@ function InvoiceDetailDialog({
               {inv && <Badge variant="outline" className="capitalize">{inv.status}</Badge>}
               <InvoicePDFExport
                 invoiceId={invoiceId}
+                projectId={projectId}
                 commitmentId={commitmentId}
                 commitmentNo={commitmentNo}
                 commitmentTitle={commitmentTitle}
+                commitmentRetainagePct={commitmentRetainagePct}
               />
             </div>
           </DialogTitle>
@@ -310,6 +282,11 @@ function InvoiceDetailDialog({
                 <Button variant="destructive" onClick={doReject} disabled={reject.isPending}>Reject</Button>
               </>
             )}
+            {inv?.status === "rejected" && !["vendor_pay_app", "vendor_portal_invoice"].includes(inv?.source_kind) && (
+              <Button variant="outline" onClick={doRevise} disabled={revise.isPending}>
+                {revise.isPending ? "Reopening…" : "Revise"}
+              </Button>
+            )}
             {inv?.rejection_comment && (
               <div className="text-sm text-destructive">
                 Rejection reason: {inv.rejection_comment}
@@ -321,7 +298,7 @@ function InvoiceDetailDialog({
           <div className="border-t pt-4 space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm">Payments to Vendor</h4>
-              {(inv?.status === "approved" || inv?.status === "paid") && (
+              {inv?.status === "approved" && (
                 <Button size="sm" onClick={() => setPayOpen(true)}>Record payment</Button>
               )}
             </div>
@@ -336,16 +313,7 @@ function InvoiceDetailDialog({
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center justify-between gap-2 py-1.5">
                     <span className="font-mono">{p.paid_date} · {p.method ?? ""} {p.reference ?? ""}</span>
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono">{money(Number(p.amount))}</span>
-                      <button
-                        title="Delete this payment"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => { if (confirm(`Delete this payment of ${money(Number(p.amount))} on ${p.paid_date}?\n\nThis removes the cash record and lowers paid-to-date. This can’t be undone.`)) removePayment.mutate(p.id, { onSuccess: () => toast.success("Payment deleted") }); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
+                    <span className="font-mono">{money(Number(p.amount))}</span>
                   </div>
                 ))}
               </div>

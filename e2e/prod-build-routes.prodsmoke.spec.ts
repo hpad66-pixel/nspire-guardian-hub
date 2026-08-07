@@ -74,4 +74,30 @@ test.describe("production bundle mounts every high-risk route", () => {
       expect(new URL(page.url()).pathname, "auth stub failed — route not exercised").not.toMatch(/^\/auth/);
     });
   }
+
+  test("D'SHIN vendor dashboard renders the certified reconciliation control", async ({ page }) => {
+    await bootAuthedProdApp(page);
+
+    await page.goto(`/projects/${PROJECT_ID}/financials/vendors`);
+
+    await expect(page.getByText("Paid to date", { exact: true }).locator("..")).toContainText("$540,479.39", { timeout: 20_000 });
+    await expect(page.getByText(/Independently reconciled · QC checked/i)).toBeVisible();
+    await expect(page.getByText(/36 payments? and 13 invoices?/i)).toBeVisible();
+  });
+
+  test("D'SHIN baseline adjustment renders its paid stamp and approved lien control", async ({ page }) => {
+    await bootAuthedProdApp(page);
+
+    await page.goto(
+      `/projects/${PROJECT_ID}/financials/commitments/${COMMITMENT_ID}` +
+      `?tab=invoices&invoice=${SEED.baselineAdjustmentInvoiceId}`,
+    );
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText("DSHIN-BASELINE-ADJ-2026-06-11", { timeout: 20_000 });
+    await expect(dialog.getByRole("img", { name: /Processed and paid, \$8,293\.12/i })).toBeVisible();
+    await expect(dialog).toContainText("JOINT-RECON-2026-06-11");
+    await expect(dialog).toContainText("Gate satisfied — payment allowed.");
+    await expect(dialog.getByRole("button", { name: "Record payment" })).toHaveCount(0);
+  });
 });

@@ -67,27 +67,19 @@ export function useVendorSubmissions(projectId: string | null) {
       const p = submission.parsed ?? {};
 
       if (submission.doc_type === "invoice") {
-        const { data: inv, error } = await supabase
-          .from("commitment_invoices" as any)
-          .insert({
-            tenant_id,
-            commitment_id: commitmentId,
-            invoice_no: input.invoiceNo ?? p.invoice_no ?? `SUB-${submission.id.slice(0, 8)}`,
-            period_end: input.periodEnd ?? p.period_end ?? new Date().toISOString().slice(0, 10),
-            status: "draft",
-            submitted_amount: input.amount ?? p.amount ?? 0,
-            artifact_id: submission.artifact_id,
-            vendor_submission_id: submission.id,
-          } as any)
-          .select("id")
-          .single();
+        const { data: invoiceId, error } = await (supabase as any).rpc(
+          "process_vendor_submission_invoice",
+          {
+            p_submission_id: submission.id,
+            p_commitment_id: commitmentId,
+            p_invoice_no: input.invoiceNo ?? p.invoice_no ?? `SUB-${submission.id.slice(0, 8)}`,
+            p_period_end: input.periodEnd ?? p.period_end ?? new Date().toISOString().slice(0, 10),
+            p_submitted_amount: input.amount ?? p.amount ?? 0,
+            p_retainage_held: 0,
+          },
+        );
         if (error) throw error;
-        const { error: upErr } = await supabase
-          .from("vendor_submissions" as any)
-          .update({ status: "processed", commitment_id: commitmentId, created_commitment_invoice_id: (inv as any).id } as any)
-          .eq("id", submission.id);
-        if (upErr) throw upErr;
-        return { kind: "invoice" as const, id: (inv as any).id };
+        return { kind: "invoice" as const, id: invoiceId as string };
       }
 
       if (submission.doc_type === "lien_release") {

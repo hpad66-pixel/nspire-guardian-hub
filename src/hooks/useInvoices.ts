@@ -119,6 +119,26 @@ export function useInvoice(invoiceId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice", invoiceId] }),
   });
 
+  const revise = useMutation({
+    mutationFn: async () => {
+      if (!invoiceId) throw new Error("No invoice");
+      const { data, error } = await supabase
+        .from("commitment_invoices" as any)
+        .update({ status: "draft", rejection_comment: null } as any)
+        .eq("id", invoiceId)
+        .eq("status", "rejected")
+        .neq("source_kind", "vendor_pay_app")
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        throw new Error("Only rejected non-pay-app invoices can be reopened for revision.");
+      }
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice", invoiceId] }),
+  });
+
   // Per-invoice balance (billed vs paid + lien status) from the view.
   const balance = useQuery({
     queryKey: ["commitment-invoice-balance", invoiceId],
@@ -199,7 +219,7 @@ export function useInvoice(invoiceId: string | null) {
   });
 
   return {
-    detail, lines, upsertLine, submit, approve, reject,
+    detail, lines, upsertLine, submit, approve, reject, revise,
     balance, lienReleases, isGated, recordPayment,
   };
 }

@@ -46,7 +46,7 @@ const data: ReportData = {
   ],
   commitments: [{ id: "c1", title: "D'SHIN Plumbing", original_value: 429510, vendor_name: "D'SHIN Plumbing" }],
   commitmentPayments: [
-    { commitment_id: "c1", amount: 390779.39, paid_date: "2026-04-24", method: "ach", reference: "P-1" },
+    { commitment_id: "c1", commitment_invoice_id: "inv-1", invoice_no: "DSHIN-2026-04", invoice_status: "paid", amount: 390779.39, paid_date: "2026-04-24", method: "ach", reference: "P-1" },
   ],
   liens: [
     { direction: "outbound", status: "approved" },

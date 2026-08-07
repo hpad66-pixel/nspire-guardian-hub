@@ -59,7 +59,10 @@ export function RecordSubPaymentDialog({
 
   const commitment = useMemo(() => commitments.find((c) => c.id === commitmentId), [commitments, commitmentId]);
   const invoicesForCommitment = useMemo(
-    () => invoiceBalances.filter((i) => i.commitment_id === commitmentId),
+    () => invoiceBalances.filter((i) =>
+      i.commitment_id === commitmentId
+      && i.status === "approved"
+      && i.balance_due > 0.004),
     [invoiceBalances, commitmentId],
   );
   const selected = useMemo(() => invoiceBalances.find((i) => i.commitment_invoice_id === invoiceId), [invoiceBalances, invoiceId]);
@@ -82,7 +85,10 @@ export function RecordSubPaymentDialog({
   const amt = Number(amount);
   const overpays = selected != null && amt > selected.balance_due + 0.004;
   const lienBlocked = selected != null && !selected.lien_satisfied;
-  const canSave = invoiceId && paidDate && amt > 0 && !overpays && !create.isPending && !saveAll.isPending;
+  const canSave = Boolean(
+    invoiceId && paidDate && reference.trim() && amt > 0
+    && !overpays && !lienBlocked && !create.isPending && !saveAll.isPending,
+  );
 
   async function handleSave() {
     if (!canSave || !selected) return;
@@ -95,7 +101,7 @@ export function RecordSubPaymentDialog({
         amount: amt,
         paid_date: paidDate,
         method,
-        reference: reference || null,
+        reference: reference.trim(),
         notes: notes || null,
       });
       if (allocations.length && created?.id) {
@@ -181,8 +187,9 @@ export function RecordSubPaymentDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Reference / Check #</Label>
+              <Label>Bank reference / Check # <span className="text-destructive">*</span></Label>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. 2041" />
+              <p className="text-[11px] text-muted-foreground">Required evidence: check number, wire WT/SRF trace, ACH trace, or Zelle reference.</p>
             </div>
           </div>
 
@@ -213,8 +220,7 @@ export function RecordSubPaymentDialog({
           )}
           {lienBlocked && (
             <p className="text-xs text-amber-600">
-              Heads up: this invoice has no approved lien release on file. The system may block the payment until a
-              lien release is approved.
+              Payment blocked: this invoice has no approved inbound lien release on file. Approve the release first.
             </p>
           )}
         </div>

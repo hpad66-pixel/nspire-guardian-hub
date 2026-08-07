@@ -46,11 +46,12 @@ export function useVendorPayApps(projectId: string | undefined) {
 export function useRequestVendorPayApp(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ commitmentId, vendorName, vendorEmail }: { commitmentId?: string | null; vendorName?: string; vendorEmail?: string }) => {
+    mutationFn: async ({ commitmentId, vendorName, vendorEmail }: { commitmentId: string; vendorName?: string; vendorEmail?: string }) => {
+      if (!commitmentId) throw new Error('Select the subcontract this pay app bills against.');
       const token = crypto.randomUUID().replace(/-/g, '');
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await db.from('vendor_payapp_submissions').insert({
-        project_id: projectId, commitment_id: commitmentId || null, token,
+        project_id: projectId, commitment_id: commitmentId, token,
         vendor_name: vendorName || null, vendor_email: vendorEmail || null,
         status: 'requested', created_by: user?.id ?? null,
       });
@@ -67,24 +68,16 @@ export function useRequestVendorPayApp(projectId: string) {
 export function useConvertVendorPayApp() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ sub, projectId }: { sub: VendorPayApp; projectId: string }): Promise<string | null> => {
-      if (!sub.commitment_id) { // no commitment → just approve, no invoice
-        await db.from('vendor_payapp_submissions').update({ status: 'approved' }).eq('id', sub.id);
-        return null;
-      }
-      const { data: ws } = await db.rpc('get_my_workspace_id');
-      const { data: inv, error } = await db.from('commitment_invoices').insert({
-        tenant_id: ws,
-        commitment_id: sub.commitment_id,
-        invoice_no: `SUBAPP-${sub.app_no ?? sub.id.slice(0, 6)}`,
-        period_end: sub.period_to ?? new Date().toISOString().slice(0, 10),
-        status: 'draft',
-        submitted_amount: Number(sub.current_due ?? 0),
-        retainage_held: Number(sub.retainage_amount ?? 0),
-      }).select('id').single();
+    mutationFn: async ({ sub }: { sub: VendorPayApp; projectId: string }): Promise<string | null> => {
+      // Conversion is atomic in the database: it validates the signed pay app,
+      // derives current-period (not cumulative) billing, creates the linked
+      // draft invoice + approved lien evidence, and writes both backlinks.
+      const { data: invoiceId, error } = await db.rpc('convert_vendor_payapp_to_commitment_invoice', {
+        p_submission_id: sub.id,
+      });
       if (error) throw error;
-      await db.from('vendor_payapp_submissions').update({ status: 'approved', commitment_invoice_id: inv.id }).eq('id', sub.id);
-      return inv.id as string;
+      if (!invoiceId) throw new Error('Vendor pay app conversion did not return an invoice');
+      return invoiceId as string;
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] });

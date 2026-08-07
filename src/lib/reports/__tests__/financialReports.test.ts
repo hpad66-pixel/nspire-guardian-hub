@@ -124,7 +124,7 @@ describe("subcontractorPayments", () => {
     { id: "c3", title: "Fencing", original_value: 10450, vendor_name: "Acme Fence Co" },
   ];
   const payments = [
-    { commitment_id: "c1", amount: 100000, paid_date: "2026-04-24", method: "ach", reference: "P-1" },
+    { commitment_id: "c1", commitment_invoice_id: "inv-1", invoice_no: "DSHIN-2026-04", invoice_status: "paid", amount: 100000, paid_date: "2026-04-24", method: "ach", reference: "P-1" },
     { commitment_id: "c2", amount: 1800, paid_date: "2026-05-08", method: "check", reference: "P-2" },
     { commitment_id: "c3", amount: 10450, paid_date: "2026-05-10", method: "wire", reference: "P-3" },
     { commitment_id: "c1", amount: 25000, paid_date: "2026-06-01", method: "ach", reference: "P-4" },
@@ -138,6 +138,7 @@ describe("subcontractorPayments", () => {
     const dshin = r.byVendor.find((v) => v.vendor === "D'SHIN Plumbing")!;
     expect(dshin.subtotal).toBe(126800); // 100000 + 1800 + 25000
     expect(dshin.count).toBe(3);
+    expect(dshin.payments[0]).toMatchObject({ invoiceId: "inv-1", invoiceNo: "DSHIN-2026-04", invoiceStatus: "paid" });
     expect(r.byVendor[0].vendor).toBe("D'SHIN Plumbing"); // largest first
     expect(dshin.pctOfTotal).toBeCloseTo(92.39, 1);
   });

@@ -167,18 +167,6 @@ export function useCommitmentInvoices(commitmentId: string | null) {
     },
   });
 
-  const create = useMutation({
-    mutationFn: async (input: { invoice_no: string; period_end: string }) => {
-      const tenant_id = await requireTenantId();
-      const { data, error } = await supabase.from("commitment_invoices" as any).insert({
-        tenant_id, commitment_id: commitmentId!, ...input,
-      } as any).select().single();
-      if (error) throw error;
-      return data as unknown as CommitmentInvoice;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["commitment-invoices", commitmentId] }),
-  });
-
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["commitment-invoices", commitmentId] });
     qc.invalidateQueries({ queryKey: ["project-financials"] });
@@ -211,5 +199,5 @@ export function useCommitmentInvoices(commitmentId: string | null) {
     onSuccess: invalidate,
   });
 
-  return { ...list, create, setStatus, remove };
+  return { ...list, setStatus, remove };
 }

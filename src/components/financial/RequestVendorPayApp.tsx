@@ -1,16 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FileText, Link2, Copy, Check, Loader2, Eye, CheckCircle2, Banknote, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { supabase } from '@/integrations/supabase/client';
 import { useProject } from '@/hooks/useProjects';
 import { useCommitments } from '@/hooks/useCommitments';
 import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useDeleteVendorPayApp, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
-import { useLienWaivers } from '@/hooks/useLienWaivers';
-import { blankWaiverSpec } from '@/lib/lienWaiver/defaults';
+import { useInvoice } from '@/hooks/useInvoices';
+import { useCommitmentPayments } from '@/hooks/useCommitmentPayments';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { openVendorPayAppReport } from '@/lib/financial/vendorPayAppReport';
 import { toast } from 'sonner';
@@ -43,9 +43,10 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
   const titleFor = (cid: string | null) => commitments.find((c: any) => c.id === cid)?.title as string | undefined;
 
   const create = async () => {
+    if (!commitmentId) return toast.error('Select the subcontract this pay app bills against.');
     let token: string;
     try {
-      token = await request.mutateAsync({ commitmentId: commitmentId || null, vendorName: name.trim() || undefined, vendorEmail: email.trim() || undefined });
+      token = await request.mutateAsync({ commitmentId, vendorName: name.trim() || undefined, vendorEmail: email.trim() || undefined });
     } catch (e: any) {
       return toast.error(e?.message || 'Could not create the request.');
     }
@@ -91,13 +92,13 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
       <div className="space-y-3 p-4">
         <div className="grid gap-2 sm:grid-cols-3">
           <Select value={commitmentId} onValueChange={setCommitmentId}>
-            <SelectTrigger><SelectValue placeholder="Commitment (optional)" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Subcontract (required)" /></SelectTrigger>
             <SelectContent>{commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.commitment_no ? c.commitment_no + ' · ' : ''}{c.title}</SelectItem>)}</SelectContent>
           </Select>
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Vendor name" />
           <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vendor@email.com" />
         </div>
-        <Button onClick={create} disabled={request.isPending || sendEmail.isPending} className="gap-1.5">
+        <Button onClick={create} disabled={!commitmentId || request.isPending || sendEmail.isPending} className="gap-1.5">
           {(request.isPending || sendEmail.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />} {email.trim() ? 'Create & email link' : 'Create link'}
         </Button>
 
@@ -115,12 +116,10 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><button title="More" className="shrink-0 text-muted-foreground hover:text-foreground"><MoreVertical className="h-3.5 w-3.5" /></button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel className="text-[11px]">Set status</DropdownMenuLabel>
-                      {Object.keys(STATUS).map(s => (
-                        <DropdownMenuItem key={s} disabled={r.status === s} onClick={() => updateStatus.mutate({ id: r.id, status: s, projectId }, { onSuccess: () => toast.success(`Marked ${STATUS[s].label}`) })}>
-                          {r.status === s && <Check className="mr-1 h-3.5 w-3.5" />}{STATUS[s].label}
-                        </DropdownMenuItem>
-                      ))}
+                      <DropdownMenuLabel className="text-[11px]">Submission actions</DropdownMenuLabel>
+                      <DropdownMenuItem disabled={r.status === 'void'} onClick={() => updateStatus.mutate({ id: r.id, status: 'void', projectId }, { onSuccess: () => toast.success('Submission voided') })}>
+                        {r.status === 'void' && <Check className="mr-1 h-3.5 w-3.5" />}Void submission
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this vendor invoice (${r.vendor_name || 'Vendor'})?\n\nThis also removes its draft invoice and unconditional waiver. This can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: (res) => toast.success(res?.keptInvoice ? 'Deleted — its invoice has payments recorded, so it was kept. Remove it from Commitments if needed.' : 'Deleted (and its draft invoice + waiver)') }); }}>
                         <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
@@ -140,15 +139,27 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
 }
 
 function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }: { sub: VendorPayApp; projectId: string; projectName: string; commitmentTitle?: string; onClose: () => void }) {
-  const updateStatus = useUpdateVendorPayAppStatus();
   const convert = useConvertVendorPayApp();
-  const waivers = useLienWaivers(projectId);
-  const sendEmail = useSendEmail();
   const [invoiceId, setInvoiceId] = useState<string | null>(sub.commitment_invoice_id);
+  const { detail, balance } = useInvoice(invoiceId);
+  const { data: payments = [] } = useCommitmentPayments(invoiceId);
   const total = Number(sub.total_completed ?? 0);
   const ret = Number(sub.retainage_amount ?? 0);
   const due = Number(sub.current_due ?? 0);
-  const busy = updateStatus.isPending || convert.isPending || (waivers.create as any).isPending || sendEmail.isPending;
+  const paidTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const invoiceStatus = (detail.data as any)?.status as string | undefined;
+  const invoiceAmount = Number((detail.data as any)?.approved_amount ?? (detail.data as any)?.submitted_amount ?? due);
+  const invoiceRetainage = Number((detail.data as any)?.retainage_held ?? 0);
+  const invoiceBalance = Number(
+    (balance.data as any)?.balance_due
+      ?? Math.max(0, invoiceAmount - invoiceRetainage - paidTotal),
+  );
+  const fullyPaid = invoiceStatus === 'paid' && payments.length > 0 && invoiceBalance <= 0.005;
+  const readyForPayment = invoiceStatus === 'approved';
+  const invoiceHref = invoiceId && sub.commitment_id
+    ? `/projects/${projectId}/financials/commitments/${sub.commitment_id}?tab=invoices&invoice=${invoiceId}`
+    : null;
+  const busy = convert.isPending;
 
   const approve = async () => {
     try {
@@ -157,38 +168,6 @@ function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }:
       toast.success(id ? 'Approved · draft invoice created in Commitments' : 'Approved (link a commitment to create an invoice)');
     } catch { /* handled */ }
   };
-  const markPaid = async () => {
-    updateStatus.mutate({ id: sub.id, status: 'paid', projectId });
-    try {
-      // Build + create an unconditional progress waiver (with a spec so /sign/lien renders).
-      const spec: any = blankWaiverSpec({ project: projectName, claimant: sub.vendor_name ?? '', type: 'unconditional_progress' });
-      spec.payment.amount = String(due);
-      spec.payment.through_date = sub.period_to ?? '';
-      spec.parties.claimant.email = sub.vendor_email ?? '';
-      const row = await (waivers.create as any).mutateAsync({ spec });
-      if (invoiceId) await supabase.from('lien_releases' as any).update({ commitment_invoice_id: invoiceId }).eq('id', row.id);
-      const link = `${window.location.origin}/sign/lien/${row.sign_token}`;
-      if (sub.vendor_email) {
-        await sendEmail.mutateAsync({
-          recipients: [sub.vendor_email],
-          subject: `Unconditional lien waiver — signature requested`,
-          bodyHtml: `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
-            <div style="background:#1D6FE8;padding:18px 24px;border-radius:12px 12px 0 0;color:#fff"><div style="font-size:18px;font-weight:700">Payment issued — please sign your waiver</div></div>
-            <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:22px 24px">
-              <p style="color:#333;font-size:14px;line-height:1.6">${sub.vendor_name ? `Hi ${sub.vendor_name},` : 'Hi,'}<br/>APAS Consulting has issued payment of <b>$${due.toLocaleString('en-US', { maximumFractionDigits: 2 })}</b> on ${projectName}. Please sign the unconditional lien waiver for our records.</p>
-              <p style="margin:18px 0"><a href="${link}" style="background:#1D6FE8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Sign the waiver →</a></p>
-              <p style="color:#999;font-size:12px">Or paste: ${link}</p>
-            </div></div>`,
-        });
-        await supabase.from('lien_releases' as any).update({ sent_at: new Date().toISOString() }).eq('id', row.id);
-        toast.success(`Marked paid · unconditional waiver emailed to ${sub.vendor_email}`);
-      } else {
-        toast.success('Marked paid · unconditional waiver created — add a vendor email to send it.');
-      }
-    } catch { toast.success('Marked paid'); }
-    onClose();
-  };
-
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -200,12 +179,39 @@ function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }:
             <Row label="Less previous payments" value={usd(sub.prior_payments ?? 0)} />
             <div className="mt-1 flex justify-between border-t border-border pt-1.5 text-[14px] font-bold"><span>Current payment due</span><span className="text-[var(--apas-sapphire)]">{usd(due)}</span></div>
           </div>
-          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{sub.apas_waiver_ack && <span className="ml-1 text-[#0F6E56]">✓ Acknowledged APAS waiver form.</span>}{invoiceId && <span className="ml-1 text-[#0F6E56]">Draft invoice created.</span>}</p>
+          <p className="text-[12px] text-muted-foreground">Conditional waiver signed by <b className="text-foreground">{sub.conditional_signed_name || '—'}</b>.{sub.apas_waiver_ack && <span className="ml-1 text-[#0F6E56]">✓ Acknowledged APAS waiver form.</span>}{invoiceId && <span className="ml-1 text-[#0F6E56]">Linked invoice: {invoiceStatus ?? 'loading'}.</span>}</p>
+          {invoiceId && (
+            <p className={`rounded-md border px-2.5 py-2 text-[12px] ${fullyPaid ? 'border-emerald-500/30 bg-emerald-50 text-emerald-800' : 'text-muted-foreground'}`}>
+              {invoiceStatus === 'draft'
+                ? `Vendor requested ${usd(due)}. Map the current-period request to the commitment SOV, then submit it for approval.`
+                : invoiceStatus === 'submitted'
+                  ? `Submitted invoice ${usd(invoiceAmount)} is awaiting finance approval.`
+                  : fullyPaid
+                ? `Paid in full from ${payments.length} linked payment${payments.length === 1 ? '' : 's'} totaling ${usd(paidTotal)}.`
+                : `${usd(paidTotal)} recorded against the linked invoice; ${usd(Math.max(0, invoiceBalance))} remains.`}
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground">Paid status is derived from payments recorded against the approved invoice. It cannot be set manually.</p>
+          {invoiceId && !readyForPayment && <p className="text-[11px] font-medium text-amber-700">Submit and approve the linked invoice first; then record its disbursement from Financials → Payments.</p>}
           <Button variant="outline" size="sm" onClick={() => openVendorPayAppReport(sub, { projectName, commitmentTitle })} className="w-full gap-1.5"><FileText className="h-3.5 w-3.5" /> Open AIA G702/G703</Button>
         </div>
         <DialogFooter>
-          {sub.status !== 'paid' && <Button variant="ghost" onClick={approve} disabled={busy || !!invoiceId} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> {invoiceId ? 'Approved' : 'Approve + invoice'}</Button>}
-          <Button onClick={markPaid} disabled={busy || sub.status === 'paid'} className="gap-1.5"><Banknote className="h-4 w-4" /> Mark paid + waiver</Button>
+          {!invoiceId && <Button variant="ghost" onClick={approve} disabled={busy} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> Approve + invoice</Button>}
+          {invoiceId && invoiceStatus === 'paid' && invoiceHref ? (
+            <Button asChild className="gap-1.5">
+              <Link to={invoiceHref} onClick={onClose}><FileText className="h-4 w-4" /> View paid invoice</Link>
+            </Button>
+          ) : invoiceId && readyForPayment ? (
+            <Button asChild className="gap-1.5">
+              <Link to={`/projects/${projectId}/financials/payments?tab=paid`} onClick={onClose}><Banknote className="h-4 w-4" /> Record linked invoice payment</Link>
+            </Button>
+          ) : invoiceHref ? (
+            <Button asChild className="gap-1.5">
+              <Link to={invoiceHref} onClick={onClose}><FileText className="h-4 w-4" /> Process linked invoice</Link>
+            </Button>
+          ) : (
+            <Button disabled className="gap-1.5"><Banknote className="h-4 w-4" /> Approve invoice first</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

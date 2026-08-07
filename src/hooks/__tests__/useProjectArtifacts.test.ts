@@ -6,8 +6,8 @@
  *      segment is the workspace, which the project-artifacts storage policy
  *      compares to current_tenant_id(). A non-tenant-prefixed path would be
  *      rejected by RLS in a real environment.
- *   2. Delete removes the storage object (not just the DB row), keyed by the
- *      stored file_path, then deletes the row by id.
+ *   2. Delete asks the database first (so immutable accounting artifacts stay
+ *      intact), then removes the storage object keyed by the stored file_path.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act } from "@testing-library/react";
@@ -92,7 +92,7 @@ describe("useProjectArtifacts", () => {
     );
   });
 
-  it("delete removes the storage object before deleting the row", async () => {
+  it("delete clears the guarded row before removing the storage object", async () => {
     const { result } = renderHookWithClient(() => useProjectArtifacts("p1"));
     const artifact = {
       id: "art-1",
@@ -106,5 +106,8 @@ describe("useProjectArtifacts", () => {
     expect(h.storageFrom).toHaveBeenCalledWith("project-artifacts");
     expect(h.storageRemove).toHaveBeenCalledWith(["tenant-1/p1/abc.pdf"]);
     expect(h.tableEq).toHaveBeenCalledWith("id", "art-1");
+    expect(h.tableEq.mock.invocationCallOrder[0]).toBeLessThan(
+      h.storageRemove.mock.invocationCallOrder[0],
+    );
   });
 });
