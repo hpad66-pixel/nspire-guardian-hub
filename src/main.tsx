@@ -24,13 +24,7 @@ if (typeof window !== "undefined") {
 // client lands cleanly on the new update strategy with no stale precache.
 // 2026-06-24: forced flush so every client picks up the reconciled-stamp build
 // and the new immediate-update-check (stale precache was hiding fresh deploys).
-// 2026-08-06: forced flush while re-landing the vendor payment ledger. The
-// earlier attempt crashed every commitment-page tab in production with
-// React.lazy reading `.default` off `undefined`, and clients that were pinned
-// to that build may still hold its precache. The root cause was never proven —
-// the route chunk imports cleanly and now renders in the prod-build smoke suite
-// — so this is a precaution, not a diagnosis.
-const SW_CLEANUP_VERSION = "2026-08-06-vendor-payment-ledger-flush";
+const SW_CLEANUP_VERSION = "2026-06-24-reconciled-stamp-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {
