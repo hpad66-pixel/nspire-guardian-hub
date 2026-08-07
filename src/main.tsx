@@ -24,11 +24,7 @@ if (typeof window !== "undefined") {
 // client lands cleanly on the new update strategy with no stale precache.
 // 2026-06-24: forced flush so every client picks up the reconciled-stamp build
 // and the new immediate-update-check (stale precache was hiding fresh deploys).
-// 2026-08-06: forced flush after the vendor-payment-ledger deploy — a stale
-// precache was intercepting freshly-hashed route chunks, so the lazy import
-// resolved `undefined` and React.lazy threw reading `.default`. The route chunk
-// itself imports cleanly on an SW-free origin, so this is purely cache eviction.
-const SW_CLEANUP_VERSION = "2026-08-06-vendor-payment-ledger-flush";
+const SW_CLEANUP_VERSION = "2026-06-24-reconciled-stamp-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {

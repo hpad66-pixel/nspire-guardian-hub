@@ -8,6 +8,7 @@ import { useChangeOrdersByType } from "@/hooks/useProcoreChangeOrders";
 import { useInvoice } from "@/hooks/useInvoices";
 import { useCommitmentPayments } from "@/hooks/useCommitmentPayments";
 import { useVendorPayments } from "@/hooks/useVendorPayments";
+import { useProjectFinancials } from "@/hooks/useProjectFinancials";
 import { VendorPaymentLedger } from "@/components/financial/VendorPaymentLedger";
 import { CommitmentSovTable } from "@/components/financial/CommitmentSovTable";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
@@ -43,10 +44,9 @@ export default function CommitmentDetailPage() {
   const { data: ccos = [] } = useChangeOrdersByType(projectId ?? null, "CCO");
   const filteredCcos = ccos.filter((co) => co.commitment_id === commitmentId);
   // Cash actually sent to this vendor — drives the "Paid" KPI and the Payments tab.
-  const { data: vendorPayments = [], isLoading: paymentsLoading } = useVendorPayments(commitmentId ?? null);
+  const { data: vendorPayments = [] } = useVendorPayments(commitmentId ?? null);
   const paidToDate = vendorPayments.reduce((s, p) => s + p.amount, 0);
-  // Which invoice the Payments tab is recording against (reuses the dialog below).
-  const [payInvoiceId, setPayInvoiceId] = useState<string | null>(null);
+  const { invoiceBalances } = useProjectFinancials(projectId ?? null);
 
   const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -187,17 +187,10 @@ export default function CommitmentDetailPage() {
 
         <TabsContent value="payments">
           <VendorPaymentLedger
-            vendorName={(commitment.title ?? "").split("—")[0].trim() || commitment.commitment_no}
-            payments={vendorPayments}
-            isLoading={paymentsLoading}
-            invoices={invoices.map((i: any) => ({
-              id: i.id,
-              invoice_no: i.invoice_no,
-              status: i.status,
-              billed: Number(i.approved_amount ?? i.submitted_amount ?? 0),
-            }))}
+            commitment={commitment}
+            commitments={commitments}
+            invoiceBalances={invoiceBalances.data ?? []}
             revisedValue={Number((totals as any)?.revised_commitment_value ?? commitment.original_value)}
-            onRecordPayment={(invoiceId) => setPayInvoiceId(invoiceId)}
           />
         </TabsContent>
 
@@ -255,15 +248,6 @@ export default function CommitmentDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Record a payment straight from the Payments tab, against a chosen invoice. */}
-      {payInvoiceId && (
-        <RecordCommitmentPaymentDialog
-          open={!!payInvoiceId}
-          onOpenChange={(o) => !o && setPayInvoiceId(null)}
-          invoiceId={payInvoiceId}
-        />
-      )}
 
       {/* Invoice detail dialog */}
       {openInvoiceId && (
