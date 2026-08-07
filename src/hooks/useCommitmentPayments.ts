@@ -86,8 +86,6 @@ export function useCommitmentPayments(invoiceId: string | null) {
       qc.invalidateQueries({ queryKey: ["commitment-invoice-balances"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
       qc.invalidateQueries({ queryKey: ["margin"] });
-      // Per-vendor payments tab (useVendorPayments) reads the same table.
-      qc.invalidateQueries({ queryKey: ["vendor-payments"] });
     },
   });
 
@@ -98,10 +96,8 @@ export function useCommitmentPayments(invoiceId: string | null) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["commitment-payments", invoiceId] });
-      qc.invalidateQueries({ queryKey: ["commitment-invoice-balances"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
       qc.invalidateQueries({ queryKey: ["margin"] });
-      qc.invalidateQueries({ queryKey: ["vendor-payments"] });
     },
   });
 
