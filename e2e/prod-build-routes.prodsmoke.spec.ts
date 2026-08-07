@@ -38,6 +38,13 @@ const ROUTES: { name: string; path: string; expect: RegExp }[] = [
     expect: new RegExp(SEED.vendorName, "i"),
   },
   { name: "payments", path: `/projects/${PROJECT_ID}/financials/payments`, expect: /payments/i },
+  {
+    // Carries the per-vendor payment ledger — the surface the D'SHIN
+    // reconciliation is read from, so it must mount in the shipped bundle.
+    name: "vendor dashboards",
+    path: `/projects/${PROJECT_ID}/financials/vendors`,
+    expect: new RegExp(SEED.vendorName, "i"),
+  },
   { name: "pay apps", path: `/projects/${PROJECT_ID}/financials/pay-apps`, expect: /pay app/i },
   { name: "prime contract", path: `/projects/${PROJECT_ID}/financials/prime-contract`, expect: /contract/i },
   { name: "change orders", path: `/projects/${PROJECT_ID}/financials/change-orders`, expect: /change order/i },
