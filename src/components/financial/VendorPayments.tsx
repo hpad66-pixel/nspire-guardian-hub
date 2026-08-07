@@ -61,6 +61,7 @@ function PaymentRow({ p, targets, reconciled }: { p: VendorPayment; targets?: Al
         <span className="w-28 shrink-0 whitespace-nowrap">{fmtDate(p.paid_date)}</span>
         <span className="flex-1 truncate text-muted-foreground">
           <span className="capitalize">{p.method ?? "payment"}</span>{p.reference ? ` · ${p.reference}` : ""}
+          {p.notes ? <span className="italic"> · {p.notes}</span> : ""}
         </span>
         {reconciled && <ReconciledBadge />}
         {!reconciled && hasSplit && <Badge variant="outline" className="text-[10px] font-normal text-amber-600">Partly split</Badge>}

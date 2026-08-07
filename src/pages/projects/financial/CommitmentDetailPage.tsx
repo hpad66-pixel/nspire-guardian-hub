@@ -7,6 +7,8 @@ import {
 import { useChangeOrdersByType } from "@/hooks/useProcoreChangeOrders";
 import { useInvoice } from "@/hooks/useInvoices";
 import { useCommitmentPayments } from "@/hooks/useCommitmentPayments";
+import { useVendorPayments } from "@/hooks/useVendorPayments";
+import { VendorPaymentLedger } from "@/components/financial/VendorPaymentLedger";
 import { CommitmentSovTable } from "@/components/financial/CommitmentSovTable";
 import { InvoiceBuilder } from "@/components/financial/InvoiceBuilder";
 import { InvoicePDFExport } from "@/components/financial/InvoicePDFExport";
@@ -31,7 +33,7 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function CommitmentDetailPage() {
   const { projectId, commitmentId } = useParams<{ projectId: string; commitmentId: string }>();
   const [searchParams] = useSearchParams();
-  const initialTab = ["general", "sov", "invoices", "cos"].includes(searchParams.get("tab") ?? "")
+  const initialTab = ["general", "sov", "invoices", "payments", "cos"].includes(searchParams.get("tab") ?? "")
     ? (searchParams.get("tab") as string) : "general";
   const { data: project } = useProject(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
@@ -40,6 +42,11 @@ export default function CommitmentDetailPage() {
   const { data: invoices = [], create: createInvoice } = useCommitmentInvoices(commitmentId ?? null);
   const { data: ccos = [] } = useChangeOrdersByType(projectId ?? null, "CCO");
   const filteredCcos = ccos.filter((co) => co.commitment_id === commitmentId);
+  // Cash actually sent to this vendor — drives the "Paid" KPI and the Payments tab.
+  const { data: vendorPayments = [], isLoading: paymentsLoading } = useVendorPayments(commitmentId ?? null);
+  const paidToDate = vendorPayments.reduce((s, p) => s + p.amount, 0);
+  // Which invoice the Payments tab is recording against (reuses the dialog below).
+  const [payInvoiceId, setPayInvoiceId] = useState<string | null>(null);
 
   const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -96,7 +103,7 @@ export default function CommitmentDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Original</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.original_value ?? commitment.original_value))}</CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">SCOs</CardTitle></CardHeader>
@@ -105,6 +112,8 @@ export default function CommitmentDetailPage() {
           <CardContent className="text-2xl font-bold text-primary">{money(Number((totals as any)?.revised_commitment_value ?? commitment.original_value))}</CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Billed to date</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.billed_to_date ?? 0))}</CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Paid to date</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-bold text-[var(--apas-sapphire)]">{money(paidToDate)}</CardContent></Card>
       </div>
 
       <Tabs defaultValue={initialTab}>
@@ -112,6 +121,7 @@ export default function CommitmentDetailPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="sov">SOV</TabsTrigger>
           <TabsTrigger value="invoices">Invoices · {invoices.length}</TabsTrigger>
+          <TabsTrigger value="payments">Payments · {vendorPayments.length}</TabsTrigger>
           <TabsTrigger value="cos">Change orders · {filteredCcos.length}</TabsTrigger>
         </TabsList>
 
@@ -175,6 +185,22 @@ export default function CommitmentDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="payments">
+          <VendorPaymentLedger
+            vendorName={(commitment.title ?? "").split("—")[0].trim() || commitment.commitment_no}
+            payments={vendorPayments}
+            isLoading={paymentsLoading}
+            invoices={invoices.map((i: any) => ({
+              id: i.id,
+              invoice_no: i.invoice_no,
+              status: i.status,
+              billed: Number(i.approved_amount ?? i.submitted_amount ?? 0),
+            }))}
+            revisedValue={Number((totals as any)?.revised_commitment_value ?? commitment.original_value)}
+            onRecordPayment={(invoiceId) => setPayInvoiceId(invoiceId)}
+          />
+        </TabsContent>
+
         <TabsContent value="cos">
           <Card>
             <CardHeader>
@@ -229,6 +255,15 @@ export default function CommitmentDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Record a payment straight from the Payments tab, against a chosen invoice. */}
+      {payInvoiceId && (
+        <RecordCommitmentPaymentDialog
+          open={!!payInvoiceId}
+          onOpenChange={(o) => !o && setPayInvoiceId(null)}
+          invoiceId={payInvoiceId}
+        />
+      )}
 
       {/* Invoice detail dialog */}
       {openInvoiceId && (
