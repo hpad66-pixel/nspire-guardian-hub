@@ -387,8 +387,12 @@ SELECT throws_ok(
   'approved CCO cannot be reduced below the live SOV reliance floor'
 );
 
-INSERT INTO auth.users (id)
-VALUES ('90000000-0000-4000-8000-000000000020');
+INSERT INTO auth.users (id, email, raw_user_meta_data)
+VALUES (
+  '90000000-0000-4000-8000-000000000020',
+  'integrity-tester@example.com',
+  '{"full_name":"Integrity Tester","company_name":"Integrity Test Workspace"}'::jsonb
+);
 
 INSERT INTO public.vendor_payapp_submissions (
   id, tenant_id, project_id, commitment_id, token, status,
