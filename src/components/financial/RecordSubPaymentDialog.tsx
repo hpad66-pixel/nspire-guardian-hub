@@ -27,7 +27,9 @@ const METHODS = [
   { value: "check", label: "Check" },
   { value: "ach", label: "ACH" },
   { value: "wire", label: "Wire" },
+  { value: "zelle", label: "Zelle" },
   { value: "card", label: "Credit Card" },
+  { value: "cash", label: "Cash" },
   { value: "other", label: "Other" },
 ];
 const money = (n: number) =>

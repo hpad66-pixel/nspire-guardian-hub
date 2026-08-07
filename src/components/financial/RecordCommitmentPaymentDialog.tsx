@@ -120,13 +120,15 @@ export function RecordCommitmentPaymentDialog({ open, onOpenChange, invoiceId }:
                   <option value="check">Check</option>
                   <option value="ach">ACH</option>
                   <option value="wire">Wire</option>
+                  <option value="zelle">Zelle</option>
                   <option value="card">Card</option>
+                  <option value="cash">Cash</option>
                   <option value="other">Other</option>
                 </select>
               </div>
               <div className="space-y-1.5">
                 <Label>Reference</Label>
-                <Input placeholder="Check # / ACH trace" {...register("reference")} />
+                <Input placeholder="Check # / wire WT+SRF / Zelle ref #" {...register("reference")} />
               </div>
             </div>
             <div className="space-y-1.5">

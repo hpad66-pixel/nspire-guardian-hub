@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Trash2, ShieldCheck, AlertTriangle, Users, Pencil, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, ShieldCheck, AlertTriangle, Users, Pencil, Check, Wallet } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
 import { useCommitments, useCommitmentSov, type Commitment } from '@/hooks/useCommitments';
 import { useVendorReconciliation, type VendorReconciliation } from '@/hooks/useVendorReconciliation';
+import { useVendorPayments } from '@/hooks/useVendorPayments';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const paidOn = (d: string | null | undefined) =>
+  d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 const vendorName = (c: Commitment) => ((c.title ?? '').split('—')[0].trim() || c.commitment_no);
 const TREAT_LABEL: Record<string, string> = { markup: 'Markup', pass_through: 'Pass-through', apas_100: '100% APAS' };
 
@@ -152,11 +155,103 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
         </div>
       )}
 
+      {/* Every disbursement to this vendor, by date */}
+      <PaymentLedger commitmentId={commitment.id} projectId={projectId} paidToDate={r.paidToDate} />
+
       {/* Base-contract line items */}
       <LineItems commitmentId={commitment.id} base={r.base} />
 
       {/* Reconciliation stamp */}
       <ReconcileStamp r={r} vendor={vendorName(commitment)} />
+    </div>
+  );
+}
+
+/**
+ * Every payment we've disbursed to this vendor, newest first, with the bank
+ * reference it can be traced back to. The total here is the same `paidToDate`
+ * the tiles and the waterfall above are built from — one number, one source
+ * (commitment_payments), so the ledger can never drift from the headline.
+ */
+function PaymentLedger({ commitmentId, projectId, paidToDate }: { commitmentId: string; projectId: string; paidToDate: number }) {
+  const { data: payments = [], isLoading } = useVendorPayments(commitmentId);
+  const [open, setOpen] = useState(true);
+
+  const byMethod = payments.reduce<Record<string, { n: number; total: number }>>((acc, p) => {
+    const k = p.method ?? 'other';
+    acc[k] = { n: (acc[k]?.n ?? 0) + 1, total: (acc[k]?.total ?? 0) + p.amount };
+    return acc;
+  }, {});
+
+  return (
+    <div className="rounded-xl border border-border bg-card">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between p-4 text-sm font-semibold">
+        <span className="flex items-center gap-2">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <Wallet className="h-4 w-4 text-[var(--apas-sapphire)]" />
+          Payments ({payments.length})
+        </span>
+        <span className="font-mono text-[13px] text-emerald-600">{usd(paidToDate)}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-border px-4 pb-3">
+          {isLoading ? (
+            <p className="py-3 text-[13px] text-muted-foreground">Loading payments…</p>
+          ) : payments.length === 0 ? (
+            <p className="py-3 text-[13px] text-muted-foreground">
+              No payments recorded for this vendor yet. Payments are recorded against an approved invoice —{' '}
+              <Link to={`/projects/${projectId}/financials/payments`} className="text-[var(--apas-sapphire)] underline">record one here</Link>.
+            </p>
+          ) : (
+            <>
+              {/* How the money moved */}
+              <div className="flex flex-wrap gap-2 py-3">
+                {Object.entries(byMethod).sort((a, b) => b[1].total - a[1].total).map(([method, m]) => (
+                  <span key={method} className="rounded-md bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+                    <span className="font-semibold capitalize text-foreground">{method}</span> · {m.n} · {usd(m.total)}
+                  </span>
+                ))}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="py-2 text-left font-medium">Date</th>
+                      <th className="py-2 text-left font-medium">Method</th>
+                      <th className="py-2 text-left font-medium">Bank reference</th>
+                      <th className="py-2 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {payments.map((p) => (
+                      <tr key={p.id}>
+                        <td className="whitespace-nowrap py-2 pr-3">{paidOn(p.paid_date)}</td>
+                        <td className="py-2 pr-3 capitalize text-muted-foreground">{p.method ?? '—'}</td>
+                        <td className="py-2 pr-3">
+                          <span className="font-mono text-[11px] text-muted-foreground">{p.reference || '—'}</span>
+                          {p.notes && <div className="text-[11px] italic text-muted-foreground">{p.notes}</div>}
+                        </td>
+                        <td className="whitespace-nowrap py-2 text-right font-mono">{usd(p.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border font-bold">
+                      <td className="py-2" colSpan={3}>Total paid to date</td>
+                      <td className="py-2 text-right font-mono text-emerald-600">{usd(paidToDate)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="pt-2 text-[11px] text-muted-foreground">
+                Each payment is recorded against an approved invoice and carries the bank reference it can be traced back to.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
