@@ -2,19 +2,24 @@
  * F1 · Sub portal — commitment detail for the vendor.
  *
  * Shows SOV (read-only) + invoice list + "New invoice" button that routes to
- * SubInvoiceBuilderPage. Invoice detail is read-only for subs unless the row
- * is still in draft status.
+ * SubInvoiceBuilderPage + the payment ledger, so the vendor can see what
+ * they've actually been paid against their contract without having to ask.
+ * Invoice detail is read-only for subs unless the row is still in draft status.
  */
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSubPortalData } from "@/hooks/usePortals";
 import { useCommitmentSov } from "@/hooks/useCommitments";
-import { useCommitmentInvoices } from "@/hooks/useCommitments";
+import { useCommitmentInvoices, useCommitmentTotals } from "@/hooks/useCommitments";
+import { useVendorPayments } from "@/hooks/useVendorPayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { money } from "@/lib/pdf";
+
+const paidOn = (d: string | null | undefined) =>
+  d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
 
 export default function SubCommitmentDetailPage() {
   const { commitmentId } = useParams<{ commitmentId: string }>();
@@ -23,6 +28,8 @@ export default function SubCommitmentDetailPage() {
   const commitment = (subData?.commitments ?? []).find((c: any) => c.id === commitmentId) as any;
   const { data: sov = [] } = useCommitmentSov(commitmentId ?? null);
   const { data: invoices = [] } = useCommitmentInvoices(commitmentId ?? null);
+  const { data: totals } = useCommitmentTotals(commitmentId ?? null);
+  const { data: payments = [] } = useVendorPayments(commitmentId ?? null);
 
   if (!commitment) {
     return <div className="p-6 text-muted-foreground">Loading commitment…</div>;
@@ -32,6 +39,12 @@ export default function SubCommitmentDetailPage() {
   const billedToDate = invoices
     .filter((i) => i.status === "approved" || i.status === "paid")
     .reduce((s, i) => s + Number(i.approved_amount ?? 0), 0);
+  const paidToDate = payments.reduce((s, p) => s + p.amount, 0);
+  // The contract as it stands today — original plus every executed change order,
+  // which is what the vendor is actually working against.
+  const revisedContract = Number((totals as any)?.revised_commitment_value ?? commitment.original_value);
+  const changeOrders = Number((totals as any)?.executed_cco_value ?? 0);
+  const outstanding = revisedContract - paidToDate;
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
@@ -55,19 +68,37 @@ export default function SubCommitmentDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Contract value</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-bold">{money(Number(commitment.original_value))}</CardContent></Card>
+          <CardContent>
+            <div className="text-2xl font-bold">{money(revisedContract)}</div>
+            {changeOrders !== 0 && (
+              <div className="text-xs text-muted-foreground">
+                {money(Number(commitment.original_value))} base {changeOrders > 0 ? "+" : "−"} {money(Math.abs(changeOrders))} change orders
+              </div>
+            )}
+          </CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Billed to date</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(billedToDate)}</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Retainage %</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-bold">{commitment.retainage_pct}%</CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Paid to date</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{money(paidToDate)}</div>
+            <div className="text-xs text-muted-foreground">
+              {revisedContract > 0 ? `${((paidToDate / revisedContract) * 100).toFixed(1)}% of contract` : "—"}
+            </div>
+          </CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Remaining</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{money(outstanding)}</div>
+            <div className="text-xs text-muted-foreground">{commitment.retainage_pct}% retainage</div>
+          </CardContent></Card>
       </div>
 
       <Tabs defaultValue="sov">
         <TabsList>
           <TabsTrigger value="sov">Schedule of Values</TabsTrigger>
           <TabsTrigger value="invoices">Invoices · {invoices.length}</TabsTrigger>
+          <TabsTrigger value="payments">Payments · {payments.length}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sov">
@@ -142,6 +173,53 @@ export default function SubCommitmentDetailPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payments">
+          <Card>
+            <CardHeader><CardTitle>Payments received</CardTitle></CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <div className="text-muted-foreground">No payments recorded against this commitment yet.</div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-2 text-left font-medium">Date</th>
+                        <th className="p-2 text-left font-medium">Method</th>
+                        <th className="p-2 text-left font-medium">Reference</th>
+                        <th className="w-32 p-2 text-right font-medium">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((p) => (
+                        <tr key={p.id} className="border-t">
+                          <td className="whitespace-nowrap p-2">{paidOn(p.paid_date)}</td>
+                          <td className="p-2 capitalize text-muted-foreground">{p.method ?? "—"}</td>
+                          <td className="p-2">
+                            <span className="font-mono text-xs text-muted-foreground">{p.reference || "—"}</span>
+                            {p.notes && <div className="text-xs italic text-muted-foreground">{p.notes}</div>}
+                          </td>
+                          <td className="whitespace-nowrap p-2 text-right font-mono">{money(p.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-muted/20 font-medium">
+                      <tr className="border-t">
+                        <td colSpan={3} className="p-2 text-right">Total paid to date</td>
+                        <td className="p-2 text-right font-mono text-emerald-600">{money(paidToDate)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Each payment carries the bank reference it was sent under. If something here doesn't match your records,
+                quote the reference when you raise it.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
