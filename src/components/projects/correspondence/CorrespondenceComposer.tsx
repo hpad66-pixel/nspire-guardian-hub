@@ -27,6 +27,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSendEmail } from "@/hooks/useSendEmail";
+import { useSendViaGmail } from "@/hooks/useSendViaGmail";
+import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
 import { useSavedRecipients } from "@/hooks/useSavedRecipients";
@@ -61,6 +63,8 @@ export function CorrespondenceComposer({
   draft?: ProjectEmail | null;
 }) {
   const sendEmail = useSendEmail();
+  const sendViaGmail = useSendViaGmail();
+  const gmail = useGmailConnection();
   const emails = useProjectEmails(projectId);
   const templates = useCorrespondenceTemplates(projectId);
   const savedRecipients = useSavedRecipients();
@@ -186,24 +190,29 @@ export function CorrespondenceComposer({
     finally { setBusy(false); }
   };
 
+  // Build the outbound body + PDF attachment shared by both send paths. A cover
+  // note (if written) becomes the email body with the full branded letter going
+  // out as the PDF attachment only; otherwise the letter is sent inline.
+  const buildOutbound = async () => {
+    let attachments: { filename: string; contentBase64: string; contentType: string; size: number }[] | undefined;
+    if (docRef.current) {
+      const { base64, size } = await letterPdfBase64(docRef.current);
+      attachments = [{ filename: filename(), contentBase64: base64, contentType: "application/pdf", size }];
+    }
+    const emailBodyHtml = message.trim()
+      ? buildCoverNoteHtml({ message, attachmentName: filename(), projectName })
+      : letterHtml;
+    const emailBodyText = message.trim() ? message : bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return { attachments, emailBodyHtml, emailBodyText };
+  };
+
   const sendResend = async () => {
     if (!recipients.length) { toast.error("Add at least one recipient."); return; }
     if (!subject.trim()) { toast.error("Add a subject first."); return; }
     setBusy(true);
     const t = toast.loading("Sending…");
     try {
-      let attachments;
-      if (docRef.current) {
-        const { base64, size } = await letterPdfBase64(docRef.current);
-        attachments = [{ filename: filename(), contentBase64: base64, contentType: "application/pdf", size }];
-      }
-      // A separate cover note (if written) becomes the email body, with the
-      // full branded letter going out as the PDF attachment only — instead of
-      // rendering the whole letter twice (inline AND attached).
-      const emailBodyHtml = message.trim()
-        ? buildCoverNoteHtml({ message, attachmentName: filename(), projectName })
-        : letterHtml;
-      const emailBodyText = message.trim() ? message : bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const { attachments, emailBodyHtml, emailBodyText } = await buildOutbound();
       await sendEmail.mutateAsync({
         recipients, ccRecipients: ccRecipients.length ? ccRecipients : undefined, bccRecipients: bccRecipients.length ? bccRecipients : undefined,
         subject, bodyHtml: emailBodyHtml, bodyText: emailBodyText, attachments,
@@ -214,6 +223,42 @@ export function CorrespondenceComposer({
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Send failed.", { id: t });
+    } finally { setBusy(false); }
+  };
+
+  // Send through the user's own connected Gmail. If Gmail isn't connected yet,
+  // clicking kicks off the connect flow (redirect to Google's consent screen)
+  // instead of erroring — first click connects, next click sends.
+  const sendGmail = async () => {
+    if (!gmail.status.data?.connected) {
+      toast.info("Connect your Gmail to send from your own inbox — reopen the letter after connecting.");
+      gmail.connect.mutate(undefined);
+      return;
+    }
+    if (!recipients.length) { toast.error("Add at least one recipient."); return; }
+    if (!subject.trim()) { toast.error("Add a subject first."); return; }
+    setBusy(true);
+    const t = toast.loading(`Sending via ${gmail.status.data.email ?? "Gmail"}…`);
+    try {
+      const { attachments, emailBodyHtml, emailBodyText } = await buildOutbound();
+      await sendViaGmail.mutateAsync({
+        to: recipients,
+        cc: ccRecipients.length ? ccRecipients : undefined,
+        bcc: bccRecipients.length ? bccRecipients : undefined,
+        subject, html: emailBodyHtml, text: emailBodyText, attachments,
+      });
+      await persist("sent", "gmail");
+      savedRecipients.rememberAll([...recipients, ...ccRecipients, ...bccRecipients]).catch(() => {});
+      toast.success(`Sent from your Gmail to ${recipients.join(", ")}.`, { id: t });
+      onOpenChange(false);
+    } catch (e: any) {
+      // A revoked/expired token routes the user back to reconnect.
+      if (e?.code === "reconnect" || e?.code === "not_connected") {
+        toast.error(e.message ?? "Reconnect Gmail to send.", { id: t });
+        gmail.connect.mutate(undefined);
+      } else {
+        toast.error(e?.message ?? "Gmail send failed.", { id: t });
+      }
     } finally { setBusy(false); }
   };
 
@@ -343,7 +388,17 @@ export function CorrespondenceComposer({
           <Button variant="ghost" onClick={saveDraft} disabled={busy}><Save className="h-4 w-4 mr-1" /> Save draft</Button>
           <div className="flex-1" />
           <Button variant="outline" onClick={download} disabled={busy}><Download className="h-4 w-4 mr-1" /> Download PDF</Button>
-          <Button variant="outline" disabled title="Connect Gmail (next update) to send from your inbox and keep the thread"><Inbox className="h-4 w-4 mr-1" /> Send via Gmail</Button>
+          <Button
+            variant="outline"
+            onClick={sendGmail}
+            disabled={busy || sendViaGmail.isPending}
+            title={gmail.status.data?.connected
+              ? `Send from ${gmail.status.data.email ?? "your Gmail"} — lands in your Gmail Sent and threads with replies`
+              : "Connect your Gmail to send from your own inbox"}
+          >
+            {sendViaGmail.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Inbox className="h-4 w-4 mr-1" />}
+            Send via Gmail
+          </Button>
           <Button onClick={sendResend} disabled={busy || sendEmail.isPending}>
             {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />} Send email
           </Button>
