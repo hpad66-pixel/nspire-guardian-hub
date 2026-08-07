@@ -61,6 +61,11 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
   const { data: r } = useVendorReconciliation(projectId, commitment.id);
   if (!r) return <p className="text-muted-foreground">Loading…</p>;
 
+  // Executed owner COs classified to this vendor but not yet pushed to his own
+  // commitment. They're already inside revisedContract, so the waterfall has to
+  // show them or the rows above won't add up to the total below them.
+  const ownerShareCounted = r.ownerShares.filter((o) => o.counted).reduce((t, o) => t + o.share, 0);
+
   return (
     <div className="space-y-5">
       <div className="flex items-baseline justify-between">
@@ -83,6 +88,9 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
           <Row label="Base contract" value={usd(r.base)} />
           <Row label="Additive change orders" value={`+ ${usd(r.additiveCO)}`} className="text-emerald-600" />
           <Row label="Deductive change orders" value={`− ${usd(r.deductiveCO)}`} className="text-destructive" />
+          {ownerShareCounted !== 0 && (
+            <Row label="Share of executed owner change orders" value={`+ ${usd(ownerShareCounted)}`} className="text-emerald-600" />
+          )}
           <Divider />
           <Row label="Revised contract" value={usd(r.revisedContract)} bold />
           <Row label={`Less retainage held by owner${r.latestPayAppNo ? ` · live from Pay App #${r.latestPayAppNo}` : ` (${r.retainagePct}%)`}`} value={`− ${usd(r.retainageHeld)}`} className="text-amber-600" />
