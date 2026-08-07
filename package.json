@@ -15,7 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:e2e": "VITE_SUPABASE_URL=https://e2estub.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=e2e-anon-key vite build",
+    "preview:e2e": "npm run build:e2e && vite preview --port 4178 --strictPort"
   },
   "dependencies": {
     "@elevenlabs/react": "^0.13.1",
