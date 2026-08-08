@@ -40,3 +40,6 @@ video/showcase/*.wav
 
 # Vitest coverage output
 coverage/
+
+# Supabase CLI local state (changes on every CLI run)
+supabase/.temp/
