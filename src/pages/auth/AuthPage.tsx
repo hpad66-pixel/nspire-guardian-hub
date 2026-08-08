@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ShieldCheck, ClipboardList, Wrench, HardHat, BarChart3, Building2 } from 'lucide-react';
+import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
@@ -11,12 +11,12 @@ const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 const features = [
-  { icon: ShieldCheck,  color: 'hsl(var(--success))',            label: 'NSPIRE Compliance',          desc: 'Real-time scoring, defect tracking & audit-ready reports' },
-  { icon: HardHat,      color: 'hsl(var(--accent))',             label: 'Construction Management',     desc: 'RFIs, submittals, daily reports & client portals in one place' },
-  { icon: ClipboardList,color: 'hsl(var(--module-projects))',    label: 'Project Management',          desc: 'Full project lifecycle from proposal to closeout, fully traced' },
-  { icon: Wrench,       color: 'hsl(var(--warning))',            label: 'Maintenance & Work Orders',   desc: 'Issue tracking from request to resolution, fully traced' },
-  { icon: BarChart3,    color: 'hsl(var(--severity-severe))',    label: 'Operations Intelligence',     desc: 'Cross-module dashboards for every role in your org' },
-  { icon: Building2,    color: 'hsl(var(--module-inspections))', label: 'Multi-Property Management',   desc: 'Manage your entire portfolio from one workspace' },
+  { icon: Landmark,   color: 'hsl(var(--accent))',             label: 'Financial Control',       desc: 'Contracts, changes, pay applications, payments, retainage, and reports' },
+  { icon: Siren,      color: 'hsl(var(--severity-severe))',    label: 'Risk & Critical Alerts', desc: 'Responsible parties, deadlines, escalation, and evidence in one record' },
+  { icon: FileCheck2, color: 'hsl(var(--module-inspections))', label: 'Permits & Regulatory',   desc: 'Obligations, inspections, agency correspondence, and closeout' },
+  { icon: Leaf,       color: 'hsl(var(--success))',            label: 'Environmental Control', desc: 'Sampling, observations, exceedances, and corrective actions' },
+  { icon: Headphones, color: 'hsl(var(--module-projects))',    label: 'Voice & Work Orders',    desc: 'Calls become transcripts, assignments, alerts, and accountable action' },
+  { icon: FileSearch, color: 'hsl(var(--warning))',            label: 'Defensible Documents',  desc: 'Photos, approvals, correspondence, reports, and audit history' },
 ];
 
 export default function AuthPage() {
@@ -127,39 +127,30 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* Proj OS wordmark */}
-          <div className="flex items-end gap-0 mb-3 select-none">
+          {/* APAS Project Controls wordmark */}
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
               style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
-              Proj
+              APAS
             </span>
             <span
-              className="font-black leading-none tracking-tight ml-2"
+              className="font-semibold leading-none tracking-tight"
               style={{
-                fontSize: 'clamp(3rem, 4.5vw, 4.2rem)',
-                letterSpacing: '-0.04em',
-                background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--module-inspections)) 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                fontSize: 'clamp(1.9rem, 3vw, 2.75rem)',
+                letterSpacing: '-0.035em',
+                color: 'hsl(var(--accent))',
               }}
             >
-              OS
-            </span>
-            <span
-              className="font-mono text-primary-foreground/40 self-end pb-1 ml-0.5"
-              style={{ fontSize: 'clamp(0.9rem, 1.2vw, 1.1rem)', letterSpacing: '0.01em' }}
-            >
-              .ai
+              Project Controls
             </span>
           </div>
 
           {/* Tagline */}
           <p className="text-primary-foreground/70 font-semibold tracking-[0.22em] uppercase mb-7"
             style={{ fontSize: '0.78rem', letterSpacing: '0.22em' }}>
-            Project Operating System
+            Powered by projOS
           </p>
 
           {/* OS descriptor badge */}
@@ -170,19 +161,19 @@ export default function AuthPage() {
             }}>
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-semibold tracking-widest uppercase text-accent">
-              For Contractors · Consultants · Property Pros
+              Private infrastructure command center
             </span>
           </div>
 
           {/* Tagline */}
           <h2 className="font-bold text-primary-foreground mb-4 leading-tight"
             style={{ fontSize: 'clamp(1.8rem, 2.8vw, 2.6rem)', letterSpacing: '-0.02em' }}>
-            Run the Job.{' '}
-            <span className="text-success">Pass the Audit.</span>
+            See every project.{' '}
+            <span className="text-accent">Prove every decision.</span>
           </h2>
           <p className="text-primary-foreground/60 text-base leading-relaxed max-w-md">
-            One platform for construction management, project delivery, NSPIRE compliance,
-            and property operations — built for solopreneurs, SMBs, and enterprise teams alike.
+            One operating record for financial control, field work, emergency response,
+            permits, environmental compliance, inspections, and owner-ready documentation.
           </p>
         </motion.div>
 
@@ -222,7 +213,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2025 Proj OS · projos.ai · All rights reserved
+            © 2026 APAS Consulting · Project Controls · projos.ai
           </p>
         </div>
       </div>
@@ -237,26 +228,21 @@ export default function AuthPage() {
         >
           {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-10">
-            <div className="flex items-end gap-0 mb-1.5 select-none">
+            <div className="flex flex-wrap items-baseline justify-center gap-x-2 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                Proj
+                APAS
               </span>
               <span
-                className="font-black text-4xl tracking-tight ml-1"
+                className="font-semibold text-2xl tracking-tight text-accent"
                 style={{
-                  letterSpacing: '-0.04em',
-                  background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--module-inspections)) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
+                  letterSpacing: '-0.03em',
                 }}
               >
-                OS
+                Project Controls
               </span>
-              <span className="font-mono text-foreground/30 self-end pb-1 ml-0.5" style={{ fontSize: '0.9rem' }}>.ai</span>
             </div>
-            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Project Operating System</p>
-            <p className="text-xs text-muted-foreground text-center">For Contractors · Consultants · Property Pros</p>
+            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Powered by projOS</p>
+            <p className="text-xs text-muted-foreground text-center">Private project-control workspace</p>
           </div>
 
           {/* Card */}
@@ -267,7 +253,7 @@ export default function AuthPage() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {mode === 'login'
-                  ? 'Sign in to access your Proj OS workspace'
+                  ? 'Sign in to access your APAS Project Controls workspace'
                   : 'Start a fresh, private workspace for your company'}
               </p>
             </div>
@@ -322,7 +308,7 @@ export default function AuthPage() {
                 </div>
                 <button type="submit" disabled={isSubmitting}
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign In to Proj OS')}
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to projOS')}
                 </button>
               </form>
             ) : (

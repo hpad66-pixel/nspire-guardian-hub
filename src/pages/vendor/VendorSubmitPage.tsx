@@ -156,7 +156,7 @@ export default function VendorSubmitPage() {
           <Row label="Current-period gross" value={usd(totals.currentGross)} />
           <Row label={`Current retainage (${Number(commitment?.retainage_pct ?? 0)}%)`} value={`(${usd(totals.currentRetainage)})`} />
           <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[15px] font-bold"><span>Current payment due</span><span style={{ color: accent }}>{usd(totals.currentDue)}</span></div>
-          <p className="mt-2 text-[11.5px] text-muted-foreground">Contract retainage and prior certified work are supplied by Proj OS and cannot be changed on this form.</p>
+          <p className="mt-2 text-[11.5px] text-muted-foreground">Contract retainage and prior certified work are supplied by projOS and cannot be changed on this form.</p>
         </div>
 
         {/* Conditional lien waiver */}
@@ -178,7 +178,7 @@ export default function VendorSubmitPage() {
         <button onClick={submit} disabled={busy || lines.length === 0} className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[15px] font-semibold text-white transition-opacity disabled:opacity-60" style={{ background: accent }}>
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-4 w-4" />} Submit invoice &amp; conditional waiver
         </button>
-        <p className="text-center text-[11px] text-muted-foreground">Powered by Proj OS · APAS Consulting</p>
+        <p className="text-center text-[11px] text-muted-foreground">APAS Project Controls · Powered by projOS</p>
       </div>
     </div>
   );

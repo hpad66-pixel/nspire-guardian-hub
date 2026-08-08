@@ -5,7 +5,7 @@
 // send-push-notification edge function: { title, body, url, icon }.
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Proj OS', body: 'You have a new notification.', url: '/dashboard', icon: '/icons/apas-os-192.png' };
+  let data = { title: 'APAS Project Controls', body: 'You have a new notification.', url: '/dashboard', icon: '/icons/apas-os-192.png' };
 
   if (event.data) {
     try {

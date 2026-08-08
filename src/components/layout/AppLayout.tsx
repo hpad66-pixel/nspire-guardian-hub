@@ -181,7 +181,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 onClick={() => setSearchOpen(true)}
               >
                 <Search className="h-[15px] w-[15px] stroke-[2]" />
-                <span className="tracking-tight">Search properties, units, issues…</span>
+                <span className="tracking-tight">Search projects, records, issues…</span>
                 <kbd className="pointer-events-none absolute right-2 hidden h-5 select-none items-center gap-1 rounded border border-border/60 bg-background/80 px-1.5 font-mono text-[10px] font-semibold text-muted-foreground sm:flex">
                   <span className="text-xs">⌘</span>K
                 </kbd>

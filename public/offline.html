@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Proj OS — Offline</title>
-    <meta name="theme-color" content="#1e2d4f" />
+    <title>APAS Project Controls — Offline</title>
+    <meta name="theme-color" content="#08271f" />
     <link rel="icon" type="image/png" href="/icons/apas-os-192.png" />
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0f1624;
-        color: #e8edf5;
+        background: #041914;
+        color: #f4efe2;
         min-height: 100dvh;
         display: flex;
         flex-direction: column;
@@ -39,7 +39,7 @@
       }
       p {
         font-size: 1rem;
-        color: #8fa3c0;
+        color: #87958f;
         max-width: 340px;
         line-height: 1.6;
         margin-bottom: 2.5rem;
@@ -50,16 +50,16 @@
         font-weight: 600;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #4a7fc1;
-        border: 1px solid #2a3f60;
+        color: #d5aa52;
+        border: 1px solid rgba(213,170,82,0.32);
         padding: 0.25rem 0.75rem;
         border-radius: 999px;
         margin-bottom: 1.5rem;
       }
       button {
-        background: #1e2d4f;
-        color: #fff;
-        border: 1px solid #2a3f60;
+        background: #d5aa52;
+        color: #041914;
+        border: 1px solid #d5aa52;
         padding: 0.875rem 2rem;
         border-radius: 12px;
         font-size: 0.95rem;
@@ -70,7 +70,7 @@
         align-items: center;
         gap: 0.5rem;
       }
-      button:hover { background: #263557; }
+      button:hover { background: #e0bd72; }
       .dot {
         width: 8px; height: 8px;
         border-radius: 50%;
@@ -85,12 +85,12 @@
   </head>
   <body>
     <div class="icon-wrap">
-      <img src="/icons/apas-os-192.png" alt="Proj OS" />
+      <img src="/icons/apas-os-192.png" alt="APAS Project Controls" />
     </div>
     <span class="badge">● No Connection</span>
     <h1>You're offline</h1>
     <p>
-      Proj OS will reconnect automatically when your internet connection is restored.
+      APAS Project Controls will reconnect automatically when your internet connection is restored.
     </p>
     <button onclick="window.location.reload()">
       <span>↺</span> Try again

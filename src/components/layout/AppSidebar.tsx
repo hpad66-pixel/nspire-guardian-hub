@@ -166,15 +166,13 @@ export function AppSidebar() {
               collapsed && 'justify-center px-0',
             )}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-accent shadow-sm ring-1 ring-black/5">
-              <div className="h-3 w-3 rotate-45 rounded-[2px] bg-background" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[7px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
+              APAS
             </div>
             {!collapsed && (
-              <span
-                className="text-[17px] font-bold text-sidebar-foreground"
-                style={{ letterSpacing: '-0.02em' }}
-              >
-                proj<span className="text-accent">OS</span>
+              <span className="grid gap-1 leading-none">
+                <strong className="text-[14px] font-bold tracking-[-0.025em] text-sidebar-foreground">Project Controls</strong>
+                <small className="text-[7px] font-bold uppercase tracking-[0.16em] text-sidebar-muted">Powered by projOS</small>
               </span>
             )}
           </NavLink>

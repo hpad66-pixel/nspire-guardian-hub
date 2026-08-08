@@ -2,51 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Proj OS Design System */
+/* APAS Project Controls · powered by projOS */
 
 /* Build landing page custom properties */
 :root {
-  --apas-midnight: #0A0C12;
-  --apas-deep: #10131D;
-  --apas-surface: #161B2B;
+  --apas-midnight: #041914;
+  --apas-deep: #08271F;
+  --apas-surface: #0D3B30;
   --apas-border: rgba(255,255,255,0.08);
-  --apas-sapphire: #1D6FE8;
-  --apas-sapphire-glow: rgba(29,111,232,0.2);
-  --apas-emerald: #10B981;
-  --apas-amber: #F59E0B;
-  --apas-rose: #F43F5E;
-  --apas-violet: #8B5CF6;
-  --apas-white: #F1F5FF;
-  --apas-muted: #6B7A99;
-  --apas-grid: rgba(29,111,232,0.04);
+  --apas-sapphire: #71A8CF;
+  --apas-sapphire-glow: rgba(113,168,207,0.2);
+  --apas-emerald: #69C2A2;
+  --apas-amber: #D5AA52;
+  --apas-rose: #E36B64;
+  --apas-violet: #9F91CF;
+  --apas-white: #FBF8F1;
+  --apas-muted: #87958F;
+  --apas-grid: rgba(213,170,82,0.05);
 }
 
 @layer base {
   /*
-   * Proj OS — warm cream light palette matching the marketing landing.
-   * Warm off-white backgrounds, near-black text, gold/amber accent.
+   * APAS Project Controls — limestone, infrastructure green, and decision gold.
+   * These are presentation tokens only; operational state and module logic stay intact.
    */
   :root {
-    --background: 40 33% 99%;          /* warm cream ~#FDFCF9 */
-    --foreground: 30 10% 10%;          /* warm near-black ~#1A1714 */
+    --background: 42 43% 98%;
+    --foreground: 162 66% 9%;
 
-    --card: 38 25% 98%;
-    --card-foreground: 30 10% 10%;
+    --card: 42 38% 99%;
+    --card-foreground: 162 66% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 30 10% 10%;
+    --popover-foreground: 162 66% 9%;
 
-    --primary: 30 10% 10%;             /* near-black for CTAs */
-    --primary-foreground: 40 33% 99%;
+    --primary: 162 66% 9%;
+    --primary-foreground: 42 43% 98%;
 
-    --secondary: 35 12% 95%;
-    --secondary-foreground: 30 10% 20%;
+    --secondary: 40 22% 94%;
+    --secondary-foreground: 162 48% 16%;
 
-    --muted: 35 10% 96%;
-    --muted-foreground: 35 8% 50%;
+    --muted: 42 24% 95%;
+    --muted-foreground: 150 7% 45%;
 
-    --accent: 40 50% 55%;              /* warm gold ~#C4A35A */
-    --accent-foreground: 0 0% 100%;
+    --accent: 40 61% 58%;
+    --accent-foreground: 162 66% 8%;
 
     --severity-severe: 0 84% 60%;
     --severity-severe-foreground: 0 0% 100%;
@@ -62,52 +62,52 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --module-inspections: 199 89% 48%;
-    --module-projects: 262 83% 58%;
-    --module-core: 215 20% 65%;
+    --module-inspections: 204 47% 63%;
+    --module-projects: 161 45% 35%;
+    --module-core: 150 7% 57%;
 
-    --border: 35 15% 90%;
-    --input: 35 15% 90%;
-    --ring: 40 50% 55%;
+    --border: 42 17% 88%;
+    --input: 42 17% 88%;
+    --ring: 40 61% 58%;
 
     --radius: 0.625rem;
 
     /* Sidebar — light, warm, consistent with the app */
-    --sidebar-background: 38 20% 97%;
-    --sidebar-foreground: 30 10% 15%;
-    --sidebar-primary: 30 10% 10%;
-    --sidebar-primary-foreground: 40 33% 99%;
-    --sidebar-accent: 40 50% 55%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 35 12% 91%;
-    --sidebar-ring: 40 50% 55%;
-    --sidebar-muted: 35 8% 55%;
-    --sidebar-label: 35 8% 45%;
+    --sidebar-background: 42 29% 96%;
+    --sidebar-foreground: 162 55% 12%;
+    --sidebar-primary: 162 66% 9%;
+    --sidebar-primary-foreground: 42 43% 98%;
+    --sidebar-accent: 40 61% 58%;
+    --sidebar-accent-foreground: 162 66% 8%;
+    --sidebar-border: 42 16% 88%;
+    --sidebar-ring: 40 61% 58%;
+    --sidebar-muted: 150 6% 50%;
+    --sidebar-label: 150 6% 42%;
 
-    --sidebar-nav-active-bg: 40 30% 95%;
-    --sidebar-nav-hover-bg: 38 20% 96%;
-    --sidebar-zone-label: 35 8% 45%;
+    --sidebar-nav-active-bg: 40 42% 91%;
+    --sidebar-nav-hover-bg: 42 27% 93%;
+    --sidebar-zone-label: 150 6% 42%;
   }
 
   /* .dark reserved for future dark-mode toggle */
   .dark {
-    --background: 225 13% 5%;
-    --foreground: 215 30% 96%;
-    --card: 222 18% 7%;
-    --card-foreground: 215 30% 96%;
-    --popover: 222 18% 8%;
-    --popover-foreground: 215 30% 96%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 18% 13%;
-    --secondary-foreground: 215 30% 96%;
-    --muted: 222 15% 11%;
-    --muted-foreground: 215 16% 60%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
-    --border: 222 15% 14%;
-    --input: 222 15% 14%;
-    --ring: 217 91% 60%;
+    --background: 162 72% 5%;
+    --foreground: 42 43% 96%;
+    --card: 162 56% 8%;
+    --card-foreground: 42 43% 96%;
+    --popover: 162 55% 9%;
+    --popover-foreground: 42 43% 96%;
+    --primary: 40 61% 58%;
+    --primary-foreground: 162 66% 8%;
+    --secondary: 162 36% 14%;
+    --secondary-foreground: 42 43% 96%;
+    --muted: 162 31% 12%;
+    --muted-foreground: 153 9% 62%;
+    --accent: 40 61% 58%;
+    --accent-foreground: 162 66% 8%;
+    --border: 162 24% 17%;
+    --input: 162 24% 17%;
+    --ring: 40 61% 58%;
   }
 }
 
