@@ -51,9 +51,9 @@ function getActiveSection(pathname: string): ActiveSection {
 
 // Module accent colors
 const MODULE_COLORS: Record<string, string> = {
-  daily: '#10B981',             // emerald
-  compliance: '#1D6FE8',        // sapphire
-  projects: 'hsl(262 83% 58%)', // violet
+  daily: '#69C2A2',       // verified emerald
+  compliance: '#71A8CF',  // infrastructure blue
+  projects: '#D5AA52',    // decision gold
 };
 
 // ─── Primary bar item ─────────────────────────────────────────────────────────
@@ -68,10 +68,10 @@ interface PrimaryItemProps {
 }
 
 function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: PrimaryItemProps) {
-  const pillColor = isActive && accentColor ? accentColor : 'hsl(217 91% 62%)';
+  const pillColor = isActive && accentColor ? accentColor : '#D5AA52';
   const textColor = isActive
-    ? accentColor ?? 'hsl(217 91% 62%)'
-    : 'hsl(215 20% 55%)';
+    ? accentColor ?? '#D5AA52'
+    : '#8C9B95';
 
   return (
     <button
@@ -95,7 +95,7 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
           {icon}
         </span>
         {badge && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[hsl(0,84%,60%)] ring-[1.5px] ring-[hsl(222,47%,9%)]" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#E36B64] ring-[1.5px] ring-[#08271F]" />
         )}
       </div>
       {/* Label */}
@@ -180,7 +180,7 @@ function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto px-3 border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,7%)] scrollbar-hide"
+      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#041914] px-3 scrollbar-hide"
       style={{ bottom: 64, borderLeft: `3px solid ${borderColor}` }}
     >
       {/* Colored context dot */}
@@ -221,7 +221,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
       <div className={cn('relative flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[hsl(217,91%,62%)] px-1 text-[9px] font-bold text-white tabular-nums">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[#D5AA52] px-1 text-[9px] font-bold text-[#041914] tabular-nums">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
@@ -265,7 +265,7 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   };
 
   const portfolioIconBg = 'bg-[hsl(215,20%,20%)]';
-  const commIconBg = 'bg-[hsl(217,91%,62%)]/15';
+  const commIconBg = 'bg-[#D5AA52]/15';
   const orgIconBg = 'bg-[hsl(262,83%,58%)]/15';
   const toolsIconBg = 'bg-[hsl(215,20%,20%)]';
   const greenIconBg = 'bg-[hsl(142,76%,36%)]/15';
@@ -279,10 +279,10 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
       <DrawerContent
-        className="h-[72vh] border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,9%)] text-[hsl(215,25%,92%)] outline-none"
+        className="h-[72vh] border-t border-white/10 bg-[#08271F] text-[#F4EFE2] outline-none"
       >
         {/* Drag handle */}
-        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-[hsl(222,30%,25%)]" />
+        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-white/20" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3">
@@ -482,7 +482,7 @@ export function MobileNav() {
 
       {/* Primary bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-[hsl(222,30%,17%)] bg-[hsl(222,47%,8%)] backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-white/10 bg-[#041914]/95 backdrop-blur-xl"
         style={{
           height: 64,
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',

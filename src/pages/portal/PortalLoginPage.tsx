@@ -255,7 +255,7 @@ export default function PortalLoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">Powered by Proj OS · projos.ai</p>
+        <p className="text-center text-xs text-muted-foreground">APAS Project Controls · Powered by projOS</p>
       </div>
     </div>
   );

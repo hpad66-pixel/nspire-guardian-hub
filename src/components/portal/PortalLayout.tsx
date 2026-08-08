@@ -116,7 +116,7 @@ export function PortalLayout({ portal, activeTab, onTabChange, children }: Porta
 
       {/* Footer */}
       <footer className="py-4 text-center">
-        <p className="text-xs text-muted-foreground">Powered by Proj OS · projos.ai</p>
+        <p className="text-xs text-muted-foreground">APAS Project Controls · Powered by projOS</p>
       </footer>
     </div>
   );
