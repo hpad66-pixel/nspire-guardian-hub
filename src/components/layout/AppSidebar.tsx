@@ -75,7 +75,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
       to={to}
       end={end}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-lg px-3 py-[7px] text-[13px] font-medium',
+        'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] font-medium leading-5',
         'text-sidebar-foreground/60 transition-all duration-150',
         'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
         collapsed && 'justify-center px-0 py-2.5',
@@ -87,7 +87,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
         <>
           <span className="flex-1 truncate">{label}</span>
           {hasBadge && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/15 px-1.5 text-[10px] font-semibold tabular-nums text-accent">
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/15 px-1.5 text-[11px] font-semibold tabular-nums text-accent">
               {(badge ?? 0) > 99 ? '99+' : badge}
             </span>
           )}
@@ -114,7 +114,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
 function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
   if (collapsed) return <div className="mx-auto my-3 h-px w-5 bg-sidebar-border" />;
   return (
-    <p className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-label">
+    <p className="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-label">
       {label}
     </p>
   );
@@ -166,13 +166,13 @@ export function AppSidebar() {
               collapsed && 'justify-center px-0',
             )}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[7px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[8px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
               APAS
             </div>
             {!collapsed && (
               <span className="grid gap-1 leading-none">
-                <strong className="text-[14px] font-bold tracking-[-0.025em] text-sidebar-foreground">Project Controls</strong>
-                <small className="text-[7px] font-bold uppercase tracking-[0.16em] text-sidebar-muted">Powered by projOS</small>
+                <strong className="text-[16px] font-bold tracking-[-0.025em] text-sidebar-foreground">Project Controls</strong>
+                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Powered by projOS</small>
               </span>
             )}
           </NavLink>
@@ -315,7 +315,7 @@ export function AppSidebar() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={myProfile?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-accent/15 text-accent text-[11px] font-semibold">
+                    <AvatarFallback className="bg-accent/15 text-accent text-[12px] font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -333,15 +333,15 @@ export function AppSidebar() {
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src={myProfile?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-accent/15 text-accent text-[11px] font-semibold">
+                  <AvatarFallback className="bg-accent/15 text-accent text-[12px] font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-sidebar-foreground">
+                  <p className="truncate text-[14px] font-semibold text-sidebar-foreground">
                     {userName}
                   </p>
-                  <p className="truncate text-[10px] font-medium text-sidebar-muted">
+                  <p className="truncate text-[12px] font-medium text-sidebar-muted">
                     {userRole}
                   </p>
                 </div>

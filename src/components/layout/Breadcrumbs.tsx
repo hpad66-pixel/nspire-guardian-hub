@@ -82,7 +82,7 @@ export function Breadcrumbs() {
 
       <nav
         aria-label="Breadcrumb"
-        className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[14px] leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <Link
           to="/dashboard"

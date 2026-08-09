@@ -100,7 +100,7 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
       </div>
       {/* Label */}
       <span
-        className="text-[10.5px] font-semibold leading-none tracking-tight transition-colors duration-200"
+        className="text-[12px] font-semibold leading-none tracking-tight transition-colors duration-200"
         style={{ color: textColor, letterSpacing: isActive ? '-0.01em' : '0' }}
       >
         {label}
@@ -221,16 +221,16 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
       <div className={cn('relative flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[#D5AA52] px-1 text-[9px] font-bold text-[#041914] tabular-nums">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[#D5AA52] px-1 text-[10px] font-bold text-[#041914] tabular-nums">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-[13.5px] font-semibold tracking-tight text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.012em' }}>
+        <p className="text-[15px] font-semibold tracking-tight text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.012em' }}>
           {title}
         </p>
-        <p className="text-[11px] font-medium leading-tight text-[hsl(215,16%,55%)] mt-0.5">{subtitle}</p>
+        <p className="text-[12px] font-medium leading-snug text-[hsl(215,16%,55%)] mt-0.5">{subtitle}</p>
       </div>
     </button>
   );
@@ -240,7 +240,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
 
 function DrawerSectionLabel({ label }: { label: string }) {
   return (
-    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(215,16%,50%)]">
+    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[hsl(215,16%,50%)]">
       {label}
     </p>
   );

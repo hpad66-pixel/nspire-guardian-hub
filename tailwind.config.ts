@@ -13,6 +13,23 @@ export default {
       },
     },
     extend: {
+      /*
+       * APAS application typography
+       *
+       * The product previously used Tailwind's compact 12px/14px defaults for
+       * most supporting and body copy. That density worked against the larger,
+       * owner-facing Project Controls brand. Keep the same semantic utility
+       * names so every routed screen benefits without changing page logic.
+       */
+      fontSize: {
+        xs: ['0.8125rem', { lineHeight: '1.125rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.375rem' }],
+        base: ['1.0625rem', { lineHeight: '1.625rem' }],
+        lg: ['1.1875rem', { lineHeight: '1.75rem' }],
+        xl: ['1.375rem', { lineHeight: '1.875rem' }],
+        '2xl': ['1.625rem', { lineHeight: '2rem' }],
+        '3xl': ['2rem', { lineHeight: '2.375rem' }],
+      },
       fontFamily: {
         sans: [
           'Inter',

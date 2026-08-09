@@ -129,9 +129,15 @@
   body {
     @apply bg-background text-foreground antialiased font-sans;
     letter-spacing: -0.006em;
+    font-size: 1rem;
+    line-height: 1.625;
   }
 
-  /* Typography scale — tightened tracking for a more corporate rhythm */
+  /*
+   * Application typography — a readable owner-facing scale with restrained
+   * tracking. Tailwind's xs/sm/base tokens are raised in tailwind.config.ts so
+   * tables, forms, dialogs, reports, and operational pages inherit this rhythm.
+   */
   h1 {
     @apply text-3xl font-semibold tracking-tight;
     letter-spacing: -0.022em;
