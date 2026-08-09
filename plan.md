@@ -108,6 +108,8 @@ Allowed changes:
 ### Shared presentation surfaces
 
 - Global CSS color and typography tokens.
+- Readable application type scale: 13px supporting text, 15px body/control text,
+  17px primary copy, and proportionally larger page headings.
 - Desktop application sidebar/wordmark.
 - Shared top bar and search styling through inherited tokens.
 - Mobile navigation colors and active states.
@@ -127,6 +129,9 @@ All operational, project, inspection, financial, permit, environmental, complian
 - [x] Navigation anchors and CTAs are present and the in-page navigation was browser-tested.
 - [x] Reduced-motion users receive a stable experience through Framer Motion preferences and CSS fallbacks.
 - [x] Shared application shell, authentication, portal, install, offline, and PWA presentation use the new brand tokens.
+- [x] The compiled application CSS resolves `text-xs` to 13px, `text-sm` to 15px,
+  `text-base` to 17px, and the shared sidebar/mobile/financial navigation no longer
+  relies on 7–10px operational labels.
 - [x] The production-equivalent Vite/PWA build succeeds.
 - [x] The critical typecheck passes. The optional full-repository typecheck still reports pre-existing schema/type drift outside the presentation files changed here.
 - [x] The implementation diff is limited to presentation, branding metadata, public copy, and this plan; pre-existing Supabase temp and output/test-result changes were not touched.

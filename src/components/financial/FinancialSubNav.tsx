@@ -70,7 +70,7 @@ export function FinancialSubNav() {
   return (
     <div className="mb-6">
       {/* Breadcrumb */}
-      <nav className="mb-3 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+      <nav className="mb-3 flex items-center gap-1.5 text-[14px] leading-5 text-muted-foreground">
         <Link to="/dashboard" className="transition-colors hover:text-foreground">Dashboard</Link>
         <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
         <Link to={`/projects/${projectId}`} className="max-w-[200px] truncate transition-colors hover:text-foreground">
@@ -113,7 +113,7 @@ export function FinancialSubNav() {
               {MORE_GROUPS.map((group, gi) => (
                 <div key={group.caption}>
                   {gi > 0 && <DropdownMenuSeparator />}
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                  <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground/70">
                     {group.caption}
                   </DropdownMenuLabel>
                   {group.tabs.map((t) => (

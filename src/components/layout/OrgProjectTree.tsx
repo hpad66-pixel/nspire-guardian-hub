@@ -46,7 +46,7 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
           <div key={org.id}>
             <div
               className={cn(
-                'group flex w-full items-center rounded-lg pr-2 text-[13px] font-medium',
+                'group flex w-full items-center rounded-lg pr-2 text-[14px] font-medium leading-5',
                 'text-sidebar-foreground/60 transition-all duration-150',
                 'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
               )}
@@ -67,7 +67,7 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
                 <Briefcase className="h-[15px] w-[15px] shrink-0 stroke-[1.6]" />
                 <span className="flex-1 truncate">{org.name}</span>
               </button>
-              <span className="text-[10px] font-semibold tabular-nums text-sidebar-foreground/40">
+              <span className="text-[11px] font-semibold tabular-nums text-sidebar-foreground/40">
                 {orgProjects.length}
               </span>
             </div>
@@ -79,7 +79,7 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
                     key={p.id}
                     to={`/projects/${p.id}`}
                     className={cn(
-                      'group flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[13px]',
+                      'group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[14px] leading-5',
                       'text-sidebar-foreground/55 transition-all duration-150',
                       'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
                     )}
