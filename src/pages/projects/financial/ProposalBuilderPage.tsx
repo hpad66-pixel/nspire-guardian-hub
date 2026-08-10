@@ -11,6 +11,8 @@ import { FinancialProposalDocument, proposalTotals } from "@/components/financia
 import { FinancialProposalSignDialog } from "@/components/financial/FinancialProposalSignDialog";
 import { SendFinancialProposalDialog } from "@/components/financial/SendFinancialProposalDialog";
 import { AmendFinancialProposalDialog } from "@/components/financial/AmendFinancialProposalDialog";
+import { ProposalAiDraftCard, type ProposalAiDraft } from "@/components/financial/ProposalAiDraftCard";
+import { useClient } from "@/hooks/useClients";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +78,7 @@ export default function ProposalBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: project } = useProject(projectId ?? null);
+  const { data: client } = useClient(project?.client_id ?? undefined);
   const proposalQuery = useFinancialProposals(projectId ?? null);
   const proposal = proposalQuery.data?.find(item => item.id === proposalId) ?? null;
   const lineQuery = useFinancialProposalLines(proposalId ?? null);
@@ -94,6 +97,22 @@ export default function ProposalBuilderPage() {
   useEffect(() => {
     if (proposal) setNewLine(current => ({ ...current, markup_pct: proposal.markup_pct ?? 10 }));
   }, [proposal]);
+
+  // Auto-fill the client from the project's client record so the consultant
+  // never types it. Only for editable drafts that don't already name a client.
+  const clientFilledRef = useRef(false);
+  useEffect(() => {
+    if (!proposal || !client || clientFilledRef.current) return;
+    if (proposal.client_name) return;
+    if (proposal.locked || proposal.status !== "draft") return;
+    clientFilledRef.current = true;
+    proposalQuery.update.mutate({
+      id: proposal.id,
+      client_name: client.name,
+      client_email: client.contact_email || null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposal, client]);
 
   const totals = useMemo(() => proposalTotals(lines), [lines]);
   const editable = Boolean(proposal && !proposal.locked && proposal.status === "draft");
@@ -124,6 +143,33 @@ export default function ProposalBuilderPage() {
   async function saveLine(line: FinancialProposalLine) {
     await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: Number(line.markup_pct) });
     toast.success("Line updated");
+  }
+
+  // Apply an AI draft: patch the scope/terms/markup and append the priced lines.
+  // Existing lines are kept so re-drafting is additive; the author edits from there.
+  async function applyDraft(draftResult: ProposalAiDraft) {
+    if (!proposal) return;
+    await proposalQuery.update.mutateAsync({
+      id: proposal.id,
+      title: proposal.title?.trim() ? proposal.title : (draftResult.title || proposal.title),
+      notes: draftResult.scope_notes || proposal.notes,
+      terms: draftResult.terms || proposal.terms,
+      markup_pct: typeof draftResult.markup_pct === "number" ? draftResult.markup_pct : proposal.markup_pct,
+    });
+    let no = lines.length ? Math.max(...lines.map(line => line.line_no)) : 0;
+    for (const line of draftResult.lines ?? []) {
+      no += 1;
+      await lineQuery.create.mutateAsync({
+        proposal_id: proposal.id,
+        line_no: no,
+        category: line.category,
+        description: line.description,
+        quantity: Number(line.quantity) || 0,
+        unit: line.unit || "ls",
+        unit_cost: Number(line.unit_cost) || 0,
+        markup_pct: Number(line.markup_pct) || (proposal.markup_pct ?? 10),
+      });
+    }
   }
 
   async function downloadPdf() {
@@ -177,12 +223,21 @@ export default function ProposalBuilderPage() {
         ["Subtotal", fmt(totals.subtotal)], ["Markup", fmt(totals.markup)], ["Proposal total", fmt(totals.total)], ["Valid until", proposal.valid_until ? new Date(`${proposal.valid_until}T00:00:00`).toLocaleDateString() : "—"],
       ].map(([label, value]) => <Card key={label}><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold">{value}</p></CardContent></Card>)}</div>
 
+      {editable && (
+        <ProposalAiDraftCard
+          projectId={projectId!}
+          defaultMarkup={proposal.markup_pct ?? 10}
+          disabled={proposalQuery.update.isPending || lineQuery.create.isPending}
+          onApply={applyDraft}
+        />
+      )}
+
       <Card><CardHeader><CardTitle className="text-base">Line items</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Markup</th><th className="p-3 text-right">Total</th><th /></tr></thead><tbody>
         {lines.map(line => <EditableProposalLine key={line.id} line={line} editable={editable} onSave={saveLine} onRemove={() => lineQuery.remove.mutate(line.id)} />)}
         {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as any }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost) * (1 + Number(newLine.markup_pct) / 100))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
       </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={7} className="p-3 text-right">Proposal total</td><td className="p-3 text-right font-mono text-base text-[var(--apas-sapphire)]">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
 
-      <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Proposal document</CardTitle><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Signed version</Badge>}</div></div></CardHeader><CardContent><div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} /></div></CardContent></Card>
+      <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Proposal document</CardTitle><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Signed version</Badge>}</div></div></CardHeader><CardContent><div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div></CardContent></Card>
 
       <Card><CardContent className="flex items-center justify-between p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version.</p></div><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete proposal</Button></CardContent></Card>
 

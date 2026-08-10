@@ -65,7 +65,7 @@ serve(async (req) => {
 
     const { data: project, error: projectError } = await supabase
       .from("projects")
-      .select(`*, property:properties(name, address, city, state)`)
+      .select(`*, property:properties(name, address, city, state), client:clients(name, contact_name, contact_email, contact_phone, address, city, state)`)
       .eq("id", projectId)
       .single();
 
@@ -104,10 +104,35 @@ serve(async (req) => {
       .replace(/\{\{user_notes\}\}/g, userNotes || "")
       .replace(/\{\{subject\}\}/g, subject || "");
 
+    // The project's client drives the letterhead addressing + salutation so the
+    // author never types recipient details — same "auto-fill from the record"
+    // contract the change-order generator uses for contract parties.
+    const client = (project as { client?: {
+      name?: string | null; contact_name?: string | null; contact_email?: string | null;
+      contact_phone?: string | null; address?: string | null; city?: string | null; state?: string | null;
+    } | null }).client ?? null;
+    const clientAddress = client
+      ? [client.address, [client.city, client.state].filter(Boolean).join(", ")].filter(Boolean).join(", ")
+      : "";
+    const salutationName = client?.contact_name?.trim().split(/\s+/).slice(-1)[0]
+      ? client.contact_name.trim()
+      : client?.name?.trim() || "";
+
     const promptParts: string[] = [];
     promptParts.push(`Document type: ${proposalType.replace(/_/g, " ")}.`);
     if (subject) promptParts.push(`Subject: ${subject}.`);
     promptParts.push(`Project: ${project.name}. Property: ${project.property?.name ?? "N/A"}. Budget: ${formatBudget(project.budget)}.`);
+    if (client) {
+      promptParts.push(
+        `Address this proposal to the following client — these are REAL values, do not use placeholders:\n` +
+        `Client / company: ${client.name ?? "N/A"}\n` +
+        `Attention (contact): ${client.contact_name ?? "N/A"}\n` +
+        `Contact email: ${client.contact_email ?? "N/A"}\n` +
+        `Contact phone: ${client.contact_phone ?? "N/A"}\n` +
+        `Mailing address: ${clientAddress || "N/A"}\n` +
+        `Open the letter with a professional header block: today's date, the client company and its mailing address, an "Attention:" line for the contact when known, then a salutation ("Dear ${salutationName || "Sir or Madam"}:"). Sign off from APAS Consulting.`,
+      );
+    }
     if (project.scope) promptParts.push(`Project scope on file: ${project.scope}`);
     if (template?.prompt_template) promptParts.push(`Template guidance:\n${fill(template.prompt_template)}`);
     if (userNotes) promptParts.push(`What the author wants in this document (their dictation/notes):\n${userNotes}`);
@@ -125,7 +150,7 @@ OUTPUT FORMAT:
 
 ${STYLE_RULES}
 
-Use [CLIENT NAME] or [DATE] placeholders only where a real value is genuinely unknown.`;
+When client details are provided above, use them verbatim for the addressing block and salutation — never leave a [CLIENT NAME] placeholder in that case. Use [DATE] or other placeholders only where a real value is genuinely unknown and not supplied.`;
 
     const userContent: Array<Record<string, unknown>> = [{ type: "text", text: promptParts.join("\n\n") }];
     for (const img of images ?? []) {

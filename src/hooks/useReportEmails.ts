@@ -46,6 +46,8 @@ export interface SendReportEmailParams {
   message?: string;
   pdfBase64: string;
   pdfFilename: string;
+  /** Extra files (e.g. subconsultant docs) sent alongside the generated PDF. */
+  extraAttachments?: { filename: string; content: string; content_type?: string }[];
   sourceModule?: string;
   propertyId?: string;
   projectId?: string;
