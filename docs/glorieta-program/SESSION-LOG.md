@@ -204,25 +204,35 @@ item in the program.
 
 ## 6. Design system
 
-`civic.apas.ai` typography and colour, confirmed by Hardeep — **not scraped.**
-The site is unreachable from the Cowork cloud sandbox (`ERR_CONNECTION_RESET`), and Google
-Fonts is blocked there too, so headless screenshots render in fallback fonts. It displays
-correctly on a normal machine.
+`civic.apas.ai`, **extracted from the live site** — see `source/civic-tokens.md` for the
+full derivation, including the type scale and the structural rules.
 
 ```
---ivory      #FAF8F3   page canvas
---sand       #F3EFE6   alternating bands
---paper      #FFFFFF   cards
---rule       #E2DCCE   hairlines
---obsidian   #0D0D12   masthead, footer, dark bands, ink
---gold       #C8962E   primary accent
---gold-deep  #A87A1E   labels
---gold-light #E8C875   hero italic, highlights
+--forest       #17352B   headings, table heads, dark UI
+--forest-900   #0E241D   masthead, footer
+--cream        #F5F1E8   page canvas
+--paper        #FBF9F3   cards
+--ink          #1A211E   body text
+--muted        #6A7A72   secondary text
+--line         #DED7C6   every border
+--brass        #B08948   primary accent
+--brass-bright #C8A45E   highlights
+--pass         #3E7A5E   confirmed / success
 ```
 
-Playfair Display 900/700 (display) · Inter 300–700 (body/UI) · JetBrains Mono (labels, data).
+Fraunces 600 (display — never heavier) · Inter 300–850 (body, labels, eyebrows).
+No monospace face: labels get their technical feel from uppercase + heavy weight +
+wide tracking in Inter. `border-radius: 0` everywhere — square corners are the
+strongest signal of the identity; do not soften them.
 
-Bucket colours are listed with each bucket above. `FOR DISCUSSION` uses `#2E6BA6`.
+Bucket colours are listed with each bucket above. `FOR DISCUSSION` uses `#3A6086`.
+
+> **Superseded.** Rev 1.0–2.0 shipped in a different palette — Playfair Display 900/700
+> with `--ivory #FAF8F3` / `--gold #C8962E` / `--obsidian #0D0D12` — because the Cowork
+> sandbox could not reach `civic.apas.ai` (`ERR_CONNECTION_RESET`) and the tokens were
+> reconstructed from description. Any copy of these documents still rendering in Playfair
+> predates the rebrand. The values above were verified against the live stylesheet on a
+> machine that can reach it, and match `build.py` exactly.
 
 ---
 

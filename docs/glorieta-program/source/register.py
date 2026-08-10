@@ -34,7 +34,7 @@ BUCKETS = [
     {
         "id": "STM", "num": "01", "name": "Stormwater Management",
         "file": "01-Stormwater-Management.html",
-        "color": "#17A2B8", "tint": "rgba(23,162,184,0.10)",
+        "color": "#1F6B72", "tint": "rgba(31,107,114,0.10)",
         "tagline": "The plan comes first. Everything else is written into it.",
         "posture": "Stormwater Management Plan is the program's first deliverable.",
         "summary": "We do not currently know, with engineering certainty, what the stormwater system on this property is. Not how many catch basins. Not where the pipes run, what size they are, what they are made of, or whether they are intact. There is a retention pond of unquantified capacity and a second retention area that people reference but nobody has located. Every one of those unknowns is a flood-risk unknown. So the Stormwater Management Plan is written first — not last. It establishes the design basis, the level of service the property will be held to, and the investigation program required to get there. Every project that follows is then a defined chapter of that plan rather than a standalone expense, and the plan is reissued as a final governing document once the data is in.",
@@ -43,7 +43,7 @@ BUCKETS = [
     {
         "id": "SWR", "num": "02", "name": "Sewer Extension",
         "file": "02-Sewer-Extension.html",
-        "color": "#2E6BA6", "tint": "rgba(46,107,166,0.09)",
+        "color": "#3A6086", "tint": "rgba(58,96,134,0.10)",
         "tagline": "Built. Now we hand it over — and we measure what leaves.",
         "posture": "Construction complete. Closing out and instrumenting.",
         "summary": "The sanitary sewer extension is physically built. Two things remain, and they are different in kind. The first is administrative: transferring the asset to the City of Opa-Locka through a formal conveyance package. The second is operational: putting a permanent flow meter at the point where wastewater leaves the property, so that Glorieta — the system's largest single discharger — can prove exactly what it sends to the City's pump station.",
@@ -52,7 +52,7 @@ BUCKETS = [
     {
         "id": "WTR", "num": "03", "name": "Water Systems",
         "file": "03-Water-Systems.html",
-        "color": "#2E8B57", "tint": "rgba(46,139,87,0.10)",
+        "color": "#2E6B50", "tint": "rgba(46,107,80,0.10)",
         "tagline": "Find the pipes. Then meter, protect, and supplement them.",
         "posture": "Records and file assessment approved. Balance to be proposed.",
         "summary": "We need to know where our water pipes are before we touch anything else. That begins with the records and file assessment — originally discussed for wastewater, now necessarily widened to every utility record we can obtain. If the records are good, we field-verify them and produce an as-built. If they are not, we run a full field verification survey. From that foundation, three construction projects follow: meter boxes (we design, permit and build; the City sets its meters), backflow prevention, and an irrigation well to serve the common areas. One further item sits at the end of this bucket, flagged for discussion rather than proposed: a non-revenue water assessment, which asks a question none of the other projects ask — how much of the water this property buys is never billed to anybody.",
@@ -61,7 +61,7 @@ BUCKETS = [
     {
         "id": "ENV", "num": "04", "name": "Environmental Services & Regulatory Compliance",
         "file": "04-Environmental-Regulatory.html",
-        "color": "#7B4FBF", "tint": "rgba(123,79,191,0.10)",
+        "color": "#6D4E76", "tint": "rgba(109,78,118,0.10)",
         "tagline": "Prove what came from off-site. Close the Consent Order.",
         "posture": "Ongoing obligation. Investigation scope to be defined.",
         "summary": "Glorieta Gardens is surrounded by industrial neighbours, including junkyards. The purpose of this bucket is to establish, on the record and for the owner's own protection, whether contamination is migrating onto the property from adjacent parcels. That means an extensive file review of the surrounding properties, a plume analysis, and a monitoring well network on the boundaries — a minimum of two wells per side. Running alongside it is the standing compliance obligation: closing out the Consent Order completely and keeping water, sewer and stormwater operating in conformance with their permits at both local and state level.",
@@ -70,7 +70,7 @@ BUCKETS = [
     {
         "id": "PMO", "num": "05", "name": "Program Management & ProjOS",
         "file": "05-Program-Management-ProjOS.html",
-        "color": "#C8962E", "tint": "rgba(200,150,46,0.10)",
+        "color": "#B08948", "tint": "rgba(176,137,72,0.12)",
         "tagline": "One operating record. Every project, every document, every obligation.",
         "posture": "Active and continuing.",
         "summary": "The four program buckets above are only manageable if something holds them together. APAS provides day-to-day project management for the crews on site and program-level management across all four buckets — scope control, change management, schedule, pay application review, permit tracking and regulatory correspondence. All of it is instantiated in ProjOS, so that every project carries its scope, deliverables, permits, documents and current status in one operating record the owner can open at any time.",
