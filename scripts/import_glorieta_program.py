@@ -71,6 +71,17 @@ STATUS_MAP = {
     "To be demonstrated": "planning",
 }
 
+# projects.phase is constrained to the construction vocabulary
+# (planning · preconstruction · construction · punch_list · closeout — see
+# 20260627150000_auto_client_portal_and_phase.sql). This program is almost
+# entirely professional services, so 'planning' is the honest default; the two
+# projects that are literally close-out say so.
+PHASE_MAP = {
+    "SWR-01": "closeout",   # Conveyance & Close-Out to the City of Opa-Locka
+    "ENV-05": "closeout",   # Consent Order Close-Out
+}
+DEFAULT_PHASE = "planning"
+
 
 def rest(method, path, body=None, prefer=None):
     cmd = ["curl", "-sS", "-X", method, f"{SB_URL}/rest/v1/{path}",
@@ -122,11 +133,27 @@ def main():
 
     existing = get("projects?select=id,name,parent_project_id,program_meta&limit=500")
     by_name = {p["name"].strip(): p for p in existing}
-    by_key = {
-        (p.get("program_meta") or {}).get("project_key"): p
-        for p in existing
-        if (p.get("program_meta") or {}).get("project_key")
-    }
+
+    # Identity is whatever key the row's kind is addressed by — a project row by
+    # its project_key ("STM-01"), a bucket by its bucket_key ("STM"), the program
+    # by its program_key ("GLORIETA"). Keying only on project_key looks right and
+    # is not: the program and bucket rows carry no project_key, so they would miss
+    # on every re-run and be re-created, orphaning the tree beneath them.
+    def identity(meta):
+        kind = (meta or {}).get("kind")
+        if kind == "project":
+            return meta.get("project_key")
+        if kind == "bucket":
+            return meta.get("bucket_key")
+        if kind == "program":
+            return meta.get("program_key")
+        return None
+
+    by_key = {}
+    for p in existing:
+        k = identity(p.get("program_meta"))
+        if k:
+            by_key[k] = p
 
     plan = []          # (action, label, detail)
     ids = {}           # program key → project id (resolved during apply)
@@ -162,7 +189,7 @@ def main():
                            f"Owner: {program['owner']} · Advisor: {program['advisor']} · {program['contract_ref']}",
             "project_type": "client",
             "status": "active",
-            "phase": "active",
+            "phase": DEFAULT_PHASE,
             "program_meta": {
                 "program_key": program["key"], "kind": "program",
                 "objectives": program.get("objectives"),
@@ -181,7 +208,7 @@ def main():
                 "description": f"{b.get('tagline','')}\n\n{b.get('summary','')}".strip(),
                 "project_type": "client",
                 "status": "active",
-                "phase": "active",
+                "phase": DEFAULT_PHASE,
                 "program_meta": {
                     "program_key": program["key"], "bucket_key": b["key"], "kind": "bucket",
                     "seq": b["seq"], "color": b.get("color"), "posture": b.get("posture"),
@@ -201,7 +228,7 @@ def main():
                 "scope": scope_text(p),
                 "project_type": "client",
                 "status": STATUS_MAP.get(p["status"], "planning"),
-                "phase": "planning",
+                "phase": PHASE_MAP.get(p["key"], DEFAULT_PHASE),
                 "program_meta": {
                     "program_key": program["key"], "bucket_key": p["bucket"],
                     "project_key": p["key"], "kind": "project",
