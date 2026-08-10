@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 — Program Management &amp; ProjOS | Glorieta Gardens Program of Work</title><style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,900;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --ivory:#FAF8F3; --paper:#FFFFFF; --sand:#F3EFE6; --rule:#E2DCCE; --rule-soft:#EDE8DC;
+  --obsidian:#0D0D12; --ink:#1C1C22; --body:#3A3A44; --slate:#6E6E7A; --mute:#9A9AA6;
+  --gold:#C8962E; --gold-deep:#A87A1E; --gold-light:#E8C875; --gold-bg:rgba(200,150,46,.08);
+  --shadow:0 1px 2px rgba(13,13,18,.04), 0 8px 28px rgba(13,13,18,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{background:var(--ivory);color:var(--body);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:16px;line-height:1.72;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 48px}
+.narrow{max-width:840px}
+
+/* ---------- glossary term ---------- */
+.tt{border-bottom:1px dotted var(--gold-deep);cursor:help;color:inherit;
+  background:rgba(200,150,46,.055);padding:0 1px;border-radius:2px;transition:.13s}
+.tt:hover,.tt:focus{background:rgba(200,150,46,.18);border-bottom-style:solid;outline:none}
+.tt:after{content:'?';font-family:'JetBrains Mono',monospace;font-size:.62em;
+  vertical-align:super;color:var(--gold-deep);margin-left:2px;font-weight:700;opacity:.85}
+.band-dark .tt{background:rgba(200,150,46,.14);border-bottom-color:var(--gold-light)}
+.band-dark .tt:after{color:var(--gold-light)}
+
+/* ---------- modal ---------- */
+.gdim{position:fixed;inset:0;background:rgba(13,13,18,.55);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:900;padding:24px}
+.gdim.on{display:flex}
+.gbox{background:var(--paper);max-width:640px;width:100%;max-height:86vh;overflow-y:auto;
+  border-radius:4px;box-shadow:0 24px 80px rgba(13,13,18,.32);position:relative;
+  border-top:4px solid var(--gold)}
+.gbox-in{padding:38px 44px 40px}
+.gclose{position:absolute;top:14px;right:16px;width:30px;height:30px;border:0;cursor:pointer;
+  background:transparent;color:var(--mute);font-size:22px;line-height:1;border-radius:3px}
+.gclose:hover{background:var(--sand);color:var(--obsidian)}
+.gk{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--gold-deep);margin-bottom:11px}
+.gbox h3{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:28px;
+  color:var(--obsidian);margin-bottom:22px;line-height:1.18}
+.gsec{margin-bottom:20px}
+.gsec:last-child{margin-bottom:0}
+.gsec-l{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--mute);margin-bottom:7px}
+.gsec p{font-size:15px;line-height:1.7;color:var(--body)}
+.gsec.plain{background:var(--sand);border-left:3px solid var(--gold);padding:18px 20px;border-radius:2px}
+.gsec.why{border-top:1px solid var(--rule);padding-top:18px}
+.gsec.why p{color:var(--ink);font-weight:500}
+
+/* ---------- masthead ---------- */
+.masthead{background:var(--obsidian);color:#EDEAE2;position:relative;overflow:hidden}
+.masthead:after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,var(--gold-deep),var(--gold),var(--gold-light),var(--gold))}
+.mh-top{display:flex;justify-content:space-between;align-items:center;
+  padding:22px 0;border-bottom:1px solid rgba(255,255,255,.10)}
+.lockup{display:flex;align-items:center;gap:11px;font-family:'JetBrains Mono',monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#EDEAE2}
+.dot{width:9px;height:9px;background:var(--gold);border-radius:1px;display:inline-block}
+.mh-meta{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:#8B8B96}
+.hero{padding:74px 0 78px}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:.32em;text-transform:uppercase;color:var(--gold);margin-bottom:26px}
+h1{font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:clamp(38px,5.2vw,64px);
+  line-height:1.05;letter-spacing:-.022em;color:#FFFDF8;margin-bottom:26px}
+h1 em{font-style:italic;font-weight:500;color:var(--gold-light)}
+.lede{font-size:19px;line-height:1.66;color:#B9B7B0;max-width:740px;font-weight:300}
+.hero-facts{display:flex;flex-wrap:wrap;margin-top:52px;border-top:1px solid rgba(255,255,255,.12)}
+.fact{padding:22px 34px 4px 0;margin-right:34px;border-right:1px solid rgba(255,255,255,.10)}
+.fact:last-child{border-right:0}
+.fact-l{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:#7A7A85;margin-bottom:7px}
+.fact-v{font-size:14px;color:#E4E1D8;font-weight:500;line-height:1.45}
+.hint{margin-top:26px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold-light);display:inline-flex;align-items:center;gap:9px;
+  border:1px solid rgba(200,150,46,.4);padding:8px 14px;border-radius:2px}
+
+/* ---------- nav ---------- */
+.navstrip{background:var(--sand);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:50}
+.navstrip .wrap{display:flex;overflow-x:auto}
+.navstrip a{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--slate);text-decoration:none;padding:15px 22px 13px;
+  border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+.navstrip a:first-child{padding-left:0}
+.navstrip a:hover{color:var(--obsidian);border-bottom-color:var(--gold)}
+
+/* ---------- sections ---------- */
+section{padding:76px 0;scroll-margin-top:52px}
+section.tight{padding:52px 0}
+.band-alt{background:var(--sand);border-top:1px solid var(--rule-soft);border-bottom:1px solid var(--rule-soft)}
+.band-dark{background:var(--obsidian);color:#C4C2BB}
+.slabel{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+h2{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:clamp(28px,3.4vw,39px);
+  line-height:1.14;letter-spacing:-.017em;color:var(--obsidian);margin-bottom:20px}
+.band-dark h2{color:#FFFDF8}
+h3{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:25px;
+  line-height:1.24;color:var(--obsidian);margin-bottom:14px;letter-spacing:-.012em}
+h4{font-weight:600;font-size:14px;color:var(--obsidian);margin-bottom:11px}
+.sdesc{font-size:17px;line-height:1.72;color:var(--slate);max-width:810px;font-weight:300}
+.band-dark .sdesc{color:#9C9A94}
+.goldrule{width:52px;height:3px;background:var(--gold);margin:0 0 26px}
+
+/* ---------- bucket cards ---------- */
+.bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;margin-top:44px}
+.bcard{background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:32px 30px 28px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow);text-decoration:none;display:block;transition:.18s}
+.bcard:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 14px 40px rgba(13,13,18,.09)}
+.bcard:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc)}
+.bnum{position:absolute;top:20px;right:24px;font-family:'Playfair Display',serif;font-weight:900;
+  font-size:44px;line-height:1;color:var(--bc);opacity:.13}
+.btag{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--bc);font-weight:500;margin-bottom:12px}
+.bcard h3{font-size:23px;margin-bottom:12px;padding-right:52px}
+.btagline{font-size:15px;color:var(--body);line-height:1.62;margin-bottom:18px}
+.bposture{font-size:13px;color:var(--slate);line-height:1.55;padding-top:16px;
+  border-top:1px solid var(--rule-soft)}
+.bposture b{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--obsidian);
+  letter-spacing:.05em;display:block;margin-bottom:5px}
+.bmore{margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gold-deep);font-weight:500}
+
+/* ---------- three-up ---------- */
+.ssb{display:grid;grid-template-columns:repeat(3,1fr);margin-top:38px;
+  border:1px solid var(--rule);background:var(--paper)}
+.ssb > div{padding:30px 28px;border-right:1px solid var(--rule)}
+.ssb > div:last-child{border-right:0}
+.ssb .n{font-family:'Playfair Display',serif;font-weight:900;font-size:34px;color:var(--gold);
+  opacity:.28;line-height:1;margin-bottom:12px}
+.ssb h4{font-size:15px;margin-bottom:9px}
+.ssb p{font-size:14.5px;color:var(--slate);line-height:1.62}
+
+/* ---------- table ---------- */
+.tblwrap{margin-top:40px;border:1px solid var(--rule);background:var(--paper);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+.tblwrap.fixed table{table-layout:fixed}
+.tblwrap.fixed col.c1{width:70px}.tblwrap.fixed col.c3{width:120px}
+.tblwrap.fixed col.c4{width:104px}.tblwrap.fixed col.c5{width:92px}.tblwrap.fixed col.c6{width:96px}
+.tblwrap.fixed thead th{white-space:normal;padding:12px 10px}
+.tblwrap.fixed tbody td{padding:12px 10px;overflow-wrap:anywhere}
+thead th{background:var(--obsidian);color:#D6D3CB;font-family:'JetBrains Mono',monospace;
+  font-size:9.5px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;
+  padding:12px;text-align:left}
+tbody td{padding:12px;border-bottom:1px solid var(--rule-soft);vertical-align:top;line-height:1.5}
+tbody tr:hover{background:var(--gold-bg)}
+tr.grp td{background:var(--sand);font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--obsidian);
+  padding:11px 10px;border-bottom:1px solid var(--rule);text-align:left}
+tr.grp td span.sw{display:inline-block;width:8px;height:8px;border-radius:1px;margin-right:9px}
+td.pid{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:var(--obsidian)}
+td.pname{font-weight:500;color:var(--ink)}
+td.dep,td.role{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--slate);line-height:1.6}
+td.bud{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--obsidian);text-align:right}
+td.bud.tbd{color:var(--mute)}
+td.bud.set{color:var(--gold-deep);font-weight:700}
+.pill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:2px;
+  border:1px solid;white-space:nowrap}
+.p-first{color:#0D0D12;border-color:var(--gold);background:var(--gold-light)}
+.p-ok{color:#2E8B57;border-color:rgba(46,139,87,.4);background:rgba(46,139,87,.07)}
+.p-act{color:#A87A1E;border-color:rgba(200,150,46,.45);background:var(--gold-bg)}
+.p-new{color:#6E6E7A;border-color:var(--rule);background:var(--sand)}
+.p-cond{color:#7B4FBF;border-color:rgba(123,79,191,.35);background:rgba(123,79,191,.06)}
+.p-disc{color:#FFFDF8;border-color:#2E6BA6;background:#2E6BA6}
+
+/* ---------- project ---------- */
+.proj{background:var(--paper);border:1px solid var(--rule);border-radius:3px;margin-bottom:26px;
+  scroll-margin-top:60px;box-shadow:var(--shadow);overflow:hidden;position:relative}
+.proj:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc)}
+.proj.first{border-color:var(--gold);box-shadow:0 4px 34px rgba(200,150,46,.16)}
+.flagbar.discuss{background:#2E6BA6;color:#FFFDF8}
+.proj.discuss{border-color:#2E6BA6;box-shadow:0 4px 34px rgba(46,107,166,.15)}
+.flagbar{background:var(--gold);color:#0D0D12;font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+  padding:9px 40px;margin-left:4px}
+.proj-head{padding:34px 40px 26px;border-bottom:1px solid var(--rule-soft)}
+.proj-id{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.proj-id .code{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+  letter-spacing:.1em;color:var(--bc);background:var(--bct);padding:4px 10px;border-radius:2px}
+.proj-id .type{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--mute)}
+.proj h3{font-size:26px;margin-bottom:14px}
+.headline{font-size:17px;line-height:1.62;color:var(--ink);font-weight:500;
+  border-left:3px solid var(--gold);padding-left:18px;margin-bottom:20px}
+.context{font-size:15.5px;line-height:1.74;color:var(--slate)}
+.proj-body{display:grid;grid-template-columns:1fr 300px;align-items:stretch}
+.proj-scope{padding:32px 40px 36px;border-right:1px solid var(--rule-soft)}
+.proj-side{padding:30px 28px 36px;background:var(--sand);height:100%}
+.blk{margin-bottom:28px}
+.blk:last-child{margin-bottom:0}
+.blk-l{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--gold-deep);margin-bottom:14px;padding-bottom:8px;
+  border-bottom:1px solid var(--rule)}
+ul.chk{list-style:none}
+ul.chk li{position:relative;padding-left:23px;margin-bottom:11px;font-size:14.5px;
+  line-height:1.66;color:var(--body)}
+ul.chk li:before{content:'';position:absolute;left:0;top:9px;width:6px;height:6px;
+  background:var(--bc);border-radius:1px;opacity:.55}
+ul.dv{list-style:none}
+ul.dv li{position:relative;padding-left:20px;margin-bottom:9px;font-size:13.5px;
+  line-height:1.6;color:var(--body)}
+ul.dv li:before{content:'\2192';position:absolute;left:0;top:0;color:var(--gold);font-size:13px}
+.sfact{padding:14px 0;border-bottom:1px solid var(--rule)}
+.sfact:last-of-type{border-bottom:0}
+.sfact-l{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.sfact-v{font-size:13.5px;color:var(--obsidian);font-weight:500;line-height:1.5}
+.sfact-v.big{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700}
+.sfact-v.tbd{color:var(--mute)}
+.sfact-v.set{color:var(--gold-deep)}
+.sfact-n{font-size:12px;color:var(--slate);line-height:1.55;margin-top:7px;font-weight:400}
+.driver{font-size:12px;color:var(--slate);line-height:1.6}
+
+/* ---------- sequence ---------- */
+.seqrow{display:grid;grid-template-columns:150px 1fr;gap:28px;padding:26px 0;border-top:1px solid var(--rule)}
+.seqrow:last-child{border-bottom:1px solid var(--rule)}
+.seq-ph{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--gold-deep);font-weight:500;padding-top:3px}
+.seq-ph span{display:block;font-family:'Playfair Display',serif;font-size:30px;font-weight:900;
+  color:var(--gold);opacity:.25;letter-spacing:0;margin-bottom:5px;text-transform:none}
+.seq h4{font-size:16px;margin-bottom:8px}
+.seq p{font-size:14.5px;color:var(--slate);line-height:1.68;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 9px;border-radius:2px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+
+/* ---------- callout ---------- */
+.callout{background:var(--paper);border:1px solid var(--rule);border-left:4px solid var(--gold);
+  padding:28px 32px;margin-top:32px;box-shadow:var(--shadow)}
+.callout h4{margin-bottom:10px;font-size:15px}
+.callout p{font-size:15px;color:var(--slate);line-height:1.7}
+.callout p+p{margin-top:12px}
+.band-dark .callout{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.12);
+  border-left-color:var(--gold);box-shadow:none}
+.band-dark .callout h4{color:#FFFDF8}
+.band-dark .callout p{color:#A8A6A0}
+
+/* ---------- commercial ---------- */
+.comgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:38px}
+@media(max-width:980px){.comgrid{grid-template-columns:repeat(2,1fr)}}
+.comcard{background:var(--paper);border:1px solid var(--rule);padding:28px 26px;border-radius:3px;
+  box-shadow:var(--shadow);border-top:3px solid var(--gold)}
+.comcard .n{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--gold-deep);margin-bottom:11px}
+.comcard h4{font-size:16px;margin-bottom:9px}
+.comcard p{font-size:14px;color:var(--slate);line-height:1.66}
+.mathbar{display:flex;flex-wrap:wrap;gap:0;margin-top:30px;border:1px solid var(--rule);
+  background:var(--paper)}
+.mathbar > div{flex:1;min-width:160px;padding:22px 24px;border-right:1px solid var(--rule)}
+.mathbar > div:last-child{border-right:0;background:var(--gold-bg)}
+.mathbar .ml{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mute);margin-bottom:7px}
+.mathbar .mv{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;
+  color:var(--obsidian);margin-bottom:5px}
+.mathbar .mn{font-size:12.5px;color:var(--slate);line-height:1.55}
+
+/* ---------- projos ---------- */
+.osgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.10);margin-top:40px}
+.oscell{background:var(--obsidian);padding:28px 26px}
+.oscell .n{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;
+  color:var(--gold);margin-bottom:12px}
+.oscell h4{color:#FFFDF8;font-size:15px;margin-bottom:9px}
+.oscell p{font-size:13.5px;color:#93918B;line-height:1.65}
+
+/* ---------- glossary index ---------- */
+.gindex{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;margin-top:36px}
+.gitem{background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:13px 15px;
+  cursor:pointer;transition:.14s;text-align:left;font-family:inherit}
+.gitem:hover{border-color:var(--gold);background:var(--gold-bg);transform:translateY(-2px)}
+.gitem b{display:block;font-size:13.5px;color:var(--obsidian);font-weight:600;margin-bottom:3px}
+.gitem span{font-size:11.5px;color:var(--slate);line-height:1.45;display:block}
+
+/* ---------- quals ---------- */
+.quals{columns:2;column-gap:44px;margin-top:32px}
+.quals li{break-inside:avoid;list-style:none;position:relative;padding-left:20px;
+  margin-bottom:14px;font-size:13.5px;line-height:1.66;color:var(--slate)}
+.quals li:before{content:'\00A7';position:absolute;left:0;top:0;color:var(--gold);font-size:12px}
+
+/* ---------- footer ---------- */
+footer{background:var(--obsidian);color:#7A7A85;padding:46px 0 52px;border-top:3px solid var(--gold)}
+.ft{display:flex;justify-content:space-between;gap:36px;flex-wrap:wrap}
+.ft-l,.ft-r{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;line-height:2}
+.ft-r{text-align:right}
+.backlink{display:inline-block;margin-top:8px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);text-decoration:none}
+
+@media(max-width:880px){
+  .wrap{padding:0 26px}
+  .proj-body{grid-template-columns:1fr}
+  .proj-scope{border-right:0;border-bottom:1px solid var(--rule-soft)}
+  .ssb{grid-template-columns:1fr}
+  .ssb > div{border-right:0;border-bottom:1px solid var(--rule)}
+  .seqrow{grid-template-columns:1fr;gap:12px}
+  .quals{columns:1}
+  .hero{padding:52px 0}
+  .gbox-in{padding:30px 26px 32px}
+}
+@media print{
+  body{background:#fff}
+  .navstrip,.gdim,.hint{display:none}
+  section{padding:32px 0;break-inside:avoid}
+  .proj,.bcard{break-inside:avoid;box-shadow:none}
+  .tt{background:none;border-bottom:1px dotted #999}
+  .tt:after{content:''}
+  a{text-decoration:none;color:inherit}
+}
+</style></head><body>
+<header class="masthead"><div class="wrap">
+  <div class="mh-top"><div class="lockup"><span class="dot"></span> APAS Consulting</div>
+    <div class="mh-meta">Rev. 2.0 &nbsp;·&nbsp; August 9, 2026</div></div>
+  <div class="hero"><div class="eyebrow">Glorieta Gardens &nbsp;·&nbsp; Bucket 05 of 05</div><h1>Program Management &amp; ProjOS</h1>
+    <p class="lede">One operating record. Every project, every document, every obligation.</p><div class="hint">&#9432;&nbsp; Any underlined term is clickable — plain-English explanation</div><div class="hero-facts"><div class="fact"><div class="fact-l">Bucket</div><div class="fact-v">05 &nbsp;/&nbsp; PMO</div></div><div class="fact"><div class="fact-l">Projects</div><div class="fact-v">2</div></div><div class="fact"><div class="fact-l">Posture</div><div class="fact-v">Active and continuing.</div></div><div class="fact"><div class="fact-l">Authorisation</div><div class="fact-v">One proposal per project</div></div></div></div>
+</div></header><nav class="navstrip"><div class="wrap"><a href="Glorieta-Gardens-Program-of-Work.html">&larr; Program Master</a><a href="#PMO-01">PMO-01</a><a href="#PMO-02">PMO-02</a><a href="#glossary">Glossary</a></div></nav><section class="tight"><div class="wrap narrow">
+  <div class="goldrule"></div><p class="sdesc">The four program buckets above are only manageable if something holds them together. APAS provides day-to-day project management for the crews on site and program-level management across all four buckets — scope control, change management, schedule, pay application review, permit tracking and regulatory correspondence. All of it is instantiated in ProjOS, so that every project carries its scope, deliverables, permits, documents and current status in one operating record the owner can open at any time.</p>
+  <div class="callout"><h4>Why this matters</h4><p>Thirty-one projects across four systems and three regulators is not a spreadsheet problem. Without a single operating record, the owner is reconstructing the truth from email every time a question is asked.</p></div>
+</div></section><section class="band-alt"><div class="wrap">
+  <div class="slabel">Bucket 05 — Projects</div>
+  <h2>2 projects, each authorised by its own proposal</h2>
+  <p class="sdesc">Every item below is a discrete project with a defined scope and a defined set of deliverables. No amount is shown where none has been established. Where a project depends on an earlier result, that dependency is named — and where it can start now, it says so.</p>
+  <div style="margin-top:44px">
+<article class="proj" id="PMO-01" style="--bc:#C8962E;--bct:rgba(200,150,46,0.10)">
+  <div class="proj-head">
+    <div class="proj-id"><span class="code">PMO-01</span><span class="type">Recurring Services</span><span class="pill p-act">Active</span></div>
+    <h3>Program &amp; Project Management Services</h3><p class="headline">Day-to-day management of the crews on site and program-level control across all four buckets.</p><p class="context">Thirty-one projects, four systems, three regulators and multiple contractors do not coordinate themselves. This is the function that holds scope and delivery under control across the whole program — and the function that keeps the owner from having to adjudicate between contractors.</p>
+  </div>
+  <div class="proj-body">
+    <div class="proj-scope">
+      <div class="blk"><div class="blk-l">Scope of Work</div><ul class="chk"><li>Day-to-day management of on-site crews and contractors: coordination, sequencing, quality and safety oversight.</li><li>Program-level scope control across all buckets, with interface management where projects touch.</li><li>Integrated master schedule with the cross-bucket dependency map maintained live.</li><li>Procurement and administration of all specialty subcontracts.</li><li>Change management, and change order review and negotiation.</li><li>Pay application review, verification against installed work, and <span class="tt" data-k="lien waiver" tabindex="0" role="button">lien waiver</span> control.</li><li>Contract administration, including warranty tracking and <span class="tt" data-k="retainage" tabindex="0" role="button">retainage</span> management.</li><li>Permit tracking and agency coordination across the City, <span class="tt" data-k="derm" tabindex="0" role="button">DERM</span>, RER, SFWMD and <span class="tt" data-k="fdep" tabindex="0" role="button">FDEP</span>.</li><li>Owner reporting on a defined cadence: status, risk and schedule performance.</li><li>Risk register maintained with mitigation owners and dates.</li></ul></div>
+      <div class="blk"><div class="blk-l">Deliverables</div><ul class="dv"><li>Integrated master schedule, maintained live</li><li>Monthly owner report: status, risk and schedule performance</li><li>Change management log with full substantiation</li><li>Reviewed and certified pay applications</li><li>Risk register with mitigation owners</li><li>Permit and agency coordination record</li></ul></div>
+    </div>
+    <aside class="proj-side">
+      <div class="sfact"><div class="sfact-l">Budget</div>
+        <div class="sfact-v big tbd">TBD</div><div class="sfact-n">Monthly professional services under an annual authorisation, scaling with the number of projects in active execution.</div></div>
+      <div class="sfact"><div class="sfact-l">Authorisation</div><div class="sfact-v">Proposal to be issued</div></div>
+      <div class="sfact"><div class="sfact-l">Fee Basis</div><div class="sfact-v">Monthly professional services</div></div>
+      <div class="sfact"><div class="sfact-l">APAS Role</div><div class="sfact-v">APAS self-performed</div></div>
+      <div class="sfact"><div class="sfact-l">Follows</div><div class="sfact-v">None — can start now</div></div>
+      <div class="sfact"><div class="sfact-l">Parties</div><div class="sfact-v">APAS</div></div>
+      <div class="sfact"><div class="sfact-l">Regulatory Driver</div><div class="driver">Prime Contract PC-01 · owner governance</div></div>
+    </aside>
+  </div>
+</article>
+<article class="proj" id="PMO-02" style="--bc:#C8962E;--bct:rgba(200,150,46,0.10)">
+  <div class="proj-head">
+    <div class="proj-id"><span class="code">PMO-02</span><span class="type">Systems · Recurring</span><span class="pill p-act">To be demonstrated</span></div>
+    <h3>ProjOS Program Operating Record</h3><p class="headline">Every project in this program instantiated in ProjOS — one operating record the owner can open at any time.</p><p class="context">This is the layer worth seeing rather than reading about, and it is the one we should walk through live with R4. Each project in this document becomes a live object in ProjOS carrying its scope, deliverables, permits, documents and current status. The systems connect: the flow meter feeds live data, the compliance calendar drives alerts, the evidence file assembles itself as work is completed. The owner stops asking what the status is and starts looking at it.</p>
+  </div>
+  <div class="proj-body">
+    <div class="proj-scope">
+      <div class="blk"><div class="blk-l">Scope of Work</div><ul class="chk"><li>Instantiate all program projects in ProjOS with scope, deliverables, dependencies and approval status.</li><li>Configure the five program buckets with roll-up reporting to a program-level dashboard.</li><li>Connect live data: the sewer <span class="tt" data-k="flow meter" tabindex="0" role="button">flow meter</span>, groundwater monitoring results and stormwater performance monitoring.</li><li>Build the compliance engine: permit register, reporting calendar, automated alerts and evidence capture.</li><li>Establish the document control system, with every drawing, permit, certification and report attached to its project.</li><li>Track every project proposal from issue through approval to completion, so the authorisation record is never in doubt.</li><li>Configure owner-facing dashboards for status, schedule and risk.</li><li>Build the operations layer for the stormwater, sewer and water operations plans, with scheduled tasks and completion evidence.</li><li>Demonstrate the system live to R4 and configure access.</li></ul></div>
+      <div class="blk"><div class="blk-l">Deliverables</div><ul class="dv"><li>All program projects live in ProjOS</li><li>Program dashboard with bucket roll-up</li><li>Live data integrations</li><li>Compliance engine with automated alerts and evidence capture</li><li>Document control system</li><li>Proposal and approval tracking</li><li>Owner-facing dashboards and access</li><li>Live demonstration to R4</li></ul></div>
+    </div>
+    <aside class="proj-side">
+      <div class="sfact"><div class="sfact-l">Budget</div>
+        <div class="sfact-v big tbd">TBD</div><div class="sfact-n">Fixed-fee setup, then monthly administration and hosting under an annual authorisation.</div></div>
+      <div class="sfact"><div class="sfact-l">Authorisation</div><div class="sfact-v">Proposal to be issued</div></div>
+      <div class="sfact"><div class="sfact-l">Fee Basis</div><div class="sfact-v">Monthly professional services</div></div>
+      <div class="sfact"><div class="sfact-l">APAS Role</div><div class="sfact-v">APAS self-performed</div></div>
+      <div class="sfact"><div class="sfact-l">Follows</div><div class="sfact-v">None — can start now</div></div>
+      <div class="sfact"><div class="sfact-l">Parties</div><div class="sfact-v">APAS</div></div>
+      <div class="sfact"><div class="sfact-l">Regulatory Driver</div><div class="driver">Owner governance · <span class="tt" data-k="consent order" tabindex="0" role="button">Consent Order</span> evidence requirements · audit readiness</div></div>
+    </aside>
+  </div>
+</article></div>
+</div></section><section class="band-alt" id="glossary"><div class="wrap">
+  <div class="slabel">Glossary</div><h2>Every technical term in this document, in plain English</h2>
+  <p class="sdesc">Click any term for the engineering definition and the plain-English version side by side. The same terms are clickable wherever they appear in the text above.</p>
+  <div class="gindex"><button class="gitem" data-k="derm"><b>DERM</b><span>The county environmental agency. They permit the wells, they review the drainage,…</span></button><button class="gitem" data-k="fdep"><b>FDEP</b><span>The state environmental agency. County and state both have a say here, and they…</span></button><button class="gitem" data-k="consent order"><b>Consent Order</b><span>A legal agreement with the regulator listing exactly what has to be fixed and by…</span></button><button class="gitem" data-k="flow meter"><b>Effluent Flow Meter</b><span>A meter on the pipe leaving the property, recording continuously. It turns &#x27;we…</span></button><button class="gitem" data-k="retainage"><b>Retainage</b><span>Money held back from the contractor until the work is finished and proven. It is…</span></button><button class="gitem" data-k="lien waiver"><b>Lien Waiver</b><span>A signed document saying &#x27;I have been paid and I will not put a lien on this…</span></button></div>
+</div></section><section><div class="wrap narrow">
+  <div class="slabel">Next Step</div><h2>How this bucket gets authorised</h2>
+  <p class="sdesc">Each project above is issued as a short standalone proposal — scope, deliverables, fee and terms on one or two pages. Your signature on that proposal is the basis of the work, and nothing proceeds without it. Projects can be authorised individually and in any order the dependencies permit, so the program can start small and expand as results come in.</p>
+  <a class="backlink" href="Glorieta-Gardens-Program-of-Work.html">&larr; Back to the Program Master</a>
+</div></section><footer><div class="wrap"><div class="ft">
+  <div class="ft-l"><span class="lockup"><span class="dot"></span> APAS Consulting LLC</span><br>
+    Prepared for Glorieta Partners, Ltd. — c/o R4 GGOL GP LLC<br>Glorieta Gardens Apartments<br>13210 Alexandria Drive, Opa-Locka, FL 33054</div>
+  <div class="ft-r">Rev. 2.0 &nbsp;·&nbsp; August 9, 2026<br>Prime Contract No. PC-01<br>Planning document — each project authorised by its own proposal<br><a class="backlink" href="Glorieta-Gardens-Program-of-Work.html">&larr; Program Master</a></div>
+</div></div></footer>
+
+<div class="gdim" id="gdim" role="dialog" aria-modal="true" aria-labelledby="gterm">
+  <div class="gbox"><button class="gclose" id="gclose" aria-label="Close">&times;</button>
+    <div class="gbox-in">
+      <div class="gk">Glossary</div>
+      <h3 id="gterm"></h3>
+      <div class="gsec"><div class="gsec-l">In engineering terms</div><p id="gtech"></p></div>
+      <div class="gsec plain"><div class="gsec-l">In plain terms</div><p id="gplain"></p></div>
+      <div class="gsec why" id="gwhywrap"><div class="gsec-l">Why it matters here</div><p id="gwhy"></p></div>
+    </div>
+  </div>
+</div>
+<script>
+var GLOSS = {"retention pond": {"t": "Retention Pond", "e": "A permitted stormwater impoundment designed to capture a defined runoff volume and release it primarily by infiltration into the ground and evaporation, rather than by discharging it downstream. Its performance is expressed as a stage-storage relationship — how many cubic feet of water it holds at each water-surface elevation — and it is regulated against a permitted storage volume and an allowable discharge rate.", "p": "A shallow basin that holds rainwater and lets it soak into the ground instead of running off the property. Think of it as the property's bathtub: rain fills it during a storm, and it drains slowly afterwards. Its whole value is how much water it can hold. Over the years, dirt and sediment settle on the bottom and quietly steal that capacity — the pond looks the same from the bank, but it holds less than it used to.", "w": "This pond is the property's primary storage asset, and nobody currently knows how much storage is left in it. That number is the difference between a storm that drains and a storm that floods."}, "detention": {"t": "Detention (vs. Retention)", "e": "A detention facility temporarily stores runoff and releases it downstream at a controlled rate through an outfall structure. A retention facility holds the volume and disposes of it on site through infiltration. Most South Florida systems operate as a hybrid: retention up to a design volume, with controlled detention discharge above it.", "p": "Detention slows water down and lets it out. Retention holds water and lets it soak away. One manages the rate, the other manages the volume — and a well-designed pond usually does both.", "w": ""}, "catch basin": {"t": "Catch Basin", "e": "An inlet structure — typically a concrete box with a grate or curb opening — that receives surface runoff and conveys it into the underground piped drainage network. It also acts as a sediment sump, trapping solids before they enter the pipes.", "p": "The grate in the parking lot that water disappears into. Underneath it is a concrete box connected to a pipe. It is also the property's first line of defense against debris — which is exactly why it fills with sediment and stops working if nobody cleans it.", "w": ""}, "cctv inspection": {"t": "CCTV Inspection", "e": "Closed-circuit television inspection: a self-propelled or winched camera is run through a pipe reach, producing continuous distance-referenced video. Output includes pipe diameter, material, joint condition, slope indication, and coded structural and operational defects.", "p": "A camera on wheels driven through the pipe, recording the whole way. It is the only way to see the condition of a buried pipe without digging it up — and it answers questions no drawing can: is the pipe cracked, is it full of sediment, has it collapsed.", "w": ""}, "nassco pacp": {"t": "NASSCO PACP", "e": "Pipeline Assessment Certification Program — the North American industry standard for coding pipe defects observed during CCTV inspection. It produces a consistent, numerically graded condition score for each defect and each reach.", "p": "A standard scoring system for pipe defects, so 'bad condition' means the same thing to every engineer, contractor and regulator who reads the report. Without it, a condition assessment is one inspector's opinion.", "w": ""}, "invert": {"t": "Invert & Rim", "e": "The invert is the elevation of the inside bottom of a pipe where it enters or leaves a structure. The rim is the elevation of the structure's top at grade. The difference between inverts across a reach establishes the pipe's slope, and therefore whether it drains by gravity.", "p": "The rim is the top of the manhole you see. The invert is the bottom of the pipe below it. The difference between the inverts at each end of a pipe tells you which way the water actually flows — and whether it flows at all.", "w": ""}, "exfiltration trench": {"t": "Exfiltration Trench", "e": "A perforated pipe bedded in clean gravel and wrapped in filter fabric, installed below the water table, that distributes stormwater into the surrounding soil. In Miami-Dade it is designed under Chapter 24 criteria using the site's measured hydraulic conductivity.", "p": "A gravel-filled trench with a slotted pipe running through it, buried underground. Water enters the pipe and seeps out sideways into the soil. It is the standard South Florida way to add drainage capacity when there is no room for another pond — but it only works if the soil actually absorbs water, which is why we test the soil first.", "w": ""}, "hydraulic conductivity": {"t": "Hydraulic Conductivity (Permeability)", "e": "A measured soil property expressing the rate at which water moves through a saturated soil, typically reported in cubic feet per second per square foot per foot of head. It is the governing design input for exfiltration and retention sizing.", "p": "How fast water soaks into the ground here, measured rather than assumed. It is the single number that decides how big a drainage feature has to be. Guess it high and the system floods; guess it low and you overbuild by hundreds of thousands of dollars.", "w": ""}, "seasonal high water table": {"t": "Seasonal High Water Table", "e": "The highest elevation the groundwater surface is expected to reach in a normal wet season. It sets the lower design limit for infiltration systems, since storage below the water table is unavailable.", "p": "In the wet season the groundwater rises. Anything buried below that level is already sitting in water and cannot absorb any more. It is the floor under every drainage design in South Florida.", "w": ""}, "stage-storage": {"t": "Stage-Storage Curve", "e": "A curve relating water-surface elevation (stage) in a basin to the volume of water stored at that elevation. It is derived from survey and is the fundamental input to routing calculations.", "p": "A simple chart: at each water level in the pond, how many gallons is it holding. It is how you convert 'the pond looks full' into an actual number you can design against.", "w": ""}, "bathymetric survey": {"t": "Bathymetric Survey", "e": "Survey of the submerged bottom surface of a water body on a defined grid, typically by sonar or direct probing, referenced to a vertical datum. Paired with probing to distinguish the accumulated sediment surface from the original design bottom.", "p": "Surveying the bottom of the pond, underwater. A normal survey stops at the waterline; this one keeps going. It is the only way to find out how much sediment has built up and how much storage that sediment has taken away.", "w": ""}, "digital terrain model": {"t": "Digital Terrain Model", "e": "A three-dimensional surface model built from survey points, used to compute volumes between an existing surface and a proposed design surface.", "p": "A 3-D computer model of the ground and the pond bottom. Its practical use here is arithmetic: subtract the design bottom from the current bottom and you get exactly how many cubic yards of muck have to come out — before anybody bids the job.", "w": ""}, "dredging": {"t": "Dredging", "e": "Mechanical or hydraulic removal of accumulated sediment from a basin to restore design storage volume, followed by dewatering, transport and disposal of the removed material.", "p": "Digging the accumulated muck out of the bottom of the pond so it can hold water again. It is priced by the cubic yard, which is why knowing the volume before you start is worth more than it costs to find out.", "w": ""}, "waste profiling": {"t": "Waste Profiling", "e": "Laboratory characterization of a material against the acceptance criteria of a receiving facility, establishing whether it classifies as clean fill, solid waste, or regulated waste, and determining lawful disposal pathway, manifesting and transport requirements.", "p": "Testing the muck before you dig it up, to find out where it is legally allowed to go. This matters enormously to cost: clean fill is cheap to dispose of, contaminated material is not. It also avoids the worst outcome in this kind of work — excavating it, stockpiling it on site, and then finding out nobody will take it.", "w": ""}, "lift station": {"t": "Lift Station (Pump Station)", "e": "A wet well with pumps, controls and discharge piping that moves water from a lower elevation to a higher one where gravity flow is not available. Sizing is expressed as firm capacity — the flow deliverable with the largest pump out of service.", "p": "A pit with pumps in it. Where the ground is too flat for water to drain away on its own, you pump it. A retention pond only performs if what comes in can also get out — and on a flat site, that usually means pumps.", "w": ""}, "hydraulic model": {"t": "Hydrologic & Hydraulic Model", "e": "A computational model that generates runoff from a design rainfall event (hydrology) and routes it through the pipe network, storage and control structures (hydraulics), producing water-surface elevations, flow rates and inundation extents over time.", "p": "A computer simulation of what happens on this property when it rains hard. You put in the real pipes, the real ground shape and the real soil, then run a storm through it and watch where the water goes and how deep it gets. It is the difference between an opinion about flooding and an answer.", "w": ""}, "design storm": {"t": "Design Storm & Return Period", "e": "A synthetic rainfall event of specified depth and duration with a stated annual exceedance probability. A 25-year storm has a 4% chance of being equalled or exceeded in any given year; a 100-year storm, 1%.", "p": "A '100-year storm' does not mean once a century — it means a 1-in-100 chance of happening in any given year, which is roughly a 1-in-4 chance over a 30-year hold. Designing to three different storms tells you three different things: the 5-year is nuisance flooding, the 25-year is the regulatory standard, and the 100-year is whether people's homes take water.", "w": ""}, "finished floor elevation": {"t": "Finished Floor Elevation", "e": "The elevation of the lowest habitable floor of a structure, referenced to a vertical datum. Flood protection criteria are expressed as required freeboard between the modeled peak water-surface elevation and this elevation.", "p": "How high the floor of an apartment sits above the ground. It is the line that separates an inconvenient storm from an insurance claim, a displaced resident and a lawsuit. Every flood number in this program is ultimately measured against it.", "w": ""}, "level of service": {"t": "Level of Service", "e": "The adopted performance standard a drainage system is designed to meet — typically expressed as no habitable-floor flooding in a stated design storm and passable roadways for emergency access in another.", "p": "The standard you decide to build to, stated out loud. 'No water in the buildings in a 25-year storm, streets passable for a fire truck in a 100-year storm' is a level of service. Without one, nobody can say whether the system is good enough.", "w": ""}, "overland flow": {"t": "Overland Flow Path", "e": "The surface route runoff follows when piped capacity is exceeded. Preserving intentional overland flow paths is a standard resilience measure for events beyond the piped design storm.", "p": "Where the water goes once the pipes are full. Every site has these paths whether they were designed or not — the question is whether they run harmlessly to the pond or straight through somebody's front door.", "w": ""}, "control structure": {"t": "Control Structure (Weir & Orifice)", "e": "The outfall structure that governs discharge from a basin. A weir is an overflow crest controlling higher stages; an orifice is a fixed opening controlling low-stage discharge. Their dimensions and elevations set the permitted discharge rate.", "p": "The concrete box at the pond outlet with a notch and a hole in it. The hole controls the slow everyday drainage; the notch handles the overflow in a big storm. Those two dimensions are what the permit actually regulates — change them and you have changed the permit.", "w": ""}, "littoral zone": {"t": "Littoral Zone & Safety Shelf", "e": "A shallow vegetated bench around the perimeter of a pond, typically required by permit. It provides water quality treatment through plant uptake and functions as a safety shelf preventing immediate drop-off at the water's edge.", "p": "The shallow planted shelf around the edge of the pond. It cleans the water and, just as importantly, means someone who steps in at the bank does not go straight over their head.", "w": ""}, "turbidity": {"t": "Turbidity", "e": "A measure of water clarity reduced by suspended particles, regulated during in-water construction. Exceedances above background at a compliance boundary trigger work stoppage.", "p": "How muddy the water is. During dredging, regulators watch it closely — cloud up the water beyond the allowed limit and the job stops until it clears.", "w": ""}, "navd 88": {"t": "NAVD 88", "e": "North American Vertical Datum of 1988 — the standard vertical reference for elevations in the United States. All flood, floor and invert elevations must share a single datum to be comparable.", "p": "The common yardstick for elevation. If the survey, the flood maps and the building floors are measured from different starting points, none of the numbers can be compared — and in South Florida, a foot of error is the whole margin.", "w": ""}, "perforated pipe": {"t": "Perforated vs. Solid Pipe", "e": "Perforated pipe has openings along its barrel and is intended to exchange water with the surrounding soil, as in an exfiltration system. Solid pipe is watertight and intended purely for conveyance.", "p": "Slotted pipe is meant to leak — it is drainage by design. Solid pipe is meant to carry water from A to B without losing any. Knowing which is which underground completely changes how the system behaves, and it is one of the first things the camera tells us.", "w": ""}, "illicit connection": {"t": "Illicit Connection", "e": "Any connection to the storm sewer conveying a non-stormwater discharge. Detection and elimination is a mandatory minimum control measure under the NPDES MS4 program.", "p": "Something plumbed into the storm drain that has no business being there — a sink, a wash bay, a sewer line crossed into the wrong pipe. It goes straight to the environment untreated, and finding one is a regulatory obligation, not an option.", "w": ""}, "regrading": {"t": "Regrading & Recontouring", "e": "Reshaping site topography to establish positive drainage toward intended collection points, correct reverse slopes and low points, and set roadway crown and swale elevations to the adopted level of service.", "p": "Reshaping the ground so water runs where you want it to. No pipe can fix a low spot that has nowhere to drain. This is the unglamorous work that makes everything else function — and on a flat site it is usually the biggest single item.", "w": ""}, "swale": {"t": "Swale", "e": "A shallow vegetated channel that conveys and infiltrates runoff, providing both conveyance and water quality treatment.", "p": "A shallow grassy ditch that carries and soaks up rainwater. Cheap, low-maintenance, and effective — as long as nobody parks on it or fills it in.", "w": ""}, "stormwater management plan": {"t": "Stormwater Management Plan", "e": "The governing engineering document for a site's stormwater system: design basis, adopted level of service, system inventory, modeling results, drawings, calculations, permits, test data and the implementation sequence.", "p": "The one document that explains the whole stormwater system — what it is, what it is designed to do, and what has to be built to get it there. Everything else in this bucket either feeds it or comes out of it. It is written first so that every project after it has a defined place in a plan, rather than being a standalone expense nobody can connect to anything.", "w": ""}, "stormwater operations plan": {"t": "Stormwater Operations Plan", "e": "The operational counterpart to the management plan: inspection and maintenance procedures by asset class, frequencies and triggers, pre-storm and post-storm protocols, the regulatory reporting calendar with assigned responsibility, and the evidence retention regime.", "p": "The management plan describes the system. The operations plan runs it — who checks what, how often, what to do when a storm is coming, and what gets written down. It is the document that survives staff turnover.", "w": ""}, "ms4": {"t": "NPDES MS4 Permit", "e": "Municipal Separate Storm Sewer System permit issued under the National Pollutant Discharge Elimination System of the Clean Water Act. It imposes minimum control measures including illicit discharge detection, good housekeeping, inspection and annual reporting.", "p": "The federal permit that governs what the storm drain system is allowed to send to public waters. It comes with standing duties — inspect, document, report — and those duties do not pause because nobody is asking.", "w": ""}, "erp": {"t": "SFWMD Environmental Resource Permit", "e": "The South Florida Water Management District permit governing site stormwater management: permitted storage volume, allowable discharge rate, treatment volume and system configuration. Modifications to the permitted system require permit modification.", "p": "The state water district's permit for how this property handles rain. It fixes how much water the site must hold and how fast it may release. Change the pond or the outfall and you are changing the permit, whether you filed for it or not.", "w": ""}, "chapter 24": {"t": "Miami-Dade Chapter 24", "e": "The Miami-Dade County Environmental Protection Code, administered by DERM. It governs drainage design criteria, exfiltration sizing, cross-connection control, well permitting and contamination assessment within the county.", "p": "The county's environmental rulebook. Locally it usually bites harder than the state rules, and DERM enforces it.", "w": ""}, "derm": {"t": "DERM", "e": "Miami-Dade County Department of Regulatory and Economic Resources, Division of Environmental Resources Management — the county environmental regulator for drainage, wells, contamination assessment and cross-connection control.", "p": "The county environmental agency. They permit the wells, they review the drainage, and they are the ones who decide whether a contamination question is closed.", "w": ""}, "fdep": {"t": "FDEP", "e": "Florida Department of Environmental Protection — the state environmental regulator, with jurisdiction over sewer certifications, contamination assessment and cleanup under Chapter 62-780 F.A.C., and solid waste.", "p": "The state environmental agency. County and state both have a say here, and they do not always ask for the same thing.", "w": ""}, "consent order": {"t": "Consent Order", "e": "A binding, negotiated enforcement instrument between a regulator and a respondent, enumerating specific corrective actions, deadlines and reporting obligations. It terminates only upon documented completion of every enumerated action and written release by the agency.", "p": "A legal agreement with the regulator listing exactly what has to be fixed and by when. It does not expire on its own and it does not quietly go away — it closes when every item is done, documented, and released in writing. Until then it stays attached to the property.", "w": ""}, "gravity sewer": {"t": "Gravity Sewer", "e": "A sanitary collection system in which flow is conveyed by gravity along a continuous downward slope, without pumping, from service laterals through mains to a receiving pump station or treatment facility.", "p": "Sewer pipe laid on a constant downhill slope so waste flows on its own, no pumps. Simple and reliable — provided the slope is right, which is exactly what the record drawings and CCTV have to prove.", "w": ""}, "conveyance": {"t": "Conveyance (Asset Transfer)", "e": "The formal legal and administrative transfer of a constructed utility to the operating public utility, comprising engineering certifications, record drawings, testing evidence, warranties, title instruments, bills of sale and performance security, culminating in written acceptance.", "p": "Handing the finished sewer over to the City so it becomes their pipe to own, operate, fix and pay for. Until that transfer is accepted in writing, it is still the owner's asset, the owner's repair bill and the owner's liability.", "w": ""}, "infiltration and inflow": {"t": "Infiltration & Inflow (I&I)", "e": "Extraneous water entering a sanitary system: infiltration is groundwater entering through defects and joints; inflow is stormwater entering through direct connections and manhole covers. Both consume conveyance and treatment capacity and are billed as sewage.", "p": "Groundwater and rainwater leaking into the sewer where they do not belong. You end up paying to move and treat clean water as if it were sewage. On a wet site, it can be a large share of the bill — and you cannot manage it until you can measure it.", "w": ""}, "flow meter": {"t": "Effluent Flow Meter", "e": "A permanent metering installation at a point of discharge, measuring flow continuously with time-stamped data logging and telemetry, calibrated to a certified accuracy and used for billing, capacity allocation and I&I quantification.", "p": "A meter on the pipe leaving the property, recording continuously. It turns 'we think we discharge about this much' into a number nobody can argue with — for billing, for capacity, and for proving how much of the flow is actually rainwater.", "w": ""}, "diurnal flow": {"t": "Diurnal Flow Curve", "e": "The characteristic 24-hour pattern of sanitary flow, showing morning and evening peaks and a pre-dawn minimum. Elevated pre-dawn minimum flow, when occupied-building discharge should be near zero, is the classic signature of groundwater infiltration.", "p": "Sewer flow follows daily life — it spikes when people shower and cook, and drops to almost nothing at 3 a.m. If it is not near zero at 3 a.m., that extra water is groundwater leaking in. It is one of the clearest diagnostics there is, and it needs a meter to see it.", "w": ""}, "retainage": {"t": "Retainage", "e": "A percentage of each progress payment withheld by the owner and released on defined milestones — typically part at substantial completion and the balance after final warranty inspection — as security for completion and defect correction.", "p": "Money held back from the contractor until the work is finished and proven. It is the last real leverage anyone has once the crews have left the site.", "w": ""}, "lien waiver": {"t": "Lien Waiver", "e": "An executed instrument by which a contractor, subcontractor or supplier relinquishes lien rights against the property for work performed or materials supplied through a stated date, in exchange for payment.", "p": "A signed document saying 'I have been paid and I will not put a lien on this property.' Without a complete set, a paid-in-full job can still surface as a claim against the title later.", "w": ""}, "substantial completion": {"t": "Substantial Completion", "e": "The point at which work is sufficiently complete that the owner may occupy or use it for its intended purpose. It starts the warranty period and triggers partial retainage release.", "p": "The date the system is usable, even if small items remain. It matters because it starts the warranty clock — which is why the date has to be established and documented, not assumed.", "w": ""}, "record drawings": {"t": "Record Drawings (As-Builts)", "e": "Drawings signed and sealed by the engineer or surveyor depicting the facility as actually constructed, including field changes, with horizontal locations and vertical elevations verified by survey.", "p": "Drawings of what was actually built, not what was drawn beforehand. Those two things are never quite the same. Sealed as-builts are what the City accepts at conveyance, and what anyone digging here in ten years will rely on.", "w": ""}, "engineer of record": {"t": "Engineer of Record", "e": "The licensed professional engineer who takes professional responsibility for the design and issues the sealed certifications a permitting authority requires for acceptance.", "p": "The licensed engineer whose seal and license stand behind the design. Certain documents cannot be issued by anyone else, which makes their availability a real scheduling dependency.", "w": ""}, "professional surveyor": {"t": "Professional Surveyor & Mapper", "e": "A Florida-licensed PSM authorized to sign and seal boundary, topographic and as-built surveys. Sealed surveys are required for permitting and utility conveyance.", "p": "The licensed surveyor whose seal makes a survey official. An unsealed sketch is useful internally; only a sealed survey is accepted by a permitting agency.", "w": ""}, "utilities performance security": {"t": "Utilities Performance Security", "e": "Financial security posted to the receiving utility at conveyance — commonly a percentage of total construction cost plus a fixed final-obligations cash bond — guaranteeing correction of defects during the acceptance and warranty period.", "p": "A bond or deposit the City holds after taking over the system, in case something fails soon after handover. It is a real cash requirement at conveyance and is handled by the owner and counsel, not by APAS.", "w": ""}, "backflow preventer": {"t": "Backflow Preventer", "e": "A mechanical assembly preventing reverse flow from a customer's system into the public potable distribution main. Device class — reduced pressure zone (RPZ) or double check valve assembly (DCVA) — is selected by hazard classification, and certified annual testing is mandatory.", "p": "A one-way valve on the water service that stops water from flowing backwards into the public drinking water main if pressure drops. The installation is straightforward. The part people miss is that every device must be tested and certified by a licensed tester every single year, forever — and a missed test is a violation even if the device is perfect.", "w": ""}, "potable water": {"t": "Potable Water", "e": "Water treated to drinking water standards and delivered through the public distribution system, subject to Safe Drinking Water Act and F.A.C. 62-555 requirements.", "p": "Treated drinking water. It is the most expensive water on the property, which is why using it to irrigate grass is worth reconsidering.", "w": ""}, "meter box": {"t": "Meter Box", "e": "The below-grade enclosure and service setting that houses a water meter, constructed to utility standard with the service piping and appurtenances required for the utility to install and read its meter.", "p": "The concrete or plastic box in the ground that a water meter sits in. We build the box and the setting to the City's standard; the City brings and installs the meter itself. Sequencing that handover is most of the work — a box that is not ready on the day the City arrives costs weeks.", "w": ""}, "subsurface utility": {"t": "Subsurface Utility Locating", "e": "Non-destructive designation of buried utilities using electromagnetic induction and ground-penetrating radar, followed where required by vacuum excavation (potholing) to physically verify horizontal position, depth, diameter and material.", "p": "Finding buried pipes without digging up the whole site — first with instruments from the surface, then by carefully exposing a few specific spots to confirm what is actually there. It costs a fraction of what hitting a live main costs.", "w": ""}, "potholing": {"t": "Potholing", "e": "Small-diameter test excavation, typically by vacuum, exposing a buried utility to directly measure depth, diameter, material and condition without damaging it.", "p": "Digging one small careful hole to physically see the pipe and confirm what the instruments said. A handful of these turns a probable location into a known one.", "w": ""}, "irrigation well": {"t": "Irrigation Well", "e": "A permitted non-potable supply well drawing from the surficial aquifer for landscape irrigation, requiring DERM well construction permitting and SFWMD water use authorization, and physically separated from the potable system with backflow protection.", "p": "A well that pumps groundwater for watering the grounds, instead of paying for treated drinking water to do it. It lowers the water bill, takes irrigation volume off the meters, and keeps a non-drinking use physically separate from the drinking water system.", "w": ""}, "aquifer": {"t": "Surficial Aquifer", "e": "The shallow unconfined water-bearing formation beneath the site — in this area the Biscayne Aquifer — from which non-potable supply is typically drawn and within which contaminant migration occurs.", "p": "The shallow groundwater under the property. It is where an irrigation well draws from — and it is also the path any contamination from a neighbouring property would travel along.", "w": ""}, "sunshine 811": {"t": "Sunshine 811", "e": "Florida's statutory one-call underground utility notification system. Excavators must notify before digging so member utilities can mark their facilities. Notification does not locate private on-site utilities.", "p": "The call-before-you-dig service. Worth knowing: it marks the utilities owned by the public utilities, not the private pipes inside a property like this one. Those are ours to find — which is exactly why the as-built work matters.", "w": ""}, "plume": {"t": "Contaminant Plume", "e": "A defined body of contaminated groundwater migrating from a source in the direction of the hydraulic gradient. It is characterised by its constituents, concentration distribution, extent and rate and direction of movement.", "p": "A slow-moving underground stain in the groundwater, spreading outward from wherever it leaked. It travels with the groundwater, so it moves in one predictable direction — which means you can work out in advance which side of a property it would arrive on, and put your wells there.", "w": ""}, "groundwater gradient": {"t": "Groundwater Gradient", "e": "The slope of the groundwater surface, determining direction and rate of flow. Established by synoptic water-level measurements across three or more wells referenced to a common datum.", "p": "Groundwater flows downhill too — just very slowly, and the hill is invisible. Measuring the water level in several wells on the same day tells you which way it is heading, and therefore where anything dissolved in it is heading.", "w": ""}, "monitoring well": {"t": "Monitoring Well", "e": "A small-diameter cased and screened well installed to permit measurement of groundwater elevation and collection of representative groundwater samples at a defined depth interval.", "p": "A narrow permanent pipe into the groundwater that lets you measure the water level and take samples from the same spot, year after year. One sample is a data point; the same well sampled repeatedly is a trend — and the trend is what actually answers the question.", "w": ""}, "upgradient": {"t": "Upgradient & Downgradient", "e": "Upgradient wells lie hydraulically above the area of interest and establish background quality. Downgradient wells lie below it and detect contaminants migrating from an upgradient source.", "p": "Upstream and downstream, in groundwater terms. You need both: the upstream well tells you what the water looks like before it reaches the property, and the downstream well tells you what changed. Without the first, you cannot prove the second came from somewhere else.", "w": ""}, "contaminants of concern": {"t": "Contaminants of Concern", "e": "The specific analytes selected for laboratory analysis based on documented historical use and known releases at identified source properties, rather than a generic panel.", "p": "The specific substances worth testing for, chosen from what the neighbouring properties actually did and actually spilled. Testing for the right short list beats testing for everything — it is cheaper and the results mean more.", "w": ""}, "cleanup target levels": {"t": "Groundwater Cleanup Target Levels", "e": "Numerical concentration standards established under Chapter 62-780 F.A.C. against which detected groundwater concentrations are compared to determine whether further assessment or remediation is required.", "p": "The state's published thresholds. Below them, a detection is generally a non-issue; above them, obligations start. It is the line that turns a lab number into a decision.", "w": ""}, "chain of custody": {"t": "Chain of Custody", "e": "The documented, unbroken record of sample possession and transfer from collection through laboratory analysis, required for analytical results to be defensible.", "p": "The paper trail proving a sample went straight from the well to the lab without being tampered with. Without it, a result that favours you is not usable when it counts.", "w": ""}, "sanborn": {"t": "Sanborn Maps & Historical Aerials", "e": "Historical fire insurance maps and sequential aerial photography used to reconstruct prior land use, identify former structures, tanks and operations, and establish the temporal history of potential contamination sources.", "p": "Old insurance maps and aerial photographs going back decades. They show what used to be on the neighbouring land — the tanks, the workshops, the wrecking yards — long before anyone was required to report a spill.", "w": ""}, "chapter 62-780": {"t": "Chapter 62-780 F.A.C.", "e": "The Florida Administrative Code rule governing contaminated site cleanup criteria — assessment, risk evaluation, cleanup target levels and closure pathways including No Further Action.", "p": "The state rulebook for contaminated sites: how you investigate, what counts as clean, and how a site formally gets closed out.", "w": ""}, "non-revenue water": {"t": "Non-Revenue Water", "e": "The difference between system input volume and billed authorized consumption, expressed as a volume and as a percentage of input. It comprises unbilled authorized consumption, apparent losses — metering inaccuracy, data-handling error and unauthorized consumption — and real losses from mains, service connections and storage.", "p": "Water you paid for that nobody paid you for. It arrives at the property, and then some of it never shows up on a bill — because it leaked out of a pipe, because a meter is reading low, or because it was used somewhere nobody is accounting for. On a property this size, the gap between what comes in and what gets billed is usually wider than anyone expects.", "w": "Glorieta buys water from the City and is about to install a full set of meters. That combination is exactly when a water balance is worth doing — it is the only way to find out whether the property is paying every month for water that is running into the ground."}, "water balance": {"t": "Water Balance (AWWA M36 Audit)", "e": "The standard AWWA M36 accounting framework reconciling system input volume against authorized consumption and losses, disaggregating apparent from real losses and producing validated performance indicators including the Infrastructure Leakage Index.", "p": "A structured ledger for water: everything that came in on one side, everything that can be accounted for on the other, and a disciplined method for explaining the difference. It being the industry-standard method matters — the result is comparable, defensible and recognised by anyone who later reviews it.", "w": ""}, "apparent losses": {"t": "Apparent Losses", "e": "Non-physical losses: customer meter under-registration, systematic data transfer and billing errors, and unauthorized consumption. The water is delivered and used, but not correctly measured or billed.", "p": "Water that did get used, but never got counted properly — an old meter reading low, a billing record nobody entered, a connection nobody knows about. These are usually the cheapest losses to fix, because the fix is a meter or a spreadsheet rather than a trench.", "w": ""}, "real losses": {"t": "Real Losses", "e": "Physical losses from the pressurised system: background leakage, reported and unreported bursts on mains and service connections, and storage overflow. Quantified against the theoretical minimum for a system of the same length, connection count and pressure.", "p": "Water genuinely leaking out of the pipes into the ground. Most of it never surfaces — it seeps away quietly, day and night, for years. You pay for every gallon of it.", "w": ""}, "infrastructure leakage index": {"t": "Infrastructure Leakage Index", "e": "The ratio of current annual real losses to unavoidable annual real losses. An ILI of 1.0 represents the technical minimum achievable for that system's length, connections and operating pressure; higher values indicate recoverable leakage.", "p": "A single score for how leaky this system is compared with how leaky it would be in perfect condition. A score near 1 means there is nothing worth chasing. A high score means there is real money running into the ground — and it tells you that before you spend anything digging.", "w": ""}, "minimum night flow": {"t": "Minimum Night Flow", "e": "The lowest continuous flow rate recorded across a 24-hour cycle, typically between 2 and 4 a.m. when legitimate consumption is at its minimum. Residual flow above estimated night-time use is a direct indicator of leakage.", "p": "At three in the morning almost nobody is using water. Whatever is still flowing at that hour is mostly leaking. It is one of the simplest and most powerful leak indicators there is, and it needs nothing more than a meter that logs continuously.", "w": ""}, "district metered area": {"t": "District Metered Area", "e": "A hydraulically discrete zone of a distribution system with metered inflow, allowing losses to be quantified and localised within that zone rather than only across the system as a whole.", "p": "Splitting the property into metered zones, so that when the numbers say water is going missing you know which part of the site it is going missing from. It turns 'we have a leak somewhere' into 'we have a leak in this block'.", "w": ""}, "meter under-registration": {"t": "Meter Under-Registration", "e": "Progressive loss of accuracy in a mechanical water meter with age and cumulative throughput, characteristically most severe at low flow rates. Verified by bench or in-situ accuracy testing against a calibrated standard.", "p": "Water meters slow down as they age, and they always err in the same direction — reading less than actually passed through. An old meter quietly tells you that you used less water than you did. That sounds like good news until you remember the City's master meter has no such problem.", "w": ""}, "system input volume": {"t": "System Input Volume", "e": "The total volume of water entering the system over the audit period, measured at the point of supply and corrected for master meter accuracy. It is the top line of the water balance; every other figure reconciles against it.", "p": "Everything that came onto the property through the pipe, measured at the front door. The whole audit hangs off this number, which is why the accuracy of the meter producing it has to be verified first.", "w": ""}, "authorized consumption": {"t": "Authorized Consumption", "e": "Water taken by registered customers and for operational purposes, whether billed or unbilled. Unbilled authorized consumption covers uses such as irrigation, line flushing and fire-fighting where these are not metered or charged.", "p": "Water that was legitimately used — including the uses nobody sends a bill for, like irrigation, flushing lines and hydrant testing. It is not a loss, but it has to be measured or honestly estimated, otherwise it hides inside the loss figure and makes leakage look worse than it is.", "w": ""}};
+(function(){
+  var dim=document.getElementById('gdim');
+  function open(k){
+    var g=GLOSS[k]; if(!g) return;
+    document.getElementById('gterm').textContent=g.t;
+    document.getElementById('gtech').textContent=g.e;
+    document.getElementById('gplain').textContent=g.p;
+    var w=document.getElementById('gwhywrap');
+    if(g.w){document.getElementById('gwhy').textContent=g.w;w.style.display='block';}
+    else{w.style.display='none';}
+    dim.classList.add('on');
+    document.getElementById('gclose').focus();
+  }
+  function close(){dim.classList.remove('on');}
+  document.addEventListener('click',function(ev){
+    var t=ev.target.closest('.tt,.gitem');
+    if(t){ev.preventDefault();open(t.getAttribute('data-k'));return;}
+    if(ev.target.id==='gclose'||ev.target===dim){close();}
+  });
+  document.addEventListener('keydown',function(ev){
+    if(ev.key==='Escape')close();
+    if((ev.key==='Enter'||ev.key===' ')&&document.activeElement&&
+       document.activeElement.classList.contains('tt')){
+      ev.preventDefault();open(document.activeElement.getAttribute('data-k'));}
+  });
+})();
+</script>
+</body></html>
