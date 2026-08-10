@@ -102,6 +102,87 @@ describe("useFinancialProposals", () => {
       result.current.update.mutateAsync({ id: "pr1", status: "approved" } as any),
     ).rejects.toBeTruthy();
   });
+
+  it("remove deletes a proposal by id", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await result.current.remove.mutateAsync("pr1");
+
+    expect((builder.delete as any)).toHaveBeenCalled();
+    expect((builder.eq as any).mock.calls).toContainEqual(["id", "pr1"]);
+  });
+
+  it("remove surfaces errors as a rejection", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await expect(result.current.remove.mutateAsync("pr1")).rejects.toBeTruthy();
+  });
+
+  it("reopen requires an amendment reason before updating", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await expect(
+      result.current.reopen.mutateAsync({
+        proposal: { id: "pr1", status: "sent", amendment_history: [] } as any,
+        reason: "   ",
+      }),
+    ).rejects.toThrow("Add a reason for the amendment.");
+    expect((builder.update as any)).not.toHaveBeenCalled();
+  });
+
+  it("reopen clears signatures and appends a trimmed audit entry", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await result.current.reopen.mutateAsync({
+      proposal: {
+        id: "pr1",
+        status: "approved",
+        amendment_history: [{ reason: "First edit", at: "2026-08-01T00:00:00.000Z" }],
+      } as any,
+      reason: "  Revise allowance  ",
+    });
+
+    const patch = (builder.update as any).mock.calls[0][0];
+    expect(patch).toMatchObject({
+      locked: false,
+      status: "draft",
+      submitted_signature_path: null,
+      accepted_signature_path: null,
+      sent_to_client_at: null,
+      client_comments: null,
+    });
+    expect(patch.amendment_history).toHaveLength(2);
+    expect(patch.amendment_history[1]).toMatchObject({
+      reason: "Revise allowance",
+      from_status: "approved",
+    });
+    expect(typeof patch.amendment_history[1].at).toBe("string");
+    expect((builder.eq as any).mock.calls).toContainEqual(["id", "pr1"]);
+  });
+
+  it("reopen handles legacy null history and surfaces update errors", async () => {
+    const builder = makeBuilder({ data: null, error: { message: "denied" } as any });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await expect(
+      result.current.reopen.mutateAsync({
+        proposal: { id: "pr1", status: "rejected", amendment_history: null } as any,
+        reason: "Try again",
+      }),
+    ).rejects.toBeTruthy();
+    expect((builder.update as any).mock.calls[0][0].amendment_history[0]).toMatchObject({
+      reason: "Try again",
+      from_status: "rejected",
+    });
+  });
 });
 
 describe("useFinancialProposalLines", () => {
