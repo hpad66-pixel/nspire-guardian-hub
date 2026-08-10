@@ -64,7 +64,6 @@ import { RFIList } from '@/components/projects/RFIList';
 import { PunchListTab } from '@/components/projects/PunchListTab';
 import { ProjectTrackerTab } from '@/components/projects/ProjectTrackerTab';
 import { useUnreadClientComments } from '@/hooks/useTracker';
-import { ProposalList } from '@/components/proposals/ProposalList';
 import { SubmittalsTab } from '@/components/projects/SubmittalsTab';
 import { SafetyTab } from '@/components/projects/SafetyTab';
 import { ProcurementTab } from '@/components/projects/ProcurementTab';
@@ -194,6 +193,12 @@ export default function ProjectDetailPage() {
   // in-page tabs — selecting one (click or ?tab= deep link) redirects to the
   // dedicated route. Keeps a single source of truth for each module's UI.
   const ROUTED_TABS: Record<string, string> = {
+    // Financials is a full routed workspace with its own navigation. Take the
+    // user directly to it instead of stopping at the legacy summary tab.
+    financials: `/projects/${id}/financials/overview`,
+    // Keep a single proposal record and workflow. The financial proposal module
+    // carries the editable scope, pricing, signatures, re-send and amendments.
+    proposals: `/projects/${id}/financials/proposals`,
     // Contracts has no dedicated /contracts route — it lives under the financial
     // cascade (prime contract page). Pointing here avoids a 404.
     contracts: `/projects/${id}/financials/prime-contract`,
@@ -1003,7 +1008,6 @@ export default function ProjectDetailPage() {
                 <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
-                <TabsContent value="proposals" className="mt-0"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
               </div>
             </div>
@@ -1285,7 +1289,6 @@ export default function ProjectDetailPage() {
               <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
-              <TabsContent value="proposals"><ProposalList projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
             </div>
 

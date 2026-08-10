@@ -160,6 +160,7 @@ const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/C
 const ChangeOrderSettingsPage = lazy(() => import('./pages/settings/ChangeOrderSettingsPage'));
 const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
 const SignProposalPage = lazy(() => import('./pages/sign/SignProposalPage'));
+const SignFinancialProposalPage = lazy(() => import('./pages/sign/SignFinancialProposalPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
@@ -261,6 +262,7 @@ const App = () => (
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
                      <Route path="/sign/proposal/:token" element={<SignProposalPage />} />
+                     <Route path="/sign/financial-proposal/:token" element={<SignFinancialProposalPage />} />
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />

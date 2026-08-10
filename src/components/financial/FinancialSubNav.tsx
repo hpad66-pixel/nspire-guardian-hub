@@ -7,7 +7,7 @@ import {
 import {
   ChevronRight, ChevronDown, LayoutDashboard, FileSignature, GitPullRequest, ReceiptText, Ruler,
   Banknote, Wallet, Handshake, Receipt, Inbox, Coins, ShieldCheck, BookOpen,
-  BarChart3, Megaphone, MoreHorizontal, TrendingUp, Users, Scale, type LucideIcon,
+  BarChart3, Megaphone, MoreHorizontal, TrendingUp, Users, Scale, FileText, type LucideIcon,
 } from "lucide-react";
 
 interface Tab { label: string; path: string; icon: LucideIcon }
@@ -19,6 +19,7 @@ const PRIMARY: Tab[] = [
   { label: "Overview", path: "overview", icon: LayoutDashboard },
   { label: "Prime Contract", path: "prime-contract", icon: FileSignature },
   { label: "Change Orders", path: "change-orders", icon: GitPullRequest },
+  { label: "Proposals", path: "proposals", icon: FileText },
   { label: "Pay Apps", path: "pay-apps", icon: ReceiptText },
   { label: "Budget", path: "budget", icon: Wallet },
   { label: "Commitments", path: "commitments", icon: Handshake },
