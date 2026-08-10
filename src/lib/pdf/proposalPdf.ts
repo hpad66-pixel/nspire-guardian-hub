@@ -1,7 +1,26 @@
 import { newDoc, drawHeader, drawFooter, drawTable, money, downloadPdf } from './index';
 import type { FinancialProposal, FinancialProposalLine } from '@/hooks/useFinancialProposals';
 
-export function generateProposalPdf(proposal: FinancialProposal, lines: FinancialProposalLine[], projectName: string, companyName?: string) {
+async function toDataUrl(src?: string | null): Promise<string | null> {
+  if (!src) return null;
+  if (src.startsWith('data:')) return src;
+  try {
+    const blob = await (await fetch(src)).blob();
+    return await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+export async function buildProposalPdf(
+  proposal: FinancialProposal,
+  lines: FinancialProposalLine[],
+  projectName: string,
+  companyName?: string,
+  signatures?: { submitted?: string | null; accepted?: string | null },
+) {
   const doc = newDoc({ orientation: 'portrait' });
   const pageW = doc.internal.pageSize.getWidth();
   const now = new Date();
@@ -105,11 +124,32 @@ export function generateProposalPdf(proposal: FinancialProposal, lines: Financia
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
   doc.text('Acceptance', 40, y); y += 14;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-  doc.text('Authorized Signature: ____________________________', 40, y);
-  doc.text(`Date: _______________`, pageW - 40 - 160, y);
+  const submitted = await toDataUrl(signatures?.submitted ?? proposal.submitted_signature_path);
+  const accepted = await toDataUrl(signatures?.accepted ?? proposal.accepted_signature_path);
+  doc.text('Submitted By: _________________________________', 40, y);
+  doc.text('Accepted By: _________________________________', pageW / 2 + 10, y);
+  if (submitted) { try { doc.addImage(submitted, 'PNG', 80, y - 28, 130, 28); } catch { /* best effort */ } }
+  if (accepted) { try { doc.addImage(accepted, 'PNG', pageW / 2 + 55, y - 28, 130, 28); } catch { /* best effort */ } }
   y += 18;
-  doc.text('Printed Name: ____________________________________', 40, y);
+  doc.text(`Date: ${proposal.submitted_signed_at ? new Date(proposal.submitted_signed_at).toLocaleDateString() : '_____________'}`, 40, y);
+  doc.text(`Date: ${proposal.accepted_signed_at ? new Date(proposal.accepted_signed_at).toLocaleDateString() : '_____________'}`, pageW / 2 + 10, y);
 
   drawFooter(doc, { generatedAt: now, pageLabel: proposal.proposal_no });
+  return doc;
+}
+
+export async function buildProposalPdfBlob(
+  proposal: FinancialProposal,
+  lines: FinancialProposalLine[],
+  projectName: string,
+  companyName?: string,
+  signatures?: { submitted?: string | null; accepted?: string | null },
+) {
+  return (await buildProposalPdf(proposal, lines, projectName, companyName, signatures)).output('blob');
+}
+
+export async function generateProposalPdf(proposal: FinancialProposal, lines: FinancialProposalLine[], projectName: string, companyName?: string) {
+  const doc = await buildProposalPdf(proposal, lines, projectName, companyName);
+  const now = new Date();
   downloadPdf(doc, `proposal-${proposal.proposal_no.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${now.toISOString().split('T')[0]}.pdf`);
 }

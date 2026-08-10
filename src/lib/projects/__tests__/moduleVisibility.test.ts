@@ -27,8 +27,12 @@ describe('moduleVisibility', () => {
     expect(isModuleVisible(null, 'rfis')).toBe(true);
   });
 
-  it('hides construction modules by default on consulting projects', () => {
-    expect(isModuleVisible({ project_type: 'consulting' }, 'financials')).toBe(false);
+  it('keeps commercial controls visible on consulting projects', () => {
+    expect(isModuleVisible({ project_type: 'consulting' }, 'financials')).toBe(true);
+    expect(isModuleVisible({ project_type: 'consulting' }, 'contracts')).toBe(true);
+  });
+
+  it('still hides field-construction modules by default on consulting projects', () => {
     expect(isModuleVisible({ project_type: 'consulting' }, 'rfis')).toBe(false);
     expect(isModuleVisible({ project_type: 'consulting' }, 'daily-logs')).toBe(false);
   });

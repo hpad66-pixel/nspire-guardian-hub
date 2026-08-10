@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/select";
 import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { proposalTotals } from "@/components/financial/FinancialProposalDocument";
+
+function fmtMoney(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
+}
 
 const STATUS_CONFIG: Record<FinancialProposal["status"], { label: string; className: string; icon: React.ElementType }> = {
   draft:    { label: "Draft",    className: "bg-gray-100 text-gray-700",    icon: FileText },
@@ -42,6 +47,8 @@ export default function ProposalsPage() {
   const draftCount    = proposals.filter(p => p.status === "draft").length;
   const sentCount     = proposals.filter(p => p.status === "sent").length;
   const approvedCount = proposals.filter(p => p.status === "approved").length;
+  const pipelineValue = proposals.filter(p => !["rejected", "expired"].includes(p.status))
+    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? []).total, 0);
 
   async function handleCreate() {
     if (!form.title?.trim() || !form.proposal_no?.trim()) {
@@ -87,11 +94,12 @@ export default function ProposalsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { label: "Draft", value: draftCount,    color: "text-muted-foreground" },
           { label: "Sent",  value: sentCount,     color: "text-blue-600" },
           { label: "Approved", value: approvedCount, color: "text-emerald-600" },
+          { label: "Active proposal value", value: fmtMoney(pipelineValue), color: "text-[var(--apas-sapphire)]" },
         ].map(k => (
           <Card key={k.label}>
             <CardContent className="p-4">
@@ -122,6 +130,7 @@ export default function ProposalsPage() {
                     <th className="text-left p-3">Proposal #</th>
                     <th className="text-left p-3">Title</th>
                     <th className="text-left p-3">Client</th>
+                    <th className="text-right p-3">Amount</th>
                     <th className="text-center p-3">Valid Until</th>
                     <th className="text-center p-3">Status</th>
                     <th className="text-center p-3">Created</th>
@@ -132,15 +141,17 @@ export default function ProposalsPage() {
                   {proposals.map(p => {
                     const sc = STATUS_CONFIG[p.status];
                     const Icon = sc.icon;
+                    const amount = proposalTotals(p.proposal_lines ?? []).total;
                     return (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="p-3 font-mono font-medium">{p.proposal_no}</td>
                         <td className="p-3">{p.title}</td>
                         <td className="p-3 text-muted-foreground">{p.client_name ?? "—"}</td>
+                        <td className="p-3 text-right font-mono font-medium">{fmtMoney(amount)}</td>
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.valid_until)}</td>
                         <td className="p-3 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sc.className}`}>
-                            <Icon className="h-3 w-3" />{sc.label}
+                            <Icon className="h-3 w-3" />{p.locked && p.status === "draft" ? "Signed · Ready" : sc.label}
                           </span>
                         </td>
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>

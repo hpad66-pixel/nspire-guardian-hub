@@ -28,6 +28,14 @@ verify_jwt = false
 [functions.co-countersign]
 verify_jwt = false
 
+# Proposal acceptance links are public capability URLs; the UUID token scopes
+# access to one proposal and the functions validate it before returning data.
+[functions.proposal-countersign]
+verify_jwt = false
+
+[functions.financial-proposal-countersign]
+verify_jwt = false
+
 # Daily report action-item notification — authenticated admin invokes; emails the
 # report's submitter a digest of open action items via Resend.
 [functions.daily-report-action-notify]

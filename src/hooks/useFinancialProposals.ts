@@ -29,6 +29,19 @@ export interface FinancialProposal {
   terms: string | null;
   markup_pct: number;
   source_issue_id: string | null;
+  sign_token: string;
+  locked: boolean;
+  submitted_signature_path: string | null;
+  submitted_signed_at: string | null;
+  submitted_signed_by: string | null;
+  accepted_signature_path: string | null;
+  accepted_signed_at: string | null;
+  accepted_signed_name: string | null;
+  sent_to_client_at: string | null;
+  client_comments: string | null;
+  pdf_path: string | null;
+  amendment_history: Array<{ reason: string; at: string; from_status?: string }>;
+  proposal_lines?: FinancialProposalLine[];
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +62,7 @@ export function useFinancialProposals(projectId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proposals' as any)
-        .select('*')
+        .select('*, proposal_lines(*)')
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -82,7 +95,44 @@ export function useFinancialProposals(projectId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
-  return { ...list, create, update };
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('proposals' as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const reopen = useMutation({
+    mutationFn: async ({ proposal, reason }: { proposal: FinancialProposal; reason: string }) => {
+      if (!reason.trim()) throw new Error('Add a reason for the amendment.');
+      const history = Array.isArray(proposal.amendment_history) ? proposal.amendment_history : [];
+      const { error } = await supabase
+        .from('proposals' as any)
+        .update({
+          locked: false,
+          status: 'draft',
+          submitted_signature_path: null,
+          submitted_signed_at: null,
+          submitted_signed_by: null,
+          accepted_signature_path: null,
+          accepted_signed_at: null,
+          accepted_signed_name: null,
+          sent_to_client_at: null,
+          client_comments: null,
+          amendment_history: [
+            ...history,
+            { reason: reason.trim(), at: new Date().toISOString(), from_status: proposal.status },
+          ],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', proposal.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  return { ...list, create, update, remove, reopen };
 }
 
 export function useFinancialProposalLines(proposalId: string | null) {

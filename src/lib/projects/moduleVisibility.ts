@@ -89,6 +89,12 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'correspondence',
   'invoicing',
   'proposals',
+  // Consulting engagements still need the commercial controls: proposals,
+  // amendments/change orders, invoices, and the supporting financial ledger.
+  // The suite remains configurable per project, but it must be discoverable by
+  // default (Lorcan Hospital is a consulting engagement with active COs).
+  'financials',
+  'contracts',
   'client-portal',
 ]);
 
