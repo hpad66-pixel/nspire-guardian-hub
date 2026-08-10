@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,28 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { supabase } from "@/integrations/supabase/client";
 import { generatePDFBase64 } from "@/lib/generatePDF";
 import type { CompanyBranding } from "@/hooks/useCompanyBranding";
-import { Loader2, Send, FileText } from "lucide-react";
+import { Loader2, Send, FileText, Paperclip, X } from "lucide-react";
+
+interface SubAttachment {
+  filename: string;
+  content: string; // base64 (no data: prefix)
+  content_type: string;
+  size: number;
+}
+
+const MAX_ATTACH_BYTES = 20 * 1024 * 1024; // Resend caps total payload ~40MB
+
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.includes(",") ? result.split(",")[1] : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 interface ProposalData {
   id?: string;
@@ -59,9 +80,37 @@ export function ProposalSendDialog({
 
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<SubAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = projects?.find((p) => p.id === proposal.project_id);
   const userProfile = profiles?.find((p) => p.user_id === user?.id);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const next: SubAttachment[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_ATTACH_BYTES) {
+        toast.error(`${file.name} is larger than 20 MB and was skipped`);
+        continue;
+      }
+      try {
+        next.push({
+          filename: file.name,
+          content: await readAsBase64(file),
+          content_type: file.type || "application/octet-stream",
+          size: file.size,
+        });
+      } catch {
+        toast.error(`Could not read ${file.name}`);
+      }
+    }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeAttachment = (idx: number) =>
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSend = async () => {
     if (!proposal.recipient_email) {
@@ -157,6 +206,11 @@ export function ProposalSendDialog({
         message: emailMessage,
         pdfBase64,
         pdfFilename: `${proposal.title.replace(/[^a-z0-9]/gi, "_")}.pdf`,
+        extraAttachments: attachments.map(({ filename, content, content_type }) => ({
+          filename,
+          content,
+          content_type,
+        })),
       });
 
       // Update proposal status to sent
@@ -212,6 +266,59 @@ export function ProposalSendDialog({
               rows={3}
               context="correspondence"
             />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Attachments (optional)</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSending}
+              >
+                <Paperclip className="h-4 w-4 mr-2" />
+                Attach subconsultant docs
+              </Button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.txt,.csv"
+              onChange={(e) => handleFiles(e.target.files)}
+            />
+            {attachments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                These go out in the same email as the proposal PDF.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {attachments.map((a, idx) => (
+                  <li
+                    key={`${a.filename}-${idx}`}
+                    className="flex items-center gap-2 rounded border bg-muted/40 px-2 py-1 text-sm"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 min-w-0 truncate">{a.filename}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {(a.size / 1024).toFixed(0)} KB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(idx)}
+                      disabled={isSending}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label={`Remove ${a.filename}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

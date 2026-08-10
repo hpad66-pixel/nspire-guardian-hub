@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useFinancialProposals, FinancialProposal } from "@/hooks/useFinancialProposals";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
+import { useProject } from "@/hooks/useProjects";
+import { useClient } from "@/hooks/useClients";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,8 @@ export default function ProposalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: proposals = [], isLoading, create } = useFinancialProposals(projectId ?? null);
   const { data: issues = [] } = useProjectIssues(projectId ?? null);
+  const { data: project } = useProject(projectId ?? null);
+  const { data: client } = useClient(project?.client_id ?? undefined);
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<Partial<FinancialProposal>>({ markup_pct: 10 });
@@ -88,7 +92,7 @@ export default function ProposalsPage() {
             <p className="text-muted-foreground text-sm">Estimates, scope proposals, and client quotes</p>
           </div>
         </div>
-        <Button onClick={() => { setForm({ markup_pct: 10, proposal_no: nextNo }); setShowCreate(true); }}>
+        <Button onClick={() => { setForm({ markup_pct: 10, proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
           <Plus className="h-4 w-4 mr-2" /> New Proposal
         </Button>
       </div>
@@ -205,6 +209,11 @@ export default function ProposalsPage() {
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               />
             </div>
+            {client && (
+              <p className="text-xs text-muted-foreground">
+                Auto-filled from this project's client <span className="font-medium text-foreground">{client.name}</span>. Edit if needed.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Client Name</Label>

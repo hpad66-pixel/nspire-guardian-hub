@@ -30,6 +30,8 @@ import {
 } from "@/hooks/useProposals";
 import { useProposalGeneration } from "@/hooks/useProposalGeneration";
 import { useCompanyBranding } from "@/hooks/useCompanyBranding";
+import { useProject } from "@/hooks/useProjects";
+import { useClient } from "@/hooks/useClients";
 import { Sparkles, Save, Send, Loader2, Settings, Paperclip, X, AlertTriangle, FileText } from "lucide-react";
 import { ProposalSendDialog } from "./ProposalSendDialog";
 import { BrandingSettings } from "./BrandingSettings";
@@ -87,6 +89,8 @@ export function ProposalEditor({
   // Hooks
   const { data: templates } = useProposalTemplates();
   const { data: branding } = useCompanyBranding();
+  const { data: project } = useProject(open ? projectId : null);
+  const { data: client } = useClient(project?.client_id ?? undefined);
   const createProposal = useCreateProposal();
   const updateProposal = useUpdateProposal();
   const { generate, isGenerating } = useProposalGeneration();
@@ -122,6 +126,23 @@ export function ProposalEditor({
       setUserNotes("");
     }
   }, [proposal, open]);
+
+  // Auto-fill the recipient from the project's client — the same
+  // "the record already knows who this goes to" contract the change-order
+  // generator uses. Only for new proposals, and never clobbers a typed value.
+  useEffect(() => {
+    if (!open || proposal || !client) return;
+    const addr = [
+      client.address,
+      [client.city, client.state].filter(Boolean).join(", "),
+    ]
+      .filter(Boolean)
+      .join(", ");
+    setRecipientName((prev) => prev || client.contact_name || "");
+    setRecipientEmail((prev) => prev || client.contact_email || "");
+    setRecipientCompany((prev) => prev || client.name || "");
+    setRecipientAddress((prev) => prev || addr);
+  }, [open, proposal, client]);
 
   const handleFilesPicked = (picked: FileList | null) => {
     if (!picked?.length) return;
@@ -434,7 +455,14 @@ export function ProposalEditor({
 
               {/* Recipient */}
               <div className="space-y-4">
-                <h3 className="font-medium">Recipient</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">Recipient</h3>
+                  {client && (
+                    <span className="text-xs text-muted-foreground">
+                      Auto-filled from client <span className="font-medium text-foreground">{client.name}</span>
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Name</Label>

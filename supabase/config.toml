@@ -53,6 +53,10 @@ verify_jwt = false
 [functions.draft-change-order]
 verify_jwt = true
 
+# AI financial-proposal drafting — authenticated consultant invokes it
+[functions.draft-financial-proposal]
+verify_jwt = true
+
 [functions.send-invitation]
 verify_jwt = false
 

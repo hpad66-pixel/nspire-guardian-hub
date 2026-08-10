@@ -16,15 +16,30 @@ export function proposalTotals(lines: FinancialProposalLine[]) {
   return { subtotal, markup, total: subtotal + markup };
 }
 
+export interface ProposalClient {
+  name?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
 export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
   proposal: FinancialProposal;
   lines: FinancialProposalLine[];
   projectName: string;
+  client?: ProposalClient | null;
   submittedSignature?: string | null;
   acceptedSignature?: string | null;
-}>(function FinancialProposalDocument({ proposal, lines, projectName, submittedSignature, acceptedSignature }, ref) {
+}>(function FinancialProposalDocument({ proposal, lines, projectName, client, submittedSignature, acceptedSignature }, ref) {
   const totals = proposalTotals(lines);
   const date = new Date(proposal.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const clientAddress = client
+    ? [client.address, [client.city, client.state].filter(Boolean).join(", ")].filter(Boolean).join(", ")
+    : "";
+  const salutationName = client?.contact_name?.trim() || client?.name?.trim() || "";
   const valid = proposal.valid_until
     ? new Date(`${proposal.valid_until}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : "—";
@@ -55,6 +70,16 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
           ))}
         </tbody>
       </table>
+
+      {client && (client.name || salutationName) && (
+        <div style={{ fontSize: 11.5, lineHeight: 1.5, margin: "0 0 16px" }}>
+          {client.name && <div style={{ fontWeight: 700 }}>{client.name}</div>}
+          {client.contact_name && <div>Attn: {client.contact_name}</div>}
+          {clientAddress && <div style={{ color: MUTE }}>{clientAddress}</div>}
+          {client.contact_email && <div style={{ color: MUTE }}>{client.contact_email}</div>}
+          {salutationName && <div style={{ marginTop: 12 }}>Dear {salutationName},</div>}
+        </div>
+      )}
 
       {proposal.notes && <><h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>SCOPE &amp; NOTES</h3><p style={{ fontSize: 11.5, lineHeight: 1.5, whiteSpace: "pre-wrap", margin: "0 0 16px" }}>{proposal.notes}</p></>}
 
