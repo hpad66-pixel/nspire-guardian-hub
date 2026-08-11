@@ -24,24 +24,34 @@ const MODEL = "claude-opus-4-8";
 
 const DRAFT_TOOL = {
   name: "draft_financial_proposal",
-  description: "Return the structured financial-proposal draft extracted from the direction and/or background document.",
+  description: "Return the structured, client-ready financial-proposal draft written up from the direction and/or background document.",
   input_schema: {
     type: "object",
     properties: {
       title: { type: "string", description: "Concise one-line proposal title, no 'Proposal' prefix" },
-      scope_notes: {
+      overview: {
         type: "string",
         description:
-          "The client-ready scope narrative BODY — 2-4 short paragraphs on the approach, deliverables, and assumptions. Do NOT include a salutation or an address block; the letter template renders those. Plain text with line breaks, no markdown.",
+          "The proposal's opening narrative — 2-4 well-written paragraphs: our understanding of the client's need and objectives, and our overall approach. This is the heart of the write-up, in a confident professional consulting voice. Do NOT include a salutation or address block (the letter template renders those). Plain text with blank lines between paragraphs, no markdown.",
+      },
+      scope_bullets: {
+        type: "array",
+        description: "Scope of services — 3-8 specific bullet points describing exactly what work is included.",
+        items: { type: "string" },
+      },
+      deliverables: {
+        type: "array",
+        description: "Deliverables — the concrete tangible outputs the client receives (reports, drawings, permits, submittals, etc.). 2-6 bullets.",
+        items: { type: "string" },
       },
       terms: {
         type: "string",
-        description: "Commercial terms (payment, validity, exclusions). Default to 'Net 30. All work per applicable codes and standards.' if nothing specific is provided.",
+        description: "Assumptions, exclusions, and commercial terms (payment, validity). Default to 'Net 30. All work per applicable codes and standards.' if nothing specific is provided.",
       },
       markup_pct: { type: "number", description: "Overall markup percent to apply to lines when the direction implies one; else the provided default." },
       lines: {
         type: "array",
-        description: "Priced line items broken out of the scope.",
+        description: "Priced fee line items broken out of the scope.",
         items: {
           type: "object",
           properties: {
@@ -56,7 +66,7 @@ const DRAFT_TOOL = {
         },
       },
     },
-    required: ["title", "scope_notes", "terms", "lines"],
+    required: ["title", "overview", "scope_bullets", "deliverables", "terms", "lines"],
   },
 };
 
@@ -117,15 +127,17 @@ serve(async (req) => {
     }
 
     const docLabel = documentName ? `"${documentName}"` : "the attached document";
-    const system = `You convert a consultant's input into a structured, client-ready financial proposal for the APAS Consulting format. The input is (a) a plain-language direction and/or (b) an attached background document (subconsultant quote, RFP, scope email, spreadsheet, sketch).
+    const system = `You are a senior proposal writer for APAS Consulting. You turn a consultant's dictated story into a polished, client-ready proposal — the way a principal would write it up. The input is (a) a plain-language narrative and/or (b) an attached background document (subconsultant quote, RFP, scope email, spreadsheet, sketch).
 Rules:
-- Ground the scope, quantities, and pricing in the BACKGROUND DOCUMENT when one is attached — pull real line items, units, quantities, and unit costs from it. Do not invent numbers the document or direction don't support.
-- The WRITTEN DIRECTION governs emphasis, scope boundaries, and intent. When they conflict, follow the direction.
-- The proposal is addressed to the CLIENT provided below. The letter template renders the address block and salutation automatically — do NOT write a salutation or address block into scope_notes.
+- WRITE IT UP BEAUTIFULLY. The 'overview' is the centerpiece: 2-4 confident, well-crafted paragraphs that show we understand the client's need and lay out our approach. Professional consulting voice, specific to this engagement, never generic boilerplate.
+- Ground scope, quantities, and pricing in the BACKGROUND DOCUMENT when one is attached — pull real line items, units, quantities, and unit costs from it. Do not invent numbers the document or direction don't support.
+- The dictated NARRATIVE governs emphasis, scope boundaries, and intent. When it conflicts with the document, follow the narrative.
+- The proposal is addressed to the CLIENT provided below. The letter template renders the address block and salutation automatically — do NOT write a salutation or address block into any field.
 - TITLE: concise one line, no "Proposal" prefix.
-- SCOPE_NOTES: a professional narrative BODY — approach, deliverables, assumptions. No salutation.
-- LINES: break the cost into priced items (category, description, quantity, unit, numeric unit_cost, markup_pct). If a subconsultant quote is attached, pass its cost through as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
-- markup_pct on each line: use the direction's value if given, else the provided default markup.
+- OVERVIEW: the narrative body (understanding + approach). No salutation, no headings inside it.
+- SCOPE_BULLETS: specific services included. DELIVERABLES: the tangible outputs the client receives.
+- LINES: break the fee into priced items (category, description, quantity, unit, numeric unit_cost, markup_pct). If a subconsultant quote is attached, pass its cost through as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
+- markup_pct on each line: use the narrative's value if given, else the provided default markup.
 - Never use em dashes. Always call the draft_financial_proposal tool.`;
 
     const promptLines = [

@@ -9,7 +9,9 @@ import { Sparkles, Paperclip, X, FileText, Loader2 } from "lucide-react";
 
 export interface ProposalAiDraft {
   title: string;
-  scope_notes: string;
+  overview: string;
+  scope_bullets: string[];
+  deliverables: string[];
   terms: string;
   markup_pct?: number;
   lines: {

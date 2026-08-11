@@ -128,6 +128,7 @@ export default function ProposalBuilderPage() {
         id: proposal.id, proposal_no: draft.proposal_no, title: draft.title, client_name: draft.client_name || null,
         client_email: draft.client_email || null, valid_until: draft.valid_until || null, markup_pct: Number(draft.markup_pct) || 0,
         notes: draft.notes || null, terms: draft.terms || null,
+        scope_bullets: draft.scope_bullets ?? [], deliverables: draft.deliverables ?? [],
       });
       setEditingDetails(false); toast.success("Proposal details saved");
     } catch (error) { toast.error((error as Error).message); }
@@ -152,8 +153,10 @@ export default function ProposalBuilderPage() {
     await proposalQuery.update.mutateAsync({
       id: proposal.id,
       title: proposal.title?.trim() ? proposal.title : (draftResult.title || proposal.title),
-      notes: draftResult.scope_notes || proposal.notes,
+      notes: draftResult.overview || proposal.notes,
       terms: draftResult.terms || proposal.terms,
+      scope_bullets: Array.isArray(draftResult.scope_bullets) && draftResult.scope_bullets.length ? draftResult.scope_bullets : proposal.scope_bullets,
+      deliverables: Array.isArray(draftResult.deliverables) && draftResult.deliverables.length ? draftResult.deliverables : proposal.deliverables,
       markup_pct: typeof draftResult.markup_pct === "number" ? draftResult.markup_pct : proposal.markup_pct,
     });
     let no = lines.length ? Math.max(...lines.map(line => line.line_no)) : 0;
@@ -215,7 +218,10 @@ export default function ProposalBuilderPage() {
           <div><Label>Proposal #</Label><Input value={draft.proposal_no || ""} onChange={event => setDraft(current => ({ ...current, proposal_no: event.target.value }))} /></div><div><Label>Title</Label><Input value={draft.title || ""} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></div>
           <div><Label>Client</Label><Input value={draft.client_name || ""} onChange={event => setDraft(current => ({ ...current, client_name: event.target.value }))} /></div><div><Label>Email</Label><Input type="email" value={draft.client_email || ""} onChange={event => setDraft(current => ({ ...current, client_email: event.target.value }))} /></div>
           <div><Label>Valid until</Label><Input type="date" value={draft.valid_until || ""} onChange={event => setDraft(current => ({ ...current, valid_until: event.target.value }))} /></div><div><Label>Default markup %</Label><Input type="number" step=".1" value={draft.markup_pct ?? 0} onChange={event => setDraft(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></div>
-          <div className="md:col-span-2"><Label>Scope and notes</Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={draft.notes || ""} onValueChange={value => setDraft(current => ({ ...current, notes: value }))} /></div><div className="md:col-span-2"><Label>Terms</Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={draft.terms || ""} onValueChange={value => setDraft(current => ({ ...current, terms: value }))} /></div>
+          <div className="md:col-span-2"><Label>Overview</Label><VoiceDictationTextareaWithAI rows={5} context="notes" value={draft.notes || ""} onValueChange={value => setDraft(current => ({ ...current, notes: value }))} /></div>
+          <div className="md:col-span-2"><Label>Scope of services <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={(draft.scope_bullets ?? []).join("\n")} onValueChange={value => setDraft(current => ({ ...current, scope_bullets: value.split("\n").map(line => line.trim()).filter(Boolean) }))} /></div>
+          <div className="md:col-span-2"><Label>Deliverables <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={(draft.deliverables ?? []).join("\n")} onValueChange={value => setDraft(current => ({ ...current, deliverables: value.split("\n").map(line => line.trim()).filter(Boolean) }))} /></div>
+          <div className="md:col-span-2"><Label>Terms</Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={draft.terms || ""} onValueChange={value => setDraft(current => ({ ...current, terms: value }))} /></div>
         </CardContent></Card>
       )}
 

@@ -146,6 +146,7 @@ const LienWaiverGeneratorPage = lazy(() => import('./pages/projects/financial/Li
 const VendorInboxPage = lazy(() => import('./pages/projects/financial/VendorInboxPage'));
 const IssuesLogPage = lazy(() => import('./pages/projects/financial/IssuesLogPage'));
 const FinancialProposalsPage = lazy(() => import('./pages/projects/financial/ProposalsPage'));
+const ProposalGeneratorPage = lazy(() => import('./pages/projects/financial/ProposalGeneratorPage'));
 const ProposalBuilderPage = lazy(() => import('./pages/projects/financial/ProposalBuilderPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
@@ -416,6 +417,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
                               <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
                               <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
+                              <Route path="/projects/:projectId/financials/proposals/new" element={<ProposalGeneratorPage />} />
                               <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
