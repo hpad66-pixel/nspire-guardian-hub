@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/button";
 import { PenLine } from "lucide-react";
 import type { FinancialProposal, FinancialProposalLine } from "@/hooks/useFinancialProposals";
 import { buildProposalPdfBlob } from "@/lib/pdf/proposalPdf";
+import type { ProposalClient } from "@/components/financial/FinancialProposalDocument";
 import { uploadFinancialProposalArtifact } from "@/lib/proposals/financialProposalStorage";
 
 async function dataUrlToBlob(dataUrl: string) { return (await fetch(dataUrl)).blob(); }
 
-export function FinancialProposalSignDialog({ open, onOpenChange, proposal, lines, projectName, onSigned }: {
+export function FinancialProposalSignDialog({ open, onOpenChange, proposal, lines, projectName, client, onSigned }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   proposal: FinancialProposal;
   lines: FinancialProposalLine[];
   projectName: string;
+  client?: ProposalClient | null;
   onSigned?: () => void;
 }) {
   const [signature, setSignature] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function FinancialProposalSignDialog({ open, onOpenChange, proposal, line
     try {
       const now = new Date().toISOString();
       const signedProposal = { ...proposal, submitted_signed_at: now };
-      const pdfBlob = await buildProposalPdfBlob(signedProposal, lines, projectName, "APAS Consulting", { submitted: signature });
+      const pdfBlob = await buildProposalPdfBlob(signedProposal, lines, projectName, "APAS Consulting", { submitted: signature }, client);
       const [pdfPath, signaturePath] = await Promise.all([
         uploadFinancialProposalArtifact(pdfBlob, proposal.project_id, "signed"),
         uploadFinancialProposalArtifact(await dataUrlToBlob(signature), proposal.project_id, "signature"),
