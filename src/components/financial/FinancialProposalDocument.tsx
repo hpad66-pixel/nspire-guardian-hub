@@ -81,7 +81,25 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
         </div>
       )}
 
-      {proposal.notes && <><h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>SCOPE &amp; NOTES</h3><p style={{ fontSize: 11.5, lineHeight: 1.5, whiteSpace: "pre-wrap", margin: "0 0 16px" }}>{proposal.notes}</p></>}
+      {proposal.notes && <><h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>OVERVIEW</h3><p style={{ fontSize: 11.5, lineHeight: 1.55, whiteSpace: "pre-wrap", margin: "0 0 16px" }}>{proposal.notes}</p></>}
+
+      {Array.isArray(proposal.scope_bullets) && proposal.scope_bullets.length > 0 && (
+        <>
+          <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>SCOPE OF SERVICES</h3>
+          <ul style={{ fontSize: 11.5, lineHeight: 1.5, margin: "0 0 16px", paddingLeft: 18 }}>
+            {proposal.scope_bullets.map((bullet, index) => <li key={index} style={{ marginBottom: 3 }}>{bullet}</li>)}
+          </ul>
+        </>
+      )}
+
+      {Array.isArray(proposal.deliverables) && proposal.deliverables.length > 0 && (
+        <>
+          <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>DELIVERABLES</h3>
+          <ul style={{ fontSize: 11.5, lineHeight: 1.5, margin: "0 0 16px", paddingLeft: 18 }}>
+            {proposal.deliverables.map((item, index) => <li key={index} style={{ marginBottom: 3 }}>{item}</li>)}
+          </ul>
+        </>
+      )}
 
       <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>PRICING</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>

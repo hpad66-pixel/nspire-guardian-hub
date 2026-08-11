@@ -27,6 +27,8 @@ export interface FinancialProposal {
   status: 'draft' | 'sent' | 'approved' | 'rejected' | 'expired';
   notes: string | null;
   terms: string | null;
+  scope_bullets: string[] | null;
+  deliverables: string[] | null;
   markup_pct: number;
   source_issue_id: string | null;
   sign_token: string;

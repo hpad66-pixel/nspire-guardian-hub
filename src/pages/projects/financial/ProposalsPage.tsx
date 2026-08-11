@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useFinancialProposals, FinancialProposal } from "@/hooks/useFinancialProposals";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
 import { useProject } from "@/hooks/useProjects";
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle } from "lucide-react";
+import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { proposalTotals } from "@/components/financial/FinancialProposalDocument";
 
@@ -40,7 +40,8 @@ function fmtDate(d: string | null | undefined) {
 
 export default function ProposalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { data: proposals = [], isLoading, create } = useFinancialProposals(projectId ?? null);
+  const navigate = useNavigate();
+  const { data: proposals = [], isLoading, create, remove } = useFinancialProposals(projectId ?? null);
   const { data: issues = [] } = useProjectIssues(projectId ?? null);
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
@@ -80,6 +81,20 @@ export default function ProposalsPage() {
 
   const nextNo = `PROP-${String(proposals.length + 1).padStart(3, "0")}`;
 
+  async function handleDelete(proposal: FinancialProposal) {
+    const locked = proposal.locked || proposal.status !== "draft";
+    const message = locked
+      ? `${proposal.proposal_no} is signed/sent. Delete it permanently from the record?`
+      : `Delete draft ${proposal.proposal_no}? This cannot be undone.`;
+    if (!window.confirm(message)) return;
+    try {
+      await remove.mutateAsync(proposal.id);
+      toast.success(`${proposal.proposal_no} deleted`);
+    } catch (error) {
+      toast.error(`Delete failed: ${(error as Error).message}`);
+    }
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
@@ -92,9 +107,14 @@ export default function ProposalsPage() {
             <p className="text-muted-foreground text-sm">Estimates, scope proposals, and client quotes</p>
           </div>
         </div>
-        <Button onClick={() => { setForm({ markup_pct: 10, proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> New Proposal
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setForm({ markup_pct: 10, proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Blank
+          </Button>
+          <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new`)}>
+            <Sparkles className="h-4 w-4 mr-2" /> Generate with AI
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -138,7 +158,7 @@ export default function ProposalsPage() {
                     <th className="text-center p-3">Valid Until</th>
                     <th className="text-center p-3">Status</th>
                     <th className="text-center p-3">Created</th>
-                    <th className="text-center p-3">Open</th>
+                    <th className="text-center p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,11 +180,23 @@ export default function ProposalsPage() {
                         </td>
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>
                         <td className="p-3 text-center">
-                          <Link to={`/projects/${projectId}/financials/proposals/${p.id}`}>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                              <ExternalLink className="h-3.5 w-3.5" />
+                          <div className="flex items-center justify-center gap-1">
+                            <Link to={`/projects/${projectId}/financials/proposals/${p.id}`}>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Open">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              title="Delete proposal"
+                              disabled={remove.isPending}
+                              onClick={() => handleDelete(p)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
-                          </Link>
+                          </div>
                         </td>
                       </tr>
                     );
