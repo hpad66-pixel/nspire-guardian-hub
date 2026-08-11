@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import { Send, Paperclip, FileText, X } from "lucide-react";
 import type { FinancialProposal, FinancialProposalLine } from "@/hooks/useFinancialProposals";
-import { proposalTotals } from "@/components/financial/FinancialProposalDocument";
+import { proposalTotals, type ProposalClient } from "@/components/financial/FinancialProposalDocument";
+import { buildProposalPdfBlob } from "@/lib/pdf/proposalPdf";
+import { uploadFinancialProposalArtifact } from "@/lib/proposals/financialProposalStorage";
 
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
@@ -21,7 +23,7 @@ interface SubAttachment {
   size: number;
 }
 
-function readAsBase64(file: File): Promise<string> {
+function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -29,16 +31,19 @@ function readAsBase64(file: File): Promise<string> {
       resolve(result.includes(",") ? result.split(",")[1] : result);
     };
     reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }
 
-export function SendFinancialProposalDialog({ open, onOpenChange, proposal, lines, projectName, onSent }: {
+const readAsBase64 = (file: File) => blobToBase64(file);
+
+export function SendFinancialProposalDialog({ open, onOpenChange, proposal, lines, projectName, client, onSent }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   proposal: FinancialProposal;
   lines: FinancialProposalLine[];
   projectName: string;
+  client?: ProposalClient | null;
   onSent?: () => void;
 }) {
   const [to, setTo] = useState("");
@@ -84,8 +89,29 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
     if (!proposal.locked) return toast.error("Sign and lock the proposal before sending it.");
     setBusy(true);
     try {
+      // Always regenerate the proposal PDF fresh from current data with the
+      // branded vector builder — never rely on a possibly-stale stored blob.
+      // The signature images are loaded from the proposal's stored paths.
+      let freshPdfPath = proposal.pdf_path ?? null;
+      const proposalAttachment: SubAttachment[] = [];
+      try {
+        const pdfBlob = await buildProposalPdfBlob(proposal, lines, projectName, "APAS Consulting", undefined, client);
+        const filename = `${proposal.proposal_no}-${(proposal.title || "proposal").replace(/[^a-z0-9]/gi, "-").toLowerCase()}.pdf`;
+        proposalAttachment.push({
+          filename,
+          contentBase64: await blobToBase64(pdfBlob),
+          contentType: "application/pdf",
+          size: pdfBlob.size,
+        });
+        // Refresh the stored copy so any link (and the record) points at the new PDF.
+        try { freshPdfPath = await uploadFinancialProposalArtifact(pdfBlob, proposal.project_id, "signed"); }
+        catch { /* storage refresh is best-effort; the attachment already carries the PDF */ }
+      } catch (pdfErr) {
+        console.warn("Proposal PDF regeneration failed (sending without the PDF attachment):", pdfErr);
+      }
+
       const safeMessage = message.replace(/</g, "&lt;").replace(/\n/g, "<br>");
-      const bodyHtml = `<div style="font-family:Georgia,serif;color:#1A1714"><p>${safeMessage}</p><p style="margin:18px 0"><a href="${signLink}" style="background:#1D6FE8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Review &amp; sign ${proposal.proposal_no}</a></p>${proposal.pdf_path ? `<p><a href="${proposal.pdf_path}">Download the signed proposal PDF</a></p>` : ""}<p style="color:#6B6B6B;font-size:13px">${proposal.proposal_no} · ${proposal.title} · ${money(total)}</p></div>`;
+      const bodyHtml = `<div style="font-family:Georgia,serif;color:#1A1714"><p>${safeMessage}</p><p style="margin:18px 0"><a href="${signLink}" style="background:#1D6FE8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Review &amp; sign ${proposal.proposal_no}</a></p><p style="color:#6B6B6B;font-size:13px">The proposal is attached as a PDF. ${proposal.proposal_no} · ${proposal.title} · ${money(total)}</p></div>`;
       const { error: sendError } = await supabase.functions.invoke("send-email", {
         body: {
           recipients: [to.trim()],
@@ -93,7 +119,7 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
           bodyHtml,
           bodyText: `${message}\n\nReview & sign: ${signLink}`,
           fromName: "APAS Consulting",
-          attachments: attachments.map(({ filename, contentBase64, contentType, size }) => ({
+          attachments: [...proposalAttachment, ...attachments].map(({ filename, contentBase64, contentType, size }) => ({
             filename,
             contentBase64,
             contentType,
@@ -103,7 +129,7 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
       });
       if (sendError) throw sendError;
       const { error } = await supabase.from("proposals" as any).update({
-        client_email: to.trim(), status: "sent", sent_to_client_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        client_email: to.trim(), status: "sent", sent_to_client_at: new Date().toISOString(), pdf_path: freshPdfPath, updated_at: new Date().toISOString(),
       }).eq("id", proposal.id);
       if (error) throw error;
       toast.success(`${proposal.sent_to_client_at ? "Re-sent" : "Sent"} to ${to.trim()}`);
@@ -136,7 +162,7 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
               onChange={event => handleFiles(event.target.files)}
             />
             {attachments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Sent in the same email as the proposal acceptance link.</p>
+              <p className="text-xs text-muted-foreground">The freshly-rendered proposal PDF is attached automatically. Add subconsultant docs to include them in the same email.</p>
             ) : (
               <ul className="space-y-1">
                 {attachments.map((attachment, index) => (
