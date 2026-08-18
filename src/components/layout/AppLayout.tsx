@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Search, Download, WifiOff } from 'lucide-react';
+import { Search, Download, Lightbulb, WifiOff } from 'lucide-react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -190,6 +190,21 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="flex-1" />
 
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/product-ideas')}
+                  aria-current={location.pathname === '/product-ideas' ? 'page' : undefined}
+                  className={cn(
+                    'h-9 gap-2 rounded-full border-primary/25 bg-primary/[0.06] px-3 font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary',
+                    location.pathname === '/product-ideas' &&
+                      'border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                  )}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  <span className="hidden min-[380px]:inline">Product Ideas</span>
+                  <span className="min-[380px]:hidden">Ideas</span>
+                </Button>
                 {isInstallable && (
                   <Button
                     variant="outline"

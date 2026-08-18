@@ -4,8 +4,24 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 8080,
+      "autoPort": false
+    },
+    {
+      "name": "glorieta-docs",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8137",
+        "--directory",
+        "docs/glorieta-program/program"
+      ],
+      "port": 8137,
       "autoPort": false
     }
   ]

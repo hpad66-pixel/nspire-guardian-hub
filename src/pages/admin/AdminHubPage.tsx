@@ -18,6 +18,7 @@ import {
   Sparkles,
   ChevronRight,
   LayoutGrid,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -51,6 +52,7 @@ const WORKSPACE_TILES: AdminTile[] = [
 
 // Platform group — reserved for platform (super) admins.
 const PLATFORM_TILES: AdminTile[] = [
+  { title: 'Product Ideas', description: 'Review client requests, publish decisions, and move ideas through the roadmap.', icon: Lightbulb, to: '/product-ideas', scope: 'admin' },
   { title: 'Billing & Plan', description: 'Subscription, invoices, and plan limits.', icon: CreditCard, to: '/admin/billing', scope: 'admin' },
   { title: 'Single Sign-On', description: 'SAML 2.0 SSO configuration.', icon: KeyRound, to: '/admin/sso', scope: 'admin' },
   { title: 'SCIM Provisioning', description: 'Automated user provisioning and deprovisioning.', icon: UsersRound, to: '/admin/scim', scope: 'admin' },

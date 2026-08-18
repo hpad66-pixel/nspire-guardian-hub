@@ -17,6 +17,7 @@ import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
 const RootRedirect = lazy(() => import('./pages/RootRedirect'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const ProductIdeasPage = lazy(() => import('./pages/ProductIdeasPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
 const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
@@ -298,6 +299,7 @@ const App = () => (
                               <Route path="/inbox" element={<MailboxPage />} />
                               <Route path="/messages" element={<MessagesPage />} />
                               <Route path="/messages/:threadId" element={<MessagesPage />} />
+                              <Route path="/product-ideas" element={<ProductIdeasPage />} />
                               <Route path="/reports" element={<ReportsPage />} />
                               <Route path="/daily-reports" element={<DailyReportsHubPage />} />
                               <Route path="/occupancy" element={<OccupancyPage />} />

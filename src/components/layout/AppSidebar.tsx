@@ -45,6 +45,7 @@ import {
   QrCode,
   Gavel,
   ClipboardList,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -188,6 +189,7 @@ export function AppSidebar() {
             {isModuleEnabled('cockpitEnabled') && <NavItem to="/cockpit" icon={Gauge} label="Cockpit" collapsed={collapsed} />}
             <NavItem to="/messages" icon={MessageCircle} label="Messages" collapsed={collapsed} badge={unreadCount} />
             {isModuleEnabled('emailInboxEnabled') && <NavItem to="/inbox" icon={Mail} label="Inbox" collapsed={collapsed} />}
+            <NavItem to="/product-ideas" icon={Lightbulb} label="Product Ideas" collapsed={collapsed} />
           </div>
 
           {/* ─── Projects — the primary workspace. Clients own projects: open a

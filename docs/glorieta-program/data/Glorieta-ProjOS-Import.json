@@ -1,0 +1,1962 @@
+{
+  "schema": "projos.program.v2",
+  "generated": "August 9, 2026",
+  "version": "Rev. 2.0",
+  "program": {
+    "key": "GLORIETA",
+    "name": "Glorieta Gardens \u2014 Utility & Environmental Program of Work",
+    "property": "Glorieta Gardens Apartments",
+    "address": "13210 Alexandria Drive, Opa-Locka, FL 33054",
+    "owner": "Glorieta Partners, Ltd. \u2014 c/o R4 GGOL GP LLC",
+    "advisor": "APAS Consulting LLC",
+    "contract_ref": "Prime Contract No. PC-01",
+    "first_deliverable": "STM-01",
+    "objectives": [
+      "Close the Consent Order completely with written termination.",
+      "Operate water, sewer and stormwater in conformance with design, permits and local/state regulatory obligations.",
+      "Mitigate physical risk to the property, principally flooding."
+    ],
+    "authorization_model": "One short proposal per project; owner signature is the basis of the work; no work proceeds without an approved proposal.",
+    "fee_model": {
+      "apas_self_performed": "Lump sum fixed fee",
+      "subcontracted": "Cost plus 10% overhead plus 10% profit (20% total)",
+      "recurring": "Monthly professional services under annual authorization"
+    }
+  },
+  "buckets": [
+    {
+      "key": "STM",
+      "seq": 1,
+      "name": "Stormwater Management",
+      "color": "#1F6B72",
+      "posture": "Stormwater Management Plan is the program's first deliverable.",
+      "tagline": "The plan comes first. Everything else is written into it.",
+      "summary": "We do not currently know, with engineering certainty, what the stormwater system on this property is. Not how many catch basins. Not where the pipes run, what size they are, what they are made of, or whether they are intact. There is a retention pond of unquantified capacity and a second retention area that people reference but nobody has located. Every one of those unknowns is a flood-risk unknown. So the Stormwater Management Plan is written first \u2014 not last. It establishes the design basis, the level of service the property will be held to, and the investigation program required to get there. Every project that follows is then a defined chapter of that plan rather than a standalone expense, and the plan is reissued as a final governing document once the data is in.",
+      "rationale": "Flooding is the fastest way this property generates a life-safety event, a resident claim, an insurance loss, and a regulatory finding \u2014 all at once. Writing the plan first means every dollar spent afterwards has a stated purpose inside a document the owner, the engineer and the regulator all read the same way.",
+      "document": "01-Stormwater-Management.html",
+      "project_count": 15
+    },
+    {
+      "key": "SWR",
+      "seq": 2,
+      "name": "Sewer Extension",
+      "color": "#3A6086",
+      "posture": "Construction complete. Closing out and instrumenting.",
+      "tagline": "Built. Now we hand it over \u2014 and we measure what leaves.",
+      "summary": "The sanitary sewer extension is physically built. Two things remain, and they are different in kind. The first is administrative: transferring the asset to the City of Opa-Locka through a formal conveyance package. The second is operational: putting a permanent flow meter at the point where wastewater leaves the property, so that Glorieta \u2014 the system's largest single discharger \u2014 can prove exactly what it sends to the City's pump station.",
+      "rationale": "Until conveyance closes, the sewer remains the owner's asset, the owner's maintenance obligation, and the owner's warranty exposure. Until the meter is in, every flow question is an argument instead of a fact.",
+      "document": "02-Sewer-Extension.html",
+      "project_count": 2
+    },
+    {
+      "key": "WTR",
+      "seq": 3,
+      "name": "Water Systems",
+      "color": "#2E6B50",
+      "posture": "Records and file assessment approved. Balance to be proposed.",
+      "tagline": "Find the pipes. Then meter, protect, and supplement them.",
+      "summary": "We need to know where our water pipes are before we touch anything else. That begins with the records and file assessment \u2014 originally discussed for wastewater, now necessarily widened to every utility record we can obtain. If the records are good, we field-verify them and produce an as-built. If they are not, we run a full field verification survey. From that foundation, three construction projects follow: meter boxes (we design, permit and build; the City sets its meters), backflow prevention, and an irrigation well to serve the common areas. One further item sits at the end of this bucket, flagged for discussion rather than proposed: a non-revenue water assessment, which asks a question none of the other projects ask \u2014 how much of the water this property buys is never billed to anybody.",
+      "rationale": "Any future modification \u2014 a meter box, a backflow device, a trench for stormwater \u2014 is a guess until the water system is located. Guessing is how you hit a live main. And once the system is located and metered, it becomes possible for the first time to find out what the property is paying for and not receiving.",
+      "document": "03-Water-Systems.html",
+      "project_count": 6
+    },
+    {
+      "key": "ENV",
+      "seq": 4,
+      "name": "Environmental Services & Regulatory Compliance",
+      "color": "#6D4E76",
+      "posture": "Ongoing obligation. Investigation scope to be defined.",
+      "tagline": "Prove what came from off-site. Close the Consent Order.",
+      "summary": "Glorieta Gardens is surrounded by industrial neighbours, including junkyards. The purpose of this bucket is to establish, on the record and for the owner's own protection, whether contamination is migrating onto the property from adjacent parcels. That means an extensive file review of the surrounding properties, a plume analysis, and a monitoring well network on the boundaries \u2014 a minimum of two wells per side. Running alongside it is the standing compliance obligation: closing out the Consent Order completely and keeping water, sewer and stormwater operating in conformance with their permits at both local and state level.",
+      "rationale": "If a neighbour's plume has reached this property, the owner needs to know it first, document it first, and control the narrative with DERM and the City \u2014 not learn about it during a transaction.",
+      "document": "04-Environmental-Regulatory.html",
+      "project_count": 6
+    },
+    {
+      "key": "PMO",
+      "seq": 5,
+      "name": "Program Management & ProjOS",
+      "color": "#B08948",
+      "posture": "Active and continuing.",
+      "tagline": "One operating record. Every project, every document, every obligation.",
+      "summary": "The four program buckets above are only manageable if something holds them together. APAS provides day-to-day project management for the crews on site and program-level management across all four buckets \u2014 scope control, change management, schedule, pay application review, permit tracking and regulatory correspondence. All of it is instantiated in ProjOS, so that every project carries its scope, deliverables, permits, documents and current status in one operating record the owner can open at any time.",
+      "rationale": "Thirty-one projects across four systems and three regulators is not a spreadsheet problem. Without a single operating record, the owner is reconstructing the truth from email every time a question is asked.",
+      "document": "05-Program-Management-ProjOS.html",
+      "project_count": 2
+    }
+  ],
+  "projects": [
+    {
+      "key": "STM-01",
+      "bucket": "STM",
+      "name": "Stormwater Management Plan",
+      "type": "Planning \u00b7 Engineering",
+      "status": "First deliverable",
+      "flag": "FIRST DELIVERABLE",
+      "headline": "Write the plan first. It defines the design basis, the level of service, and every project that follows.",
+      "context": "This is the program's first deliverable, and putting it first is a deliberate choice. A management plan written at the end is a filing exercise. Written at the beginning, it is the instrument that governs everything: it states what the stormwater system is meant to achieve, what standard the property will be held to, what has to be investigated to get there, and in what order. Every project after it becomes a defined chapter of a plan the owner, the engineer and the regulator all read the same way \u2014 rather than a series of separate expenses nobody can connect to each other. The plan is issued in two parts: the framework and roadmap now, and the final governing document once the investigation and modelling results are in.",
+      "scope": [
+        "Issue A \u2014 Framework and roadmap. Establish the design basis, the regulatory framework, and the adopted level of service the property will be held to for each design storm.",
+        "Define the stormwater system as currently understood, and state explicitly and in writing what is not known.",
+        "Define the investigation program required to close each gap, and set the sequence and dependencies between the projects that follow.",
+        "Establish the asset identification convention so every structure and pipe carries a permanent identifier from the first day of field work.",
+        "Define the performance criteria against which the finished system will be judged.",
+        "Issue B \u2014 Final governing plan. Incorporate the investigation, survey, geotechnical, modelling and design results as they arrive.",
+        "Consolidate the complete record set: drawings, calculations, permits, test data and certifications, into one governing document.",
+        "Document the implementation sequence actually executed and the as-built configuration of the system.",
+        "Publish and maintain the plan in ProjOS as the live reference for the stormwater system."
+      ],
+      "deliverables": [
+        "Stormwater Management Plan \u2014 Issue A: framework, design basis, level of service, investigation roadmap",
+        "Project sequence and dependency map",
+        "Asset identification convention",
+        "Performance criteria",
+        "Stormwater Management Plan \u2014 Issue B: final governing document with the complete record set",
+        "Live plan published in ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": [
+          "STM-02"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services. Issue A and Issue B proposed separately so the owner authorises the framework without committing to the final document before the scope of investigation is known."
+      },
+      "parties": "APAS \u00b7 Engineer of Record",
+      "regulatory_driver": "NPDES MS4 \u00b7 Miami-Dade Chapter 24 \u00b7 SFWMD Environmental Resource Permit \u00b7 Consent Order close-out"
+    },
+    {
+      "key": "STM-02",
+      "bucket": "STM",
+      "name": "Stormwater Records & File Review",
+      "type": "Investigation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Determine what documentation of the stormwater system actually exists before spending a dollar in the field.",
+      "context": "This is the least expensive project in the stormwater bucket and it governs the cost of every project after it. If usable as-builts and drainage permits exist, large parts of the field program shrink. If they do not, we know immediately that field verification is the starting point rather than the fallback \u2014 and we scope and price accordingly.",
+      "scope": [
+        "Search and retrieve records from the City of Opa-Locka, Miami-Dade DERM, Miami-Dade RER, the Water Control District, SFWMD and the building department.",
+        "Pursue original developer, architect and engineer files, plats, easements, drainage permits and prior modification permits.",
+        "Review historical aerials and Sanborn maps to identify the original drainage configuration and any later alterations.",
+        "Specifically pursue any record of the second retention area \u2014 its location, permitted volume and whether it was ever built.",
+        "Produce a records inventory and, more importantly, a gap register: what we have, what we do not have, and what each gap costs to close in the field."
+      ],
+      "deliverables": [
+        "Records inventory with source and reliability rating on every document",
+        "Gap register mapped to the field projects required to close each gap",
+        "Recommendation memo: documentation-led path or field-led path",
+        "Findings written into the Stormwater Management Plan"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-01"
+        ],
+        "successors": [
+          "STM-03"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services. Agency records request and reproduction fees passed through at cost."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "NPDES MS4 \u00b7 Miami-Dade Chapter 24 \u00b7 SFWMD Environmental Resource Permit history"
+    },
+    {
+      "key": "STM-03",
+      "bucket": "STM",
+      "name": "CCTV Inspection of the Underground Stormwater System",
+      "type": "Investigation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Send a camera through every pipe, catch basin to catch basin, and find out what is actually down there.",
+      "context": "Nothing downstream can be designed responsibly without this. It answers, with video evidence, the questions we currently cannot answer: how many catch basins do we have, where do the pipes run, what size are they, what are they made of, are they perforated or solid, and are any of them collapsed. It is a non-intrusive condition assessment \u2014 no digging, no excavation, no disruption to residents.",
+      "scope": [
+        "Locate, open and inventory every drainage structure on the property; apply the permanent numbering convention set in the Stormwater Management Plan.",
+        "Clean and jet lines as required to obtain a usable inspection.",
+        "CCTV every reach, catch basin to catch basin, with continuous video and distance-referenced logging.",
+        "Record for every reach: pipe diameter, material, joint type, slope indication, and whether the pipe is perforated or solid.",
+        "Grade structural and operational condition to NASSCO PACP standard \u2014 cracking, deformation, offset joints, root intrusion, sediment depth, and full or partial collapse.",
+        "Flag illicit connections and any discharge that does not belong in a stormwater line.",
+        "Deliver a condition-ranked defect register that drives the repair and rehabilitation priority list.",
+        "Hand the pipe network geometry directly to the survey team so the survey is verifying a known network rather than discovering one."
+      ],
+      "deliverables": [
+        "Complete structure and pipe inventory with permanent IDs",
+        "Full CCTV video library, indexed and reach-referenced",
+        "NASSCO PACP condition report with defect coding",
+        "Condition-ranked defect and rehabilitation priority register",
+        "Network geometry file issued to survey"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-02"
+        ],
+        "successors": [
+          "STM-04"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Specialty subcontract procured and administered by APAS. Heavily obstructed or collapsed reaches requiring point excavation to access are handled as a separate authorised item."
+      },
+      "parties": "APAS \u00b7 CCTV specialty contractor",
+      "regulatory_driver": "NPDES MS4 illicit discharge detection \u00b7 Miami-Dade Chapter 24 \u00b7 Consent Order corrective actions"
+    },
+    {
+      "key": "STM-04",
+      "bucket": "STM",
+      "name": "Topographic & Underground Utility Survey",
+      "type": "Survey",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Produce a signed and sealed survey of the site surface and the drainage network, informed by what the camera found.",
+      "context": "The survey is sequenced deliberately after the CCTV rather than before it. Running it second means the surveyor is locating and elevating a network we already understand, rather than guessing at inverts and missing structures nobody knew existed. That sequencing is what makes the survey a foundation document instead of a partial one.",
+      "scope": [
+        "Topographic survey of the full site: finished floor elevations of every building, roadway and parking crowns and gutters, swales, curbs and site boundaries.",
+        "Locate and elevate every drainage structure identified in the CCTV inventory \u2014 rim and invert on every pipe entering and leaving.",
+        "Tie the survey to NAVD 88 and to the Miami-Dade County control network.",
+        "Reconcile the surveyed network against the CCTV inventory and resolve every discrepancy before sealing.",
+        "Deliver signed and sealed drawings plus editable CAD, and a survey-grade base map that becomes the single geometric basis for all subsequent stormwater design."
+      ],
+      "deliverables": [
+        "Signed and sealed topographic and utility survey",
+        "Editable CAD (DWG/DXF) base map",
+        "Rim and invert schedule for every structure",
+        "Reconciliation memo against the CCTV inventory"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-03"
+        ],
+        "successors": [
+          "STM-05",
+          "STM-06",
+          "STM-10"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Licensed survey subcontract procured and administered by APAS, including control establishment and NAVD 88 tie."
+      },
+      "parties": "APAS \u00b7 Professional Surveyor & Mapper",
+      "regulatory_driver": "Miami-Dade Chapter 24 \u00b7 SFWMD ERP submittal requirements \u00b7 FEMA floodplain reference"
+    },
+    {
+      "key": "STM-05",
+      "bucket": "STM",
+      "name": "Geotechnical Investigation & Permeability Testing",
+      "type": "Investigation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Measure how fast this soil actually absorbs water, so the hydraulic model is built on site data rather than assumption.",
+      "context": "South Florida drainage design lives or dies on infiltration rate and seasonal high water table. Both are site-specific and both are inputs the model cannot run without. Testing at a small number of representative locations, selected once we know where the system is, gives the model defensible numbers \u2014 and defensible numbers are what survive permit review.",
+      "scope": [
+        "Select boring and test locations using the survey and CCTV results, targeting proposed exfiltration and retention areas.",
+        "Advance soil borings with continuous sampling and classification.",
+        "Perform in-situ permeability testing using the Miami-Dade accepted method to establish the hydraulic conductivity value.",
+        "Establish the seasonal high water table elevation at each location.",
+        "Deliver a geotechnical report with design-ready parameters, signed and sealed."
+      ],
+      "deliverables": [
+        "Signed and sealed geotechnical report",
+        "Hydraulic conductivity values by location",
+        "Seasonal high water table elevations",
+        "Design parameter summary issued to the modelling team"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-04"
+        ],
+        "successors": [
+          "STM-10"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Geotechnical subcontract procured and administered by APAS. Number of test locations set in the proposal; additional locations priced per unit."
+      },
+      "parties": "APAS \u00b7 Geotechnical engineer",
+      "regulatory_driver": "Miami-Dade Chapter 24 exfiltration trench design criteria \u00b7 SFWMD ERP"
+    },
+    {
+      "key": "STM-06",
+      "bucket": "STM",
+      "name": "Retention Pond Survey",
+      "type": "Survey",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Establish the pond's real shape, depth and current storage volume \u2014 above and below the waterline.",
+      "context": "The retention pond is the property's primary stormwater storage asset, and we do not know its current capacity. Sediment accumulates slowly and silently; the pond looks unchanged from the bank while the storage inside it disappears. A bathymetric and topographic survey establishes what capacity exists today against what capacity was permitted, and that difference is the dredging case.",
+      "scope": [
+        "Topographic survey of the pond banks, top of bank, side slopes and control structure.",
+        "Bathymetric survey of the pond bottom on a defined grid, capturing the sediment surface.",
+        "Probe to establish the depth of accumulated sediment and the original design bottom where recoverable.",
+        "Survey and document the outfall control structure, including weir elevations and orifice dimensions.",
+        "Compute the current stage-storage relationship and compare it against the permitted design storage."
+      ],
+      "deliverables": [
+        "Pond topographic and bathymetric survey",
+        "Sediment thickness map",
+        "Current versus permitted stage-storage curve",
+        "Control structure documentation"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-04"
+        ],
+        "successors": [
+          "STM-07",
+          "STM-08",
+          "STM-10"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Survey subcontract procured and administered by APAS, including boat or float-based bathymetric collection."
+      },
+      "parties": "APAS \u00b7 Professional Surveyor & Mapper",
+      "regulatory_driver": "SFWMD ERP permitted storage volume \u00b7 Miami-Dade Chapter 24"
+    },
+    {
+      "key": "STM-07",
+      "bucket": "STM",
+      "name": "Digital Terrain Model & Dredge Volume Determination",
+      "type": "Analysis",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Turn the pond survey into a three-dimensional model and compute exactly how much material has to come out.",
+      "context": "Dredging is priced by the cubic yard. Without a computed volume, the owner is exposed to open-ended quantities and change orders. A digital terrain model built from the survey produces a defensible quantity before anyone mobilises, and it becomes the basis for the bid, for the disposal estimate, and for measuring the contractor's completion.",
+      "scope": [
+        "Build a digital terrain model of the existing sediment surface and of the target design bottom.",
+        "Compute cut volumes between the two surfaces, with contingency banding.",
+        "Produce dredge limit drawings and target elevation contours for the contractor.",
+        "Establish the measurement and verification method for confirming completion and final quantities.",
+        "Model the post-dredge stage-storage curve to confirm the storage volume recovered."
+      ],
+      "deliverables": [
+        "Digital terrain model (existing and design surfaces)",
+        "Computed dredge volume with contingency band",
+        "Dredge limit and target elevation drawings",
+        "Measurement and verification protocol",
+        "Post-dredge stage-storage curve"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-06"
+        ],
+        "successors": [
+          "STM-09"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services \u2014 analysis and drawing production from existing survey data."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "SFWMD ERP storage restoration \u00b7 construction quantity basis"
+    },
+    {
+      "key": "STM-08",
+      "bucket": "STM",
+      "name": "Dredged Material Characterization, Profiling & Disposal",
+      "type": "Environmental \u00b7 Construction",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Sample and profile the sediment before it moves, so it goes to a facility that will legally accept it.",
+      "context": "This has to happen before dredging, not after. Sediment from a pond adjacent to industrial neighbours cannot be assumed clean. Waste profiling determines the disposal pathway and the disposal cost, and those two facts can swing the dredging budget by a wide margin. Profiling first also protects the owner from the worst case in this kind of work: material excavated, staged on site, and then found to be unacceptable at the receiving facility.",
+      "scope": [
+        "Develop a sampling and analysis plan appropriate to the pond and the surrounding land uses.",
+        "Collect representative sediment samples across the pond footprint and at depth.",
+        "Laboratory analysis for the contaminants of concern indicated by the adjacent land uses, including metals and petroleum constituents.",
+        "Prepare the waste profile and obtain written acceptance from the receiving facility before dredging begins.",
+        "Determine the disposal pathway and confirm hauling, manifesting and chain of custody requirements.",
+        "Manage transport and disposal during dredging, with full manifest documentation retained for the compliance record."
+      ],
+      "deliverables": [
+        "Sampling and analysis plan",
+        "Laboratory analytical results",
+        "Approved waste profile and written facility acceptance",
+        "Disposal pathway determination memo",
+        "Complete manifest and chain of custody file"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-06"
+        ],
+        "successors": [
+          "STM-09"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "APAS professional services on a fixed fee; laboratory, hauling and disposal procured and administered by APAS. Disposal cost is governed by the characterization result \u2014 which is precisely why it is determined early and cheaply."
+      },
+      "parties": "APAS \u00b7 Environmental consultant \u00b7 Licensed hauler",
+      "regulatory_driver": "Miami-Dade DERM \u00b7 FDEP solid waste rules \u00b7 Chapter 62-701 F.A.C."
+    },
+    {
+      "key": "STM-09",
+      "bucket": "STM",
+      "name": "Retention Pond Dredging",
+      "type": "Construction",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Remove the accumulated sediment and restore the pond to its design storage volume.",
+      "context": "This is the physical recovery of storage capacity the property has lost to sedimentation. It is a construction project with a measured quantity, a defined target elevation and a verification survey at completion \u2014 not an open-ended clean-out.",
+      "scope": [
+        "Procure and contract the dredging work against the computed volume and dredge limit drawings.",
+        "Mobilise, install turbidity and erosion controls, and establish the dewatering and staging area.",
+        "Dredge to the design bottom elevation within the defined limits.",
+        "Dewater the removed material to a transportable moisture content.",
+        "Restore banks and side slopes; stabilise and re-vegetate disturbed areas, including the littoral zone.",
+        "Post-dredge verification survey confirming target elevations and the storage volume recovered."
+      ],
+      "deliverables": [
+        "Executed dredging contract against measured quantities",
+        "Turbidity monitoring records",
+        "Post-dredge verification survey",
+        "Storage volume recovery certification",
+        "Bank restoration and stabilisation completion"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-07",
+          "STM-08"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Construction subcontract procured and administered by APAS against the measured quantity from STM-07. Disposal handled under STM-08."
+      },
+      "parties": "APAS \u00b7 Dredging contractor",
+      "regulatory_driver": "SFWMD ERP \u00b7 Miami-Dade DERM dewatering and turbidity permits \u00b7 Consent Order"
+    },
+    {
+      "key": "STM-10",
+      "bucket": "STM",
+      "name": "Comprehensive Hydrologic & Hydraulic Model",
+      "type": "Analysis",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Model the whole property against the 5-year, 25-year and 100-year storms and find out where the water goes.",
+      "context": "This is the analytical core of the stormwater bucket. Every field project before it exists to feed this model, and every design project after it is dictated by its results. It answers the question the owner actually cares about: in a real storm, does water enter the buildings, and are the streets passable. Modelling three return periods separates a nuisance event from a life-safety event and tells us which improvements are required rather than merely desirable.",
+      "scope": [
+        "Build the model from the survey base map, the CCTV network geometry, the geotechnical permeability values and the pond stage-storage curve.",
+        "Calibrate against observed flooding history on the property where records or resident reports exist.",
+        "Run the 5-year, 25-year and 100-year design storms for the applicable durations.",
+        "Evaluate two protection criteria explicitly and separately: finished floor elevation protection for every building, and roadway passability for emergency access.",
+        "Identify every deficiency \u2014 undersized pipes, insufficient storage, inadequate pumping, low points and overland flow paths.",
+        "Test improvement scenarios and quantify the flood-risk reduction each one buys.",
+        "Determine whether the pond and pipe network alone can meet the required level of service, or whether supplemental features are needed.",
+        "Write the results into the Stormwater Management Plan as the governing design basis."
+      ],
+      "deliverables": [
+        "Calibrated hydrologic and hydraulic model",
+        "Flood maps and inundation depths for each return period",
+        "Finished floor and roadway risk assessment by building and by street",
+        "Deficiency register with hydraulic cause identified",
+        "Improvement scenario comparison with risk reduction quantified",
+        "Determination on the need for supplemental features"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-04",
+          "STM-05",
+          "STM-06"
+        ],
+        "successors": [
+          "STM-11",
+          "STM-12",
+          "STM-13",
+          "STM-14"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services \u2014 model build, calibration, three-storm analysis and scenario testing."
+      },
+      "parties": "APAS \u00b7 Engineer of Record",
+      "regulatory_driver": "Miami-Dade Chapter 24 \u00b7 SFWMD ERP \u00b7 FEMA \u00b7 NPDES MS4 \u00b7 Consent Order"
+    },
+    {
+      "key": "STM-11",
+      "bucket": "STM",
+      "name": "Stormwater Lift Station \u2014 Adequacy Assessment, Siting & Design",
+      "type": "Design",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Determine whether the pumping capacity serving the pond is adequate, whether it is in the right place, and design what it should be.",
+      "context": "A retention pond only performs if what leaves it can leave fast enough. This project evaluates the existing pumping arrangement against modelled demand, tests whether its location relative to the pond is hydraulically correct, and produces a design for whatever the answer requires \u2014 rerating, relocating, or replacing.",
+      "scope": [
+        "Assess the existing lift station: condition, capacity, controls, power supply and reliability.",
+        "Evaluate its location relative to the retention pond and to the modelled inflow points.",
+        "Determine required firm capacity against the modelled design storms.",
+        "Evaluate siting alternatives where relocation is indicated.",
+        "Produce design drawings and specifications for the selected configuration, including wet well, pumps, controls, standby power and telemetry.",
+        "Establish the permitting pathway and prepare permit-ready documents."
+      ],
+      "deliverables": [
+        "Adequacy and condition assessment report",
+        "Siting alternatives evaluation with recommendation",
+        "Signed and sealed design drawings and specifications",
+        "Permit-ready submittal package"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-10"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services \u2014 assessment, siting and design. Construction proposed separately once the design is set."
+      },
+      "parties": "APAS \u00b7 Engineer of Record",
+      "regulatory_driver": "SFWMD ERP \u00b7 Miami-Dade Chapter 24 \u00b7 flood protection level of service"
+    },
+    {
+      "key": "STM-12",
+      "bucket": "STM",
+      "name": "Retention Pond Design & Reconfiguration",
+      "type": "Design",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Design the pond to the storage volume the model requires, not the volume it happens to have.",
+      "context": "Once the model states the storage volume this property needs in order to be protected in a design storm, the pond has to be designed to deliver it. That may mean deepening, expanding the footprint, reshaping side slopes for safety and maintenance access, or rebuilding the control structure.",
+      "scope": [
+        "Design the pond to the target storage volume and stage-storage relationship established by the hydraulic model.",
+        "Design side slopes, safety shelf, littoral zone and maintenance access.",
+        "Design the outfall control structure \u2014 weir, orifice and discharge rate \u2014 to the permitted allowable discharge.",
+        "Integrate with the lift station design and confirm combined performance.",
+        "Prepare permit-ready drawings, calculations and specifications."
+      ],
+      "deliverables": [
+        "Signed and sealed pond design drawings",
+        "Stage-storage-discharge calculations",
+        "Control structure design",
+        "Permit submittal package"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-10"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services \u2014 design and permitting. Construction proposed separately once quantities are set."
+      },
+      "parties": "APAS \u00b7 Engineer of Record",
+      "regulatory_driver": "SFWMD ERP \u00b7 Miami-Dade Chapter 24 allowable discharge rate"
+    },
+    {
+      "key": "STM-13",
+      "bucket": "STM",
+      "name": "Site Regrading & Recontouring \u2014 Design, Permit & Construct",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Reshape the ground so that water goes where the model says it should go.",
+      "context": "The model will identify low points, reverse slopes and blocked overland flow paths that no pipe can fix. Regrading is how a property is made to drain by gravity before any mechanical system is asked to help. This is the largest construction item in the program and is scoped, phased and priced directly from the model results.",
+      "scope": [
+        "Design regrading and recontouring to achieve the drainage patterns and hydraulic capacity established by the model.",
+        "Set finished floor protection and roadway crown elevations to the adopted level of service.",
+        "Design conveyance improvements \u2014 swales, inlets, pipe upsizing \u2014 where the model identifies capacity deficiency.",
+        "Permit through Miami-Dade DERM, SFWMD and the City of Opa-Locka.",
+        "Phase construction to maintain resident access, parking and emergency vehicle circulation throughout.",
+        "Construct, with survey verification of finished grades against design.",
+        "Restore paving, landscaping and site features."
+      ],
+      "deliverables": [
+        "Signed and sealed grading and drainage drawings",
+        "Approved permits",
+        "Phased construction plan with resident access maintained",
+        "Constructed improvements with as-built survey verification",
+        "Record drawings issued into the Stormwater Management Plan"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-10"
+        ],
+        "successors": [
+          "STM-15"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Design and permitting on a fixed fee; construction procured and administered by APAS. Scope is entirely determined by the model, so the construction proposal follows STM-10."
+      },
+      "parties": "APAS \u00b7 Engineer of Record \u00b7 General contractor",
+      "regulatory_driver": "Miami-Dade Chapter 24 \u00b7 SFWMD ERP \u00b7 City of Opa-Locka \u00b7 Consent Order \u00b7 FEMA"
+    },
+    {
+      "key": "STM-14",
+      "bucket": "STM",
+      "name": "Supplemental Stormwater Features \u2014 Exfiltration Trench & the Second Retention Area",
+      "type": "Investigation \u00b7 Design \u00b7 Construct",
+      "status": "Conditional",
+      "flag": "",
+      "headline": "If the model says the pond and pipes are not enough, add capacity \u2014 and finally settle the question of the second retention area.",
+      "context": "This project is deliberately conditional. It is triggered only if the hydraulic model demonstrates that the primary system cannot meet the required level of service. Two options are on the table. The first is an exfiltration trench system, which is the standard Miami-Dade answer and depends directly on the permeability values from the geotechnical work. The second is the second retention area \u2014 a feature everybody on this property references and nobody has located. That ambiguity is itself a liability, and this project closes it: we either find it, confirm it, and restore it to function, or we establish on the record that it does not exist.",
+      "scope": [
+        "Locate and confirm the second retention area through records, historical aerials, geophysical survey and field investigation.",
+        "If found: assess its condition, permitted status and residual storage capacity, and determine whether restoration is viable and cost-effective.",
+        "If not found: document the investigation and formally close the question so it stops appearing as an open assumption in every future analysis.",
+        "Design an exfiltration trench system sized to the residual storage deficit, using the measured hydraulic conductivity from the geotechnical work.",
+        "Compare the two options on capacity delivered, cost, permitability and long-term maintenance burden.",
+        "Permit and construct the selected option."
+      ],
+      "deliverables": [
+        "Second retention area investigation report \u2014 located and assessed, or formally closed out",
+        "Exfiltration trench design and calculations",
+        "Options comparison with recommendation",
+        "Permits and constructed improvements"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-10"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Conditional \u2014 proposed only if the model identifies a residual storage deficit. Investigation and design on a fixed fee; construction procured and administered by APAS."
+      },
+      "parties": "APAS \u00b7 Engineer of Record \u00b7 Contractor",
+      "regulatory_driver": "Miami-Dade Chapter 24 exfiltration criteria \u00b7 SFWMD ERP"
+    },
+    {
+      "key": "STM-15",
+      "bucket": "STM",
+      "name": "Stormwater Operations Plan",
+      "type": "Operations \u00b7 Documentation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Turn the plan into a running operation \u2014 the same way the sewer extension was operationalized.",
+      "context": "A management plan describes the system. An operations plan runs it. This is the document that survives staff turnover: who inspects what, how often, what triggers a response, what gets recorded, and what gets reported to whom. It follows exactly the model already proven on the sewer side of this property.",
+      "scope": [
+        "Define routine inspection and maintenance procedures for every asset class \u2014 catch basins, pipes, pond, control structure, lift station and any supplemental features.",
+        "Set inspection frequencies, cleaning cycles and sediment removal triggers, so storage loss is caught early rather than rediscovered in a decade.",
+        "Establish pre-storm readiness and post-storm response procedures.",
+        "Define the regulatory reporting calendar and the responsible party for each submittal.",
+        "Establish record-keeping, evidence retention and the annual system condition review.",
+        "Define performance monitoring, alarm thresholds and escalation paths.",
+        "Build the operating record into ProjOS with scheduled tasks, evidence capture and automatic compliance reporting."
+      ],
+      "deliverables": [
+        "Stormwater Operations Plan",
+        "Inspection and maintenance schedule by asset class",
+        "Pre-storm and post-storm response procedures",
+        "Regulatory reporting calendar with named responsibility",
+        "ProjOS operating record with scheduled tasks and evidence capture",
+        "Staff training and handover"
+      ],
+      "sequence": {
+        "predecessors": [
+          "STM-13"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services \u2014 plan development, ProjOS configuration and staff handover."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "NPDES MS4 operations and maintenance \u00b7 Consent Order \u00b7 Miami-Dade Chapter 24"
+    },
+    {
+      "key": "SWR-01",
+      "bucket": "SWR",
+      "name": "Conveyance & Close-Out to the City of Opa-Locka",
+      "type": "Administrative / Engineering Coordination",
+      "status": "In progress",
+      "flag": "",
+      "headline": "Transfer the completed sewer extension to the City so it becomes the City's asset to own, operate and maintain.",
+      "context": "This is an administrative project, and it deserves to be run like a project \u2014 it has a defined scope, a set of dependencies on five outside parties, and a fee. It is not a punch list item. Until the City formally accepts the system, the owner continues to hold the asset, the maintenance duty and the warranty exposure.",
+      "scope": [
+        "Run the City of Opa-Locka Utilities Conveyance Checklist to completion, item by item, with a named owner and a date against every line.",
+        "Coordinate the Engineer of Record deliverables: signed and sealed record drawings, infiltration and exfiltration certification, Engineer's Final Payment Confirmation, FDEP sewer certification, General Permit and In-Service Letter, latitude and longitude detail sheet, and the record-drawing disk.",
+        "Coordinate the surveyor's signed and sealed as-built survey (PDF plus editable CAD) and reconcile it against the record drawings.",
+        "Coordinate the contractor's CCTV video of the constructed gravity sewer, the Sewer Report and the Master Utility Sheet, plus field completion and restoration for the City's preliminary inspection.",
+        "Close the contractor package: punch list completion, final lien waivers, material certifications, test results, permit close-outs, and asphalt and sod final quantities.",
+        "Execute and file the three twelve-month warranties by building group \u2014 Building 3 South with Building 4; Building 5 with Building 6; and Building 3 North.",
+        "Support owner's counsel on the legal and security items: Attorney's and Owner's Affidavits, Warranty Deed and Bill of Sale, UCC subordination, and the Utilities Performance Security.",
+        "Assemble, transmit and track the acceptance package through City review to written acceptance."
+      ],
+      "deliverables": [
+        "Completed Utilities Conveyance Checklist with evidence attached to every line",
+        "Transmittal package to the City of Opa-Locka",
+        "Executed warranty set (three building groups)",
+        "Written City acceptance and asset transfer confirmation",
+        "Retainage release documentation per the contract schedule"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": [
+          "SWR-02"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services for coordination and package assembly. Excludes the Utilities Performance Security, the final-obligations cash bond, and City review fees, all of which sit with the owner."
+      },
+      "parties": "APAS (lead) \u00b7 Engineer of Record \u00b7 Surveyor \u00b7 Contractors \u00b7 Owner's counsel",
+      "regulatory_driver": "City of Opa-Locka Utilities Conveyance Checklist \u00b7 Miami-Dade DERM \u00b7 FDEP General Permit \u00b7 Prime Contract PC-01"
+    },
+    {
+      "key": "SWR-02",
+      "bucket": "SWR",
+      "name": "Master Effluent Flow Meter at the Property Discharge Point",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Install a permanent flow meter where wastewater leaves the property, so total discharge to the City pump station is a measured fact.",
+      "context": "Glorieta Gardens is the largest single discharger into this pump station. Today, the volume leaving the property is inferred rather than measured. That is a problem in three directions at once: it makes infiltration and inflow impossible to isolate, it leaves billing and capacity allocation open to dispute, and it means any compliance question about what we discharge has no defensible answer. A meter at the exit resolves all three.",
+      "scope": [
+        "Confirm the single point of discharge from the property to the City's collection system and verify there is no secondary or bypass connection.",
+        "Design a permanent metering structure \u2014 vault or dedicated manhole \u2014 sized and located for safe, permanent access and for accurate hydraulic conditions.",
+        "Select and specify the metering technology appropriate to the flow regime, with redundancy on the primary reading.",
+        "Design telemetry and continuous data logging so the record is automatic, timestamped and retrievable, not a monthly clipboard reading.",
+        "Permit through the City of Opa-Locka and Miami-Dade DERM as required.",
+        "Construct, commission and field-calibrate; establish the certified accuracy baseline.",
+        "Run a baseline infiltration and inflow study using the new meter \u2014 diurnal flow curves and wet-weather response \u2014 to quantify how much of what we discharge is groundwater and rainwater rather than sanitary flow.",
+        "Integrate the meter data feed into ProjOS for continuous monitoring and exception alerting."
+      ],
+      "deliverables": [
+        "Signed and sealed design drawings and specifications",
+        "Approved permits",
+        "Constructed and commissioned metering station",
+        "Calibration certificate and accuracy baseline",
+        "Baseline I&I report with wet-weather response curves",
+        "Live data feed into ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [
+          "SWR-01"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Design, permitting and commissioning on a fixed fee; structure, meter, telemetry and installation procured and administered by APAS."
+      },
+      "parties": "APAS \u00b7 Engineer of Record \u00b7 Contractor \u00b7 City of Opa-Locka",
+      "regulatory_driver": "City of Opa-Locka wastewater discharge accounting \u00b7 DERM \u00b7 FDEP \u00b7 I&I reduction"
+    },
+    {
+      "key": "WTR-01",
+      "bucket": "WTR",
+      "name": "Water & Sewer Records and File Assessment",
+      "type": "Investigation",
+      "status": "Scope approved",
+      "flag": "SCOPE APPROVED",
+      "headline": "Review every available file to establish what is documented about the water and sewer systems on this property.",
+      "context": "This was originally discussed as a wastewater file review. It has to be wider. To know where our water pipes are, we need to review all of the files \u2014 every utility record, every permit, every plan set, from every source that might hold one. The expanded scope is a modest increase in effort against a substantial increase in what we recover. Scope is approved; a short proposal follows for signature and becomes the basis of the work.",
+      "scope": [
+        "Search and retrieve from the City of Opa-Locka, Miami-Dade Water and Sewer Department, DERM, RER and the building department.",
+        "Pursue original developer, architect and engineer record sets, plats, easements and utility agreements.",
+        "Retrieve permit history: water main extensions, service connections, meter installations and backflow device records.",
+        "Review historical aerials and prior construction documents for evidence of utility modifications over time.",
+        "Assess each document for reliability \u2014 sealed as-built, permit set, sketch or hearsay \u2014 and rate it accordingly.",
+        "Produce a records inventory and a gap register identifying exactly what remains unknown."
+      ],
+      "deliverables": [
+        "Records inventory with source and reliability rating",
+        "Gap register: what is documented and what is not",
+        "Recommendation memo on the field verification path"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": [
+          "WTR-02",
+          "WTR-06"
+        ]
+      },
+      "commercial": {
+        "budget": "$3,000 \u2014 Lump Sum",
+        "budget_established": true,
+        "authorization": "Scope approved \u2014 proposal to follow",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Lump sum, scope approved. Covers the expanded all-utilities review. Agency records request and reproduction fees passed through at cost."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "Miami-Dade WASD \u00b7 Chapter 24 \u00b7 City of Opa-Locka utility records"
+    },
+    {
+      "key": "WTR-02",
+      "bucket": "WTR",
+      "name": "Water Distribution Field Verification & As-Built Development",
+      "type": "Survey \u00b7 Investigation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Establish where the water pipes actually are \u2014 from the records if they hold up, from the field if they do not.",
+      "context": "This project has two paths and the file assessment picks which one. If the records are good, we field-verify them at control points and produce an as-built from documentation. If they are not \u2014 and on a property of this age that is the likelier outcome \u2014 we run a full field verification survey. Either way, the deliverable is the same: a signed, sealed as-built showing where the water system is, so that any future modification is planned against fact rather than assumption.",
+      "scope": [
+        "Path A \u2014 records adequate: field-verify at control points, reconcile against the documentation, and produce an as-built from the record set.",
+        "Path B \u2014 records inadequate: full field verification survey using electromagnetic pipe locating and ground-penetrating radar across the site.",
+        "Survey and elevate all surface appurtenances: valves, hydrants, meters, backflow devices and service points.",
+        "Pothole at critical locations and at points of future work to confirm horizontal position, depth, diameter and material.",
+        "Reconcile all field data against whatever records exist and resolve every conflict.",
+        "Produce a signed and sealed water system as-built in PDF and editable CAD.",
+        "Identify unknown, abandoned or unmapped lines and flag them for follow-up."
+      ],
+      "deliverables": [
+        "Signed and sealed water distribution as-built",
+        "Editable CAD (DWG/DXF)",
+        "Valve, hydrant, meter and appurtenance schedule",
+        "Potholing records with depth, diameter and material confirmed",
+        "Register of unknown or abandoned lines"
+      ],
+      "sequence": {
+        "predecessors": [
+          "WTR-01"
+        ],
+        "successors": [
+          "WTR-03",
+          "WTR-04",
+          "WTR-05"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Proposed against whichever path the file assessment establishes. APAS professional services on a fixed fee; survey and locating procured and administered by APAS."
+      },
+      "parties": "APAS \u00b7 Surveyor \u00b7 Subsurface utility locating contractor",
+      "regulatory_driver": "Miami-Dade Chapter 24 \u00b7 WASD standards \u00b7 Sunshine 811 \u00b7 construction risk mitigation"
+    },
+    {
+      "key": "WTR-03",
+      "bucket": "WTR",
+      "name": "Water Meter Box Program \u2014 Design, Permit & Construct",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Design, permit and build the meter boxes; the City of Opa-Locka installs its meters into them.",
+      "context": "The division of responsibility here is clean and worth stating plainly: we deliver the boxes, the services and the settings, ready and inspected. The City brings and installs its own meters. Getting that handoff sequenced and documented is most of the work \u2014 an unready box on the day the City arrives costs weeks.",
+      "scope": [
+        "Determine meter count, sizing and locations from the as-built and from the service configuration.",
+        "Design meter box installations to City of Opa-Locka and Miami-Dade WASD standards, including box, setting, service piping and appurtenances.",
+        "Locate boxes for permanent access, safe reading and protection from vehicle traffic.",
+        "Permit through the City of Opa-Locka and WASD.",
+        "Construct with resident water service maintained; phase and notice all interruptions.",
+        "Coordinate City meter installation: schedule, inspect, witness and document.",
+        "Verify and document every installation, and record final meter numbers against service addresses."
+      ],
+      "deliverables": [
+        "Meter schedule with sizing and locations",
+        "Signed and sealed design drawings",
+        "Approved permits",
+        "Constructed and inspected meter boxes",
+        "City meter installation coordination and completion record",
+        "Meter number to service address register"
+      ],
+      "sequence": {
+        "predecessors": [
+          "WTR-02"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Design and permitting on a fixed fee; construction procured and administered by APAS against the meter count established in WTR-02. Excludes City meters and City fees."
+      },
+      "parties": "APAS \u00b7 Engineer of Record \u00b7 Contractor \u00b7 City of Opa-Locka",
+      "regulatory_driver": "City of Opa-Locka \u00b7 Miami-Dade WASD standards \u00b7 Chapter 24"
+    },
+    {
+      "key": "WTR-04",
+      "bucket": "WTR",
+      "name": "Backflow Prevention Program \u2014 Design, Permit & Install",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Install backflow prevention at every required connection and enrol the devices in certified annual testing.",
+      "context": "Backflow prevention is a cross-connection control requirement, and it is one of the compliance items most likely to generate a violation quietly \u2014 because the obligation is not just installing the device, it is testing and certifying it every year, forever. This project delivers both the installation and the standing testing program.",
+      "scope": [
+        "Survey all connections and determine the required device type and hazard classification at each.",
+        "Design installations to City of Opa-Locka and WASD standards, with permanent access and traffic protection.",
+        "Permit through the City and WASD.",
+        "Procure, install, and commission all devices.",
+        "Perform initial certification testing by a certified tester and file the results with the City.",
+        "Enrol every device in the annual testing and certification program, with the schedule and evidence capture built into ProjOS.",
+        "Build the device register: location, type, serial number, installation date and test history."
+      ],
+      "deliverables": [
+        "Cross-connection hazard survey and device schedule",
+        "Signed and sealed design drawings and permits",
+        "Installed and commissioned devices",
+        "Initial certification test reports filed with the City",
+        "Device register with full test history in ProjOS",
+        "Annual testing program with scheduled reminders"
+      ],
+      "sequence": {
+        "predecessors": [
+          "WTR-02"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Design and permitting on a fixed fee; devices, installation and initial certification procured and administered by APAS. Annual testing thereafter carried under ongoing compliance services."
+      },
+      "parties": "APAS \u00b7 Engineer of Record \u00b7 Contractor \u00b7 Certified backflow tester",
+      "regulatory_driver": "Miami-Dade Chapter 24 cross-connection control \u00b7 City of Opa-Locka \u00b7 F.A.C. 62-555 \u00b7 Safe Drinking Water Act"
+    },
+    {
+      "key": "WTR-05",
+      "bucket": "WTR",
+      "name": "Irrigation Well \u2014 Permit, Drill & Commission",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Put in an irrigation well to serve the common areas, and take that demand off the potable system.",
+      "context": "Irrigating common areas with treated potable water is expensive and, at this property's scale, unnecessary. An irrigation well moves that demand to a dedicated source. It reduces the potable bill directly, it removes irrigation volume from the meters we are about to install, and it separates a non-potable use from the drinking water system \u2014 which is a cross-connection benefit as well as a cost one.",
+      "scope": [
+        "Hydrogeologic siting: aquifer selection, expected yield, water quality and required setbacks from sanitary and environmental features.",
+        "Coordinate siting explicitly with the environmental monitoring well program so the two do not conflict.",
+        "Permit through Miami-Dade DERM and SFWMD, including water use authorisation.",
+        "Drill, develop and test the well; confirm yield and water quality.",
+        "Install pump, controls, and above-ground equipment with backflow protection.",
+        "Design and construct the irrigation distribution to the common areas, with zoning and controller.",
+        "Commission, test and hand over with an operations and maintenance manual."
+      ],
+      "deliverables": [
+        "Hydrogeologic siting report",
+        "DERM and SFWMD permits",
+        "Completed well with yield and water quality test results",
+        "Pump, controls and distribution system installed and commissioned",
+        "Operations and maintenance manual",
+        "Potable demand reduction baseline"
+      ],
+      "sequence": {
+        "predecessors": [
+          "WTR-02"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Siting, permitting and construction management on a fixed fee; drilling, pump, controls and distribution procured and administered by APAS."
+      },
+      "parties": "APAS \u00b7 Hydrogeologist \u00b7 Licensed well contractor",
+      "regulatory_driver": "Miami-Dade DERM well permit \u00b7 SFWMD water use permit \u00b7 Chapter 24 cross-connection control"
+    },
+    {
+      "key": "WTR-06",
+      "bucket": "WTR",
+      "name": "Non-Revenue Water Assessment & Water Balance",
+      "type": "Analysis \u00b7 Operations",
+      "status": "For discussion",
+      "flag": "FOR DISCUSSION",
+      "headline": "Find out how much of the water this property buys never reaches a bill \u2014 and how much of that is recoverable.",
+      "context": "This is a small project and it is not yet scoped, because it should be talked through first. The question it answers is simple and, at this property's scale, financially material: the City meters what it delivers to Glorieta Gardens, and the property pays for that volume in full. How much of it actually reaches a resident, and how much disappears on the way? The gap has three components \u2014 water that leaked out of the pipes, water that was used but measured badly, and water that was used legitimately and never billed. Each has a different fix and a very different cost, and the audit tells you which one you have before anyone spends money chasing the wrong one. It also happens to sit perfectly in the sequence: the meter boxes are about to be installed and the irrigation well will pull a large unmetered use off the potable system, which means the property is about to have the data this analysis needs for the first time.",
+      "scope": [
+        "Establish the system input volume from the City's master metering and billing history, and verify the accuracy of the meter producing that number.",
+        "Assemble billed consumption from the meter records and reconcile it against the input volume over a defined audit period.",
+        "Build the water balance to the AWWA M36 standard, separating unbilled authorized consumption from apparent losses and real losses.",
+        "Quantify apparent losses: meter under-registration by age and size, data handling and billing gaps, and any unauthorized or unrecorded connections.",
+        "Quantify real losses and compute the Infrastructure Leakage Index, so the result can be compared against the technical minimum for a system of this size rather than against a generic benchmark.",
+        "Run a minimum night flow analysis using continuous logging, since night-time residual flow is the most direct available indicator of leakage.",
+        "Evaluate whether dividing the site into district metered areas would be worthwhile, so future losses can be localised to a block rather than to the property as a whole.",
+        "Quantify the annual dollar value of the loss at the City's current rate, and rank the recovery measures by cost against recoverable volume.",
+        "Establish an ongoing tracking method in ProjOS so the figure is monitored continuously rather than rediscovered every few years."
+      ],
+      "deliverables": [
+        "AWWA M36 water balance for the audit period",
+        "Non-revenue water volume and percentage, with the dollar value at current rates",
+        "Apparent versus real loss split with the basis for each",
+        "Infrastructure Leakage Index",
+        "Minimum night flow analysis",
+        "Ranked loss-recovery recommendations with cost against recoverable volume",
+        "Ongoing non-revenue water tracking in ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [
+          "WTR-01"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "For discussion before anything is scoped",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Not yet scoped. APAS would like to discuss the objective and the audit period with the owner before proposing anything. A preliminary balance can be built from existing billing records; resolution improves substantially once WTR-03 metering is in and WTR-05 has taken irrigation off the potable system."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "Owner operating cost \u00b7 AWWA M36 \u00b7 City of Opa-Locka billing reconciliation \u00b7 water conservation"
+    },
+    {
+      "key": "ENV-01",
+      "bucket": "ENV",
+      "name": "Adjacent Property Environmental File Review & Plume Assessment",
+      "type": "Investigation",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Review the environmental history of every property surrounding this one \u2014 the junkyards above all \u2014 and determine where contamination could be coming from.",
+      "context": "This is the scoping project for the entire environmental bucket, and it has to come first. The monitoring well locations, the analytical parameter list and the sampling frequency all follow from what this review finds. Placing wells before knowing what we are looking for and where it would come from means paying for wells in the wrong places, testing for the wrong things.",
+      "scope": [
+        "Identify every adjacent and nearby property on all four sides and establish its current and historical use.",
+        "Focus the review on the junkyard and salvage operations, which are the most probable sources.",
+        "Search the regulatory databases: DERM, FDEP and EPA records \u2014 RCRA, CERCLIS, petroleum storage, dry cleaning and industrial waste files.",
+        "Retrieve and review enforcement history, contamination assessment reports and remediation records for each source property.",
+        "Review historical aerials, Sanborn maps and city directories to reconstruct site use over time.",
+        "Establish the contaminants of concern based on documented use and documented releases.",
+        "Determine the groundwater gradient and flow direction across the property from regional and site data.",
+        "Model probable plume vectors: which boundaries are downgradient of which sources, and where migration onto Glorieta Gardens would first appear."
+      ],
+      "deliverables": [
+        "Adjacent property environmental history report",
+        "Contaminants of concern list with the documented basis for each",
+        "Groundwater flow direction and gradient determination",
+        "Plume vector analysis with probable migration pathways",
+        "Monitoring well siting recommendation and analytical parameter list"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": [
+          "ENV-02"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services. Agency file review fees and database search costs passed through at cost."
+      },
+      "parties": "APAS \u00b7 Environmental consultant",
+      "regulatory_driver": "Miami-Dade DERM Chapter 24 \u00b7 FDEP Chapter 62-780 F.A.C. \u00b7 owner due diligence"
+    },
+    {
+      "key": "ENV-02",
+      "bucket": "ENV",
+      "name": "Boundary Monitoring Well Network \u2014 Design & Installation",
+      "type": "Design \u00b7 Permit \u00b7 Construct",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Install a monitoring well network on the property boundaries, positioned by the plume analysis.",
+      "context": "The working assumption is a minimum of two wells on each side \u2014 four sides, so at least eight wells, with the final count and placement set by the file review. The purpose is specific and worth being precise about: these wells exist to detect contamination arriving from off-site, so that if a neighbour's plume has reached this property, the owner knows it first and documents it first.",
+      "scope": [
+        "Finalise well count, locations and screen intervals from the plume vector analysis, with upgradient wells for background and downgradient wells for detection.",
+        "Design each well to DERM standards: construction, screen interval, filter pack, seal and surface completion.",
+        "Locate wells for permanent access and protection from vehicles and site operations.",
+        "Coordinate placement with the irrigation well siting so the two programs do not interfere.",
+        "Permit through Miami-Dade DERM.",
+        "Drill, install, develop and survey each well; establish measuring point elevations to NAVD 88.",
+        "Conduct the initial round of groundwater elevation measurements and confirm the actual flow direction against the predicted gradient.",
+        "Build the well network register into ProjOS with location, construction detail and sampling history."
+      ],
+      "deliverables": [
+        "Monitoring well network design and siting plan",
+        "DERM well permits",
+        "Installed, developed and surveyed wells with completion logs",
+        "Measuring point elevations tied to NAVD 88",
+        "Confirmed groundwater flow direction from measured elevations",
+        "Well network register in ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [
+          "ENV-01"
+        ],
+        "successors": [
+          "ENV-03"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Subcontracted at cost plus 10% overhead and 10% profit; APAS administers",
+        "apas_role": "APAS-managed \u00b7 specialty subcontract",
+        "note": "Drilling and installation subcontract procured and administered by APAS. Well count and depth set by the plume analysis and confirmed in the proposal."
+      },
+      "parties": "APAS \u00b7 Environmental consultant \u00b7 Licensed well contractor",
+      "regulatory_driver": "Miami-Dade DERM Chapter 24 monitoring well permit \u00b7 FDEP Chapter 62-780 F.A.C."
+    },
+    {
+      "key": "ENV-03",
+      "bucket": "ENV",
+      "name": "Groundwater Sampling & Plume Behaviour Analysis",
+      "type": "Monitoring \u00b7 Analysis",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Sample the wells on a defined schedule and determine whether contamination is migrating onto the property.",
+      "context": "A single sampling round tells you a concentration. A sequence of rounds tells you a direction and a trend, and direction and trend are what actually answer the question. This project establishes the baseline and then runs the recurring rounds needed to characterise plume behaviour \u2014 whether anything is arriving, from where, at what concentration, and whether it is getting worse.",
+      "scope": [
+        "Prepare a sampling and analysis plan with the parameter list from the file review and DERM-acceptable methods.",
+        "Conduct the baseline sampling round across the full network, with proper purging, field parameters and chain of custody.",
+        "Laboratory analysis at a Florida-certified laboratory with full quality assurance and quality control.",
+        "Conduct recurring rounds on the established frequency, with synoptic water level measurements each round.",
+        "Evaluate the results against DERM and FDEP groundwater cleanup target levels.",
+        "Analyse plume behaviour across rounds: presence, source attribution, concentration gradient and trend direction.",
+        "Determine whether contamination is migrating onto Glorieta Gardens and whether any property component has been impacted.",
+        "Maintain the full analytical record and trend dashboard in ProjOS."
+      ],
+      "deliverables": [
+        "Sampling and analysis plan",
+        "Baseline groundwater quality report",
+        "Recurring round reports with laboratory data packages",
+        "Plume behaviour and trend analysis",
+        "Comparison against groundwater cleanup target levels",
+        "Determination of off-site contaminant migration and property impact",
+        "Analytical record and trend dashboard in ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [
+          "ENV-02"
+        ],
+        "successors": [
+          "ENV-04"
+        ]
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum professional services + subcontracted work at cost plus 10% overhead and 10% profit",
+        "apas_role": "Hybrid \u2014 APAS professional services + subcontract",
+        "note": "Sampling, interpretation and reporting on a fixed fee per round; laboratory analysis procured and administered by APAS. Frequency set by the baseline result and proposed annually."
+      },
+      "parties": "APAS \u00b7 Environmental consultant \u00b7 Certified laboratory",
+      "regulatory_driver": "Miami-Dade DERM \u00b7 FDEP Chapter 62-780 F.A.C. groundwater cleanup target levels"
+    },
+    {
+      "key": "ENV-04",
+      "bucket": "ENV",
+      "name": "Environmental Findings Report & Regulatory Strategy",
+      "type": "Analysis \u00b7 Strategy",
+      "status": "Not started",
+      "flag": "",
+      "headline": "Convert the monitoring data into a decision: what the owner does next, and how it is presented to the City and to DERM.",
+      "context": "Data does not protect the owner. A documented position built on data does. This project takes everything the investigation produced and turns it into a defensible finding, a recommended course of action, and a deliberate approach to the City of Opa-Locka and Miami-Dade DERM \u2014 on the owner's timing and in the owner's framing, rather than in response to somebody else's inquiry.",
+      "scope": [
+        "Consolidate the file review, plume analysis, well installation and all sampling results into a single findings report.",
+        "State the conclusion on off-site contaminant migration, with the evidentiary basis for it.",
+        "Assess impacts, if any, on property components \u2014 soil, groundwater, utilities and structures.",
+        "Evaluate the regulatory implications and the owner's obligations and protections under Chapter 24 and Chapter 62-780.",
+        "Where a source is identified off-site, document the attribution to support the owner's position on responsibility.",
+        "Recommend the course of action: no further action, continued monitoring, formal notification, or assessment and remediation.",
+        "Develop the engagement strategy for the City of Opa-Locka and Miami-Dade DERM, including timing, framing and supporting documentation.",
+        "Prepare the submittal package for whichever pathway is selected."
+      ],
+      "deliverables": [
+        "Environmental findings report with stated conclusions",
+        "Property impact assessment",
+        "Source attribution documentation",
+        "Recommended course of action with alternatives evaluated",
+        "Regulatory engagement strategy for the City and DERM",
+        "Submittal package for the selected pathway"
+      ],
+      "sequence": {
+        "predecessors": [
+          "ENV-03"
+        ],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Lump sum \u2014 fixed fee proposal",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee professional services. Any assessment or remediation that follows is separately scoped and proposed."
+      },
+      "parties": "APAS \u00b7 Environmental consultant \u00b7 Owner's counsel",
+      "regulatory_driver": "Miami-Dade DERM Chapter 24 \u00b7 FDEP Chapter 62-780 F.A.C. \u00b7 owner liability position"
+    },
+    {
+      "key": "ENV-05",
+      "bucket": "ENV",
+      "name": "Consent Order Close-Out",
+      "type": "Compliance",
+      "status": "Active obligation",
+      "flag": "",
+      "headline": "Drive every enumerated corrective action to documented completion and secure written termination of the Consent Order.",
+      "context": "This is the outcome the whole program is organised around. A Consent Order does not expire \u2014 it closes when every corrective action is complete, documented and accepted in writing. Anything less leaves the obligation live and the property encumbered. This project tracks each enumerated action to evidence-backed completion and pursues the written release.",
+      "scope": [
+        "Build the master compliance matrix: every enumerated corrective action, its requirement, its status, the evidence of completion and the responsible party.",
+        "Map each corrective action to the program projects that satisfy it, so completion is traceable rather than asserted.",
+        "Assemble the evidence file for every action: drawings, certifications, test results, permits, photographs and correspondence.",
+        "Prepare and submit the periodic progress reports on the required cadence, and bring any missed reporting current.",
+        "Manage regulator correspondence, inspections and requests for information.",
+        "Identify and resolve every remaining gap between current status and full compliance.",
+        "Prepare and submit the close-out request with the complete evidence package.",
+        "Pursue written termination of the Consent Order and retain the release in the permanent record."
+      ],
+      "deliverables": [
+        "Master compliance matrix mapped to program projects",
+        "Complete evidence file for every corrective action",
+        "Periodic progress reports, current",
+        "Gap resolution plan",
+        "Close-out submittal package",
+        "Written Consent Order termination"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Monthly professional services",
+        "apas_role": "APAS self-performed",
+        "note": "Monthly professional services under an annual authorisation. Corrective action work itself sits in the technical buckets and is proposed separately."
+      },
+      "parties": "APAS \u00b7 Owner's counsel \u00b7 Regulators",
+      "regulatory_driver": "Consent Order enumerated corrective actions \u00b7 FDEP \u00b7 Miami-Dade DERM \u00b7 NPDES MS4"
+    },
+    {
+      "key": "ENV-06",
+      "bucket": "ENV",
+      "name": "Ongoing Regulatory Compliance Services",
+      "type": "Recurring Services",
+      "status": "Active",
+      "flag": "",
+      "headline": "Keep water, sewer and stormwater operating in conformance with their permits \u2014 local, county and state \u2014 without gaps.",
+      "context": "Compliance is not a project that finishes. Permits renew, reports come due, devices need annual certification, and a missed deadline is a violation regardless of how well the underlying system is performing. This is the standing service that keeps every obligation on a calendar with a named owner and evidence attached \u2014 and, critically, keeps the property protected in flood and storm events, which is where regulatory risk and physical risk converge.",
+      "scope": [
+        "Maintain the master permit and obligation register across the City of Opa-Locka, Miami-Dade DERM and RER, SFWMD and FDEP.",
+        "Maintain the reporting calendar with lead-time alerts and a named responsible party on every submittal.",
+        "Prepare and submit all periodic regulatory reports across water, sewer and stormwater.",
+        "Manage permit renewals, modifications and condition compliance.",
+        "Manage annual certifications, including backflow device testing.",
+        "Serve as the point of contact for regulator inspections, inquiries and enforcement correspondence.",
+        "Monitor regulatory change at local and state level and assess its impact on the property.",
+        "Maintain flood-event readiness: pre-storm procedures, event response and post-event documentation and reporting.",
+        "Maintain the complete compliance evidence record in ProjOS, audit-ready at any time."
+      ],
+      "deliverables": [
+        "Master permit and obligation register",
+        "Reporting calendar with named responsibility and lead-time alerts",
+        "All periodic regulatory submittals, filed on time",
+        "Permit renewals and annual certifications maintained",
+        "Regulator correspondence file",
+        "Flood-event readiness and response documentation",
+        "Audit-ready compliance record in ProjOS"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Monthly professional services",
+        "apas_role": "APAS self-performed",
+        "note": "Monthly professional services under an annual authorisation, scaling with the number of active permits and the reporting cadence."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "NPDES MS4 \u00b7 FDEP \u00b7 Miami-Dade DERM Chapter 24 \u00b7 SFWMD ERP \u00b7 City of Opa-Locka \u00b7 Safe Drinking Water Act"
+    },
+    {
+      "key": "PMO-01",
+      "bucket": "PMO",
+      "name": "Program & Project Management Services",
+      "type": "Recurring Services",
+      "status": "Active",
+      "flag": "",
+      "headline": "Day-to-day management of the crews on site and program-level control across all four buckets.",
+      "context": "Thirty-one projects, four systems, three regulators and multiple contractors do not coordinate themselves. This is the function that holds scope and delivery under control across the whole program \u2014 and the function that keeps the owner from having to adjudicate between contractors.",
+      "scope": [
+        "Day-to-day management of on-site crews and contractors: coordination, sequencing, quality and safety oversight.",
+        "Program-level scope control across all buckets, with interface management where projects touch.",
+        "Integrated master schedule with the cross-bucket dependency map maintained live.",
+        "Procurement and administration of all specialty subcontracts.",
+        "Change management, and change order review and negotiation.",
+        "Pay application review, verification against installed work, and lien waiver control.",
+        "Contract administration, including warranty tracking and retainage management.",
+        "Permit tracking and agency coordination across the City, DERM, RER, SFWMD and FDEP.",
+        "Owner reporting on a defined cadence: status, risk and schedule performance.",
+        "Risk register maintained with mitigation owners and dates."
+      ],
+      "deliverables": [
+        "Integrated master schedule, maintained live",
+        "Monthly owner report: status, risk and schedule performance",
+        "Change management log with full substantiation",
+        "Reviewed and certified pay applications",
+        "Risk register with mitigation owners",
+        "Permit and agency coordination record"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Monthly professional services",
+        "apas_role": "APAS self-performed",
+        "note": "Monthly professional services under an annual authorisation, scaling with the number of projects in active execution."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "Prime Contract PC-01 \u00b7 owner governance"
+    },
+    {
+      "key": "PMO-02",
+      "bucket": "PMO",
+      "name": "ProjOS Program Operating Record",
+      "type": "Systems \u00b7 Recurring",
+      "status": "To be demonstrated",
+      "flag": "",
+      "headline": "Every project in this program instantiated in ProjOS \u2014 one operating record the owner can open at any time.",
+      "context": "This is the layer worth seeing rather than reading about, and it is the one we should walk through live with R4. Each project in this document becomes a live object in ProjOS carrying its scope, deliverables, permits, documents and current status. The systems connect: the flow meter feeds live data, the compliance calendar drives alerts, the evidence file assembles itself as work is completed. The owner stops asking what the status is and starts looking at it.",
+      "scope": [
+        "Instantiate all program projects in ProjOS with scope, deliverables, dependencies and approval status.",
+        "Configure the five program buckets with roll-up reporting to a program-level dashboard.",
+        "Connect live data: the sewer flow meter, groundwater monitoring results and stormwater performance monitoring.",
+        "Build the compliance engine: permit register, reporting calendar, automated alerts and evidence capture.",
+        "Establish the document control system, with every drawing, permit, certification and report attached to its project.",
+        "Track every project proposal from issue through approval to completion, so the authorisation record is never in doubt.",
+        "Configure owner-facing dashboards for status, schedule and risk.",
+        "Build the operations layer for the stormwater, sewer and water operations plans, with scheduled tasks and completion evidence.",
+        "Demonstrate the system live to R4 and configure access."
+      ],
+      "deliverables": [
+        "All program projects live in ProjOS",
+        "Program dashboard with bucket roll-up",
+        "Live data integrations",
+        "Compliance engine with automated alerts and evidence capture",
+        "Document control system",
+        "Proposal and approval tracking",
+        "Owner-facing dashboards and access",
+        "Live demonstration to R4"
+      ],
+      "sequence": {
+        "predecessors": [],
+        "successors": []
+      },
+      "commercial": {
+        "budget": "TBD",
+        "budget_established": false,
+        "authorization": "Proposal to be issued",
+        "fee_basis": "Monthly professional services",
+        "apas_role": "APAS self-performed",
+        "note": "Fixed-fee setup, then monthly administration and hosting under an annual authorisation."
+      },
+      "parties": "APAS",
+      "regulatory_driver": "Owner governance \u00b7 Consent Order evidence requirements \u00b7 audit readiness"
+    }
+  ],
+  "glossary": [
+    {
+      "key": "retention pond",
+      "term": "Retention Pond",
+      "technical": "A permitted stormwater impoundment designed to capture a defined runoff volume and release it primarily by infiltration into the ground and evaporation, rather than by discharging it downstream. Its performance is expressed as a stage-storage relationship \u2014 how many cubic feet of water it holds at each water-surface elevation \u2014 and it is regulated against a permitted storage volume and an allowable discharge rate.",
+      "plain_english": "A shallow basin that holds rainwater and lets it soak into the ground instead of running off the property. Think of it as the property's bathtub: rain fills it during a storm, and it drains slowly afterwards. Its whole value is how much water it can hold. Over the years, dirt and sediment settle on the bottom and quietly steal that capacity \u2014 the pond looks the same from the bank, but it holds less than it used to.",
+      "why_it_matters": "This pond is the property's primary storage asset, and nobody currently knows how much storage is left in it. That number is the difference between a storm that drains and a storm that floods."
+    },
+    {
+      "key": "detention",
+      "term": "Detention (vs. Retention)",
+      "technical": "A detention facility temporarily stores runoff and releases it downstream at a controlled rate through an outfall structure. A retention facility holds the volume and disposes of it on site through infiltration. Most South Florida systems operate as a hybrid: retention up to a design volume, with controlled detention discharge above it.",
+      "plain_english": "Detention slows water down and lets it out. Retention holds water and lets it soak away. One manages the rate, the other manages the volume \u2014 and a well-designed pond usually does both.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "catch basin",
+      "term": "Catch Basin",
+      "technical": "An inlet structure \u2014 typically a concrete box with a grate or curb opening \u2014 that receives surface runoff and conveys it into the underground piped drainage network. It also acts as a sediment sump, trapping solids before they enter the pipes.",
+      "plain_english": "The grate in the parking lot that water disappears into. Underneath it is a concrete box connected to a pipe. It is also the property's first line of defense against debris \u2014 which is exactly why it fills with sediment and stops working if nobody cleans it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "cctv inspection",
+      "term": "CCTV Inspection",
+      "technical": "Closed-circuit television inspection: a self-propelled or winched camera is run through a pipe reach, producing continuous distance-referenced video. Output includes pipe diameter, material, joint condition, slope indication, and coded structural and operational defects.",
+      "plain_english": "A camera on wheels driven through the pipe, recording the whole way. It is the only way to see the condition of a buried pipe without digging it up \u2014 and it answers questions no drawing can: is the pipe cracked, is it full of sediment, has it collapsed.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "nassco pacp",
+      "term": "NASSCO PACP",
+      "technical": "Pipeline Assessment Certification Program \u2014 the North American industry standard for coding pipe defects observed during CCTV inspection. It produces a consistent, numerically graded condition score for each defect and each reach.",
+      "plain_english": "A standard scoring system for pipe defects, so 'bad condition' means the same thing to every engineer, contractor and regulator who reads the report. Without it, a condition assessment is one inspector's opinion.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "invert",
+      "term": "Invert & Rim",
+      "technical": "The invert is the elevation of the inside bottom of a pipe where it enters or leaves a structure. The rim is the elevation of the structure's top at grade. The difference between inverts across a reach establishes the pipe's slope, and therefore whether it drains by gravity.",
+      "plain_english": "The rim is the top of the manhole you see. The invert is the bottom of the pipe below it. The difference between the inverts at each end of a pipe tells you which way the water actually flows \u2014 and whether it flows at all.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "exfiltration trench",
+      "term": "Exfiltration Trench",
+      "technical": "A perforated pipe bedded in clean gravel and wrapped in filter fabric, installed below the water table, that distributes stormwater into the surrounding soil. In Miami-Dade it is designed under Chapter 24 criteria using the site's measured hydraulic conductivity.",
+      "plain_english": "A gravel-filled trench with a slotted pipe running through it, buried underground. Water enters the pipe and seeps out sideways into the soil. It is the standard South Florida way to add drainage capacity when there is no room for another pond \u2014 but it only works if the soil actually absorbs water, which is why we test the soil first.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "hydraulic conductivity",
+      "term": "Hydraulic Conductivity (Permeability)",
+      "technical": "A measured soil property expressing the rate at which water moves through a saturated soil, typically reported in cubic feet per second per square foot per foot of head. It is the governing design input for exfiltration and retention sizing.",
+      "plain_english": "How fast water soaks into the ground here, measured rather than assumed. It is the single number that decides how big a drainage feature has to be. Guess it high and the system floods; guess it low and you overbuild by hundreds of thousands of dollars.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "seasonal high water table",
+      "term": "Seasonal High Water Table",
+      "technical": "The highest elevation the groundwater surface is expected to reach in a normal wet season. It sets the lower design limit for infiltration systems, since storage below the water table is unavailable.",
+      "plain_english": "In the wet season the groundwater rises. Anything buried below that level is already sitting in water and cannot absorb any more. It is the floor under every drainage design in South Florida.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "stage-storage",
+      "term": "Stage-Storage Curve",
+      "technical": "A curve relating water-surface elevation (stage) in a basin to the volume of water stored at that elevation. It is derived from survey and is the fundamental input to routing calculations.",
+      "plain_english": "A simple chart: at each water level in the pond, how many gallons is it holding. It is how you convert 'the pond looks full' into an actual number you can design against.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "bathymetric survey",
+      "term": "Bathymetric Survey",
+      "technical": "Survey of the submerged bottom surface of a water body on a defined grid, typically by sonar or direct probing, referenced to a vertical datum. Paired with probing to distinguish the accumulated sediment surface from the original design bottom.",
+      "plain_english": "Surveying the bottom of the pond, underwater. A normal survey stops at the waterline; this one keeps going. It is the only way to find out how much sediment has built up and how much storage that sediment has taken away.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "digital terrain model",
+      "term": "Digital Terrain Model",
+      "technical": "A three-dimensional surface model built from survey points, used to compute volumes between an existing surface and a proposed design surface.",
+      "plain_english": "A 3-D computer model of the ground and the pond bottom. Its practical use here is arithmetic: subtract the design bottom from the current bottom and you get exactly how many cubic yards of muck have to come out \u2014 before anybody bids the job.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "dredging",
+      "term": "Dredging",
+      "technical": "Mechanical or hydraulic removal of accumulated sediment from a basin to restore design storage volume, followed by dewatering, transport and disposal of the removed material.",
+      "plain_english": "Digging the accumulated muck out of the bottom of the pond so it can hold water again. It is priced by the cubic yard, which is why knowing the volume before you start is worth more than it costs to find out.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "waste profiling",
+      "term": "Waste Profiling",
+      "technical": "Laboratory characterization of a material against the acceptance criteria of a receiving facility, establishing whether it classifies as clean fill, solid waste, or regulated waste, and determining lawful disposal pathway, manifesting and transport requirements.",
+      "plain_english": "Testing the muck before you dig it up, to find out where it is legally allowed to go. This matters enormously to cost: clean fill is cheap to dispose of, contaminated material is not. It also avoids the worst outcome in this kind of work \u2014 excavating it, stockpiling it on site, and then finding out nobody will take it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "lift station",
+      "term": "Lift Station (Pump Station)",
+      "technical": "A wet well with pumps, controls and discharge piping that moves water from a lower elevation to a higher one where gravity flow is not available. Sizing is expressed as firm capacity \u2014 the flow deliverable with the largest pump out of service.",
+      "plain_english": "A pit with pumps in it. Where the ground is too flat for water to drain away on its own, you pump it. A retention pond only performs if what comes in can also get out \u2014 and on a flat site, that usually means pumps.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "hydraulic model",
+      "term": "Hydrologic & Hydraulic Model",
+      "technical": "A computational model that generates runoff from a design rainfall event (hydrology) and routes it through the pipe network, storage and control structures (hydraulics), producing water-surface elevations, flow rates and inundation extents over time.",
+      "plain_english": "A computer simulation of what happens on this property when it rains hard. You put in the real pipes, the real ground shape and the real soil, then run a storm through it and watch where the water goes and how deep it gets. It is the difference between an opinion about flooding and an answer.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "design storm",
+      "term": "Design Storm & Return Period",
+      "technical": "A synthetic rainfall event of specified depth and duration with a stated annual exceedance probability. A 25-year storm has a 4% chance of being equalled or exceeded in any given year; a 100-year storm, 1%.",
+      "plain_english": "A '100-year storm' does not mean once a century \u2014 it means a 1-in-100 chance of happening in any given year, which is roughly a 1-in-4 chance over a 30-year hold. Designing to three different storms tells you three different things: the 5-year is nuisance flooding, the 25-year is the regulatory standard, and the 100-year is whether people's homes take water.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "finished floor elevation",
+      "term": "Finished Floor Elevation",
+      "technical": "The elevation of the lowest habitable floor of a structure, referenced to a vertical datum. Flood protection criteria are expressed as required freeboard between the modeled peak water-surface elevation and this elevation.",
+      "plain_english": "How high the floor of an apartment sits above the ground. It is the line that separates an inconvenient storm from an insurance claim, a displaced resident and a lawsuit. Every flood number in this program is ultimately measured against it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "level of service",
+      "term": "Level of Service",
+      "technical": "The adopted performance standard a drainage system is designed to meet \u2014 typically expressed as no habitable-floor flooding in a stated design storm and passable roadways for emergency access in another.",
+      "plain_english": "The standard you decide to build to, stated out loud. 'No water in the buildings in a 25-year storm, streets passable for a fire truck in a 100-year storm' is a level of service. Without one, nobody can say whether the system is good enough.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "overland flow",
+      "term": "Overland Flow Path",
+      "technical": "The surface route runoff follows when piped capacity is exceeded. Preserving intentional overland flow paths is a standard resilience measure for events beyond the piped design storm.",
+      "plain_english": "Where the water goes once the pipes are full. Every site has these paths whether they were designed or not \u2014 the question is whether they run harmlessly to the pond or straight through somebody's front door.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "control structure",
+      "term": "Control Structure (Weir & Orifice)",
+      "technical": "The outfall structure that governs discharge from a basin. A weir is an overflow crest controlling higher stages; an orifice is a fixed opening controlling low-stage discharge. Their dimensions and elevations set the permitted discharge rate.",
+      "plain_english": "The concrete box at the pond outlet with a notch and a hole in it. The hole controls the slow everyday drainage; the notch handles the overflow in a big storm. Those two dimensions are what the permit actually regulates \u2014 change them and you have changed the permit.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "littoral zone",
+      "term": "Littoral Zone & Safety Shelf",
+      "technical": "A shallow vegetated bench around the perimeter of a pond, typically required by permit. It provides water quality treatment through plant uptake and functions as a safety shelf preventing immediate drop-off at the water's edge.",
+      "plain_english": "The shallow planted shelf around the edge of the pond. It cleans the water and, just as importantly, means someone who steps in at the bank does not go straight over their head.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "turbidity",
+      "term": "Turbidity",
+      "technical": "A measure of water clarity reduced by suspended particles, regulated during in-water construction. Exceedances above background at a compliance boundary trigger work stoppage.",
+      "plain_english": "How muddy the water is. During dredging, regulators watch it closely \u2014 cloud up the water beyond the allowed limit and the job stops until it clears.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "navd 88",
+      "term": "NAVD 88",
+      "technical": "North American Vertical Datum of 1988 \u2014 the standard vertical reference for elevations in the United States. All flood, floor and invert elevations must share a single datum to be comparable.",
+      "plain_english": "The common yardstick for elevation. If the survey, the flood maps and the building floors are measured from different starting points, none of the numbers can be compared \u2014 and in South Florida, a foot of error is the whole margin.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "perforated pipe",
+      "term": "Perforated vs. Solid Pipe",
+      "technical": "Perforated pipe has openings along its barrel and is intended to exchange water with the surrounding soil, as in an exfiltration system. Solid pipe is watertight and intended purely for conveyance.",
+      "plain_english": "Slotted pipe is meant to leak \u2014 it is drainage by design. Solid pipe is meant to carry water from A to B without losing any. Knowing which is which underground completely changes how the system behaves, and it is one of the first things the camera tells us.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "illicit connection",
+      "term": "Illicit Connection",
+      "technical": "Any connection to the storm sewer conveying a non-stormwater discharge. Detection and elimination is a mandatory minimum control measure under the NPDES MS4 program.",
+      "plain_english": "Something plumbed into the storm drain that has no business being there \u2014 a sink, a wash bay, a sewer line crossed into the wrong pipe. It goes straight to the environment untreated, and finding one is a regulatory obligation, not an option.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "regrading",
+      "term": "Regrading & Recontouring",
+      "technical": "Reshaping site topography to establish positive drainage toward intended collection points, correct reverse slopes and low points, and set roadway crown and swale elevations to the adopted level of service.",
+      "plain_english": "Reshaping the ground so water runs where you want it to. No pipe can fix a low spot that has nowhere to drain. This is the unglamorous work that makes everything else function \u2014 and on a flat site it is usually the biggest single item.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "swale",
+      "term": "Swale",
+      "technical": "A shallow vegetated channel that conveys and infiltrates runoff, providing both conveyance and water quality treatment.",
+      "plain_english": "A shallow grassy ditch that carries and soaks up rainwater. Cheap, low-maintenance, and effective \u2014 as long as nobody parks on it or fills it in.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "stormwater management plan",
+      "term": "Stormwater Management Plan",
+      "technical": "The governing engineering document for a site's stormwater system: design basis, adopted level of service, system inventory, modeling results, drawings, calculations, permits, test data and the implementation sequence.",
+      "plain_english": "The one document that explains the whole stormwater system \u2014 what it is, what it is designed to do, and what has to be built to get it there. Everything else in this bucket either feeds it or comes out of it. It is written first so that every project after it has a defined place in a plan, rather than being a standalone expense nobody can connect to anything.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "stormwater operations plan",
+      "term": "Stormwater Operations Plan",
+      "technical": "The operational counterpart to the management plan: inspection and maintenance procedures by asset class, frequencies and triggers, pre-storm and post-storm protocols, the regulatory reporting calendar with assigned responsibility, and the evidence retention regime.",
+      "plain_english": "The management plan describes the system. The operations plan runs it \u2014 who checks what, how often, what to do when a storm is coming, and what gets written down. It is the document that survives staff turnover.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "ms4",
+      "term": "NPDES MS4 Permit",
+      "technical": "Municipal Separate Storm Sewer System permit issued under the National Pollutant Discharge Elimination System of the Clean Water Act. It imposes minimum control measures including illicit discharge detection, good housekeeping, inspection and annual reporting.",
+      "plain_english": "The federal permit that governs what the storm drain system is allowed to send to public waters. It comes with standing duties \u2014 inspect, document, report \u2014 and those duties do not pause because nobody is asking.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "erp",
+      "term": "SFWMD Environmental Resource Permit",
+      "technical": "The South Florida Water Management District permit governing site stormwater management: permitted storage volume, allowable discharge rate, treatment volume and system configuration. Modifications to the permitted system require permit modification.",
+      "plain_english": "The state water district's permit for how this property handles rain. It fixes how much water the site must hold and how fast it may release. Change the pond or the outfall and you are changing the permit, whether you filed for it or not.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "chapter 24",
+      "term": "Miami-Dade Chapter 24",
+      "technical": "The Miami-Dade County Environmental Protection Code, administered by DERM. It governs drainage design criteria, exfiltration sizing, cross-connection control, well permitting and contamination assessment within the county.",
+      "plain_english": "The county's environmental rulebook. Locally it usually bites harder than the state rules, and DERM enforces it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "derm",
+      "term": "DERM",
+      "technical": "Miami-Dade County Department of Regulatory and Economic Resources, Division of Environmental Resources Management \u2014 the county environmental regulator for drainage, wells, contamination assessment and cross-connection control.",
+      "plain_english": "The county environmental agency. They permit the wells, they review the drainage, and they are the ones who decide whether a contamination question is closed.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "fdep",
+      "term": "FDEP",
+      "technical": "Florida Department of Environmental Protection \u2014 the state environmental regulator, with jurisdiction over sewer certifications, contamination assessment and cleanup under Chapter 62-780 F.A.C., and solid waste.",
+      "plain_english": "The state environmental agency. County and state both have a say here, and they do not always ask for the same thing.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "consent order",
+      "term": "Consent Order",
+      "technical": "A binding, negotiated enforcement instrument between a regulator and a respondent, enumerating specific corrective actions, deadlines and reporting obligations. It terminates only upon documented completion of every enumerated action and written release by the agency.",
+      "plain_english": "A legal agreement with the regulator listing exactly what has to be fixed and by when. It does not expire on its own and it does not quietly go away \u2014 it closes when every item is done, documented, and released in writing. Until then it stays attached to the property.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "gravity sewer",
+      "term": "Gravity Sewer",
+      "technical": "A sanitary collection system in which flow is conveyed by gravity along a continuous downward slope, without pumping, from service laterals through mains to a receiving pump station or treatment facility.",
+      "plain_english": "Sewer pipe laid on a constant downhill slope so waste flows on its own, no pumps. Simple and reliable \u2014 provided the slope is right, which is exactly what the record drawings and CCTV have to prove.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "conveyance",
+      "term": "Conveyance (Asset Transfer)",
+      "technical": "The formal legal and administrative transfer of a constructed utility to the operating public utility, comprising engineering certifications, record drawings, testing evidence, warranties, title instruments, bills of sale and performance security, culminating in written acceptance.",
+      "plain_english": "Handing the finished sewer over to the City so it becomes their pipe to own, operate, fix and pay for. Until that transfer is accepted in writing, it is still the owner's asset, the owner's repair bill and the owner's liability.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "infiltration and inflow",
+      "term": "Infiltration & Inflow (I&I)",
+      "technical": "Extraneous water entering a sanitary system: infiltration is groundwater entering through defects and joints; inflow is stormwater entering through direct connections and manhole covers. Both consume conveyance and treatment capacity and are billed as sewage.",
+      "plain_english": "Groundwater and rainwater leaking into the sewer where they do not belong. You end up paying to move and treat clean water as if it were sewage. On a wet site, it can be a large share of the bill \u2014 and you cannot manage it until you can measure it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "flow meter",
+      "term": "Effluent Flow Meter",
+      "technical": "A permanent metering installation at a point of discharge, measuring flow continuously with time-stamped data logging and telemetry, calibrated to a certified accuracy and used for billing, capacity allocation and I&I quantification.",
+      "plain_english": "A meter on the pipe leaving the property, recording continuously. It turns 'we think we discharge about this much' into a number nobody can argue with \u2014 for billing, for capacity, and for proving how much of the flow is actually rainwater.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "diurnal flow",
+      "term": "Diurnal Flow Curve",
+      "technical": "The characteristic 24-hour pattern of sanitary flow, showing morning and evening peaks and a pre-dawn minimum. Elevated pre-dawn minimum flow, when occupied-building discharge should be near zero, is the classic signature of groundwater infiltration.",
+      "plain_english": "Sewer flow follows daily life \u2014 it spikes when people shower and cook, and drops to almost nothing at 3 a.m. If it is not near zero at 3 a.m., that extra water is groundwater leaking in. It is one of the clearest diagnostics there is, and it needs a meter to see it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "retainage",
+      "term": "Retainage",
+      "technical": "A percentage of each progress payment withheld by the owner and released on defined milestones \u2014 typically part at substantial completion and the balance after final warranty inspection \u2014 as security for completion and defect correction.",
+      "plain_english": "Money held back from the contractor until the work is finished and proven. It is the last real leverage anyone has once the crews have left the site.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "lien waiver",
+      "term": "Lien Waiver",
+      "technical": "An executed instrument by which a contractor, subcontractor or supplier relinquishes lien rights against the property for work performed or materials supplied through a stated date, in exchange for payment.",
+      "plain_english": "A signed document saying 'I have been paid and I will not put a lien on this property.' Without a complete set, a paid-in-full job can still surface as a claim against the title later.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "substantial completion",
+      "term": "Substantial Completion",
+      "technical": "The point at which work is sufficiently complete that the owner may occupy or use it for its intended purpose. It starts the warranty period and triggers partial retainage release.",
+      "plain_english": "The date the system is usable, even if small items remain. It matters because it starts the warranty clock \u2014 which is why the date has to be established and documented, not assumed.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "record drawings",
+      "term": "Record Drawings (As-Builts)",
+      "technical": "Drawings signed and sealed by the engineer or surveyor depicting the facility as actually constructed, including field changes, with horizontal locations and vertical elevations verified by survey.",
+      "plain_english": "Drawings of what was actually built, not what was drawn beforehand. Those two things are never quite the same. Sealed as-builts are what the City accepts at conveyance, and what anyone digging here in ten years will rely on.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "engineer of record",
+      "term": "Engineer of Record",
+      "technical": "The licensed professional engineer who takes professional responsibility for the design and issues the sealed certifications a permitting authority requires for acceptance.",
+      "plain_english": "The licensed engineer whose seal and license stand behind the design. Certain documents cannot be issued by anyone else, which makes their availability a real scheduling dependency.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "professional surveyor",
+      "term": "Professional Surveyor & Mapper",
+      "technical": "A Florida-licensed PSM authorized to sign and seal boundary, topographic and as-built surveys. Sealed surveys are required for permitting and utility conveyance.",
+      "plain_english": "The licensed surveyor whose seal makes a survey official. An unsealed sketch is useful internally; only a sealed survey is accepted by a permitting agency.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "utilities performance security",
+      "term": "Utilities Performance Security",
+      "technical": "Financial security posted to the receiving utility at conveyance \u2014 commonly a percentage of total construction cost plus a fixed final-obligations cash bond \u2014 guaranteeing correction of defects during the acceptance and warranty period.",
+      "plain_english": "A bond or deposit the City holds after taking over the system, in case something fails soon after handover. It is a real cash requirement at conveyance and is handled by the owner and counsel, not by APAS.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "backflow preventer",
+      "term": "Backflow Preventer",
+      "technical": "A mechanical assembly preventing reverse flow from a customer's system into the public potable distribution main. Device class \u2014 reduced pressure zone (RPZ) or double check valve assembly (DCVA) \u2014 is selected by hazard classification, and certified annual testing is mandatory.",
+      "plain_english": "A one-way valve on the water service that stops water from flowing backwards into the public drinking water main if pressure drops. The installation is straightforward. The part people miss is that every device must be tested and certified by a licensed tester every single year, forever \u2014 and a missed test is a violation even if the device is perfect.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "potable water",
+      "term": "Potable Water",
+      "technical": "Water treated to drinking water standards and delivered through the public distribution system, subject to Safe Drinking Water Act and F.A.C. 62-555 requirements.",
+      "plain_english": "Treated drinking water. It is the most expensive water on the property, which is why using it to irrigate grass is worth reconsidering.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "meter box",
+      "term": "Meter Box",
+      "technical": "The below-grade enclosure and service setting that houses a water meter, constructed to utility standard with the service piping and appurtenances required for the utility to install and read its meter.",
+      "plain_english": "The concrete or plastic box in the ground that a water meter sits in. We build the box and the setting to the City's standard; the City brings and installs the meter itself. Sequencing that handover is most of the work \u2014 a box that is not ready on the day the City arrives costs weeks.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "subsurface utility",
+      "term": "Subsurface Utility Locating",
+      "technical": "Non-destructive designation of buried utilities using electromagnetic induction and ground-penetrating radar, followed where required by vacuum excavation (potholing) to physically verify horizontal position, depth, diameter and material.",
+      "plain_english": "Finding buried pipes without digging up the whole site \u2014 first with instruments from the surface, then by carefully exposing a few specific spots to confirm what is actually there. It costs a fraction of what hitting a live main costs.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "potholing",
+      "term": "Potholing",
+      "technical": "Small-diameter test excavation, typically by vacuum, exposing a buried utility to directly measure depth, diameter, material and condition without damaging it.",
+      "plain_english": "Digging one small careful hole to physically see the pipe and confirm what the instruments said. A handful of these turns a probable location into a known one.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "irrigation well",
+      "term": "Irrigation Well",
+      "technical": "A permitted non-potable supply well drawing from the surficial aquifer for landscape irrigation, requiring DERM well construction permitting and SFWMD water use authorization, and physically separated from the potable system with backflow protection.",
+      "plain_english": "A well that pumps groundwater for watering the grounds, instead of paying for treated drinking water to do it. It lowers the water bill, takes irrigation volume off the meters, and keeps a non-drinking use physically separate from the drinking water system.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "aquifer",
+      "term": "Surficial Aquifer",
+      "technical": "The shallow unconfined water-bearing formation beneath the site \u2014 in this area the Biscayne Aquifer \u2014 from which non-potable supply is typically drawn and within which contaminant migration occurs.",
+      "plain_english": "The shallow groundwater under the property. It is where an irrigation well draws from \u2014 and it is also the path any contamination from a neighbouring property would travel along.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "sunshine 811",
+      "term": "Sunshine 811",
+      "technical": "Florida's statutory one-call underground utility notification system. Excavators must notify before digging so member utilities can mark their facilities. Notification does not locate private on-site utilities.",
+      "plain_english": "The call-before-you-dig service. Worth knowing: it marks the utilities owned by the public utilities, not the private pipes inside a property like this one. Those are ours to find \u2014 which is exactly why the as-built work matters.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "plume",
+      "term": "Contaminant Plume",
+      "technical": "A defined body of contaminated groundwater migrating from a source in the direction of the hydraulic gradient. It is characterised by its constituents, concentration distribution, extent and rate and direction of movement.",
+      "plain_english": "A slow-moving underground stain in the groundwater, spreading outward from wherever it leaked. It travels with the groundwater, so it moves in one predictable direction \u2014 which means you can work out in advance which side of a property it would arrive on, and put your wells there.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "groundwater gradient",
+      "term": "Groundwater Gradient",
+      "technical": "The slope of the groundwater surface, determining direction and rate of flow. Established by synoptic water-level measurements across three or more wells referenced to a common datum.",
+      "plain_english": "Groundwater flows downhill too \u2014 just very slowly, and the hill is invisible. Measuring the water level in several wells on the same day tells you which way it is heading, and therefore where anything dissolved in it is heading.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "monitoring well",
+      "term": "Monitoring Well",
+      "technical": "A small-diameter cased and screened well installed to permit measurement of groundwater elevation and collection of representative groundwater samples at a defined depth interval.",
+      "plain_english": "A narrow permanent pipe into the groundwater that lets you measure the water level and take samples from the same spot, year after year. One sample is a data point; the same well sampled repeatedly is a trend \u2014 and the trend is what actually answers the question.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "upgradient",
+      "term": "Upgradient & Downgradient",
+      "technical": "Upgradient wells lie hydraulically above the area of interest and establish background quality. Downgradient wells lie below it and detect contaminants migrating from an upgradient source.",
+      "plain_english": "Upstream and downstream, in groundwater terms. You need both: the upstream well tells you what the water looks like before it reaches the property, and the downstream well tells you what changed. Without the first, you cannot prove the second came from somewhere else.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "contaminants of concern",
+      "term": "Contaminants of Concern",
+      "technical": "The specific analytes selected for laboratory analysis based on documented historical use and known releases at identified source properties, rather than a generic panel.",
+      "plain_english": "The specific substances worth testing for, chosen from what the neighbouring properties actually did and actually spilled. Testing for the right short list beats testing for everything \u2014 it is cheaper and the results mean more.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "cleanup target levels",
+      "term": "Groundwater Cleanup Target Levels",
+      "technical": "Numerical concentration standards established under Chapter 62-780 F.A.C. against which detected groundwater concentrations are compared to determine whether further assessment or remediation is required.",
+      "plain_english": "The state's published thresholds. Below them, a detection is generally a non-issue; above them, obligations start. It is the line that turns a lab number into a decision.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "chain of custody",
+      "term": "Chain of Custody",
+      "technical": "The documented, unbroken record of sample possession and transfer from collection through laboratory analysis, required for analytical results to be defensible.",
+      "plain_english": "The paper trail proving a sample went straight from the well to the lab without being tampered with. Without it, a result that favours you is not usable when it counts.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "sanborn",
+      "term": "Sanborn Maps & Historical Aerials",
+      "technical": "Historical fire insurance maps and sequential aerial photography used to reconstruct prior land use, identify former structures, tanks and operations, and establish the temporal history of potential contamination sources.",
+      "plain_english": "Old insurance maps and aerial photographs going back decades. They show what used to be on the neighbouring land \u2014 the tanks, the workshops, the wrecking yards \u2014 long before anyone was required to report a spill.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "chapter 62-780",
+      "term": "Chapter 62-780 F.A.C.",
+      "technical": "The Florida Administrative Code rule governing contaminated site cleanup criteria \u2014 assessment, risk evaluation, cleanup target levels and closure pathways including No Further Action.",
+      "plain_english": "The state rulebook for contaminated sites: how you investigate, what counts as clean, and how a site formally gets closed out.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "non-revenue water",
+      "term": "Non-Revenue Water",
+      "technical": "The difference between system input volume and billed authorized consumption, expressed as a volume and as a percentage of input. It comprises unbilled authorized consumption, apparent losses \u2014 metering inaccuracy, data-handling error and unauthorized consumption \u2014 and real losses from mains, service connections and storage.",
+      "plain_english": "Water you paid for that nobody paid you for. It arrives at the property, and then some of it never shows up on a bill \u2014 because it leaked out of a pipe, because a meter is reading low, or because it was used somewhere nobody is accounting for. On a property this size, the gap between what comes in and what gets billed is usually wider than anyone expects.",
+      "why_it_matters": "Glorieta buys water from the City and is about to install a full set of meters. That combination is exactly when a water balance is worth doing \u2014 it is the only way to find out whether the property is paying every month for water that is running into the ground."
+    },
+    {
+      "key": "water balance",
+      "term": "Water Balance (AWWA M36 Audit)",
+      "technical": "The standard AWWA M36 accounting framework reconciling system input volume against authorized consumption and losses, disaggregating apparent from real losses and producing validated performance indicators including the Infrastructure Leakage Index.",
+      "plain_english": "A structured ledger for water: everything that came in on one side, everything that can be accounted for on the other, and a disciplined method for explaining the difference. It being the industry-standard method matters \u2014 the result is comparable, defensible and recognised by anyone who later reviews it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "apparent losses",
+      "term": "Apparent Losses",
+      "technical": "Non-physical losses: customer meter under-registration, systematic data transfer and billing errors, and unauthorized consumption. The water is delivered and used, but not correctly measured or billed.",
+      "plain_english": "Water that did get used, but never got counted properly \u2014 an old meter reading low, a billing record nobody entered, a connection nobody knows about. These are usually the cheapest losses to fix, because the fix is a meter or a spreadsheet rather than a trench.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "real losses",
+      "term": "Real Losses",
+      "technical": "Physical losses from the pressurised system: background leakage, reported and unreported bursts on mains and service connections, and storage overflow. Quantified against the theoretical minimum for a system of the same length, connection count and pressure.",
+      "plain_english": "Water genuinely leaking out of the pipes into the ground. Most of it never surfaces \u2014 it seeps away quietly, day and night, for years. You pay for every gallon of it.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "infrastructure leakage index",
+      "term": "Infrastructure Leakage Index",
+      "technical": "The ratio of current annual real losses to unavoidable annual real losses. An ILI of 1.0 represents the technical minimum achievable for that system's length, connections and operating pressure; higher values indicate recoverable leakage.",
+      "plain_english": "A single score for how leaky this system is compared with how leaky it would be in perfect condition. A score near 1 means there is nothing worth chasing. A high score means there is real money running into the ground \u2014 and it tells you that before you spend anything digging.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "minimum night flow",
+      "term": "Minimum Night Flow",
+      "technical": "The lowest continuous flow rate recorded across a 24-hour cycle, typically between 2 and 4 a.m. when legitimate consumption is at its minimum. Residual flow above estimated night-time use is a direct indicator of leakage.",
+      "plain_english": "At three in the morning almost nobody is using water. Whatever is still flowing at that hour is mostly leaking. It is one of the simplest and most powerful leak indicators there is, and it needs nothing more than a meter that logs continuously.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "district metered area",
+      "term": "District Metered Area",
+      "technical": "A hydraulically discrete zone of a distribution system with metered inflow, allowing losses to be quantified and localised within that zone rather than only across the system as a whole.",
+      "plain_english": "Splitting the property into metered zones, so that when the numbers say water is going missing you know which part of the site it is going missing from. It turns 'we have a leak somewhere' into 'we have a leak in this block'.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "meter under-registration",
+      "term": "Meter Under-Registration",
+      "technical": "Progressive loss of accuracy in a mechanical water meter with age and cumulative throughput, characteristically most severe at low flow rates. Verified by bench or in-situ accuracy testing against a calibrated standard.",
+      "plain_english": "Water meters slow down as they age, and they always err in the same direction \u2014 reading less than actually passed through. An old meter quietly tells you that you used less water than you did. That sounds like good news until you remember the City's master meter has no such problem.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "system input volume",
+      "term": "System Input Volume",
+      "technical": "The total volume of water entering the system over the audit period, measured at the point of supply and corrected for master meter accuracy. It is the top line of the water balance; every other figure reconciles against it.",
+      "plain_english": "Everything that came onto the property through the pipe, measured at the front door. The whole audit hangs off this number, which is why the accuracy of the meter producing it has to be verified first.",
+      "why_it_matters": ""
+    },
+    {
+      "key": "authorized consumption",
+      "term": "Authorized Consumption",
+      "technical": "Water taken by registered customers and for operational purposes, whether billed or unbilled. Unbilled authorized consumption covers uses such as irrigation, line flushing and fire-fighting where these are not metered or charged.",
+      "plain_english": "Water that was legitimately used \u2014 including the uses nobody sends a bill for, like irrigation, flushing lines and hydrant testing. It is not a loss, but it has to be measured or honestly estimated, otherwise it hides inside the loss figure and makes leakage look worse than it is.",
+      "why_it_matters": ""
+    }
+  ]
+}
