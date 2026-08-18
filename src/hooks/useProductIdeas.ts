@@ -81,7 +81,7 @@ type ProductIdeaRpc = {
 
 // These functions are introduced by the Product Ideas migration. Keeping the
 // narrow adapter here avoids weakening the generated Supabase client globally.
-const productIdeaRpc = supabase.rpc as unknown as ProductIdeaRpc;
+const productIdeaRpc = supabase.rpc.bind(supabase) as unknown as ProductIdeaRpc;
 
 const BOARD_KEY = ['product-ideas'] as const;
 
