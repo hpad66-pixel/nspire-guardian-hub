@@ -233,6 +233,83 @@ describe("useFinancialProposals", () => {
     });
     expect(patch.accepted_signed_at).toContain("2026-08-18");
   });
+
+  it("validates proposal renumbering before writing", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+    const proposal = { id: "pr1", proposal_no: "PROP-004", locked: false } as any;
+
+    await expect(result.current.renumber.mutateAsync({ proposal, newNo: " ", reason: "reason" }))
+      .rejects.toThrow("Enter a proposal number.");
+    await expect(result.current.renumber.mutateAsync({ proposal, newNo: "PROP-005", reason: " " }))
+      .rejects.toThrow("Add a reason for the renumbering.");
+    await expect(result.current.renumber.mutateAsync({ proposal, newNo: "PROP-004", reason: "reason" }))
+      .rejects.toThrow("Choose a different proposal number.");
+  });
+
+  it("renumbers an unlocked proposal with legacy history", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await result.current.renumber.mutateAsync({
+      proposal: { id: "pr1", proposal_no: "PROP-004", locked: false, proposal_no_history: null } as any,
+      newNo: "PROP-005",
+      reason: "Sequence correction",
+    });
+
+    expect((builder.update as any).mock.calls).toHaveLength(1);
+    expect((builder.update as any).mock.calls[0][0].proposal_no_history).toHaveLength(1);
+  });
+
+  it("translates duplicate proposal numbers into a useful error", async () => {
+    const builder = makeBuilder({ data: null, error: { message: "duplicate key violates unique constraint" } as any });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+
+    await expect(result.current.renumber.mutateAsync({
+      proposal: { id: "pr1", proposal_no: "PROP-004", locked: false, proposal_no_history: [] } as any,
+      newNo: "PROP-005",
+      reason: "Sequence correction",
+    })).rejects.toThrow("PROP-005 already exists on this project.");
+  });
+
+  it("validates offline approval inputs and restores a prior lock", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+    const proposal = { id: "pr1", locked: true, client_name: "Larkin Hospital" } as any;
+
+    await expect(result.current.approveOffline.mutateAsync({ proposal, path: "", acceptedDate: "2026-08-18" }))
+      .rejects.toThrow("Upload the client's signed proposal first.");
+    await expect(result.current.approveOffline.mutateAsync({ proposal, path: "signed.pdf", acceptedDate: "" }))
+      .rejects.toThrow("Choose the acceptance date.");
+
+    await result.current.approveOffline.mutateAsync({ proposal, path: "signed.pdf", acceptedDate: "2026-08-18" });
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({ locked: false, accepted_signed_name: "Larkin Hospital" });
+    expect((builder.update as any).mock.calls[1][0]).toEqual({ locked: true });
+  });
+
+  it("files a hard copy and optionally promotes a locked copy to primary", async () => {
+    const builder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+    const unlocked = { id: "pr1", locked: false } as any;
+
+    await expect(result.current.uploadHardcopy.mutateAsync({ proposal: unlocked, path: "", note: "Filed", replacePrimary: false }))
+      .rejects.toThrow("Upload the signed hard copy first.");
+    await expect(result.current.uploadHardcopy.mutateAsync({ proposal: unlocked, path: "signed.pdf", note: " ", replacePrimary: false }))
+      .rejects.toThrow("Add a filing note.");
+
+    await result.current.uploadHardcopy.mutateAsync({ proposal: unlocked, path: "signed.pdf", note: " Returned copy ", replacePrimary: false });
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({ signed_hardcopy_path: "signed.pdf", signed_hardcopy_note: "Returned copy" });
+    expect((builder.update as any).mock.calls[0][0].pdf_path).toBeUndefined();
+
+    await result.current.uploadHardcopy.mutateAsync({ proposal: { id: "pr2", locked: true } as any, path: "primary.pdf", note: "Primary", replacePrimary: true });
+    expect((builder.update as any).mock.calls[1][0]).toMatchObject({ pdf_path: "primary.pdf", locked: false });
+    expect((builder.update as any).mock.calls[2][0]).toEqual({ locked: true });
+  });
 });
 
 describe("useFinancialProposalLines", () => {
