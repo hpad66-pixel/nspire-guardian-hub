@@ -56,7 +56,10 @@ export default function ProposalGeneratorPage() {
   const { data: client } = useClient(project?.client_id ?? undefined);
   const proposalQuery = useFinancialProposals(projectId ?? null);
   const existing = proposalQuery.data ?? [];
-  const nextNo = `PROP-${String(existing.length + 1).padStart(3, "0")}`;
+  const nextNo = `PROP-${String(existing.reduce((max, proposal) => {
+    const match = proposal.proposal_no.match(/(\d+)(?!.*\d)/);
+    return Math.max(max, match ? Number(match[1]) : 0);
+  }, 0) + 1).padStart(3, "0")}`;
 
   const [aiText, setAiText] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
@@ -109,7 +112,7 @@ export default function ProposalGeneratorPage() {
     }
   }
 
-  async function createProposal() {
+  async function createProposal(thenSign = false) {
     if (!projectId) return;
     if (!draft.title.trim()) {
       toast.error("Add a title (or draft with AI first).");
@@ -146,7 +149,7 @@ export default function ProposalGeneratorPage() {
         if (error) throw error;
       }
       toast.success("Proposal created");
-      navigate(`/projects/${projectId}/financials/proposals/${created.id}`);
+      navigate(`/projects/${projectId}/financials/proposals/${created.id}${thenSign ? "?sign=1" : ""}`);
     } catch (error) {
       toast.error(`Could not create proposal: ${(error as Error).message}`);
     } finally {
@@ -182,7 +185,15 @@ export default function ProposalGeneratorPage() {
     sent_to_client_at: null,
     client_comments: null,
     pdf_path: null,
+    revision_no: 0,
     amendment_history: [],
+    proposal_no_history: [],
+    delivery_history: [],
+    acceptance_method: null,
+    signed_hardcopy_path: null,
+    signed_hardcopy_note: null,
+    signed_hardcopy_at: null,
+    signed_hardcopy_by: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }) as FinancialProposal, [draft, client, nextNo, projectId]);
@@ -223,10 +234,11 @@ export default function ProposalGeneratorPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/proposals`)}>Cancel</Button>
-          <Button disabled={saving} onClick={createProposal}>
+          <Button variant="outline" disabled={saving} onClick={() => createProposal(false)}>
             {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileText className="mr-1.5 h-4 w-4" />}
-            {saving ? "Creating…" : "Create & open builder"}
+            {saving ? "Creating…" : "Save draft"}
           </Button>
+          <Button disabled={saving} onClick={() => createProposal(true)}>{saving ? "Creating…" : "Save & sign"}</Button>
         </div>
       </div>
 

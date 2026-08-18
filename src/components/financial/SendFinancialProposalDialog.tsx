@@ -128,8 +128,15 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
         },
       });
       if (sendError) throw sendError;
-      const { error } = await supabase.from("proposals" as any).update({
-        client_email: to.trim(), status: "sent", sent_to_client_at: new Date().toISOString(), pdf_path: freshPdfPath, updated_at: new Date().toISOString(),
+      const now = new Date().toISOString();
+      const { data: auth } = await supabase.auth.getUser();
+      const deliveries = Array.isArray(proposal.delivery_history) ? proposal.delivery_history : [];
+      const { error } = await supabase.from("proposals").update({
+        status: "sent",
+        sent_to_client_at: now,
+        pdf_path: freshPdfPath,
+        delivery_history: [...deliveries, { to: to.trim(), at: now, by: auth.user?.id ?? null, kind: proposal.sent_to_client_at ? "resent" : "sent" }],
+        updated_at: now,
       }).eq("id", proposal.id);
       if (error) throw error;
       toast.success(`${proposal.sent_to_client_at ? "Re-sent" : "Sent"} to ${to.trim()}`);

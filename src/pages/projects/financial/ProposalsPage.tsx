@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useFinancialProposals, FinancialProposal } from "@/hooks/useFinancialProposals";
 import { useProjectIssues } from "@/hooks/useProjectIssues";
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2 } from "lucide-react";
+import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { proposalTotals } from "@/components/financial/FinancialProposalDocument";
 
@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<FinancialProposal["status"], { label: string; classN
 
 function fmtDate(d: string | null | undefined) {
   if (!d) return "—";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(d.includes("T") ? d : `${d}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function ProposalsPage() {
@@ -48,12 +48,25 @@ export default function ProposalsPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<Partial<FinancialProposal>>({ markup_pct: 10 });
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const draftCount    = proposals.filter(p => p.status === "draft").length;
   const sentCount     = proposals.filter(p => p.status === "sent").length;
   const approvedCount = proposals.filter(p => p.status === "approved").length;
-  const pipelineValue = proposals.filter(p => !["rejected", "expired"].includes(p.status))
+  const pipelineValue = proposals.filter(p => ["draft", "sent"].includes(p.status))
     .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? []).total, 0);
+  const approvedValue = proposals.filter(p => p.status === "approved")
+    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? []).total, 0);
+  const filteredProposals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return proposals.filter(proposal => {
+      const matchesStatus = statusFilter === "all" || proposal.status === statusFilter;
+      const matchesSearch = !q || [proposal.proposal_no, proposal.title, proposal.client_name, proposal.client_email]
+        .filter(Boolean).some(value => String(value).toLowerCase().includes(q));
+      return matchesStatus && matchesSearch;
+    });
+  }, [proposals, search, statusFilter]);
 
   async function handleCreate() {
     if (!form.title?.trim() || !form.proposal_no?.trim()) {
@@ -79,7 +92,10 @@ export default function ProposalsPage() {
     window.location.href = `/projects/${projectId}/financials/proposals/${created.id}`;
   }
 
-  const nextNo = `PROP-${String(proposals.length + 1).padStart(3, "0")}`;
+  const nextNo = `PROP-${String(proposals.reduce((max, proposal) => {
+    const match = proposal.proposal_no.match(/(\d+)(?!.*\d)/);
+    return Math.max(max, match ? Number(match[1]) : 0);
+  }, 0) + 1).padStart(3, "0")}`;
 
   async function handleDelete(proposal: FinancialProposal) {
     const locked = proposal.locked || proposal.status !== "draft";
@@ -103,8 +119,8 @@ export default function ProposalsPage() {
         <div className="flex items-start gap-2">
           <FileText className="h-6 w-6 text-[var(--apas-sapphire)] mt-1" />
           <div>
-            <h1 className="text-2xl font-bold">Proposals & Quotes</h1>
-            <p className="text-muted-foreground text-sm">Estimates, scope proposals, and client quotes</p>
+            <h1 className="text-2xl font-bold">Client Proposals</h1>
+            <p className="text-muted-foreground text-sm">Draft, price, sign, deliver, revise, and secure client approval in one controlled workflow.</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -120,15 +136,16 @@ export default function ProposalsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: "Draft", value: draftCount,    color: "text-muted-foreground" },
-          { label: "Sent",  value: sentCount,     color: "text-blue-600" },
-          { label: "Approved", value: approvedCount, color: "text-emerald-600" },
-          { label: "Active proposal value", value: fmtMoney(pipelineValue), color: "text-[var(--apas-sapphire)]" },
+          { label: "Total Proposals", value: proposals.length, sub: `${draftCount} draft`, color: "text-foreground" },
+          { label: "Awaiting Client",  value: sentCount, sub: "sent for decision", color: "text-blue-600" },
+          { label: "Approved", value: fmtMoney(approvedValue), sub: `${approvedCount} accepted`, color: "text-emerald-600" },
+          { label: "Active Pipeline", value: fmtMoney(pipelineValue), sub: "draft + sent", color: "text-[var(--apas-sapphire)]" },
         ].map(k => (
           <Card key={k.label}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{k.label}</p>
               <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{k.sub}</p>
             </CardContent>
           </Card>
         ))}
@@ -136,8 +153,14 @@ export default function ProposalsPage() {
 
       {/* Proposals List */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">All Proposals</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">Proposal Log</CardTitle>
+            <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
+              <div className="relative min-w-0 flex-1 sm:w-64"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="h-9 pl-8" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search proposals…" /></div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(STATUS_CONFIG).map(([value, config]) => <SelectItem key={value} value={value}>{config.label}</SelectItem>)}</SelectContent></Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -146,6 +169,8 @@ export default function ProposalsPage() {
             <p className="p-8 text-sm text-muted-foreground text-center">
               No proposals yet. Click "New Proposal" to create your first estimate or quote.
             </p>
+          ) : filteredProposals.length === 0 ? (
+            <p className="p-8 text-center text-sm text-muted-foreground">No proposals match this search or status.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -162,14 +187,14 @@ export default function ProposalsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {proposals.map(p => {
+                  {filteredProposals.map(p => {
                     const sc = STATUS_CONFIG[p.status];
                     const Icon = sc.icon;
                     const amount = proposalTotals(p.proposal_lines ?? []).total;
                     return (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
-                        <td className="p-3 font-mono font-medium">{p.proposal_no}</td>
-                        <td className="p-3">{p.title}</td>
+                      <tr key={p.id} className="cursor-pointer border-b last:border-0 hover:bg-muted/20" onClick={() => navigate(`/projects/${projectId}/financials/proposals/${p.id}`)}>
+                        <td className="p-3 font-mono font-medium"><div>{p.proposal_no}</div>{Number(p.revision_no ?? 0) > 0 && <div className="mt-0.5 text-[10px] font-sans text-muted-foreground">Revision {p.revision_no}</div>}</td>
+                        <td className="p-3"><div>{p.title}</div>{p.client_comments && p.status === "rejected" && <div className="mt-0.5 max-w-xs truncate text-xs text-red-600">Revision requested: {p.client_comments}</div>}</td>
                         <td className="p-3 text-muted-foreground">{p.client_name ?? "—"}</td>
                         <td className="p-3 text-right font-mono font-medium">{fmtMoney(amount)}</td>
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.valid_until)}</td>
@@ -181,7 +206,8 @@ export default function ProposalsPage() {
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Link to={`/projects/${projectId}/financials/proposals/${p.id}`}>
+                            {(p.signed_hardcopy_path || p.pdf_path) && <a href={p.signed_hardcopy_path || p.pdf_path || "#"} target="_blank" rel="noopener noreferrer" onClick={event => event.stopPropagation()} title="Open proposal PDF"><Paperclip className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /></a>}
+                            <Link to={`/projects/${projectId}/financials/proposals/${p.id}`} onClick={event => event.stopPropagation()}>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Open">
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
@@ -192,7 +218,7 @@ export default function ProposalsPage() {
                               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                               title="Delete proposal"
                               disabled={remove.isPending}
-                              onClick={() => handleDelete(p)}
+                              onClick={event => { event.stopPropagation(); handleDelete(p); }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -202,11 +228,14 @@ export default function ProposalsPage() {
                     );
                   })}
                 </tbody>
+                <tfoot><tr className="border-t bg-muted/60 font-bold"><td colSpan={3} className="p-3 text-right">Total Approved</td><td className="p-3 text-right font-mono text-emerald-600">{fmtMoney(approvedValue)}</td><td colSpan={4} /></tr></tfoot>
               </table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Card><CardContent className="space-y-1.5 p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">How proposals work here</p><p>A proposal remains an editable draft until APAS signs it. Signing locks the commercial scope and fee, then the same record is sent or re-sent to the assigned client for electronic acceptance.</p><p>If the client requests changes, <strong>Amend</strong> creates the next auditable revision. If the client signs outside the system, record the offline approval and retain the signed PDF with the same proposal record.</p></CardContent></Card>
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

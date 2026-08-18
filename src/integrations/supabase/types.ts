@@ -10202,16 +10202,38 @@ export type Database = {
       }
       proposals: {
         Row: {
+          acceptance_method: string | null
+          accepted_signature_path: string | null
+          accepted_signed_at: string | null
+          accepted_signed_name: string | null
+          amendment_history: Json
           client_email: string | null
+          client_comments: string | null
           client_name: string | null
           created_at: string
+          deliverables: Json
+          delivery_history: Json
           id: string
+          locked: boolean
           markup_pct: number
           notes: string | null
+          pdf_path: string | null
           project_id: string
           proposal_no: string
+          proposal_no_history: Json
+          revision_no: number
+          scope_bullets: Json
+          sent_to_client_at: string | null
+          sign_token: string
+          signed_hardcopy_at: string | null
+          signed_hardcopy_by: string | null
+          signed_hardcopy_note: string | null
+          signed_hardcopy_path: string | null
           source_issue_id: string | null
           status: string
+          submitted_signature_path: string | null
+          submitted_signed_at: string | null
+          submitted_signed_by: string | null
           tenant_id: string
           terms: string | null
           title: string
@@ -10219,16 +10241,38 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          acceptance_method?: string | null
+          accepted_signature_path?: string | null
+          accepted_signed_at?: string | null
+          accepted_signed_name?: string | null
+          amendment_history?: Json
           client_email?: string | null
+          client_comments?: string | null
           client_name?: string | null
           created_at?: string
+          deliverables?: Json
+          delivery_history?: Json
           id?: string
+          locked?: boolean
           markup_pct?: number
           notes?: string | null
+          pdf_path?: string | null
           project_id: string
           proposal_no: string
+          proposal_no_history?: Json
+          revision_no?: number
+          scope_bullets?: Json
+          sent_to_client_at?: string | null
+          sign_token?: string
+          signed_hardcopy_at?: string | null
+          signed_hardcopy_by?: string | null
+          signed_hardcopy_note?: string | null
+          signed_hardcopy_path?: string | null
           source_issue_id?: string | null
           status?: string
+          submitted_signature_path?: string | null
+          submitted_signed_at?: string | null
+          submitted_signed_by?: string | null
           tenant_id: string
           terms?: string | null
           title: string
@@ -10236,16 +10280,38 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          acceptance_method?: string | null
+          accepted_signature_path?: string | null
+          accepted_signed_at?: string | null
+          accepted_signed_name?: string | null
+          amendment_history?: Json
           client_email?: string | null
+          client_comments?: string | null
           client_name?: string | null
           created_at?: string
+          deliverables?: Json
+          delivery_history?: Json
           id?: string
+          locked?: boolean
           markup_pct?: number
           notes?: string | null
+          pdf_path?: string | null
           project_id?: string
           proposal_no?: string
+          proposal_no_history?: Json
+          revision_no?: number
+          scope_bullets?: Json
+          sent_to_client_at?: string | null
+          sign_token?: string
+          signed_hardcopy_at?: string | null
+          signed_hardcopy_by?: string | null
+          signed_hardcopy_note?: string | null
+          signed_hardcopy_path?: string | null
           source_issue_id?: string | null
           status?: string
+          submitted_signature_path?: string | null
+          submitted_signed_at?: string | null
+          submitted_signed_by?: string | null
           tenant_id?: string
           terms?: string | null
           title?: string
