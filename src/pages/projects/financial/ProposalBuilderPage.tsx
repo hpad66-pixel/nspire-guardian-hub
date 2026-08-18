@@ -14,7 +14,6 @@ import { AmendFinancialProposalDialog } from "@/components/financial/AmendFinanc
 import { ProposalAiDraftCard, type ProposalAiDraft } from "@/components/financial/ProposalAiDraftCard";
 import { FinancialProposalWorkflow } from "@/components/financial/FinancialProposalWorkflow";
 import {
-  ApproveFinancialProposalOfflineDialog,
   RenumberFinancialProposalDialog,
   UploadFinancialProposalHardcopyDialog,
 } from "@/components/financial/FinancialProposalRecordDialogs";
@@ -99,7 +98,6 @@ export default function ProposalBuilderPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [amendOpen, setAmendOpen] = useState(false);
   const [renumberOpen, setRenumberOpen] = useState(false);
-  const [approveOfflineOpen, setApproveOfflineOpen] = useState(false);
   const [hardcopyOpen, setHardcopyOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -139,6 +137,7 @@ export default function ProposalBuilderPage() {
 
   const totals = useMemo(() => proposalTotals(lines), [lines]);
   const editable = Boolean(proposal && !proposal.locked && proposal.status === "draft");
+  const executed = proposal?.status === "approved" && Boolean(proposal.accepted_signed_at);
 
   if (proposalQuery.isLoading) return <div className="p-6 text-muted-foreground">Loading proposal…</div>;
   if (!proposal) return <div className="container mx-auto max-w-6xl p-6"><FinancialSubNav /><p className="text-muted-foreground">Proposal not found.</p></div>;
@@ -242,14 +241,15 @@ export default function ProposalBuilderPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2">
           <Link to={`/projects/${projectId}/financials/proposals`} className="mt-1"><ChevronLeft className="h-5 w-5 text-muted-foreground" /></Link>
-          <div><div className="flex flex-wrap items-center gap-2"><FileText className="h-6 w-6 text-[var(--apas-sapphire)]" /><h1 className="text-2xl font-bold"><span className="mr-2 font-mono text-muted-foreground">{proposal.proposal_no}</span>{proposal.title}</h1><Badge className={statusClass(proposal.status)}>{proposal.status}</Badge>{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}{proposal.accepted_signed_at && <Badge className="bg-emerald-600 text-white"><CheckCircle2 className="mr-1 h-3 w-3" />Client accepted</Badge>}</div><p className="mt-1 text-sm text-muted-foreground">{proposal.client_name || "No client assigned"} · {fmt(totals.total)}</p></div>
+          <div><div className="flex flex-wrap items-center gap-2"><FileText className="h-6 w-6 text-[var(--apas-sapphire)]" /><h1 className="text-2xl font-bold"><span className="mr-2 font-mono text-muted-foreground">{proposal.proposal_no}</span>{proposal.title}</h1><Badge className={statusClass(proposal.status)}>{proposal.status === "approved" ? "Approved" : proposal.status}</Badge>{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}{executed && <Badge className="bg-emerald-600 text-white"><CheckCircle2 className="mr-1 h-3 w-3" />Executed</Badge>}</div><p className="mt-1 text-sm text-muted-foreground">{proposal.client_name || "No client assigned"} · {fmt(totals.total)}</p></div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {!proposal.accepted_signed_at && proposal.status !== "expired" && <Button size="sm" onClick={() => setApproveOfflineOpen(true)}><CheckCircle2 className="mr-1.5 h-4 w-4" />Record client approval</Button>}
           {canRenumber && proposal.locked && <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}><Hash className="mr-1.5 h-4 w-4" />Renumber</Button>}
           {proposal.locked && <Button variant="outline" size="sm" onClick={() => setAmendOpen(true)}><RotateCcw className="mr-1.5 h-4 w-4" />Amend</Button>}
-          <Button variant="outline" size="sm" onClick={() => setHardcopyOpen(true)}><FileCheck className="mr-1.5 h-4 w-4" />Signed hard copy</Button>
-          <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>
+          <Button size="sm" onClick={() => setHardcopyOpen(true)}><FileCheck className="mr-1.5 h-4 w-4" />{executed ? "Replace executed PDF" : "Execute signed proposal"}</Button>
+          {executed && proposal.pdf_path
+            ? <Button asChild variant="outline" size="sm"><a href={proposal.pdf_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open executed PDF</a></Button>
+            : <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>}
         </div>
       </div>
 
@@ -257,8 +257,8 @@ export default function ProposalBuilderPage() {
 
       {proposal.signed_hardcopy_path && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
-          <div className="flex items-center gap-2 text-sm"><FileCheck className="h-4 w-4 text-emerald-700" /><span className="font-medium">Signed hard copy on file</span>{proposal.signed_hardcopy_at && <span className="text-xs text-muted-foreground">· uploaded {new Date(proposal.signed_hardcopy_at).toLocaleDateString()}</span>}</div>
-          <Button asChild variant="outline" size="sm"><a href={proposal.signed_hardcopy_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open signed copy</a></Button>
+          <div className="flex items-center gap-2 text-sm"><FileCheck className="h-4 w-4 text-emerald-700" /><span className="font-medium">Executed client-signed proposal on file</span>{proposal.signed_hardcopy_at && <span className="text-xs text-muted-foreground">· uploaded {new Date(proposal.signed_hardcopy_at).toLocaleDateString()}</span>}</div>
+          <Button asChild variant="outline" size="sm"><a href={proposal.pdf_path || proposal.signed_hardcopy_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open primary PDF</a></Button>
           {proposal.signed_hardcopy_note && <p className="w-full text-xs text-muted-foreground">{proposal.signed_hardcopy_note}</p>}
         </div>
       )}
@@ -296,14 +296,18 @@ export default function ProposalBuilderPage() {
         {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as any }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost) * (1 + Number(newLine.markup_pct) / 100))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
       </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={7} className="p-3 text-right">Proposal total</td><td className="p-3 text-right font-mono text-base text-[var(--apas-sapphire)]">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
 
-      <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>Proposal document</CardTitle><p className="mt-1 text-xs text-muted-foreground">{proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Signed version</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
+      <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>{executed ? "Executed proposal document" : "Proposal document"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{executed ? "The final client-signed PDF below is the primary document of record." : proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version"}</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
           {editable && <Button variant="outline" onClick={startEditDetails}><Pencil className="mr-1.5 h-4 w-4" />Edit proposal</Button>}
           {editable && <Button onClick={() => setSignOpen(true)} disabled={lines.length === 0}><PenLine className="mr-1.5 h-4 w-4" />Sign &amp; lock</Button>}
           {proposal.locked && !proposal.accepted_signed_at && <Button onClick={() => setSendOpen(true)}><Send className="mr-1.5 h-4 w-4" />{proposal.sent_to_client_at ? "Re-send to client" : "Send to client"}</Button>}
-          <Button variant="outline" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>
+          {executed && proposal.pdf_path
+            ? <Button asChild variant="outline"><a href={proposal.pdf_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open executed PDF</a></Button>
+            : <Button variant="outline" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>}
         </div>
-        <div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div>
+        {executed && proposal.pdf_path
+          ? <iframe src={proposal.pdf_path} title={`${proposal.proposal_no} executed proposal`} className="h-[760px] w-full rounded-md border bg-white" />
+          : <div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div>}
       </CardContent></Card>
 
       <Card><CardContent className="flex items-center justify-between p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version.</p></div><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete proposal</Button></CardContent></Card>
@@ -312,7 +316,6 @@ export default function ProposalBuilderPage() {
       <SendFinancialProposalDialog open={sendOpen} onOpenChange={setSendOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSent={refresh} />
       <AmendFinancialProposalDialog open={amendOpen} onOpenChange={setAmendOpen} proposal={proposal} reopen={proposalQuery.reopen as any} onDone={refresh} />
       <RenumberFinancialProposalDialog open={renumberOpen} onOpenChange={setRenumberOpen} proposal={proposal} action={proposalQuery.renumber} onDone={refresh} />
-      <ApproveFinancialProposalOfflineDialog open={approveOfflineOpen} onOpenChange={setApproveOfflineOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.approveOffline} onDone={refresh} />
       <UploadFinancialProposalHardcopyDialog open={hardcopyOpen} onOpenChange={setHardcopyOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.uploadHardcopy} onDone={refresh} />
     </div>
   );
