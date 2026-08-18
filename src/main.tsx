@@ -24,7 +24,9 @@ if (typeof window !== "undefined") {
 // client lands cleanly on the new update strategy with no stale precache.
 // 2026-06-24: forced flush so every client picks up the reconciled-stamp build
 // and the new immediate-update-check (stale precache was hiding fresh deploys).
-const SW_CLEANUP_VERSION = "2026-06-24-reconciled-stamp-flush";
+// 2026-08-18: flush the pre-Product-Ideas chunk graph after the authenticated
+// header and feedback workspace shipped in the same release.
+const SW_CLEANUP_VERSION = "2026-08-18-product-ideas-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {
