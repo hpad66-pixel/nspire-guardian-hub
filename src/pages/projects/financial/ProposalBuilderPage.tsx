@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -12,7 +12,15 @@ import { FinancialProposalSignDialog } from "@/components/financial/FinancialPro
 import { SendFinancialProposalDialog } from "@/components/financial/SendFinancialProposalDialog";
 import { AmendFinancialProposalDialog } from "@/components/financial/AmendFinancialProposalDialog";
 import { ProposalAiDraftCard, type ProposalAiDraft } from "@/components/financial/ProposalAiDraftCard";
+import { FinancialProposalWorkflow } from "@/components/financial/FinancialProposalWorkflow";
+import {
+  ApproveFinancialProposalOfflineDialog,
+  RenumberFinancialProposalDialog,
+  UploadFinancialProposalHardcopyDialog,
+} from "@/components/financial/FinancialProposalRecordDialogs";
 import { useClient } from "@/hooks/useClients";
+import { useCurrentUserRole } from "@/hooks/useUserManagement";
+import { isAdminRole } from "@/lib/rbac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateProposalPdf } from "@/lib/pdf/proposalPdf";
 import {
-  CheckCircle2, ChevronLeft, Download, FileText, Lock, Pencil, PenLine, Plus, RotateCcw, Save, Send, Trash2,
+  CheckCircle2, ChevronLeft, Download, FileCheck, FileDown, FileText, Hash, Lock, Pencil, PenLine, Plus, RotateCcw, Save, Send, Trash2,
 } from "lucide-react";
 
 const CATEGORIES: FinancialProposalLine["category"][] = ["labor", "material", "equipment", "subcontract", "other"];
@@ -76,6 +84,7 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
 export default function ProposalBuilderPage() {
   const { projectId, proposalId } = useParams<{ projectId: string; proposalId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
@@ -89,14 +98,28 @@ export default function ProposalBuilderPage() {
   const [signOpen, setSignOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [amendOpen, setAmendOpen] = useState(false);
+  const [renumberOpen, setRenumberOpen] = useState(false);
+  const [approveOfflineOpen, setApproveOfflineOpen] = useState(false);
+  const [hardcopyOpen, setHardcopyOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState("");
   const [newLine, setNewLine] = useState<Partial<FinancialProposalLine>>({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 10 });
+  const { data: role } = useCurrentUserRole();
+  const canRenumber = isAdminRole(role);
 
   useEffect(() => {
     if (proposal) setNewLine(current => ({ ...current, markup_pct: proposal.markup_pct ?? 10 }));
   }, [proposal]);
+
+  useEffect(() => {
+    if (searchParams.get("sign") === "1" && proposal && !proposal.locked && lines.length > 0) {
+      setSignOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("sign");
+      setSearchParams(next, { replace: true });
+    }
+  }, [lines.length, proposal, searchParams, setSearchParams]);
 
   // Auto-fill the client from the project's client record so the consultant
   // never types it. Only for editable drafts that don't already name a client.
@@ -146,19 +169,38 @@ export default function ProposalBuilderPage() {
     toast.success("Line updated");
   }
 
-  // Apply an AI draft: patch the scope/terms/markup and append the priced lines.
-  // Existing lines are kept so re-drafting is additive; the author edits from there.
-  async function applyDraft(draftResult: ProposalAiDraft) {
+  // AI produces a reviewable candidate. The author explicitly chooses whether
+  // it replaces the current draft (change-order behavior) or is additive.
+  async function applyDraft(draftResult: ProposalAiDraft, mode: "replace" | "append") {
     if (!proposal) return;
+    const append = mode === "append";
     await proposalQuery.update.mutateAsync({
       id: proposal.id,
-      title: proposal.title?.trim() ? proposal.title : (draftResult.title || proposal.title),
-      notes: draftResult.overview || proposal.notes,
-      terms: draftResult.terms || proposal.terms,
-      scope_bullets: Array.isArray(draftResult.scope_bullets) && draftResult.scope_bullets.length ? draftResult.scope_bullets : proposal.scope_bullets,
-      deliverables: Array.isArray(draftResult.deliverables) && draftResult.deliverables.length ? draftResult.deliverables : proposal.deliverables,
+      title: append ? proposal.title : (draftResult.title || proposal.title),
+      notes: append
+        ? [proposal.notes, draftResult.overview].filter(Boolean).join("\n\n") || null
+        : (draftResult.overview || proposal.notes),
+      terms: append ? proposal.terms : (draftResult.terms || proposal.terms),
+      scope_bullets: append
+        ? [...(proposal.scope_bullets ?? []), ...(draftResult.scope_bullets ?? [])]
+        : (draftResult.scope_bullets ?? proposal.scope_bullets),
+      deliverables: append
+        ? [...(proposal.deliverables ?? []), ...(draftResult.deliverables ?? [])]
+        : (draftResult.deliverables ?? proposal.deliverables),
       markup_pct: typeof draftResult.markup_pct === "number" ? draftResult.markup_pct : proposal.markup_pct,
     });
+    if (!append) {
+      await lineQuery.replaceAll.mutateAsync((draftResult.lines ?? []).map((line, index) => ({
+        line_no: index + 1,
+        category: line.category,
+        description: line.description,
+        quantity: Number(line.quantity) || 0,
+        unit: line.unit || "ls",
+        unit_cost: Number(line.unit_cost) || 0,
+        markup_pct: Number(line.markup_pct) || (proposal.markup_pct ?? 10),
+      })));
+      return;
+    }
     let no = lines.length ? Math.max(...lines.map(line => line.line_no)) : 0;
     for (const line of draftResult.lines ?? []) {
       no += 1;
@@ -195,23 +237,33 @@ export default function ProposalBuilderPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-6 p-6">
+    <div className="container mx-auto max-w-5xl space-y-6 p-6">
       <FinancialSubNav />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2">
           <Link to={`/projects/${projectId}/financials/proposals`} className="mt-1"><ChevronLeft className="h-5 w-5 text-muted-foreground" /></Link>
           <div><div className="flex flex-wrap items-center gap-2"><FileText className="h-6 w-6 text-[var(--apas-sapphire)]" /><h1 className="text-2xl font-bold"><span className="mr-2 font-mono text-muted-foreground">{proposal.proposal_no}</span>{proposal.title}</h1><Badge className={statusClass(proposal.status)}>{proposal.status}</Badge>{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}{proposal.accepted_signed_at && <Badge className="bg-emerald-600 text-white"><CheckCircle2 className="mr-1 h-3 w-3" />Client accepted</Badge>}</div><p className="mt-1 text-sm text-muted-foreground">{proposal.client_name || "No client assigned"} · {fmt(totals.total)}</p></div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {editable && <Button variant="outline" size="sm" onClick={startEditDetails}><Pencil className="mr-1.5 h-4 w-4" />Edit details</Button>}
-          {editable && <Button size="sm" onClick={() => setSignOpen(true)} disabled={lines.length === 0}><PenLine className="mr-1.5 h-4 w-4" />Sign & lock</Button>}
-          {proposal.locked && !proposal.accepted_signed_at && <Button size="sm" onClick={() => setSendOpen(true)}><Send className="mr-1.5 h-4 w-4" />{proposal.sent_to_client_at ? "Re-send" : "Send to client"}</Button>}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!proposal.accepted_signed_at && proposal.status !== "expired" && <Button size="sm" onClick={() => setApproveOfflineOpen(true)}><CheckCircle2 className="mr-1.5 h-4 w-4" />Record client approval</Button>}
+          {canRenumber && proposal.locked && <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}><Hash className="mr-1.5 h-4 w-4" />Renumber</Button>}
           {proposal.locked && <Button variant="outline" size="sm" onClick={() => setAmendOpen(true)}><RotateCcw className="mr-1.5 h-4 w-4" />Amend</Button>}
+          <Button variant="outline" size="sm" onClick={() => setHardcopyOpen(true)}><FileCheck className="mr-1.5 h-4 w-4" />Signed hard copy</Button>
           <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>
         </div>
       </div>
 
       {proposal.status === "rejected" && proposal.client_comments && <div className="rounded-md border-l-2 border-red-500 bg-red-50 px-4 py-3"><p className="text-xs font-semibold text-red-700">Client requested a revision</p><p className="mt-1 text-sm">{proposal.client_comments}</p></div>}
+
+      {proposal.signed_hardcopy_path && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
+          <div className="flex items-center gap-2 text-sm"><FileCheck className="h-4 w-4 text-emerald-700" /><span className="font-medium">Signed hard copy on file</span>{proposal.signed_hardcopy_at && <span className="text-xs text-muted-foreground">· uploaded {new Date(proposal.signed_hardcopy_at).toLocaleDateString()}</span>}</div>
+          <Button asChild variant="outline" size="sm"><a href={proposal.signed_hardcopy_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open signed copy</a></Button>
+          {proposal.signed_hardcopy_note && <p className="w-full text-xs text-muted-foreground">{proposal.signed_hardcopy_note}</p>}
+        </div>
+      )}
+
+      <FinancialProposalWorkflow proposal={proposal} />
 
       {editingDetails && (
         <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Edit proposal details</CardTitle><div className="flex gap-2"><Button variant="outline" onClick={() => setEditingDetails(false)}>Cancel</Button><Button onClick={saveDetails} disabled={proposalQuery.update.isPending}><Save className="mr-1.5 h-4 w-4" />Save</Button></div></div></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
@@ -235,6 +287,7 @@ export default function ProposalBuilderPage() {
           defaultMarkup={proposal.markup_pct ?? 10}
           disabled={proposalQuery.update.isPending || lineQuery.create.isPending}
           onApply={applyDraft}
+          hasExistingContent={Boolean(lines.length || proposal.notes || proposal.scope_bullets?.length || proposal.deliverables?.length)}
         />
       )}
 
@@ -243,13 +296,24 @@ export default function ProposalBuilderPage() {
         {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as any }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost) * (1 + Number(newLine.markup_pct) / 100))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
       </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={7} className="p-3 text-right">Proposal total</td><td className="p-3 text-right font-mono text-base text-[var(--apas-sapphire)]">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
 
-      <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Proposal document</CardTitle><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Signed version</Badge>}</div></div></CardHeader><CardContent><div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div></CardContent></Card>
+      <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>Proposal document</CardTitle><p className="mt-1 text-xs text-muted-foreground">{proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Signed version</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {editable && <Button variant="outline" onClick={startEditDetails}><Pencil className="mr-1.5 h-4 w-4" />Edit proposal</Button>}
+          {editable && <Button onClick={() => setSignOpen(true)} disabled={lines.length === 0}><PenLine className="mr-1.5 h-4 w-4" />Sign &amp; lock</Button>}
+          {proposal.locked && !proposal.accepted_signed_at && <Button onClick={() => setSendOpen(true)}><Send className="mr-1.5 h-4 w-4" />{proposal.sent_to_client_at ? "Re-send to client" : "Send to client"}</Button>}
+          <Button variant="outline" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>
+        </div>
+        <div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div>
+      </CardContent></Card>
 
       <Card><CardContent className="flex items-center justify-between p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version.</p></div><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete proposal</Button></CardContent></Card>
 
       <FinancialProposalSignDialog open={signOpen} onOpenChange={setSignOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSigned={refresh} />
       <SendFinancialProposalDialog open={sendOpen} onOpenChange={setSendOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSent={refresh} />
       <AmendFinancialProposalDialog open={amendOpen} onOpenChange={setAmendOpen} proposal={proposal} reopen={proposalQuery.reopen as any} onDone={refresh} />
+      <RenumberFinancialProposalDialog open={renumberOpen} onOpenChange={setRenumberOpen} proposal={proposal} action={proposalQuery.renumber} onDone={refresh} />
+      <ApproveFinancialProposalOfflineDialog open={approveOfflineOpen} onOpenChange={setApproveOfflineOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.approveOffline} onDone={refresh} />
+      <UploadFinancialProposalHardcopyDialog open={hardcopyOpen} onOpenChange={setHardcopyOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.uploadHardcopy} onDone={refresh} />
     </div>
   );
 }

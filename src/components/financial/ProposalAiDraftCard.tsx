@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import { fileToBackgroundDoc } from "@/lib/ai/backgroundDoc";
-import { Sparkles, Paperclip, X, FileText, Loader2 } from "lucide-react";
+import { Sparkles, Paperclip, X, FileText, Loader2, RefreshCw, ListPlus } from "lucide-react";
 
 export interface ProposalAiDraft {
   title: string;
@@ -29,15 +29,18 @@ export function ProposalAiDraftCard({
   defaultMarkup,
   disabled,
   onApply,
+  hasExistingContent = false,
 }: {
   projectId: string;
   defaultMarkup: number;
   disabled?: boolean;
-  onApply: (draft: ProposalAiDraft) => Promise<void>;
+  onApply: (draft: ProposalAiDraft, mode: "replace" | "append") => Promise<void>;
+  hasExistingContent?: boolean;
 }) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [candidate, setCandidate] = useState<ProposalAiDraft | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function draft() {
@@ -69,12 +72,26 @@ export function ProposalAiDraftCard({
       if (error) throw error;
       const draftResult = (data as { draft?: ProposalAiDraft })?.draft;
       if (!draftResult) throw new Error("No draft returned");
-      await onApply(draftResult);
-      toast.success("AI draft applied. Review and edit the lines below.");
+      setCandidate(draftResult);
+      toast.success("AI draft ready for your review.");
+    } catch (error) {
+      toast.error(`Draft failed: ${(error as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function apply(mode: "replace" | "append") {
+    if (!candidate) return;
+    setBusy(true);
+    try {
+      await onApply(candidate, mode);
+      toast.success(mode === "replace" ? "Proposal draft replaced. Review every section before signing." : "AI scope and fee lines added to the proposal.");
+      setCandidate(null);
       setText("");
       setFile(null);
     } catch (error) {
-      toast.error(`Draft failed: ${(error as Error).message}`);
+      toast.error(`Could not apply draft: ${(error as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -130,9 +147,26 @@ export function ProposalAiDraftCard({
             {busy ? "Drafting…" : "Draft with AI"}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          The draft fills in the scope, priced line items, and terms. Nothing is sent — you review and edit everything first.
-        </p>
+        {candidate ? (
+          <div className="rounded-lg border border-[var(--apas-sapphire)]/30 bg-background p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">{candidate.title || "AI proposal draft"}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{candidate.scope_bullets?.length ?? 0} scope items · {candidate.deliverables?.length ?? 0} deliverables · {candidate.lines?.length ?? 0} priced lines</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setCandidate(null)} disabled={busy}>Discard</Button>
+            </div>
+            {candidate.overview && <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{candidate.overview}</p>}
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              {hasExistingContent && <Button variant="outline" size="sm" onClick={() => apply("append")} disabled={busy}><ListPlus className="mr-1.5 h-4 w-4" />Add to current draft</Button>}
+              <Button size="sm" onClick={() => apply("replace")} disabled={busy}><RefreshCw className="mr-1.5 h-4 w-4" />{hasExistingContent ? "Replace current draft" : "Use this draft"}</Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            AI prepares a candidate first. You choose whether to replace the current draft or add its fee lines; nothing is sent automatically.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

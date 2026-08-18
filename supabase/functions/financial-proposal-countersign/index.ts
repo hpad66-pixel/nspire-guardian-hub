@@ -49,6 +49,7 @@ serve(async (req) => {
       const { error: updateError } = await admin.from("proposals").update({
         status: "approved", accepted_signature_path: signaturePath, accepted_signed_at: new Date().toISOString(),
         accepted_signed_name: String(name).trim(), client_comments: comments ? String(comments).trim() : null,
+        acceptance_method: "electronic",
       }).eq("id", proposal.id);
       if (updateError) return json({ error: updateError.message }, 500);
 

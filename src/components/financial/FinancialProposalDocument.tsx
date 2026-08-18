@@ -64,7 +64,9 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
         <tbody>
           {[
             ["Project", projectName], ["Prepared for", proposal.client_name || "—"],
-            ["Client email", proposal.client_email || "—"], ["Proposal date", date], ["Valid until", valid],
+            ["Client email", proposal.client_email || "—"], ["Proposal date", date],
+            ...(Number(proposal.revision_no ?? 0) > 0 ? [["Revision", String(proposal.revision_no)]] : []),
+            ["Valid until", valid],
           ].map(([label, value]) => (
             <tr key={label}><td style={{ ...td, width: "23%", color: MUTE, fontWeight: 700 }}>{label}</td><td style={td}>{value}</td></tr>
           ))}

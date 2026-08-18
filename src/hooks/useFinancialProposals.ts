@@ -42,11 +42,21 @@ export interface FinancialProposal {
   sent_to_client_at: string | null;
   client_comments: string | null;
   pdf_path: string | null;
-  amendment_history: Array<{ reason: string; at: string; from_status?: string }>;
+  revision_no: number;
+  amendment_history: Array<{ reason: string; at: string; by?: string | null; from_status?: string; revision_no?: number }>;
+  proposal_no_history: Array<{ from: string; to: string; reason: string; at: string; by?: string | null }>;
+  delivery_history: Array<{ to: string; at: string; by?: string | null; kind?: 'sent' | 'resent' }>;
+  acceptance_method: 'electronic' | 'offline' | null;
+  signed_hardcopy_path: string | null;
+  signed_hardcopy_note: string | null;
+  signed_hardcopy_at: string | null;
+  signed_hardcopy_by: string | null;
   proposal_lines?: FinancialProposalLine[];
   created_at: string;
   updated_at: string;
 }
+
+type FinancialProposalPatch = Partial<Omit<FinancialProposal, 'proposal_lines'>>;
 
 async function getTenantId(): Promise<string> {
   const { data, error } = await supabase.from('workspaces').select('id').limit(1).single();
@@ -63,7 +73,7 @@ export function useFinancialProposals(projectId: string | null) {
     enabled: Boolean(projectId),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('proposals' as any)
+        .from('proposals')
         .select('*, proposal_lines(*)')
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false });
@@ -73,10 +83,10 @@ export function useFinancialProposals(projectId: string | null) {
   });
 
   const create = useMutation({
-    mutationFn: async (row: Partial<FinancialProposal> & { project_id: string; title: string; proposal_no: string }) => {
+    mutationFn: async (row: FinancialProposalPatch & { project_id: string; title: string; proposal_no: string }) => {
       const tenant_id = await getTenantId();
       const { data, error } = await supabase
-        .from('proposals' as any)
+        .from('proposals')
         .insert({ ...row, tenant_id })
         .select()
         .single();
@@ -87,9 +97,9 @@ export function useFinancialProposals(projectId: string | null) {
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, ...row }: Partial<FinancialProposal> & { id: string }) => {
+    mutationFn: async ({ id, ...row }: FinancialProposalPatch & { id: string }) => {
       const { error } = await supabase
-        .from('proposals' as any)
+        .from('proposals')
         .update({ ...row, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
@@ -99,7 +109,7 @@ export function useFinancialProposals(projectId: string | null) {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('proposals' as any).delete().eq('id', id);
+      const { error } = await supabase.from('proposals').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
@@ -109,8 +119,10 @@ export function useFinancialProposals(projectId: string | null) {
     mutationFn: async ({ proposal, reason }: { proposal: FinancialProposal; reason: string }) => {
       if (!reason.trim()) throw new Error('Add a reason for the amendment.');
       const history = Array.isArray(proposal.amendment_history) ? proposal.amendment_history : [];
+      const revisionNo = Number(proposal.revision_no ?? 0) + 1;
+      const { data: auth } = await supabase.auth.getUser();
       const { error } = await supabase
-        .from('proposals' as any)
+        .from('proposals')
         .update({
           locked: false,
           status: 'draft',
@@ -120,11 +132,13 @@ export function useFinancialProposals(projectId: string | null) {
           accepted_signature_path: null,
           accepted_signed_at: null,
           accepted_signed_name: null,
+          acceptance_method: null,
           sent_to_client_at: null,
           client_comments: null,
+          revision_no: revisionNo,
           amendment_history: [
             ...history,
-            { reason: reason.trim(), at: new Date().toISOString(), from_status: proposal.status },
+            { reason: reason.trim(), at: new Date().toISOString(), by: auth.user?.id ?? null, from_status: proposal.status, revision_no: revisionNo },
           ],
           updated_at: new Date().toISOString(),
         })
@@ -134,7 +148,113 @@ export function useFinancialProposals(projectId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
-  return { ...list, create, update, remove, reopen };
+  const renumber = useMutation({
+    mutationFn: async ({ proposal, newNo, reason }: { proposal: FinancialProposal; newNo: string; reason: string }) => {
+      const nextNo = newNo.trim();
+      if (!nextNo) throw new Error('Enter a proposal number.');
+      if (!reason.trim()) throw new Error('Add a reason for the renumbering.');
+      if (nextNo === proposal.proposal_no) throw new Error('Choose a different proposal number.');
+      const history = Array.isArray(proposal.proposal_no_history) ? proposal.proposal_no_history : [];
+      const { data: auth } = await supabase.auth.getUser();
+      const patch = {
+        proposal_no: nextNo,
+        proposal_no_history: [...history, {
+          from: proposal.proposal_no,
+          to: nextNo,
+          reason: reason.trim(),
+          at: new Date().toISOString(),
+          by: auth.user?.id ?? null,
+        }],
+        pdf_path: null,
+        updated_at: new Date().toISOString(),
+      };
+      if (proposal.locked) {
+        const { error: unlockError } = await supabase.from('proposals').update({ ...patch, locked: false }).eq('id', proposal.id);
+        if (unlockError) {
+          if (/duplicate key|unique/i.test(unlockError.message)) throw new Error(`${nextNo} already exists on this project.`);
+          throw unlockError;
+        }
+        const { error: relockError } = await supabase.from('proposals').update({ locked: true }).eq('id', proposal.id);
+        if (relockError) throw relockError;
+      } else {
+        const { error } = await supabase.from('proposals').update(patch).eq('id', proposal.id);
+        if (error) {
+          if (/duplicate key|unique/i.test(error.message)) throw new Error(`${nextNo} already exists on this project.`);
+          throw error;
+        }
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const approveOffline = useMutation({
+    mutationFn: async ({ proposal, path, acceptedDate, signerName }: {
+      proposal: FinancialProposal; path: string; acceptedDate: string; signerName?: string;
+    }) => {
+      if (!path) throw new Error("Upload the client's signed proposal first.");
+      if (!acceptedDate) throw new Error('Choose the acceptance date.');
+      const { data: auth } = await supabase.auth.getUser();
+      const acceptedAt = new Date(`${acceptedDate}T12:00:00`).toISOString();
+      const patch = {
+        status: 'approved',
+        locked: true,
+        pdf_path: path,
+        accepted_signed_at: acceptedAt,
+        accepted_signed_name: signerName?.trim() || proposal.client_name || null,
+        acceptance_method: 'offline',
+        signed_hardcopy_path: path,
+        signed_hardcopy_note: 'Client signed the proposal offline; uploaded as the accepted record.',
+        signed_hardcopy_at: new Date().toISOString(),
+        signed_hardcopy_by: auth.user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      const firstPatch = proposal.locked ? { ...patch, locked: false } : patch;
+      const { error } = await supabase.from('proposals').update(firstPatch).eq('id', proposal.id);
+      if (error) throw error;
+      if (proposal.locked) {
+        const { error: relockError } = await supabase.from('proposals').update({ locked: true }).eq('id', proposal.id);
+        if (relockError) throw relockError;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const uploadHardcopy = useMutation({
+    mutationFn: async ({ proposal, path, note, replacePrimary }: {
+      proposal: FinancialProposal; path: string; note: string; replacePrimary: boolean;
+    }) => {
+      if (!path) throw new Error('Upload the signed hard copy first.');
+      if (!note.trim()) throw new Error('Add a filing note.');
+      const { data: auth } = await supabase.auth.getUser();
+      const patch: {
+        signed_hardcopy_path: string;
+        signed_hardcopy_note: string;
+        signed_hardcopy_at: string;
+        signed_hardcopy_by: string | null;
+        updated_at: string;
+        pdf_path?: string;
+      } = {
+        signed_hardcopy_path: path,
+        signed_hardcopy_note: note.trim(),
+        signed_hardcopy_at: new Date().toISOString(),
+        signed_hardcopy_by: auth.user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      if (replacePrimary) patch.pdf_path = path;
+      if (proposal.locked && replacePrimary) {
+        const { error } = await supabase.from('proposals').update({ ...patch, locked: false }).eq('id', proposal.id);
+        if (error) throw error;
+        const { error: relockError } = await supabase.from('proposals').update({ locked: true }).eq('id', proposal.id);
+        if (relockError) throw relockError;
+      } else {
+        const { error } = await supabase.from('proposals').update(patch).eq('id', proposal.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  return { ...list, create, update, remove, reopen, renumber, approveOffline, uploadHardcopy };
 }
 
 export function useFinancialProposalLines(proposalId: string | null) {
@@ -146,7 +266,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
     enabled: Boolean(proposalId),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('proposal_lines' as any)
+        .from('proposal_lines')
         .select('*')
         .eq('proposal_id', proposalId!)
         .order('line_no', { ascending: true });
@@ -159,7 +279,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
     mutationFn: async (row: Partial<FinancialProposalLine> & { proposal_id: string; description: string }) => {
       const tenant_id = await getTenantId();
       const { data, error } = await supabase
-        .from('proposal_lines' as any)
+        .from('proposal_lines')
         .insert({ ...row, tenant_id })
         .select()
         .single();
@@ -172,7 +292,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
   const update = useMutation({
     mutationFn: async ({ id, ...row }: Partial<FinancialProposalLine> & { id: string }) => {
       const { error } = await supabase
-        .from('proposal_lines' as any)
+        .from('proposal_lines')
         .update(row)
         .eq('id', id);
       if (error) throw error;
@@ -183,7 +303,7 @@ export function useFinancialProposalLines(proposalId: string | null) {
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('proposal_lines' as any)
+        .from('proposal_lines')
         .delete()
         .eq('id', id);
       if (error) throw error;
@@ -191,5 +311,19 @@ export function useFinancialProposalLines(proposalId: string | null) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
-  return { ...list, create, update, remove };
+  const replaceAll = useMutation({
+    mutationFn: async (rows: Array<Omit<Partial<FinancialProposalLine>, 'id' | 'tenant_id' | 'proposal_id'> & { description: string }>) => {
+      if (!proposalId) throw new Error('No proposal selected.');
+      const tenant_id = await getTenantId();
+      const { error: deleteError } = await supabase.from('proposal_lines').delete().eq('proposal_id', proposalId);
+      if (deleteError) throw deleteError;
+      if (!rows.length) return;
+      const payload = rows.map((row, index) => ({ ...row, tenant_id, proposal_id: proposalId, line_no: row.line_no ?? index + 1 }));
+      const { error: insertError } = await supabase.from('proposal_lines').insert(payload);
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  return { ...list, create, update, remove, replaceAll };
 }
