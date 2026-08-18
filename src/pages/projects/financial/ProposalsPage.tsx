@@ -200,13 +200,13 @@ export default function ProposalsPage() {
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.valid_until)}</td>
                         <td className="p-3 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sc.className}`}>
-                            <Icon className="h-3 w-3" />{p.locked && p.status === "draft" ? "Signed · Ready" : sc.label}
+                            <Icon className="h-3 w-3" />{p.status === "approved" && p.accepted_signed_at ? "Approved · Executed" : p.locked && p.status === "draft" ? "Signed · Ready" : sc.label}
                           </span>
                         </td>
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {(p.signed_hardcopy_path || p.pdf_path) && <a href={p.signed_hardcopy_path || p.pdf_path || "#"} target="_blank" rel="noopener noreferrer" onClick={event => event.stopPropagation()} title="Open proposal PDF"><Paperclip className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /></a>}
+                            {(p.pdf_path || p.signed_hardcopy_path) && <a href={p.pdf_path || p.signed_hardcopy_path || "#"} target="_blank" rel="noopener noreferrer" onClick={event => event.stopPropagation()} title="Open primary proposal PDF"><Paperclip className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /></a>}
                             <Link to={`/projects/${projectId}/financials/proposals/${p.id}`} onClick={event => event.stopPropagation()}>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Open">
                                 <ExternalLink className="h-3.5 w-3.5" />

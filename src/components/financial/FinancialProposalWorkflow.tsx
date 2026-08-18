@@ -1,4 +1,4 @@
-import { Check, Circle, FileText, Lock, Mail, RotateCcw, UserCheck, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Circle, FileText, Lock, Mail, RotateCcw, UserCheck, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { FinancialProposal } from "@/hooks/useFinancialProposals";
@@ -11,13 +11,15 @@ function when(value: string | null | undefined) {
 export function FinancialProposalWorkflow({ proposal }: { proposal: FinancialProposal }) {
   const rejected = proposal.status === "rejected";
   const approved = proposal.status === "approved" || Boolean(proposal.accepted_signed_at);
+  const executed = approved && proposal.locked;
   const deliveries = Array.isArray(proposal.delivery_history) ? proposal.delivery_history : [];
   const lastDelivery = deliveries[deliveries.length - 1];
   const steps = [
     { label: "Draft created", detail: when(proposal.created_at), done: true, icon: FileText },
-    { label: "Consultant signed", detail: when(proposal.submitted_signed_at) || "Awaiting APAS signature", done: Boolean(proposal.submitted_signed_at), icon: Lock },
-    { label: deliveries.length > 1 ? `Sent ${deliveries.length} times` : "Sent to client", detail: proposal.sent_to_client_at ? `${lastDelivery?.to || proposal.client_email || "Client"} · ${when(proposal.sent_to_client_at)}` : "Not sent", done: Boolean(proposal.sent_to_client_at), icon: Mail },
-    { label: rejected ? "Revision requested" : approved ? "Client accepted" : "Client decision", detail: rejected ? (proposal.client_comments || "Changes requested") : approved ? `${proposal.accepted_signed_name || proposal.client_name || "Client"} · ${when(proposal.accepted_signed_at)}${proposal.acceptance_method ? ` · ${proposal.acceptance_method}` : ""}` : "Awaiting response", done: approved || rejected, icon: rejected ? XCircle : UserCheck },
+    { label: "Consultant signed", detail: when(proposal.submitted_signed_at) || (executed ? "Included in final executed PDF" : "Awaiting APAS signature"), done: Boolean(proposal.submitted_signed_at) || executed, icon: Lock },
+    { label: deliveries.length > 1 ? `Sent ${deliveries.length} times` : "Sent to client", detail: proposal.sent_to_client_at ? `${lastDelivery?.to || proposal.client_email || "Client"} · ${when(proposal.sent_to_client_at)}` : executed ? "Satisfied by returned client-signed copy" : "Not sent", done: Boolean(proposal.sent_to_client_at) || executed, icon: Mail },
+    { label: rejected ? "Revision requested" : approved ? "Client approved" : "Client decision", detail: rejected ? (proposal.client_comments || "Changes requested") : approved ? `${proposal.accepted_signed_name || proposal.client_name || "Client"} · ${when(proposal.accepted_signed_at)}${proposal.acceptance_method ? ` · ${proposal.acceptance_method}` : ""}` : "Awaiting response", done: approved || rejected, icon: rejected ? XCircle : UserCheck },
+    { label: "Executed", detail: executed ? `${when(proposal.accepted_signed_at)} · approved and locked` : "Awaiting final approval", done: executed, icon: CheckCircle2 },
   ];
   const amendments = Array.isArray(proposal.amendment_history) ? proposal.amendment_history : [];
 
@@ -28,12 +30,12 @@ export function FinancialProposalWorkflow({ proposal }: { proposal: FinancialPro
           <CardTitle className="text-base">Proposal workflow</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline">Revision {proposal.revision_no ?? 0}</Badge>
-            {proposal.locked && <Badge className="bg-emerald-100 text-emerald-800"><Lock className="mr-1 h-3 w-3" />Signed version locked</Badge>}
+            {proposal.locked && <Badge className="bg-emerald-100 text-emerald-800"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version locked"}</Badge>}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-5">
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (

@@ -220,28 +220,29 @@ export function useFinancialProposals(projectId: string | null) {
   });
 
   const uploadHardcopy = useMutation({
-    mutationFn: async ({ proposal, path, note, replacePrimary }: {
-      proposal: FinancialProposal; path: string; note: string; replacePrimary: boolean;
+    mutationFn: async ({ proposal, path, acceptedDate, signerName }: {
+      proposal: FinancialProposal; path: string; acceptedDate: string; signerName?: string;
     }) => {
-      if (!path) throw new Error('Upload the signed hard copy first.');
-      if (!note.trim()) throw new Error('Add a filing note.');
+      if (!path) throw new Error("Upload the client's signed proposal first.");
+      if (!acceptedDate) throw new Error('Choose the execution date.');
       const { data: auth } = await supabase.auth.getUser();
-      const patch: {
-        signed_hardcopy_path: string;
-        signed_hardcopy_note: string;
-        signed_hardcopy_at: string;
-        signed_hardcopy_by: string | null;
-        updated_at: string;
-        pdf_path?: string;
-      } = {
+      const acceptedAt = new Date(`${acceptedDate}T12:00:00`).toISOString();
+      const patch = {
+        status: 'approved',
+        locked: true,
+        // The returned, fully signed PDF is the proposal of record. Never keep
+        // the consultant-only PDF as the primary document after execution.
+        pdf_path: path,
+        accepted_signed_at: acceptedAt,
+        accepted_signed_name: signerName?.trim() || proposal.client_name || null,
+        acceptance_method: 'offline',
         signed_hardcopy_path: path,
-        signed_hardcopy_note: note.trim(),
+        signed_hardcopy_note: 'Final client-signed proposal; approved and executed as the primary document of record.',
         signed_hardcopy_at: new Date().toISOString(),
         signed_hardcopy_by: auth.user?.id ?? null,
         updated_at: new Date().toISOString(),
       };
-      if (replacePrimary) patch.pdf_path = path;
-      if (proposal.locked && replacePrimary) {
+      if (proposal.locked) {
         const { error } = await supabase.from('proposals').update({ ...patch, locked: false }).eq('id', proposal.id);
         if (error) throw error;
         const { error: relockError } = await supabase.from('proposals').update({ locked: true }).eq('id', proposal.id);
