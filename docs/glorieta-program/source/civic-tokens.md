@@ -1,100 +1,78 @@
-# civic.apas.ai — extracted design tokens
+# APAS Civic design tokens
 
-Derived on 9 Aug 2026 from the live site, not from description.
+Derived from civic.apas.ai screenshots (9 Aug 2026), not from the site's stylesheet —
+the Cowork sandbox cannot reach the domain. If the real font turns out to be a licensed
+face (Reckless Neue, Editorial New, Signifier and similar all look close), swap the
+`--serif` stack in `source/civic_css.py` and rebuild; nothing else needs to change.
 
-Source of truth:
-- `https://civic.apas.ai` (HTML head — font preloads)
-- `https://civic.apas.ai/assets/index-JbpP6vEX.css` (compiled stylesheet, 31.9 KB)
+## What changed from the previous system, and why
 
-The site is a Vite/React build with self-hosted woff2 fonts under
-`/assets/_vinext_fonts/`. Filenames are content-hashed and will change on redeploy;
-the token values below are what matter.
+| | Before (rejected) | Now |
+|---|---|---|
+| Display serif | Playfair Display | **Fraunces**, `SOFT 0 / WONK 0 / opsz 144` — chunkier, higher contrast, larger x-height |
+| UI / body | Inter | **Inter** (unchanged) |
+| Labels | JetBrains Mono | **Inter 700**, uppercase, `.17em` tracking — *no monospace anywhere on civic* |
+| Dark ground | Obsidian `#0D0D12` | Forest `#17291F` |
+| Light ground | Ivory `#FAF8F3` | Cream `#F6F2E9` + sand `#EDE6D8` + mint `#E1ECE3` |
+| Accent | Gold `#C8962E` | Tan-gold `#D8A95E` fill / `#A8842C` on light + sage `#A9D4B8` |
+| Corners | 3px radius | **Square** |
+| Depth | Soft shadows | **Hairline borders**, shadow only on hover |
 
----
+The three biggest tells on civic.apas.ai: serif is used for *every* heading level including
+small card titles; there is no monospace at all; and cards sit in a shared-hairline grid
+rather than as separate floating boxes.
 
-## Typefaces
-
-| Role | Family | How it is used |
-|------|--------|----------------|
-| Display | **Fraunces** | All headings. Weight **600** only. Negative tracking, very tight leading. |
-| Text / UI / labels | **Inter** | Body, labels, eyebrows, data. Weights 300–850 in use. |
-| Mono | *none* | The site loads no monospace face. Labels get their technical feel from uppercase + heavy weight + wide tracking in Inter, not from a mono. |
-
-Self-hosted at `/assets/_vinext_fonts/inter-9df0d028785c/` (7 woff2 subsets) and
-`/assets/_vinext_fonts/fraunces-f3fc7530f62a/` (3 woff2). For standalone documents,
-the Google Fonts equivalent is:
+## Palette
 
 ```
-https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@300..800&display=swap
+--forest        #17291F   hero, dark bands
+--forest-deep   #112018   footer
+--forest-panel  #1B3324   panels on dark
+--cream         #F6F2E9   page canvas
+--sand          #EDE6D8   warm band
+--mint          #E1ECE3   pale band, project sidebars
+--mint-strong   #D0E2D5   closing band
+--paper         #FFFFFF   cards
+--rule          #DCD4C4   hairline
+--rule-mint     #C4D8C9   hairline on mint
+--ink           #16291F   headings on light
+--body          #454F4A   body copy
+--slate         #5F6B65   secondary
+--mute          #8A948F   labels
+--cream-text    #F2EEE1   headings on dark
+--cream-body    #B7C2BA   body on dark
+--gold          #C9A34F   gold on dark
+--gold-deep     #A8842C   gold on light (labels, links)
+--gold-btn      #D8A95E   button / flag fill
+--sage          #A9D4B8   accent headline on dark
 ```
 
-## Colour — `:root`
+## Bucket accents, retuned for forest
 
-```css
---forest:#17352b;      /* primary dark green — headings, thead, dark UI */
---forest-900:#0e241d;  /* deepest green — footer, masthead */
---cream:#f5f1e8;       /* page background */
---paper:#fbf9f3;       /* card / panel background */
---ink:#1a211e;         /* body text */
---muted:#6a7a72;       /* secondary text */
---line:#ded7c6;        /* every border */
---brass:#b08948;       /* accent rules, marks */
---brass-bright:#c8a45e;
---pass:#3e7a5e;        /* success / confirmed */
---shadow:0 22px 60px -42px #0e241d5c;
+```
+01 Stormwater      #2F6E7A   deep teal
+02 Sewer           #3B5E80   slate blue   (also the FOR DISCUSSION colour)
+03 Water           #4E7D5E   moss
+04 Environmental   #6E5A86   muted violet
+05 Programme       #A8842C   brand gold
 ```
 
-Dark-section palette (used on the inverted "command" bands):
+## Type scale
 
-```css
---civic-night:#071d18;
---civic-green:#0e352a;
---civic-gold:#d6b36a;   /* brass, lightened for dark backgrounds */
---civic-cream:#f4f0e5;
---civic-mint:#b7e2ce;   /* rare, for live/active states */
+```
+h1        Fraunces 700   clamp(42px, 6vw, 78px)   lh 1.00   ls -.020em
+h2        Fraunces 700   clamp(32px, 4vw, 50px)   lh 1.06   ls -.018em
+h3        Fraunces 700   26px                     lh 1.18
+h4        Fraunces 600   17–19px  (opsz 60)
+body      Inter 400      16px                     lh 1.68
+lede      Inter 400      19px                     lh 1.62
+label     Inter 700      9–11.5px  uppercase      ls .14–.19em
 ```
 
-Eyebrow text uses a hardcoded deeper brass, `#8c6a34` on light and `#d9bb78` on dark.
+## Fonts are embedded
 
-## Type scale (verbatim from the stylesheet)
-
-```css
-body            font: 16px/1.5 Inter;
-hero h1         font: 600 clamp(54px,6vw,82px)/.98 Fraunces;  letter-spacing:-.025em;
-inverted h1     font: 600 clamp(55px,7vw,104px)/.91 Fraunces; letter-spacing:-.055em;
-section h2      font: 600 48px Fraunces;  (39px under 880px)
-big h2          font: 600 clamp(39px,5vw,70px)/1 Fraunces; letter-spacing:-.035em;
-eyebrow         11px / weight 800 / letter-spacing .16em / uppercase / #8c6a34
-small label     10px / weight 850 / letter-spacing .10–.12em / uppercase
-footer text     11px / letter-spacing .1em / uppercase
-```
-
-Headings never exceed weight 600. The weight lives in Inter's labels (800–850),
-not in Fraunces.
-
-## Structure
-
-- **`border-radius: 0` everywhere.** The only `50%` in the sheet is the circular
-  `.civic-mark` badge. Square corners are the single strongest signal of the identity —
-  do not soften them.
-- **`1px solid var(--line)`** is the universal border. Emphasis is added with a
-  `4px` left border in `--brass`, not with a heavier box.
-- Panels: `background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow)`.
-  The shadow is very wide and very soft (`-42px` spread), so it reads as lift, not as a drop.
-- Section padding rhythm: `100px clamp(24px,8vw,120px)`.
-- Section heads pair a small uppercase eyebrow above a large Fraunces `h2`, flush left.
-- Inverted callouts: `background:var(--forest); color:#fff; border-left:4px solid var(--brass)`.
-
-## Applied to the Glorieta documents
-
-All of it lives in the single `CSS = """..."""` string in `build.py`. Class names were
-left unchanged during the rebrand, so the mapping from the old palette is:
-
-| Old | Now |
-|-----|-----|
-| Playfair Display | Fraunces 600 |
-| JetBrains Mono | Inter, uppercase + tracked (mono retained only for tabular numerals via `font-variant-numeric`) |
-| `--obsidian` | `--forest-900` |
-| `--gold` | `--brass` |
-| `--ivory` / `--sand` | `--cream` / `--sand` (cream, one step down) |
-| `border-radius: 2–4px` | `0` |
+`fonts_b64.py` carries Fraunces (standard axes: opsz + wght) and Inter (wght) as
+base64 woff2 inside the CSS. Adds ~150 KB per document and removes every external
+request, so the documents render correctly offline, from email, and on networks that
+block Google Fonts. Regenerate with `@fontsource-variable/fraunces` and
+`@fontsource-variable/inter` from npm if the faces ever change.

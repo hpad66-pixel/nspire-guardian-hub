@@ -17,6 +17,7 @@ import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
 const RootRedirect = lazy(() => import('./pages/RootRedirect'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const ProductIdeasPage = lazy(() => import('./pages/ProductIdeasPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
 const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
@@ -146,6 +147,7 @@ const LienWaiverGeneratorPage = lazy(() => import('./pages/projects/financial/Li
 const VendorInboxPage = lazy(() => import('./pages/projects/financial/VendorInboxPage'));
 const IssuesLogPage = lazy(() => import('./pages/projects/financial/IssuesLogPage'));
 const FinancialProposalsPage = lazy(() => import('./pages/projects/financial/ProposalsPage'));
+const ProposalGeneratorPage = lazy(() => import('./pages/projects/financial/ProposalGeneratorPage'));
 const ProposalBuilderPage = lazy(() => import('./pages/projects/financial/ProposalBuilderPage'));
 const CommitmentDetailPage = lazy(() => import('./pages/projects/financial/CommitmentDetailPage'));
 const PayAppDetailPage = lazy(() => import('./pages/projects/financial/PayAppDetailPage'));
@@ -160,6 +162,7 @@ const ChangeOrderGeneratorPage = lazy(() => import('./pages/projects/financial/C
 const ChangeOrderSettingsPage = lazy(() => import('./pages/settings/ChangeOrderSettingsPage'));
 const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignChangeOrderPage'));
 const SignProposalPage = lazy(() => import('./pages/sign/SignProposalPage'));
+const SignFinancialProposalPage = lazy(() => import('./pages/sign/SignFinancialProposalPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
@@ -261,6 +264,7 @@ const App = () => (
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
                      <Route path="/sign/proposal/:token" element={<SignProposalPage />} />
+                     <Route path="/sign/financial-proposal/:token" element={<SignFinancialProposalPage />} />
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
@@ -295,6 +299,7 @@ const App = () => (
                               <Route path="/inbox" element={<MailboxPage />} />
                               <Route path="/messages" element={<MessagesPage />} />
                               <Route path="/messages/:threadId" element={<MessagesPage />} />
+                              <Route path="/product-ideas" element={<ProductIdeasPage />} />
                               <Route path="/reports" element={<ReportsPage />} />
                               <Route path="/daily-reports" element={<DailyReportsHubPage />} />
                               <Route path="/occupancy" element={<OccupancyPage />} />
@@ -414,6 +419,7 @@ const App = () => (
                               <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
                               <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
                               <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
+                              <Route path="/projects/:projectId/financials/proposals/new" element={<ProposalGeneratorPage />} />
                               <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />
                               <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
                               <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />

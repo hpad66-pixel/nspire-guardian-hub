@@ -27,6 +27,7 @@ import {
   Settings,
   MoreHorizontal,
   FolderKanban,
+  Lightbulb,
   X,
 } from 'lucide-react';
 
@@ -380,6 +381,13 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
             title="Voice Agent"
             subtitle="AI call center"
             onClick={() => go('/voice-agent')}
+          />
+          <DrawerTile
+            icon={<Lightbulb className={iconClass} />}
+            iconBg={commIconBg}
+            title="Product Ideas"
+            subtitle="Vote & shape the roadmap"
+            onClick={() => go('/product-ideas')}
           />
 
           {/* ORGANIZATION */}

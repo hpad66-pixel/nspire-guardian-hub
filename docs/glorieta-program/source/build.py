@@ -4,10 +4,7 @@ from register import (PROGRAM, BUCKETS, P, ROLE_TEXT, FEE_TEXT, FEE_SHORT,
                       ROLE_SHORT, AUTH_TEXT)
 from glossary import G, BYKEY
 
-# Resolved from this file so the build runs wherever the repo is checked out.
-# (Was hardcoded to the Cowork sandbox path the documents were first generated in.)
-OUT = os.environ.get("GLORIETA_OUT") or os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "out")
+OUT = "/home/claude/glorieta/out"
 os.makedirs(OUT, exist_ok=True)
 BK = {b["id"]: b for b in BUCKETS}
 e = lambda s: html.escape(str(s))
@@ -38,327 +35,7 @@ def L(text, used):
     return link(e(text), used)
 
 
-CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-:root{
-  /* civic.apas.ai — see source/civic-tokens.md */
-  --forest:#17352B; --forest-900:#0E241D; --night:#071D18;
-  --cream:#F5F1E8; --paper:#FBF9F3; --sand:#EFE9DB;
-  --line:#DED7C6; --line-soft:#E9E3D5;
-  --ink:#1A211E; --body:#3C4A44; --muted:#6A7A72; --mute:#8B9A92;
-  --brass:#B08948; --brass-deep:#8C6A34; --brass-bright:#C8A45E; --brass-lit:#D6B36A;
-  --brass-bg:rgba(176,137,72,.075);
-  --pass:#3E7A5E; --mint:#B7E2CE;
-  --display:'Fraunces',Georgia,'Times New Roman',serif;
-  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --shadow:0 22px 60px -42px rgba(14,36,29,.36);
-  --lift:0 30px 70px -44px rgba(14,36,29,.44);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth;scroll-padding-top:64px}
-body{background:var(--cream);color:var(--body);font-family:var(--sans);
-  font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;
-  font-feature-settings:'cv05' 1,'ss01' 1}
-.wrap{max-width:1160px;margin:0 auto;padding:0 clamp(24px,5vw,64px)}
-.narrow{max-width:860px}
-.tnum{font-variant-numeric:tabular-nums}
-
-/* ---------- glossary term ---------- */
-.tt{border-bottom:1px solid rgba(176,137,72,.55);cursor:help;color:inherit;
-  background:rgba(176,137,72,.07);padding:0 2px;transition:.13s}
-.tt:hover,.tt:focus{background:rgba(176,137,72,.2);border-bottom-color:var(--brass-deep);outline:none}
-.tt:after{content:'?';font-size:.6em;font-weight:800;vertical-align:super;
-  color:var(--brass-deep);margin-left:2px;letter-spacing:0}
-.band-dark .tt{background:rgba(214,179,106,.15);border-bottom-color:var(--brass-lit)}
-.band-dark .tt:after{color:var(--brass-lit)}
-
-/* ---------- modal ---------- */
-.gdim{position:fixed;inset:0;background:rgba(7,29,24,.62);backdrop-filter:blur(4px);
-  display:none;align-items:center;justify-content:center;z-index:900;padding:24px}
-.gdim.on{display:flex}
-.gbox{background:var(--paper);max-width:660px;width:100%;max-height:86vh;overflow-y:auto;
-  box-shadow:0 40px 90px -30px rgba(7,29,24,.55);position:relative;
-  border-top:4px solid var(--brass)}
-.gbox-in{padding:40px 46px 44px}
-.gclose{position:absolute;top:14px;right:16px;width:32px;height:32px;border:0;cursor:pointer;
-  background:transparent;color:var(--mute);font-size:22px;line-height:1}
-.gclose:hover{background:var(--sand);color:var(--forest)}
-.gk{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--brass-deep);margin-bottom:12px}
-.gbox h3{font-family:var(--display);font-weight:600;font-size:31px;letter-spacing:-.025em;
-  color:var(--forest);margin-bottom:24px;line-height:1.08}
-.gsec{margin-bottom:22px}
-.gsec:last-child{margin-bottom:0}
-.gsec-l{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--mute);margin-bottom:8px}
-.gsec p{font-size:15px;line-height:1.68;color:var(--body)}
-.gsec.plain{background:var(--sand);border-left:4px solid var(--brass);padding:20px 22px}
-.gsec.why{border-top:1px solid var(--line);padding-top:20px}
-.gsec.why p{color:var(--ink);font-weight:500}
-
-/* ---------- masthead ---------- */
-.masthead{background:var(--night);color:#F4F0E5;position:relative;overflow:hidden}
-.masthead:after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;
-  background:linear-gradient(90deg,var(--brass-deep),var(--brass),var(--brass-lit),var(--brass))}
-.mh-top{display:flex;justify-content:space-between;align-items:center;
-  padding:24px 0;border-bottom:1px solid rgba(244,240,229,.12)}
-.lockup{display:flex;align-items:center;gap:11px;font-size:11px;font-weight:800;
-  letter-spacing:.16em;text-transform:uppercase;color:#F4F0E5}
-.dot{width:9px;height:9px;background:var(--brass-lit);display:inline-block}
-.mh-meta{font-size:10.5px;font-weight:700;letter-spacing:.12em;
-  text-transform:uppercase;color:#7E9389}
-.hero{padding:84px 0 88px}
-.eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--brass-lit);margin-bottom:24px}
-h1{font-family:var(--display);font-weight:600;font-size:clamp(42px,5.6vw,76px);
-  line-height:.99;letter-spacing:-.035em;color:#F6F1E5;margin-bottom:28px;max-width:960px}
-h1 em{font-style:italic;font-weight:400;color:var(--brass-lit)}
-.lede{font-size:19px;line-height:1.6;color:#A9BCB2;max-width:760px;font-weight:300}
-.hero-facts{display:flex;flex-wrap:wrap;margin-top:56px;border-top:1px solid rgba(244,240,229,.14)}
-.fact{padding:24px 36px 6px 0;margin-right:36px;border-right:1px solid rgba(244,240,229,.12)}
-.fact:last-child{border-right:0}
-.fact-l{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:#6F857B;margin-bottom:8px}
-.fact-v{font-size:14px;color:#E4E1D8;font-weight:500;line-height:1.45}
-.hint{margin-top:28px;font-size:10px;font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--brass-lit);display:inline-flex;align-items:center;gap:9px;
-  border:1px solid rgba(214,179,106,.42);padding:9px 15px}
-
-/* ---------- nav ---------- */
-.navstrip{background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
-.navstrip .wrap{display:flex;overflow-x:auto}
-.navstrip a{font-size:10.5px;font-weight:800;letter-spacing:.13em;
-  text-transform:uppercase;color:var(--muted);text-decoration:none;padding:16px 22px 14px;
-  border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
-.navstrip a:first-child{padding-left:0}
-.navstrip a:hover{color:var(--forest);border-bottom-color:var(--brass)}
-
-/* ---------- sections ---------- */
-section{padding:86px 0;scroll-margin-top:52px}
-section.tight{padding:58px 0}
-.band-alt{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.band-dark{background:var(--forest-900);color:#A9BCB2}
-.slabel{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--brass-deep);margin-bottom:14px}
-.band-dark .slabel{color:var(--brass-lit)}
-h2{font-family:var(--display);font-weight:600;font-size:clamp(31px,3.9vw,48px);
-  line-height:1.04;letter-spacing:-.03em;color:var(--forest);margin-bottom:20px}
-.band-dark h2{color:#F6F1E5}
-h3{font-family:var(--display);font-weight:600;font-size:26px;
-  line-height:1.16;color:var(--forest);margin-bottom:14px;letter-spacing:-.025em}
-h4{font-weight:700;font-size:14px;color:var(--forest);margin-bottom:11px;letter-spacing:-.005em}
-.sdesc{font-size:17px;line-height:1.66;color:var(--muted);max-width:820px;font-weight:300}
-.band-dark .sdesc{color:#93A89E}
-.goldrule{width:56px;height:3px;background:var(--brass);margin:0 0 28px}
-
-/* ---------- bucket cards ---------- */
-.bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-top:46px}
-.bcard{background:var(--paper);border:1px solid var(--line);padding:34px 32px 30px;
-  position:relative;overflow:hidden;box-shadow:var(--shadow);text-decoration:none;display:block;transition:.18s}
-.bcard:hover{transform:translateY(-3px);border-color:var(--brass);box-shadow:var(--lift)}
-.bcard:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc)}
-.bnum{position:absolute;top:22px;right:26px;font-family:var(--display);font-weight:600;
-  font-size:48px;line-height:1;color:var(--bc);opacity:.16;letter-spacing:-.04em}
-.btag{font-size:9.5px;font-weight:800;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--bc);margin-bottom:13px}
-.bcard h3{font-size:24px;margin-bottom:12px;padding-right:56px}
-.btagline{font-size:15px;color:var(--body);line-height:1.6;margin-bottom:18px}
-.bposture{font-size:13px;color:var(--muted);line-height:1.55;padding-top:16px;
-  border-top:1px solid var(--line-soft)}
-.bposture b{font-size:10px;font-weight:800;color:var(--forest);text-transform:uppercase;
-  letter-spacing:.14em;display:block;margin-bottom:6px}
-.bmore{margin-top:16px;font-size:10px;font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--brass-deep)}
-
-/* ---------- three-up ---------- */
-.ssb{display:grid;grid-template-columns:repeat(3,1fr);margin-top:40px;
-  border:1px solid var(--line);background:var(--paper)}
-.ssb > div{padding:32px 30px;border-right:1px solid var(--line)}
-.ssb > div:last-child{border-right:0}
-.ssb .n{font-family:var(--display);font-weight:600;font-size:38px;color:var(--brass);
-  opacity:.32;line-height:1;margin-bottom:12px;letter-spacing:-.04em}
-.ssb h4{font-size:15px;margin-bottom:9px}
-.ssb p{font-size:14.5px;color:var(--muted);line-height:1.6}
-
-/* ---------- table ---------- */
-.tblwrap{margin-top:42px;border:1px solid var(--line);background:var(--paper);overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-.tblwrap.fixed table{table-layout:fixed}
-.tblwrap.fixed col.c1{width:70px}.tblwrap.fixed col.c3{width:120px}
-.tblwrap.fixed col.c4{width:104px}.tblwrap.fixed col.c5{width:92px}.tblwrap.fixed col.c6{width:96px}
-.tblwrap.fixed thead th{white-space:normal;padding:13px 10px}
-.tblwrap.fixed tbody td{padding:13px 10px;overflow-wrap:anywhere}
-thead th{background:var(--forest);color:#CFDDD5;font-size:9.5px;font-weight:800;
-  letter-spacing:.14em;text-transform:uppercase;padding:13px;text-align:left}
-tbody td{padding:13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.5}
-tbody tr:hover{background:var(--brass-bg)}
-tr.grp td{background:var(--sand);font-size:10px;font-weight:800;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--forest);
-  padding:12px 10px;border-bottom:1px solid var(--line);text-align:left}
-tr.grp td span.sw{display:inline-block;width:8px;height:8px;margin-right:9px}
-td.pid{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--forest);
-  font-variant-numeric:tabular-nums}
-td.pname{font-weight:500;color:var(--ink)}
-td.dep,td.role{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);line-height:1.6}
-td.bud{font-size:11px;font-weight:700;color:var(--forest);text-align:right;
-  font-variant-numeric:tabular-nums;letter-spacing:.02em}
-td.bud.tbd{color:var(--mute);font-weight:600}
-td.bud.set{color:var(--brass-deep);font-weight:800}
-.pill{display:inline-block;font-size:9px;font-weight:800;
-  letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;
-  border:1px solid;white-space:nowrap}
-.p-first{color:#0E241D;border-color:var(--brass);background:var(--brass-lit)}
-.p-ok{color:var(--pass);border-color:rgba(62,122,94,.42);background:rgba(62,122,94,.08)}
-.p-act{color:var(--brass-deep);border-color:rgba(176,137,72,.48);background:var(--brass-bg)}
-.p-new{color:var(--muted);border-color:var(--line);background:var(--sand)}
-.p-cond{color:#6B5AA8;border-color:rgba(107,90,168,.36);background:rgba(107,90,168,.07)}
-.p-disc{color:#F6F1E5;border-color:var(--forest);background:var(--forest)}
-
-/* ---------- project ---------- */
-.proj{background:var(--paper);border:1px solid var(--line);margin-bottom:26px;
-  scroll-margin-top:60px;box-shadow:var(--shadow);overflow:hidden;position:relative}
-.proj:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc)}
-.proj.first{border-color:var(--brass);box-shadow:0 26px 64px -40px rgba(176,137,72,.6)}
-.flagbar.discuss{background:var(--forest);color:#F6F1E5}
-.proj.discuss{border-color:var(--forest)}
-.flagbar{background:var(--brass);color:#0E241D;font-size:10px;font-weight:800;
-  letter-spacing:.2em;text-transform:uppercase;padding:10px 40px;margin-left:4px}
-.proj-head{padding:36px 42px 28px;border-bottom:1px solid var(--line-soft)}
-.proj-id{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
-.proj-id .code{font-size:11.5px;font-weight:800;letter-spacing:.12em;
-  color:var(--bc);background:var(--bct);padding:5px 11px}
-.proj-id .type{font-size:9.5px;font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--mute)}
-.proj h3{font-size:28px;margin-bottom:16px}
-.headline{font-size:17px;line-height:1.58;color:var(--ink);font-weight:500;
-  border-left:4px solid var(--brass);padding-left:20px;margin-bottom:20px}
-.context{font-size:15.5px;line-height:1.7;color:var(--muted)}
-.proj-body{display:grid;grid-template-columns:1fr 304px;align-items:stretch}
-.proj-scope{padding:34px 42px 38px;border-right:1px solid var(--line-soft)}
-.proj-side{padding:32px 30px 38px;background:var(--sand);height:100%}
-.blk{margin-bottom:30px}
-.blk:last-child{margin-bottom:0}
-.blk-l{font-size:9.5px;font-weight:800;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--brass-deep);margin-bottom:15px;padding-bottom:9px;
-  border-bottom:1px solid var(--line)}
-ul.chk{list-style:none}
-ul.chk li{position:relative;padding-left:23px;margin-bottom:11px;font-size:14.5px;
-  line-height:1.64;color:var(--body)}
-ul.chk li:before{content:'';position:absolute;left:0;top:9px;width:7px;height:7px;
-  background:var(--bc);opacity:.6}
-ul.dv{list-style:none}
-ul.dv li{position:relative;padding-left:20px;margin-bottom:9px;font-size:13.5px;
-  line-height:1.6;color:var(--body)}
-ul.dv li:before{content:'\\2192';position:absolute;left:0;top:0;color:var(--brass);font-size:13px}
-.sfact{padding:15px 0;border-bottom:1px solid var(--line)}
-.sfact:last-of-type{border-bottom:0}
-.sfact-l{font-size:9px;font-weight:800;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--mute);margin-bottom:7px}
-.sfact-v{font-size:13.5px;color:var(--forest);font-weight:600;line-height:1.5}
-.sfact-v.big{font-size:18px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-.sfact-v.tbd{color:var(--mute)}
-.sfact-v.set{color:var(--brass-deep)}
-.sfact-n{font-size:12px;color:var(--muted);line-height:1.55;margin-top:7px;font-weight:400}
-.driver{font-size:12px;color:var(--muted);line-height:1.6}
-
-/* ---------- sequence ---------- */
-.seqrow{display:grid;grid-template-columns:158px 1fr;gap:30px;padding:28px 0;border-top:1px solid var(--line)}
-.seqrow:last-child{border-bottom:1px solid var(--line)}
-.seq-ph{font-size:10px;font-weight:800;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--brass-deep);padding-top:3px}
-.seq-ph span{display:block;font-family:var(--display);font-size:34px;font-weight:600;
-  color:var(--brass);opacity:.3;letter-spacing:-.04em;margin-bottom:6px;text-transform:none}
-.seq h4{font-size:16px;margin-bottom:8px}
-.seq p{font-size:14.5px;color:var(--muted);line-height:1.66;margin-bottom:12px}
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{font-size:10px;font-weight:700;letter-spacing:.06em;padding:5px 10px;
-  border:1px solid var(--line);background:var(--cream);color:var(--forest)}
-
-/* ---------- callout ---------- */
-.callout{background:var(--forest);color:#C6D6CD;border-left:4px solid var(--brass);
-  padding:32px 36px;margin-top:34px;box-shadow:var(--shadow)}
-.callout h4{margin-bottom:11px;font-size:15px;color:#F6F1E5}
-.callout p{font-size:15px;color:#A9BCB2;line-height:1.68}
-.callout p+p{margin-top:12px}
-.callout .tt{background:rgba(214,179,106,.16);border-bottom-color:var(--brass-lit)}
-.callout .tt:after{color:var(--brass-lit)}
-.band-dark .callout{background:rgba(244,240,229,.04);box-shadow:none}
-
-/* ---------- commercial ---------- */
-.comgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
-@media(max-width:980px){.comgrid{grid-template-columns:repeat(2,1fr)}}
-.comcard{background:var(--paper);border:1px solid var(--line);padding:30px 28px;
-  box-shadow:var(--shadow);border-top:3px solid var(--brass)}
-.comcard .n{font-size:9.5px;font-weight:800;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--brass-deep);margin-bottom:12px}
-.comcard h4{font-size:16px;margin-bottom:9px}
-.comcard p{font-size:14px;color:var(--muted);line-height:1.64}
-.mathbar{display:flex;flex-wrap:wrap;gap:0;margin-top:32px;border:1px solid var(--line);
-  background:var(--paper)}
-.mathbar > div{flex:1;min-width:160px;padding:24px 26px;border-right:1px solid var(--line)}
-.mathbar > div:last-child{border-right:0;background:var(--brass-bg)}
-.mathbar .ml{font-size:9px;font-weight:800;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--mute);margin-bottom:8px}
-.mathbar .mv{font-size:21px;font-weight:800;letter-spacing:-.02em;
-  color:var(--forest);margin-bottom:6px;font-variant-numeric:tabular-nums}
-.mathbar .mn{font-size:12.5px;color:var(--muted);line-height:1.55}
-
-/* ---------- projos ---------- */
-.osgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;
-  background:rgba(244,240,229,.12);border:1px solid rgba(244,240,229,.12);margin-top:42px}
-.oscell{background:var(--forest-900);padding:30px 28px}
-.oscell .n{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--brass-lit);margin-bottom:13px}
-.oscell h4{color:#F6F1E5;font-size:15px;margin-bottom:9px}
-.oscell p{font-size:13.5px;color:#8FA69B;line-height:1.65}
-
-/* ---------- glossary index ---------- */
-.gindex{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:9px;margin-top:38px}
-.gitem{background:var(--paper);border:1px solid var(--line);padding:14px 16px;
-  cursor:pointer;transition:.14s;text-align:left;font-family:inherit}
-.gitem:hover{border-color:var(--brass);background:var(--brass-bg);transform:translateY(-2px)}
-.gitem b{display:block;font-size:13.5px;color:var(--forest);font-weight:700;margin-bottom:4px}
-.gitem span{font-size:11.5px;color:var(--muted);line-height:1.45;display:block}
-
-/* ---------- quals ---------- */
-.quals{columns:2;column-gap:46px;margin-top:34px}
-.quals li{break-inside:avoid;list-style:none;position:relative;padding-left:20px;
-  margin-bottom:14px;font-size:13.5px;line-height:1.64;color:var(--muted)}
-.quals li:before{content:'\\00A7';position:absolute;left:0;top:0;color:var(--brass);font-size:12px}
-
-/* ---------- footer ---------- */
-footer{background:var(--forest-900);color:#7E9389;padding:50px 0 56px;border-top:3px solid var(--brass)}
-.ft{display:flex;justify-content:space-between;gap:36px;flex-wrap:wrap}
-.ft-l,.ft-r{font-size:10px;font-weight:700;letter-spacing:.14em;
-  text-transform:uppercase;line-height:2.1}
-.ft-r{text-align:right}
-.backlink{display:inline-block;margin-top:8px;font-size:10px;font-weight:800;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--brass-lit);text-decoration:none}
-
-@media(max-width:880px){
-  .proj-body{grid-template-columns:1fr}
-  .proj-scope{border-right:0;border-bottom:1px solid var(--line-soft)}
-  .proj-head{padding:28px 26px 22px}
-  .proj-scope{padding:26px}
-  .ssb{grid-template-columns:1fr}
-  .ssb > div{border-right:0;border-bottom:1px solid var(--line)}
-  .seqrow{grid-template-columns:1fr;gap:12px}
-  .quals{columns:1}
-  .hero{padding:56px 0 60px}
-  section{padding:56px 0}
-  .gbox-in{padding:32px 26px 34px}
-}
-@media print{
-  body{background:#fff}
-  .navstrip,.gdim,.hint{display:none}
-  section{padding:32px 0;break-inside:avoid}
-  .proj,.bcard{break-inside:avoid;box-shadow:none}
-  .tt{background:none;border-bottom:1px dotted #999}
-  .tt:after{content:''}
-  a{text-decoration:none;color:inherit}
-}
-"""
+from civic_css import CSS
 
 MODAL = """
 <div class="gdim" id="gdim" role="dialog" aria-modal="true" aria-labelledby="gterm">
@@ -411,10 +88,13 @@ def modal_block():
 def masthead(eyebrow, title_html, lede, facts, hint=True):
     f = "".join('<div class="fact"><div class="fact-l">%s</div><div class="fact-v">%s</div></div>'
                 % (a, b) for a, b in facts)
-    h = ('<div class="hint">&#9432;&nbsp; Any underlined term is clickable — plain-English explanation</div>'
+    h = ('<div class="hint">Any underlined term is clickable — plain-English explanation</div>'
          if hint else "")
     return """<header class="masthead"><div class="wrap">
-  <div class="mh-top"><div class="lockup"><span class="dot"></span> APAS Consulting</div>
+  <div class="mh-top">
+    <div class="lockup"><span class="mark">APAS</span>
+      <span><span class="lockup-name">Consulting</span>
+      <span class="lockup-sub">Glorieta Gardens Program</span></span></div>
     <div class="mh-meta">%s &nbsp;·&nbsp; %s</div></div>
   <div class="hero"><div class="eyebrow">%s</div><h1>%s</h1>
     <p class="lede">%s</p>%s<div class="hero-facts">%s</div></div>
@@ -429,7 +109,9 @@ def navstrip(items):
 def footer(back=False):
     b = '<a class="backlink" href="Glorieta-Gardens-Program-of-Work.html">&larr; Program Master</a>' if back else ""
     return """<footer><div class="wrap"><div class="ft">
-  <div class="ft-l"><span class="lockup"><span class="dot"></span> APAS Consulting LLC</span><br>
+  <div class="ft-l"><span class="lockup"><span class="mark">APAS</span>
+      <span><span class="lockup-name">Consulting</span>
+      <span class="lockup-sub">LLC</span></span></span><br>
     Prepared for %s<br>%s<br>%s</div>
   <div class="ft-r">%s &nbsp;·&nbsp; %s<br>%s<br>Planning document — each project authorised by its own proposal<br>%s</div>
 </div></div></footer>""" % (e(PROGRAM["owner"]), e(PROGRAM["property"]), e(PROGRAM["address"]),
@@ -565,18 +247,17 @@ def master_page():
     used_all = set()
     facts = [("Property", e(PROGRAM["property"])),
              ("Owner", "Glorieta Partners, Ltd. / R4"),
-             ("Program Buckets", "05"),
              ("Discrete Projects", str(len(P))),
              ("First Deliverable", "Stormwater Management Plan")]
     head = masthead("Glorieta Gardens &nbsp;·&nbsp; Program of Work",
-                    'Four systems.<br>One property.<br><em>One operating record.</em>',
+                    'Four systems. One property.<br><em>One operating record.</em>',
                     "This document sets out every piece of work required to bring the stormwater, sewer, water and environmental systems at Glorieta Gardens into a defensible, permitted, operable condition — and to close the Consent Order completely. Each piece of work is presented as a project, because that is what it is: a defined scope, a defined set of deliverables, and its own proposal for your signature.",
                     facts)
-    nav = navstrip([("#read", "How to read this"), ("#buckets", "The five buckets"),
-                    ("#portfolio", "Project portfolio"), ("#discuss", "For discussion"),
-                    ("#commercial", "Authorisation & fees"),
+    nav = navstrip([("#read", "How to read"), ("#buckets", "The buckets"),
+                    ("#portfolio", "Portfolio"), ("#discuss", "For discussion"),
+                    ("#commercial", "Authorisation"),
                     ("#sequence", "Sequencing"), ("#projos", "ProjOS"),
-                    ("#glossary", "Glossary"), ("#basis", "Basis & qualifications")])
+                    ("#glossary", "Glossary"), ("#basis", "Basis")])
 
     read = """<section id="read"><div class="wrap">
   <div class="slabel">How to read this document</div>
@@ -643,11 +324,11 @@ def master_page():
 
     disc_items = [p for p in P if p["status"] == "For discussion"]
     u = set()
-    dcards = "".join("""<div class="comcard" style="border-top-color:var(--forest)">
-      <div class="n" style="color:var(--forest)">%s &nbsp;·&nbsp; %s</div>
+    dcards = "".join("""<div class="comcard" style="border-top:3px solid #3B5E80">
+      <div class="n" style="color:#3B5E80">%s &nbsp;·&nbsp; %s</div>
       <h4>%s</h4><p>%s</p>
-      <p style="margin-top:12px"><a href="%s#%s" style="color:var(--brass-deep);text-decoration:none;
-        font-weight:800;font-size:10.5px;letter-spacing:.14em;
+      <p style="margin-top:12px"><a href="%s#%s" style="color:var(--gold-deep);text-decoration:none;
+        font-family:var(--sans);font-weight:700;font-size:10.5px;letter-spacing:.13em;
         text-transform:uppercase">Read the outline &rarr;</a></p></div>"""
       % (p["id"], e(BK[p["bucket"]]["name"]), L(p["name"], u), L(p["headline"], u),
          BK[p["bucket"]]["file"], p["id"]) for p in disc_items)

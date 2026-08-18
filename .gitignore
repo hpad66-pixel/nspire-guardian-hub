@@ -41,6 +41,11 @@ video/showcase/*.wav
 # Vitest coverage output
 coverage/
 
+# Test + generator artifacts (not source)
+test-results/
+outputs/
+tmp/
+
 # Python generators (docs/glorieta-program/source)
 __pycache__/
 *.pyc

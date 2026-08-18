@@ -42,6 +42,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   units: 'Units',
   people: 'People',
   insights: 'Insights',
+  'product-ideas': 'Product Ideas',
 };
 
 const isIdSegment = (s: string) =>

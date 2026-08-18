@@ -21,6 +21,9 @@ interface SendReportEmailRequest {
   message?: string;
   pdfBase64: string;
   pdfFilename: string;
+  // Extra files to send alongside the generated PDF (e.g. subconsultant
+  // documentation attached to a proposal). Each is base64 in `content`.
+  extraAttachments?: { filename: string; content: string; content_type?: string }[];
   sourceModule?: string;
   propertyId?: string;
   projectId?: string;
@@ -225,6 +228,13 @@ const handler = async (req: Request): Promise<Response> => {
           filename: pdfFilename,
           content: pdfBase64,
         },
+        ...(Array.isArray(body.extraAttachments) ? body.extraAttachments : [])
+          .filter((a) => a && a.filename && a.content)
+          .map((a) => ({
+            filename: a.filename,
+            content: a.content,
+            ...(a.content_type ? { content_type: a.content_type } : {}),
+          })),
       ],
     };
 
