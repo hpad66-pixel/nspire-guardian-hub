@@ -24,6 +24,7 @@ import {
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature, Mail,
+  Megaphone,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -72,7 +73,6 @@ import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
-import { ConsultingClientPortalCard } from '@/components/projects/ConsultingClientPortalCard';
 import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
 import { EnvComplianceTab } from '@/components/projects/envcompliance/EnvComplianceTab';
 import { useProjectTree } from '@/hooks/useProjectTree';
@@ -134,7 +134,7 @@ const CONSULTING_GROUP_OF: Record<string, string> = {
   rfis: 'delivery', submittals: 'delivery', 'punch-list': 'delivery',
   progress: 'delivery', procurement: 'delivery', safety: 'delivery', closeout: 'delivery',
   'env-compliance': 'delivery',
-  invoicing: 'client', proposals: 'client', 'client-portal': 'client',
+  invoicing: 'client', proposals: 'client', 'client-updates': 'client', 'client-portal': 'client',
   financials: 'client', contracts: 'client',
 };
 
@@ -202,6 +202,9 @@ export default function ProjectDetailPage() {
     // Contracts has no dedicated /contracts route — it lives under the financial
     // cascade (prime contract page). Pointing here avoids a 404.
     contracts: `/projects/${id}/financials/prime-contract`,
+    // Client communication is a project-wide workflow, not a construction-only
+    // financial tool. Both consulting and construction projects use one studio.
+    'client-updates': `/projects/${id}/client-updates`,
     repository: `/projects/${id}/repository`,
   };
   useEffect(() => {
@@ -401,6 +404,7 @@ export default function ProjectDetailPage() {
     { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
     { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
     { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
+    { value: 'client-updates', label: 'Client Updates', shortLabel: 'Updates', icon: Megaphone,     group: 'reports',    badge: null as number | null },
     { value: 'repository',   label: 'Repository',   shortLabel: 'Repo',     icon: Brain,           group: 'core',       badge: null as number | null },
     { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
   ];
@@ -1008,7 +1012,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
                 <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
-                <TabsContent value="client-portal" className="mt-0 pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
+                <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
             </div>
 
@@ -1289,7 +1293,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
               <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
-              <TabsContent value="client-portal" className="pb-6">{isConsulting ? <ConsultingClientPortalCard projectId={id!} /> : <ClientPortalTab projectId={id!} />}</TabsContent>
+              <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
             </div>
 
           </Tabs>

@@ -197,7 +197,7 @@ export default function PortalManagePage() {
         </div>
         <div className="flex gap-2">
           {portal.project_id && (
-            <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/financials/client-updates?compose=1`)}>
+            <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/client-updates?compose=1`)}>
               <Megaphone className="h-3.5 w-3.5 mr-1.5" />
               Write Update
             </Button>

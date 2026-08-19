@@ -33,6 +33,7 @@ export type ProjectModuleSlug =
   | 'repository'
   | 'invoicing'
   | 'correspondence'
+  | 'client-updates'
   | 'client-portal';
 
 export type ModuleGroup = 'core' | 'compliance' | 'reports';
@@ -70,6 +71,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'closeout',      label: 'Closeout',            description: 'Project closeout package',             group: 'reports' },
   { slug: 'invoicing',     label: 'Invoicing',           description: 'Bill against scope completion',        group: 'reports' },
   { slug: 'proposals',     label: 'Proposals',           description: 'AI proposal generator',                group: 'reports' },
+  { slug: 'client-updates', label: 'Client updates',      description: 'Draft, review, and publish client briefings', group: 'reports' },
   { slug: 'client-portal', label: 'Client portal',       description: 'External client access',               group: 'core' },
 ];
 
@@ -95,6 +97,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   // default (Lorcan Hospital is a consulting engagement with active COs).
   'financials',
   'contracts',
+  'client-updates',
   'client-portal',
 ]);
 

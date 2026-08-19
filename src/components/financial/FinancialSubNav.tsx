@@ -58,6 +58,9 @@ export function FinancialSubNav() {
 
   const activeTab = ALL_TABS.find((t) => location.pathname.includes(`/financials/${t.path}`));
   const moreActive = activeTab != null && MORE_TABS.some((t) => t.path === activeTab.path);
+  const hrefFor = (path: string) => path === "client-updates"
+    ? `/projects/${projectId}/client-updates`
+    : `/projects/${projectId}/financials/${path}`;
 
   const tabClass = (isActive: boolean) =>
     cn(
@@ -120,7 +123,7 @@ export function FinancialSubNav() {
                   {group.tabs.map((t) => (
                     <DropdownMenuItem key={t.path} asChild>
                       <Link
-                        to={`/projects/${projectId}/financials/${t.path}`}
+                        to={hrefFor(t.path)}
                         className={cn(
                           "flex cursor-pointer items-center gap-2",
                           activeTab?.path === t.path && "text-accent font-semibold",

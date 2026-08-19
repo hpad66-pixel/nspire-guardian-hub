@@ -729,7 +729,7 @@ function PMUpdatesFeed({ projectId }: { projectId: string }) {
       <Megaphone size={24} className="text-muted-foreground/40" />
       <p className="text-sm text-muted-foreground">No client briefings yet.</p>
       <p className="text-xs text-muted-foreground/60">Write rough notes, review the client preview, then publish.</p>
-      <Button size="sm" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}><Plus className="mr-1.5 h-3.5 w-3.5" />Write first update</Button>
+      <Button size="sm" onClick={() => navigate(`/projects/${projectId}/client-updates?compose=1`)}><Plus className="mr-1.5 h-3.5 w-3.5" />Write first update</Button>
     </div>
   );
 
@@ -739,7 +739,7 @@ function PMUpdatesFeed({ projectId }: { projectId: string }) {
         const meta = UPDATE_TYPES[u.update_type ?? 'general'] ?? UPDATE_TYPES.general;
         const Icon = meta.icon;
         return (
-          <button key={u.id} onClick={() => navigate(`/projects/${projectId}/financials/client-updates`)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:border-primary/30 hover:shadow-sm">
+          <button key={u.id} onClick={() => navigate(`/projects/${projectId}/client-updates`)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:border-primary/30 hover:shadow-sm">
             <div className="flex items-start gap-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted"><Icon className={`h-4 w-4 ${meta.accent}`} /></span>
               <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm">{u.title}</strong><Badge variant="outline" className={u.status === 'published' ? 'border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700' : 'text-[10px] text-muted-foreground'}>{u.status === 'published' ? 'Live' : 'Draft'}</Badge></span><small className="mt-1 block text-muted-foreground">{u.period_label || format(new Date(u.created_at), 'MMM d, yyyy')}</small>{u.summary && <span className="mt-2 line-clamp-2 block text-sm leading-relaxed text-muted-foreground">{u.summary}</span>}</span>
@@ -796,7 +796,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
           <p className="text-sm text-muted-foreground">Manage what your client sees and how they interact with the project.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}>
+          <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/client-updates?compose=1`)}>
             <Megaphone className="h-3.5 w-3.5 mr-1.5" />
             Write Client Update
           </Button>
@@ -927,7 +927,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm">Posted Updates</h3>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/client-updates?compose=1`)}>
               <Megaphone className="h-3.5 w-3.5 mr-1.5" />Write Update
             </Button>
           </div>
