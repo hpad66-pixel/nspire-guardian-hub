@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PRODUCT_IDEA_PROGRESS,
+  PRODUCT_IDEA_STATUS_META,
   isProductIdeaRoadmapStatus,
   productIdeaProgressIndex,
   productIdeaScore,
@@ -10,10 +12,19 @@ describe('product ideas helpers', () => {
     expect(productIdeaScore(14, 3)).toBe(11);
   });
 
-  it('maps planned work to the escalated milestone until development starts', () => {
-    expect(productIdeaProgressIndex('planned')).toBe(2);
-    expect(productIdeaProgressIndex('in_progress')).toBe(3);
-    expect(productIdeaProgressIndex('shipped')).toBe(4);
+  it('gives planned work and execution their own visible milestones', () => {
+    expect(PRODUCT_IDEA_PROGRESS.map((stage) => stage.key)).toEqual([
+      'submitted',
+      'under_review',
+      'escalated',
+      'planned',
+      'in_progress',
+      'shipped',
+    ]);
+    expect(productIdeaProgressIndex('planned')).toBe(3);
+    expect(productIdeaProgressIndex('in_progress')).toBe(4);
+    expect(productIdeaProgressIndex('shipped')).toBe(5);
+    expect(PRODUCT_IDEA_STATUS_META.shipped.label).toBe('Executed');
   });
 
   it('keeps declined ideas anchored at the review decision', () => {

@@ -57,10 +57,12 @@ export const PRODUCT_IDEA_STATUS_META: Record<
     dot: 'bg-orange-500',
   },
   shipped: {
-    label: 'Released',
-    shortLabel: 'Released',
-    tone: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    dot: 'bg-emerald-500',
+    // Keep the stored `shipped` value for backwards/database compatibility,
+    // but use the client's operational language throughout the interface.
+    label: 'Executed',
+    shortLabel: 'Executed',
+    tone: 'border-slate-300 bg-slate-100 text-slate-700',
+    dot: 'bg-slate-500',
   },
   rejected: {
     label: 'Not moving forward',
@@ -85,13 +87,13 @@ export const PRODUCT_IDEA_PROGRESS = [
   { key: 'submitted', label: 'Submitted' },
   { key: 'under_review', label: 'Review' },
   { key: 'escalated', label: 'Escalated' },
+  { key: 'planned', label: 'Planned' },
   { key: 'in_progress', label: 'Building' },
-  { key: 'shipped', label: 'Released' },
+  { key: 'shipped', label: 'Executed' },
 ] as const;
 
 export function productIdeaProgressIndex(status: ProductIdeaStatus): number {
   if (status === 'rejected') return 1;
-  if (status === 'planned') return 2;
   return PRODUCT_IDEA_PROGRESS.findIndex((stage) => stage.key === status);
 }
 
