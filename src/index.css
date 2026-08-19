@@ -258,42 +258,44 @@
     }
   }
 
-  .product-idea-bar-confetti-piece {
-    --product-idea-confetti-drift: 9px;
-    animation: productIdeaBarConfetti 5.2s cubic-bezier(0.16, 1, 0.3, 1) infinite both;
+  .product-idea-waterfall-confetti-piece {
+    animation: productIdeaWaterfallConfetti 6s cubic-bezier(0.22, 0.72, 0.25, 1) infinite both;
+    filter: saturate(0.88);
+    transform-origin: center;
+    will-change: transform, opacity;
   }
 
-  .product-idea-bar-confetti-piece:nth-child(even) {
-    --product-idea-confetti-drift: -9px;
-  }
-
-  .product-idea-bar-confetti-piece:nth-child(3n) {
-    --product-idea-confetti-drift: 4px;
-  }
-
-  @keyframes productIdeaBarConfetti {
+  @keyframes productIdeaWaterfallConfetti {
     0% {
       opacity: 0;
-      transform: translate3d(0, 8px, 0) rotate(0deg) scale(0.8);
+      transform: translate3d(0, -2px, 0) rotate(0deg) scale(0.72);
     }
     4% {
-      opacity: 0.72;
+      opacity: 0.68;
+      transform: translate3d(0, 2px, 0) rotate(12deg) scale(0.88);
     }
-    18% {
+    16% {
+      opacity: 0.56;
+      transform: translate3d(0, 24px, 0) rotate(70deg) scale(1);
+    }
+    34% {
+      opacity: 0.2;
+      transform: translate3d(var(--product-idea-confetti-drift), var(--product-idea-confetti-fall), 0) rotate(var(--product-idea-confetti-turn)) scale(0.96);
+    }
+    42% {
       opacity: 0;
-      transform: translate3d(var(--product-idea-confetti-drift), -30px, 0) rotate(170deg) scale(1);
+      transform: translate3d(var(--product-idea-confetti-drift), calc(var(--product-idea-confetti-fall) + 8px), 0) rotate(var(--product-idea-confetti-turn)) scale(0.9);
     }
     100% {
       opacity: 0;
-      transform: translate3d(var(--product-idea-confetti-drift), -30px, 0) rotate(170deg) scale(1);
+      transform: translate3d(var(--product-idea-confetti-drift), calc(var(--product-idea-confetti-fall) + 8px), 0) rotate(var(--product-idea-confetti-turn)) scale(0.9);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .product-idea-bar-confetti-piece {
+    .product-idea-waterfall-confetti-piece {
       animation: none;
-      opacity: 0.26;
-      transform: translateY(-8px) rotate(20deg);
+      opacity: 0;
     }
   }
 }
