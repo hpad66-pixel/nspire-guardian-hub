@@ -257,6 +257,45 @@
       transform: translateX(0);
     }
   }
+
+  .product-idea-bar-confetti-piece {
+    --product-idea-confetti-drift: 9px;
+    animation: productIdeaBarConfetti 5.2s cubic-bezier(0.16, 1, 0.3, 1) infinite both;
+  }
+
+  .product-idea-bar-confetti-piece:nth-child(even) {
+    --product-idea-confetti-drift: -9px;
+  }
+
+  .product-idea-bar-confetti-piece:nth-child(3n) {
+    --product-idea-confetti-drift: 4px;
+  }
+
+  @keyframes productIdeaBarConfetti {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0) rotate(0deg) scale(0.8);
+    }
+    4% {
+      opacity: 0.72;
+    }
+    18% {
+      opacity: 0;
+      transform: translate3d(var(--product-idea-confetti-drift), -30px, 0) rotate(170deg) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--product-idea-confetti-drift), -30px, 0) rotate(170deg) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .product-idea-bar-confetti-piece {
+      animation: none;
+      opacity: 0.26;
+      transform: translateY(-8px) rotate(20deg);
+    }
+  }
 }
 
 /* Branded pricing table for AI-generated proposals (.proposal-pricing).
