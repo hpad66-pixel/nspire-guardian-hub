@@ -406,6 +406,9 @@ const App = () => (
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
                               <Route path="/projects/:projectId/incidents" element={<IncidentsPage />} />
+                              {/* Project-wide client communication studio. The legacy
+                                  financials path remains below for saved links. */}
+                              <Route path="/projects/:projectId/client-updates" element={<ClientUpdatesPage />} />
 
                               {/* ───── Procore Lite · Phase 3 (Financial Cascade) ───── */}
                               {/* F0 · unified financials — Overview is the single home */}

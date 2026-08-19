@@ -34,20 +34,31 @@ serve(async (req) => {
     // Defensive gathers — a missing table/column must not fail the whole draft.
     const grab = async (fn: () => Promise<any>) => { try { return (await fn()) ?? []; } catch { return []; } };
 
-    const project = await grab(async () => (await supabase.from("projects").select("name, status").eq("id", projectId).maybeSingle()).data);
+    const project = await grab(async () => (await supabase.from("projects").select("name, status, project_type").eq("id", projectId).maybeSingle()).data);
     const dailies = await grab(async () => (await supabase.from("daily_reports").select("report_date, work_performed, notes").eq("project_id", projectId).gte("report_date", start).lte("report_date", end).order("report_date")).data);
     const rfis = await grab(async () => (await supabase.from("rfis").select("rfi_number, subject, status, due_date, created_at").eq("project_id", projectId)).data);
     const submittals = await grab(async () => (await supabase.from("submittals").select("title, status, created_at").eq("project_id", projectId)).data);
     const cos = await grab(async () => (await supabase.from("change_orders").select("co_number, title, status, amount, created_at").eq("project_id", projectId)).data);
     const meetings = await grab(async () => (await supabase.from("project_meetings").select("title, meeting_date").eq("project_id", projectId).gte("meeting_date", start).lte("meeting_date", end)).data);
+    // Consulting engagements use lighter-weight scope, action-item, meeting,
+    // and invoice records. Gather them alongside the construction sources so
+    // one update workflow works consistently for every project type.
+    const scopes = await grab(async () => (await supabase.from("project_scopes").select("title, status, due_date, fee_amount, pct_complete, pct_billed, updated_at").eq("project_id", projectId).order("sort_order")).data);
+    const actions = await grab(async () => (await supabase.from("project_action_items").select("title, description, status, priority, due_date, completed_at, updated_at").eq("project_id", projectId).order("updated_at", { ascending: false })).data);
+    const consultingMeetings = await grab(async () => (await supabase.from("consulting_meetings").select("title, meeting_date").eq("project_id", projectId).gte("meeting_date", start).lte("meeting_date", end).order("meeting_date")).data);
+    const consultingInvoices = await grab(async () => (await supabase.from("consulting_invoices").select("invoice_no, status, issue_date, due_date, total, updated_at").eq("project_id", projectId).order("invoice_no", { ascending: false })).data);
 
     const inPeriod = (d?: string) => d && d.slice(0, 10) >= start && d.slice(0, 10) <= end;
     const openRfis = (rfis as any[]).filter((r) => r.status === "open" || r.status === "pending");
     const overdueRfis = openRfis.filter((r) => r.due_date && r.due_date < end);
     const cosThisPeriod = (cos as any[]).filter((c) => inPeriod(c.created_at));
+    const relevantActions = (actions as any[]).filter((a) =>
+      inPeriod(a.updated_at) || !["done", "cancelled"].includes(a.status)
+    );
 
     const context = {
       project: (project as any)?.name ?? "the project",
+      project_type: (project as any)?.project_type ?? "project",
       period: periodLabel || `${start} to ${end}`,
       requested_update_type: ["general", "progress", "milestone", "decision", "risk"].includes(updateType) ? updateType : "progress",
       source_notes: typeof rawNotes === "string" ? rawNotes.trim() : "",
@@ -56,7 +67,33 @@ serve(async (req) => {
       overdue_rfis: overdueRfis.map((r) => `RFI-${r.rfi_number}: ${r.subject}`).slice(0, 10),
       submittals_pending: (submittals as any[]).filter((s) => s.status !== "approved" && s.status !== "closed").length,
       change_orders_this_period: cosThisPeriod.map((c) => ({ no: c.co_number, title: c.title, amount: c.amount, status: c.status })),
-      meetings: (meetings as any[]).map((m) => m.title),
+      meetings: [...(meetings as any[]), ...(consultingMeetings as any[])].map((m) => ({ title: m.title, date: m.meeting_date })),
+      consulting_scopes: (scopes as any[]).map((s) => ({
+        title: s.title,
+        status: s.status,
+        due_date: s.due_date,
+        fee_amount: s.fee_amount,
+        percent_complete: s.pct_complete,
+        percent_billed: s.pct_billed,
+        updated_at: s.updated_at,
+      })).slice(0, 40),
+      project_action_items: relevantActions.map((a) => ({
+        title: a.title,
+        description: a.description,
+        status: a.status,
+        priority: a.priority,
+        due_date: a.due_date,
+        completed_at: a.completed_at,
+        updated_at: a.updated_at,
+      })).slice(0, 40),
+      consulting_invoices: (consultingInvoices as any[]).map((i) => ({
+        invoice_number: i.invoice_no,
+        status: i.status,
+        issue_date: i.issue_date,
+        due_date: i.due_date,
+        total: i.total,
+        updated_at: i.updated_at,
+      })).slice(0, 20),
     };
 
     const system = `You format client/owner project updates for a construction and consulting project team. Be concise, factual, and client-appropriate (no internal jargon). ${STYLE}

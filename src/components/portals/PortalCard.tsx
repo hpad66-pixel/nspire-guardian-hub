@@ -172,7 +172,7 @@ export function PortalCard({ portal }: PortalCardProps) {
           Manage
         </Button>
         {portal.project_id && (
-          <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/financials/client-updates?compose=1`)}>
+          <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/client-updates?compose=1`)}>
             <Megaphone className="mr-1.5 h-3.5 w-3.5" />
             Update
           </Button>

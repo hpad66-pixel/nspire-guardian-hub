@@ -247,7 +247,7 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
     },
     {
       label: 'Client Updates',
-      path: `financials/client-updates`,
+      path: `client-updates`,
       icon: Megaphone,
       color: 'text-pink-600',
       bg: 'bg-pink-50',

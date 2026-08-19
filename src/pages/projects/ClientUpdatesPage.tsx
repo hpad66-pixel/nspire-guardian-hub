@@ -4,8 +4,7 @@
  * portal rendering, and explicitly publish when approved.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Check, ChevronDown, Eye, FileCheck2, Loader2, Plus,
-  Save, Send, ShieldCheck, Sparkles, Trash2, TrendingUp, UserPlus, X,
+  Check, ChevronDown, ChevronRight, Eye, FileCheck2, Loader2, Plus,
+  Save, Send, ShieldCheck, Sparkles, Trash2, TrendingUp, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { UPDATE_TYPES } from "@/lib/clientUpdates/presentation";
-import { InviteClientDialog } from "@/components/portal/InviteClientDialog";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
+import { useProject } from "@/hooks/useProjects";
 import { financialSummary } from "@/lib/reports/financialReports";
 import {
   useClientUpdates, type ActionItem, type ClientUpdate, type ClientUpdateType,
@@ -85,15 +84,16 @@ function StringList({ label, items, onChange, placeholder }: { label: string; it
 
 export default function ClientUpdatesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const startInComposer = searchParams.get("compose") === "1";
+  const { data: project } = useProject(projectId ?? null);
   const { data: updates = [], create, save, setStatus, remove } = useClientUpdates(projectId ?? null);
   const { data: finData } = useFinancialReportData(projectId ?? null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isNew, setIsNew] = useState(startInComposer);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [sourceNotes, setSourceNotes] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [aiBusy, setAiBusy] = useState<"notes" | "project" | null>(null);
 
   const selected = useMemo(() => updates.find((u) => u.id === selectedId) ?? null, [updates, selectedId]);
@@ -230,7 +230,15 @@ export default function ClientUpdatesPage() {
 
   return (
     <div className="mx-auto max-w-[1540px] space-y-5 p-4 sm:p-6">
-      <FinancialSubNav />
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link to="/dashboard" className="transition-colors hover:text-foreground">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+        <Link to={`/projects/${projectId}`} className="max-w-[240px] truncate transition-colors hover:text-foreground">
+          {project?.name ?? "Project"}
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+        <span className="font-medium text-foreground">Client Updates</span>
+      </nav>
 
       <header className="overflow-hidden rounded-[24px] border border-[#173c33]/10 bg-[#082b23] px-5 py-6 text-white shadow-[0_20px_60px_rgba(8,43,35,0.12)] sm:px-8">
         <div className="flex flex-wrap items-center justify-between gap-5">
@@ -240,7 +248,7 @@ export default function ClientUpdatesPage() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/68">Paste your working notes, let the system organize them, verify the client preview, and publish only when you approve it.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setInviteOpen(true)}><UserPlus className="mr-2 h-4 w-4" />Invite client</Button>
+            <Button variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => navigate(`/projects/${projectId}?tab=client-portal`)}><Users className="mr-2 h-4 w-4" />Manage client portal</Button>
             <Button className="bg-[#d9b45b] text-[#082b23] hover:bg-[#e4c36f]" onClick={startNew}><Plus className="mr-2 h-4 w-4" />New client update</Button>
           </div>
         </div>
@@ -350,8 +358,6 @@ export default function ClientUpdatesPage() {
           </aside>
         </div>
       </div>
-
-      {projectId && <InviteClientDialog open={inviteOpen} onOpenChange={setInviteOpen} projectId={projectId} />}
     </div>
   );
 }

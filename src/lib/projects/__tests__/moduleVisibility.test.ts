@@ -32,6 +32,12 @@ describe('moduleVisibility', () => {
     expect(isModuleVisible({ project_type: 'consulting' }, 'contracts')).toBe(true);
   });
 
+  it('keeps the same client update workflow visible on every project type', () => {
+    expect(isModuleVisible({ project_type: 'consulting' }, 'client-updates')).toBe(true);
+    expect(isModuleVisible({ project_type: 'property' }, 'client-updates')).toBe(true);
+    expect(isModuleVisible({ project_type: 'client' }, 'client-updates')).toBe(true);
+  });
+
   it('still hides field-construction modules by default on consulting projects', () => {
     expect(isModuleVisible({ project_type: 'consulting' }, 'rfis')).toBe(false);
     expect(isModuleVisible({ project_type: 'consulting' }, 'daily-logs')).toBe(false);
