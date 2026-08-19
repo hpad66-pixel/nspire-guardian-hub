@@ -32,6 +32,9 @@ export function PortalCard({ portal }: PortalCardProps) {
   const [confirming, setConfirming] = useState(false);
 
   const portalUrl = `${window.location.origin}/portal/${portal.portal_slug}`;
+  const previewUrl = portal.project_id
+    ? `/owner-portal?project=${encodeURIComponent(portal.project_id)}`
+    : '/owner-portal';
 
   function copyLink() {
     navigator.clipboard.writeText(portalUrl);
@@ -106,7 +109,7 @@ export function PortalCard({ portal }: PortalCardProps) {
             <DropdownMenuItem onClick={copyLink}>
               <Copy className="h-3.5 w-3.5 mr-2" /> Copy Portal Link
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(portalUrl, '_blank')}>
+            <DropdownMenuItem onClick={() => window.open(previewUrl, '_blank')}>
               <ExternalLink className="h-3.5 w-3.5 mr-2" /> Open Portal
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -157,7 +160,7 @@ export function PortalCard({ portal }: PortalCardProps) {
           variant="outline"
           size="sm"
           className="flex-1"
-          onClick={() => window.open(portalUrl, '_blank')}
+          onClick={() => window.open(previewUrl, '_blank')}
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
           Open Portal

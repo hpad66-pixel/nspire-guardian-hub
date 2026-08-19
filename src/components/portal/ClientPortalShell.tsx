@@ -55,7 +55,10 @@ export function ClientPortalShell() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    const requestedProject = new URLSearchParams(location.search).get("project");
+    return requestedProject || null;
+  });
   const { data: portalContext } = useClientPortalContext();
   const { data: ownerData } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
