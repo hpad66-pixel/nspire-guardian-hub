@@ -5,9 +5,10 @@
  * link; we then forward the browser to it so the client lands in their portal.
  */
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { Loader2, AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import "./client-portal.css";
 
 const HUMAN: Record<string, string> = {
   invalid_token: "This invitation link isn't valid.",
@@ -18,6 +19,7 @@ const HUMAN: Record<string, string> = {
 
 export default function PortalInviteAcceptPage() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<"working" | "error" | "done">("working");
   const [message, setMessage] = useState("Setting up your access…");
   const ran = useRef(false);
@@ -27,27 +29,40 @@ export default function PortalInviteAcceptPage() {
     ran.current = true;
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("accept-portal-invitation", { body: { token } });
+        const next = searchParams.get("next") === "schedule" ? "schedule" : "portal";
+        const { data, error } = await supabase.functions.invoke("accept-portal-invitation", { body: { token, next } });
         if (error) throw error;
         const d = data as any;
         if (d?.error) { setStatus("error"); setMessage(HUMAN[d.error] ?? "Couldn't accept the invitation."); return; }
         if (d?.redirect_url) { setMessage("Taking you to your portal…"); window.location.href = d.redirect_url; return; }
         setStatus("done"); setMessage("Your access is ready — please sign in.");
-      } catch (e: any) {
-        setStatus("error"); setMessage(e?.message ?? "Something went wrong accepting the invitation.");
+      } catch {
+        setStatus("error");
+        setMessage("We couldn't verify this invitation. Please try again or ask your project team for a fresh link.");
       }
     })();
-  }, [token]);
+  }, [searchParams, token]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <div className="max-w-md text-center space-y-3">
-        {status === "working" && <Loader2 className="h-10 w-10 animate-spin text-[var(--apas-sapphire)] mx-auto" />}
-        {status === "done" && <CheckCircle2 className="h-10 w-10 text-[var(--apas-emerald)] mx-auto" />}
-        {status === "error" && <AlertTriangle className="h-10 w-10 text-[var(--apas-rose)] mx-auto" />}
-        <h1 className="text-xl font-semibold">{status === "error" ? "Invitation problem" : "Welcome"}</h1>
-        <p className="text-muted-foreground">{message}</p>
-        {status === "error" && <a href="/login" className="text-sm text-[var(--apas-sapphire)] hover:underline">Go to sign in</a>}
+    <div className="client-invite-page">
+      <div className="client-access-grid" aria-hidden="true" />
+      <div className="client-invite-card">
+        <div className="client-access-wordmark">
+          <span>APAS</span>
+          <div><strong>Project Controls</strong><small>Powered by projOS</small></div>
+        </div>
+        <div className="client-invite-status">
+          {status === "working" && <span className="is-working"><Loader2 className="animate-spin" /></span>}
+          {status === "done" && <span className="is-done"><CheckCircle2 /></span>}
+          {status === "error" && <span className="is-error"><AlertTriangle /></span>}
+          <small><ShieldCheck /> Secure client invitation</small>
+          <h1>{status === "error" ? "Invitation problem" : "Welcome to your project portal"}</h1>
+          <p>{message}</p>
+          {status === "error" && (
+            <a href="/auth?portal=client&next=%2Fowner-portal">Go to secure sign in</a>
+          )}
+        </div>
+        <p className="client-invite-footnote">Private by design · Your access is limited to approved client information</p>
       </div>
     </div>
   );

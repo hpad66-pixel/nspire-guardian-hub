@@ -286,7 +286,7 @@ export default function ClientUpdatesPage() {
         )}
       </div>
 
-      <InviteClientDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      {projectId && <InviteClientDialog open={inviteOpen} onOpenChange={setInviteOpen} projectId={projectId} />}
     </div>
   );
 }

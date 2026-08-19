@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -70,41 +70,15 @@ export default function PortalManagePage() {
   const [inviteCompany, setInviteCompany] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [requestFilter, setRequestFilter] = useState('all');
-  const [hydratedContactIds, setHydratedContactIds] = useState<Record<string, boolean>>({});
-
-  const PROD_DOMAIN = 'https://projos.ai';
-
-  function hasValidMagicLink(contact: PortalAccess) {
-    if (!contact.magic_link_token || !contact.magic_link_expires_at) return false;
-    return new Date(contact.magic_link_expires_at).getTime() > Date.now();
-  }
-
-  useEffect(() => {
-    const contactsNeedingTokens = contacts.filter(
-      (contact) => !hasValidMagicLink(contact) && !hydratedContactIds[contact.id]
-    );
-
-    if (contactsNeedingTokens.length === 0) return;
-
-    setHydratedContactIds((prev) => ({
-      ...prev,
-      ...Object.fromEntries(contactsNeedingTokens.map((contact) => [contact.id, true])),
-    }));
-
-    void Promise.allSettled(
-      contactsNeedingTokens.map((contact) =>
-        regeneratePortalToken.mutateAsync({ accessId: contact.id })
-      )
-    );
-  }, [contacts, hydratedContactIds, regeneratePortalToken]);
+  const portalOrigin = window.location.origin;
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
   if (!portal) return <Navigate to="/portals" replace />;
 
-  const portalUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}`;
-  const scheduleUrl = `${PROD_DOMAIN}/portal/${portal.portal_slug}/schedule`;
+  const portalUrl = `${portalOrigin}/portal/${portal.portal_slug}`;
+  const scheduleUrl = `${portalOrigin}/portal/${portal.portal_slug}/schedule`;
   const hasSchedule = portal.shared_modules.includes('schedule');
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
@@ -123,15 +97,13 @@ export default function PortalManagePage() {
   }
 
   function buildMagicLink(token: string, target: 'portal' | 'schedule') {
-    const base = `${PROD_DOMAIN}/portal/${portal.portal_slug}/auth?token=${encodeURIComponent(token)}`;
-    return target === 'schedule' ? `${base}&redirect=schedule` : base;
+    const suffix = target === 'schedule' ? '?next=schedule' : '';
+    return `${portalOrigin}/portal-invite/${encodeURIComponent(token)}${suffix}`;
   }
 
   async function ensureMagicLink(contact: PortalAccess, target: 'portal' | 'schedule') {
-    if (hasValidMagicLink(contact) && contact.magic_link_token) {
-      return buildMagicLink(contact.magic_link_token, target);
-    }
-
+    // Invitation links are intentionally one-time. Always issue a fresh link
+    // instead of reusing a token that may already have been accepted.
     const refreshed = await regeneratePortalToken.mutateAsync({ accessId: contact.id });
     if (!refreshed.magic_link_token) {
       throw new Error('Failed to generate magic link');
@@ -164,7 +136,7 @@ export default function PortalManagePage() {
               Open ${target === 'schedule' ? 'Schedule' : 'Portal'}
             </a>
           </div>
-          <p style="color: #64748B; font-size: 13px;">This link is unique to you and will expire in 7 days. Do not share it with others.</p>
+          <p style="color: #64748B; font-size: 13px;">This link is unique to you and will expire in 14 days. Do not share it with others.</p>
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
           <p style="color: #94A3B8; font-size: 12px;">Sent by Proj OS on behalf of ${portal.client_name ?? portal.name}</p>
         </div>
@@ -377,10 +349,6 @@ export default function PortalManagePage() {
           ) : (
             <div className="space-y-2">
               {contacts.map(c => {
-                const isMagicLinkReady = hasValidMagicLink(c) && !!c.magic_link_token;
-                const contactPortalUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'portal') : null;
-                const contactScheduleUrl = isMagicLinkReady && c.magic_link_token ? buildMagicLink(c.magic_link_token, 'schedule') : null;
-
                 return (
                   <div key={c.id} className="rounded-lg border border-border p-3 space-y-2">
                     <div className="flex items-center justify-between gap-3">
@@ -421,14 +389,7 @@ export default function PortalManagePage() {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs gap-1.5"
-                        onClick={() => {
-                          if (contactPortalUrl) {
-                            navigator.clipboard.writeText(contactPortalUrl);
-                            toast.success('Portal link copied');
-                            return;
-                          }
-                          void handleCopyLink(c, 'portal');
-                        }}
+                        onClick={() => void handleCopyLink(c, 'portal')}
                       >
                         <Copy className="h-3 w-3" /> Portal Link
                       </Button>
@@ -449,14 +410,7 @@ export default function PortalManagePage() {
                             variant="outline"
                             size="sm"
                             className="h-7 text-xs gap-1.5"
-                            onClick={() => {
-                              if (contactScheduleUrl) {
-                                navigator.clipboard.writeText(contactScheduleUrl);
-                                toast.success('Schedule link copied');
-                                return;
-                              }
-                              void handleCopyLink(c, 'schedule');
-                            }}
+                            onClick={() => void handleCopyLink(c, 'schedule')}
                           >
                             <Copy className="h-3 w-3" /> Schedule Link
                           </Button>

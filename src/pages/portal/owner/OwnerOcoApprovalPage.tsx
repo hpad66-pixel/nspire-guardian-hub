@@ -73,7 +73,7 @@ export default function OwnerOcoApprovalPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
-          ← Owner dashboard
+          ← Portal overview
         </Link>
         <div className="flex items-start justify-between mt-2">
           <div>

@@ -35,6 +35,66 @@ export function useMyPortalKind() {
   });
 }
 
+export interface ClientPortalContext {
+  project_id: string;
+  project_name: string;
+  project_status: string | null;
+  portal_name: string | null;
+  client_name: string | null;
+  brand_logo_url: string | null;
+  brand_accent_color: string | null;
+  portal_slug: string | null;
+}
+
+export interface OwnerPortalContract {
+  id: string;
+  project_id: string;
+  title: string;
+  contract_no: string | null;
+  status?: string;
+  executed_date?: string | null;
+  original_value?: number | null;
+  retainage_pct?: number | null;
+}
+
+export interface OwnerPortalChangeOrder {
+  id: string;
+  prime_contract_id: string;
+  title: string | null;
+  co_no: string | number | null;
+  co_type: string;
+  status: string;
+  amount: number | null;
+}
+
+export interface OwnerPortalPayApp {
+  id: string;
+  prime_contract_id: string;
+  pay_app_no: string | number;
+  period_end: string | null;
+  status: string;
+  submitted_amount: number | null;
+}
+
+export interface OwnerPortalData {
+  primeContracts: OwnerPortalContract[];
+  pendingOcos: OwnerPortalChangeOrder[];
+  pendingPayApps: OwnerPortalPayApp[];
+}
+
+export function useClientPortalContext() {
+  return useQuery<ClientPortalContext | null>({
+    queryKey: ["client-portal-context"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_owner_portal_context" as any);
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row ?? null) as ClientPortalContext | null;
+    },
+    staleTime: 60_000,
+  });
+}
+
 export function usePortalInvitations() {
   const qc = useQueryClient();
 
@@ -55,15 +115,38 @@ export function usePortalInvitations() {
     mutationFn: async (input: {
       email: string;
       organizationId?: string;
+      projectId?: string;
       portalKind: "sub"|"owner";
       role?: string;
     }) => {
       const tenant_id = await requireTenantId();
+      let organizationId = input.organizationId ?? null;
+
+      // Owner RLS is intentionally organization-scoped. Derive that boundary
+      // from the project's prime contract so an accepted invitation can only
+      // see the intended owner's records. A null owner organization would
+      // create a valid login with an empty portal, so fail clearly instead.
+      if (input.portalKind === "owner" && !organizationId && input.projectId) {
+        const { data: contract, error: contractError } = await supabase
+          .from("prime_contracts" as any)
+          .select("owner_org_id")
+          .eq("project_id", input.projectId)
+          .not("owner_org_id", "is", null)
+          .limit(1)
+          .maybeSingle();
+        if (contractError) throw contractError;
+        organizationId = (contract as any)?.owner_org_id ?? null;
+      }
+
+      if (input.portalKind === "owner" && !organizationId) {
+        throw new Error("Add the client's organization to the prime contract before inviting them.");
+      }
+
       const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
       const { data, error } = await supabase.from("portal_invitations" as any).insert({
         tenant_id,
         email: input.email,
-        organization_id: input.organizationId ?? null,
+        organization_id: organizationId,
         portal_kind: input.portalKind,
         role: input.role ?? (input.portalKind === "sub" ? "subcontractor_portal" : "owner_portal"),
         token,
@@ -98,21 +181,21 @@ export function useSubPortalData() {
 
 /** Owner-portal data: prime contract, pending OCOs, pending pay apps. */
 export function useOwnerPortalData() {
-  return useQuery({
+  return useQuery<OwnerPortalData>({
     queryKey: ["owner-portal-data"],
     queryFn: async () => {
       const [primeContracts, cos, payApps] = await Promise.all([
         supabase.from("prime_contracts" as any).select("*"),
         supabase.from("change_orders" as any).select("*")
           .eq("co_type", "OCO")
-          .in("status", ["pending","out_for_signature","draft"]),
+          .in("status", ["pending","out_for_signature"]),
         supabase.from("prime_contract_pay_apps" as any).select("*")
           .in("status", ["submitted"]),
       ]);
       return {
-        primeContracts: primeContracts.data ?? [],
-        pendingOcos: cos.data ?? [],
-        pendingPayApps: payApps.data ?? [],
+        primeContracts: (primeContracts.data ?? []) as unknown as OwnerPortalContract[],
+        pendingOcos: (cos.data ?? []) as unknown as OwnerPortalChangeOrder[],
+        pendingPayApps: (payApps.data ?? []) as unknown as OwnerPortalPayApp[],
       };
     },
   });
@@ -150,6 +233,44 @@ export function useOwnerRejectOco() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["owner-portal-data"] });
       qc.invalidateQueries({ queryKey: ["change-orders"] });
+    },
+  });
+}
+
+export function useOwnerApprovePayApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { payAppId: string; approvedAmount: number }) => {
+      const { data, error } = await supabase.rpc("owner_approve_pay_app" as any, {
+        p_pay_app_id: input.payAppId,
+        p_approved_amount: input.approvedAmount,
+      } as any);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["owner-portal-data"] });
+      qc.invalidateQueries({ queryKey: ["pay-app"] });
+      qc.invalidateQueries({ queryKey: ["financial-report-data"] });
+    },
+  });
+}
+
+export function useOwnerRejectPayApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { payAppId: string; reason: string; comment?: string }) => {
+      const { data, error } = await supabase.rpc("owner_reject_pay_app" as any, {
+        p_pay_app_id: input.payAppId,
+        p_reason: input.reason,
+        p_comment: input.comment ?? null,
+      } as any);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["owner-portal-data"] });
+      qc.invalidateQueries({ queryKey: ["pay-app"] });
     },
   });
 }

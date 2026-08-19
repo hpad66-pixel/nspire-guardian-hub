@@ -10,32 +10,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { FileBarChart, ReceiptText, FileDiff, Download, ArrowLeft, Loader2 } from "lucide-react";
-import { useOwnerPortalData } from "@/hooks/usePortals";
+import { useClientPortalContext, useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
-import { useCoSettings } from "@/hooks/useCoSettings";
 import { OWNER_REPORTS, type ReportBrand } from "@/components/reports/financial/FinancialReportViews";
 import { downloadReportPdf } from "@/lib/reports/reportPdf";
+import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
 const ICONS: Record<string, typeof FileBarChart> = {
   summary: FileBarChart, billing: ReceiptText, "change-orders": FileDiff,
 };
 
 export default function OwnerReportsPage() {
-  const { data: portal, isLoading: portalLoading } = useOwnerPortalData();
-  const contracts = (portal?.primeContracts ?? []) as any[];
-  const [contractIdx, setContractIdx] = useState(0);
-  const projectId = contracts[contractIdx]?.project_id ?? null;
+  const { isLoading: portalLoading } = useOwnerPortalData();
+  const { selectedProjectId: projectId } = useClientPortalProject();
 
-  const { contract, data, isLoading } = useFinancialReportData(projectId);
-  const { data: coSettings } = useCoSettings();
+  const { contract, data, isLoading } = useFinancialReportData(projectId, { ownerSafe: true });
+  const { data: portalContext } = useClientPortalContext();
   const [selected, setSelected] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const s: any = coSettings ?? {};
   const brand: ReportBrand | null = contract
     ? {
-        wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
+        wordmark: portalContext?.client_name || portalContext?.portal_name || "APAS CONSULTING",
         projectName: contract.title,
         contractTitle: contract.title,
         contractNo: contract.contract_no,
@@ -62,20 +59,10 @@ export default function OwnerReportsPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Owner dashboard</Link>
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="text-3xl font-bold mt-2">Financial Reports</h1>
         <p className="text-muted-foreground">Branded reports on your contract, billings and change orders — view or download as PDF.</p>
       </div>
-
-      {contracts.length > 1 && !selected && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Contract:</span>
-          <select className="border rounded-md px-2 py-1 bg-background"
-            value={contractIdx} onChange={(e) => setContractIdx(Number(e.target.value))}>
-            {contracts.map((c, i) => <option key={c.id} value={i}>{c.title} ({c.contract_no})</option>)}
-          </select>
-        </div>
-      )}
 
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground p-8 justify-center">

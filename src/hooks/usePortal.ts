@@ -43,6 +43,8 @@ export interface PortalAccess {
   invited_by: string;
   created_at: string;
   updated_at: string;
+  /** Local mutation result only; not persisted. */
+  email_delivery_failed?: boolean;
 }
 
 export interface PortalExclusion {
@@ -169,13 +171,24 @@ export function usePortalBySlug(slug: string | undefined) {
     queryKey: ['portal-by-slug', slug],
     queryFn: async () => {
       if (!slug) return null;
-      const { data, error } = await supabase
-        .from('client_portals')
-        .select('*')
-        .eq('portal_slug', slug)
-        .single();
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session) {
+        const { data, error } = await supabase
+          .from('client_portals')
+          .select('*')
+          .eq('portal_slug', slug)
+          .single();
+        if (error) throw error;
+        return data as ClientPortal;
+      }
+
+      // Public callers receive only the safe brand projection from a narrowly
+      // scoped SECURITY DEFINER function—never the portal row's contact or
+      // project configuration fields.
+      const { data, error } = await supabase.rpc('get_public_portal_brand' as any, { p_slug: slug } as any);
       if (error) throw error;
-      return data as ClientPortal;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row ?? null) as ClientPortal | null;
     },
     enabled: !!slug,
   });
@@ -351,38 +364,85 @@ export function usePortalAccess(portalId: string | undefined) {
   });
 }
 
+async function createSecureOwnerInvitation(portalId: string, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: portal, error: portalError } = await supabase
+    .from('client_portals')
+    .select('id, workspace_id, project_id, name')
+    .eq('id', portalId)
+    .single();
+  if (portalError) throw portalError;
+  if (!portal.project_id) throw new Error('Connect this portal to a project before inviting a client.');
+
+  const { data: contract, error: contractError } = await supabase
+    .from('prime_contracts' as any)
+    .select('owner_org_id')
+    .eq('project_id', portal.project_id)
+    .not('owner_org_id', 'is', null)
+    .limit(1)
+    .maybeSingle();
+  if (contractError) throw contractError;
+  const ownerOrgId = (contract as any)?.owner_org_id as string | undefined;
+  if (!ownerOrgId) throw new Error("Add the client's organization to the prime contract before inviting them.");
+
+  const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
+  const expires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: invitationError } = await supabase.from('portal_invitations' as any).insert({
+    tenant_id: portal.workspace_id,
+    email: normalizedEmail,
+    organization_id: ownerOrgId,
+    portal_kind: 'owner',
+    role: 'owner_portal',
+    invited_by: user.id,
+    token,
+    expires_at: expires,
+  } as any);
+  if (invitationError) throw invitationError;
+  return { token, expires, normalizedEmail, portalName: portal.name, invitedBy: user.id };
+}
+
 export function useInviteContact(portalId: string) {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: { email: string; name?: string; company?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const token = crypto.randomUUID();
-      const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      const { token, expires, normalizedEmail, portalName, invitedBy } = await createSecureOwnerInvitation(portalId, input.email);
 
       const { data, error } = await supabase
         .from('portal_access')
         .upsert({
           portal_id: portalId,
-          email: input.email,
+          email: normalizedEmail,
           name: input.name ?? null,
           company: input.company ?? null,
           magic_link_token: token,
           magic_link_expires_at: expires,
-          invited_by: user.id,
+          invited_by: invitedBy,
           is_active: true,
         }, { onConflict: 'portal_id,email' })
         .select()
         .single();
 
       if (error) throw error;
-      return data as PortalAccess;
+      const url = `${window.location.origin}/portal-invite/${token}`;
+      const { error: emailError } = await supabase.functions.invoke('send-email', {
+        body: {
+          recipients: [normalizedEmail],
+          subject: `Your secure ${portalName} project portal is ready`,
+          fromName: 'APAS Project Controls',
+          bodyText: `Your private project portal is ready. Open it here: ${url}`,
+          bodyHtml: `<div style="margin:0;background:#f6f3eb;padding:36px 18px;font-family:Arial,sans-serif;color:#08271f"><div style="max-width:580px;margin:auto;overflow:hidden;border:1px solid #dedbd1;border-radius:18px;background:#fffdf8"><div style="padding:28px 32px;background:#08271f;color:#fff"><div style="font-size:12px;font-weight:800;letter-spacing:.16em;color:#d5aa52">APAS PROJECT CONTROLS</div><h1 style="margin:18px 0 8px;font-family:Georgia,serif;font-size:32px;font-weight:400">Your project portal is ready.</h1><p style="margin:0;color:#b8c5c0;font-size:14px;line-height:1.6">Decisions, updates, financial status, schedule, and approved documents in one private place.</p></div><div style="padding:32px"><p style="margin:0 0 22px;font-size:14px;line-height:1.7">Use this one private link. Your first click provisions your approved access and opens the portal—no registration form.</p><a href="${url}" style="display:inline-block;padding:14px 20px;border-radius:10px;background:#d5aa52;color:#08271f;font-size:13px;font-weight:800;text-decoration:none">Open my secure portal</a><p style="margin:24px 0 0;color:#71817a;font-size:11px;line-height:1.5">This link is assigned to ${normalizedEmail}, expires in 14 days, and should not be forwarded.</p></div></div></div>`,
+        },
+      });
+      return { ...(data as PortalAccess), email_delivery_failed: Boolean(emailError) };
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (result, vars) => {
       qc.invalidateQueries({ queryKey: ['portal-access', portalId] });
-      toast.success(`Invite sent to ${vars.email} ✓`);
+      if (result.email_delivery_failed) toast.warning(`Access created for ${vars.email}; copy the link because email delivery failed.`);
+      else toast.success(`Secure invitation sent to ${vars.email} ✓`);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to send invite');
@@ -395,8 +455,14 @@ export function useRegeneratePortalAccessToken(portalId: string) {
 
   return useMutation({
     mutationFn: async ({ accessId }: { accessId: string }) => {
-      const token = crypto.randomUUID();
-      const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      const { data: access, error: accessError } = await supabase
+        .from('portal_access')
+        .select('email')
+        .eq('id', accessId)
+        .eq('portal_id', portalId)
+        .single();
+      if (accessError) throw accessError;
+      const { token, expires } = await createSecureOwnerInvitation(portalId, access.email);
 
       const { data, error } = await supabase
         .from('portal_access')
@@ -427,10 +493,17 @@ export function useRevokeAccess() {
 
   return useMutation({
     mutationFn: async ({ id, portalId }: { id: string; portalId: string }) => {
-      const { error } = await supabase
+      const { data: access, error: accessError } = await supabase
         .from('portal_access')
-        .update({ is_active: false })
-        .eq('id', id);
+        .select('email')
+        .eq('id', id)
+        .eq('portal_id', portalId)
+        .single();
+      if (accessError) throw accessError;
+      const { error } = await supabase.rpc('revoke_owner_portal_access' as any, {
+        p_portal_id: portalId,
+        p_email: access.email,
+      } as any);
       if (error) throw error;
       return portalId;
     },

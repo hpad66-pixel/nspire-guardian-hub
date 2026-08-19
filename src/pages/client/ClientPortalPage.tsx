@@ -1,199 +1,298 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle2, Circle, Clock, CalendarDays, ListChecks, Receipt, FileText, ChevronDown, Loader2, ShieldAlert } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, type ReactNode } from "react";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  ClipboardCheck,
+  FileText,
+  Landmark,
+  ListChecks,
+  Loader2,
+  LockKeyhole,
+  Receipt,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import "@/pages/portal/client-portal.css";
 
-const money = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
-const fmtDate = (s?: string | null) => s ? new Date(s.length <= 10 ? s + 'T00:00:00' : s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+type PortalAction = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  action_type: string;
+  amount: number;
+};
+
+type PortalScope = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  pct: number;
+  due_date: string | null;
+};
+
+type PortalMilestone = { name: string; due_date: string | null; status: string };
+type PortalMeeting = { id: string; title: string; date: string | null; minutes: string | null; agenda: string | null };
+type PortalInvoice = { invoice_no: string; status: string; issue_date: string | null; due_date: string | null; total: number };
+
+type ConsultingPortalData = {
+  brand: string;
+  client: string | null;
+  showFinancials: boolean;
+  project: {
+    name: string;
+    description: string | null;
+    status: string;
+    start_date: string | null;
+    target_end_date: string | null;
+  };
+  overallPct: number;
+  scopes: PortalScope[];
+  milestones: PortalMilestone[];
+  actionItems: PortalAction[];
+  meetings: PortalMeeting[];
+  invoices: PortalInvoice[];
+};
+
+const money = (value: number) => new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+}).format(value || 0);
+
+const fmtDate = (value?: string | null) => value
+  ? new Date(value.length <= 10 ? `${value}T12:00:00` : value).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  : "Date pending";
 
 const SCOPE_STATE: Record<string, { label: string; cls: string }> = {
-  complete: { label: 'Complete', cls: 'text-[var(--apas-emerald)]' },
-  in_progress: { label: 'In progress', cls: 'text-[var(--apas-sapphire)]' },
-  blocked: { label: 'Blocked', cls: 'text-[var(--apas-rose)]' },
-  not_started: { label: 'Not started', cls: 'text-muted-foreground' },
-};
-const INV_STATE: Record<string, string> = {
-  paid: 'bg-[var(--apas-emerald)]/10 text-[var(--apas-emerald)]',
-  sent: 'bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
-  draft: 'bg-muted text-muted-foreground',
-  void: 'bg-muted text-muted-foreground line-through',
+  complete: { label: "Complete", cls: "is-complete" },
+  completed: { label: "Complete", cls: "is-complete" },
+  in_progress: { label: "In progress", cls: "is-progress" },
+  blocked: { label: "Blocked", cls: "is-blocked" },
+  not_started: { label: "Not started", cls: "is-muted" },
 };
 
-function Section({ icon: Icon, title, children, count }: { icon: any; title: string; count?: number; children: React.ReactNode }) {
+function Section({ icon: Icon, eyebrow, title, children, count }: {
+  icon: typeof FileText;
+  eyebrow: string;
+  title: string;
+  count?: number;
+  children: ReactNode;
+}) {
   return (
-    <section className="rounded-2xl border bg-card p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-[var(--apas-sapphire)]" />
-        <h2 className="text-sm font-semibold uppercase tracking-wide">{title}</h2>
-        {count != null && <span className="text-xs text-muted-foreground">· {count}</span>}
+    <section className="client-share-panel">
+      <div className="client-share-panel__heading">
+        <span><Icon /></span>
+        <div><small>{eyebrow}</small><h2>{title}</h2></div>
+        {count != null && <b>{count}</b>}
       </div>
-      {children}
+      <div className="client-share-panel__body">{children}</div>
     </section>
   );
+}
+
+function readableRichText(value: string | null | undefined) {
+  if (!value) return "";
+  if (typeof DOMParser === "undefined") return value.replace(/<[^>]+>/g, " ");
+  return new DOMParser().parseFromString(value, "text/html").body.textContent?.trim() || "";
 }
 
 export default function ClientPortalPage() {
   const { token } = useParams<{ token: string }>();
   const [openMeeting, setOpenMeeting] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['client-portal', token],
+  const { data, isLoading, error } = useQuery<ConsultingPortalData>({
+    queryKey: ["client-portal", token],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('client-portal', { body: { token } });
-      if (error) throw new Error(error.message);
-      if ((data as any)?.error) throw new Error((data as any).error);
-      return data as any;
+      const { data: result, error: invokeError } = await supabase.functions.invoke("client-portal", { body: { token } });
+      if (invokeError) throw new Error(invokeError.message);
+      if (result?.error) throw new Error(result.error);
+      return result as ConsultingPortalData;
     },
-    enabled: !!token,
+    enabled: Boolean(token),
     retry: false,
   });
 
   if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" />Loading…</div>;
+    return <div className="client-access-loading"><Loader2 className="animate-spin" /></div>;
   }
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"><ShieldAlert className="h-7 w-7 text-muted-foreground" /></div>
-          <h1 className="text-xl font-semibold">Link unavailable</h1>
-          <p className="mt-2 text-muted-foreground text-sm">This client link is invalid or has been revoked. Please contact your project team for a new one.</p>
+      <div className="client-invite-page">
+        <div className="client-access-grid" aria-hidden="true" />
+        <div className="client-invite-card client-share-error">
+          <div className="client-access-wordmark"><span>APAS</span><div><strong>Project Controls</strong><small>Powered by projOS</small></div></div>
+          <div className="client-invite-status">
+            <span className="is-error"><ShieldAlert /></span>
+            <small><LockKeyhole /> Private client link</small>
+            <h1>Link unavailable</h1>
+            <p>This private link is invalid, expired, or has been revoked. Please ask your project team for a fresh link.</p>
+          </div>
+          <p className="client-invite-footnote">Private by design · Project-specific access only</p>
         </div>
       </div>
     );
   }
 
-  const d = data;
+  const pendingActions = data.actionItems.filter((item) => ["pending", "viewed"].includes(item.status));
+  const pendingAmount = pendingActions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const clientName = data.client || data.brand;
+  const projectStatus = data.project.status?.replaceAll("_", " ") || "Active";
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Brand header */}
-      <header className="border-b bg-card">
-        <div className="mx-auto max-w-4xl px-5 py-4 flex items-center justify-between">
-          <div className="font-[Georgia,'Playfair_Display',serif] text-lg font-bold">{d.brand}</div>
-          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--accent)] font-bold">Client portal</div>
+    <div className="client-share-app">
+      <header className="client-share-header">
+        <div className="client-share-header__inner">
+          <div className="client-access-wordmark">
+            <span>APAS</span>
+            <div><strong>{data.brand}</strong><small>Secure client portal</small></div>
+          </div>
+          <div className="client-share-project">
+            <small>Current engagement</small>
+            <strong>{data.project.name}</strong>
+          </div>
+          <span className="client-share-secure"><ShieldCheck /> Private link</span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-5 py-6 space-y-5">
-        {/* Title + overall progress */}
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="text-xs uppercase tracking-[0.14em] text-[var(--accent)] font-bold">{d.client ? `${d.client} · ` : ''}Engagement</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{d.project.name}</h1>
-          <div className="mt-1 text-sm text-muted-foreground">
-            {[d.project.status, d.project.start_date ? `Started ${fmtDate(d.project.start_date)}` : '', d.project.target_end_date ? `Target ${fmtDate(d.project.target_end_date)}` : ''].filter(Boolean).join(' · ')}
+      <main className="client-share-main">
+        <section className="client-share-hero">
+          <div>
+            <span className="client-dashboard-eyebrow">{clientName} · {projectStatus}</span>
+            <h1>{data.project.name}</h1>
+            <p>{data.project.description || "A clear, current view of progress, decisions, milestones, and approved financial information."}</p>
+            <div className="client-share-dates">
+              {data.project.start_date && <span>Started {fmtDate(data.project.start_date)}</span>}
+              {data.project.target_end_date && <span>Target {fmtDate(data.project.target_end_date)}</span>}
+            </div>
           </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1"><span className="font-medium">Overall progress</span><span className="font-bold">{d.overallPct}%</span></div>
-            <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-[var(--apas-sapphire)]" style={{ width: `${d.overallPct}%` }} /></div>
+          <div className="client-share-progress">
+            <strong>{Math.min(100, Math.max(0, data.overallPct))}%</strong>
+            <span>Overall progress</span>
+            <div><i style={{ width: `${Math.min(100, Math.max(0, data.overallPct))}%` }} /></div>
           </div>
-          {d.project.description && <p className="mt-4 text-sm text-foreground/80 leading-relaxed">{d.project.description}</p>}
+        </section>
+
+        <section className={`client-decision-center ${pendingActions.length ? "has-decisions" : "is-clear"}`}>
+          <div className="client-decision-center__summary">
+            <span className="client-decision-center__icon">{pendingActions.length ? <ClipboardCheck /> : <CheckCircle2 />}</span>
+            <div>
+              <small>Your action center</small>
+              <h2>{pendingActions.length ? `${pendingActions.length} item${pendingActions.length === 1 ? "" : "s"} need your attention` : "You’re completely caught up"}</h2>
+              <p>{pendingActions.length ? "The project team has identified these client-facing decisions and requests." : "Nothing is waiting for you right now. New requests will appear here first."}</p>
+            </div>
+            {pendingAmount > 0 && <strong className="client-decision-center__value">{money(pendingAmount)}<small>represented in requests</small></strong>}
+          </div>
+          {pendingActions.length > 0 && (
+            <div className="client-decision-list">
+              {pendingActions.map((item) => (
+                <div key={item.id} className="client-decision-row client-share-decision-row">
+                  <span className="client-decision-row__type"><AlertCircle /><small>{item.action_type?.replaceAll("_", " ") || "Decision"}</small></span>
+                  <span className="client-decision-row__detail"><strong>{item.title}</strong><small>{item.description || `Due ${fmtDate(item.due_date)}`}</small></span>
+                  <span className="client-decision-row__amount">{item.amount ? money(item.amount) : fmtDate(item.due_date)}</span>
+                  <span className="client-decision-row__action">Contact project team</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <div className="client-share-grid">
+          <Section icon={ListChecks} eyebrow="Delivery" title="Scope of work" count={data.scopes.length}>
+            {data.scopes.length ? (
+              <div className="client-share-scope-list">
+                {data.scopes.map((scope) => {
+                  const state = SCOPE_STATE[scope.status] ?? SCOPE_STATE.not_started;
+                  const percent = Math.min(100, Math.max(0, Number(scope.pct) || 0));
+                  return (
+                    <div key={scope.id} className="client-share-scope">
+                      <div><strong>{scope.title}</strong><span className={state.cls}>{percent}% · {state.label}</span></div>
+                      {scope.description && <p>{scope.description}</p>}
+                      <div className="client-share-track"><i style={{ width: `${percent}%` }} /></div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <p className="client-share-empty">No client-facing workstreams are published yet.</p>}
+          </Section>
+
+          <Section icon={CalendarDays} eyebrow="Schedule" title="Milestones" count={data.milestones.length}>
+            {data.milestones.length ? (
+              <div className="client-share-milestones">
+                {data.milestones.map((milestone, index) => {
+                  const complete = ["complete", "completed"].includes(milestone.status);
+                  return (
+                    <div key={`${milestone.name}-${index}`}>
+                      {complete ? <CheckCircle2 /> : <Circle />}
+                      <span className={complete ? "is-complete" : ""}><strong>{milestone.name}</strong><small>{fmtDate(milestone.due_date)}</small></span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <p className="client-share-empty">No milestones are published yet.</p>}
+          </Section>
         </div>
 
-        {/* Scopes */}
-        {d.scopes.length > 0 && (
-          <Section icon={ListChecks} title="Scope of work" count={d.scopes.length}>
-            <div className="space-y-3">
-              {d.scopes.map((s: any) => {
-                const st = SCOPE_STATE[s.status] ?? SCOPE_STATE.not_started;
-                return (
-                  <div key={s.id}>
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-medium">{s.title}</span>
-                      <span className={cn('text-xs font-medium', st.cls)}>{s.pct}% · {st.label}</span>
+        <div className="client-share-grid">
+          <Section icon={FileText} eyebrow="Verified record" title="Meetings & recaps" count={data.meetings.length}>
+            {data.meetings.length ? (
+              <div className="client-share-meetings">
+                {data.meetings.map((meeting) => {
+                  const open = openMeeting === meeting.id;
+                  const body = readableRichText(meeting.minutes || meeting.agenda);
+                  return (
+                    <div key={meeting.id}>
+                      <button type="button" onClick={() => setOpenMeeting(open ? null : meeting.id)} aria-expanded={open}>
+                        <span><strong>{meeting.title}</strong><small>{fmtDate(meeting.date)}</small></span>
+                        <ChevronDown className={cn(open && "is-open")} />
+                      </button>
+                      {open && <p>{body || "No client-facing recap is available for this meeting."}</p>}
                     </div>
-                    {s.description && <div className="text-xs text-muted-foreground mt-0.5">{s.description}</div>}
-                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-[var(--apas-emerald)]" style={{ width: `${Math.min(100, s.pct)}%` }} /></div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : <p className="client-share-empty">No meeting recaps are published yet.</p>}
           </Section>
-        )}
 
-        {/* Milestones */}
-        {d.milestones.length > 0 && (
-          <Section icon={CalendarDays} title="Milestones" count={d.milestones.length}>
-            <div className="space-y-2">
-              {d.milestones.map((m: any, i: number) => {
-                const done = m.status === 'completed' || m.status === 'complete';
-                return (
-                  <div key={i} className="flex items-center gap-2.5 text-sm">
-                    {done ? <CheckCircle2 className="h-4 w-4 text-[var(--apas-emerald)] shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    <span className={cn('flex-1', done && 'text-muted-foreground line-through')}>{m.name}</span>
-                    {m.due_date && <span className="text-xs text-muted-foreground">{fmtDate(m.due_date)}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
-
-        {/* Action items */}
-        {d.actionItems.length > 0 && (
-          <Section icon={Clock} title="Action items" count={d.actionItems.length}>
-            <div className="space-y-1.5">
-              {d.actionItems.map((a: any, i: number) => {
-                const done = a.status === 'done';
-                return (
-                  <div key={i} className="flex items-center gap-2.5 text-sm py-1 border-b last:border-0">
-                    {done ? <CheckCircle2 className="h-4 w-4 text-[var(--apas-emerald)] shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    <span className={cn('flex-1', done && 'text-muted-foreground line-through')}>{a.title}</span>
-                    {a.due_date && <span className="text-xs text-muted-foreground">{fmtDate(a.due_date)}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
-
-        {/* Meetings */}
-        {d.meetings.length > 0 && (
-          <Section icon={FileText} title="Meetings & recaps" count={d.meetings.length}>
-            <div className="space-y-2">
-              {d.meetings.map((m: any) => {
-                const open = openMeeting === m.id;
-                const body = m.minutes || m.agenda;
-                return (
-                  <div key={m.id} className="rounded-lg border">
-                    <button onClick={() => setOpenMeeting(open ? null : m.id)} className="w-full flex items-center gap-2 p-3 text-left">
-                      <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
-                      <span className="font-medium text-sm flex-1">{m.title}</span>
-                      <span className="text-xs text-muted-foreground">{fmtDate(m.date)}</span>
-                    </button>
-                    {open && body && <div className="px-4 pb-4 pt-0 prose prose-sm max-w-none text-sm text-foreground/85 [&_h1]:text-base [&_h2]:text-sm [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: body }} />}
-                    {open && !body && <div className="px-4 pb-4 text-sm text-muted-foreground">No recap recorded for this meeting.</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
-
-        {/* Invoices */}
-        {d.showFinancials && d.invoices.length > 0 && (
-          <Section icon={Receipt} title="Invoices" count={d.invoices.length}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="text-left text-xs uppercase tracking-wide text-muted-foreground border-b"><th className="py-2 font-medium">Invoice</th><th className="py-2 font-medium">Issued</th><th className="py-2 font-medium">Status</th><th className="py-2 font-medium text-right">Amount</th></tr></thead>
-                <tbody>
-                  {d.invoices.map((inv: any, i: number) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="py-2 font-medium">#{inv.invoice_no}</td>
-                      <td className="py-2 text-muted-foreground">{fmtDate(inv.issue_date)}</td>
-                      <td className="py-2"><span className={cn('text-[10px] font-bold uppercase rounded-full px-2 py-0.5', INV_STATE[inv.status] ?? 'bg-muted text-muted-foreground')}>{inv.status}</span></td>
-                      <td className="py-2 text-right tabular-nums font-semibold">{money(inv.total)}</td>
-                    </tr>
+          {data.showFinancials ? (
+            <Section icon={Receipt} eyebrow="Approved financial view" title="Invoices" count={data.invoices.length}>
+              {data.invoices.length ? (
+                <div className="client-share-invoices">
+                  {data.invoices.map((invoice, index) => (
+                    <div key={`${invoice.invoice_no}-${index}`}>
+                      <span><strong>Invoice #{invoice.invoice_no}</strong><small>{fmtDate(invoice.issue_date)}</small></span>
+                      <span><b>{money(invoice.total)}</b><small className={`is-${invoice.status}`}>{invoice.status}</small></span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </Section>
-        )}
-
-        <div className="pt-2 pb-8 text-center text-xs text-muted-foreground">Powered by {d.brand} · projos.ai</div>
+                </div>
+              ) : <p className="client-share-empty">No invoices have been shared for this engagement.</p>}
+            </Section>
+          ) : (
+            <Section icon={Landmark} eyebrow="Financial privacy" title="Financials are private">
+              <p className="client-share-empty">Financial information is not enabled for this private link. Contact your project team if you need a billing record.</p>
+            </Section>
+          )}
+        </div>
       </main>
+
+      <footer className="client-share-footer">
+        <div><strong>{data.brand}</strong><span>Project clarity, decisions, and documentation in one private view.</span></div>
+        <small>Powered by projOS · APAS Project Controls</small>
+      </footer>
     </div>
   );
 }

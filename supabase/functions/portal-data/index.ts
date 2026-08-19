@@ -1,7 +1,6 @@
-// Public, slug-scoped client-portal data. The client is a magic-link user (no
-// Supabase account), so this service-role function returns ONLY the client-safe
-// slice of the project: phase, key dates, milestones, the latest PUBLISHED update,
-// and punch-list progress. Validated against an active client_portals row.
+// Legacy client-portal payload. Kept temporarily for backwards compatibility,
+// but now requires a real Supabase session plus an active portal membership.
+// The consolidated owner portal reads through caller-scoped RLS instead.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -15,14 +14,45 @@ const PHASES = ["planning", "preconstruction", "construction", "punch_list", "cl
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Authentication required" }, 401);
+
+    const auth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
+    const { data: authData, error: authError } = await auth.auth.getUser();
+    if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
+
     const { slug } = await req.json().catch(() => ({}));
     if (!slug) return json({ error: "Missing slug" }, 400);
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: portal } = await db.from("client_portals")
-      .select("id, project_id, name, brand_accent_color, welcome_message, is_active, status")
+      .select("id, tenant_id, project_id, name, brand_accent_color, welcome_message, is_active, status")
       .eq("portal_slug", slug).maybeSingle();
     if (!portal || portal.is_active === false) return json({ error: "Portal not found" }, 404);
+
+    const { data: memberships } = await db.from("portal_memberships")
+      .select("portal_kind, organization_id")
+      .eq("tenant_id", portal.tenant_id)
+      .eq("user_id", authData.user.id)
+      .eq("is_active", true);
+    const isSuperAdmin = authData.user.app_metadata?.role === "super_admin";
+    const isMainAdmin = (memberships ?? []).some((membership) => membership.portal_kind === "main");
+    let isProjectOwner = false;
+    if (portal.project_id) {
+      const { data: contract } = await db.from("prime_contracts")
+        .select("owner_org_id")
+        .eq("project_id", portal.project_id)
+        .maybeSingle();
+      isProjectOwner = Boolean(contract?.owner_org_id && (memberships ?? []).some(
+        (membership) => membership.portal_kind === "owner" && membership.organization_id === contract.owner_org_id,
+      ));
+    }
+    if (!isSuperAdmin && !isMainAdmin && !isProjectOwner) return json({ error: "Portal access denied" }, 403);
+
     if (!portal.project_id) return json({ ok: true, portal: { name: portal.name }, project: null });
 
     const grab = async <T>(fn: () => Promise<T>, fb: T): Promise<T> => { try { return (await fn()) ?? fb; } catch { return fb; } };
