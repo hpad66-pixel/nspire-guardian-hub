@@ -5,10 +5,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
+import { UPDATE_TYPES } from "@/lib/clientUpdates/presentation";
 import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerUpdatesPage() {
@@ -18,11 +18,14 @@ export default function OwnerUpdatesPage() {
   const selected = useMemo(() => updates.find((u) => u.id === selectedId) ?? updates[0] ?? null, [updates, selectedId]);
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl space-y-4">
-      <div>
+    <div className="container mx-auto max-w-6xl space-y-6 p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
-        <h1 className="text-3xl font-bold mt-2">Project Updates</h1>
-        <p className="text-muted-foreground">Regular briefings from your project team.</p>
+        <h1 className="mt-2 text-4xl font-medium">Project briefings</h1>
+        <p className="mt-1 text-muted-foreground">Clear, approved updates from your project team.</p>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800"><ShieldCheck className="h-4 w-4" />Published information only</span>
       </div>
 
       {isLoading ? (
@@ -30,18 +33,20 @@ export default function OwnerUpdatesPage() {
       ) : updates.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">No updates published yet.</CardContent></Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
-          <div className="space-y-2">
-            {updates.map((u) => (
-              <button key={u.id} onClick={() => setSelectedId(u.id)}
-                className={`w-full text-left rounded-md border p-3 transition-colors ${selected?.id === u.id ? "border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/5" : "hover:bg-muted"}`}>
-                <div className="font-medium text-sm truncate">{u.title}</div>
-                <div className="text-xs text-muted-foreground">{u.period_label || (u.published_at ? new Date(u.published_at).toLocaleDateString() : "")}</div>
-              </button>
-            ))}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-[250px_1fr]">
+          <div className="space-y-2 md:sticky md:top-4 md:self-start">
+            {updates.map((u) => {
+              const meta = UPDATE_TYPES[u.update_type ?? "general"] ?? UPDATE_TYPES.general;
+              const Icon = meta.icon;
+              return (
+                <button key={u.id} onClick={() => setSelectedId(u.id)} className={`w-full rounded-2xl border p-3.5 text-left transition-colors ${selected?.id === u.id ? "border-[#0d6b57] bg-emerald-50/70 shadow-sm" : "border-slate-200 bg-white/70 hover:border-slate-300"}`}>
+                  <div className="flex items-start gap-2.5"><span className="mt-0.5 grid h-8 w-8 flex-shrink-0 place-items-center rounded-xl bg-white shadow-sm"><Icon className={`h-4 w-4 ${meta.accent}`} /></span><span className="min-w-0"><strong className="block truncate text-sm text-[#082b23]">{u.title}</strong><small className="mt-1 block text-slate-500">{u.period_label || (u.published_at ? new Date(u.published_at).toLocaleDateString() : "")}</small></span></div>
+                </button>
+              );
+            })}
           </div>
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardContent className="p-0">
               {selected && <ClientUpdateView update={selected} />}
             </CardContent>
           </Card>

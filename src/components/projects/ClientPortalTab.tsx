@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -17,8 +15,8 @@ import {
 import {
   Link2, Copy, CheckCheck, Send, MessageCircle, ClipboardList,
   AlertCircle, Clock, CheckSquare, DollarSign, Info, HelpCircle,
-  Receipt, Eye, GitFork, Loader2, Plus, Camera, Image as ImageIcon,
-  ExternalLink, Users, ChevronDown, ChevronUp, Trash2, Check,
+  Receipt, Eye, GitFork, Loader2, Plus, Megaphone,
+  ExternalLink, Users, ChevronDown, ChevronUp, Check,
 } from 'lucide-react';
 import {
   useClientMessages,
@@ -38,61 +36,8 @@ import { SendDigestDialog } from '@/components/projects/SendDigestDialog';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useNavigate } from 'react-router-dom';
 import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface ClientUpdate {
-  id: string;
-  title: string;
-  body: string;
-  photo_url: string | null;
-  update_type: string | null;
-  created_at: string;
-}
-
-// ─── Hooks ───────────────────────────────────────────────────────────────────
-
-function usePortalUpdates(projectId: string) {
-  return useQuery({
-    queryKey: ['portal-updates-pm', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('project_client_updates' as any)
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-      if (error) { console.warn(error.message); return [] as ClientUpdate[]; }
-      return (data ?? []) as unknown as ClientUpdate[];
-    },
-    enabled: !!projectId,
-  });
-}
-
-function useCreateUpdate(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { title: string; body: string; photoUrl?: string; updateType?: string }) => {
-      const { data: session } = await supabase.auth.getSession();
-      const { error } = await supabase
-        .from('project_client_updates' as any)
-        .insert({
-          project_id: projectId,
-          title: payload.title,
-          body: payload.body,
-          photo_url: payload.photoUrl ?? null,
-          update_type: payload.updateType ?? 'general',
-          created_by: session.session?.user.id,
-        });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal-updates-pm', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['portal-updates', projectId] });
-      toast.success('Update posted to client portal');
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
+import { useClientUpdates } from '@/hooks/useClientUpdates';
+import { UPDATE_TYPES } from '@/lib/clientUpdates/presentation';
 
 // ─── Action type config ───────────────────────────────────────────────────────
 
@@ -656,65 +601,6 @@ function CreateActionItemDialog({
   );
 }
 
-// Post update dialog
-function PostUpdateDialog({
-  projectId, open, onOpenChange,
-}: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const createUpdate = useCreateUpdate(projectId);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [updateType, setUpdateType] = useState('general');
-
-  function reset() { setTitle(''); setBody(''); setUpdateType('general'); }
-
-  async function handleSubmit() {
-    if (!title.trim() || !body.trim()) { toast.error('Title and body are required'); return; }
-    await createUpdate.mutateAsync({ title: title.trim(), body: body.trim(), updateType });
-    reset();
-    onOpenChange(false);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Post Update to Client Portal</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Update Type</Label>
-            <Select value={updateType} onValueChange={setUpdateType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="general">General Update</SelectItem>
-                <SelectItem value="progress">Progress</SelectItem>
-                <SelectItem value="milestone">Milestone</SelectItem>
-                <SelectItem value="photo">Photo Update</SelectItem>
-                <SelectItem value="issue">Issue / Alert</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Title <span className="text-destructive">*</span></Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Foundation pour completed" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Message <span className="text-destructive">*</span></Label>
-            <Textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Describe what happened, what was accomplished, or what the client should know..." rows={5} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={createUpdate.isPending || !title.trim() || !body.trim()}>
-            {createUpdate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Camera className="h-4 w-4 mr-2" />}
-            Post Update
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // Action item row (PM view)
 function PMActionItemRow({ item, projectId }: { item: any; projectId: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -829,7 +715,8 @@ function PMActionItemRow({ item, projectId }: { item: any; projectId: string }) 
 
 // Updates feed (PM view)
 function PMUpdatesFeed({ projectId }: { projectId: string }) {
-  const { data: updates = [], isLoading } = usePortalUpdates(projectId);
+  const navigate = useNavigate();
+  const { data: updates = [], isLoading } = useClientUpdates(projectId);
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-12">
@@ -839,31 +726,27 @@ function PMUpdatesFeed({ projectId }: { projectId: string }) {
 
   if (updates.length === 0) return (
     <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-      <Camera size={24} className="text-muted-foreground/40" />
-      <p className="text-sm text-muted-foreground">No updates posted yet.</p>
-      <p className="text-xs text-muted-foreground/60">Use "Post Update" to share job site progress with your client.</p>
+      <Megaphone size={24} className="text-muted-foreground/40" />
+      <p className="text-sm text-muted-foreground">No client briefings yet.</p>
+      <p className="text-xs text-muted-foreground/60">Write rough notes, review the client preview, then publish.</p>
+      <Button size="sm" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}><Plus className="mr-1.5 h-3.5 w-3.5" />Write first update</Button>
     </div>
   );
 
   return (
     <div className="space-y-3">
-      {updates.map((u) => (
-        <div key={u.id} className="rounded-xl border bg-card overflow-hidden">
-          {u.photo_url && (
-            <img src={u.photo_url} alt="Update" className="w-full aspect-video object-cover" />
-          )}
-          <div className="p-4 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">{format(new Date(u.created_at), 'MMM d, yyyy')}</span>
-              {u.update_type && (
-                <span className="text-[10px] bg-muted/40 px-1.5 py-0.5 rounded text-muted-foreground capitalize">{u.update_type}</span>
-              )}
+      {updates.map((u) => {
+        const meta = UPDATE_TYPES[u.update_type ?? 'general'] ?? UPDATE_TYPES.general;
+        const Icon = meta.icon;
+        return (
+          <button key={u.id} onClick={() => navigate(`/projects/${projectId}/financials/client-updates`)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:border-primary/30 hover:shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted"><Icon className={`h-4 w-4 ${meta.accent}`} /></span>
+              <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm">{u.title}</strong><Badge variant="outline" className={u.status === 'published' ? 'border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700' : 'text-[10px] text-muted-foreground'}>{u.status === 'published' ? 'Live' : 'Draft'}</Badge></span><small className="mt-1 block text-muted-foreground">{u.period_label || format(new Date(u.created_at), 'MMM d, yyyy')}</small>{u.summary && <span className="mt-2 line-clamp-2 block text-sm leading-relaxed text-muted-foreground">{u.summary}</span>}</span>
             </div>
-            <p className="font-semibold text-sm">{u.title}</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">{u.body}</p>
-          </div>
-        </div>
-      ))}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -878,13 +761,13 @@ interface ClientPortalTabProps {
 type PMView = 'overview' | 'messages' | 'action-items' | 'updates';
 
 export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' }: ClientPortalTabProps) {
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState<PMView>('overview');
   const [createActionOpen, setCreateActionOpen] = useState(false);
-  const [postUpdateOpen, setPostUpdateOpen] = useState(false);
 
   const { data: allItems = [], isLoading: itemsLoading } = useClientActionItems(projectId);
   const { data: messages = [] } = useClientMessages(projectId);
-  const { data: updates = [] } = usePortalUpdates(projectId);
+  const { data: updates = [] } = useClientUpdates(projectId);
   // #17: a PortalLink is only meaningful when a portal row actually exists —
   // otherwise it contradicts ScheduleAccessSection's "no portal linked" notice.
   const { data: portal } = usePortalByProject(projectId);
@@ -913,9 +796,9 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
           <p className="text-sm text-muted-foreground">Manage what your client sees and how they interact with the project.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setPostUpdateOpen(true)}>
-            <Camera className="h-3.5 w-3.5 mr-1.5" />
-            Post Update
+          <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}>
+            <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+            Write Client Update
           </Button>
           <Button size="sm" onClick={() => setCreateActionOpen(true)}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -1044,8 +927,8 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm">Posted Updates</h3>
-            <Button size="sm" variant="outline" onClick={() => setPostUpdateOpen(true)}>
-              <Camera className="h-3.5 w-3.5 mr-1.5" />Post Update
+            <Button size="sm" variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/client-updates?compose=1`)}>
+              <Megaphone className="h-3.5 w-3.5 mr-1.5" />Write Update
             </Button>
           </div>
           <PMUpdatesFeed projectId={projectId} />
@@ -1054,7 +937,6 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
 
       {/* Dialogs */}
       <CreateActionItemDialog projectId={projectId} open={createActionOpen} onOpenChange={setCreateActionOpen} clientEmail={clientEmail} />
-      <PostUpdateDialog projectId={projectId} open={postUpdateOpen} onOpenChange={setPostUpdateOpen} />
     </div>
   );
 }

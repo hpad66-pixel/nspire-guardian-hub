@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveCurrentWorkspaceId } from "@/lib/tenant";
 
 export type Health = "on_track" | "at_risk" | "delayed";
+export type ClientUpdateType = "general" | "progress" | "milestone" | "decision" | "risk";
 export interface RiskItem { text: string; severity: "low" | "medium" | "high"; }
 export interface DecisionItem { text: string; status: "needed" | "made"; }
 export interface ActionItem { text: string; owner: string; done: boolean; }
@@ -17,6 +18,7 @@ export interface ClientUpdate {
   tenant_id: string;
   project_id: string;
   title: string;
+  update_type: ClientUpdateType;
   period_label: string | null;
   health: Health;
   summary: string | null;

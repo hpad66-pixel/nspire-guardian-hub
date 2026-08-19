@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useSearchParams, Navigate } from 'react-router-dom';
+import { useParams, useSearchParams, Navigate, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ExternalLink, Copy, Loader2, Users, FileText,
-  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, Mail, CalendarDays
+  Activity, Plus, MoreHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, Mail, CalendarDays, Megaphone
 } from 'lucide-react';
 import {
   usePortal, usePortalAccess, usePortalRequests, usePortalActivity,
@@ -49,6 +49,7 @@ const REQUEST_STATUS_ICON: Record<string, React.ReactNode> = {
 };
 
 export default function PortalManagePage() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'overview';
@@ -195,6 +196,12 @@ export default function PortalManagePage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {portal.project_id && (
+            <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/financials/client-updates?compose=1`)}>
+              <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+              Write Update
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => window.open(portalUrl, '_blank')}>
             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
             Portal

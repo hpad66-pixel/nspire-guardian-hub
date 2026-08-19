@@ -26,7 +26,7 @@ serve(async (req) => {
     const KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!KEY) return json({ error: "AI is not configured." }, 500);
 
-    const { projectId, periodStart, periodEnd, periodLabel } = await req.json();
+    const { projectId, periodStart, periodEnd, periodLabel, rawNotes, updateType } = await req.json();
     if (!projectId) return json({ error: "Missing projectId" }, 400);
     const start = periodStart || new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
     const end = periodEnd || new Date().toISOString().slice(0, 10);
@@ -49,6 +49,8 @@ serve(async (req) => {
     const context = {
       project: (project as any)?.name ?? "the project",
       period: periodLabel || `${start} to ${end}`,
+      requested_update_type: ["general", "progress", "milestone", "decision", "risk"].includes(updateType) ? updateType : "progress",
+      source_notes: typeof rawNotes === "string" ? rawNotes.trim() : "",
       daily_reports: (dailies as any[]).map((d) => ({ date: d.report_date, work: d.work_performed, notes: d.notes })).slice(0, 30),
       open_rfis: openRfis.length,
       overdue_rfis: overdueRfis.map((r) => `RFI-${r.rfi_number}: ${r.subject}`).slice(0, 10),
@@ -57,10 +59,13 @@ serve(async (req) => {
       meetings: (meetings as any[]).map((m) => m.title),
     };
 
-    const system = `You write a weekly client/owner project update for a construction project, as the general contractor briefing the owner. Be concise, factual, and client-appropriate (no internal jargon). ${STYLE}
+    const system = `You format client/owner project updates for a construction and consulting project team. Be concise, factual, and client-appropriate (no internal jargon). ${STYLE}
+
+The source_notes field contains facts supplied directly by the project administrator. Organize and lightly edit those notes, but never add a fact, number, date, commitment, cause, or conclusion that is not supported by source_notes or the supplied project data. If source_notes is empty, draft only from the supplied project data. The requested_update_type controls emphasis: milestone celebrates a completed or reached milestone; progress summarizes current work; decision makes the required client decision prominent; risk clearly states the issue and impact; general is a concise informational note.
 
 From the supplied project data, output ONLY a JSON object (no markdown, no prose) with EXACTLY these keys:
 {
+  "title": "short specific client-facing heading",
   "health": one of "on_track" | "at_risk" | "delayed",
   "summary": "2 to 4 sentence narrative of the week for the owner",
   "accomplishments": ["short bullet of work completed this week", ...],
@@ -69,7 +74,7 @@ From the supplied project data, output ONLY a JSON object (no markdown, no prose
   "action_items": [{"text": "an action", "owner": "who", "done": false}, ...],
   "next_steps": ["what happens next week", ...]
 }
-Rules: derive everything from the data; never invent specifics. Use [] for any empty section. Set health to at_risk or delayed if there are overdue RFIs, pending decisions, or stated delays. Keep bullets short and owner-facing.`;
+Rules: derive everything from the data; never invent specifics. Do not turn a possibility into a commitment. Use [] for any empty section. Set health to at_risk or delayed only when the supplied information supports it. Keep bullets short and owner-facing. Avoid repeating the same fact in multiple sections.`;
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -77,6 +82,7 @@ Rules: derive everything from the data; never invent specifics. Use [] for any e
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 2000,
+        temperature: 0,
         system,
         messages: [{ role: "user", content: JSON.stringify(context) }],
       }),
@@ -93,6 +99,8 @@ Rules: derive everything from the data; never invent specifics. Use [] for any e
 
     // Normalize to the client_updates shape.
     const out = {
+      title: typeof draft.title === "string" ? draft.title.trim().slice(0, 120) : "Project update",
+      update_type: context.requested_update_type,
       health: ["on_track", "at_risk", "delayed"].includes(draft.health) ? draft.health : "on_track",
       summary: typeof draft.summary === "string" ? draft.summary : "",
       accomplishments: Array.isArray(draft.accomplishments) ? draft.accomplishments.filter((x: any) => typeof x === "string") : [],

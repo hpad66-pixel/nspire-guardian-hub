@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Copy, Archive, Settings, MoreHorizontal, Users, FileText } from 'lucide-react';
+import { ExternalLink, Copy, Archive, Settings, MoreHorizontal, Users, FileText, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -155,24 +155,28 @@ export function PortalCard({ portal }: PortalCardProps) {
       )}
 
       {/* Action buttons */}
-      <div className="flex items-center gap-2 pt-1 border-t border-border">
+      <div className={`grid gap-2 border-t border-border pt-3 ${portal.project_id ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
           onClick={() => window.open(previewUrl, '_blank')}
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
           Open Portal
         </Button>
         <Button
-          variant="default"
+          variant="outline"
           size="sm"
-          className="flex-1"
           onClick={() => navigate(`/portals/${portal.id}`)}
         >
           Manage
         </Button>
+        {portal.project_id && (
+          <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/financials/client-updates?compose=1`)}>
+            <Megaphone className="mr-1.5 h-3.5 w-3.5" />
+            Update
+          </Button>
+        )}
       </div>
     </div>
   );
