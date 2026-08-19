@@ -1,262 +1,148 @@
-import { useState } from 'react';
-import { useParams, useSearchParams, Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { usePortalBySlug, usePortalSession, usePortalAdminAccess, setPortalSession } from '@/hooks/usePortal';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { ShieldCheck } from 'lucide-react';
+import { useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Loader2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { usePortalBySlug } from "@/hooks/usePortal";
+import { supabase } from "@/integrations/supabase/client";
+import "./client-portal.css";
 
+/**
+ * Public, branded handoff for returning clients. Access is authenticated by
+ * Supabase Auth; this page never reads portal_access credentials or creates a
+ * browser-only pseudo-session. First-time clients enter through the one-click
+ * /portal-invite/:token link and returning clients can request a fresh link.
+ */
 export default function PortalLoginPage() {
   const { slug } = useParams<{ slug: string }>();
-  const [searchParams] = useSearchParams();
-  const redirect = searchParams.get('redirect');
+  const { user } = useAuth();
   const { data: portal, isLoading } = usePortalBySlug(slug);
-  const { isAuthenticated } = usePortalSession();
-  const { data: admin } = usePortalAdminAccess(portal);
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [magicSent, setMagicSent] = useState(false);
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="client-access-loading"><Loader2 className="animate-spin" /></div>;
   }
 
-  if (!portal || !portal.is_active || portal.status === 'archived') {
+  // Authenticated clients and project administrators share the same secure
+  // destination; the portal gate decides whether this is an owner view or an
+  // administrator preview.
+  if (user) return <Navigate to="/owner-portal" replace />;
+
+  if (!portal || !portal.is_active || portal.status === "archived") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6">
-        <div className="text-center space-y-3 max-w-sm">
-          <p className="text-lg font-semibold text-foreground">Portal unavailable</p>
-          <p className="text-sm text-muted-foreground">
-            This portal is no longer available. Please contact{' '}
-            {portal?.client_name ?? 'the company'} for assistance.
-          </p>
+      <div className="client-access-loading">
+        <div className="client-access-unavailable">
+          <LockKeyhole />
+          <h1>Portal unavailable</h1>
+          <p>This private portal is not currently available. Please contact your project team for assistance.</p>
         </div>
       </div>
     );
   }
 
-  if (isAuthenticated) {
-    return <Navigate to={redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`} replace />;
-  }
-
-  const accent = portal.brand_accent_color ?? '#0F172A';
-
-  function enterAsAdmin() {
-    setPortalSession({
-      portalId: portal!.id,
-      email: admin?.email ?? 'admin',
-      name: 'Admin preview',
-      accessId: 'admin-preview',
-      authenticated: true,
-      portalSlug: slug!,
-      isAdminPreview: true,
+  async function handleMagicLink(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/owner-portal`,
+        shouldCreateUser: false,
+      },
     });
-    window.location.href = redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`;
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      // Check if email exists in portal_access
-      const { data: access } = await supabase
-        .from('portal_access')
-        .select('id, email')
-        .eq('portal_id', portal!.id)
-        .eq('email', email.trim().toLowerCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!access) {
-        setError(`That email isn't on the access list for this portal. Contact ${portal?.client_name ?? 'the company'} to request access.`);
-        return;
-      }
-
-      // Generate magic link token
-      const token = crypto.randomUUID();
-      const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-
-      await supabase
-        .from('portal_access')
-        .update({ magic_link_token: token, magic_link_expires_at: expires })
-        .eq('id', access.id);
-
-      // In production, send email. For now show token in UI.
-      setMagicSent(true);
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
+    setSubmitting(false);
+    if (otpError) {
+      setError(otpError.message.includes("rate")
+        ? "Please wait a moment before requesting another link."
+        : "We could not send the link. Please contact your project team.");
+      return;
     }
+    // Use the same confirmation for every email to avoid exposing who has
+    // access to a private workspace.
+    setSent(true);
   }
 
-  async function handlePasswordLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      const { data: access } = await supabase
-        .from('portal_access')
-        .select('id, email, name, password_hash, login_count')
-        .eq('portal_id', portal!.id)
-        .eq('email', email.trim().toLowerCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!access) {
-        setError('Email not found on this portal.');
-        return;
-      }
-      if (!access.password_hash) {
-        setError('No password set for this account. Use the magic link above to sign in.');
-        return;
-      }
-      // Simple comparison (in production use bcrypt)
-      if (access.password_hash !== password) {
-        setError('Incorrect password. Try again or use the magic link above.');
-        return;
-      }
-
-      await supabase.from('portal_access').update({
-        last_login_at: new Date().toISOString(),
-        login_count: (access.login_count ?? 0) + 1,
-      }).eq('id', access.id);
-
-      setPortalSession({
-        portalId: portal!.id,
-        email: access.email,
-        name: access.name,
-        accessId: access.id,
-        authenticated: true,
-        portalSlug: slug!,
-      });
-
-      window.location.href = redirect === 'schedule' ? `/portal/${slug}/schedule` : `/portal/${slug}/home`;
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const accent = portal.brand_accent_color || "#d5aa52";
+  const clientName = portal.client_name || portal.name;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          {portal.brand_logo_url ? (
-            <img src={portal.brand_logo_url} alt="logo" className="h-12 object-contain" />
-          ) : (
-            <div
-              className="h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold text-white"
-              style={{ backgroundColor: accent }}
-            >
-              {(portal.client_name ?? portal.name).charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">{portal.client_name ?? ''}</p>
-            <h1 className="text-lg font-bold text-foreground mt-0.5">Sign in to {portal.name}</h1>
+    <div className="client-access-page" style={{ "--portal-accent": accent } as React.CSSProperties}>
+      <div className="client-access-art" aria-hidden="true">
+        <div className="client-access-grid" />
+        <div className="client-access-orbit client-access-orbit--one" />
+        <div className="client-access-orbit client-access-orbit--two" />
+      </div>
+
+      <main className="client-access-card">
+        <section className="client-access-card__story">
+          <div className="client-access-wordmark">
+            <span>APAS</span>
+            <div><strong>Project Controls</strong><small>Powered by projOS</small></div>
           </div>
-        </div>
+          <div className="client-access-story-copy">
+            <span className="client-access-kicker"><ShieldCheck /> Private project access</span>
+            <h1>Clarity without the clutter.</h1>
+            <p>Your decisions, project updates, schedule, financial status, and approved documents—organized in one secure client view.</p>
+            <ul>
+              <li><CheckCircle2 /> See exactly what needs your decision</li>
+              <li><CheckCircle2 /> Review owner-facing financials and approvals</li>
+              <li><CheckCircle2 /> Keep a defensible record of every action</li>
+            </ul>
+          </div>
+          <p className="client-access-story-footer">Private by design · Role restricted · Fully auditable</p>
+        </section>
 
-        {/* Admin preview — signed-in workspace owner / super admin */}
-        {admin?.canPreview && (
-          <button
-            onClick={enterAsAdmin}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-3 text-sm font-medium text-foreground bg-white shadow-sm transition-colors hover:bg-muted"
-            style={{ borderColor: accent }}
-          >
-            <ShieldCheck className="h-4 w-4" style={{ color: accent }} />
-            Enter as admin — preview what the client sees
-          </button>
-        )}
+        <section className="client-access-card__form">
+          <div className="client-access-client-brand">
+            {portal.brand_logo_url ? (
+              <img src={portal.brand_logo_url} alt={`${clientName} logo`} />
+            ) : (
+              <span>{clientName.charAt(0).toUpperCase()}</span>
+            )}
+            <div><small>Client portal</small><strong>{clientName}</strong></div>
+          </div>
 
-        {/* Magic link card */}
-        <div className="bg-white rounded-2xl border border-border p-6 space-y-4 shadow-sm">
-          {magicSent ? (
-            <div className="text-center space-y-2 py-2">
-              <div className="text-3xl">✉️</div>
-              <p className="font-semibold text-foreground">Check your email</p>
-              <p className="text-sm text-muted-foreground">
-                We sent a sign-in link to <strong>{email}</strong>. The link expires in 72 hours.
-              </p>
-              <button
-                onClick={() => { setMagicSent(false); setEmail(''); }}
-                className="text-xs text-primary hover:underline mt-2"
-              >
-                Try a different email
-              </button>
+          {sent ? (
+            <div className="client-access-sent">
+              <span><Mail /></span>
+              <h2>Check your email</h2>
+              <p>If <strong>{email}</strong> is connected to this portal, a secure sign-in link is on its way.</p>
+              <p className="client-access-hint">Use the link on this device. No password is required.</p>
+              <button type="button" onClick={() => { setSent(false); setEmail(""); }}>Use another email</button>
             </div>
           ) : (
-            <form onSubmit={handleMagicLink} className="space-y-3">
-              <p className="text-sm font-medium text-foreground">Sign in with a link</p>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              {error && <p className="text-xs text-destructive">{error}</p>}
-              <button
-                type="submit"
-                disabled={submitting || !email}
-                className="w-full rounded-lg py-2.5 text-sm font-medium text-white transition-opacity disabled:opacity-60"
-                style={{ backgroundColor: accent }}
-              >
-                {submitting ? 'Sending...' : 'Send me a sign-in link'}
+            <form onSubmit={handleMagicLink} className="client-access-form">
+              <div>
+                <span className="client-access-kicker">Welcome back</span>
+                <h2>Open your project portal</h2>
+                <p>Enter your approved email. We’ll send a secure sign-in link—no password to remember.</p>
+              </div>
+              <label htmlFor="client-email">Email address</label>
+              <div className="client-access-input">
+                <Mail />
+                <input
+                  id="client-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
+              {error && <p className="client-access-error" role="alert">{error}</p>}
+              <button type="submit" className="client-access-submit" disabled={submitting || !email.trim()}>
+                {submitting ? <><Loader2 className="animate-spin" /> Sending secure link…</> : <>Email my secure link <ArrowRight /></>}
               </button>
+              <p className="client-access-hint"><LockKeyhole /> First visit? Use the private invitation sent by your project team.</p>
             </form>
           )}
-
-          {!magicSent && (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 border-t border-border" />
-                <span className="text-xs text-muted-foreground">or</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-
-              <form onSubmit={handlePasswordLogin} className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Sign in with password</p>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <button
-                  type="submit"
-                  disabled={submitting || !email || !password}
-                  className="w-full rounded-lg py-2.5 text-sm font-medium border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:opacity-60"
-                >
-                  {submitting ? 'Signing in...' : 'Sign In'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground">APAS Project Controls · Powered by projOS</p>
-      </div>
+        </section>
+      </main>
+      <footer className="client-access-page__footer">© 2026 APAS Consulting · Secure client project controls</footer>
     </div>
   );
 }

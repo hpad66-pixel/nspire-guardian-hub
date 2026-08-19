@@ -3,8 +3,8 @@
  *
  * Wraps /sub-portal/* and /owner-portal/* routes with a
  * three-layer gate:
- *   1. Auth      -> redirect to /login?next=<encoded path>
- *   2. RBAC role -> redirect to /dashboard with error toast
+ *   1. Auth      -> redirect to /auth?next=<encoded path>
+ *   2. Active portal membership -> redirect to a safe access page when missing
  *   3. Plan      -> render <UpgradeRequired/> in place
  *
  * Mirrors the existing ProtectedRoute pattern (Loader2 spinner
@@ -12,23 +12,15 @@
  * when all three checks pass, so it can wrap a sub-tree of
  * portal routes from a single mount point.
  *
- * Note on translation from the G3 prompt:
- *   prompt key            ->  this codebase's API
- *   portal:sub:access     ->  can({module:'sub_portal',  action:'view'})
- *   portal:owner:access   ->  can({module:'owner_portal',action:'view'})
- *   feature 'sub_portal'  ->  canUseFeature('subcontractor_portal')
- *   feature 'owner_portal'->  canUseFeature('owner_portal')
- *
- * The RBAC `Module` enum already includes 'sub_portal' and
- * 'owner_portal', and the billing FeatureKey type already
- * includes 'subcontractor_portal' and 'owner_portal'.
+ * External clients are authorized by portal_memberships, not the internal
+ * staff permission-template engine. Database RLS applies the same membership
+ * and organization boundary to every record the portal reads.
  */
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { can } from '@/lib/rbac';
 import { canUseFeature, type FeatureKey } from '@/lib/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { UpgradeRequired } from './UpgradeRequired';
@@ -46,12 +38,6 @@ interface PortalProtectedRouteProps {
 const FEATURE_MAP: Record<PortalFeature, FeatureKey> = {
   sub_portal: 'subcontractor_portal',
   owner_portal: 'owner_portal',
-};
-
-/** Map portal role to the RBAC module key (action is always 'view'). */
-const ROLE_MODULE: Record<PortalRole, 'sub_portal' | 'owner_portal'> = {
-  subcontractor: 'sub_portal',
-  owner: 'owner_portal',
 };
 
 type GateState =
@@ -106,14 +92,23 @@ export function PortalProtectedRoute({
           return;
         }
 
-        const [hasRole, hasFeature] = await Promise.all([
-          can({
-            userId: user.id,
-            module: ROLE_MODULE[role],
-            action: 'view',
-          }),
+        // Portal membership is the security boundary for external users. They
+        // intentionally do not receive an internal permission-template
+        // assignment, so checking the staff RBAC engine here would reject every
+        // properly invited client. RLS permits users to read their own row.
+        const expectedKind = role === 'owner' ? 'owner' : 'sub';
+        const [membershipResult, hasFeature] = await Promise.all([
+          supabase
+            .from('portal_memberships' as any)
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('portal_kind', expectedKind)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle(),
           canUseFeature(FEATURE_MAP[feature]),
         ]);
+        const hasRole = Boolean(membershipResult.data) && !membershipResult.error;
 
         if (cancelled) return;
 
@@ -156,7 +151,7 @@ export function PortalProtectedRoute({
 
   if (!user) {
     const next = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?next=${next}`} replace />;
+    return <Navigate to={`/auth?portal=${role === 'owner' ? 'client' : 'subcontractor'}&next=${next}`} replace />;
   }
 
   // 2/3. RBAC + plan checks
@@ -173,7 +168,7 @@ export function PortalProtectedRoute({
 
   if (gate.status === 'forbidden') {
     toast.error("You don't have access to that portal.");
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={role === 'owner' ? "/auth?portal=client&error=access" : "/dashboard"} replace />;
   }
 
   if (gate.status === 'plan-locked') {

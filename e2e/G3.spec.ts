@@ -37,10 +37,11 @@ test.describe("G3 wiring", () => {
     expect(src).toMatch(/PortalProtectedRoute role="owner"\s+feature="owner_portal"/);
   });
 
-  test("auth-redirect uses /login?next=<encoded path>", () => {
+  test("auth-redirect uses the role-aware /auth flow with an encoded return path", () => {
     const src = fs.readFileSync(COMPONENT, "utf8");
     expect(src).toMatch(/encodeURIComponent\(location\.pathname/);
-    expect(src).toMatch(/\/login\?next=/);
+    expect(src).toMatch(/\/auth\?portal=/);
+    expect(src).toMatch(/&next=\$\{next\}/);
   });
 
   test("plan failure renders UpgradeRequired in place (no redirect)", () => {
@@ -51,10 +52,11 @@ test.describe("G3 wiring", () => {
     expect(planBlock).not.toMatch(/<Navigate/);
   });
 
-  test("role failure redirects to /dashboard with toast", () => {
+  test("role failure keeps owners in client access and subcontractors out of restricted pages", () => {
     const src = fs.readFileSync(COMPONENT, "utf8");
     expect(src).toMatch(/toast\.error\(\"You don't have access to that portal\.\"\)/);
-    expect(src).toMatch(/Navigate to=\"\/dashboard\"/);
+    expect(src).toMatch(/\/auth\?portal=client&error=access/);
+    expect(src).toMatch(/: \"\/dashboard\"/);
   });
 });
 

@@ -10,8 +10,8 @@
  *   - Approve at the adjusted total → status=approved + retainage computed
  *   - Reject with reason code required
  *
- * Every action audits to owner_audit_log (via future trigger; manual log row
- * written on reject for now).
+ * Every decision executes through a narrow database RPC and writes the audit log
+ * in the same transaction.
  */
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useMemo, useEffect } from "react";
@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePayApp } from "@/hooks/usePayApp";
 import { usePrimeContractSov } from "@/hooks/usePrimeContract";
+import { useOwnerApprovePayApp, useOwnerRejectPayApp } from "@/hooks/usePortals";
 import { PayAppPDFExport } from "@/components/financial/PayAppPDFExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,9 @@ const REJECT_REASONS = [
 export default function OwnerPayAppApprovalPage() {
   const { payAppId } = useParams<{ payAppId: string }>();
   const navigate = useNavigate();
-  const { detail, lines, upsertLine, approve } = usePayApp(payAppId ?? null);
+  const { detail, lines, upsertLine } = usePayApp(payAppId ?? null);
+  const approve = useOwnerApprovePayApp();
+  const reject = useOwnerRejectPayApp();
 
   // Resolve the contract for the pay app
   const { data: contract } = useQuery({
@@ -109,7 +112,7 @@ export default function OwnerPayAppApprovalPage() {
         }
       }
       // Then approve at the adjusted total
-      await approve.mutateAsync(adjustedTotal);
+      await approve.mutateAsync({ payAppId: pa.id, approvedAmount: adjustedTotal });
       toast.success(`Pay App #${pa.pay_app_no} approved at ${money(adjustedTotal)}`);
       navigate("/owner-portal");
     } catch (e: any) { toast.error(e.message); }
@@ -122,29 +125,7 @@ export default function OwnerPayAppApprovalPage() {
     }
     setRejecting(true);
     try {
-      // Mark the pay app rejected so the GC can revise and resubmit. This is
-      // the authoritative action — it must succeed for the rejection to count.
-      const { error } = await supabase
-        .from("prime_contract_pay_apps" as any)
-        .update({ status: "rejected" } as any)
-        .eq("id", pa.id);
-      if (error) throw error;
-
-      // Audit trail is best-effort: never let a logging failure undo a
-      // completed rejection. (oal_tenant_insert RLS policy permits this insert.)
-      try {
-        const userId = (await supabase.auth.getUser()).data.user?.id;
-        await supabase.from("owner_audit_log" as any).insert({
-          tenant_id: pa.tenant_id,
-          user_id: userId,
-          action: "pay_app.reject",
-          object_type: "pay_app",
-          object_id: pa.id,
-          meta: { reason_code: rejectReason, comment: rejectComment },
-        } as any);
-      } catch (logErr) {
-        console.error("owner_audit_log insert failed (rejection still applied):", logErr);
-      }
+      await reject.mutateAsync({ payAppId: pa.id, reason: rejectReason, comment: rejectComment });
 
       toast.success("Rejected");
       setRejectOpen(false);
@@ -160,7 +141,7 @@ export default function OwnerPayAppApprovalPage() {
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
-          ← Owner dashboard
+          ← Portal overview
         </Link>
         <div className="flex items-start justify-between mt-2">
           <div>
@@ -222,7 +203,7 @@ export default function OwnerPayAppApprovalPage() {
                           value={adjusted}
                           onChange={(e) => setAdjustments({
                             ...adjustments,
-                            [s.id]: Number(e.target.value) || 0,
+                            [s.id]: Math.min(submitted, Math.max(0, Number(e.target.value) || 0)),
                           })}
                           className="text-right font-mono"
                           disabled={!canApprove}
@@ -242,9 +223,9 @@ export default function OwnerPayAppApprovalPage() {
             </table>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Reducing a line's value below what the GC submitted requires a reason
-            (captured at approval time in owner_audit_log). Increasing above
-            submitted is not allowed.
+            You may reduce a submitted line when the verified work is lower.
+            The approved total is recorded with your decision; increasing above
+            the submitted value is not allowed.
           </p>
         </CardContent>
       </Card>

@@ -41,7 +41,14 @@ serve(async (req) => {
       grab(async () => project.client_id ? (await admin.from("clients").select("name").eq("id", project.client_id).maybeSingle()).data : null, null as any),
       grab(async () => (await admin.from("project_scopes").select("id, title, description, status, pct_complete, fee_amount, due_date, sort_order").eq("project_id", projectId).order("sort_order", { ascending: true })).data ?? [], [] as any[]),
       grab(async () => (await admin.from("project_milestones").select("name, due_date, status").eq("project_id", projectId).order("due_date", { ascending: true })).data ?? [], [] as any[]),
-      grab(async () => (await admin.from("project_action_items").select("title, status, priority, due_date").eq("project_id", projectId).neq("status", "cancelled").order("due_date", { ascending: true }).limit(200)).data ?? [], [] as any[]),
+      // Explicit client decision queue only. project_action_items is the
+      // internal team work list and may contain private notes or assignments.
+      grab(async () => (await admin.from("client_action_items")
+        .select("id, title, description, status, priority, due_date, action_type, amount, client_response, options")
+        .eq("project_id", projectId)
+        .neq("status", "cancelled")
+        .order("due_date", { ascending: true })
+        .limit(200)).data ?? [], [] as any[]),
       grab(async () => (await admin.from("consulting_meetings").select("id, title, meeting_date, minutes, agenda").eq("project_id", projectId).order("meeting_date", { ascending: false }).limit(50)).data ?? [], [] as any[]),
       link.show_financials
         ? grab(async () => (await admin.from("consulting_invoices").select("invoice_no, status, issue_date, due_date, total").eq("project_id", projectId).order("invoice_no", { ascending: false })).data ?? [], [] as any[])
@@ -62,7 +69,18 @@ serve(async (req) => {
       overallPct,
       scopes: scopes.map((s: any) => ({ id: s.id, title: s.title, description: s.description, status: s.status, pct: num(s.pct_complete), due_date: s.due_date })),
       milestones,
-      actionItems,
+      actionItems: actionItems.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        priority: item.priority,
+        due_date: item.due_date,
+        action_type: item.action_type,
+        amount: num(item.amount),
+        client_response: item.client_response,
+        options: item.options,
+      })),
       meetings: meetings.map((m: any) => ({ id: m.id, title: m.title, date: m.meeting_date, minutes: m.minutes, agenda: m.agenda })),
       invoices: invoicesRaw.map((i: any) => ({ invoice_no: i.invoice_no, status: i.status, issue_date: i.issue_date, due_date: i.due_date, total: num(i.total) })),
     });

@@ -1,207 +1,185 @@
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
+  FileSignature,
+  FileText,
+  FolderOpen,
+  Landmark,
+  Loader2,
+  Megaphone,
+  ShieldCheck,
+  WalletCards,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { financialSummary } from "@/lib/reports/financialReports";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
-import { FileText, Calendar, BarChart3, FolderOpen, Megaphone, Bell, CheckCircle2 } from "lucide-react";
+import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
-/** Most recent published client briefing, shown front and center. */
-function LatestUpdateCard({ projectId }: { projectId: string | null }) {
-  const { data: updates = [] } = useClientUpdates(projectId, { publishedOnly: true });
-  const latest = updates[0];
-  if (!latest) return null;
-  return (
-    <Card className="mb-6 border-[var(--apas-sapphire)]/30">
-      <CardHeader className="pb-2 flex-row items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2"><Megaphone className="h-4 w-4 text-[var(--apas-sapphire)]" /> Latest update</CardTitle>
-        <Button asChild variant="ghost" size="sm"><Link to="/owner-portal/updates">All updates →</Link></Button>
-      </CardHeader>
-      <CardContent><ClientUpdateView update={latest} /></CardContent>
-    </Card>
-  );
+function fmt(value: number | null | undefined) {
+  return `$${(Number(value) || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function fmt(n: number | null | undefined) {
-  return `$${(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function shortDate(value: string | null | undefined) {
+  if (!value) return "Date pending";
+  return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Owner-safe financial health: contract, billings, retainage, balance — NO sub costs. */
-function OwnerFinancialHealth({ projectId }: { projectId: string | null }) {
-  const { data } = useFinancialReportData(projectId);
-  if (!data) return null;
-  const s = financialSummary(data);
-  const pct = Math.min(100, Math.max(0, s.pctComplete));
-  const cells: Array<[string, string, string?]> = [
-    ["Revised Contract", fmt(s.revisedValue)],
-    ["Billed to Date", fmt(s.billedToDate), "text-[var(--apas-sapphire)]"],
-    ["Retainage Held", fmt(s.retainageHeld), "text-[var(--apas-amber)]"],
-    ["Balance to Finish", fmt(s.balanceToFinish), "text-[var(--apas-emerald)]"],
+function FinancialSnapshot({ projectId }: { projectId: string | null }) {
+  const { data, isLoading } = useFinancialReportData(projectId, { ownerSafe: true });
+  if (isLoading) return <div className="client-dashboard-loading"><Loader2 className="animate-spin" /> Loading financial status…</div>;
+  if (!data) return <div className="client-dashboard-empty">Financial reporting will appear here when the contract is ready.</div>;
+
+  const summary = financialSummary(data);
+  const percent = Math.min(100, Math.max(0, summary.pctComplete));
+  const metrics = [
+    ["Revised contract", fmt(summary.revisedValue)],
+    ["Billed to date", fmt(summary.billedToDate)],
+    ["Retainage held", fmt(summary.retainageHeld)],
+    ["Balance to finish", fmt(summary.balanceToFinish)],
   ];
+
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2"><CardTitle className="text-base">Project financial health</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          {cells.map(([label, value, cls]) => (
-            <div key={label}>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-              <div className={`text-2xl font-bold ${cls ?? ""}`}>{value}</div>
-            </div>
-          ))}
+    <div className="client-financial-snapshot">
+      <div className="client-financial-snapshot__metrics">
+        {metrics.map(([label, value]) => (
+          <div key={label}><span>{label}</span><strong>{value}</strong></div>
+        ))}
+      </div>
+      <div className="client-financial-snapshot__progress">
+        <div><span>Contract progress</span><strong>{percent.toFixed(1)}%</strong></div>
+        <div className="client-progress-track" aria-label={`${percent.toFixed(1)} percent complete`}>
+          <span style={{ width: `${percent}%` }} />
         </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Contract complete</span><span>{pct.toFixed(1)}%</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full bg-[var(--apas-sapphire)] rounded-full transition-all" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <p><ShieldCheck /> Owner-facing totals only. Internal vendor costs and private working data are not included.</p>
+    </div>
   );
 }
+
+function LatestUpdate({ projectId }: { projectId: string | null }) {
+  const { data: updates = [], isLoading } = useClientUpdates(projectId, { publishedOnly: true });
+  const latest = updates[0];
+  return (
+    <section className="client-dashboard-panel client-dashboard-update">
+      <div className="client-panel-heading">
+        <div><span className="client-panel-icon is-blue"><Megaphone /></span><div><small>Project briefing</small><h2>Latest update</h2></div></div>
+        <Link to="/owner-portal/updates">View history <ArrowRight /></Link>
+      </div>
+      {isLoading ? (
+        <div className="client-dashboard-loading"><Loader2 className="animate-spin" /> Loading update…</div>
+      ) : latest ? (
+        <div className="client-dashboard-update__body"><ClientUpdateView update={latest} /></div>
+      ) : (
+        <div className="client-dashboard-empty">Your first verified project update has not been published yet.</div>
+      )}
+    </section>
+  );
+}
+
+const resources = [
+  { to: "/owner-portal/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
+  { to: "/owner-portal/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
+  { to: "/owner-portal/reports", label: "Reports", detail: "Owner-ready project records", icon: BarChart3 },
+  { to: "/owner-portal/documents", label: "Documents", detail: "Approved files in one place", icon: FolderOpen },
+];
 
 export default function OwnerDashboardPage() {
+  const { user } = useAuth();
   const { data, isLoading } = useOwnerPortalData();
-  const projectId = (data?.primeContracts as any[] | undefined)?.[0]?.project_id ?? null;
+  const { selectedProjectId: projectId, selectedContract } = useClientPortalProject();
+  const pendingOcos = (data?.pendingOcos ?? [])
+    .filter((item) => item.prime_contract_id === selectedContract?.id);
+  const pendingPayApps = (data?.pendingPayApps ?? [])
+    .filter((item) => item.prime_contract_id === selectedContract?.id);
+  const firstName = (user?.user_metadata?.full_name || user?.email?.split("@")[0] || "there").split(" ")[0];
+  const decisionCount = pendingOcos.length + pendingPayApps.length;
+  const pendingValue = pendingOcos.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+    + pendingPayApps.reduce((sum, item) => sum + (Number(item.submitted_amount) || 0), 0);
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      <h1 className="text-3xl font-bold mb-1">Owner Portal</h1>
-      <p className="text-muted-foreground mb-6">Prime contract, change orders, pay apps.</p>
+    <div className="client-dashboard">
+      <section className="client-dashboard-hero">
+        <div>
+          <span className="client-dashboard-eyebrow">Client command view</span>
+          <h1>Good to see you, {firstName}.</h1>
+          <p>Everything requiring your attention—followed by the latest verified project information.</p>
+        </div>
+        <div className="client-dashboard-hero__trust">
+          <span><ShieldCheck /> Secure</span>
+          <span><Clock3 /> Current portal view</span>
+        </div>
+      </section>
 
-      {/* Command-center hero: what (if anything) needs the owner right now. */}
-      {(() => {
-        const ocos = (data?.pendingOcos as any[]) ?? [];
-        const payApps = (data?.pendingPayApps as any[]) ?? [];
-        const total = ocos.length + payApps.length;
-        if (isLoading) return null;
-        if (total === 0) {
-          return (
-            <Card className="mb-6 border-[var(--apas-emerald)]/30 bg-[var(--apas-emerald)]/5">
-              <CardContent className="flex items-center gap-3 py-4">
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--apas-emerald)]" />
-                <div>
-                  <div className="font-semibold">You’re all caught up</div>
-                  <div className="text-sm text-muted-foreground">Nothing is waiting on your approval right now.</div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        }
-        const dollars = ocos.reduce((s, c) => s + (Number(c.amount) || 0), 0)
-          + payApps.reduce((s, p) => s + (Number(p.submitted_amount) || 0), 0);
-        return (
-          <Card className="mb-6 border-[var(--apas-amber)]/40 bg-[var(--apas-amber)]/5">
-            <CardContent className="flex flex-wrap items-center gap-3 py-4">
-              <Bell className="h-5 w-5 shrink-0 text-[var(--apas-amber)]" />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold">{total} item{total !== 1 ? "s" : ""} need your approval</div>
-                <div className="text-sm text-muted-foreground">
-                  {ocos.length} change order{ocos.length !== 1 ? "s" : ""} and {payApps.length} pay app{payApps.length !== 1 ? "s" : ""} · {fmt(dollars)} pending
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
+      <section id="decisions" className={`client-decision-center ${decisionCount ? "has-decisions" : "is-clear"}`}>
+        <div className="client-decision-center__summary">
+          <span className="client-decision-center__icon">{decisionCount ? <ClipboardCheck /> : <CheckCircle2 />}</span>
+          <div>
+            <small>Your action center</small>
+            <h2>{isLoading ? "Checking your decisions…" : decisionCount ? `${decisionCount} decision${decisionCount === 1 ? "" : "s"} need your review` : "You’re completely caught up"}</h2>
+            <p>{decisionCount ? `${fmt(pendingValue)} is currently represented in pending change orders and pay applications.` : "Nothing is waiting for your approval. We’ll place new decisions here when they are ready."}</p>
+          </div>
+          {decisionCount > 0 && <strong className="client-decision-center__value">{fmt(pendingValue)}<small>pending review</small></strong>}
+        </div>
 
-      <LatestUpdateCard projectId={projectId} />
-      <OwnerFinancialHealth projectId={projectId} />
+        {decisionCount > 0 && (
+          <div className="client-decision-list">
+            {pendingOcos.map((co) => (
+              <Link key={co.id} to={`/owner-portal/cos/${co.id}`} className="client-decision-row">
+                <span className="client-decision-row__type"><FileSignature /><small>Change order</small></span>
+                <span className="client-decision-row__detail"><strong>{co.title || `Owner change order ${co.co_no}`}</strong><small>OCO-{co.co_no} · Ready for review</small></span>
+                <span className="client-decision-row__amount">{fmt(co.amount)}</span>
+                <span className="client-decision-row__action">Review &amp; decide <ArrowRight /></span>
+              </Link>
+            ))}
+            {pendingPayApps.map((payApp) => (
+              <Link key={payApp.id} to={`/owner-portal/pay-apps/${payApp.id}`} className="client-decision-row">
+                <span className="client-decision-row__type"><WalletCards /><small>Pay application</small></span>
+                <span className="client-decision-row__detail"><strong>Pay Application #{payApp.pay_app_no}</strong><small>Period ending {shortDate(payApp.period_end)}</small></span>
+                <span className="client-decision-row__amount">{fmt(payApp.submitted_amount)}</span>
+                <span className="client-decision-row__action">Review &amp; decide <ArrowRight /></span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Contracts</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{data?.primeContracts.length ?? 0}</CardContent></Card>
-        <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Pending OCOs</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{data?.pendingOcos.length ?? 0}</CardContent></Card>
-        <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Pending Pay Apps</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{data?.pendingPayApps.length ?? 0}</CardContent></Card>
+      <div className="client-dashboard-grid">
+        <LatestUpdate projectId={projectId} />
+        <section className="client-dashboard-panel client-dashboard-financial">
+          <div className="client-panel-heading">
+            <div><span className="client-panel-icon is-gold"><Landmark /></span><div><small>Approved financial view</small><h2>Financial status</h2></div></div>
+            <Link to="/owner-portal/reports">Open reports <ArrowRight /></Link>
+          </div>
+          <FinancialSnapshot projectId={projectId} />
+        </section>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
-        <Button asChild variant="outline">
-          <Link to="/owner-portal/updates"><Megaphone className="h-4 w-4 mr-1" /> Updates</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/owner-portal/contract"><FileText className="h-4 w-4 mr-1" /> Contracts</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/owner-portal/schedule"><Calendar className="h-4 w-4 mr-1" /> Schedule</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/owner-portal/reports"><BarChart3 className="h-4 w-4 mr-1" /> Reports</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/owner-portal/documents"><FolderOpen className="h-4 w-4 mr-1" /> Documents</Link>
-        </Button>
-      </div>
-
-      <Card className="mb-6">
-        <CardHeader><CardTitle>Next up — OCOs awaiting your approval</CardTitle></CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-muted-foreground">Loading…</div>
-          ) : !data?.pendingOcos.length ? (
-            <div className="text-muted-foreground">Nothing pending.</div>
-          ) : (
-            <div className="divide-y">
-              {(data.pendingOcos as any[]).map((co) => (
-                <Link
-                  key={co.id}
-                  to={`/owner-portal/cos/${co.id}`}
-                  className="flex items-center justify-between py-3 hover:bg-muted px-2 rounded -mx-2"
-                >
-                  <div>
-                    <div className="font-medium">
-                      <span className="font-mono text-muted-foreground mr-2">OCO-{co.co_no}</span>
-                      {co.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{co.reason_code ?? ""}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono">{fmt(co.amount)}</span>
-                    <Button size="sm">Review & sign</Button>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>Next up — Pay apps awaiting review</CardTitle></CardHeader>
-        <CardContent>
-          {!data?.pendingPayApps.length ? (
-            <div className="text-muted-foreground">Nothing pending.</div>
-          ) : (
-            <div className="divide-y">
-              {(data.pendingPayApps as any[]).map((pa) => (
-                <Link
-                  key={pa.id}
-                  to={`/owner-portal/pay-apps/${pa.id}`}
-                  className="flex items-center justify-between py-2 hover:bg-muted px-2 rounded -mx-2"
-                >
-                  <div>
-                    <span className="font-mono mr-2">Pay App #{pa.pay_app_no}</span>
-                    <span className="text-muted-foreground">period end {pa.period_end}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono">{fmt(pa.submitted_amount)}</span>
-                    <Badge variant="outline">{pa.status}</Badge>
-                    <Button size="sm">Review</Button>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <section className="client-dashboard-resources">
+        <div className="client-dashboard-section-title">
+          <div><small>Project record</small><h2>Find what you need</h2></div>
+          <span>Only approved, client-facing information appears here.</span>
+        </div>
+        <div className="client-resource-grid">
+          {resources.map((resource) => {
+            const Icon = resource.icon;
+            return (
+              <Link key={resource.to} to={resource.to} className="client-resource-card">
+                <span><Icon /></span>
+                <div><strong>{resource.label}</strong><small>{resource.detail}</small></div>
+                <ArrowRight />
+              </Link>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

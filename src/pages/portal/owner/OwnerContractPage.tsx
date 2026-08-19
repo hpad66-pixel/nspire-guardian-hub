@@ -8,20 +8,22 @@ import { useOwnerPortalData } from "@/hooks/usePortals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
+import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerContractPage() {
   const { data, isLoading } = useOwnerPortalData();
+  const { selectedContract } = useClientPortalProject();
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
-  const contracts = data?.primeContracts ?? [];
+  const contracts = selectedContract ? [selectedContract] : [];
   const ocos = data?.pendingOcos ?? [];
 
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
-          ← Owner dashboard
+          ← Portal overview
         </Link>
         <h1 className="text-3xl font-bold mt-2">Prime contracts</h1>
       </div>

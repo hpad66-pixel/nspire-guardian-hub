@@ -9,12 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import type { ReportData } from "@/lib/reports/financialReports";
 
-export function useFinancialReportData(projectId: string | null) {
+export function useFinancialReportData(projectId: string | null, options: { ownerSafe?: boolean } = {}) {
   const { data: contract, isLoading: contractLoading } = usePrimeContract(projectId);
   const primeContractId = contract?.id ?? null;
+  const ownerSafe = options.ownerSafe === true;
 
   const query = useQuery<ReportData | null>({
-    queryKey: ["financial-report-data", projectId, primeContractId],
+    queryKey: ["financial-report-data", projectId, primeContractId, ownerSafe ? "owner-safe" : "internal"],
     enabled: Boolean(projectId) && Boolean(primeContractId) && Boolean(contract),
     queryFn: async () => {
       if (!contract || !primeContractId || !projectId) return null;
@@ -28,8 +29,10 @@ export function useFinancialReportData(projectId: string | null) {
         // Owner → us receipts, with method/reference + the pay app each settles.
         supabase.from("prime_contract_payments" as any)
           .select("amount, received_date, method, reference, pay_app_id").eq("prime_contract_id", primeContractId),
-        supabase.from("commitments" as any)
-          .select("id, title, original_value, vendor_org_id").eq("project_id", projectId),
+        ownerSafe
+          ? Promise.resolve({ data: [] as any[] })
+          : supabase.from("commitments" as any)
+              .select("id, title, original_value, vendor_org_id").eq("project_id", projectId),
         supabase.from("lien_releases" as any)
           .select("direction, status").eq("project_id", projectId),
       ]);

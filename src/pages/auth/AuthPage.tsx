@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch } from 'lucide-react';
@@ -22,6 +22,11 @@ const features = [
 export default function AuthPage() {
   const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPath = searchParams.get('next');
+  const safeNext = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : null;
+  const isClientPortal = searchParams.get('portal') === 'client' || safeNext?.startsWith('/owner-portal') === true;
+  const destination = safeNext ?? (isClientPortal ? '/owner-portal' : '/dashboard');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -33,8 +38,8 @@ export default function AuthPage() {
   const [suPassword, setSuPassword] = useState('');
 
   useEffect(() => {
-    if (user && !loading) navigate('/dashboard');
-  }, [user, loading, navigate]);
+    if (user && !loading) navigate(destination, { replace: true });
+  }, [user, loading, navigate, destination]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +56,7 @@ export default function AuthPage() {
       toast.error(error.message.includes('Invalid login credentials') ? 'Invalid email or password. Please try again.' : error.message);
     } else {
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(destination, { replace: true });
     }
   };
 
@@ -81,7 +86,7 @@ export default function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/dashboard` },
+        options: { redirectTo: `${window.location.origin}${destination}` },
       });
       if (error) toast.error('Failed to sign in with Google. Please try again.');
     } catch {
@@ -249,17 +254,20 @@ export default function AuthPage() {
           <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
             <div className="mb-7">
               <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-                {mode === 'login' ? 'Welcome back' : 'Create your company'}
+                {mode === 'login' ? (isClientPortal ? 'Secure client access' : 'Welcome back') : 'Create your company'}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {mode === 'login'
-                  ? 'Sign in to access your APAS Project Controls workspace'
+                  ? (isClientPortal
+                    ? 'Sign in with the account connected to your private project portal'
+                    : 'Sign in to access your APAS Project Controls workspace')
                   : 'Start a fresh, private workspace for your company'}
               </p>
             </div>
 
-            {/* Google */}
-            <button
+            {/* Google is intentionally omitted from the private client handoff.
+                Client identities are provisioned from a verified invitation. */}
+            {!isClientPortal && <button
               onClick={handleGoogleSignIn}
               disabled={isGoogleLoading}
               className="w-full flex items-center justify-center gap-3 h-12 rounded-xl text-sm font-medium border border-border bg-background text-foreground transition-colors hover:bg-muted mb-5 disabled:opacity-60"
@@ -275,14 +283,14 @@ export default function AuthPage() {
                 </svg>
               )}
               Continue with Google
-            </button>
+            </button>}
 
             {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
+            {!isClientPortal && <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-border" />
               <span className="text-xs text-muted-foreground">or continue with email</span>
               <div className="flex-1 h-px bg-border" />
-            </div>
+            </div>}
 
             {/* Form */}
             {mode === 'login' ? (
@@ -352,7 +360,7 @@ export default function AuthPage() {
               </form>
             )}
 
-            <p className="text-xs text-center mt-5 text-muted-foreground">
+            {!isClientPortal && <p className="text-xs text-center mt-5 text-muted-foreground">
               {mode === 'login' ? (
                 <>New here?{' '}
                   <button type="button" onClick={() => setMode('signup')} className="text-accent font-medium hover:underline">
@@ -366,7 +374,12 @@ export default function AuthPage() {
                   </button>
                 </>
               )}
-            </p>
+            </p>}
+            {isClientPortal && (
+              <p className="text-xs text-center mt-5 text-muted-foreground">
+                First visit? Open the private invitation your project team sent you. No separate registration is required.
+              </p>
+            )}
           </div>
 
           <div className="mt-6 text-center">

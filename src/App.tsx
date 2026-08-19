@@ -78,10 +78,7 @@ const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPa
 const PortalsDashboardPage = lazy(() => import('./pages/portals/PortalsDashboardPage'));
 const PortalManagePage = lazy(() => import('./pages/portals/PortalManagePage'));
 const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
-const PortalAuthPage = lazy(() => import('./pages/portal/PortalAuthPage'));
-const PortalWelcomePage = lazy(() => import('./pages/portal/PortalWelcomePage'));
-const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage'));
-const PortalSchedulePage = lazy(() => import('./pages/portal/PortalSchedulePage'));
+const LegacyPortalRedirect = lazy(() => import('./pages/portal/LegacyPortalRedirect'));
 const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
 
 // ───────── Procore Lite · Phase 1 (A1–A5) ─────────
@@ -121,6 +118,7 @@ const OwnerSchedulePage = lazy(() => import('./pages/portal/owner/OwnerScheduleP
 const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPage'));
 const OwnerDocumentsPage = lazy(() => import('./pages/portal/owner/OwnerDocumentsPage'));
 const OwnerUpdatesPage = lazy(() => import('./pages/portal/owner/OwnerUpdatesPage'));
+const ClientPortalShell = lazy(() => import('./components/portal/ClientPortalShell'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
 const PortalInviteAcceptPage = lazy(() => import('./pages/portal/PortalInviteAcceptPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
@@ -254,12 +252,12 @@ const App = () => (
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
-                    <Route path="/portal-invite/:token" element={<PortalInviteAcceptPage />} />
+                     <Route path="/portal-invite/:token" element={<PortalInviteAcceptPage />} />
                      <Route path="/portal/:slug" element={<PortalLoginPage />} />
-                     <Route path="/portal/:slug/auth" element={<PortalAuthPage />} />
-                     <Route path="/portal/:slug/welcome" element={<PortalWelcomePage />} />
-                     <Route path="/portal/:slug/home" element={<PortalHomePage />} />
-                     <Route path="/portal/:slug/schedule" element={<PortalSchedulePage />} />
+                     <Route path="/portal/:slug/auth" element={<LegacyPortalRedirect />} />
+                     <Route path="/portal/:slug/welcome" element={<LegacyPortalRedirect />} />
+                     <Route path="/portal/:slug/home" element={<LegacyPortalRedirect />} />
+                     <Route path="/portal/:slug/schedule" element={<LegacyPortalRedirect />} />
                      <Route path="/share/credential/:token" element={<CredentialSharePage />} />
                      <Route path="/share/certificate/:token" element={<CertificateSharePage />} />
                      <Route path="/sign/co/:token" element={<CounterSignChangeOrderPage />} />
@@ -271,6 +269,24 @@ const App = () => (
                      <Route path="/client/:token" element={<ClientPortalPage />} />
                      <Route path="/capture/:token" element={<CaptureUploadPage />} />
                      <Route path="/bid/:token" element={<BidSubmitPage />} />
+
+                    {/*
+                      The client portal is deliberately mounted outside AppLayout.
+                      Owners get a focused, branded experience and never see the
+                      internal project-controls navigation or unrelated modules.
+                    */}
+                    <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
+                      <Route element={<ClientPortalShell />}>
+                        <Route path="/owner-portal" element={<OwnerDashboardPage />} />
+                        <Route path="/owner-portal/contract" element={<OwnerContractPage />} />
+                        <Route path="/owner-portal/cos/:coId" element={<OwnerOcoApprovalPage />} />
+                        <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
+                        <Route path="/owner-portal/schedule" element={<OwnerSchedulePage />} />
+                        <Route path="/owner-portal/reports" element={<OwnerReportsPage />} />
+                        <Route path="/owner-portal/documents" element={<OwnerDocumentsPage />} />
+                        <Route path="/owner-portal/updates" element={<OwnerUpdatesPage />} />
+                      </Route>
+                    </Route>
                      
                     {/* Protected Routes */}
                     <Route
@@ -440,17 +456,6 @@ const App = () => (
                                 <Route path="/sub-portal/punch" element={<SubPunchListsPage />} />
                                 <Route path="/sub-portal/rfis" element={<SubRfisPage />} />
                                 <Route path="/sub-portal/submittals" element={<SubSubmittalsPage />} />
-                              </Route>
-                              {/* G3 · Owner portal — auth + role + plan gated. */}
-                              <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
-                                <Route path="/owner-portal" element={<OwnerDashboardPage />} />
-                                <Route path="/owner-portal/contract" element={<OwnerContractPage />} />
-                                <Route path="/owner-portal/cos/:coId" element={<OwnerOcoApprovalPage />} />
-                                <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
-                                <Route path="/owner-portal/schedule" element={<OwnerSchedulePage />} />
-                                <Route path="/owner-portal/reports" element={<OwnerReportsPage />} />
-                                <Route path="/owner-portal/documents" element={<OwnerDocumentsPage />} />
-                                <Route path="/owner-portal/updates" element={<OwnerUpdatesPage />} />
                               </Route>
                               <Route path="/settings/api/clients" element={<ApiClientsPage />} />
                               <Route path="/settings/api/webhooks" element={<WebhooksPage />} />

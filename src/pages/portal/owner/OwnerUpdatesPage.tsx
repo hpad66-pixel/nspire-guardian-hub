@@ -7,13 +7,12 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { useOwnerPortalData } from "@/hooks/usePortals";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
+import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerUpdatesPage() {
-  const { data: portal } = useOwnerPortalData();
-  const projectId = (portal?.primeContracts as any[] | undefined)?.[0]?.project_id ?? null;
+  const { selectedProjectId: projectId } = useClientPortalProject();
   const { data: updates = [], isLoading } = useClientUpdates(projectId, { publishedOnly: true });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useMemo(() => updates.find((u) => u.id === selectedId) ?? updates[0] ?? null, [updates, selectedId]);
@@ -21,7 +20,7 @@ export default function OwnerUpdatesPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-4">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Owner dashboard</Link>
+        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="text-3xl font-bold mt-2">Project Updates</h1>
         <p className="text-muted-foreground">Regular briefings from your project team.</p>
       </div>

@@ -12,24 +12,10 @@ import {
 import { GanttChart } from "@/components/schedule/GanttChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerSchedulePage() {
-  // Owner sees any project they have prime contracts on. Pick first by default.
-  const { data: contracts = [] } = useQuery({
-    queryKey: ["owner-prime-contracts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prime_contracts" as any).select("id, project_id, title, contract_no");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const effectiveProjectId = projectId ?? (contracts[0] as any)?.project_id ?? null;
+  const { selectedProjectId: effectiveProjectId } = useClientPortalProject();
 
   const { data: schedules = [] } = useSchedules(effectiveProjectId);
   const [windowDays, setWindowDays] = useState<14 | 28 | null>(null);
@@ -51,7 +37,7 @@ export default function OwnerSchedulePage() {
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
       <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
-          ← Owner dashboard
+          ← Portal overview
         </Link>
         <h1 className="text-3xl font-bold mt-2">Project schedule</h1>
       </div>
@@ -60,18 +46,6 @@ export default function OwnerSchedulePage() {
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Gantt (read-only)</CardTitle>
           <div className="flex items-center gap-2">
-            {contracts.length > 1 && (
-              <Select value={effectiveProjectId ?? ""} onValueChange={setProjectId}>
-                <SelectTrigger className="w-56"><SelectValue placeholder="Project" /></SelectTrigger>
-                <SelectContent>
-                  {contracts.map((c: any) => (
-                    <SelectItem key={c.id} value={c.project_id}>
-                      {c.contract_no} · {c.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
             <div className="flex gap-1">
               <button onClick={() => setWindowDays(null)}
                       className={`text-xs px-2 py-1 rounded ${!windowDays ? "bg-primary text-primary-foreground" : "border"}`}>
