@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   ArrowUpRight,
@@ -39,6 +39,7 @@ import {
   PRODUCT_IDEA_PROGRESS,
   PRODUCT_IDEA_STATUSES,
   PRODUCT_IDEA_STATUS_META,
+  compareProductIdeaCompletion,
   isProductIdeaRoadmapStatus,
   productIdeaProgressIndex,
   productIdeaScore,
@@ -108,36 +109,52 @@ function StatusBadge({ status }: { status: ProductIdeaStatus }) {
   );
 }
 
-const PROGRESS_CONFETTI = [
-  ['4%', '#D5AA52', '0ms', '5px'],
-  ['14%', '#69C2A2', '620ms', '4px'],
-  ['25%', '#9F91CF', '240ms', '5px'],
-  ['38%', '#94A3B8', '860ms', '4px'],
-  ['51%', '#D5AA52', '420ms', '5px'],
-  ['64%', '#69C2A2', '1040ms', '4px'],
-  ['77%', '#9F91CF', '180ms', '5px'],
-  ['89%', '#94A3B8', '740ms', '4px'],
-  ['97%', '#D5AA52', '1120ms', '5px'],
-] as const;
+const WATERFALL_CONFETTI_COLORS = ['#D5AA52', '#69C2A2', '#9F91CF', '#94A3B8'] as const;
 
-/** Small, slow celebration emitted by the fully completed progress bar. */
-function ProgressBarConfetti({ condensed }: { condensed: boolean }) {
-  const pieces = condensed ? PROGRESS_CONFETTI.filter((_, index) => index % 2 === 0) : PROGRESS_CONFETTI;
+/** A restrained waterfall emitted directly from each completed milestone circle. */
+function ProgressCircleConfetti({
+  condensed,
+  circleIndex,
+}: {
+  condensed: boolean;
+  circleIndex: number;
+}) {
+  const piecesPerCircle = condensed ? 1 : 3;
+  const pieces = Array.from({ length: piecesPerCircle }, (_, pieceIndex) => pieceIndex);
+
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        'pointer-events-none absolute inset-x-0 z-20 overflow-visible',
-        condensed ? '-top-4 h-7' : '-top-7 h-10',
-      )}
+      className={cn('pointer-events-none absolute left-1/2 top-1/2 z-20 w-px overflow-visible', condensed ? 'h-12' : 'h-16')}
     >
-      {pieces.map(([left, color, delay, size], index) => (
-        <span
-          key={`${left}-${index}`}
-          className="product-idea-bar-confetti-piece absolute bottom-0 rounded-[1px]"
-          style={{ left, backgroundColor: color, animationDelay: delay, height: size, width: size }}
-        />
-      ))}
+      {pieces.map((pieceIndex) => {
+        const atFirstCircle = circleIndex === 0;
+        const atLastCircle = circleIndex === PRODUCT_IDEA_PROGRESS.length - 1;
+        const naturalOffset = condensed ? 0 : (pieceIndex - 1) * 5;
+        const edgeOffset = atFirstCircle ? naturalOffset + 5 : atLastCircle ? naturalOffset - 5 : naturalOffset;
+        const size = condensed ? 3 : 3 + ((circleIndex + pieceIndex) % 2);
+        const driftDirection = atFirstCircle ? 1 : atLastCircle ? -1 : (circleIndex + pieceIndex) % 2 === 0 ? 1 : -1;
+        const style = {
+          left: `${edgeOffset}px`,
+          top: '0px',
+          width: `${size}px`,
+          height: `${pieceIndex === 1 ? size + 2 : size}px`,
+          backgroundColor: WATERFALL_CONFETTI_COLORS[(circleIndex * 2 + pieceIndex) % WATERFALL_CONFETTI_COLORS.length],
+          animationDelay: `${circleIndex * 120 + pieceIndex * 720}ms`,
+          animationDuration: `${5.8 + ((circleIndex + pieceIndex) % 3) * 0.45}s`,
+          '--product-idea-confetti-drift': `${driftDirection * (4 + ((circleIndex + pieceIndex) % 3) * 3)}px`,
+          '--product-idea-confetti-fall': condensed ? '38px' : '58px',
+          '--product-idea-confetti-turn': `${driftDirection * (120 + pieceIndex * 70)}deg`,
+        } as CSSProperties;
+
+        return (
+          <span
+            key={`${circleIndex}-${pieceIndex}`}
+            className="product-idea-waterfall-confetti-piece absolute rounded-[1px]"
+            style={style}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -212,7 +229,6 @@ function ProgressTickler({
 
   return (
     <div className={cn('relative w-full overflow-visible', condensed ? 'max-w-[220px]' : '')}>
-      {executed && <ProgressBarConfetti condensed={condensed} />}
       <div className="relative z-10 flex items-center">
         {PRODUCT_IDEA_PROGRESS.map((stage, index) => {
           const complete = !rejected && index <= activeIndex;
@@ -244,7 +260,10 @@ function ProgressTickler({
           );
           return (
             <div key={stage.key} className={cn('flex items-center', index < PRODUCT_IDEA_PROGRESS.length - 1 && 'flex-1')}>
-              {marker}
+              <div className="relative shrink-0">
+                {marker}
+                {executed && <ProgressCircleConfetti condensed={condensed} circleIndex={index} />}
+              </div>
               {index < PRODUCT_IDEA_PROGRESS.length - 1 && (
                 <div
                   className={cn(
@@ -913,6 +932,8 @@ export default function ProductIdeasPage() {
     });
 
     return [...filtered].sort((a, b) => {
+      const completionOrder = compareProductIdeaCompletion(a.status, b.status);
+      if (completionOrder !== 0) return completionOrder;
       if (sort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sort === 'recently_updated') return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       return productIdeaScore(b.upvotes, b.downvotes) - productIdeaScore(a.upvotes, a.downvotes);

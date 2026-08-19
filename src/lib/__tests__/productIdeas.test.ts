@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PRODUCT_IDEA_PROGRESS,
   PRODUCT_IDEA_STATUS_META,
+  compareProductIdeaCompletion,
   isProductIdeaRoadmapStatus,
   productIdeaProgressIndex,
   productIdeaScore,
@@ -10,6 +11,13 @@ import {
 describe('product ideas helpers', () => {
   it('uses net community support as the score', () => {
     expect(productIdeaScore(14, 3)).toBe(11);
+  });
+
+  it('places executed ideas ahead of every active status', () => {
+    expect(compareProductIdeaCompletion('shipped', 'in_progress')).toBeLessThan(0);
+    expect(compareProductIdeaCompletion('submitted', 'shipped')).toBeGreaterThan(0);
+    expect(compareProductIdeaCompletion('shipped', 'shipped')).toBe(0);
+    expect(compareProductIdeaCompletion('planned', 'submitted')).toBe(0);
   });
 
   it('gives planned work and execution their own visible milestones', () => {

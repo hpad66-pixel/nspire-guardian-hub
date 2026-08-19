@@ -101,6 +101,18 @@ export function productIdeaScore(upvotes: number, downvotes: number): number {
   return upvotes - downvotes;
 }
 
+/** Keep completed improvements celebratory and immediately visible on the board. */
+export function compareProductIdeaCompletion(
+  first: ProductIdeaStatus,
+  second: ProductIdeaStatus,
+): number {
+  const firstExecuted = first === 'shipped';
+  const secondExecuted = second === 'shipped';
+
+  if (firstExecuted === secondExecuted) return 0;
+  return firstExecuted ? -1 : 1;
+}
+
 export function isProductIdeaRoadmapStatus(status: ProductIdeaStatus): boolean {
   return ['escalated', 'planned', 'in_progress'].includes(status);
 }
