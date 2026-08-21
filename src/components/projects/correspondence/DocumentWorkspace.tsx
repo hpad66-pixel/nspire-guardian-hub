@@ -427,7 +427,20 @@ function FormattedDocEditor({ doc, docs, projectName, base64, html, locked, onSa
       {err && <div className="text-sm text-amber-700 flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> {err}</div>}
 
       <div className={`rounded border ${editing ? "ring-2 ring-[var(--apas-sapphire)]/40" : ""} bg-neutral-100 max-h-[72vh] overflow-auto p-4`}>
-        <div ref={ref} onInput={() => setDirty(true)} className="mx-auto bg-white shadow-sm [&_.docx]:outline-none" />
+        <div
+          ref={ref}
+          onInput={() => setDirty(true)}
+          onKeyDown={(e) => {
+            // Tab should indent inside the letter, not blur the editor and jump
+            // to the next control. Insert a four-space indent (nbsp so it isn't
+            // collapsed) that survives into the exported PDF.
+            if (e.key === "Tab" && editing) {
+              e.preventDefault();
+              document.execCommand("insertText", false, "    ");
+            }
+          }}
+          className="mx-auto bg-white shadow-sm [&_.docx]:outline-none"
+        />
       </div>
       {editing && <p className="text-xs text-muted-foreground">Editing the real letter — the letterhead, fonts and layout stay. Save makes this the current version; History lets you go back to an earlier one.</p>}
     </div>

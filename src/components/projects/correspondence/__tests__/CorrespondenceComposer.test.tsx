@@ -6,6 +6,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 
 vi.mock("@/hooks/useSendEmail", () => ({ useSendEmail: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+vi.mock("@/hooks/useSendViaGmail", () => ({ useSendViaGmail: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
+vi.mock("@/hooks/useGmailConnection", () => ({
+  useGmailConnection: () => ({ status: { data: { connected: false, email: null } }, connect: { mutate: vi.fn() } }),
+}));
 vi.mock("@/hooks/useProjectEmails", () => ({ useProjectEmails: () => ({ create: { mutateAsync: vi.fn() }, update: { mutateAsync: vi.fn() } }) }));
 vi.mock("@/hooks/useCorrespondenceTemplates", () => ({ useCorrespondenceTemplates: () => ({ data: [], create: { mutateAsync: vi.fn() } }) }));
 vi.mock("@/hooks/useSavedRecipients", () => ({
