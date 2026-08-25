@@ -14,7 +14,11 @@ vi.mock("@/lib/tenant", () => ({
   resolveCurrentWorkspaceId: vi.fn(async () => "ws-1"),
 }));
 
-import { usePrimeContractPayments, usePrimeContractPaymentsTotal } from "../usePrimeContractPayments";
+import {
+  usePrimeContractPaymentAdministration,
+  usePrimeContractPayments,
+  usePrimeContractPaymentsTotal,
+} from "../usePrimeContractPayments";
 import { renderHookWithClient } from "@/test/utils";
 import { __mock, makeBuilder } from "@/test/fixtures/supabase";
 
@@ -50,10 +54,10 @@ describe("usePrimeContractPayments", () => {
     __mock.from.mockReturnValue(builder);
     const { result } = renderHookWithClient(() => usePrimeContractPayments("pa1"));
 
-    const row = await result.current.create.mutateAsync(input as any);
+    const row = await result.current.create.mutateAsync(input);
     expect(row.id).toBe("r-new");
 
-    const inserted = (builder.insert as any).mock.calls[0][0];
+    const inserted = builder.insert.mock.calls[0][0];
     expect(inserted).toMatchObject({
       prime_contract_id: "pc1",
       pay_app_id: "pa1",
@@ -66,20 +70,20 @@ describe("usePrimeContractPayments", () => {
 
   it("create surfaces an OVERPAYMENT guard as a friendly rejection", async () => {
     __mock.from.mockReturnValue(
-      makeBuilder({ data: null, error: { message: "OVERPAYMENT: too much" } as any }),
+      makeBuilder({ data: null, error: { message: "OVERPAYMENT: too much" } }),
     );
     const { result } = renderHookWithClient(() => usePrimeContractPayments("pa1"));
-    await expect(result.current.create.mutateAsync(input as any)).rejects.toThrow(
+    await expect(result.current.create.mutateAsync(input)).rejects.toThrow(
       /remaining balance/i,
     );
   });
 
   it("create surfaces other insert errors as a rejection", async () => {
     __mock.from.mockReturnValue(
-      makeBuilder({ data: null, error: { message: "denied" } as any }),
+      makeBuilder({ data: null, error: { message: "denied" } }),
     );
     const { result } = renderHookWithClient(() => usePrimeContractPayments("pa1"));
-    await expect(result.current.create.mutateAsync(input as any)).rejects.toBeTruthy();
+    await expect(result.current.create.mutateAsync(input)).rejects.toBeTruthy();
   });
 });
 
@@ -103,7 +107,7 @@ describe("usePrimeContractPaymentsTotal", () => {
     const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal("pc1"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(75000.5);
-    expect((builder.eq as any).mock.calls[0]).toEqual(["prime_contract_id", "pc1"]);
+    expect(builder.eq.mock.calls[0]).toEqual(["prime_contract_id", "pc1"]);
   });
 
   it("returns 0 when there are no receipts", async () => {
@@ -114,8 +118,83 @@ describe("usePrimeContractPaymentsTotal", () => {
   });
 
   it("surfaces query errors as a rejection", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } }));
     const { result } = renderHookWithClient(() => usePrimeContractPaymentsTotal("pc1"));
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("usePrimeContractPaymentAdministration", () => {
+  beforeEach(() => {
+    __mock.reset();
+    vi.clearAllMocks();
+  });
+
+  it("is disabled until a prime contract is provided", () => {
+    const { result } = renderHookWithClient(() => usePrimeContractPaymentAdministration(null));
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("marks receipts as locked when they have allocation rows", async () => {
+    const payments = makeBuilder({
+      data: [
+        { id: "r1", amount: 75000, prime_contract_id: "pc1" },
+        { id: "r2", amount: 25000, prime_contract_id: "pc1" },
+      ],
+      error: null,
+    });
+    const allocations = makeBuilder({
+      data: [{ payment_id: "r1" }, { payment_id: "r1" }],
+      error: null,
+    });
+    __mock.from.mockImplementation((table: string) =>
+      table === "prime_payment_allocations" ? allocations : payments,
+    );
+
+    const { result } = renderHookWithClient(() => usePrimeContractPaymentAdministration("pc1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: "r1", allocation_count: 2 }),
+      expect.objectContaining({ id: "r2", allocation_count: 0 }),
+    ]);
+    expect(allocations.in.mock.calls[0]).toEqual(["payment_id", ["r1", "r2"]]);
+  });
+
+  it("updates only the editable receipt fields", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: [], error: null }));
+    const { result } = renderHookWithClient(() => usePrimeContractPaymentAdministration("pc1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const updateBuilder = makeBuilder({ data: { id: "r1", amount: 70000 }, error: null });
+    __mock.from.mockReturnValue(updateBuilder);
+    await result.current.update.mutateAsync({
+      id: "r1",
+      changes: {
+        amount: 70000,
+        received_date: "2026-08-06",
+        method: "wire",
+        reference: "WIRE-1",
+        notes: null,
+      },
+    });
+
+    expect(updateBuilder.update.mock.calls[0][0]).toEqual({
+      amount: 70000,
+      received_date: "2026-08-06",
+      method: "wire",
+      reference: "WIRE-1",
+      notes: null,
+    });
+    expect(updateBuilder.eq.mock.calls[0]).toEqual(["id", "r1"]);
+  });
+
+  it("rejects a delete when the database does not return the receipt", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: [], error: null }));
+    const { result } = renderHookWithClient(() => usePrimeContractPaymentAdministration("pc1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: null }));
+    await expect(result.current.remove.mutateAsync("r1")).rejects.toThrow(/unallocated receipt/i);
   });
 });
