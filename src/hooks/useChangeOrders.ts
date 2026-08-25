@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useUserPermissions } from './usePermissions';
 import { getAssignedProjectIds } from './propertyAccess';
 import type { Database } from '@/integrations/supabase/types';
+import { invalidateChangeOrderFinancialViews } from '@/lib/financial/changeOrderPropagation';
 
 type ChangeOrderRow = Database['public']['Tables']['change_orders']['Row'];
 type ChangeOrderInsert = Database['public']['Tables']['change_orders']['Insert'];
@@ -155,6 +156,7 @@ export function useCreateChangeOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order created successfully');
     },
     onError: (error: Error) => {
@@ -180,6 +182,7 @@ export function useUpdateChangeOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order updated successfully');
     },
     onError: (error: Error) => {
@@ -208,6 +211,7 @@ export function useVoidChangeOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order voided');
     },
     onError: (error: Error) => {
@@ -245,6 +249,7 @@ export function useDeleteChangeOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
       queryClient.invalidateQueries({ queryKey: ['procore-change-orders'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order deleted');
     },
     onError: (error: Error) => {
@@ -277,6 +282,7 @@ export function useApproveChangeOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order approved');
     },
     onError: (error: Error) => {
@@ -302,6 +308,7 @@ export function useRejectChangeOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['change-orders'] });
+      invalidateChangeOrderFinancialViews(queryClient);
       toast.success('Change order rejected');
     },
     onError: (error: Error) => {

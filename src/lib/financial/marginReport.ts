@@ -10,11 +10,16 @@ const fmt = (ts: string) => { try { return new Date(ts).toLocaleDateString('en-U
 export function buildMarginReportHtml(d: MarginData, projectName: string): string {
   const pct = d.totals.revenue ? Math.round((d.totals.margin / d.totals.revenue) * 100) : 0;
   const TREAT: Record<string, string> = { markup: 'Markup', pass_through: 'Pass-through', apas_100: '100% APAS' };
-  const coRows = d.classified.map(c => `<tr>
+  const coRows = d.classified.filter(c => !c.needs_review).map(c => `<tr>
     <td>${coLabel(c.prime)}</td><td class="r">${usd(Number(c.prime.amount ?? 0))}</td>
     <td>${TREAT[c.treatment] ?? c.treatment}${c.sub_label ? ' · ' + esc(c.sub_label) : ''}</td>
     <td class="r">${c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}</td>
     <td class="r">${c.treatment === 'pass_through' ? '<span class="pt">$0</span>' : `<b style="color:${c.recovery >= 0 ? '#0F6E56' : '#A32D2D'}">${signed(c.recovery)}</b>`}</td></tr>`).join('');
+  const reviewRows = d.classified.filter(c => c.needs_review).map(c => `<tr>
+    <td>${coLabel(c.prime)}</td><td class="r">${usd(Number(c.prime.amount ?? 0))}</td>
+    <td>${TREAT[c.treatment] ?? c.treatment}${c.sub_label ? ' · ' + esc(c.sub_label) : ''}</td>
+    <td class="r">${c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}</td>
+    <td class="r"><b style="color:#854F0B">Needs review</b></td></tr>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(projectName)} — Margin &amp; Recovery</title>
 <style>
@@ -58,7 +63,11 @@ export function buildMarginReportHtml(d: MarginData, projectName: string): strin
     <thead><tr><th>Owner change order</th><th class="r">Bill</th><th>Treatment</th><th class="r">Sub cost</th><th class="r">APAS</th></tr></thead>
     <tbody>${coRows}</tbody>
     <tfoot><tr><td>Totals</td><td class="r">${usd(d.totals.coRevenue)}</td><td></td><td class="r">${usd(d.totals.coCost)}</td><td class="r" style="color:#0F6E56">${signed(d.totals.coMargin)}</td></tr></tfoot>
-  </table>` : '<p style="color:#6b7280;font-size:12.5px">No classified change orders.</p>'}
+  </table>` : '<p style="color:#6b7280;font-size:12.5px">No saved change-order classifications.</p>'}
+  ${reviewRows ? `<h2 style="color:#854F0B">Amended classifications requiring review</h2><table>
+    <thead><tr><th>Owner change order</th><th class="r">Current bill</th><th>Treatment</th><th class="r">Saved sub cost</th><th class="r">State</th></tr></thead>
+    <tbody>${reviewRows}</tbody>
+  </table>` : ''}
 
   <h2>Cash position</h2>
   <div class="two">

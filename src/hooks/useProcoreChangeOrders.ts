@@ -8,6 +8,7 @@ import { requireTenantId } from "@/lib/tenant";
 import { buildCoPdfBlob } from "@/lib/changeOrder/coPdf";
 import { uploadCoArtifact } from "@/lib/changeOrder/storage";
 import { coLabel } from "@/lib/changeOrder/coLabel";
+import { invalidateChangeOrderFinancialViews } from "@/lib/financial/changeOrderPropagation";
 
 export interface ChangeOrder {
   id: string; tenant_id: string; project_id: string;
@@ -164,6 +165,7 @@ export function useRenumberChangeOrder() {
       qc.invalidateQueries({ queryKey: ["co"] });
       qc.invalidateQueries({ queryKey: ["change-orders"] });
       qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 }
@@ -218,6 +220,7 @@ export function useReopenChangeOrder() {
       qc.invalidateQueries({ queryKey: ["change-orders"] });
       qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 }
@@ -271,6 +274,7 @@ export function useUploadSignedHardcopy() {
       qc.invalidateQueries({ queryKey: ["co"] });
       qc.invalidateQueries({ queryKey: ["change-orders"] });
       qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 }
@@ -304,6 +308,7 @@ export function useExecuteCoOffline() {
       qc.invalidateQueries({ queryKey: ["change-orders"] });
       qc.invalidateQueries({ queryKey: ["procore-change-orders"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 }

@@ -109,6 +109,7 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
               <Link key={c.id} to={`/projects/${projectId}/financials/cos/${c.id}`} className="-mx-1 flex items-center gap-2 rounded px-1 py-1.5 hover:bg-muted/60">
                 <span className="flex-1 truncate">{c.co_no != null ? `#${c.co_no} · ` : ''}{c.title}</span>
                 {c.treatment && <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{TREAT_LABEL[c.treatment] ?? c.treatment}</span>}
+                {c.classificationNeedsReview && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Owner amendment · review</span>}
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${counted ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>{c.status}</span>
                 <span className={`w-24 text-right font-mono ${!counted ? 'text-muted-foreground' : c.amount < 0 ? 'text-destructive' : 'text-emerald-600'}`}>{c.amount < 0 ? '−' : '+'} {usd(Math.abs(c.amount))}</span>
               </Link>
@@ -127,6 +128,7 @@ function VendorPanel({ projectId, commitment }: { projectId: string; commitment:
               <Link key={o.primeCoId} to={`/projects/${projectId}/financials/cos/${o.primeCoId}`} className="-mx-1 flex items-center gap-2 rounded px-1 py-1.5 hover:bg-muted/60">
                 <span className="flex-1 truncate">{o.co_no != null ? `#${o.co_no} · ` : ''}{o.title}</span>
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{TREAT_LABEL[o.treatment] ?? o.treatment}</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${o.needsReview ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>{o.needsReview ? 'Needs review' : 'Saved'}</span>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${o.counted ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>{o.status}</span>
                 <span className={`w-24 text-right font-mono ${o.share > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{o.treatment === 'apas_100' ? '$0.00' : `+ ${usd(o.share)}`}</span>
               </Link>

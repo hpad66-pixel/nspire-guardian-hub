@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, X, TrendingUp, FileText, Pencil, Tag, PlusCircle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, X, TrendingUp, FileText, Pencil, Tag, PlusCircle, CheckCircle2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { FinancialSubNav } from '@/components/financial/FinancialSubNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,9 @@ export default function MarginPage() {
   const [classify, setClassify] = useState<{ co: MarginCO; existing?: MarginClass } | null>(null);
   const [pushTarget, setPushTarget] = useState<MarginClass | null>(null);
   const [showClassified, setShowClassified] = useState(true);
+  const needsReview = data?.classified.filter((c) => c.needs_review) ?? [];
+  const savedClassified = data?.classified.filter((c) => !c.needs_review) ?? [];
+  const needsActionCount = (data?.unclassifiedPrime.length ?? 0) + needsReview.length;
 
   return (
     <div>
@@ -87,20 +90,35 @@ export default function MarginPage() {
                       </span>
                     </div>
                   ))}
-                  {data.unclassifiedPrime.length === 0 && data.classified.length > 0 && (
+                  {needsReview.map((c) => (
+                    <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-[13px] dark:border-amber-900 dark:bg-amber-950/25">
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5 truncate" title={coLabel(c.prime)}>
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                          <span className="truncate">{coLabel(c.prime)}</span>
+                        </span>
+                        <span className="ml-5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">Amended · verify vendor share</span>
+                      </span>
+                      <span className="text-right tabular-nums text-foreground">{usd(Number(c.prime.amount ?? 0))}</span>
+                      <span><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: TREAT[c.treatment].bg, color: TREAT[c.treatment].fg }}>{TREAT[c.treatment].label}</span></span>
+                      <span className="text-right tabular-nums text-muted-foreground">{c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}{c.sub_label ? <span className="ml-1 text-[11px]">→ {c.sub_label}</span> : ''}</span>
+                      <span className="text-right"><Button size="sm" variant="outline" onClick={() => setClassify({ co: c.prime, existing: c })} className="gap-1.5 border-amber-300 bg-background"><Pencil className="h-3.5 w-3.5" /> Review &amp; save</Button></span>
+                    </div>
+                  ))}
+                  {needsActionCount === 0 && savedClassified.length > 0 && (
                     <div className="border-b border-border px-3.5 py-2.5 text-center text-[12px] text-emerald-700">All owner change orders are classified. ✓</div>
                   )}
 
                   {/* Classified ones collapse out of the way */}
-                  {data.classified.length > 0 && (
+                  {savedClassified.length > 0 && (
                     <button onClick={() => setShowClassified((s) => !s)} className="flex w-full items-center gap-2 border-b border-border bg-muted/30 px-3.5 py-2 text-[12px] font-semibold text-muted-foreground hover:bg-muted/50">
                       {showClassified ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> {data.classified.length} classified · {usd(data.totals.coMargin)} APAS recovery — {showClassified ? 'hide' : 'show'}
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> {savedClassified.length} saved · {usd(data.totals.coMargin)} APAS recovery — {showClassified ? 'hide' : 'show'}
                     </button>
                   )}
-                  {showClassified && data.classified.map((c) => (
+                  {showClassified && savedClassified.map((c) => (
                     <div key={c.link_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 border-b border-border bg-muted/20 px-3.5 py-2.5 text-[13px] opacity-60">
-                      <span className="truncate" title={coLabel(c.prime)}>{coLabel(c.prime)}</span>
+                      <span className="truncate" title={coLabel(c.prime)}>{coLabel(c.prime)} <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">Saved</span> <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">{c.prime.status}</span></span>
                       <span className="text-right tabular-nums text-muted-foreground">{usd(Number(c.prime.amount ?? 0))}</span>
                       <span><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: TREAT[c.treatment].bg, color: TREAT[c.treatment].fg }}>{TREAT[c.treatment].label}</span></span>
                       <span className="text-right tabular-nums text-muted-foreground">{c.treatment === 'apas_100' ? '—' : usd(c.sub_cost)}{c.sub_label ? <span className="ml-1 text-[11px]">→ {c.sub_label}</span> : ''}</span>
@@ -125,8 +143,8 @@ export default function MarginPage() {
                   </div>
                 </div>
               )}
-              {data.totals.unclassifiedAmount > 0 && (
-                <p className="mt-2 text-[12px] text-[#854F0B]">{data.unclassifiedPrime.length} owner CO{data.unclassifiedPrime.length !== 1 ? 's' : ''} ({usd(data.totals.unclassifiedAmount)}) not yet classified — not counted in the totals above.</p>
+              {needsActionCount > 0 && (
+                <p className="mt-2 text-[12px] text-[#854F0B]">{needsActionCount} owner CO{needsActionCount !== 1 ? 's' : ''} ({usd(data.totals.unclassifiedAmount)}) need classification review — not counted in the totals above.</p>
               )}
             </Section>
 
@@ -254,7 +272,9 @@ function ClassifyDialog({ co, existing, subCOs, subs, onSave, onClose, busy }: {
   const [treatment, setTreatment] = useState<Treatment>(existing?.treatment ?? 'markup');
   const [subCost, setSubCost] = useState<string>(existing?.sub_cost ? String(existing.sub_cost) : '');
   const [subLabel, setSubLabel] = useState(existing?.sub_label ?? '');
-  const [subCoId, setSubCoId] = useState<string>('');
+  // Preserve an already-pushed vendor CCO when an amended owner CO is reviewed
+  // and re-saved. Starting blank here would silently sever that audit link.
+  const [subCoId, setSubCoId] = useState<string>(existing?.sub_co_id ?? '');
   const [subCommitmentId, setSubCommitmentId] = useState<string>(existing?.sub_commitment_id ?? '');
   const [customSub, setCustomSub] = useState<boolean>(!!existing?.sub_label && !existing?.sub_commitment_id);
 
@@ -273,6 +293,12 @@ function ClassifyDialog({ co, existing, subCOs, subs, onSave, onClose, busy }: {
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Tag className="h-4 w-4" /> Classify · {coLabel(co)}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {existing?.needs_review && (
+            <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>This change order was amended after its vendor share was saved. Verify the current values below and save to propagate this revision.</span>
+            </div>
+          )}
           <div className="rounded-lg bg-muted/40 px-3 py-2 text-[13px]">Owner bills <b>{usd(prime)}</b></div>
           <div className="grid grid-cols-3 gap-2">
             {(['markup', 'pass_through', 'apas_100'] as Treatment[]).map((t) => (

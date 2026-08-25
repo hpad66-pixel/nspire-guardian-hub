@@ -31,6 +31,7 @@ import { ExecuteCoOfflineDialog } from "@/components/financial/ExecuteCoOfflineD
 import { UploadSignedHardcopyDialog } from "@/components/financial/UploadSignedHardcopyDialog";
 import { coLabel } from "@/lib/changeOrder/coLabel";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
+import { invalidateChangeOrderFinancialViews } from "@/lib/financial/changeOrderPropagation";
 
 export default function ChangeOrderDetailPage() {
   const { projectId, coId } = useParams<{ projectId: string; coId: string }>();
@@ -82,6 +83,11 @@ export default function ChangeOrderDetailPage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const spec = (co as any)?.spec as CoSpec | null;
   const locked = Boolean((co as any)?.locked);
+
+  const refreshChangeOrderViews = () => {
+    qc.invalidateQueries({ queryKey: ["co", coId] });
+    invalidateChangeOrderFinancialViews(qc);
+  };
 
   async function downloadPdf() {
     if (!spec) return;
@@ -164,6 +170,7 @@ export default function ChangeOrderDetailPage() {
       setDraft(null);
       qc.invalidateQueries({ queryKey: ["co", coId] });
       qc.invalidateQueries({ queryKey: ["change-orders"] });
+      invalidateChangeOrderFinancialViews(qc);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -415,7 +422,7 @@ export default function ChangeOrderDetailPage() {
           coId={coId}
           spec={spec}
           projectId={projectId ?? ""}
-          onSigned={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+          onSigned={refreshChangeOrderViews}
         />
       )}
       {coId && (
@@ -423,27 +430,27 @@ export default function ChangeOrderDetailPage() {
           open={sendOpen}
           onOpenChange={setSendOpen}
           co={co as any}
-          onSent={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+          onSent={refreshChangeOrderViews}
         />
       )}
       <RenumberCoDialog
         open={renumberOpen}
         onOpenChange={setRenumberOpen}
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, co_no_history: (co as any).co_no_history }}
-        onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+        onDone={refreshChangeOrderViews}
       />
       <ReopenCoDialog
         open={reopenOpen}
         onOpenChange={setReopenOpen}
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, amendment_history: (co as any).amendment_history }}
-        onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+        onDone={refreshChangeOrderViews}
       />
       <ExecuteCoOfflineDialog
         open={executeOpen}
         onOpenChange={setExecuteOpen}
         co={{ id: co.id, co_no: co.co_no, co_type: co.co_type, pdf_path: (co as any).pdf_path }}
         projectId={projectId ?? ""}
-        onDone={() => qc.invalidateQueries({ queryKey: ["co", coId] })}
+        onDone={refreshChangeOrderViews}
       />
       <UploadSignedHardcopyDialog
         open={hardcopyOpen}
