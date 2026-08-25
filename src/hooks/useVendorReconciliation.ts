@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { marginClassificationNeedsReview } from '@/lib/financial/changeOrderPropagation';
 
 const db = supabase as any;
 const EXECUTED = ['approved', 'executed'];
 
-export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string; treatment: string | null }
-export interface OwnerShare { primeCoId: string; co_no: string | number | null; title: string; treatment: string; share: number; status: string; counted: boolean }
+export interface VendorCO { id: string; co_no: string | number | null; title: string; amount: number; status: string; treatment: string | null; classificationNeedsReview: boolean }
+export interface OwnerShare { primeCoId: string; co_no: string | number | null; title: string; treatment: string; share: number; status: string; counted: boolean; needsReview: boolean }
 export interface VendorReconciliationControl {
   commitmentId: string;
   tenantId: string;
@@ -55,8 +56,8 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         db.from('change_orders').select('id, co_no, title, amount, status').eq('commitment_id', commitmentId),
         db.from('commitment_invoices').select('status, approved_amount, submitted_amount, retainage_held').eq('commitment_id', commitmentId),
         db.from('commitment_payments').select('amount').eq('commitment_id', commitmentId),
-        projectId ? db.from('co_margin_links').select('prime_co_id, treatment, sub_cost, sub_co_id, sub_commitment_id').eq('project_id', projectId) : Promise.resolve({ data: [] }),
-        projectId ? db.from('change_orders').select('id, co_no, title, amount, status').eq('project_id', projectId).not('prime_contract_id', 'is', null) : Promise.resolve({ data: [] }),
+        projectId ? db.from('co_margin_links').select('prime_co_id, treatment, sub_cost, sub_co_id, sub_commitment_id, source_amount, source_amendment_count').eq('project_id', projectId) : Promise.resolve({ data: [] }),
+        projectId ? db.from('change_orders').select('id, co_no, title, amount, status, amendment_history').eq('project_id', projectId).not('prime_contract_id', 'is', null) : Promise.resolve({ data: [] }),
         db.from('sov_line_items').select('item_no, description, scheduled_value').eq('commitment_id', commitmentId).order('sort_order'),
         db.from('v_vendor_reconciliation_status').select('*').eq('commitment_id', commitmentId).maybeSingle(),
       ]);
@@ -64,7 +65,13 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
       const lineItemsTotal = lineItems.reduce((t: number, l: any) => t + l.scheduled_value, 0);
       // treatment per pushed sub CO (markup / pass_through / apas_100), deterministic via sub_co_id.
       const treatmentBySubCo: Record<string, string> = {};
-      for (const l of (marginR.data ?? [])) if (l.sub_co_id) treatmentBySubCo[l.sub_co_id] = l.treatment;
+      const reviewBySubCo: Record<string, boolean> = {};
+      for (const l of (marginR.data ?? [])) {
+        if (!l.sub_co_id) continue;
+        treatmentBySubCo[l.sub_co_id] = l.treatment;
+        const prime = (primeCosR.data ?? []).find((c: any) => c.id === l.prime_co_id);
+        reviewBySubCo[l.sub_co_id] = prime ? marginClassificationNeedsReview(prime, l) : true;
+      }
 
       // His share of OWNER change orders classified to this vendor's commitment but
       // not yet pushed to a sub CO (deterministic via sub_commitment_id, no fuzzy match).
@@ -77,7 +84,8 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
           const primeAmt = Number(co?.amount ?? 0);
           const share = l.treatment === 'apas_100' ? 0 : l.treatment === 'pass_through' ? primeAmt : Number(l.sub_cost ?? 0);
           const status = co?.status ?? 'draft';
-          return { primeCoId: l.prime_co_id, co_no: co?.co_no ?? null, title: co?.title ?? 'Owner change order', treatment: l.treatment, share, status, counted: EXECUTED.includes(status) };
+          const needsReview = co ? marginClassificationNeedsReview(co, l) : true;
+          return { primeCoId: l.prime_co_id, co_no: co?.co_no ?? null, title: co?.title ?? 'Owner change order', treatment: l.treatment, share, status, counted: !needsReview && EXECUTED.includes(status), needsReview };
         });
       // Base = the VENDOR's own contract value (not the prime / not APAS margin).
       const sov = sovR.data ?? [];
@@ -132,7 +140,7 @@ export function useVendorReconciliation(projectId: string | undefined, commitmen
         billedToDate, paidToDate, retainageHeld, retainagePct,
         maxPayable, remainingToPay, leftToEarn,
         overpaid: paidToDate > maxPayable + 0.01,
-        cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null })),
+        cos: cosAll.map((c: any) => ({ id: c.id, co_no: c.co_no, title: c.title, amount: Number(c.amount), status: c.status, treatment: treatmentBySubCo[c.id] ?? null, classificationNeedsReview: reviewBySubCo[c.id] ?? false })),
         ownerShares,
         lineItems, lineItemsTotal,
         control,

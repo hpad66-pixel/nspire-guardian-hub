@@ -10,6 +10,7 @@ import { generateCoDocx } from "@/lib/changeOrder/generateDocx";
 import { uploadCoArtifact } from "@/lib/changeOrder/storage";
 import { grandTotalNumber } from "@/lib/changeOrder/pricing";
 import type { CoSpec } from "@/lib/changeOrder/types";
+import { invalidateChangeOrderFinancialViews } from "@/lib/financial/changeOrderPropagation";
 
 export interface CreateCoInput {
   projectId: string;
@@ -86,6 +87,7 @@ export function useCoWorkflow(projectId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["change-orders"] });
       qc.invalidateQueries({ queryKey: ["procore-change-orders", projectId] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 
@@ -103,6 +105,7 @@ export function useCoWorkflow(projectId: string | null) {
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["co", v.coId] });
       qc.invalidateQueries({ queryKey: ["change-orders"] });
+      invalidateChangeOrderFinancialViews(qc);
     },
   });
 

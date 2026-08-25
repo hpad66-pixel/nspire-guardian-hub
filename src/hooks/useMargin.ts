@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { invalidateChangeOrderFinancialViews, marginClassificationNeedsReview } from '@/lib/financial/changeOrderPropagation';
 
 // Prime↔sub margin. APAS (prime) bills the owner; each owner change order is
 // classified: markup (pay a sub X, keep the delta), pass_through (no margin), or
@@ -18,6 +19,7 @@ export interface MarginCO {
   status: string;
   commitment_id: string | null;
   prime_contract_id: string | null;
+  amendment_history?: unknown[];
 }
 
 export interface MarginClass {
@@ -29,6 +31,7 @@ export interface MarginClass {
   recovery: number; // prime − sub_cost
   sub_co_id: string | null; // the sub CCO this was pushed into, if any
   sub_commitment_id: string | null; // the sub's commitment this CO is attributed to
+  needs_review: boolean; // owner CO was amended or repriced after this was saved
 }
 
 export interface MarginData {
@@ -53,8 +56,8 @@ export function useMargin(projectId: string | undefined) {
       const [summaryR, commitmentsR, cosR, linksR] = await Promise.all([
         db.from('v_project_financial_summary').select('original_contract, revised_contract, committed_total, paid_to_subs, billed_to_date, received_to_date').eq('project_id', projectId).maybeSingle(),
         db.from('commitments').select('id, title, original_value').eq('project_id', projectId),
-        db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id').eq('project_id', projectId),
-        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id, sub_commitment_id').eq('project_id', projectId),
+        db.from('change_orders').select('id, co_no, title, amount, status, commitment_id, prime_contract_id, amendment_history').eq('project_id', projectId),
+        db.from('co_margin_links').select('id, prime_co_id, treatment, sub_cost, sub_label, is_pass_through, sub_co_id, sub_commitment_id, source_amount, source_amendment_count').eq('project_id', projectId),
       ]);
       const s = summaryR.data ?? {};
       const allCos: MarginCO[] = (cosR.data ?? []);
@@ -80,12 +83,23 @@ export function useMargin(projectId: string | undefined) {
         if (!prime) return;
         const treatment: Treatment = (l.treatment ?? (l.is_pass_through ? 'pass_through' : 'markup')) as Treatment;
         const subCost = treatment === 'apas_100' ? 0 : treatment === 'pass_through' ? Number(prime.amount ?? 0) : Number(l.sub_cost ?? 0);
-        classified.push({ link_id: l.id, prime, treatment, sub_cost: subCost, sub_label: l.sub_label ?? null, recovery: Number(prime.amount ?? 0) - subCost, sub_co_id: l.sub_co_id ?? null, sub_commitment_id: l.sub_commitment_id ?? null });
+        classified.push({
+          link_id: l.id,
+          prime,
+          treatment,
+          sub_cost: subCost,
+          sub_label: l.sub_label ?? null,
+          recovery: Number(prime.amount ?? 0) - subCost,
+          sub_co_id: l.sub_co_id ?? null,
+          sub_commitment_id: l.sub_commitment_id ?? null,
+          needs_review: marginClassificationNeedsReview(prime, l),
+        });
       });
 
       const unclassifiedPrime = primeCOs.filter((c) => !classifiedIds.has(c.id));
-      // Only executed/approved classified COs count toward revenue/cost.
-      const counted = classified.filter((c) => EXECUTED.includes(c.prime.status));
+      // Only current, executed/approved classifications count. An amended CO
+      // keeps its vendor assignment visible but is excluded until re-saved.
+      const counted = classified.filter((c) => !c.needs_review && EXECUTED.includes(c.prime.status));
       const coRevenue = counted.reduce((t, c) => t + Number(c.prime.amount ?? 0), 0);
       const coCost = counted.reduce((t, c) => t + c.sub_cost, 0);
       const revenue = primeBase + coRevenue;
@@ -102,7 +116,9 @@ export function useMargin(projectId: string | undefined) {
         totals: {
           revenue, cost, margin: revenue - cost,
           coRevenue, coCost, coMargin: coRevenue - coCost,
-          unclassifiedAmount: unclassifiedPrime.reduce((t, c) => t + Number(c.amount ?? 0), 0),
+          unclassifiedAmount:
+            unclassifiedPrime.reduce((t, c) => t + Number(c.amount ?? 0), 0)
+            + classified.filter((c) => c.needs_review).reduce((t, c) => t + Number(c.prime.amount ?? 0), 0),
         },
         cash: {
           billedToOwner: Number(s.billed_to_date ?? 0),
@@ -134,7 +150,11 @@ export function useSaveMarginClass() {
       const { error } = await db.from('co_margin_links').insert(row);
       if (error) throw error;
     },
-    onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['margin', v.projectId] }); toast.success('Saved'); },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
+      invalidateChangeOrderFinancialViews(qc);
+      toast.success('Saved and propagated to vendor margins');
+    },
     onError: (e: Error) => toast.error(e.message || 'Could not save'),
   });
 }
@@ -164,6 +184,7 @@ export function usePushToCommitment() {
       qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
       qc.invalidateQueries({ queryKey: ['commitment-totals'] });
       qc.invalidateQueries({ queryKey: ['change-orders'] });
+      invalidateChangeOrderFinancialViews(qc);
       toast.success('Pushed to commitment as a sub change order.');
     },
     onError: (e: Error) => toast.error(e.message || 'Could not push to commitment'),
@@ -177,7 +198,10 @@ export function useDeleteMarginClass() {
       const { error } = await db.from('co_margin_links').delete().eq('id', linkId);
       if (error) throw error;
     },
-    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['margin', v.projectId] }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['margin', v.projectId] });
+      invalidateChangeOrderFinancialViews(qc);
+    },
     onError: (e: Error) => toast.error(e.message || 'Could not remove'),
   });
 }
