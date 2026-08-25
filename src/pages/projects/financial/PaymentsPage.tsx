@@ -6,6 +6,7 @@ import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useCommitments } from "@/hooks/useCommitments";
 import { summarizeLedger } from "@/lib/financial/ledger";
 import { RecordOwnerPaymentDialog } from "@/components/financial/RecordOwnerPaymentDialog";
+import { EditOwnerPaymentDialog } from "@/components/financial/EditOwnerPaymentDialog";
 import { RecordSubPaymentDialog } from "@/components/financial/RecordSubPaymentDialog";
 import { ReconciledBadge } from "@/components/financial/ReconciledStamp";
 import { VendorPayments } from "@/components/financial/VendorPayments";
@@ -14,7 +15,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, ArrowDownLeft, ArrowUpRight, Plus, Scale } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CreditCard, ArrowDownLeft, ArrowUpRight, Plus, Scale, MoreHorizontal, Pencil, Trash2, LockKeyhole } from "lucide-react";
+import { useCurrentUserRole } from "@/hooks/useUserManagement";
+import { isAdminRole } from "@/lib/rbac";
+import {
+  usePrimeContractPaymentAdministration,
+  type AdminPrimeContractPayment,
+} from "@/hooks/usePrimeContractPayments";
+import { toast } from "sonner";
 
 const fmt = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -29,14 +44,21 @@ export default function PaymentsPage() {
   const { summary, ledger, payAppBalances, invoiceBalances } = useProjectFinancials(projectId ?? null);
   const { data: primeContract } = usePrimeContract(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId ?? null);
+  const { data: currentRole } = useCurrentUserRole();
+  const canAdministerReceipts = isAdminRole(currentRole);
+  const paymentAdmin = usePrimeContractPaymentAdministration(
+    canAdministerReceipts ? (primeContract?.id ?? null) : null,
+  );
   const commitmentIds = useMemo(() => commitments.map((c) => c.id), [commitments]);
   const { data: reconciledIds } = useReconciledPaymentIds(primeContract?.id ?? null, commitmentIds);
   const recIds = reconciledIds ?? EMPTY_IDS;
 
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [subOpen, setSubOpen] = useState(false);
+  const [editingReceipt, setEditingReceipt] = useState<AdminPrimeContractPayment | null>(null);
+  const [deletingReceipt, setDeletingReceipt] = useState<AdminPrimeContractPayment | null>(null);
 
-  const entries = ledger.data ?? [];
+  const entries = useMemo(() => ledger.data ?? [], [ledger.data]);
   const received = useMemo(
     () => entries.filter((e) => e.entry_type === "payment" && e.direction === "receivable")
       .sort((a, b) => (b.entry_date ?? "").localeCompare(a.entry_date ?? "")),
@@ -52,6 +74,25 @@ export default function PaymentsPage() {
 
   const payApps = payAppBalances.data ?? [];
   const invoices = invoiceBalances.data ?? [];
+  const adminReceiptById = useMemo(
+    () => new Map((paymentAdmin.data ?? []).map((payment) => [payment.id, payment])),
+    [paymentAdmin.data],
+  );
+
+  const editingPayApp = editingReceipt
+    ? payApps.find((payApp) => payApp.pay_app_id === editingReceipt.pay_app_id)
+    : null;
+
+  async function deleteReceipt() {
+    if (!deletingReceipt) return;
+    try {
+      await paymentAdmin.remove.mutateAsync(deletingReceipt.id);
+      toast.success(`${fmt(deletingReceipt.amount)} duplicate receipt deleted`);
+      setDeletingReceipt(null);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete receipt");
+    }
+  }
 
   const kpis = [
     { label: "Received (A/R)", value: fmt(s.arReceived), icon: ArrowDownLeft, color: "text-emerald-600" },
@@ -139,23 +180,60 @@ export default function PaymentsPage() {
                 <thead>
                   <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                     <th className="p-3">Date</th><th className="p-3">From</th><th className="p-3">Reference</th><th className="p-3 text-right">Amount</th>
+                    {canAdministerReceipts && <th className="w-14 p-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {received.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No payments received recorded yet.</td></tr>}
-                  {received.map((p) => (
-                    <tr key={p.ledger_id} className="border-t hover:bg-muted/20">
-                      <td className="p-3 whitespace-nowrap">{fmtDate(p.entry_date)}</td>
-                      <td className="p-3">{p.party_name ?? "Owner"}</td>
-                      <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
-                      <td className="p-3 text-right font-medium text-emerald-600">
-                        <span className="inline-flex items-center gap-2">
-                          {recIds.has(ledgerPaymentId(p.ledger_id)) && <ReconciledBadge />}
-                          {fmt(p.amount)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {received.length === 0 && <tr><td colSpan={canAdministerReceipts ? 5 : 4} className="p-6 text-center text-muted-foreground">No payments received recorded yet.</td></tr>}
+                  {received.map((p) => {
+                    const paymentId = ledgerPaymentId(p.ledger_id);
+                    const adminReceipt = adminReceiptById.get(paymentId);
+                    const isAllocated = (adminReceipt?.allocation_count ?? 0) > 0;
+                    return (
+                      <tr key={p.ledger_id} className="border-t hover:bg-muted/20">
+                        <td className="p-3 whitespace-nowrap">{fmtDate(p.entry_date)}</td>
+                        <td className="p-3">{p.party_name ?? "Owner"}</td>
+                        <td className="p-3 font-mono text-xs">{p.reference ?? "—"}</td>
+                        <td className="p-3 text-right font-medium text-emerald-600">
+                          <span className="inline-flex items-center gap-2">
+                            {recIds.has(paymentId) && <ReconciledBadge />}
+                            {fmt(p.amount)}
+                          </span>
+                        </td>
+                        {canAdministerReceipts && (
+                          <td className="p-3 text-right">
+                            {adminReceipt && !isAllocated ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Receipt actions">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={() => setEditingReceipt(adminReceipt)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit receipt
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={() => setDeletingReceipt(adminReceipt)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete receipt
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <span
+                                className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground"
+                                title={isAllocated ? "Locked because this receipt has allocations" : "Loading receipt permissions"}
+                              >
+                                <LockKeyhole className="h-4 w-4" />
+                              </span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table></div>
             </CardContent>
@@ -260,10 +338,39 @@ export default function PaymentsPage() {
         <RecordOwnerPaymentDialog
           open={ownerOpen}
           onOpenChange={setOwnerOpen}
-          primeContractId={(primeContract as any).id}
+          primeContractId={primeContract.id}
           payApps={payApps}
         />
       )}
+      <EditOwnerPaymentDialog
+        open={Boolean(editingReceipt)}
+        onOpenChange={(open) => { if (!open) setEditingReceipt(null); }}
+        payment={editingReceipt}
+        payAppLabel={editingPayApp ? `Pay App #${editingPayApp.pay_app_no}` : "pay application"}
+        onSave={(id, changes) => paymentAdmin.update.mutateAsync({ id, changes })}
+        isSaving={paymentAdmin.update.isPending}
+      />
+      <AlertDialog open={Boolean(deletingReceipt)} onOpenChange={(open) => { if (!open) setDeletingReceipt(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this unallocated receipt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the {fmt(deletingReceipt?.amount)} receipt dated {fmtDate(deletingReceipt?.received_date)}.
+              The action is recorded in the audit trail and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep receipt</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={paymentAdmin.remove.isPending}
+              onClick={deleteReceipt}
+            >
+              {paymentAdmin.remove.isPending ? "Deleting…" : "Delete receipt"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <RecordSubPaymentDialog
         open={subOpen}
         onOpenChange={setSubOpen}
