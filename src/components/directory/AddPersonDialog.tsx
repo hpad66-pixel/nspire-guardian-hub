@@ -25,11 +25,13 @@ import {
 import { toast } from "sonner";
 
 export function AddPersonDialog({
-  open, onOpenChange, projectId,
+  open, onOpenChange, projectId, contactsOnly = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   projectId: string;
+  /** Attach an external CRM contact without creating a login or permissions. */
+  contactsOnly?: boolean;
 }) {
   const { add } = useProjectDirectory(projectId);
   const createContact = useCreateContact();
@@ -102,19 +104,19 @@ export function AddPersonDialog({
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add to project directory</DialogTitle>
+          <DialogTitle>{contactsOnly ? "Attach project contact" : "Add to project directory"}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="w-full">
-            <TabsTrigger value="existing" className="flex-1">Existing user / contact</TabsTrigger>
+            <TabsTrigger value="existing" className="flex-1">{contactsOnly ? "Existing CRM contact" : "Existing user / contact"}</TabsTrigger>
             <TabsTrigger value="new-contact" className="flex-1">New contact</TabsTrigger>
           </TabsList>
 
           <TabsContent value="existing" className="space-y-3 mt-3">
             <div>
               <Label>Person</Label>
-              <PersonPicker value={person} onChange={setPerson} />
+              <PersonPicker value={person} onChange={setPerson} restrictTo={contactsOnly ? "contact" : undefined} placeholder={contactsOnly ? "Search CRM contacts…" : undefined} />
             </div>
           </TabsContent>
 
@@ -156,7 +158,7 @@ export function AddPersonDialog({
               <Input value={roleLabel} onChange={(e) => setRoleLabel(e.target.value)}
                      placeholder="e.g. PM, Architect, Safety Lead" />
             </div>
-            <div>
+            {!contactsOnly && <div>
               <Label>Permission template (optional)</Label>
               <Select value={templateId} onValueChange={setTemplateId}>
                 <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
@@ -166,14 +168,14 @@ export function AddPersonDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={isKeyContact}
               onCheckedChange={(v) => setIsKeyContact(v === true)}
             />
-            Mark as key contact for this project
+            Mark as a key contact for this project
           </label>
         </div>
 
@@ -182,7 +184,7 @@ export function AddPersonDialog({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={busy}>
-            {busy ? "Adding…" : "Add person"}
+            {busy ? "Attaching…" : contactsOnly ? "Attach contact" : "Add person"}
           </Button>
         </DialogFooter>
       </DialogContent>

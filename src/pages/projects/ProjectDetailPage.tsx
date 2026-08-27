@@ -486,6 +486,16 @@ export default function ProjectDetailPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
+                onClick={() => setTeamSheetOpen(true)}
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden md:inline">People</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
                 onClick={() => setQuickEmailOpen(true)}
               >
                 <Mail className="h-4 w-4" />
@@ -1001,7 +1011,7 @@ export default function ProjectDetailPage() {
                         <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
                         <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamCountLabel}</p></div>
                       </div>
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />People &amp; Team</Button>
                     </div>
                     {teamMembers.length > 0 ? (
                       <div className="flex flex-wrap gap-2 pt-1">
@@ -1014,7 +1024,7 @@ export default function ProjectDetailPage() {
                         {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>
+                      <p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — open People & Team to add them formally.` : 'No team members yet — open People & Team to add internal users or CRM contacts.'}</p>
                     )}
                   </div>
                 </TabsContent>
@@ -1283,14 +1293,14 @@ export default function ProjectDetailPage() {
                       <div className="h-7 w-7 rounded-lg bg-module-projects/10 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-module-projects" /></div>
                       <div><h3 className="font-semibold text-sm">Project Team</h3><p className="text-[10px] text-muted-foreground">{teamCountLabel}</p></div>
                     </div>
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />Manage Team</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setTeamSheetOpen(true)}><Users className="h-3 w-3" />People &amp; Team</Button>
                   </div>
                   {teamMembers.length > 0 ? (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {teamMembers.slice(0, 8).map(m => (<div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs"><div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div><span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span></div>))}
                       {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
                     </div>
-                  ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — click Manage Team to add them formally.` : 'No team members yet — click Manage Team to add people.'}</p>)}
+                  ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — open People & Team to add them formally.` : 'No team members yet — open People & Team to add internal users or CRM contacts.'}</p>)}
                 </div>
               </TabsContent>
               <TabsContent value="subprojects"><SubprojectsTab projectId={id!} project={project} /></TabsContent>

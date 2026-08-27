@@ -179,6 +179,14 @@ verify_jwt = false
 [functions.gmail-oauth-callback]
 verify_jwt = false
 
+# Authenticated project texting through a server-only Twilio connection.
+[functions.sms]
+verify_jwt = true
+
+# Twilio signs delivery and inbound-message webhooks itself.
+[functions.sms-webhook]
+verify_jwt = false
+
 # Authenticated project-task bridge. Trello credentials remain server-side and
 # every push re-checks project access through the caller's JWT/RLS.
 [functions.trello]

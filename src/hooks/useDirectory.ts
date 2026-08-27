@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
 
 export interface DirectoryPerson {
-  /** `user_id` (profiles.id) or `contact_id` (crm_contacts.id). */
+  /** auth `user_id` or `contact_id` (crm_contacts.id). */
   id: string;
   /** Discriminator — always "user" or "contact". */
   kind: "user" | "contact";
@@ -60,11 +60,11 @@ export function usePersonSearch(query: string) {
       const q = query.trim();
       const [users, contacts] = await Promise.all([
         supabase.from("profiles" as any)
-          .select("id, display_name, email")
-          .or(`display_name.ilike.%${q}%,email.ilike.%${q}%`)
+          .select("user_id, full_name, email, phone")
+          .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
           .limit(25),
         supabase.from("crm_contacts" as any)
-          .select("id, first_name, last_name, email, phone, company_name")
+          .select("id, first_name, last_name, email, phone, mobile, company_name")
           .or(
             `first_name.ilike.%${q}%,last_name.ilike.%${q}%,` +
             `email.ilike.%${q}%,company_name.ilike.%${q}%`,
@@ -75,11 +75,11 @@ export function usePersonSearch(query: string) {
       if (contacts.error) throw contacts.error;
 
       const mappedUsers: DirectoryPerson[] = ((users.data ?? []) as any[]).map((u) => ({
-        id: u.id,
+        id: u.user_id,
         kind: "user",
-        name: u.display_name ?? u.email ?? "(unnamed)",
+        name: u.full_name ?? u.email ?? "(unnamed)",
         email: u.email ?? null,
-        phone: null,
+        phone: u.phone ?? null,
         companyName: null,
       }));
       const mappedContacts: DirectoryPerson[] = ((contacts.data ?? []) as any[]).map((c) => ({
@@ -87,7 +87,7 @@ export function usePersonSearch(query: string) {
         kind: "contact",
         name: [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || "(unnamed)",
         email: c.email ?? null,
-        phone: c.phone ?? null,
+        phone: c.mobile ?? c.phone ?? null,
         companyName: c.company_name ?? null,
       }));
       return [...mappedUsers, ...mappedContacts];
@@ -160,14 +160,19 @@ export function useCreateContact() {
       email?: string; phone?: string;
       company_name?: string;
     }) => {
+      const tenantId = await requireTenantId();
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) throw new Error("Sign in before creating a contact");
       const { data, error } = await supabase.from("crm_contacts" as any)
         .insert({
+          workspace_id: tenantId,
+          user_id: authData.user.id,
           first_name: input.first_name,
           last_name: input.last_name ?? null,
           email: input.email ?? null,
           phone: input.phone ?? null,
           company_name: input.company_name ?? null,
-          contact_type: "business",
+          contact_type: "other",
         } as any)
         .select().single();
       if (error) throw error;
@@ -188,21 +193,21 @@ export function usePersonByReference(
     queryFn: async () => {
       if (userId) {
         const { data, error } = await supabase
-          .from("profiles" as any).select("id, display_name, email")
-          .eq("id", userId).maybeSingle();
+          .from("profiles" as any).select("user_id, full_name, email, phone")
+          .eq("user_id", userId).maybeSingle();
         if (error) throw error;
         if (!data) return null;
         return {
-          id: (data as any).id, kind: "user",
-          name: (data as any).display_name ?? (data as any).email ?? "(unnamed)",
+          id: (data as any).user_id, kind: "user",
+          name: (data as any).full_name ?? (data as any).email ?? "(unnamed)",
           email: (data as any).email ?? null,
-          phone: null, companyName: null,
+          phone: (data as any).phone ?? null, companyName: null,
         };
       }
       if (contactId) {
         const { data, error } = await supabase
           .from("crm_contacts" as any)
-          .select("id, first_name, last_name, email, phone, company_name")
+          .select("id, first_name, last_name, email, phone, mobile, company_name")
           .eq("id", contactId).maybeSingle();
         if (error) throw error;
         if (!data) return null;
@@ -211,7 +216,7 @@ export function usePersonByReference(
           name: [(data as any).first_name, (data as any).last_name]
             .filter(Boolean).join(" ") || (data as any).email || "(unnamed)",
           email: (data as any).email ?? null,
-          phone: (data as any).phone ?? null,
+          phone: (data as any).mobile ?? (data as any).phone ?? null,
           companyName: (data as any).company_name ?? null,
         };
       }

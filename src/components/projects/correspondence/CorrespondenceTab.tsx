@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, PenLine, Loader2, Inbox, Check, RefreshCw, Sparkles, FileText, MessagesSquare, Pencil, Trash2, FileEdit } from "lucide-react";
+import { Mail, PenLine, Loader2, Inbox, Check, RefreshCw, Sparkles, FileText, MessagesSquare, Pencil, Trash2, FileEdit, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { CorrespondenceComposer } from "./CorrespondenceComposer";
 import { CorrespondenceThreadCard, type AddActionItemArgs } from "./CorrespondenceThreadCard";
 import { DocumentWorkspace } from "./DocumentWorkspace";
+import { ProjectSmsPanel } from "./ProjectSmsPanel";
+import { useProjectSmsMessages } from "@/hooks/useProjectSms";
 
 const fmtAgo = (d: string): string => {
   const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
@@ -46,12 +48,13 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
   const { data: actionItems = [] } = useActionItemsByProject(projectId);
   const createActionItem = useCreateActionItem(projectId);
   const { user } = useAuth();
+  const { data: smsMessages = [] } = useProjectSmsMessages(projectId);
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingDraft, setEditingDraft] = useState<ProjectEmail | null>(null);
   const [replyTarget, setReplyTarget] = useState<ProjectEmail | null>(null);
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [pushing, setPushing] = useState<string | null>(null);
-  const [view, setView] = useState<"threads" | "documents">("threads");
+  const [view, setView] = useState<"threads" | "texts" | "documents">("threads");
 
   const openNewLetter = () => { setEditingDraft(null); setReplyTarget(null); setComposeOpen(true); };
   const openDraft = (d: ProjectEmail) => { setEditingDraft(d); setReplyTarget(null); setComposeOpen(true); };
@@ -184,7 +187,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2"><Mail className="h-5 w-5 text-[var(--apas-sapphire)]" /> Correspondence</h2>
           <p className="text-sm text-muted-foreground">
-            Every email, letter, and document with the client and agencies — {counts.inbound} received · {counts.outbound} sent
+            Every project email, text, letter, and document — {counts.inbound} emails received · {counts.outbound} emails sent · {smsMessages.length} texts
             {lastSynced ? ` · synced ${fmtAgo(lastSynced)}` : ""}{analyzing ? " · analyzing…" : ""}.
           </p>
         </div>
@@ -216,6 +219,9 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
         <button onClick={() => setView("threads")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${view === "threads" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}>
           <MessagesSquare className="h-4 w-4" /> Threads {groups.length ? <span className="text-xs text-muted-foreground">{groups.length}</span> : null}
         </button>
+        <button onClick={() => setView("texts")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${view === "texts" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+          <MessageSquareText className="h-4 w-4" /> Texts {smsMessages.length ? <span className="text-xs text-muted-foreground">{smsMessages.length}</span> : null}
+        </button>
         <button onClick={() => setView("documents")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${view === "documents" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}>
           <FileText className="h-4 w-4" /> Documents
         </button>
@@ -232,6 +238,8 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
 
       {view === "documents" ? (
         <DocumentWorkspace projectId={projectId} projectName={projectName} />
+      ) : view === "texts" ? (
+        <ProjectSmsPanel projectId={projectId} projectName={projectName || "Project"} />
       ) : (
         <>
           {/* Draft letters — saved but not yet sent; click to keep editing */}

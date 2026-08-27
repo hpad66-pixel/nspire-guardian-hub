@@ -50,7 +50,7 @@ const plainTextToHtml = (text: string) =>
     .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
 
 export function CorrespondenceComposer({
-  open, onOpenChange, projectId, projectName, draft, replyTo,
+  open, onOpenChange, projectId, projectName, draft, replyTo, presetRecipient,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -62,6 +62,8 @@ export function CorrespondenceComposer({
   draft?: ProjectEmail | null;
   /** Latest message in a Gmail thread when composing a reply. */
   replyTo?: ProjectEmail | null;
+  /** Project-directory contact selected before opening the composer. */
+  presetRecipient?: { name: string; email: string; companyName?: string | null } | null;
 }) {
   const sendEmail = useSendEmail();
   const emails = useProjectEmails(projectId);
@@ -118,13 +120,20 @@ export function CorrespondenceComposer({
       setReferenceNo("");
       setSubject(/^re:/i.test(replyTo.subject || "") ? (replyTo.subject || "") : `Re: ${replyTo.subject || "Project correspondence"}`);
       setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
+    } else if (presetRecipient) {
+      setCategory("general");
+      setRecipient(presetRecipient.name);
+      setRecipientOrg(presetRecipient.companyName || "");
+      setRecipients([presetRecipient.email]);
+      setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
+      setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     } else {
       setCategory("r4"); setRecipient(""); setRecipientOrg("");
       setRecipients([]); setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
       setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     }
     setMode("edit");
-  }, [open, draft, replyTo]);
+  }, [open, draft, replyTo, presetRecipient]);
 
   const letterHtml = useMemo(
     () => buildCorrespondenceHtml({

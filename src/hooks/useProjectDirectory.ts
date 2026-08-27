@@ -43,7 +43,10 @@ export function useProjectDirectory(projectId: string | null) {
       if (error) throw error;
       return data as unknown as DirectoryEntry;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["project-directory", projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project-directory", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-contacts", projectId] });
+    },
   });
 
   const remove = useMutation({
@@ -51,7 +54,10 @@ export function useProjectDirectory(projectId: string | null) {
       const { error } = await supabase.from("project_directory_entries" as any).delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["project-directory", projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project-directory", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-contacts", projectId] });
+    },
   });
 
   return { ...list, add, remove };

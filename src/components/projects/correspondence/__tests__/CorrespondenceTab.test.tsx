@@ -19,6 +19,8 @@ vi.mock("@/hooks/useProjectEmails", () => ({
   }),
 }));
 vi.mock("../CorrespondenceComposer", () => ({ CorrespondenceComposer: () => null }));
+vi.mock("../ProjectSmsPanel", () => ({ ProjectSmsPanel: () => null }));
+vi.mock("@/hooks/useProjectSms", () => ({ useProjectSmsMessages: () => ({ data: [] }) }));
 // DocumentWorkspace pulls in pdfjs/mammoth (browser-only) — stub it so the tab's
 // static import doesn't drag those into jsdom.
 vi.mock("../DocumentWorkspace", () => ({ DocumentWorkspace: () => null }));
