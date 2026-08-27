@@ -13,26 +13,28 @@ export interface ProposalAiDraft {
   scope_bullets: string[];
   deliverables: string[];
   terms: string;
-  markup_pct?: number;
+  overhead_pct?: number;
+  profit_pct?: number;
   lines: {
     category: "labor" | "material" | "equipment" | "subcontract" | "other";
     description: string;
     quantity: number;
     unit: string;
     unit_cost: number;
-    markup_pct: number;
   }[];
 }
 
 export function ProposalAiDraftCard({
   projectId,
-  defaultMarkup,
+  defaultOverhead,
+  defaultProfit,
   disabled,
   onApply,
   hasExistingContent = false,
 }: {
   projectId: string;
-  defaultMarkup: number;
+  defaultOverhead: number;
+  defaultProfit: number;
   disabled?: boolean;
   onApply: (draft: ProposalAiDraft, mode: "replace" | "append") => Promise<void>;
   hasExistingContent?: boolean;
@@ -64,7 +66,8 @@ export function ProposalAiDraftCard({
         body: {
           description: text.trim() || undefined,
           projectId,
-          markupPct: defaultMarkup,
+          overheadPct: defaultOverhead,
+          profitPct: defaultProfit,
           document,
           documentName: file?.name,
         },

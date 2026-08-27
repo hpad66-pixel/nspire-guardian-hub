@@ -10216,11 +10216,13 @@ export type Database = {
           id: string
           locked: boolean
           markup_pct: number
+          overhead_pct: number
           notes: string | null
           pdf_path: string | null
           project_id: string
           proposal_no: string
           proposal_no_history: Json
+          profit_pct: number
           revision_no: number
           scope_bullets: Json
           sent_to_client_at: string | null
@@ -10255,11 +10257,13 @@ export type Database = {
           id?: string
           locked?: boolean
           markup_pct?: number
+          overhead_pct?: number
           notes?: string | null
           pdf_path?: string | null
           project_id: string
           proposal_no: string
           proposal_no_history?: Json
+          profit_pct?: number
           revision_no?: number
           scope_bullets?: Json
           sent_to_client_at?: string | null
@@ -10294,11 +10298,13 @@ export type Database = {
           id?: string
           locked?: boolean
           markup_pct?: number
+          overhead_pct?: number
           notes?: string | null
           pdf_path?: string | null
           project_id?: string
           proposal_no?: string
           proposal_no_history?: Json
+          profit_pct?: number
           revision_no?: number
           scope_bullets?: Json
           sent_to_client_at?: string | null

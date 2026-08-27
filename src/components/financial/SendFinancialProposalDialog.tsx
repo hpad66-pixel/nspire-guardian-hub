@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import { Send, Paperclip, FileText, X } from "lucide-react";
 import type { FinancialProposal, FinancialProposalLine } from "@/hooks/useFinancialProposals";
-import { proposalTotals, type ProposalClient } from "@/components/financial/FinancialProposalDocument";
+import type { ProposalClient } from "@/components/financial/FinancialProposalDocument";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 import { buildProposalPdfBlob } from "@/lib/pdf/proposalPdf";
 import { uploadFinancialProposalArtifact } from "@/lib/proposals/financialProposalStorage";
 
@@ -51,7 +52,7 @@ export function SendFinancialProposalDialog({ open, onOpenChange, proposal, line
   const [busy, setBusy] = useState(false);
   const [attachments, setAttachments] = useState<SubAttachment[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const total = proposalTotals(lines).total;
+  const total = proposalTotals(lines, proposal).total;
   const signLink = `${window.location.origin}/sign/financial-proposal/${proposal.sign_token}`;
 
   useEffect(() => {

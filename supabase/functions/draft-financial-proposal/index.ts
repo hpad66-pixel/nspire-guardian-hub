@@ -48,7 +48,8 @@ const DRAFT_TOOL = {
         type: "string",
         description: "Assumptions, exclusions, and commercial terms (payment, validity). Default to 'Net 30. All work per applicable codes and standards.' if nothing specific is provided.",
       },
-      markup_pct: { type: "number", description: "Overall markup percent to apply to lines when the direction implies one; else the provided default." },
+      overhead_pct: { type: "number", description: "Overhead percentage to calculate from the cost-of-work subtotal; use the direction when stated, otherwise the provided default." },
+      profit_pct: { type: "number", description: "Profit percentage to calculate from the cost-of-work subtotal; use the direction when stated, otherwise the provided default." },
       lines: {
         type: "array",
         description: "Priced fee line items broken out of the scope.",
@@ -60,13 +61,12 @@ const DRAFT_TOOL = {
             quantity: { type: "number" },
             unit: { type: "string", description: "ls/hr/day/ea/lf/sf/cy/ton/mo" },
             unit_cost: { type: "number", description: "numeric dollars, no symbol" },
-            markup_pct: { type: "number" },
           },
-          required: ["category", "description", "quantity", "unit", "unit_cost", "markup_pct"],
+          required: ["category", "description", "quantity", "unit", "unit_cost"],
         },
       },
     },
-    required: ["title", "overview", "scope_bullets", "deliverables", "terms", "lines"],
+    required: ["title", "overview", "scope_bullets", "deliverables", "terms", "overhead_pct", "profit_pct", "lines"],
   },
 };
 
@@ -84,7 +84,7 @@ serve(async (req) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
-    const { description, projectId, markupPct, document, documentName } = await req.json();
+    const { description, projectId, overheadPct, profitPct, document, documentName } = await req.json();
 
     const hasDoc = document && typeof document.data === "string" && document.data.length > 0;
     const hasDescription = description && String(description).trim().length >= 5;
@@ -136,13 +136,14 @@ Rules:
 - TITLE: concise one line, no "Proposal" prefix.
 - OVERVIEW: the narrative body (understanding + approach). No salutation, no headings inside it.
 - SCOPE_BULLETS: specific services included. DELIVERABLES: the tangible outputs the client receives.
-- LINES: break the fee into priced items (category, description, quantity, unit, numeric unit_cost, markup_pct). If a subconsultant quote is attached, pass its cost through as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
-- markup_pct on each line: use the narrative's value if given, else the provided default markup.
+- LINES: break the cost of work into priced items (category, description, quantity, unit, numeric unit_cost). If a subconsultant quote is attached, carry its cost as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
+- OVERHEAD AND PROFIT: return overhead_pct and profit_pct separately. They are calculated percentages of the full cost-of-work subtotal, exactly like a change order. Never create overhead, profit, fee, or markup line items.
 - Never use em dashes. Always call the draft_financial_proposal tool.`;
 
     const promptLines = [
       `Project: ${projectName || "consulting engagement"}`,
-      `Default markup %: ${markupPct ?? 10}`,
+      `Default overhead %: ${overheadPct ?? 10}`,
+      `Default profit %: ${profitPct ?? 5}`,
     ];
     if (clientBlock) promptLines.push(`\nClient this proposal is addressed to:\n${clientBlock}`);
     if (hasDoc) promptLines.push(`\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, and unit costs from it.`);

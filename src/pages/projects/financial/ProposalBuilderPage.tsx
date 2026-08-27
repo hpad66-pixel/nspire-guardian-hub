@@ -7,7 +7,8 @@ import {
 } from "@/hooks/useFinancialProposals";
 import { useProject } from "@/hooks/useProjects";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
-import { FinancialProposalDocument, proposalTotals } from "@/components/financial/FinancialProposalDocument";
+import { FinancialProposalDocument } from "@/components/financial/FinancialProposalDocument";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 import { FinancialProposalSignDialog } from "@/components/financial/FinancialProposalSignDialog";
 import { SendFinancialProposalDialog } from "@/components/financial/SendFinancialProposalDialog";
 import { AmendFinancialProposalDialog } from "@/components/financial/AmendFinancialProposalDialog";
@@ -52,7 +53,7 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
   const [draft, setDraft] = useState(line);
   const [saving, setSaving] = useState(false);
   useEffect(() => setDraft(line), [line]);
-  const total = Number(draft.quantity) * Number(draft.unit_cost) * (1 + Number(draft.markup_pct) / 100);
+  const extended = Number(draft.quantity) * Number(draft.unit_cost);
   const changed = JSON.stringify(draft) !== JSON.stringify(line);
   const patch = <K extends keyof FinancialProposalLine>(key: K, value: FinancialProposalLine[K]) => setDraft(current => ({ ...current, [key]: value }));
   async function save() { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }
@@ -61,7 +62,7 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
     <tr className="border-b last:border-0 hover:bg-muted/20">
       <td className="p-3 font-mono text-muted-foreground">{line.line_no}</td><td className="p-3 capitalize">{line.category}</td><td className="p-3">{line.description}</td>
       <td className="p-3 text-right font-mono">{line.quantity}</td><td className="p-3">{line.unit}</td><td className="p-3 text-right font-mono">{fmt(Number(line.unit_cost))}</td>
-      <td className="p-3 text-right font-mono text-amber-600">{line.markup_pct}%</td><td className="p-3 text-right font-mono font-semibold">{fmt(total)}</td><td />
+      <td className="p-3 text-right font-mono font-semibold">{fmt(extended)}</td><td />
     </tr>
   );
 
@@ -70,11 +71,10 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
       <td className="p-2 font-mono text-xs text-muted-foreground">{line.line_no}</td>
       <td className="p-2"><Select value={draft.category} onValueChange={value => patch("category", value as FinancialProposalLine["category"])}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td>
       <td className="p-2"><Input className="h-8 min-w-48 text-xs" value={draft.description} onChange={event => patch("description", event.target.value)} /></td>
-      <td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" step="any" value={draft.quantity} onChange={event => patch("quantity", Number(event.target.value) as any)} /></td>
+      <td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" step="any" value={draft.quantity} onChange={event => patch("quantity", Number(event.target.value))} /></td>
       <td className="p-2"><Input className="h-8 w-16 text-xs" value={draft.unit} onChange={event => patch("unit", event.target.value)} /></td>
-      <td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value) as any)} /></td>
-      <td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" step=".1" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value) as any)} /></td>
-      <td className="p-2 text-right font-mono text-xs">{fmt(total)}</td>
+      <td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></td>
+      <td className="p-2 text-right font-mono text-xs">{fmt(extended)}</td>
       <td className="p-2"><div className="flex"><Button variant="ghost" size="icon" className="h-8 w-8" disabled={!changed || saving} onClick={save}><Save className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
     </tr>
   );
@@ -90,7 +90,7 @@ export default function ProposalBuilderPage() {
   const proposalQuery = useFinancialProposals(projectId ?? null);
   const proposal = proposalQuery.data?.find(item => item.id === proposalId) ?? null;
   const lineQuery = useFinancialProposalLines(proposalId ?? null);
-  const lines = lineQuery.data ?? [];
+  const lines = useMemo(() => lineQuery.data ?? [], [lineQuery.data]);
   const projectName = project?.name ?? "Project";
   const [editingDetails, setEditingDetails] = useState(false);
   const [draft, setDraft] = useState<Partial<FinancialProposal>>({});
@@ -102,12 +102,17 @@ export default function ProposalBuilderPage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState("");
-  const [newLine, setNewLine] = useState<Partial<FinancialProposalLine>>({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 10 });
+  const [newLine, setNewLine] = useState<Partial<FinancialProposalLine>>({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 });
+  const [pricingDraft, setPricingDraft] = useState({ overhead_pct: 10, profit_pct: 5 });
   const { data: role } = useCurrentUserRole();
   const canRenumber = isAdminRole(role);
 
   useEffect(() => {
-    if (proposal) setNewLine(current => ({ ...current, markup_pct: proposal.markup_pct ?? 10 }));
+    if (!proposal) return;
+    setPricingDraft({
+      overhead_pct: Number(proposal.overhead_pct ?? 10),
+      profit_pct: Number(proposal.profit_pct ?? 5),
+    });
   }, [proposal]);
 
   useEffect(() => {
@@ -135,9 +140,13 @@ export default function ProposalBuilderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposal, client]);
 
-  const totals = useMemo(() => proposalTotals(lines), [lines]);
+  const totals = useMemo(() => proposalTotals(lines, pricingDraft), [lines, pricingDraft]);
   const editable = Boolean(proposal && !proposal.locked && proposal.status === "draft");
   const executed = proposal?.status === "approved" && Boolean(proposal.accepted_signed_at);
+  const pricingChanged = Boolean(proposal && (
+    Number(proposal.overhead_pct ?? 0) !== Number(pricingDraft.overhead_pct)
+    || Number(proposal.profit_pct ?? 0) !== Number(pricingDraft.profit_pct)
+  ));
 
   if (proposalQuery.isLoading) return <div className="p-6 text-muted-foreground">Loading proposal…</div>;
   if (!proposal) return <div className="container mx-auto max-w-6xl p-6"><FinancialSubNav /><p className="text-muted-foreground">Proposal not found.</p></div>;
@@ -148,7 +157,7 @@ export default function ProposalBuilderPage() {
     try {
       await proposalQuery.update.mutateAsync({
         id: proposal.id, proposal_no: draft.proposal_no, title: draft.title, client_name: draft.client_name || null,
-        client_email: draft.client_email || null, valid_until: draft.valid_until || null, markup_pct: Number(draft.markup_pct) || 0,
+        client_email: draft.client_email || null, valid_until: draft.valid_until || null,
         notes: draft.notes || null, terms: draft.terms || null,
         scope_bullets: draft.scope_bullets ?? [], deliverables: draft.deliverables ?? [],
       });
@@ -159,13 +168,31 @@ export default function ProposalBuilderPage() {
   async function addLine() {
     if (!description.trim()) return toast.error("Description is required.");
     const nextNo = lines.length ? Math.max(...lines.map(line => line.line_no)) + 1 : 1;
-    await lineQuery.create.mutateAsync({ proposal_id: proposal.id, description: description.trim(), line_no: nextNo, category: newLine.category ?? "labor", quantity: Number(newLine.quantity) || 1, unit: newLine.unit || "ls", unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 });
-    setDescription(""); setNewLine({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: proposal.markup_pct ?? 10 }); toast.success("Line added");
+    await lineQuery.create.mutateAsync({ proposal_id: proposal.id, description: description.trim(), line_no: nextNo, category: newLine.category ?? "labor", quantity: Number(newLine.quantity) || 1, unit: newLine.unit || "ls", unit_cost: Number(newLine.unit_cost) || 0, markup_pct: 0 });
+    setDescription(""); setNewLine({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 }); toast.success("Line added");
   }
 
   async function saveLine(line: FinancialProposalLine) {
-    await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: Number(line.markup_pct) });
+    await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: 0 });
     toast.success("Line updated");
+  }
+
+  async function savePricing() {
+    if (!proposal) return;
+    try {
+      const overheadPct = Number(pricingDraft.overhead_pct) || 0;
+      const profitPct = Number(pricingDraft.profit_pct) || 0;
+      await proposalQuery.update.mutateAsync({
+        id: proposal.id,
+        overhead_pct: overheadPct,
+        profit_pct: profitPct,
+        // Kept only for older integrations; proposal math no longer reads it.
+        markup_pct: overheadPct + profitPct,
+      });
+      toast.success("Overhead and profit saved");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
   }
 
   // AI produces a reviewable candidate. The author explicitly chooses whether
@@ -173,6 +200,8 @@ export default function ProposalBuilderPage() {
   async function applyDraft(draftResult: ProposalAiDraft, mode: "replace" | "append") {
     if (!proposal) return;
     const append = mode === "append";
+    const nextOverhead = typeof draftResult.overhead_pct === "number" ? draftResult.overhead_pct : proposal.overhead_pct;
+    const nextProfit = typeof draftResult.profit_pct === "number" ? draftResult.profit_pct : proposal.profit_pct;
     await proposalQuery.update.mutateAsync({
       id: proposal.id,
       title: append ? proposal.title : (draftResult.title || proposal.title),
@@ -186,7 +215,9 @@ export default function ProposalBuilderPage() {
       deliverables: append
         ? [...(proposal.deliverables ?? []), ...(draftResult.deliverables ?? [])]
         : (draftResult.deliverables ?? proposal.deliverables),
-      markup_pct: typeof draftResult.markup_pct === "number" ? draftResult.markup_pct : proposal.markup_pct,
+      overhead_pct: nextOverhead,
+      profit_pct: nextProfit,
+      markup_pct: Number(nextOverhead ?? 0) + Number(nextProfit ?? 0),
     });
     if (!append) {
       await lineQuery.replaceAll.mutateAsync((draftResult.lines ?? []).map((line, index) => ({
@@ -196,7 +227,7 @@ export default function ProposalBuilderPage() {
         quantity: Number(line.quantity) || 0,
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
-        markup_pct: Number(line.markup_pct) || (proposal.markup_pct ?? 10),
+        markup_pct: 0,
       })));
       return;
     }
@@ -211,7 +242,7 @@ export default function ProposalBuilderPage() {
         quantity: Number(line.quantity) || 0,
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
-        markup_pct: Number(line.markup_pct) || (proposal.markup_pct ?? 10),
+        markup_pct: 0,
       });
     }
   }
@@ -269,7 +300,7 @@ export default function ProposalBuilderPage() {
         <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Edit proposal details</CardTitle><div className="flex gap-2"><Button variant="outline" onClick={() => setEditingDetails(false)}>Cancel</Button><Button onClick={saveDetails} disabled={proposalQuery.update.isPending}><Save className="mr-1.5 h-4 w-4" />Save</Button></div></div></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
           <div><Label>Proposal #</Label><Input value={draft.proposal_no || ""} onChange={event => setDraft(current => ({ ...current, proposal_no: event.target.value }))} /></div><div><Label>Title</Label><Input value={draft.title || ""} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></div>
           <div><Label>Client</Label><Input value={draft.client_name || ""} onChange={event => setDraft(current => ({ ...current, client_name: event.target.value }))} /></div><div><Label>Email</Label><Input type="email" value={draft.client_email || ""} onChange={event => setDraft(current => ({ ...current, client_email: event.target.value }))} /></div>
-          <div><Label>Valid until</Label><Input type="date" value={draft.valid_until || ""} onChange={event => setDraft(current => ({ ...current, valid_until: event.target.value }))} /></div><div><Label>Default markup %</Label><Input type="number" step=".1" value={draft.markup_pct ?? 0} onChange={event => setDraft(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></div>
+          <div><Label>Valid until</Label><Input type="date" value={draft.valid_until || ""} onChange={event => setDraft(current => ({ ...current, valid_until: event.target.value }))} /></div>
           <div className="md:col-span-2"><Label>Overview</Label><VoiceDictationTextareaWithAI rows={5} context="notes" value={draft.notes || ""} onValueChange={value => setDraft(current => ({ ...current, notes: value }))} /></div>
           <div className="md:col-span-2"><Label>Scope of services <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={(draft.scope_bullets ?? []).join("\n")} onValueChange={value => setDraft(current => ({ ...current, scope_bullets: value.split("\n").map(line => line.trim()).filter(Boolean) }))} /></div>
           <div className="md:col-span-2"><Label>Deliverables <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={(draft.deliverables ?? []).join("\n")} onValueChange={value => setDraft(current => ({ ...current, deliverables: value.split("\n").map(line => line.trim()).filter(Boolean) }))} /></div>
@@ -277,24 +308,40 @@ export default function ProposalBuilderPage() {
         </CardContent></Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[
-        ["Subtotal", fmt(totals.subtotal)], ["Markup", fmt(totals.markup)], ["Proposal total", fmt(totals.total)], ["Valid until", proposal.valid_until ? new Date(`${proposal.valid_until}T00:00:00`).toLocaleDateString() : "—"],
-      ].map(([label, value]) => <Card key={label}><CardContent className="p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold">{value}</p></CardContent></Card>)}</div>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><CardTitle className="text-base">Pricing calculation</CardTitle><p className="mt-1 text-xs text-muted-foreground">Same math as change orders: enter overhead and profit percentages once. The dollar amounts calculate automatically and are not line items.</p></div>
+            {editable && <Button size="sm" onClick={savePricing} disabled={!pricingChanged || proposalQuery.update.isPending}><Save className="mr-1.5 h-4 w-4" />Save pricing</Button>}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-5 md:grid-cols-[1fr_1fr_1.4fr]">
+          <div><Label>Overhead %</Label><Input type="number" min="0" step="any" value={pricingDraft.overhead_pct} disabled={!editable} onChange={event => setPricingDraft(current => ({ ...current, overhead_pct: Number(event.target.value) }))} /></div>
+          <div><Label>Profit %</Label><Input type="number" min="0" step="any" value={pricingDraft.profit_pct} disabled={!editable} onChange={event => setPricingDraft(current => ({ ...current, profit_pct: Number(event.target.value) }))} /><p className="mt-1 text-[11px] text-muted-foreground">Enter 0 to waive profit.</p></div>
+          <div className="space-y-1.5 rounded-md border bg-muted/20 p-3 text-sm">
+            <div className="flex justify-between text-muted-foreground"><span>Work subtotal</span><span className="font-mono">{fmt(totals.subtotal)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Overhead ({pricingDraft.overhead_pct || 0}%)</span><span className="font-mono">{fmt(totals.overhead)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Profit ({pricingDraft.profit_pct || 0}%)</span><span className="font-mono">{fmt(totals.profit)}</span></div>
+            <div className="flex justify-between border-t pt-2 font-bold text-[var(--apas-sapphire)]"><span>Proposal total</span><span className="font-mono text-base">{fmt(totals.total)}</span></div>
+          </div>
+        </CardContent>
+      </Card>
 
       {editable && (
         <ProposalAiDraftCard
           projectId={projectId!}
-          defaultMarkup={proposal.markup_pct ?? 10}
+          defaultOverhead={proposal.overhead_pct ?? 10}
+          defaultProfit={proposal.profit_pct ?? 5}
           disabled={proposalQuery.update.isPending || lineQuery.create.isPending}
           onApply={applyDraft}
           hasExistingContent={Boolean(lines.length || proposal.notes || proposal.scope_bullets?.length || proposal.deliverables?.length)}
         />
       )}
 
-      <Card><CardHeader><CardTitle className="text-base">Line items</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Markup</th><th className="p-3 text-right">Total</th><th /></tr></thead><tbody>
+      <Card><CardHeader><CardTitle className="text-base">Cost-of-work line items</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Extended</th><th /></tr></thead><tbody>
         {lines.map(line => <EditableProposalLine key={line.id} line={line} editable={editable} onSave={saveLine} onRemove={() => lineQuery.remove.mutate(line.id)} />)}
-        {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as any }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost) * (1 + Number(newLine.markup_pct) / 100))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
-      </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={7} className="p-3 text-right">Proposal total</td><td className="p-3 text-right font-mono text-base text-[var(--apas-sapphire)]">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
+        {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as FinancialProposalLine["category"] }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
+      </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={6} className="p-3 text-right">Cost-of-work subtotal</td><td className="p-3 text-right font-mono text-base">{fmt(totals.subtotal)}</td><td /></tr></tfoot></table></div></CardContent></Card>
 
       <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>{executed ? "Executed proposal document" : "Proposal document"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{executed ? "The final client-signed PDF below is the primary document of record." : proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version"}</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -314,7 +361,7 @@ export default function ProposalBuilderPage() {
 
       <FinancialProposalSignDialog open={signOpen} onOpenChange={setSignOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSigned={refresh} />
       <SendFinancialProposalDialog open={sendOpen} onOpenChange={setSendOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSent={refresh} />
-      <AmendFinancialProposalDialog open={amendOpen} onOpenChange={setAmendOpen} proposal={proposal} reopen={proposalQuery.reopen as any} onDone={refresh} />
+      <AmendFinancialProposalDialog open={amendOpen} onOpenChange={setAmendOpen} proposal={proposal} reopen={proposalQuery.reopen} onDone={refresh} />
       <RenumberFinancialProposalDialog open={renumberOpen} onOpenChange={setRenumberOpen} proposal={proposal} action={proposalQuery.renumber} onDone={refresh} />
       <UploadFinancialProposalHardcopyDialog open={hardcopyOpen} onOpenChange={setHardcopyOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.uploadHardcopy} onDone={refresh} />
     </div>

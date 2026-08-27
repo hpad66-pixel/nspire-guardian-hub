@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import type { FinancialProposal, FinancialProposalLine } from "@/hooks/useFinancialProposals";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 
 const GOLD = "#C4A35A";
 const INK = "#1A1714";
@@ -9,12 +10,6 @@ const STAMP = "#247455";
 const money = (n: number) => new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", minimumFractionDigits: 2,
 }).format(n || 0);
-
-export function proposalTotals(lines: FinancialProposalLine[]) {
-  const subtotal = lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unit_cost), 0);
-  const markup = lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unit_cost) * (Number(line.markup_pct) / 100), 0);
-  return { subtotal, markup, total: subtotal + markup };
-}
 
 export interface ProposalClient {
   name?: string | null;
@@ -34,7 +29,7 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
   submittedSignature?: string | null;
   acceptedSignature?: string | null;
 }>(function FinancialProposalDocument({ proposal, lines, projectName, client, submittedSignature, acceptedSignature }, ref) {
-  const totals = proposalTotals(lines);
+  const totals = proposalTotals(lines, proposal);
   const date = new Date(proposal.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   const clientAddress = client
     ? [client.address, [client.city, client.state].filter(Boolean).join(", ")].filter(Boolean).join(", ")
@@ -105,19 +100,20 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
 
       <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>PRICING</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr><th style={th}>#</th><th style={th}>Description</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Unit cost</th><th style={{ ...th, textAlign: "right" }}>Markup</th><th style={{ ...th, textAlign: "right" }}>Total</th></tr></thead>
+        <thead><tr><th style={th}>#</th><th style={th}>Description</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Unit cost</th><th style={{ ...th, textAlign: "right" }}>Extended</th></tr></thead>
         <tbody>
           {lines.map((line) => {
-            const total = Number(line.quantity) * Number(line.unit_cost) * (1 + Number(line.markup_pct) / 100);
-            return <tr key={line.id}><td style={td}>{line.line_no}</td><td style={td}>{line.description}</td><td style={{ ...td, textTransform: "capitalize" }}>{line.category}</td><td style={{ ...td, textAlign: "right" }}>{line.quantity}</td><td style={td}>{line.unit}</td><td style={{ ...td, textAlign: "right" }}>{money(Number(line.unit_cost))}</td><td style={{ ...td, textAlign: "right" }}>{line.markup_pct}%</td><td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{money(total)}</td></tr>;
+            const extended = Number(line.quantity) * Number(line.unit_cost);
+            return <tr key={line.id}><td style={td}>{line.line_no}</td><td style={td}>{line.description}</td><td style={{ ...td, textTransform: "capitalize" }}>{line.category}</td><td style={{ ...td, textAlign: "right" }}>{line.quantity}</td><td style={td}>{line.unit}</td><td style={{ ...td, textAlign: "right" }}>{money(Number(line.unit_cost))}</td><td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{money(extended)}</td></tr>;
           })}
-          {lines.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: MUTE }}>No priced line items</td></tr>}
+          {lines.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: MUTE }}>No priced line items</td></tr>}
         </tbody>
       </table>
 
       <div style={{ marginLeft: "auto", width: 280, marginTop: 10, fontSize: 11 }}>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Markup</span><span>{money(totals.markup)}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Overhead ({Number(proposal.overhead_pct || 0)}%)</span><span>{money(totals.overhead)}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Profit ({Number(proposal.profit_pct || 0)}%)</span><span>{money(totals.profit)}</span></div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px", background: GOLD, color: "#fff", fontWeight: 800, fontSize: 13 }}><span>PROPOSAL TOTAL</span><span>{money(totals.total)}</span></div>
       </div>
 
