@@ -69,6 +69,9 @@ serve(async (req) => {
         connected: Boolean(connection),
         fromNumber: connection?.from_number ?? null,
         messagingServiceSid: connection?.messaging_service_sid ?? null,
+        inboundConfigured: Boolean(connection?.inbound_configured),
+        inboundError: connection?.inbound_error ?? null,
+        inboundWebhookUrl: `${supabaseUrl}/functions/v1/sms-webhook`,
       });
     }
 
@@ -83,17 +86,49 @@ serve(async (req) => {
       if (messagingServiceSid && !messagingServiceSid.startsWith("MG")) return json({ error: "Messaging Service SID must start with MG." }, 400);
 
       await twilioRequest(accountSid, authToken, `/Accounts/${encodeURIComponent(accountSid)}.json`);
+      let inboundConfigured = false;
+      let inboundError: string | null = null;
+      if (fromNumber) {
+        try {
+          const result = await twilioRequest(
+            accountSid,
+            authToken,
+            `/Accounts/${encodeURIComponent(accountSid)}/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(fromNumber)}`,
+          );
+          const phoneResource = Array.isArray(result?.incoming_phone_numbers)
+            ? result.incoming_phone_numbers.find((item: any) => normalizePhone(item?.phone_number) === fromNumber)
+            : null;
+          if (!phoneResource?.sid) throw new Error("The sender number was not found in this Twilio account.");
+          const webhookForm = new URLSearchParams({
+            SmsUrl: `${supabaseUrl}/functions/v1/sms-webhook`,
+            SmsMethod: "POST",
+          });
+          await twilioRequest(
+            accountSid,
+            authToken,
+            `/Accounts/${encodeURIComponent(accountSid)}/IncomingPhoneNumbers/${encodeURIComponent(phoneResource.sid)}.json`,
+            { method: "POST", body: webhookForm },
+          );
+          inboundConfigured = true;
+        } catch (error) {
+          inboundError = error instanceof Error ? error.message : "Incoming reply setup failed.";
+        }
+      } else {
+        inboundError = "Messaging Service connected. Add the displayed inbound webhook in Twilio to capture replies.";
+      }
       const { error } = await admin.from("sms_connections").upsert({
         tenant_id: tenantId,
         account_sid: accountSid,
         auth_token: authToken,
         from_number: fromNumber,
         messaging_service_sid: messagingServiceSid,
+        inbound_configured: inboundConfigured,
+        inbound_error: inboundError,
         connected_by: user.id,
         updated_at: new Date().toISOString(),
       }, { onConflict: "tenant_id" });
       if (error) return json({ error: error.message }, 500);
-      return json({ connected: true, fromNumber, messagingServiceSid });
+      return json({ connected: true, fromNumber, messagingServiceSid, inboundConfigured, inboundError });
     }
 
     if (action === "disconnect") {

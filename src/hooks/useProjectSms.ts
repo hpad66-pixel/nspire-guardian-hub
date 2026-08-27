@@ -5,6 +5,9 @@ export interface SmsStatus {
   connected: boolean;
   fromNumber: string | null;
   messagingServiceSid: string | null;
+  inboundConfigured: boolean;
+  inboundError: string | null;
+  inboundWebhookUrl: string;
 }
 
 export interface ProjectSmsMessage {
