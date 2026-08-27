@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, UserPlus, UserMinus, Search, ChevronDown, Mail, Loader2 } from 'lucide-react';
+import { Users, UserPlus, UserMinus, Search, ChevronDown, Mail, Loader2, ContactRound, MessageSquareText, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import {
@@ -40,6 +40,11 @@ import {
   useUpdateProjectTeamMemberRole,
 } from '@/hooks/useProjectTeam';
 import { useUsers } from '@/hooks/useUserManagement';
+import { useProjectContacts } from '@/hooks/useProjectPeople';
+import { useProjectDirectory } from '@/hooks/useProjectDirectory';
+import { AddPersonDialog } from '@/components/directory/AddPersonDialog';
+import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
+import { ProjectSmsComposer, type SmsRecipient } from '@/components/projects/correspondence/ProjectSmsComposer';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -82,9 +87,14 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
   const [searchQuery, setSearchQuery] = useState('');
   const [addRole, setAddRole] = useState<AppRole>('viewer');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [attachContactOpen, setAttachContactOpen] = useState(false);
+  const [emailContact, setEmailContact] = useState<{ name: string; email: string; companyName?: string | null } | null>(null);
+  const [smsContact, setSmsContact] = useState<SmsRecipient | null>(null);
 
   const { data: members = [], isLoading: membersLoading } = useProjectTeamMembers(projectId);
   const { data: allUsers = [], isLoading: usersLoading } = useUsers();
+  const { data: projectContacts = [], isLoading: contactsLoading } = useProjectContacts(projectId);
+  const projectDirectory = useProjectDirectory(projectId);
   const addMember = useAddProjectTeamMember();
   const removeMember = useRemoveProjectTeamMember();
   const updateRole = useUpdateProjectTeamMemberRole();
@@ -124,22 +134,77 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-[460px] flex flex-col gap-0 p-0">
+      <SheetContent className="w-full sm:max-w-[560px] flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-module-projects" />
-            Project Team
+            People &amp; Team
           </SheetTitle>
           <SheetDescription>{projectName}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
 
+          {/* CRM contacts are communication-only and never receive app access. */}
+          <section>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Project Contacts ({projectContacts.length})</h3>
+                <p className="mt-1 text-xs text-muted-foreground">CRM contacts can receive project email and text without signing in.</p>
+              </div>
+              <Button size="sm" className="h-8 shrink-0 gap-1.5" onClick={() => setAttachContactOpen(true)}>
+                <ContactRound className="h-3.5 w-3.5" />Attach contact
+              </Button>
+            </div>
+
+            {contactsLoading ? (
+              <div className="space-y-2">{[1, 2].map((i) => <Skeleton key={i} className="h-[76px] w-full rounded-lg" />)}</div>
+            ) : projectContacts.length === 0 ? (
+              <button type="button" onClick={() => setAttachContactOpen(true)} className="w-full rounded-xl border border-dashed py-7 text-center text-muted-foreground hover:border-primary/40 hover:bg-primary/[0.02] transition-colors">
+                <ContactRound className="mx-auto mb-2 h-7 w-7 opacity-35" />
+                <span className="block text-sm font-medium">Attach someone from CRM</span>
+                <span className="mt-1 block text-xs">Property managers, clients, consultants, vendors, and agency contacts</span>
+              </button>
+            ) : (
+              <div className="space-y-2">
+                {projectContacts.map((contact) => (
+                  <div key={contact.entryId} className="rounded-xl border bg-card p-3">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 shrink-0"><AvatarFallback className="bg-amber-500/10 text-xs text-amber-700">{getInitials(contact.name, contact.email)}</AvatarFallback></Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate text-sm font-medium">{contact.name}</p>
+                          {contact.isKeyContact && <Badge variant="outline" className="text-[10px]">Key contact</Badge>}
+                          <Badge variant="secondary" className="text-[10px]">No portal access</Badge>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">{[contact.roleLabel || contact.jobTitle, contact.companyName].filter(Boolean).join(' · ') || 'Project contact'}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{[contact.email, contact.phone].filter(Boolean).join(' · ') || 'Add email or mobile in CRM'}</p>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" title="Detach from project"><UserMinus className="h-4 w-4" /></Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Detach project contact</AlertDialogTitle><AlertDialogDescription>Remove {contact.name} from {projectName}? Their CRM record remains available and past correspondence stays in this project.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => projectDirectory.remove.mutate(contact.entryId)}>Detach</AlertDialogAction></AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                    <div className="mt-2 flex gap-2 pl-12">
+                      <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" disabled={!contact.email} onClick={() => contact.email && setEmailContact({ name: contact.name, email: contact.email, companyName: contact.companyName })}><Mail className="h-3.5 w-3.5" />Email</Button>
+                      <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" disabled={!contact.phone} onClick={() => setSmsContact({ contactId: contact.contactId, name: contact.name, phone: contact.phone, companyName: contact.companyName })}><MessageSquareText className="h-3.5 w-3.5" />Text</Button>
+                      {contact.phone && <Button asChild variant="ghost" size="sm" className="h-7 gap-1 text-xs"><a href={`tel:${contact.phone}`}><Phone className="h-3.5 w-3.5" />Call</a></Button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           {/* ── Current members ─────────────────────────────────────── */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              Team Members ({members.length})
+              Internal Team ({members.length})
             </h3>
+            <p className="-mt-2 mb-3 text-xs text-muted-foreground">Login users with a project role and application access.</p>
 
             {membersLoading ? (
               <div className="space-y-2">
@@ -179,6 +244,13 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                         <p className="text-sm font-medium truncate">{name || 'Unnamed User'}</p>
                         <p className="text-xs text-muted-foreground truncate">{email}</p>
                       </div>
+
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!email} title={email ? `Email ${name || email}` : 'No email'} onClick={() => email && setEmailContact({ name: name || email, email })}>
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!member.profile?.phone} title={member.profile?.phone ? `Text ${name || email}` : 'Add a mobile number to this user profile'} onClick={() => setSmsContact({ recipientUserId: member.user_id, name: name || email || 'Team member', phone: member.profile?.phone ?? null })}>
+                        <MessageSquareText className="h-4 w-4" />
+                      </Button>
 
                       {/* Role badge + change */}
                       <DropdownMenu>
@@ -247,7 +319,7 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
           {/* ── Add people ──────────────────────────────────────────── */}
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              Add People
+              Add Internal Team Member
             </h3>
 
             <div className="flex gap-2 mb-3">
@@ -346,6 +418,21 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
           </section>
         </div>
       </SheetContent>
+      <AddPersonDialog open={attachContactOpen} onOpenChange={setAttachContactOpen} projectId={projectId} contactsOnly />
+      <CorrespondenceComposer
+        open={Boolean(emailContact)}
+        onOpenChange={(next) => { if (!next) setEmailContact(null); }}
+        projectId={projectId}
+        projectName={projectName}
+        presetRecipient={emailContact}
+      />
+      <ProjectSmsComposer
+        open={Boolean(smsContact)}
+        onOpenChange={(next) => { if (!next) setSmsContact(null); }}
+        projectId={projectId}
+        projectName={projectName}
+        recipient={smsContact}
+      />
     </Sheet>
   );
 }
