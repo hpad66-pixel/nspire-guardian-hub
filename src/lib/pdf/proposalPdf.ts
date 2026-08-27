@@ -7,6 +7,7 @@
 import { jsPDF } from 'jspdf';
 import type { FinancialProposal, FinancialProposalLine } from '@/hooks/useFinancialProposals';
 import type { ProposalClient } from '@/components/financial/FinancialProposalDocument';
+import { proposalTotals } from '@/lib/financial/proposalPricing';
 
 const GOLD: [number, number, number] = [196, 163, 90];
 const INK: [number, number, number] = [26, 23, 20];
@@ -155,22 +156,20 @@ export async function buildProposalPdf(
   const enriched = lines.map((l) => ({
     ...l,
     ext: Number(l.quantity) * Number(l.unit_cost),
-    total: Number(l.quantity) * Number(l.unit_cost) * (1 + Number(l.markup_pct) / 100),
   }));
 
   sectionHeading('PRICING');
 
   // Column widths (sum === cw so nothing overflows the page).
-  const wNo = 20, wCat = 62, wQty = 32, wUnit = 30, wCost = 60, wMk = 44, wTot = 66;
-  const wDesc = cw - (wNo + wCat + wQty + wUnit + wCost + wMk + wTot);
+  const wNo = 20, wCat = 62, wQty = 32, wUnit = 30, wCost = 64, wExt = 76;
+  const wDesc = cw - (wNo + wCat + wQty + wUnit + wCost + wExt);
   const xNo = M;
   const xCat = xNo + wNo;
   const xDesc = xCat + wCat;
   const xUnit = xDesc + wDesc + wQty;          // left for Unit
   const xQtyR = xUnit - 6;                      // right edge for Qty (6pt gap before Unit)
   const xCostR = xUnit + wUnit + wCost;        // right edge for Unit cost
-  const xMkR = xCostR + wMk;                   // right edge for Markup
-  const xTotR = xMkR + wTot;                   // right edge for Total (= W - M)
+  const xExtR = xCostR + wExt;                  // right edge for Extended (= W - M)
 
   const tableHeader = () => {
     ensure(20);
@@ -183,8 +182,7 @@ export async function buildProposalPdf(
     doc.text('Qty', xQtyR, y + 9, { align: 'right' });
     doc.text('Unit', xUnit, y + 9);
     doc.text('Unit cost', xCostR, y + 9, { align: 'right' });
-    doc.text('Markup', xMkR, y + 9, { align: 'right' });
-    doc.text('Total', xTotR, y + 9, { align: 'right' });
+    doc.text('Extended', xExtR, y + 9, { align: 'right' });
     y += 18;
   };
   tableHeader();
@@ -205,8 +203,7 @@ export async function buildProposalPdf(
     doc.text(String(r.quantity), xQtyR, ty, { align: 'right' });
     doc.text(r.unit || '', xUnit, ty);
     doc.text(usd(Number(r.unit_cost)), xCostR, ty, { align: 'right' });
-    setColor(GOLD); doc.text(`${r.markup_pct}%`, xMkR, ty, { align: 'right' });
-    setColor(INK); doc.setFont('helvetica', 'bold'); doc.text(usd(r.total), xTotR, ty, { align: 'right' });
+    setColor(INK); doc.setFont('helvetica', 'bold'); doc.text(usd(r.ext), xExtR, ty, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     y += rh;
     doc.setDrawColor(236, 233, 226); doc.setLineWidth(0.4); doc.line(M, y, W - M, y);
@@ -214,24 +211,23 @@ export async function buildProposalPdf(
   if (enriched.length === 0) { ensure(16); text('No priced line items', xDesc, { size: 9, color: MUTE }); }
 
   // ── Totals ───────────────────────────────────────────────────
-  const subtotal = enriched.reduce((s, l) => s + l.ext, 0);
-  const markup = enriched.reduce((s, l) => s + (l.total - l.ext), 0);
-  const grand = enriched.reduce((s, l) => s + l.total, 0);
+  const totals = proposalTotals(lines, proposal);
   y += 8;
   const totalRow = (label: string, value: string) => {
     ensure(14);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); setColor(MUTE);
     doc.text(label, xCostR, y + 8, { align: 'right' });
-    setColor(INK); doc.text(value, xTotR, y + 8, { align: 'right' });
+    setColor(INK); doc.text(value, xExtR, y + 8, { align: 'right' });
     y += 14;
   };
-  totalRow('Subtotal', usd(subtotal));
-  totalRow('Markup', usd(markup));
+  totalRow('Subtotal', usd(totals.subtotal));
+  totalRow(`Overhead (${Number(proposal.overhead_pct || 0)}%)`, usd(totals.overhead));
+  totalRow(`Profit (${Number(proposal.profit_pct || 0)}%)`, usd(totals.profit));
   ensure(24); y += 2;
   doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]); doc.rect(M + cw - 240, y, 240, 22, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(255, 255, 255);
   doc.text('PROPOSAL TOTAL', xCostR, y + 15, { align: 'right' });
-  doc.setFontSize(12); doc.text(usd(grand), xTotR - 4, y + 15, { align: 'right' });
+  doc.setFontSize(12); doc.text(usd(totals.total), xExtR - 4, y + 15, { align: 'right' });
   y += 34;
 
   // ── Terms ────────────────────────────────────────────────────

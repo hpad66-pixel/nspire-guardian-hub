@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { proposalTotals } from "../FinancialProposalDocument";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 import type { FinancialProposalLine } from "@/hooks/useFinancialProposals";
 
 const line = (quantity: number, unitCost: number, markup: number): FinancialProposalLine => ({
@@ -9,15 +9,16 @@ const line = (quantity: number, unitCost: number, markup: number): FinancialProp
 });
 
 describe("proposalTotals", () => {
-  it("recomputes subtotal, markup, and proposal total from editable rows", () => {
-    expect(proposalTotals([line(10, 150, 10), line(2, 500, 5)])).toEqual({
+  it("recomputes subtotal, overhead, profit, and proposal total like a change order", () => {
+    expect(proposalTotals([line(10, 150, 10), line(2, 500, 5)], { overhead_pct: 10, profit_pct: 5 })).toEqual({
       subtotal: 2500,
-      markup: 200,
-      total: 2700,
+      overhead: 250,
+      profit: 125,
+      total: 2875,
     });
   });
 
   it("returns zeroes for an empty proposal", () => {
-    expect(proposalTotals([])).toEqual({ subtotal: 0, markup: 0, total: 0 });
+    expect(proposalTotals([], { overhead_pct: 10, profit_pct: 5 })).toEqual({ subtotal: 0, overhead: 0, profit: 0, total: 0 });
   });
 });

@@ -30,6 +30,8 @@ export interface FinancialProposal {
   scope_bullets: string[] | null;
   deliverables: string[] | null;
   markup_pct: number;
+  overhead_pct: number;
+  profit_pct: number;
   source_issue_id: string | null;
   sign_token: string;
   locked: boolean;

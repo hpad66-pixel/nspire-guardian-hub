@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProject } from "@/hooks/useProjects";
 import { useClient } from "@/hooks/useClients";
+import { useCoSettings } from "@/hooks/useCoSettings";
 import { useFinancialProposals, type FinancialProposal, type FinancialProposalLine } from "@/hooks/useFinancialProposals";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { FinancialProposalDocument } from "@/components/financial/FinancialProposalDocument";
@@ -21,7 +22,6 @@ interface DraftLine {
   quantity: number;
   unit: string;
   unit_cost: number;
-  markup_pct: number;
 }
 
 interface GeneratorDraft {
@@ -30,7 +30,8 @@ interface GeneratorDraft {
   scope_bullets: string[];
   deliverables: string[];
   terms: string;
-  markup_pct: number;
+  overhead_pct: number;
+  profit_pct: number;
   valid_until: string;
   lines: DraftLine[];
 }
@@ -41,7 +42,8 @@ const EMPTY: GeneratorDraft = {
   scope_bullets: [],
   deliverables: [],
   terms: "Net 30. All work per applicable codes and standards.",
-  markup_pct: 10,
+  overhead_pct: 10,
+  profit_pct: 5,
   valid_until: "",
   lines: [],
 };
@@ -54,6 +56,7 @@ export default function ProposalGeneratorPage() {
   const navigate = useNavigate();
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
+  const { data: coSettings } = useCoSettings();
   const proposalQuery = useFinancialProposals(projectId ?? null);
   const existing = proposalQuery.data ?? [];
   const nextNo = `PROP-${String(existing.reduce((max, proposal) => {
@@ -67,6 +70,17 @@ export default function ProposalGeneratorPage() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<GeneratorDraft>(EMPTY);
+  const pricingSeeded = useRef(false);
+
+  useEffect(() => {
+    if (!coSettings || pricingSeeded.current) return;
+    pricingSeeded.current = true;
+    setDraft(current => ({
+      ...current,
+      overhead_pct: Number(coSettings.default_overhead_pct ?? 10),
+      profit_pct: Number(coSettings.default_profit_pct ?? 5),
+    }));
+  }, [coSettings]);
 
   const patch = <K extends keyof GeneratorDraft>(key: K, value: GeneratorDraft[K]) =>
     setDraft(current => ({ ...current, [key]: value }));
@@ -89,7 +103,7 @@ export default function ProposalGeneratorPage() {
         }
       }
       const { data, error } = await supabase.functions.invoke("draft-financial-proposal", {
-        body: { description: aiText.trim() || undefined, projectId, markupPct: draft.markup_pct, document, documentName: bgFile?.name },
+        body: { description: aiText.trim() || undefined, projectId, overheadPct: draft.overhead_pct, profitPct: draft.profit_pct, document, documentName: bgFile?.name },
       });
       if (error) throw error;
       const d = (data as { draft?: Partial<GeneratorDraft> & { lines?: DraftLine[] } })?.draft;
@@ -101,7 +115,8 @@ export default function ProposalGeneratorPage() {
         scope_bullets: Array.isArray(d.scope_bullets) ? d.scope_bullets : current.scope_bullets,
         deliverables: Array.isArray(d.deliverables) ? d.deliverables : current.deliverables,
         terms: d.terms || current.terms,
-        markup_pct: typeof d.markup_pct === "number" ? d.markup_pct : current.markup_pct,
+        overhead_pct: typeof d.overhead_pct === "number" ? d.overhead_pct : current.overhead_pct,
+        profit_pct: typeof d.profit_pct === "number" ? d.profit_pct : current.profit_pct,
         lines: Array.isArray(d.lines) ? d.lines : current.lines,
       }));
       toast.success("Proposal drafted — review and edit, then create it.");
@@ -127,7 +142,9 @@ export default function ProposalGeneratorPage() {
         client_name: client?.name ?? null,
         client_email: client?.contact_email ?? null,
         valid_until: draft.valid_until || null,
-        markup_pct: draft.markup_pct,
+        overhead_pct: draft.overhead_pct,
+        profit_pct: draft.profit_pct,
+        markup_pct: draft.overhead_pct + draft.profit_pct,
         notes: draft.overview || null,
         terms: draft.terms || null,
         scope_bullets: draft.scope_bullets,
@@ -143,9 +160,9 @@ export default function ProposalGeneratorPage() {
           quantity: Number(line.quantity) || 0,
           unit: line.unit || "ls",
           unit_cost: Number(line.unit_cost) || 0,
-          markup_pct: Number(line.markup_pct) || draft.markup_pct,
+          markup_pct: 0,
         }));
-        const { error } = await supabase.from("proposal_lines" as any).insert(rows as any);
+        const { error } = await supabase.from("proposal_lines").insert(rows);
         if (error) throw error;
       }
       toast.success("Proposal created");
@@ -172,7 +189,9 @@ export default function ProposalGeneratorPage() {
     terms: draft.terms || null,
     scope_bullets: draft.scope_bullets,
     deliverables: draft.deliverables,
-    markup_pct: draft.markup_pct,
+    markup_pct: draft.overhead_pct + draft.profit_pct,
+    overhead_pct: draft.overhead_pct,
+    profit_pct: draft.profit_pct,
     source_issue_id: null,
     sign_token: "",
     locked: false,
@@ -209,10 +228,10 @@ export default function ProposalGeneratorPage() {
       quantity: Number(line.quantity) || 0,
       unit: line.unit || "ls",
       unit_cost: Number(line.unit_cost) || 0,
-      markup_pct: Number(line.markup_pct) || draft.markup_pct,
+      markup_pct: 0,
       created_at: new Date().toISOString(),
     }) as FinancialProposalLine),
-    [draft.lines, draft.markup_pct],
+    [draft.lines],
   );
 
   return (
@@ -290,7 +309,8 @@ export default function ProposalGeneratorPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2"><Label>Title</Label><Input value={draft.title} onChange={e => patch("title", e.target.value)} placeholder="Phase I Environmental Assessment" /></div>
                 <div><Label>Valid until</Label><Input type="date" value={draft.valid_until} onChange={e => patch("valid_until", e.target.value)} /></div>
-                <div><Label>Default markup %</Label><Input type="number" step="0.1" value={draft.markup_pct} onChange={e => patch("markup_pct", Number(e.target.value) || 0)} /></div>
+                <div><Label>Overhead %</Label><Input type="number" min="0" step="any" value={draft.overhead_pct} onChange={e => patch("overhead_pct", Number(e.target.value) || 0)} /></div>
+                <div><Label>Profit %</Label><Input type="number" min="0" step="any" value={draft.profit_pct} onChange={e => patch("profit_pct", Number(e.target.value) || 0)} /><p className="mt-1 text-[11px] text-muted-foreground">Both calculate automatically from the cost-of-work subtotal. They are not line items.</p></div>
               </div>
               <div><Label>Overview</Label><VoiceDictationTextareaWithAI rows={6} context="notes" value={draft.overview} onValueChange={v => patch("overview", v)} placeholder="Our understanding of the need and our approach…" /></div>
               <div><Label>Scope of services <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={fromLines(draft.scope_bullets)} onValueChange={v => patch("scope_bullets", toLines(v))} placeholder={"Records review\nSite reconnaissance\nWritten report"} /></div>

@@ -4,6 +4,7 @@ import { useFinancialProposals, FinancialProposal } from "@/hooks/useFinancialPr
 import { useProjectIssues } from "@/hooks/useProjectIssues";
 import { useProject } from "@/hooks/useProjects";
 import { useClient } from "@/hooks/useClients";
+import { useCoSettings } from "@/hooks/useCoSettings";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip } from "lucide-react";
 import { toast } from "sonner";
-import { proposalTotals } from "@/components/financial/FinancialProposalDocument";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 
 function fmtMoney(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
@@ -45,9 +46,10 @@ export default function ProposalsPage() {
   const { data: issues = [] } = useProjectIssues(projectId ?? null);
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
+  const { data: coSettings } = useCoSettings();
 
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<Partial<FinancialProposal>>({ markup_pct: 10 });
+  const [form, setForm] = useState<Partial<FinancialProposal>>({ overhead_pct: 10, profit_pct: 5 });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -55,9 +57,9 @@ export default function ProposalsPage() {
   const sentCount     = proposals.filter(p => p.status === "sent").length;
   const approvedCount = proposals.filter(p => p.status === "approved").length;
   const pipelineValue = proposals.filter(p => ["draft", "sent"].includes(p.status))
-    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? []).total, 0);
+    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? [], proposal).total, 0);
   const approvedValue = proposals.filter(p => p.status === "approved")
-    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? []).total, 0);
+    .reduce((sum, proposal) => sum + proposalTotals(proposal.proposal_lines ?? [], proposal).total, 0);
   const filteredProposals = useMemo(() => {
     const q = search.trim().toLowerCase();
     return proposals.filter(proposal => {
@@ -80,13 +82,15 @@ export default function ProposalsPage() {
       client_name: form.client_name ?? null,
       client_email: form.client_email ?? null,
       valid_until: form.valid_until ?? null,
-      markup_pct: form.markup_pct ?? 10,
+      overhead_pct: form.overhead_pct ?? 10,
+      profit_pct: form.profit_pct ?? 5,
+      markup_pct: Number(form.overhead_pct ?? 10) + Number(form.profit_pct ?? 5),
       notes: form.notes ?? null,
       source_issue_id: form.source_issue_id ?? null,
       terms: "Net 30. All work per applicable codes and standards.",
     });
     setShowCreate(false);
-    setForm({ markup_pct: 10 });
+    setForm({ overhead_pct: Number(coSettings?.default_overhead_pct ?? 10), profit_pct: Number(coSettings?.default_profit_pct ?? 5) });
     toast.success("Proposal created");
     // Navigate to builder
     window.location.href = `/projects/${projectId}/financials/proposals/${created.id}`;
@@ -124,7 +128,7 @@ export default function ProposalsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setForm({ markup_pct: 10, proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
+          <Button variant="outline" onClick={() => { setForm({ overhead_pct: Number(coSettings?.default_overhead_pct ?? 10), profit_pct: Number(coSettings?.default_profit_pct ?? 5), proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
             <Plus className="h-4 w-4 mr-2" /> Blank
           </Button>
           <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new`)}>
@@ -190,7 +194,7 @@ export default function ProposalsPage() {
                   {filteredProposals.map(p => {
                     const sc = STATUS_CONFIG[p.status];
                     const Icon = sc.icon;
-                    const amount = proposalTotals(p.proposal_lines ?? []).total;
+                    const amount = proposalTotals(p.proposal_lines ?? [], p).total;
                     return (
                       <tr key={p.id} className="cursor-pointer border-b last:border-0 hover:bg-muted/20" onClick={() => navigate(`/projects/${projectId}/financials/proposals/${p.id}`)}>
                         <td className="p-3 font-mono font-medium"><div>{p.proposal_no}</div>{Number(p.revision_no ?? 0) > 0 && <div className="mt-0.5 text-[10px] font-sans text-muted-foreground">Revision {p.revision_no}</div>}</td>
@@ -244,24 +248,36 @@ export default function ProposalsPage() {
             <DialogTitle>New Proposal</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div>
                 <Label>Proposal # *</Label>
                 <Input
                   value={form.proposal_no ?? ""}
                   onChange={e => setForm(f => ({ ...f, proposal_no: e.target.value }))}
                 />
-              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Default Markup %</Label>
+                <Label>Overhead %</Label>
                 <Input
                   type="number"
-                  step="0.1"
-                  value={form.markup_pct ?? 10}
-                  onChange={e => setForm(f => ({ ...f, markup_pct: parseFloat(e.target.value) || 10 }))}
+                  min="0"
+                  step="any"
+                  value={form.overhead_pct ?? 10}
+                  onChange={e => setForm(f => ({ ...f, overhead_pct: Number(e.target.value) || 0 }))}
+                />
+              </div>
+              <div>
+                <Label>Profit %</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.profit_pct ?? 5}
+                  onChange={e => setForm(f => ({ ...f, profit_pct: Number(e.target.value) || 0 }))}
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">Both percentages calculate from the cost-of-work subtotal. They are not proposal line items.</p>
             <div>
               <Label>Title *</Label>
               <Input
