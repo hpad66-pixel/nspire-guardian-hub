@@ -32,6 +32,7 @@ import { AISkillsSettings } from '@/components/settings/AISkillsSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { AssistantSettings } from '@/components/settings/AssistantSettings';
 import { ClickUpSettings } from '@/components/settings/ClickUpSettings';
+import { TrelloSettings } from '@/components/settings/TrelloSettings';
 import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
@@ -145,6 +146,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
+          <TrelloSettings />
           <ClickUpSettings />
         </TabsContent>
 
@@ -508,4 +510,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

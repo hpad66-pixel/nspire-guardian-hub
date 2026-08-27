@@ -5,11 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Send, Printer, Mail, Loader2, Link2, Sparkles } from 'lucide-react';
+import { Trash2, Send, Printer, Mail, Loader2, Link2, Sparkles, Trello as TrelloIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  useUpdateActionItem, useDeleteActionItem, useActionItemComments, useCreateActionItemComment,
+  useUpdateActionItem, useDeleteActionItem, useActionItemComments, useCreateActionItemComment, useSetActionItemWatchers,
   type ActionItem,
 } from '@/hooks/useActionItems';
 import { useSendEmail } from '@/hooks/useSendEmail';
@@ -17,11 +17,13 @@ import { useProjectEmails } from '@/hooks/useProjectEmails';
 import { useCorrespondenceThreadById } from '@/hooks/useCorrespondenceThreads';
 import { useTaskUpdateDraft } from '@/hooks/useTaskUpdateDraft';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
+import { usePushToTrello, useTrelloStatus } from '@/hooks/useTrello';
 import type { ProjectScope } from '@/hooks/useProjectScopes';
 import type { ProjectTeamMember } from '@/hooks/useProjectTeam';
 import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
 import { buildTaskUpdateHtml } from '@/lib/correspondence/taskUpdateEmail';
 import { STATUS_META, STATUS_ORDER, PRIORITY_META, PRIORITY_ORDER } from './actionItemMeta';
+import { TeamWatcherPicker } from './TeamWatcherPicker';
 
 interface Props {
   open: boolean;
@@ -41,6 +43,7 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const del = useDeleteActionItem(projectId);
   const { data: comments } = useActionItemComments(open && item ? item.id : null);
   const createComment = useCreateActionItemComment();
+  const setWatchers = useSetActionItemWatchers(projectId);
   const sendEmail = useSendEmail();
   const projectEmails = useProjectEmails(projectId);
   const linkedThread = useCorrespondenceThreadById(
@@ -49,18 +52,22 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const draftUpdate = useTaskUpdateDraft();
   const { data: clickup } = useClickUpStatus();
   const pushClickUp = usePushToClickUp();
+  const { data: trello } = useTrelloStatus();
+  const pushTrello = usePushToTrello();
 
   const [desc, setDesc] = useState('');
   const [comment, setComment] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailNote, setEmailNote] = useState('');
+  const [watcherIds, setWatcherIds] = useState<string[]>([]);
   useEffect(() => {
     if (item) {
       setDesc(item.description ?? '');
       setEmailTo(item.assignee?.email ?? '');
       setEmailNote('');
       setEmailOpen(false);
+      setWatcherIds((item.watchers ?? []).map((watcher) => watcher.user_id));
     }
   }, [item, open]);
 
@@ -118,7 +125,16 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   };
 
   const patch = (updates: Record<string, unknown>) =>
-    update.mutate({ id: item.id, previous_assigned_to: item.assigned_to, ...updates } as never);
+    update.mutate({ id: item.id, previous_assigned_to: item.assigned_to, ...updates } as never, {
+      onSuccess: () => { if (item.trello_card_id && trello?.connected) pushTrello.mutate(item.id); },
+    });
+
+  const changeWatchers = (ids: string[]) => {
+    setWatcherIds(ids);
+    setWatchers.mutate({ actionItemId: item.id, userIds: ids }, {
+      onSuccess: () => { if (item.trello_card_id && trello?.connected) pushTrello.mutate(item.id); },
+    });
+  };
 
   const commenterName = (uid: string) => {
     const c = comments?.find((x) => x.created_by === uid)?.creator;
@@ -170,6 +186,11 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-1.5 col-span-2">
+              <Label className="text-xs">CC / followers</Label>
+              <TeamWatcherPicker team={team} value={watcherIds} onChange={changeWatchers} excludeUserId={item.assigned_to} disabled={setWatchers.isPending} />
+              <p className="text-[11px] text-muted-foreground">Followers receive assignment updates and can participate in this project conversation.</p>
+            </div>
           </div>
 
           <div className="grid gap-1.5">
@@ -193,7 +214,12 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
             </div>
             <div className="flex items-end gap-2">
               <Textarea rows={1} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add a comment or update…" className="min-h-9" />
-              <Button size="icon" disabled={!comment.trim() || createComment.isPending} onClick={() => { createComment.mutate({ actionItemId: item.id, content: comment.trim() }); setComment(''); }}>
+              <Button size="icon" disabled={!comment.trim() || createComment.isPending} onClick={() => {
+                createComment.mutate({ actionItemId: item.id, content: comment.trim() }, {
+                  onSuccess: () => { if (item.trello_card_id && trello?.connected) pushTrello.mutate(item.id); },
+                });
+                setComment('');
+              }}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
@@ -232,6 +258,12 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
                 <Button variant="outline" size="sm" onClick={() => pushClickUp.mutate(item.id)} disabled={pushClickUp.isPending} className="gap-1.5">
                   {pushClickUp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                   {item.clickup_task_id ? 'Update in ClickUp' : 'Push to ClickUp'}
+                </Button>
+              )}
+              {trello?.connected && (
+                <Button variant="outline" size="sm" onClick={() => pushTrello.mutate(item.id)} disabled={pushTrello.isPending} className="gap-1.5">
+                  {pushTrello.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrelloIcon className="h-4 w-4 text-[#0C66E4]" />}
+                  {item.trello_card_id ? 'Update in Trello' : 'Send to Trello'}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5"><Printer className="h-4 w-4" />Print</Button>

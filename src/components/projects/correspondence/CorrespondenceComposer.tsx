@@ -8,7 +8,7 @@
  * before you send — what you see there is pixel-for-pixel what the PDF/email
  * produce. Take it out three ways: download a branded PDF (paginated, not
  * shrunk to fit one page), send by email (Resend, PDF attached), or send via
- * Gmail (lights up once Gmail is connected in PR3). Every save/send is logged
+ * Gmail from the user's connected mailbox. Every save/send is logged
  * to the project trail (project_emails); pass `draft` to reopen a previously-
  * saved one and keep editing the same row instead of creating a duplicate.
  */
@@ -30,6 +30,7 @@ import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails, type ProjectEmail } from "@/hooks/useProjectEmails";
 import { useCorrespondenceTemplates } from "@/hooks/useCorrespondenceTemplates";
 import { useSavedRecipients } from "@/hooks/useSavedRecipients";
+import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { buildCorrespondenceHtml, buildCoverNoteHtml } from "@/lib/correspondence/correspondenceLetter";
 import { downloadLetterPdf, letterPdfBase64 } from "@/lib/correspondence/letterPdf";
 import { RecipientsInput } from "./RecipientsInput";
@@ -49,7 +50,7 @@ const plainTextToHtml = (text: string) =>
     .map((p) => `<p>${escHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
 
 export function CorrespondenceComposer({
-  open, onOpenChange, projectId, projectName, draft,
+  open, onOpenChange, projectId, projectName, draft, replyTo,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -59,11 +60,14 @@ export function CorrespondenceComposer({
    *  populates every field from its letter_meta and continues updating the
    *  same row instead of creating a duplicate. Omit/null for a fresh letter. */
   draft?: ProjectEmail | null;
+  /** Latest message in a Gmail thread when composing a reply. */
+  replyTo?: ProjectEmail | null;
 }) {
   const sendEmail = useSendEmail();
   const emails = useProjectEmails(projectId);
   const templates = useCorrespondenceTemplates(projectId);
   const savedRecipients = useSavedRecipients();
+  const gmail = useGmailConnection();
   const docRef = useRef<HTMLDivElement>(null);
 
   const [category, setCategory] = useState("r4");
@@ -103,13 +107,24 @@ export function CorrespondenceComposer({
       // wrapping the flattened plain body for drafts saved before this shipped.
       setBodyHtml(meta.bodyHtml || (draft.body_text ? plainTextToHtml(draft.body_text) : ""));
       setSavedId(draft.id);
+    } else if (replyTo) {
+      setCategory("general");
+      setRecipient(replyTo.direction === "inbound" ? (replyTo.from_name || "") : "");
+      setRecipientOrg("");
+      setRecipients(replyTo.direction === "inbound" && replyTo.from_email ? [replyTo.from_email] : (replyTo.to_emails ?? []));
+      setCcRecipients(replyTo.cc_emails ?? []);
+      setBccRecipients([]);
+      setShowCcBcc((replyTo.cc_emails ?? []).length > 0);
+      setReferenceNo("");
+      setSubject(/^re:/i.test(replyTo.subject || "") ? (replyTo.subject || "") : `Re: ${replyTo.subject || "Project correspondence"}`);
+      setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     } else {
       setCategory("r4"); setRecipient(""); setRecipientOrg("");
       setRecipients([]); setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
       setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     }
     setMode("edit");
-  }, [open, draft]);
+  }, [open, draft, replyTo]);
 
   const letterHtml = useMemo(
     () => buildCorrespondenceHtml({
@@ -150,13 +165,24 @@ export function CorrespondenceComposer({
 
   // Create the trail row on first save; update it thereafter (avoids duplicates).
   // bcc is deliberately never persisted here — that's what makes it blind.
-  async function persist(status: "draft" | "sent", channel: string) {
+  async function persist(status: "draft" | "sent", channel: string, gmailMeta?: {
+    from?: string | null;
+    messageId?: string | null;
+    threadId?: string | null;
+    rfcMessageId?: string | null;
+    inReplyTo?: string | null;
+  }) {
     const plain = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const payload = {
       status, channel, subject: subject || "(no subject)",
       to_emails: recipients, cc_emails: ccRecipients,
       body_html: letterHtml, body_text: plain,
       letter_meta: { category, recipient, recipientOrg, referenceNo, bodyHtml, message },
+      from_email: gmailMeta?.from ?? undefined,
+      gmail_message_id: gmailMeta?.messageId ?? undefined,
+      gmail_thread_id: gmailMeta?.threadId ?? undefined,
+      rfc_message_id: gmailMeta?.rfcMessageId ?? undefined,
+      in_reply_to: gmailMeta?.inReplyTo ?? undefined,
     };
     if (savedId) {
       await emails.update.mutateAsync({ id: savedId, ...(payload as any) });
@@ -217,6 +243,54 @@ export function CorrespondenceComposer({
     } finally { setBusy(false); }
   };
 
+  const sendGmail = async () => {
+    if (!recipients.length) { toast.error("Add at least one recipient."); return; }
+    if (!subject.trim()) { toast.error("Add a subject first."); return; }
+    if (!gmail.status.data?.connected) { toast.error("Connect Gmail first."); return; }
+    setBusy(true);
+    const t = toast.loading(`Sending from ${gmail.status.data.email}…`);
+    try {
+      let attachments;
+      if (docRef.current) {
+        const { base64, size } = await letterPdfBase64(docRef.current);
+        attachments = [{ filename: filename(), contentBase64: base64, contentType: "application/pdf", size }];
+      }
+      const emailBodyHtml = message.trim()
+        ? buildCoverNoteHtml({ message, attachmentName: filename(), projectName })
+        : letterHtml;
+      const emailBodyText = message.trim() ? message : bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const { data, error } = await supabase.functions.invoke("gmail", {
+        body: {
+          action: "send",
+          projectId,
+          to: recipients,
+          cc: ccRecipients,
+          bcc: bccRecipients,
+          subject,
+          bodyHtml: emailBodyHtml,
+          bodyText: emailBodyText,
+          attachments,
+          threadId: replyTo?.gmail_thread_id ?? null,
+          inReplyTo: replyTo?.rfc_message_id ?? null,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await persist("sent", "gmail", {
+        from: data?.from ?? gmail.status.data.email,
+        messageId: data?.gmailMessageId ?? null,
+        threadId: data?.gmailThreadId ?? replyTo?.gmail_thread_id ?? null,
+        rfcMessageId: data?.rfcMessageId ?? null,
+        inReplyTo: replyTo?.rfc_message_id ?? null,
+      });
+      savedRecipients.rememberAll([...recipients, ...ccRecipients, ...bccRecipients]).catch(() => {});
+      toast.success(`Sent from ${data?.from ?? gmail.status.data.email}.`, { id: t });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Gmail send failed.", { id: t });
+    } finally { setBusy(false); }
+  };
+
   const saveTemplate = async () => {
     const name = window.prompt("Template name (e.g. \"R4 status letter\"):", `${CATEGORIES.find((c) => c.value === category)?.label} letter`);
     if (!name) return;
@@ -229,7 +303,7 @@ export function CorrespondenceComposer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{draft ? "Edit draft" : "Compose correspondence"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{draft ? "Edit draft" : replyTo ? "Reply in project thread" : "Compose correspondence"}</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
           {/* Template + category */}
@@ -343,9 +417,11 @@ export function CorrespondenceComposer({
           <Button variant="ghost" onClick={saveDraft} disabled={busy}><Save className="h-4 w-4 mr-1" /> Save draft</Button>
           <div className="flex-1" />
           <Button variant="outline" onClick={download} disabled={busy}><Download className="h-4 w-4 mr-1" /> Download PDF</Button>
-          <Button variant="outline" disabled title="Connect Gmail (next update) to send from your inbox and keep the thread"><Inbox className="h-4 w-4 mr-1" /> Send via Gmail</Button>
-          <Button onClick={sendResend} disabled={busy || sendEmail.isPending}>
-            {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />} Send email
+          <Button onClick={gmail.status.data?.connected ? sendGmail : () => gmail.connect.mutate(window.location.pathname)} disabled={busy || gmail.status.isLoading || gmail.connect.isPending} title={gmail.status.data?.connected ? `Send from ${gmail.status.data.email}` : "Connect your Gmail mailbox"}>
+            {(gmail.connect.isPending || busy) ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Inbox className="h-4 w-4 mr-1" />} {gmail.status.data?.connected ? `Send from ${gmail.status.data.email}` : "Connect Gmail"}
+          </Button>
+          <Button variant="outline" onClick={sendResend} disabled={busy || sendEmail.isPending} title="Send through the projOS transactional email service instead of your connected mailbox">
+            {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />} Send via projOS
           </Button>
         </DialogFooter>
 

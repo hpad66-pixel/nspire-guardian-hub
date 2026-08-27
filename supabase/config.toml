@@ -178,3 +178,12 @@ verify_jwt = false
 # Supabase JWT; authenticity is enforced by the signed `state`.
 [functions.gmail-oauth-callback]
 verify_jwt = false
+
+# Authenticated project-task bridge. Trello credentials remain server-side and
+# every push re-checks project access through the caller's JWT/RLS.
+[functions.trello]
+verify_jwt = true
+
+# Authenticated fan-out for assignment/comment/status mobile push notices.
+[functions.project-task-notify]
+verify_jwt = true

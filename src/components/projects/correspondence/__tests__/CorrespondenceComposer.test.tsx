@@ -11,6 +11,12 @@ vi.mock("@/hooks/useCorrespondenceTemplates", () => ({ useCorrespondenceTemplate
 vi.mock("@/hooks/useSavedRecipients", () => ({
   useSavedRecipients: () => ({ data: [], remember: { mutateAsync: vi.fn() }, rememberAll: vi.fn(), remove: { mutateAsync: vi.fn() } }),
 }));
+vi.mock("@/hooks/useGmailConnection", () => ({
+  useGmailConnection: () => ({
+    status: { data: { connected: true, email: "hardeep@apas.ai" }, isLoading: false },
+    connect: { mutate: vi.fn(), isPending: false },
+  }),
+}));
 vi.mock("@/lib/correspondence/letterPdf", () => ({ downloadLetterPdf: vi.fn(), letterPdfBase64: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() }, auth: { getUser: vi.fn() } } }));
 // The real rich-text editor mounts a TipTap instance — heavier than a render
@@ -30,7 +36,7 @@ describe("CorrespondenceComposer", () => {
     expect(text).toContain("Compose correspondence");
     expect(text).toContain("AI draft");
     expect(text).toContain("Download PDF");
-    expect(text).toContain("Send via Gmail");
-    expect(text).toContain("Send email");
+    expect(text).toContain("Send from hardeep@apas.ai");
+    expect(text).toContain("Send via projOS");
   });
 });

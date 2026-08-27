@@ -48,12 +48,14 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
   const { user } = useAuth();
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingDraft, setEditingDraft] = useState<ProjectEmail | null>(null);
+  const [replyTarget, setReplyTarget] = useState<ProjectEmail | null>(null);
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [pushing, setPushing] = useState<string | null>(null);
   const [view, setView] = useState<"threads" | "documents">("threads");
 
-  const openNewLetter = () => { setEditingDraft(null); setComposeOpen(true); };
-  const openDraft = (d: ProjectEmail) => { setEditingDraft(d); setComposeOpen(true); };
+  const openNewLetter = () => { setEditingDraft(null); setReplyTarget(null); setComposeOpen(true); };
+  const openDraft = (d: ProjectEmail) => { setEditingDraft(d); setReplyTarget(null); setComposeOpen(true); };
+  const openReply = (message: ProjectEmail) => { setEditingDraft(null); setReplyTarget(message); setComposeOpen(true); };
 
   // Toast the Gmail OAuth round-trip result and strip the ?gmail= param.
   useEffect(() => {
@@ -221,10 +223,11 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
 
       <CorrespondenceComposer
         open={composeOpen}
-        onOpenChange={(v) => { setComposeOpen(v); if (!v) setEditingDraft(null); }}
+        onOpenChange={(v) => { setComposeOpen(v); if (!v) { setEditingDraft(null); setReplyTarget(null); } }}
         projectId={projectId}
         projectName={projectName}
         draft={editingDraft}
+        replyTo={replyTarget}
       />
 
       {view === "documents" ? (
@@ -326,6 +329,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
                     onError: (e: any) => toast.error(e?.message ?? "Couldn't delete this thread."),
                   })}
                   onEditLetter={openDraft}
+                  onReply={openReply}
                   onDeleteLetter={(id) => remove.mutate(id, {
                     onSuccess: () => toast.success("Letter deleted."),
                     onError: (e: any) => toast.error(e?.message ?? "Couldn't delete this letter."),

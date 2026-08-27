@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check, Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, ArrowDownLeft, ArrowUpRight, Paperclip, Sparkles, CircleUser, ListChecks, Plus, Check, Pencil, Trash2, Reply } from "lucide-react";
 import type { ProjectEmail } from "@/hooks/useProjectEmails";
 import type { CorrespondenceThread } from "@/hooks/useCorrespondenceThreads";
 import { ReassignThreadDialog } from "./ReassignThreadDialog";
@@ -41,7 +41,7 @@ function party(e: ProjectEmail): string {
 export interface AddActionItemArgs { title: string; owner: string; due_hint: string; threadId: string | null; intelId: string | null }
 
 export function CorrespondenceThreadCard({
-  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel, onDelete, onEditLetter, onDeleteLetter,
+  projectId, messages, intel, onAddActionItem, pushingActionItem, addedTitles, topicLabel, onDelete, onEditLetter, onDeleteLetter, onReply,
 }: {
   projectId: string;
   messages: ProjectEmail[];
@@ -60,6 +60,8 @@ export function CorrespondenceThreadCard({
   onEditLetter?: (email: ProjectEmail) => void;
   /** Permanently deletes a letter composed in-app, draft or sent. */
   onDeleteLetter?: (id: string) => void;
+  /** Reply from the connected Gmail account while preserving the Gmail thread. */
+  onReply?: (latestMessage: ProjectEmail) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [fixOpen, setFixOpen] = useState(false);
@@ -141,6 +143,16 @@ export function CorrespondenceThreadCard({
                   </button>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto shrink-0">{messages.length} msg{messages.length === 1 ? "" : "s"} · {latest ? fmtDate(latest.occurred_at) : ""}</span>
+                {threadId && latest && onReply && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs gap-1 shrink-0"
+                    onClick={(event) => { event.stopPropagation(); onReply(latest); }}
+                  >
+                    <Reply className="h-3.5 w-3.5" /> Reply
+                  </Button>
+                )}
               </div>
 
               {/* AI summary */}

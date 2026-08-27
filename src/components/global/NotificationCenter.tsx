@@ -29,6 +29,7 @@ import {
   type Notification,
 } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 const notificationIcons: Record<string, React.ReactNode> = {
   mention: <AtSign className="h-4 w-4 text-blue-500" />,
@@ -66,6 +67,15 @@ export function NotificationCenter() {
         case 'work_order':
           navigate(`/work-orders?workOrderId=${notification.entity_id}`);
           break;
+        case 'action_item': {
+          const { data } = await supabase
+            .from('project_action_items')
+            .select('project_id')
+            .eq('id', notification.entity_id)
+            .maybeSingle();
+          if (data?.project_id) navigate(`/projects/${data.project_id}?tab=action-items&item=${notification.entity_id}`);
+          break;
+        }
         default:
           break;
       }

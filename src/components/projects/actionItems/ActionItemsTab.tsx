@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckSquare, MessageSquare, Search, Mail } from 'lucide-react';
+import { Plus, CheckSquare, MessageSquare, Search, Mail, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -17,6 +18,8 @@ import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import { ActionItemDetailDialog } from './ActionItemDetailDialog';
 import { WeeklyStatusReportDialog } from './WeeklyStatusReportDialog';
 import { ClickUpProjectList } from './ClickUpProjectList';
+import { TrelloProjectList } from './TrelloProjectList';
+import { QuickAssignDialog } from './QuickAssignDialog';
 import { PRIORITY_META, BUCKET_TONE, BUCKET_DOT } from './actionItemMeta';
 
 const ALL = '__all__';
@@ -30,6 +33,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const update = useUpdateActionItem(projectId);
   const { data: clickup } = useClickUpStatus();
   const pushClickUp = usePushToClickUp();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [owner, setOwner] = useState(ALL);
@@ -38,6 +42,18 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const [quickTitle, setQuickTitle] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  useEffect(() => {
+    const itemId = searchParams.get('item');
+    if (!itemId || !items?.length) return;
+    const item = items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    setSelected(item);
+    const next = new URLSearchParams(searchParams);
+    next.delete('item');
+    setSearchParams(next, { replace: true });
+  }, [items, searchParams, setSearchParams]);
 
   const scopeName = (id: string | null) => scopes?.find((s) => s.id === id)?.title ?? null;
   const ownerName = (id: string | null) => {
@@ -63,7 +79,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   const quickAdd = async () => {
     if (!quickTitle.trim() || create.isPending) return;
     try {
-      const created: any = await create.mutateAsync({ title: quickTitle.trim() });
+      const created = await create.mutateAsync({ title: quickTitle.trim() });
       setQuickTitle('');
       if (clickup?.connected && clickup.autoPush && created?.id) pushClickUp.mutate(created.id);
     } catch { /* toast surfaced by the hook; keep the text so it isn't lost */ }
@@ -84,6 +100,8 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
             <Mail className="h-4 w-4" /> Status report
           </Button>
           <ClickUpProjectList projectId={projectId} />
+          <TrelloProjectList projectId={projectId} />
+          <Button size="sm" onClick={() => setAssignOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" />Assign instruction</Button>
         </div>
       </div>
 
@@ -151,6 +169,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {item.scope_id && scopeName(item.scope_id) && <span className="px-1.5 py-0.5 rounded bg-muted">{scopeName(item.scope_id)}</span>}
                           {(item.comment_count ?? 0) > 0 && <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{item.comment_count}</span>}
+                          {(item.watchers?.length ?? 0) > 0 && <span className="inline-flex items-center gap-0.5" title={`Copied: ${item.watchers!.map((watcher) => watcher.full_name || watcher.email).join(', ')}`}><Users className="h-3 w-3" />CC {item.watchers!.length}</span>}
                         </div>
                       </div>
                       {ownerName(item.assigned_to) && <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">{ownerName(item.assigned_to)}</span>}
@@ -166,6 +185,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
 
       <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
       <WeeklyStatusReportDialog open={weeklyOpen} onOpenChange={setWeeklyOpen} projectId={projectId} projectName={projectName} items={items ?? []} />
+      <QuickAssignDialog open={assignOpen} onOpenChange={setAssignOpen} projectId={projectId} projectName={projectName} />
     </div>
   );
 }
