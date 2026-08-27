@@ -89,20 +89,27 @@ serve(async (req) => {
       .maybeSingle();
     if (!prior) return xml();
 
-    await admin.from("project_sms_messages").upsert({
-      tenant_id: prior.tenant_id,
-      project_id: prior.project_id,
-      contact_id: prior.contact_id,
-      recipient_user_id: prior.recipient_user_id,
-      direction: "inbound",
-      status: "received",
-      from_phone: from,
-      to_phone: to,
-      body,
-      provider: "twilio",
-      provider_message_id: messageSid,
-      metadata: { num_media: Number(params.get("NumMedia") ?? 0) },
-    }, { onConflict: "provider,provider_message_id" });
+    const { data: existing } = await admin.from("project_sms_messages")
+      .select("id")
+      .eq("provider", "twilio")
+      .eq("provider_message_id", messageSid)
+      .maybeSingle();
+    if (!existing) {
+      await admin.from("project_sms_messages").insert({
+        tenant_id: prior.tenant_id,
+        project_id: prior.project_id,
+        contact_id: prior.contact_id,
+        recipient_user_id: prior.recipient_user_id,
+        direction: "inbound",
+        status: "received",
+        from_phone: from,
+        to_phone: to,
+        body,
+        provider: "twilio",
+        provider_message_id: messageSid,
+        metadata: { num_media: Number(params.get("NumMedia") ?? 0) },
+      });
+    }
     return xml();
   } catch (error) {
     console.error("sms webhook error:", error);

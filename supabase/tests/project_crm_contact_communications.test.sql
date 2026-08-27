@@ -1,8 +1,9 @@
 BEGIN;
-SELECT plan(9);
+SELECT plan(10);
 
 SELECT has_table('public', 'project_sms_messages', 'project SMS audit trail exists');
 SELECT has_table('public', 'sms_connections', 'workspace SMS connection exists');
+SELECT has_column('public', 'sms_connections', 'inbound_configured', 'incoming reply configuration is tracked');
 SELECT has_column('public', 'project_sms_messages', 'contact_id', 'messages can target CRM contacts');
 SELECT has_column('public', 'project_sms_messages', 'recipient_user_id', 'messages can target internal users');
 SELECT has_column('public', 'project_sms_messages', 'provider_message_id', 'provider delivery status can be reconciled');

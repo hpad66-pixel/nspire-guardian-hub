@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquareText, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { MessageSquareText, CheckCircle2, Loader2, ShieldCheck, Copy, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,8 +46,15 @@ export function SmsSettings() {
           <>
             <div className="rounded-lg border p-4 text-sm space-y-2">
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Sender</span><span className="font-medium">{status.fromNumber || status.messagingServiceSid}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Incoming replies</span><span className={status.inboundConfigured ? 'font-medium text-emerald-700' : 'font-medium text-amber-700'}>{status.inboundConfigured ? 'Automatically routed to projects' : 'Needs webhook setup'}</span></div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" /> Credentials are stored server-side and never exposed to the browser.</div>
             </div>
+            {!status.inboundConfigured && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                <div className="flex items-start gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-medium">Outgoing texts work; connect this webhook in Twilio for replies.</p><p className="mt-0.5 text-xs">{status.inboundError}</p></div></div>
+                <div className="mt-2 flex items-center gap-2 rounded border bg-white p-2"><code className="min-w-0 flex-1 truncate text-[11px]">{status.inboundWebhookUrl}</code><Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={async () => { await navigator.clipboard.writeText(status.inboundWebhookUrl); toast.success('Webhook URL copied.'); }}><Copy className="h-3.5 w-3.5" /></Button></div>
+              </div>
+            )}
             <Button variant="outline" disabled={disconnect.isPending} onClick={async () => {
               try { await disconnect.mutateAsync(); toast.success('Project texting disconnected.'); }
               catch (error) { toast.error(error instanceof Error ? error.message : 'Could not disconnect.'); }
