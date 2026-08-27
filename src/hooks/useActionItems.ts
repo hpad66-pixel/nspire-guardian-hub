@@ -28,6 +28,8 @@ export interface ActionItem {
   scope_id: string | null;
   meeting_id: string | null;
   clickup_task_id: string | null;
+  trello_card_id?: string | null;
+  trello_card_url?: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -36,6 +38,7 @@ export interface ActionItem {
   creator?: ActionItemProfile | null;
   project?: { id: string; name: string } | null;
   comment_count?: number;
+  watchers?: ActionItemProfile[];
 }
 
 export interface ActionItemComment {
@@ -46,6 +49,11 @@ export interface ActionItemComment {
   created_at: string;
   updated_at: string;
   creator?: ActionItemProfile | null;
+}
+
+interface ActionItemWatcherRow {
+  action_item_id: string;
+  user_id: string;
 }
 
 // Monotonic per-session nonce for realtime channel names — guarantees each
@@ -72,13 +80,23 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
   if (error) throw error;
   const items = data || [];
 
+  // Generated database types are updated after the migration is applied.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const watcherTable = supabase.from('project_action_item_watchers' as never) as any;
+  const { data: watcherRows } = items.length > 0
+    ? await watcherTable
+        .select('action_item_id,user_id')
+        .in('action_item_id', items.map(i => i.id))
+    : { data: [] as Array<{ action_item_id: string; user_id: string }> };
+
   // Collect unique user IDs
   const userIds = [...new Set([
     ...items.map(i => i.assigned_to).filter(Boolean),
     ...items.map(i => i.created_by).filter(Boolean),
+    ...((watcherRows || []) as ActionItemWatcherRow[]).map((row) => row.user_id).filter(Boolean),
   ])] as string[];
 
-  let profileMap: Record<string, ActionItemProfile> = {};
+  const profileMap: Record<string, ActionItemProfile> = {};
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -88,7 +106,7 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
   }
 
   // Count comments per item
-  let commentCounts: Record<string, number> = {};
+  const commentCounts: Record<string, number> = {};
   if (items.length > 0) {
     const { data: counts } = await supabase
       .from('action_item_comments')
@@ -107,7 +125,27 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
     assignee: item.assigned_to ? profileMap[item.assigned_to] ?? null : null,
     creator: item.created_by ? profileMap[item.created_by] ?? null : null,
     comment_count: commentCounts[item.id] || 0,
+    watchers: ((watcherRows || []) as ActionItemWatcherRow[])
+      .filter((row) => row.action_item_id === item.id)
+      .map((row) => profileMap[row.user_id])
+      .filter(Boolean),
   }));
+}
+
+async function notifyActionItem(actionItemId: string, event: 'assignment' | 'comment' | 'status' | 'update') {
+  // Durable in-app notices are created by DB triggers. This authenticated edge
+  // call is best-effort immediate phone/browser push and must never block work.
+  try { await supabase.functions.invoke('project-task-notify', { body: { actionItemId, event } }); }
+  catch { /* push is additive; the task save remains authoritative */ }
+}
+
+async function autoPushActionItemToTrello(actionItemId: string) {
+  try {
+    const { data: status } = await supabase.functions.invoke('trello', { body: { action: 'status' } });
+    if (status?.connected && status?.autoPush) {
+      await supabase.functions.invoke('trello', { body: { action: 'push', actionItemId } });
+    }
+  } catch { /* Trello is an additive mirror; never roll back the project task */ }
 }
 
 async function fetchMyItems(): Promise<ActionItem[]> {
@@ -350,6 +388,9 @@ export function useCreateActionItem(projectId: string) {
       linked_entity_id?: string | null;
       scope_id?: string | null;
       meeting_id?: string | null;
+      watcher_ids?: string[];
+      /** A specialized composer may handle its own explicit Trello push. */
+      suppress_trello_auto_push?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
       // Build the row without the newer scope_id / meeting_id keys unless they're
@@ -379,23 +420,17 @@ export function useCreateActionItem(projectId: string) {
 
       if (error) throw error;
 
-      // Notify assignee if different from creator
-      if (payload.assigned_to && payload.assigned_to !== user.id) {
-        const { data: proj } = await supabase
-          .from('projects')
-          .select('name')
-          .eq('id', projectId)
-          .single();
-
-        await supabase.from('notifications').insert({
-          user_id: payload.assigned_to,
-          type: 'assignment',
-          title: "You've been assigned a task",
-          message: `${payload.title}${proj?.name ? ` — ${proj.name}` : ''}`,
-          entity_type: 'action_item',
-          entity_id: data.id,
-        });
+      const watcherIds = [...new Set((payload.watcher_ids ?? []).filter((id) => id && id !== payload.assigned_to))];
+      if (watcherIds.length) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: watcherError } = await (supabase.from('project_action_item_watchers' as never) as any).insert(
+          watcherIds.map((userId) => ({ action_item_id: data.id, user_id: userId, added_by: user.id })),
+        );
+        if (watcherError) throw watcherError;
       }
+
+      void notifyActionItem(data.id, 'assignment');
+      if (!payload.suppress_trello_auto_push) void autoPushActionItemToTrello(data.id);
 
       return data;
     },
@@ -409,7 +444,6 @@ export function useCreateActionItem(projectId: string) {
 
 export function useUpdateActionItem(projectId: string) {
   const qc = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (payload: {
@@ -443,27 +477,8 @@ export function useUpdateActionItem(projectId: string) {
 
       if (error) throw error;
 
-      // Notify new assignee
-      if (
-        updates.assigned_to &&
-        updates.assigned_to !== previous_assigned_to &&
-        updates.assigned_to !== user?.id
-      ) {
-        const { data: proj } = await supabase
-          .from('projects')
-          .select('name')
-          .eq('id', projectId)
-          .single();
-
-        await supabase.from('notifications').insert({
-          user_id: updates.assigned_to,
-          type: 'assignment',
-          title: "You've been assigned a task",
-          message: `${data.title}${proj?.name ? ` — ${proj.name}` : ''}`,
-          entity_type: 'action_item',
-          entity_id: id,
-        });
-      }
+      if (updates.assigned_to !== undefined && updates.assigned_to !== previous_assigned_to) void notifyActionItem(id, 'assignment');
+      else if (updates.status !== undefined) void notifyActionItem(id, 'status');
 
       return data;
     },
@@ -506,10 +521,41 @@ export function useCreateActionItemComment() {
         .select()
         .single();
       if (error) throw error;
+      void notifyActionItem(actionItemId, 'comment');
       return data;
     },
     onSuccess: (_data, { actionItemId }) => {
       qc.invalidateQueries({ queryKey: COMMENTS_QUERY_KEY(actionItemId) });
     },
+  });
+}
+
+export function useSetActionItemWatchers(projectId: string) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ actionItemId, userIds }: { actionItemId: string; userIds: string[] }) => {
+      if (!user) throw new Error('Not authenticated');
+      const normalized = [...new Set(userIds.filter(Boolean))];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const table = supabase.from('project_action_item_watchers' as never) as any;
+      const { data: existing, error: existingError } = await table.select('user_id').eq('action_item_id', actionItemId);
+      if (existingError) throw existingError;
+      const current = new Set<string>(((existing ?? []) as Array<{ user_id: string }>).map((row) => row.user_id));
+      const added = normalized.filter((id) => !current.has(id));
+      const removed = [...current].filter((id) => !normalized.includes(id));
+      if (removed.length) {
+        const { error } = await table.delete().eq('action_item_id', actionItemId).in('user_id', removed);
+        if (error) throw error;
+      }
+      if (added.length) {
+        const { error } = await table.insert(added.map((userId) => ({ action_item_id: actionItemId, user_id: userId, added_by: user.id })));
+        if (error) throw error;
+      }
+      if (added.length || removed.length) void notifyActionItem(actionItemId, 'update');
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ITEMS_QUERY_KEY(projectId) }),
+    onError: (error: Error) => toast.error(`Couldn't update followers: ${error.message}`),
   });
 }

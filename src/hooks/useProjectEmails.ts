@@ -11,6 +11,9 @@ export interface ProjectEmail {
   status: string;              // received | draft | sent | signed
   channel: string;             // gmail | resend | manual
   gmail_thread_id: string | null;
+  gmail_message_id: string | null;
+  rfc_message_id: string | null;
+  in_reply_to: string | null;
   topic: string | null;         // water_billing | water_meters | sewer_extension | stormwater | other
   subject: string | null;
   from_email: string | null;
@@ -48,6 +51,10 @@ export interface OutboundEmailInput {
   snippet?: string | null;
   template_id?: string | null;
   occurred_at?: string;
+  gmail_thread_id?: string | null;
+  gmail_message_id?: string | null;
+  rfc_message_id?: string | null;
+  in_reply_to?: string | null;
 }
 
 export function useProjectEmails(projectId: string | null) {
@@ -89,6 +96,10 @@ export function useProjectEmails(projectId: string | null) {
           snippet: input.snippet ?? ((input.body_text ?? "").slice(0, 200) || null),
           template_id: input.template_id ?? null,
           occurred_at: input.occurred_at ?? new Date().toISOString(),
+          gmail_thread_id: input.gmail_thread_id ?? null,
+          gmail_message_id: input.gmail_message_id ?? null,
+          rfc_message_id: input.rfc_message_id ?? null,
+          in_reply_to: input.in_reply_to ?? null,
           created_by: auth?.user?.id ?? null,
         })
         .select()

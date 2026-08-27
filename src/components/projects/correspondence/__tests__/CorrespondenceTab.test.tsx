@@ -54,10 +54,11 @@ import { CorrespondenceTab } from "../CorrespondenceTab";
 
 const email = (o: Partial<ProjectEmail>): ProjectEmail => ({
   id: "e1", project_id: "p1", direction: "inbound", status: "received", channel: "gmail",
-  gmail_thread_id: "t1", topic: "water_billing", subject: "Formal Dispute of Water and Sewer Charges", from_email: "csullivan@r4cap.com",
+  gmail_thread_id: "t1", gmail_message_id: "m1", rfc_message_id: "<m1@example.com>", in_reply_to: null,
+  topic: "water_billing", subject: "Formal Dispute of Water and Sewer Charges", from_email: "csullivan@r4cap.com",
   from_name: "Chris Sullivan", to_emails: ["hardeep@apas.ai"], cc_emails: [], snippet: "Please advise…",
-  body_html: null, has_attachments: true, labels: [], contact_id: null,
-  occurred_at: "2026-07-24T14:00:00Z", created_at: "2026-07-24T14:00:00Z", ...o,
+  body_html: null, body_text: null, letter_meta: null, has_attachments: true, labels: [], contact_id: null,
+  occurred_at: "2026-07-24T14:00:00Z", created_at: "2026-07-24T14:00:00Z", updated_at: null, ...o,
 });
 
 const thread = (o: Partial<CorrespondenceThread>): CorrespondenceThread => ({

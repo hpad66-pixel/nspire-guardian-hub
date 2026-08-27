@@ -232,9 +232,10 @@ serve(async (req) => {
     // deleted messages are tombstoned separately — without this, deleting a
     // message from the app would just free it up to be re-imported on the very
     // next sync, resurrecting exactly what the user removed.
-    const { data: seenRows } = await admin.from("project_emails").select("gmail_message_id").eq("project_id", projectId).not("gmail_message_id", "is", null);
+    const { data: seenRows } = await admin.from("project_emails").select("id,gmail_message_id,rfc_message_id").eq("project_id", projectId).not("gmail_message_id", "is", null);
     const { data: deletedRows } = await admin.from("correspondence_deleted_messages").select("gmail_message_id").eq("project_id", projectId);
     const seen = new Set([...(seenRows ?? []), ...(deletedRows ?? [])].map((r) => r.gmail_message_id as string));
+    const existingByMessageId = new Map((seenRows ?? []).map((row: any) => [String(row.gmail_message_id), row]));
 
     // Import messages of kept threads.
     const rows: Record<string, unknown>[] = [];
@@ -243,7 +244,17 @@ serve(async (req) => {
       byTopic[topic] = (byTopic[topic] ?? 0) + 1;
       if (!importTopics.includes(topic)) continue;
       for (const m of t.messages) {
-        if (!m.gmail_message_id || seen.has(m.gmail_message_id)) continue;
+        if (!m.gmail_message_id) continue;
+        if (seen.has(m.gmail_message_id)) {
+          // Backfill RFC Message-Id on correspondence imported before threaded
+          // Gmail replies shipped. This turns every legacy thread reply-safe
+          // without duplicating any timeline rows.
+          const existing = existingByMessageId.get(m.gmail_message_id);
+          if (existing?.id && !existing.rfc_message_id && m.message_id_header) {
+            await admin.from("project_emails").update({ rfc_message_id: m.message_id_header }).eq("id", existing.id);
+          }
+          continue;
+        }
         seen.add(m.gmail_message_id);
         const outbound = m.from_email === selfEmail;
         rows.push({
@@ -251,7 +262,8 @@ serve(async (req) => {
           direction: outbound ? "outbound" : "inbound",
           status: outbound ? "sent" : "received",
           channel: "gmail", topic,
-          gmail_thread_id: m.gmail_thread_id, gmail_message_id: m.gmail_message_id, in_reply_to: m.in_reply_to || null,
+          gmail_thread_id: m.gmail_thread_id, gmail_message_id: m.gmail_message_id,
+          rfc_message_id: m.message_id_header || null, in_reply_to: m.in_reply_to || null,
           subject: m.subject || null, from_email: m.from_email || null, from_name: m.from_name || null,
           to_emails: m.to_emails, cc_emails: m.cc_emails,
           snippet: m.snippet || (m.body_text ? m.body_text.slice(0, 200) : null),

@@ -51,6 +51,131 @@ export async function modifyThreadLabels(token: string, threadId: string, addLab
   if (!r.ok) throw new Error(`gmail label modify failed: ${r.status} ${await r.text()}`);
 }
 
+// ── Sending ─────────────────────────────────────────────────────────────────
+
+export interface GmailSendAttachment {
+  filename: string;
+  contentBase64: string;
+  contentType?: string;
+}
+
+export interface GmailSendInput {
+  from: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  bodyText?: string;
+  bodyHtml?: string;
+  attachments?: GmailSendAttachment[];
+  threadId?: string | null;
+  inReplyTo?: string | null;
+}
+
+export interface GmailSendResult {
+  id: string;
+  threadId: string;
+  labelIds?: string[];
+  rfcMessageId: string;
+}
+
+const utf8Base64 = (value: string): string => {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+};
+
+const b64urlEncode = (value: string): string =>
+  utf8Base64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+const headerValue = (value: string): string => {
+  // Protect the raw RFC-2822 envelope from newline/header injection. Non-ASCII
+  // values use RFC-2047 encoded words so project names remain readable.
+  const clean = value.replace(/[\r\n]+/g, " ").trim();
+  return /^[\x20-\x7E]*$/.test(clean) ? clean : `=?UTF-8?B?${utf8Base64(clean)}?=`;
+};
+
+const addressList = (addresses: string[] | undefined): string =>
+  (addresses ?? []).map((x) => x.replace(/[\r\n,]+/g, "").trim()).filter(Boolean).join(", ");
+
+const wrapBase64 = (value: string): string => value.replace(/\s+/g, "").match(/.{1,76}/g)?.join("\r\n") ?? "";
+
+function buildRawMessage(input: GmailSendInput): { raw: string; rfcMessageId: string } {
+  const mixed = `mixed_${crypto.randomUUID().replace(/-/g, "")}`;
+  const alt = `alt_${crypto.randomUUID().replace(/-/g, "")}`;
+  const rfcMessageId = `<${crypto.randomUUID()}@projos.ai>`;
+  const hasAttachments = Boolean(input.attachments?.length);
+  const headers = [
+    `From: ${addressList([input.from])}`,
+    `To: ${addressList(input.to)}`,
+    ...(input.cc?.length ? [`Cc: ${addressList(input.cc)}`] : []),
+    ...(input.bcc?.length ? [`Bcc: ${addressList(input.bcc)}`] : []),
+    `Subject: ${headerValue(input.subject)}`,
+    `Date: ${new Date().toUTCString()}`,
+    `Message-ID: ${rfcMessageId}`,
+    ...(input.inReplyTo ? [`In-Reply-To: ${headerValue(input.inReplyTo)}`, `References: ${headerValue(input.inReplyTo)}`] : []),
+    "MIME-Version: 1.0",
+    `Content-Type: ${hasAttachments ? `multipart/mixed; boundary=\"${mixed}\"` : `multipart/alternative; boundary=\"${alt}\"`}`,
+  ];
+
+  const alternative = [
+    `--${alt}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    wrapBase64(utf8Base64(input.bodyText ?? "")),
+    `--${alt}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    wrapBase64(utf8Base64(input.bodyHtml ?? input.bodyText ?? "")),
+    `--${alt}--`,
+  ].join("\r\n");
+
+  if (!hasAttachments) return { raw: [...headers, "", alternative].join("\r\n"), rfcMessageId };
+
+  const parts = [
+    ...headers,
+    "",
+    `--${mixed}`,
+    `Content-Type: multipart/alternative; boundary=\"${alt}\"`,
+    "",
+    alternative,
+  ];
+  for (const attachment of input.attachments ?? []) {
+    const safeName = headerValue(attachment.filename || "attachment");
+    parts.push(
+      `--${mixed}`,
+      `Content-Type: ${attachment.contentType || "application/octet-stream"}; name=\"${safeName}\"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename=\"${safeName}\"`,
+      "",
+      wrapBase64(attachment.contentBase64),
+    );
+  }
+  parts.push(`--${mixed}--`);
+  return { raw: parts.join("\r\n"), rfcMessageId };
+}
+
+/** Send from the connected user's own Gmail mailbox. Supplying threadId plus
+ * In-Reply-To keeps the message in the same Gmail/project conversation. */
+export async function sendMessage(token: string, input: GmailSendInput): Promise<GmailSendResult> {
+  const built = buildRawMessage(input);
+  const payload: Record<string, string> = { raw: b64urlEncode(built.raw) };
+  if (input.threadId) payload.threadId = input.threadId;
+  const r = await fetch(`${API}/messages/send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`gmail send failed: ${r.status} ${await r.text()}`);
+  const result = await r.json() as Omit<GmailSendResult, "rfcMessageId">;
+  return { ...result, rfcMessageId: built.rfcMessageId };
+}
+
 // ── MIME flattening ──────────────────────────────────────────────────────────
 const b64urlDecode = (data: string): string => {
   try {

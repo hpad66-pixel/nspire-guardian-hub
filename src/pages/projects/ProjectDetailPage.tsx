@@ -24,7 +24,7 @@ import {
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature, Mail,
-  Megaphone,
+  Megaphone, UserPlus,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -78,6 +78,8 @@ import { EnvComplianceTab } from '@/components/projects/envcompliance/EnvComplia
 import { useProjectTree } from '@/hooks/useProjectTree';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { QuickAssignDialog } from '@/components/projects/actionItems/QuickAssignDialog';
+import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
 
 const statusConfig: Record<string, { label: string; class: string; dot: string }> = {
   planning:  { label: 'Planning',   class: 'bg-blue-500/10 text-blue-600 border-blue-500/20',   dot: 'bg-blue-500' },
@@ -153,6 +155,8 @@ export default function ProjectDetailPage() {
   const [actionItemsOpen, setActionItemsOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [teamSheetOpen, setTeamSheetOpen] = useState(false);
+  const [quickAssignOpen, setQuickAssignOpen] = useState(false);
+  const [quickEmailOpen, setQuickEmailOpen] = useState(false);
   // Honor a ?tab= deep link (e.g. global search → /projects/:id?tab=rfis).
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -475,6 +479,27 @@ export default function ProjectDetailPage() {
               >
                 <MessageSquareText className="h-4 w-4" />
                 <span className="hidden md:inline">Discuss</span>
+              </Button>
+
+              {/* Tasks */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setQuickEmailOpen(true)}
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden md:inline">Email</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setQuickAssignOpen(true)}
+              >
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden md:inline">Assign</span>
               </Button>
 
               {/* Tasks */}
@@ -1304,6 +1329,8 @@ export default function ProjectDetailPage() {
         <ProjectTypeDialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen} project={project as any} />
         <ReportGeneratorDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen} projectId={id!} projectName={project.name} />
         <ProjectTeamSheet open={teamSheetOpen} onOpenChange={setTeamSheetOpen} projectId={id!} projectName={project.name} />
+        <QuickAssignDialog open={quickAssignOpen} onOpenChange={setQuickAssignOpen} projectId={id!} projectName={project.name} />
+        <CorrespondenceComposer open={quickEmailOpen} onOpenChange={setQuickEmailOpen} projectId={id!} projectName={project.name} />
 
 
         <ProjectDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} project={project} />
