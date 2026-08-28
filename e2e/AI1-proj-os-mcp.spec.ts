@@ -83,4 +83,16 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(spec).toContain("/api-v1/project-directory:");
     expect(spec).toContain("/api-v1/project-status:");
   });
+
+  test("API client mint accepts browser requests and verifies auth in-function", () => {
+    const mint = read("supabase/functions/api-key-mint/index.ts");
+    const config = read("supabase/config.toml");
+    expect(mint).toContain("authorization, x-client-info, apikey, content-type");
+    expect(mint).toContain("userClient.auth.getUser()");
+    expect(mint).toContain('userClient.rpc("can" as any');
+    expect(mint).not.toContain('admin.rpc("can" as any');
+    expect(mint).toContain('userClient.rpc("can_use_feature" as any');
+    expect(mint).not.toContain('admin.rpc("can_use_feature" as any');
+    expect(config).toContain("[functions.api-key-mint]\nverify_jwt = false");
+  });
 });

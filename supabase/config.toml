@@ -122,6 +122,12 @@ verify_jwt = false
 [functions.api-v1]
 verify_jwt = false
 
+# API client minting validates the caller with auth.getUser() inside the
+# function. Disable the legacy gateway JWT check so asymmetric user JWTs from
+# the current Supabase Auth stack reach that explicit authorization path.
+[functions.api-key-mint]
+verify_jwt = false
+
 # Webhook dispatcher — invoked by Supabase cron only
 [functions.webhook-dispatch]
 verify_jwt = false

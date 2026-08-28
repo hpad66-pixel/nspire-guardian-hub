@@ -33,7 +33,7 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json",
 };
@@ -94,7 +94,7 @@ serve(async (req) => {
   const user = userData.user;
 
   // RBAC: only api_client:manage admins may mint.
-  const { data: canMint, error: rbacErr } = await admin.rpc("can" as any, {
+  const { data: canMint, error: rbacErr } = await userClient.rpc("can" as any, {
     p_user: user.id,
     p_module: "api",
     p_action: "create",
@@ -104,7 +104,7 @@ serve(async (req) => {
   if (!canMint) return json({ error: "forbidden" }, 403);
 
   // Plan gate.
-  const { data: hasFeature } = await admin.rpc("can_use_feature" as any, {
+  const { data: hasFeature } = await userClient.rpc("can_use_feature" as any, {
     p_feature: "api",
   } as any);
   if (!hasFeature) return json({ error: "plan_locked", feature: "api" }, 402);
