@@ -30,14 +30,14 @@ import {
 import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import { useProperties } from '@/hooks/useProperties';
 import { useActiveClients } from '@/hooks/useClients';
-import { getAssignableRoles } from '@/hooks/usePermissions';
-import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useAssignableWorkspaceRoles } from '@/hooks/useUserManagement';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
 const inviteSchema = z.object({
+  full_name: z.string().trim().min(2, 'Please enter the team member’s name'),
   email: z.string().email('Please enter a valid email address'),
   role: z.enum(['admin', 'owner', 'manager', 'inspector', 'administrator', 'superintendent', 'clerk', 'project_manager', 'subcontractor', 'viewer', 'user'] as const),
   property_id: z.string().optional(),
@@ -55,14 +55,14 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
   const [isSending, setIsSending] = useState(false);
   const { data: properties } = useProperties();
   const { data: clients } = useActiveClients();
-  const { data: currentUserRole } = useCurrentUserRole();
+  const { data: assignableRoles = [] } = useAssignableWorkspaceRoles();
   const createInvitation = useCreateInvitation();
   const sendInvitation = useSendInvitation();
-  const assignableRoles = currentUserRole ? getAssignableRoles(currentUserRole) : [];
 
   const form = useForm<InviteFormData>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
+      full_name: '',
       email: '',
       role: 'user',
       property_id: 'all',
@@ -74,7 +74,8 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     setIsSending(true);
     try {
       // Create the invitation
-    const invitation = await createInvitation.mutateAsync({
+      const invitation = await createInvitation.mutateAsync({
+        full_name: data.full_name,
         email: data.email,
         role: data.role,
         property_id: data.property_id === 'all' ? undefined : data.property_id || undefined,
@@ -87,8 +88,8 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
       toast.success(`Invitation sent to ${data.email}`);
       form.reset();
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send invitation');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send invitation');
     } finally {
       setIsSending(false);
     }
@@ -138,6 +139,25 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Jordan Smith"
+                      autoComplete="name"
+                      disabled={isSending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
@@ -150,6 +170,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                         type="email"
                         placeholder="colleague@company.com"
                         className="pl-10"
+                        autoComplete="email"
                         disabled={isSending}
                       />
                     </div>

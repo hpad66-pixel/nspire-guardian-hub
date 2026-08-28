@@ -35,6 +35,7 @@ export default function AcceptInvitePage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [requiresEmailConfirmation, setRequiresEmailConfirmation] = useState(false);
 
   const { data: invitation, isLoading, error } = useInvitationByToken(token);
 
@@ -47,19 +48,25 @@ export default function AcceptInvitePage() {
     },
   });
 
+  useEffect(() => {
+    if (invitation?.full_name) {
+      form.setValue('fullName', invitation.full_name);
+    }
+  }, [form, invitation?.full_name]);
+
   // Check if invitation is valid
   const isExpired = invitation ? new Date(invitation.expires_at) < new Date() : false;
   const isAlreadyAccepted = !!invitation?.accepted_at;
-  const isValid = invitation && !isExpired && !isAlreadyAccepted;
+  const isRevoked = !!invitation?.revoked_at;
+  const isValid = invitation && !isExpired && !isAlreadyAccepted && !isRevoked;
 
   const onSubmit = async (data: AcceptFormData) => {
     if (!invitation || !token) return;
 
     setIsSubmitting(true);
     try {
-      // Create the user account
-      // Pass the inviter's workspace_id so handle_new_user JOINS that workspace
-      // as a member (role 'user') instead of provisioning a new company.
+      // The database trigger validates this single-use invitation token against
+      // the email, workspace, expiry, revocation state, and assigned role.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password: data.password,
@@ -67,7 +74,7 @@ export default function AcceptInvitePage() {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: data.fullName,
-            ...((invitation as any).workspace_id ? { workspace_id: (invitation as any).workspace_id } : {}),
+            invitation_token: token,
           },
         },
       });
@@ -75,51 +82,22 @@ export default function AcceptInvitePage() {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error('Failed to create account');
 
-      // Mark invitation as accepted
-      const { error: updateError } = await supabase
-        .from('user_invitations')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invitation.id);
-
-      if (updateError) {
-        console.error('Failed to mark invitation as accepted:', updateError);
-      }
-
-      // Assign the inviter's workspace to the new user's profile
-      const profileUpdates: Record<string, unknown> = {};
-
-      if ((invitation as any).workspace_id) {
-        profileUpdates.workspace_id = (invitation as any).workspace_id;
-      }
-
-      // Also link to organization if invitation had one
-      if (invitation.client_id) {
-        profileUpdates.client_id = invitation.client_id;
-      }
-
-      if (authData.user && Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update(profileUpdates as any)
-          .eq('user_id', authData.user.id);
-        if (profileError) {
-          console.error('Failed to update user profile:', profileError);
-        }
-      }
-
+      setRequiresEmailConfirmation(!authData.session);
       setIsAccepted(true);
-      toast.success('Account created successfully!');
+      toast.success(authData.session ? 'Account activated!' : 'Account created. Confirm your email to sign in.');
 
-      // Redirect after a short delay
+      // Confirmed-email installations return a session immediately; otherwise
+      // the user completes the normal email confirmation before signing in.
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } catch (error: any) {
-      if (error.message?.includes('already registered')) {
+        navigate(authData.session ? '/dashboard' : '/auth');
+      }, 3000);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      if (message.includes('already registered')) {
         toast.error('This email is already registered. Please log in instead.');
         navigate('/auth');
       } else {
-        toast.error(error.message || 'Failed to create account');
+        toast.error(message);
       }
     } finally {
       setIsSubmitting(false);
@@ -144,7 +122,7 @@ export default function AcceptInvitePage() {
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl">Glorieta Gardens Apartments</CardTitle>
+            <CardTitle className="text-2xl">Proj OS</CardTitle>
             <CardDescription>
               {isAccepted 
                 ? 'Welcome aboard!'
@@ -164,9 +142,13 @@ export default function AcceptInvitePage() {
                 </div>
               </div>
               <div>
-                <p className="font-medium">Account Created!</p>
+                <p className="font-medium">
+                  {requiresEmailConfirmation ? 'Confirm your email' : 'Account activated'}
+                </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Redirecting you to your workspace...
+                  {requiresEmailConfirmation
+                    ? `We sent a confirmation link to ${invitation?.email}. Redirecting you to sign in…`
+                    : 'Redirecting you to your workspace…'}
                 </p>
               </div>
             </div>
@@ -203,6 +185,21 @@ export default function AcceptInvitePage() {
               <Button variant="outline" onClick={() => navigate('/auth')}>
                 Go to Login
               </Button>
+            </div>
+          ) : isRevoked ? (
+            <div className="text-center py-8 space-y-4">
+              <div className="flex justify-center">
+                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">Invitation Revoked</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This invitation is no longer active. Please ask your workspace administrator for a new one.
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/auth')}>Go to Login</Button>
             </div>
           ) : isAlreadyAccepted ? (
             <div className="text-center py-8 space-y-4">
