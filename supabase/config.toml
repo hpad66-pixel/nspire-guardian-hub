@@ -60,6 +60,12 @@ verify_jwt = true
 [functions.send-invitation]
 verify_jwt = false
 
+# Authenticated workspace-owner/admin user activation controls. The function
+# verifies asymmetric Supabase JWTs with auth.getUser() and then enforces the
+# tenant hierarchy through can_administer_workspace_user().
+[functions.manage-workspace-user]
+verify_jwt = false
+
 [functions.send-email]
 verify_jwt = false
 

@@ -54,7 +54,7 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
         mailing_zip: null,
       });
 
-      // Send invitations — include workspace_id so invited users inherit this workspace
+      // Invitations are bound server-side to the caller's active workspace.
       if (data.invitations && data.invitations.length > 0) {
         for (const invite of data.invitations) {
           try {
@@ -62,7 +62,6 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
               email: invite.email,
               role: invite.role,
               property_id: property.id,
-              workspace_id: data.workspaceId ?? undefined,
             });
             await sendInvitation.mutateAsync(invitation.id);
           } catch (err) {
@@ -76,8 +75,8 @@ export function CompleteStep({ data, onComplete }: CompleteStepProps) {
 
       setIsDone(true);
       toast.success('Setup complete!');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to complete setup');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to complete setup');
       setIsCreating(false);
     }
   };

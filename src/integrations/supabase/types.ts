@@ -85,6 +85,54 @@ export type Database = {
         }
         Relationships: []
       }
+      enterprise_user_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          details: Json
+          id: string
+          invitation_id: string | null
+          target_user_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          invitation_id?: string | null
+          target_user_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          invitation_id?: string | null
+          target_user_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enterprise_user_audit_log_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "user_invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enterprise_user_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_skill_prompts: {
         Row: {
           created_at: string
@@ -13140,41 +13188,56 @@ export type Database = {
       user_invitations: {
         Row: {
           accepted_at: string | null
+          accepted_by: string | null
           client_id: string | null
           created_at: string
           email: string
           expires_at: string
+          full_name: string | null
           id: string
           invited_by: string
+          last_sent_at: string | null
           property_id: string | null
+          revoked_at: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
+          updated_at: string
           workspace_id: string | null
         }
         Insert: {
           accepted_at?: string | null
+          accepted_by?: string | null
           client_id?: string | null
           created_at?: string
           email: string
           expires_at: string
+          full_name?: string | null
           id?: string
           invited_by: string
+          last_sent_at?: string | null
           property_id?: string | null
+          revoked_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token: string
+          updated_at?: string
           workspace_id?: string | null
         }
         Update: {
           accepted_at?: string | null
+          accepted_by?: string | null
           client_id?: string | null
           created_at?: string
           email?: string
           expires_at?: string
+          full_name?: string | null
           id?: string
           invited_by?: string
+          last_sent_at?: string | null
           property_id?: string | null
+          revoked_at?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token?: string
+          updated_at?: string
           workspace_id?: string | null
         }
         Relationships: [
@@ -14654,6 +14717,54 @@ export type Database = {
       }
     }
     Functions: {
+      assignable_workspace_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      assign_workspace_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_target_user_id: string
+        }
+        Returns: undefined
+      }
+      can_administer_workspace_user: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
+      can_invite_workspace_role: {
+        Args: { _target_role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      create_workspace_invitation: {
+        Args: {
+          p_client_id?: string
+          p_email: string
+          p_full_name?: string
+          p_property_id?: string
+          p_role?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: Database["public"]["Tables"]["user_invitations"]["Row"]
+      }
+      remove_workspace_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_target_user_id: string
+        }
+        Returns: undefined
+      }
+      revoke_workspace_invitation: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
+      workspace_admin_level: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: number
+      }
+      workspace_for_user: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       advance_workflow: {
         Args: {
           p_action: string

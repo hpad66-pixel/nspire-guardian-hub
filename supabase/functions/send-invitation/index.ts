@@ -1,153 +1,136 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const APP_ORIGIN = Deno.env.get("APP_ORIGIN");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const APP_ORIGIN = (Deno.env.get("APP_ORIGIN") ?? "").replace(/\/$/, "");
 
-const corsHeaders = {
+const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface InvitationRequest {
-  invitationId: string;
-}
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
 
-const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const escapeHtml = (value: unknown) => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#039;");
 
-  try {
-    const requestOrigin = req.headers.get("origin");
-    const referer = req.headers.get("referer");
-    const refererOrigin = referer ? new URL(referer).origin : null;
-    const appOrigin = (APP_ORIGIN || requestOrigin || refererOrigin || "").replace(/\/$/, "");
-
-    if (!appOrigin) {
-      throw new Error("APP_ORIGIN is not configured and no request origin was provided");
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { invitationId }: InvitationRequest = await req.json();
-
-    if (!invitationId) {
-      throw new Error("Missing invitationId");
-    }
-
-    // Fetch the invitation
-    const { data: invitation, error: fetchError } = await supabase
-      .from("user_invitations")
-      .select("*")
-      .eq("id", invitationId)
-      .single();
-
-    if (fetchError || !invitation) {
-      throw new Error("Invitation not found");
-    }
-
-    // Get inviter's profile for the name
-    const { data: inviterProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("user_id", invitation.invited_by)
-      .single();
-
-    const inviterName = inviterProfile?.full_name || "A team member";
-
-    const acceptUrl = `${appOrigin}/accept-invite/${invitation.token}`;
-
-    const roleLabels: Record<string, string> = {
-      admin: "Administrator",
-      manager: "Property Manager",
-      inspector: "Inspector",
-      user: "Team Member",
-    };
-
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 40px;">
-            <div style="display: inline-block; padding: 16px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px;">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </div>
-            <h1 style="margin: 16px 0 8px; font-size: 24px; font-weight: 600;">Glorieta Gardens Apartments</h1>
-          </div>
-
-          <div style="background: #f8fafc; border-radius: 12px; padding: 32px; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600;">You're invited!</h2>
-            <p style="margin: 0 0 16px; color: #64748b;">
-              ${inviterName} has invited you to join Glorieta Gardens Apartments as a <strong>${roleLabels[invitation.role] || invitation.role}</strong>.
-            </p>
-            <p style="margin: 0 0 24px; color: #64748b;">
-              Click the button below to create your account and get started.
-            </p>
-            <a href="${acceptUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
-              Accept Invitation
-            </a>
-          </div>
-
-          <div style="text-align: center; color: #94a3b8; font-size: 14px;">
-            <p>This invitation will expire in 7 days.</p>
-            <p style="margin-top: 16px;">
-              If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    // Send the invitation email using Resend API
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Glorieta Gardens <hardeep@apas.ai>",
-        to: [invitation.email],
-        subject: `${inviterName} invited you to Glorieta Gardens Apartments`,
-        html: emailHtml,
-      }),
-    });
-
-    if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      console.error("Resend API error:", errorData);
-      throw new Error(`Failed to send email: ${JSON.stringify(errorData)}`);
-    }
-
-    const emailResult = await emailResponse.json();
-    console.log("Invitation email sent:", emailResult);
-
-    return new Response(JSON.stringify({ success: true, emailResult }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
-  } catch (error: any) {
-    console.error("Error sending invitation:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
-  }
+const roleLabels: Record<string, string> = {
+  admin: "Workspace Administrator",
+  owner: "Owner",
+  manager: "Property Manager",
+  administrator: "Administrator",
+  project_manager: "Project Manager",
+  superintendent: "Superintendent",
+  inspector: "Inspector",
+  clerk: "Clerk",
+  subcontractor: "Subcontractor",
+  viewer: "Viewer",
+  user: "Team Member",
 };
 
-serve(handler);
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+
+  const authHeader = req.headers.get("authorization") ?? "";
+  const jwt = authHeader.replace(/^Bearer\s+/i, "");
+  if (!jwt) return json({ error: "Authentication required" }, 401);
+
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  });
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { data: authData, error: authError } = await userClient.auth.getUser();
+  if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
+
+  const body = await req.json().catch(() => ({}));
+  const invitationId = String(body.invitationId ?? "");
+  if (!invitationId) return json({ error: "invitationId is required" }, 400);
+
+  // Read as the caller so invitation RLS enforces workspace isolation.
+  const { data: invitation, error: invitationError } = await userClient
+    .from("user_invitations")
+    .select("*")
+    .eq("id", invitationId)
+    .maybeSingle();
+  if (invitationError || !invitation) return json({ error: "Invitation not found" }, 404);
+
+  const { data: canAssign } = await userClient.rpc("can_invite_workspace_role", {
+    _target_role: invitation.role,
+  });
+  if (!canAssign) return json({ error: "You cannot send this invitation" }, 403);
+  if (invitation.accepted_at) return json({ error: "Invitation was already accepted" }, 409);
+  if (invitation.revoked_at) return json({ error: "Invitation was revoked" }, 409);
+  if (new Date(invitation.expires_at).getTime() <= Date.now()) {
+    return json({ error: "Invitation has expired. Create a new invitation." }, 410);
+  }
+  if (!RESEND_API_KEY) return json({ error: "Invitation email is not configured" }, 500);
+
+  const requestOrigin = req.headers.get("origin")?.replace(/\/$/, "") ?? "";
+  const appOrigin = APP_ORIGIN || requestOrigin;
+  if (!appOrigin || (!APP_ORIGIN && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(appOrigin))) {
+    return json({ error: "APP_ORIGIN must be configured" }, 500);
+  }
+
+  const [{ data: inviter }, { data: workspace }] = await Promise.all([
+    admin.from("profiles").select("full_name").eq("user_id", invitation.invited_by).maybeSingle(),
+    admin.from("workspaces").select("name").eq("id", invitation.workspace_id).maybeSingle(),
+  ]);
+
+  const inviterName = escapeHtml(inviter?.full_name || "A workspace administrator");
+  const workspaceName = escapeHtml(workspace?.name || "your Proj OS workspace");
+  const recipientName = invitation.full_name ? ` ${escapeHtml(invitation.full_name)}` : "";
+  const roleName = escapeHtml(roleLabels[invitation.role] || invitation.role);
+  const acceptUrl = `${appOrigin}/accept-invite/${encodeURIComponent(invitation.token)}`;
+
+  const emailHtml = `<!doctype html>
+  <html><body style="font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#172033;line-height:1.6;margin:0;background:#f6f8fb">
+    <div style="max-width:600px;margin:0 auto;padding:32px 20px">
+      <div style="font-weight:700;font-size:22px;margin-bottom:24px">Proj OS</div>
+      <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:32px">
+        <h1 style="font-size:24px;margin:0 0 16px">You’re invited to ${workspaceName}</h1>
+        <p>Hello${recipientName},</p>
+        <p>${inviterName} invited you to join <strong>${workspaceName}</strong> as <strong>${roleName}</strong>.</p>
+        <p>Use the button below to create your password and activate your account.</p>
+        <p style="margin:28px 0"><a href="${acceptUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">Activate account</a></p>
+        <p style="font-size:13px;color:#687386">This single-use invitation expires in 7 days. If you did not expect it, you can ignore this email.</p>
+      </div>
+    </div>
+  </body></html>`;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+    body: JSON.stringify({
+      from: "Proj OS <admin@apas.ai>",
+      to: [invitation.email],
+      subject: `You’re invited to ${workspace?.name || "Proj OS"}`,
+      html: emailHtml,
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return json({ error: "Invitation email could not be sent" }, 502);
+
+  await admin.from("user_invitations").update({
+    last_sent_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("id", invitation.id).eq("workspace_id", invitation.workspace_id);
+
+  return json({ success: true, messageId: result.id ?? null });
+});

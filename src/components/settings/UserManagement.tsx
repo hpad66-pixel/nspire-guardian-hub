@@ -46,17 +46,29 @@ import {
   ShieldAlert,
   User,
   Plus,
-  Trash2,
   Mail,
   Crown,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  RefreshCw,
+  XCircle,
+  UserPlus,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useUsers, useAddUserRole, useRemoveUserRole, type UserWithRole } from '@/hooks/useUserManagement';
-import { useUserPermissions, getAssignableRoles, canRoleManage } from '@/hooks/usePermissions';
+import {
+  useUsers,
+  useAddUserRole,
+  useRemoveUserRole,
+  useAssignableWorkspaceRoles,
+  useSetWorkspaceUserStatus,
+  type UserWithRole,
+} from '@/hooks/useUserManagement';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { InviteUserDialog } from '@/components/people/InviteUserDialog';
-import { UserPlus } from 'lucide-react';
+import { useDeleteInvitation, useInvitations, useSendInvitation } from '@/hooks/useInvitations';
+import { useAuth } from '@/hooks/useAuth';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -89,25 +101,39 @@ const allRoles: AppRole[] = [
   'user',
 ];
 
+const isAccountActive = (status: string | null) => !status || status === 'active';
+
 export function UserManagement() {
   const { data: users, isLoading } = useUsers();
-  const { currentRole, isAdmin, isOwner, isPropertyManager } = useUserPermissions();
+  const { user: currentUser } = useAuth();
+  const { data: assignableRoles = [] } = useAssignableWorkspaceRoles();
+  const { data: invitations = [] } = useInvitations();
   const addRoleMutation = useAddUserRole();
   const removeRoleMutation = useRemoveUserRole();
+  const setStatusMutation = useSetWorkspaceUserStatus();
+  const resendInvitation = useSendInvitation();
+  const revokeInvitation = useDeleteInvitation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<AppRole>('user');
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<UserWithRole | null>(null);
+  const [statusReason, setStatusReason] = useState('');
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const sendEmail = useSendEmail();
 
-  const canManageRoles = isAdmin || isOwner || isPropertyManager;
-  const assignableRoles = currentRole ? getAssignableRoles(currentRole) : [];
+  const canManageRoles = assignableRoles.length > 0;
+  const pendingInvitations = invitations.filter(invitation =>
+    !invitation.accepted_at &&
+    !invitation.revoked_at &&
+    new Date(invitation.expires_at) > new Date()
+  );
 
   const filteredUsers = users?.filter(user => {
     const search = searchQuery.toLowerCase();
@@ -131,6 +157,21 @@ export function UserManagement() {
       return; // Keep at least one role
     }
     removeRoleMutation.mutate({ userId: user.user_id, role });
+  };
+
+  const openStatusDialog = (target: UserWithRole) => {
+    setStatusTarget(target);
+    setStatusReason('');
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusChange = () => {
+    if (!statusTarget) return;
+    const status = isAccountActive(statusTarget.status) ? 'deactivated' : 'active';
+    setStatusMutation.mutate(
+      { userId: statusTarget.user_id, status, reason: statusReason || undefined },
+      { onSuccess: () => setStatusDialogOpen(false) },
+    );
   };
 
   const handleMakeSuperAdmin = (user: UserWithRole) => {
@@ -172,24 +213,6 @@ export function UserManagement() {
       return email.slice(0, 2).toUpperCase();
     }
     return 'U';
-  };
-
-  const getHighestRole = (roles: { role: AppRole }[]): AppRole => {
-    const rolePriority: Record<AppRole, number> = { 
-      admin: 9,
-      owner: 8,
-      manager: 7,
-      inspector: 6,
-      administrator: 5,
-      superintendent: 4,
-      clerk: 3,
-      project_manager: 2,
-      subcontractor: 2,
-      viewer: 1,
-      user: 1,
-    };
-    const sorted = [...roles].sort((a, b) => (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0));
-    return sorted[0]?.role || 'user';
   };
 
   if (isLoading) {
@@ -252,6 +275,7 @@ export function UserManagement() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Roles</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="w-[140px] text-right">Actions</TableHead>
               </TableRow>
@@ -259,15 +283,12 @@ export function UserManagement() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     No users found
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => {
-                  const highestRole = getHighestRole(user.roles);
-                  const RoleIcon = roleConfig[highestRole]?.icon || User;
-
                   return (
                     <TableRow key={user.id}>
                       <TableCell>
@@ -295,7 +316,7 @@ export function UserManagement() {
                                 className={`${config?.color} gap-1`}
                               >
                                 {config?.label || r.role}
-                        {canManageRoles && user.roles.length > 1 && currentRole && canRoleManage(currentRole, r.role) && (
+                        {canManageRoles && user.roles.length > 1 && assignableRoles.includes(r.role) && user.user_id !== currentUser?.id && (
                           <button
                             onClick={() => handleRemoveRole(user, r.role)}
                             className="ml-1 hover:text-destructive"
@@ -308,6 +329,11 @@ export function UserManagement() {
                             );
                           })}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={isAccountActive(user.status) ? 'secondary' : 'destructive'}>
+                          {isAccountActive(user.status) ? 'Active' : 'Deactivated'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(user.created_at), 'MMM d, yyyy')}
@@ -340,26 +366,40 @@ export function UserManagement() {
                                   <Mail className="h-4 w-4 mr-2" />
                                   Send Email
                                 </DropdownMenuItem>
-                                {assignableRoles.includes('admin' as AppRole) && (
+                                {assignableRoles.includes('admin' as AppRole) && user.user_id !== currentUser?.id && (
                                   <DropdownMenuItem
                                     disabled={user.roles.some(r => r.role === 'admin')}
                                     onClick={() => handleMakeSuperAdmin(user)}
                                   >
                                     <Crown className="h-4 w-4 mr-2" />
                                     {user.roles.some(r => r.role === 'admin')
-                                      ? 'Already Super Admin'
-                                      : 'Make Super Admin'}
+                                      ? 'Already Workspace Admin'
+                                      : 'Make Workspace Admin'}
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
+                                  disabled={user.user_id === currentUser?.id || assignableRoles.every(role => user.roles.some(r => r.role === role))}
                                   onClick={() => {
                                     setSelectedUser(user);
-                                    setNewRole((assignableRoles[0] || 'user') as AppRole);
+                                    setNewRole((assignableRoles.find(role => !user.roles.some(r => r.role === role)) || 'user') as AppRole);
                                     setRoleDialogOpen(true);
                                   }}
                                 >
                                   <Plus className="h-4 w-4 mr-2" />
                                   Add Role
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  disabled={user.user_id === currentUser?.id}
+                                  className={isAccountActive(user.status) ? 'text-destructive focus:text-destructive' : ''}
+                                  onClick={() => openStatusDialog(user)}
+                                >
+                                  {isAccountActive(user.status) ? (
+                                    <Ban className="h-4 w-4 mr-2" />
+                                  ) : (
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  )}
+                                  {isAccountActive(user.status) ? 'Deactivate Account' : 'Reactivate Account'}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -373,6 +413,62 @@ export function UserManagement() {
             </TableBody>
           </Table>
         </div>
+
+        {canManageRoles && (
+          <div className="mt-6 pt-6 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Clock3 className="h-4 w-4" />
+                  Pending Invitations
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Accounts waiting for the recipient to choose a password and sign in.
+                </p>
+              </div>
+              <Badge variant="outline">{pendingInvitations.length} pending</Badge>
+            </div>
+            {pendingInvitations.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground text-center">
+                No pending invitations.
+              </div>
+            ) : (
+              <div className="border rounded-lg divide-y">
+                {pendingInvitations.map(invitation => (
+                  <div key={invitation.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{invitation.full_name || invitation.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {invitation.email} · {roleConfig[invitation.role]?.label || invitation.role} · Expires {format(new Date(invitation.expires_at), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={resendInvitation.isPending}
+                        onClick={() => resendInvitation.mutate(invitation.id)}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                        Resend
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        disabled={revokeInvitation.isPending}
+                        onClick={() => revokeInvitation.mutate(invitation.id)}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Revoke
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Role Legend */}
         <div className="mt-6 pt-6 border-t">
@@ -446,6 +542,44 @@ export function UserManagement() {
             </Button>
             <Button onClick={handleAddRole} disabled={addRoleMutation.isPending}>
               {addRoleMutation.isPending ? 'Adding...' : 'Add Role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isAccountActive(statusTarget?.status ?? null) ? 'Deactivate account' : 'Reactivate account'}
+            </DialogTitle>
+            <DialogDescription>
+              {isAccountActive(statusTarget?.status ?? null)
+                ? `${statusTarget?.full_name || statusTarget?.email} will be signed out and blocked from this workspace. Their records and audit history are retained.`
+                : `${statusTarget?.full_name || statusTarget?.email} will be able to sign in and access this workspace again.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="status-reason">Reason (optional)</Label>
+            <Textarea
+              id="status-reason"
+              value={statusReason}
+              onChange={(event) => setStatusReason(event.target.value)}
+              placeholder="Add a note for the audit log"
+              maxLength={500}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant={isAccountActive(statusTarget?.status ?? null) ? 'destructive' : 'default'}
+              disabled={setStatusMutation.isPending}
+              onClick={handleStatusChange}
+            >
+              {setStatusMutation.isPending
+                ? 'Saving…'
+                : isAccountActive(statusTarget?.status ?? null) ? 'Deactivate' : 'Reactivate'}
             </Button>
           </DialogFooter>
         </DialogContent>

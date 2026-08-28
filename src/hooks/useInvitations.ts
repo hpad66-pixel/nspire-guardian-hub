@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
-import { requireTenantId } from '@/lib/tenant';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -16,7 +15,13 @@ export interface Invitation {
   token: string;
   expires_at: string;
   accepted_at: string | null;
+  accepted_by: string | null;
   created_at: string;
+  full_name: string | null;
+  last_sent_at: string | null;
+  revoked_at: string | null;
+  updated_at: string;
+  workspace_id: string | null;
 }
 
 export function useInvitations() {
@@ -57,75 +62,17 @@ export function useCreateInvitation() {
     mutationFn: async (invitation: {
       email: string;
       role: AppRole;
+      full_name?: string;
       property_id?: string;
       client_id?: string;
-      workspace_id?: string;
     }) => {
-      // Generate a secure token
-      const token = crypto.randomUUID() + '-' + crypto.randomUUID();
-      
-      // Set expiration to 7 days from now
-      const expires_at = new Date();
-      expires_at.setDate(expires_at.getDate() + 7);
-
-      // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Invitations are workspace-scoped by RLS. Prefer the JWT tenant claim,
-      // which is the app's current source of truth, and fall back to the
-      // legacy profiles.workspace_id link for older sessions.
-      let workspaceId = invitation.workspace_id ?? null;
-      if (!workspaceId) {
-        try {
-          workspaceId = await requireTenantId();
-        } catch {
-          const { data: membership, error: membershipError } = await supabase
-            .from('portal_memberships')
-            .select('tenant_id, portal_kind')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .order('portal_kind', { ascending: true });
-
-          if (membershipError) throw membershipError;
-
-          workspaceId =
-            membership?.find((row) => row.portal_kind === 'main')?.tenant_id ??
-            membership?.find((row) => row.portal_kind === 'owner')?.tenant_id ??
-            membership?.find((row) => row.portal_kind === 'sub')?.tenant_id ??
-            null;
-
-          if (!workspaceId) {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('workspace_id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (profileError) throw profileError;
-            workspaceId = profile?.workspace_id ?? null;
-          }
-        }
-      }
-
-      if (!workspaceId) {
-        throw new Error('No active workspace found for your account');
-      }
-
-      const { data, error } = await supabase
-        .from('user_invitations')
-        .insert({
-          email: invitation.email,
-          role: invitation.role,
-          property_id: invitation.property_id || null,
-          client_id: invitation.client_id || null,
-          workspace_id: workspaceId,
-          invited_by: user.id,
-          token,
-          expires_at: expires_at.toISOString(),
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_workspace_invitation', {
+        p_email: invitation.email,
+        p_role: invitation.role,
+        p_full_name: invitation.full_name || undefined,
+        p_property_id: invitation.property_id || undefined,
+        p_client_id: invitation.client_id || undefined,
+      });
 
       if (error) throw error;
       return data as Invitation;
@@ -163,16 +110,15 @@ export function useDeleteInvitation() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('user_invitations')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.rpc('revoke_workspace_invitation', {
+        p_invitation_id: id,
+      });
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invitations'] });
-      toast.success('Invitation deleted');
+      toast.success('Invitation revoked');
     },
   });
 }

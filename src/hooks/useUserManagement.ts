@@ -42,6 +42,17 @@ export function useUsers() {
   });
 }
 
+export function useAssignableWorkspaceRoles() {
+  return useQuery({
+    queryKey: ['assignable-workspace-roles'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('assignable_workspace_roles');
+      if (error) throw error;
+      return (data || []) as AppRole[];
+    },
+  });
+}
+
 export function useUserRoles(userId: string | null) {
   return useQuery({
     queryKey: ['user-roles', userId],
@@ -105,11 +116,10 @@ export function useAddUserRole() {
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('assign_workspace_user_role', {
+        p_target_user_id: userId,
+        p_role: role,
+      });
 
       if (error) throw error;
       return data;
@@ -134,11 +144,10 @@ export function useRemoveUserRole() {
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', role);
+      const { error } = await supabase.rpc('remove_workspace_user_role', {
+        p_target_user_id: userId,
+        p_role: role,
+      });
 
       if (error) throw error;
     },
@@ -149,6 +158,37 @@ export function useRemoveUserRole() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove role: ${error.message}`);
+    },
+  });
+}
+
+export function useSetWorkspaceUserStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      status,
+      reason,
+    }: {
+      userId: string;
+      status: 'active' | 'deactivated';
+      reason?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('manage-workspace-user', {
+        body: { action: 'set_status', userId, status, reason },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['user-status-history'] });
+      toast.success(variables.status === 'active' ? 'User reactivated' : 'User deactivated');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update account: ${error.message}`);
     },
   });
 }
