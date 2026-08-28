@@ -94,7 +94,7 @@ serve(async (req) => {
   const user = userData.user;
 
   // RBAC: only api_client:manage admins may mint.
-  const { data: canMint, error: rbacErr } = await admin.rpc("can" as any, {
+  const { data: canMint, error: rbacErr } = await userClient.rpc("can" as any, {
     p_user: user.id,
     p_module: "api",
     p_action: "create",

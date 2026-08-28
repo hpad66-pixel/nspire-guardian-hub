@@ -89,6 +89,8 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     const config = read("supabase/config.toml");
     expect(mint).toContain("authorization, x-client-info, apikey, content-type");
     expect(mint).toContain("userClient.auth.getUser()");
+    expect(mint).toContain('userClient.rpc("can" as any');
+    expect(mint).not.toContain('admin.rpc("can" as any');
     expect(config).toContain("[functions.api-key-mint]\nverify_jwt = false");
   });
 });
