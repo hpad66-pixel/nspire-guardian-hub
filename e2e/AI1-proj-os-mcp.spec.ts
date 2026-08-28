@@ -19,10 +19,10 @@ function mcpRequest(method: string, params: unknown = {}) {
   });
 }
 
-const env = { PROGE_OS_MCP_SHARED_SECRET: "test-secret" };
+const env = { PROJ_OS_MCP_SHARED_SECRET: "test-secret" };
 
-test.describe("AI1 Proge OS agent API and MCP", () => {
-  test("MCP initializes as Proge OS", async () => {
+test.describe("AI1 Proj OS agent API and MCP", () => {
+  test("MCP initializes as Proj OS", async () => {
     const response = await onRequest({
       request: mcpRequest("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } }),
       env,
@@ -32,7 +32,7 @@ test.describe("AI1 Proge OS agent API and MCP", () => {
       result: { protocolVersion: string; serverInfo: { name: string } };
     };
     expect(body.result.protocolVersion).toBe("2025-11-25");
-    expect(body.result.serverInfo.name).toBe("proge-os");
+    expect(body.result.serverInfo.name).toBe("proj-os");
   });
 
   test("MCP publishes the initial CRM and project tools", async () => {
@@ -40,12 +40,12 @@ test.describe("AI1 Proge OS agent API and MCP", () => {
     const body = await response.json() as { result: { tools: Array<{ name: string }> } };
     const names = body.result.tools.map((tool) => tool.name);
     expect(names).toEqual(expect.arrayContaining([
-      "proge_os_search_projects",
-      "proge_os_search_contacts",
-      "proge_os_create_contact",
-      "proge_os_link_contact_to_project",
-      "proge_os_create_project_task",
-      "proge_os_get_project_summary",
+      "proj_os_search_projects",
+      "proj_os_search_contacts",
+      "proj_os_create_contact",
+      "proj_os_link_contact_to_project",
+      "proj_os_create_project_task",
+      "proj_os_get_project_summary",
     ]));
   });
 
@@ -68,7 +68,7 @@ test.describe("AI1 Proge OS agent API and MCP", () => {
     const source = read("supabase/functions/api-v1/index.ts");
     expect(source).toContain("idempotency_key_required");
     expect(source).toContain('admin.from("agent_api_audit_log").insert');
-    expect(source).toContain("x-proge-requester-id");
+    expect(source).toContain("x-proj-requester-id");
     const migration = read("supabase/migrations/20260827220000_agent_api_audit_log.sql");
     expect(migration).toContain("tenant_id uuid NOT NULL REFERENCES public.workspaces(id)");
     expect(migration).toContain("agent_api_audit_tenant_select");
@@ -79,7 +79,7 @@ test.describe("AI1 Proge OS agent API and MCP", () => {
     const spec = read("public/openapi.yaml");
     expect(ui).toContain('"read:contacts", "write:contacts"');
     expect(ui).toContain('"read:action-items", "write:action-items"');
-    expect(spec).toContain("title: Proge OS Public API");
+    expect(spec).toContain("title: Proj OS Public API");
     expect(spec).toContain("/api-v1/project-directory:");
     expect(spec).toContain("/api-v1/project-status:");
   });

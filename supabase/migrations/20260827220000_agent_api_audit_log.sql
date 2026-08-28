@@ -1,4 +1,4 @@
--- Proge OS Agent API audit trail.
+-- Proj OS Agent API audit trail.
 -- Service-role writes only; tenant administrators may read their own workspace.
 
 CREATE TABLE IF NOT EXISTS public.agent_api_audit_log (

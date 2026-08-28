@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: Proge OS Public API
+  title: Proj OS Public API
   version: "1.0.0"
   description: |
-    OAuth2-protected REST API for integrating Proge OS with Hermes, ERP,
+    OAuth2-protected REST API for integrating Proj OS with Hermes, ERP,
     accounting, and partner systems. All requests require a Bearer access token from
     `/oauth/token`. Rate limits and scopes are per `api_clients.rate_limit`.
 

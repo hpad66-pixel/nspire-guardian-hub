@@ -1,9 +1,9 @@
 /**
- * Proge OS public API v1.
+ * Proj OS public API v1.
  *
  * OAuth client-credential authentication, per-client scopes/rate limits, strict
  * workspace/project boundaries, narrow write allowlists, and API audit entries.
- * This API is also the capability layer used by the Proge OS MCP endpoint.
+ * This API is also the capability layer used by the Proj OS MCP endpoint.
  */
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -18,7 +18,7 @@ const rlWindow = new Map<string, { count: number; resetAt: number }>();
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, idempotency-key, x-correlation-id, x-proge-requester-id",
+  "Access-Control-Allow-Headers": "authorization, content-type, idempotency-key, x-correlation-id, x-proj-requester-id",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
   "Content-Type": "application/json",
 };
@@ -73,7 +73,7 @@ serve(async (req) => {
     apiClient,
     actorUserId: apiClient.created_by,
     correlationId: normalizeCorrelationId(req.headers.get("x-correlation-id")),
-    requesterId: cleanOptionalText(req.headers.get("x-proge-requester-id"), 200),
+    requesterId: cleanOptionalText(req.headers.get("x-proj-requester-id"), 200),
     tenantId,
   };
 
