@@ -9,6 +9,6 @@ test.describe("F3 Public API docs", () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     expect(body).toContain("openapi: 3.1.0");
-    expect(body).toContain("Procore Lite Public API");
+    expect(body).toContain("Proj OS Public API");
   });
 });
