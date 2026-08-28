@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Procore Lite Public API
+  title: Proj OS Public API
   version: "1.0.0"
   description: |
-    OAuth2-protected REST API for integrating Procore Lite with ERP, accounting,
-    and partner systems. All requests require a Bearer access token from
+    OAuth2-protected REST API for integrating Proj OS with Hermes, ERP,
+    accounting, and partner systems. All requests require a Bearer access token from
     `/oauth/token`. Rate limits and scopes are per `api_clients.rate_limit`.
 
     **Plan gating:** Business plan → 600 req/min. Enterprise → 6000 req/min.
@@ -19,6 +19,10 @@ security:
 tags:
   - name: auth
   - name: projects
+  - name: contacts
+  - name: project-directory
+  - name: action-items
+  - name: project-status
   - name: commitments
   - name: change-orders
   - name: budget
@@ -206,6 +210,143 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/DirectCost" }
+
+  /api-v1/contacts:
+    get:
+      tags: [contacts]
+      summary: Search the shared CRM
+      parameters:
+        - { in: query, name: q, required: true, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 200 } }
+      responses:
+        "200": { description: Workspace-scoped contacts }
+    post:
+      tags: [contacts]
+      summary: Create one shared CRM contact
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                company_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                notes: { type: string }
+                tags: { type: array, items: { type: string } }
+      responses:
+        "201": { description: Contact created }
+
+  /api-v1/contacts/{id}:
+    get:
+      tags: [contacts]
+      summary: Get one workspace-scoped CRM contact
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Contact }
+    patch:
+      tags: [contacts]
+      summary: Update approved fields on one CRM contact
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Updated contact }
+
+  /api-v1/project-directory:
+    get:
+      tags: [project-directory]
+      summary: List a project's directory entries
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Project directory entries }
+    post:
+      tags: [project-directory]
+      summary: Link a shared CRM contact to a project
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, contact_id]
+              properties:
+                project_id: { type: string, format: uuid }
+                contact_id: { type: string, format: uuid }
+                organization_id: { type: string, format: uuid }
+                role_label: { type: string }
+                is_key_contact: { type: boolean }
+      responses:
+        "201": { description: Contact linked to project }
+
+  /api-v1/action-items:
+    get:
+      tags: [action-items]
+      summary: List action items for an authorized project
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200": { description: Project action items }
+    post:
+      tags: [action-items]
+      summary: Create one project action item
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, title]
+              properties:
+                project_id: { type: string, format: uuid }
+                title: { type: string }
+                description: { type: string }
+                status: { type: string, enum: [todo, in_progress, in_review, done, cancelled] }
+                priority: { type: string, enum: [urgent, high, medium, low] }
+                assigned_to: { type: string, format: uuid }
+                due_date: { type: string, format: date }
+      responses:
+        "201": { description: Action item created }
+
+  /api-v1/action-items/{id}:
+    patch:
+      tags: [action-items]
+      summary: Update one project action item
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Updated action item }
+
+  /api-v1/project-status:
+    get:
+      tags: [project-status]
+      summary: Get project details plus task and milestone status counts
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Project status summary }
 
 components:
   securitySchemes:

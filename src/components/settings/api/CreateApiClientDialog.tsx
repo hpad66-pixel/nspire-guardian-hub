@@ -19,6 +19,10 @@ import { toast } from "sonner";
 
 const AVAILABLE_SCOPES = [
   "read:projects",
+  "read:contacts", "write:contacts",
+  "read:project-directory", "write:project-directory",
+  "read:action-items", "write:action-items",
+  "read:project-status",
   "read:commitments", "write:commitments",
   "read:change-orders", "write:change-orders",
   "read:rfis", "write:rfis",
