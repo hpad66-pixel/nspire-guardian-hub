@@ -104,7 +104,7 @@ serve(async (req) => {
   if (!canMint) return json({ error: "forbidden" }, 403);
 
   // Plan gate.
-  const { data: hasFeature } = await admin.rpc("can_use_feature" as any, {
+  const { data: hasFeature } = await userClient.rpc("can_use_feature" as any, {
     p_feature: "api",
   } as any);
   if (!hasFeature) return json({ error: "plan_locked", feature: "api" }, 402);

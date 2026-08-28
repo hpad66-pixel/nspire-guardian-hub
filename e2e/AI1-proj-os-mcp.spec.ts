@@ -91,6 +91,8 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(mint).toContain("userClient.auth.getUser()");
     expect(mint).toContain('userClient.rpc("can" as any');
     expect(mint).not.toContain('admin.rpc("can" as any');
+    expect(mint).toContain('userClient.rpc("can_use_feature" as any');
+    expect(mint).not.toContain('admin.rpc("can_use_feature" as any');
     expect(config).toContain("[functions.api-key-mint]\nverify_jwt = false");
   });
 });
