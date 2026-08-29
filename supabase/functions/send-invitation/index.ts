@@ -5,7 +5,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const APP_ORIGIN = (Deno.env.get("APP_ORIGIN") ?? "").replace(/\/$/, "");
+const APP_ORIGIN = (Deno.env.get("APP_ORIGIN") ?? "").trim().replace(/\/+$/, "");
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +82,7 @@ serve(async (req) => {
   }
   if (!RESEND_API_KEY) return json({ error: "Invitation email is not configured" }, 500);
 
-  const requestOrigin = req.headers.get("origin")?.replace(/\/$/, "") ?? "";
+  const requestOrigin = req.headers.get("origin")?.trim().replace(/\/+$/, "") ?? "";
   const appOrigin = APP_ORIGIN || requestOrigin;
   if (!appOrigin || (!APP_ORIGIN && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(appOrigin))) {
     return json({ error: "APP_ORIGIN must be configured" }, 500);

@@ -44,6 +44,11 @@ describe('enterprise workspace user administration', () => {
     expect(userManager).toContain('can_administer_workspace_user');
   });
 
+  it('normalizes the configured app origin before building invitation links', () => {
+    expect(invitationSender).toMatch(/APP_ORIGIN[\s\S]{0,120}\.trim\(\)\.replace\(\/\\\/\+\$\//);
+    expect(invitationSender).toContain('/accept-invite/');
+  });
+
   it('removes tenant resolution for deactivated workforce profiles', () => {
     expect(migration).toMatch(/COALESCE\(p\.status, 'active'\) <> 'active'/);
     expect(migration).toContain('protect_own_enterprise_profile_fields');
