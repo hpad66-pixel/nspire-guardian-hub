@@ -14,8 +14,21 @@ and client/subcontractor/owner portals.
 
 ## Local development
 
+Use the repository-pinned Node and npm versions before installing dependencies:
+
 ```bash
-npm install
+nvm install
+nvm use
+node --version       # v20.20.2
+npm --version        # 10.8.2
+```
+
+The `.nvmrc`, `.node-version`, `package.json` engine guard, and CI configuration all use the same exact runtime. An install intentionally fails on a different Node/npm version instead of producing machine-specific test results.
+
+Then install and run the project:
+
+```bash
+npm ci
 npm run dev          # Vite dev server (http://localhost:8080)
 npm run build        # production build
 npm run lint         # ESLint
