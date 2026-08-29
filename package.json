@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.20.2",
+    "npm": "10.8.2"
+  },
+  "packageManager": "npm@10.8.2",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/run-vite-build.mjs",
