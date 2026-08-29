@@ -36,9 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      if (!data || data.length === 0) {
-        return null;
-      }
+      const { data: propertyRoles, error: propertyRolesError } = await supabase
+        .from('property_team_members')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+      if (propertyRolesError) return null;
 
       // If user has multiple roles, pick the highest privilege one
       const roleHierarchy: AppRole[] = [
@@ -54,7 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'viewer',
         'user',
       ];
-      const userRoles = data.map(r => r.role as AppRole);
+      const userRoles = [
+        ...(data || []).map(r => r.role as AppRole),
+        ...(propertyRoles || []).map(r => r.role as AppRole),
+      ];
       
       for (const role of roleHierarchy) {
         if (userRoles.includes(role)) {

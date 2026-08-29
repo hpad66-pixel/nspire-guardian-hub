@@ -28,7 +28,7 @@ const escapeHtml = (value: unknown) => String(value ?? "")
 
 const roleLabels: Record<string, string> = {
   admin: "Workspace Administrator",
-  owner: "Owner",
+  owner: "Property Owner",
   manager: "Property Manager",
   administrator: "Administrator",
   project_manager: "Project Manager",
@@ -88,15 +88,17 @@ serve(async (req) => {
     return json({ error: "APP_ORIGIN must be configured" }, 500);
   }
 
-  const [{ data: inviter }, { data: workspace }] = await Promise.all([
+  const [{ data: inviter }, { data: workspace }, { data: property }] = await Promise.all([
     admin.from("profiles").select("full_name").eq("user_id", invitation.invited_by).maybeSingle(),
     admin.from("workspaces").select("name").eq("id", invitation.workspace_id).maybeSingle(),
+    admin.from("properties").select("name").eq("id", invitation.property_id).maybeSingle(),
   ]);
 
   const inviterName = escapeHtml(inviter?.full_name || "A workspace administrator");
   const workspaceName = escapeHtml(workspace?.name || "your Proj OS workspace");
   const recipientName = invitation.full_name ? ` ${escapeHtml(invitation.full_name)}` : "";
   const roleName = escapeHtml(roleLabels[invitation.role] || invitation.role);
+  const propertyName = escapeHtml(property?.name || "your assigned property");
   const acceptUrl = `${appOrigin}/accept-invite/${encodeURIComponent(invitation.token)}`;
 
   const emailHtml = `<!doctype html>
@@ -106,8 +108,8 @@ serve(async (req) => {
       <div style="background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:32px">
         <h1 style="font-size:24px;margin:0 0 16px">You’re invited to ${workspaceName}</h1>
         <p>Hello${recipientName},</p>
-        <p>${inviterName} invited you to join <strong>${workspaceName}</strong> as <strong>${roleName}</strong>.</p>
-        <p>Use the button below to create your password and activate your account.</p>
+        <p>${inviterName} invited you to <strong>${propertyName}</strong> in ${workspaceName} as <strong>${roleName}</strong>.</p>
+        <p>Use the button below to create your password and activate your account. This private invitation verifies your email, so no second verification email is required.</p>
         <p style="margin:28px 0"><a href="${acceptUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">Activate account</a></p>
         <p style="font-size:13px;color:#687386">This single-use invitation expires in 7 days. If you did not expect it, you can ignore this email.</p>
       </div>

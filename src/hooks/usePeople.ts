@@ -266,32 +266,13 @@ export function useAddPropertyAssignment() {
       department?: string;
       start_date?: string;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: result, error } = await supabase
-        .from('property_team_members')
-        .insert({
-          property_id: data.property_id,
-          user_id: data.user_id,
-          role: data.role,
-          title: data.title,
-          department: data.department,
-          start_date: data.start_date || toDateOnly(new Date()),
-          added_by: user?.id,
-        })
-        .select()
-        .single();
-
+      const { error } = await supabase.rpc('set_property_user_access' as never, {
+        p_target_user_id: data.user_id,
+        p_property_id: data.property_id,
+        p_role: data.role,
+      } as never);
       if (error) throw error;
-
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: data.user_id, role: data.role });
-
-      if (roleError && !roleError.message.toLowerCase().includes('duplicate')) {
-        throw roleError;
-      }
-      return result;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['people'] });
