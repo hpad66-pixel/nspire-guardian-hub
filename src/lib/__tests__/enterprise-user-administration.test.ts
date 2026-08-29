@@ -44,6 +44,8 @@ describe('enterprise workspace user administration', () => {
     expect(acceptPage).toContain('signInWithPassword');
     expect(acceptPage).not.toContain('auth.signUp');
     expect(authPage).not.toContain('Create a company workspace');
+    expect(authPage).not.toContain('signInWithOAuth');
+    expect(authPage).not.toContain('Continue with Google');
   });
 
   it('routes role writes through audited tenant-authorized RPCs', () => {
