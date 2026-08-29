@@ -54,6 +54,7 @@ import {
   RefreshCw,
   XCircle,
   UserPlus,
+  Building2,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -69,13 +70,14 @@ import { useSendEmail } from '@/hooks/useSendEmail';
 import { InviteUserDialog } from '@/components/people/InviteUserDialog';
 import { useDeleteInvitation, useInvitations, useSendInvitation } from '@/hooks/useInvitations';
 import { useAuth } from '@/hooks/useAuth';
+import { UserPropertyAccessDialog } from '@/components/settings/UserPropertyAccessDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
 const roleConfig: Record<AppRole, { label: string; icon: typeof Shield; color: string }> = {
   admin: { label: 'Admin', icon: ShieldAlert, color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  owner: { label: 'Owner', icon: ShieldAlert, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  owner: { label: 'Property Owner', icon: ShieldAlert, color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
   manager: { label: 'Property Manager', icon: ShieldCheck, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   administrator: { label: 'Administrator', icon: Shield, color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' },
   project_manager: { label: 'Project Manager', icon: ShieldCheck, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
@@ -122,6 +124,7 @@ export function UserManagement() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<UserWithRole | null>(null);
   const [statusReason, setStatusReason] = useState('');
+  const [accessTarget, setAccessTarget] = useState<UserWithRole | null>(null);
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
@@ -129,6 +132,8 @@ export function UserManagement() {
   const sendEmail = useSendEmail();
 
   const canManageRoles = assignableRoles.length > 0;
+  const currentWorkspaceAdmin = users?.find(user => user.user_id === currentUser?.id)
+    ?.roles.some(role => role.role === 'admin') ?? false;
   const pendingInvitations = invitations.filter(invitation =>
     !invitation.accepted_at &&
     !invitation.revoked_at &&
@@ -366,7 +371,11 @@ export function UserManagement() {
                                   <Mail className="h-4 w-4 mr-2" />
                                   Send Email
                                 </DropdownMenuItem>
-                                {assignableRoles.includes('admin' as AppRole) && user.user_id !== currentUser?.id && (
+                                <DropdownMenuItem onClick={() => setAccessTarget(user)}>
+                                  <Building2 className="h-4 w-4 mr-2" />
+                                  Property Access & Permissions
+                                </DropdownMenuItem>
+                                {currentWorkspaceAdmin && user.user_id !== currentUser?.id && (
                                   <DropdownMenuItem
                                     disabled={user.roles.some(r => r.role === 'admin')}
                                     onClick={() => handleMakeSuperAdmin(user)}
@@ -377,17 +386,6 @@ export function UserManagement() {
                                       : 'Make Workspace Admin'}
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem
-                                  disabled={user.user_id === currentUser?.id || assignableRoles.every(role => user.roles.some(r => r.role === role))}
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setNewRole((assignableRoles.find(role => !user.roles.some(r => r.role === role)) || 'user') as AppRole);
-                                    setRoleDialogOpen(true);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Add Role
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   disabled={user.user_id === currentUser?.id}
@@ -472,7 +470,8 @@ export function UserManagement() {
 
         {/* Role Legend */}
         <div className="mt-6 pt-6 border-t">
-          <h4 className="text-sm font-medium mb-3">Role Permissions</h4>
+              <h4 className="text-sm font-medium mb-1">Property Role Defaults</h4>
+              <p className="mb-3 text-xs text-muted-foreground">These roles never grant access outside assigned properties. Use Property Access & Permissions for granular overrides.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {allRoles.map((role) => {
               const config = roleConfig[role];
@@ -485,8 +484,8 @@ export function UserManagement() {
                   <div>
                     <p className="font-medium text-sm">{config.label}</p>
                     <p className="text-xs text-muted-foreground">
-                      {role === 'admin' && 'Full system access'}
-                      {role === 'owner' && 'Organization owner access'}
+                      {role === 'admin' && 'Workspace-wide administration'}
+                      {role === 'owner' && 'Full access inside assigned properties'}
                       {role === 'manager' && 'Property oversight & team management'}
                       {role === 'administrator' && 'Administrative staff access'}
                       {role === 'superintendent' && 'Field operations and inspections'}
@@ -504,6 +503,13 @@ export function UserManagement() {
 
       {/* Invite User Dialog */}
       <InviteUserDialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen} />
+
+      <UserPropertyAccessDialog
+        open={Boolean(accessTarget)}
+        onOpenChange={open => { if (!open) setAccessTarget(null); }}
+        userId={accessTarget?.user_id ?? null}
+        userName={accessTarget?.full_name || accessTarget?.email || 'Selected user'}
+      />
 
       {/* Add Role Dialog */}
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>

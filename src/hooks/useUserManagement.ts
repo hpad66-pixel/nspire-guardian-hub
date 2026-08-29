@@ -85,6 +85,14 @@ export function useCurrentUserRole() {
         .eq('user_id', freshUser.id);
 
       if (error) throw error;
+
+      const { data: propertyRoles, error: propertyRolesError } = await supabase
+        .from('property_team_members')
+        .select('role')
+        .eq('user_id', freshUser.id)
+        .eq('status', 'active');
+
+      if (propertyRolesError) throw propertyRolesError;
       
       // Return the highest priority role
       const rolePriority: Record<AppRole, number> = {
@@ -101,10 +109,31 @@ export function useCurrentUserRole() {
         user: 1,
       };
 
-      const roles = data.map(r => r.role);
+      const roles = [...data.map(r => r.role), ...(propertyRoles || []).map(r => r.role)];
       const sortedRoles = roles.sort((a, b) => (rolePriority[b] || 0) - (rolePriority[a] || 0));
       
       return sortedRoles[0] || 'user';
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+}
+
+/** Workspace administration is deliberately separate from property roles. */
+export function useIsWorkspaceAdmin() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['is-workspace-admin', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (error) throw error;
+      return data?.role === 'admin';
     },
     enabled: !!user,
     staleTime: 30 * 1000,

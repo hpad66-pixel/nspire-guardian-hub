@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -39,8 +40,8 @@ type AppRole = Database['public']['Enums']['app_role'];
 const inviteSchema = z.object({
   full_name: z.string().trim().min(2, 'Please enter the team member’s name'),
   email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['admin', 'owner', 'manager', 'inspector', 'administrator', 'superintendent', 'clerk', 'project_manager', 'subcontractor', 'viewer', 'user'] as const),
-  property_id: z.string().optional(),
+  role: z.enum(['owner', 'manager', 'inspector', 'administrator', 'superintendent', 'clerk', 'project_manager', 'subcontractor', 'viewer', 'user'] as const),
+  property_id: z.string().uuid('Select the property this person may access'),
   client_id: z.string().optional(),
 });
 
@@ -65,7 +66,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
       full_name: '',
       email: '',
       role: 'user',
-      property_id: 'all',
+      property_id: '',
       client_id: 'none',
     },
   });
@@ -78,7 +79,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
         full_name: data.full_name,
         email: data.email,
         role: data.role,
-        property_id: data.property_id === 'all' ? undefined : data.property_id || undefined,
+        property_id: data.property_id,
         client_id: data.client_id === 'none' ? undefined : data.client_id || undefined,
       });
 
@@ -96,8 +97,7 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
   };
 
   const roleDescriptions: Record<string, string> = {
-    admin: 'Full system access, can manage users and settings',
-    owner: 'Owner-level oversight with elevated authority',
+    owner: 'Full administrative access inside the assigned property only',
     manager: 'Property management, team oversight, approvals',
     inspector: 'Conduct inspections, create issues',
     administrator: 'Administrative staff access',
@@ -109,8 +109,8 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
     viewer: 'View-only access',
   };
   const roleLabels: Record<AppRole, string> = {
-    admin: 'Admin',
-    owner: 'Owner',
+    admin: 'Workspace Administrator',
+    owner: 'Property Owner',
     manager: 'Property Manager',
     inspector: 'Inspector',
     administrator: 'Administrator',
@@ -124,14 +124,14 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Invite Team Member
           </DialogTitle>
           <DialogDescription>
-            Send an invitation email to add a new user to the platform.
+            Every invitation requires a property. The selected role and all permissions apply only inside that property.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,24 +186,24 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isSending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {assignableRoles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {roleLabels[role]}
-                        </SelectItem>
+                  <FormControl>
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isSending}
+                      className="grid gap-2 sm:grid-cols-2"
+                    >
+                      {assignableRoles.filter(role => role !== 'admin').map((role) => (
+                        <label key={role} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted/50">
+                          <RadioGroupItem value={role} className="mt-0.5" />
+                          <span>
+                            <span className="block text-sm font-medium">{roleLabels[role]}</span>
+                            <span className="block text-xs text-muted-foreground">{roleDescriptions[role]}</span>
+                          </span>
+                        </label>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </RadioGroup>
+                  </FormControl>
                   <p className="text-xs text-muted-foreground mt-1">
                     {roleDescriptions[field.value as AppRole]}
                   </p>
@@ -212,37 +212,29 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
               )}
             />
 
-            {properties && properties.length > 0 && (
-              <FormField
-                control={form.control}
-                name="property_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assign to Property (Optional)</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={isSending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All properties" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All properties</SelectItem>
-                        {properties.map((property) => (
-                          <SelectItem key={property.id} value={property.id}>
-                            {property.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="property_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property Access (Required)</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={isSending || !properties?.length}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={properties?.length ? 'Select one property' : 'No properties available'} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {properties?.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>{property.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Additional properties can be added later from User Management.</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

@@ -20,22 +20,17 @@ const features = [
 ];
 
 export default function AuthPage() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedPath = searchParams.get('next');
   const safeNext = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : null;
   const isClientPortal = searchParams.get('portal') === 'client' || safeNext?.startsWith('/owner-portal') === true;
   const destination = safeNext ?? (isClientPortal ? '/owner-portal' : '/dashboard');
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [loginEmail, setLoginEmail]       = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [suCompany, setSuCompany]   = useState('');
-  const [suName, setSuName]         = useState('');
-  const [suEmail, setSuEmail]       = useState('');
-  const [suPassword, setSuPassword] = useState('');
 
   useEffect(() => {
     if (user && !loading) navigate(destination, { replace: true });
@@ -57,27 +52,6 @@ export default function AuthPage() {
     } else {
       toast.success('Welcome back!');
       navigate(destination, { replace: true });
-    }
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      emailSchema.parse(suEmail);
-      passwordSchema.parse(suPassword);
-    } catch (err) {
-      if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
-    }
-    if (!suCompany.trim()) { toast.error('Enter your company name.'); return; }
-    setIsSubmitting(true);
-    const { error } = await signUp(suEmail, suPassword, suName.trim() || undefined, suCompany.trim());
-    setIsSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success('Workspace created. Check your email to confirm, then sign in.');
-      setMode('login');
-      setLoginEmail(suEmail);
     }
   };
 
@@ -254,14 +228,12 @@ export default function AuthPage() {
           <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
             <div className="mb-7">
               <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-                {mode === 'login' ? (isClientPortal ? 'Secure client access' : 'Welcome back') : 'Create your company'}
+                {isClientPortal ? 'Secure client access' : 'Welcome back'}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {mode === 'login'
-                  ? (isClientPortal
-                    ? 'Sign in with the account connected to your private project portal'
-                    : 'Sign in to access your APAS Project Controls workspace')
-                  : 'Start a fresh, private workspace for your company'}
+                {isClientPortal
+                  ? 'Sign in with the account connected to your private project portal'
+                  : 'Sign in to access your APAS Project Controls workspace'}
               </p>
             </div>
 
@@ -293,8 +265,7 @@ export default function AuthPage() {
             </div>}
 
             {/* Form */}
-            {mode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">Email address</label>
                   <input
@@ -318,62 +289,10 @@ export default function AuthPage() {
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
                   {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to projOS')}
                 </button>
-              </form>
-            ) : (
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Company name</label>
-                  <input
-                    type="text" value={suCompany} onChange={e => setSuCompany(e.target.value)}
-                    placeholder="Acme Consulting LLC" required disabled={isSubmitting}
-                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Your name</label>
-                  <input
-                    type="text" value={suName} onChange={e => setSuName(e.target.value)}
-                    placeholder="Jane Smith" disabled={isSubmitting}
-                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Email address</label>
-                  <input
-                    type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)}
-                    placeholder="you@example.com" required disabled={isSubmitting}
-                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
-                  <input
-                    type="password" value={suPassword} onChange={e => setSuPassword(e.target.value)}
-                    placeholder="At least 8 characters" required disabled={isSubmitting}
-                    className="w-full h-11 rounded-lg border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-shadow focus:ring-2 focus:ring-ring/30 focus:border-ring disabled:opacity-60"
-                  />
-                </div>
-                <button type="submit" disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Creating workspace...</>) : ('Create company workspace')}
-                </button>
-              </form>
-            )}
+            </form>
 
             {!isClientPortal && <p className="text-xs text-center mt-5 text-muted-foreground">
-              {mode === 'login' ? (
-                <>New here?{' '}
-                  <button type="button" onClick={() => setMode('signup')} className="text-accent font-medium hover:underline">
-                    Create a company workspace
-                  </button>
-                </>
-              ) : (
-                <>Already have an account?{' '}
-                  <button type="button" onClick={() => setMode('login')} className="text-accent font-medium hover:underline">
-                    Sign in
-                  </button>
-                </>
-              )}
+              New accounts are created by a Proj OS administrator and activated from a private invitation.
             </p>}
             {isClientPortal && (
               <p className="text-xs text-center mt-5 text-muted-foreground">

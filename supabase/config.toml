@@ -60,6 +60,12 @@ verify_jwt = true
 [functions.send-invitation]
 verify_jwt = false
 
+# Public only at the gateway because the signed, single-use invitation token is
+# the credential. The function validates origin, expiry, revocation and email,
+# then creates one confirmed Auth user through the service role.
+[functions.accept-workspace-invitation]
+verify_jwt = false
+
 # Authenticated workspace-owner/admin user activation controls. The function
 # verifies asymmetric Supabase JWTs with auth.getUser() and then enforces the
 # tenant hierarchy through can_administer_workspace_user().

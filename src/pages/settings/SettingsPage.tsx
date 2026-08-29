@@ -1,6 +1,6 @@
 import { useModules } from '@/contexts/ModuleContext';
 import { useProperties } from '@/hooks/useProperties';
-import { useCurrentUserRole } from '@/hooks/useUserManagement';
+import { useIsWorkspaceAdmin } from '@/hooks/useUserManagement';
 import { useClientsWithCounts } from '@/hooks/useClients';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,12 +87,12 @@ export default function SettingsPage() {
   // "Enabled/Disabled" status read-outs on the Billing tab below.
   const { modules } = useModules();
   const { data: properties } = useProperties();
-  const { data: currentUserRole } = useCurrentUserRole();
+  const { data: isWorkspaceAdmin = false } = useIsWorkspaceAdmin();
   const navigate = useNavigate();
   const { workspace, isLoading: workspaceLoading, isTrialing, trialDaysLeft } = useWorkspaceContext();
 
-  const isAdmin = currentUserRole === 'admin' || currentUserRole === 'owner';
-  const canManageUsers = currentUserRole === 'admin' || currentUserRole === 'owner' || currentUserRole === 'manager';
+  const isAdmin = isWorkspaceAdmin;
+  const canManageUsers = isWorkspaceAdmin;
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -125,15 +125,15 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="billing" className="space-y-6">
+      <Tabs defaultValue={isAdmin ? 'billing' : 'notifications'} className="space-y-6">
         <TabsList>
           {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}
-          <TabsTrigger value="billing">Billing</TabsTrigger>
+          {isAdmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="assistant">Assistant</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="organization">Organization</TabsTrigger>
+          {isAdmin && <TabsTrigger value="organization">Organization</TabsTrigger>}
           {isAdmin && <TabsTrigger value="audit">Audit Log</TabsTrigger>}
           {isAdmin && <TabsTrigger value="demo">Demo Mode</TabsTrigger>}
         </TabsList>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        <TabsContent value="billing" className="space-y-4">
+        {isAdmin && <TabsContent value="billing" className="space-y-4">
           {/* Trial banner */}
           {isTrialing && (
             <Card className="border-amber-500/40 bg-amber-500/5">
@@ -310,9 +310,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>}
 
-        <TabsContent value="organization" className="space-y-4">
+        {isAdmin && <TabsContent value="organization" className="space-y-4">
           <DeferredOrganizations>{(organizations) => (<>
           {/* Summary */}
           <Card>
@@ -474,7 +474,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
           </>)}</DeferredOrganizations>
-        </TabsContent>
+        </TabsContent>}
 
         {isAdmin && (
           <TabsContent value="audit" className="space-y-4">

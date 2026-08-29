@@ -21,7 +21,11 @@ import { toast } from 'sonner';
 
 const acceptSchema = z.object({
   fullName: z.string().min(2, 'Please enter your full name'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(10, 'Use at least 10 characters')
+    .regex(/[a-z]/, 'Add a lowercase letter')
+    .regex(/[A-Z]/, 'Add an uppercase letter')
+    .regex(/[0-9]/, 'Add a number'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -35,7 +39,6 @@ export default function AcceptInvitePage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
-  const [requiresEmailConfirmation, setRequiresEmailConfirmation] = useState(false);
 
   const { data: invitation, isLoading, error } = useInvitationByToken(token);
 
@@ -65,32 +68,34 @@ export default function AcceptInvitePage() {
 
     setIsSubmitting(true);
     try {
-      // The database trigger validates this single-use invitation token against
-      // the email, workspace, expiry, revocation state, and assigned role.
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: data.fullName,
-            invitation_token: token,
+      const { data: activation, error: activationError } = await supabase.functions.invoke(
+        'accept-workspace-invitation',
+        {
+          body: {
+            token,
+            fullName: data.fullName,
+            password: data.password,
           },
         },
+      );
+      if (activationError) {
+        const functionError = activationError.context instanceof Response
+          ? await activationError.context.json().catch(() => null)
+          : null;
+        throw new Error(functionError?.error || activationError.message);
+      }
+      if (activation?.error) throw new Error(activation.error);
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: data.password,
       });
-
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Failed to create account');
-
-      setRequiresEmailConfirmation(!authData.session);
+      if (signInError) throw signInError;
       setIsAccepted(true);
-      toast.success(authData.session ? 'Account activated!' : 'Account created. Confirm your email to sign in.');
-
-      // Confirmed-email installations return a session immediately; otherwise
-      // the user completes the normal email confirmation before signing in.
+      toast.success('Account activated!');
       setTimeout(() => {
-        navigate(authData.session ? '/dashboard' : '/auth');
-      }, 3000);
+        navigate('/dashboard');
+      }, 1800);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create account';
       if (message.includes('already registered')) {
@@ -143,12 +148,10 @@ export default function AcceptInvitePage() {
               </div>
               <div>
                 <p className="font-medium">
-                  {requiresEmailConfirmation ? 'Confirm your email' : 'Account activated'}
+                  Account activated
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {requiresEmailConfirmation
-                    ? `We sent a confirmation link to ${invitation?.email}. Redirecting you to sign in…`
-                    : 'Redirecting you to your workspace…'}
+                  Your Proj OS invitation verified the email address. Redirecting you to your assigned property…
                 </p>
               </div>
             </div>
@@ -263,7 +266,7 @@ export default function AcceptInvitePage() {
                             <Input
                               {...field}
                               type="password"
-                              placeholder="••••••••"
+                              placeholder="10+ characters, upper/lowercase and number"
                               className="pl-10"
                               disabled={isSubmitting}
                             />
