@@ -8,9 +8,10 @@ import { useOwnerPortalData } from "@/hooks/usePortals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerContractPage() {
+  const href = useOwnerPortalHref();
   const { data, isLoading } = useOwnerPortalData();
   const { selectedContract } = useClientPortalProject();
 
@@ -22,7 +23,7 @@ export default function OwnerContractPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">
           ← Portal overview
         </Link>
         <h1 className="text-3xl font-bold mt-2">Prime contracts</h1>
@@ -67,7 +68,7 @@ export default function OwnerContractPage() {
                       .map((co: any) => (
                         <Link
                           key={co.id}
-                          to={`/owner-portal/cos/${co.id}`}
+                          to={href(`/cos/${co.id}`)}
                           className="flex items-center justify-between py-2 px-3 hover:bg-muted"
                         >
                           <div>

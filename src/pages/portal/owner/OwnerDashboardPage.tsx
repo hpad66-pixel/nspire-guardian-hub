@@ -21,7 +21,7 @@ import { useFinancialReportData } from "@/hooks/useFinancialReportData";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { financialSummary } from "@/lib/reports/financialReports";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 function fmt(value: number | null | undefined) {
   return `$${(Number(value) || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -65,13 +65,14 @@ function FinancialSnapshot({ projectId }: { projectId: string | null }) {
 }
 
 function LatestUpdate({ projectId }: { projectId: string | null }) {
+  const href = useOwnerPortalHref();
   const { data: updates = [], isLoading } = useClientUpdates(projectId, { publishedOnly: true });
   const latest = updates[0];
   return (
     <section className="client-dashboard-panel client-dashboard-update">
       <div className="client-panel-heading">
         <div><span className="client-panel-icon is-blue"><Megaphone /></span><div><small>Project briefing</small><h2>Latest update</h2></div></div>
-        <Link to="/owner-portal/updates">View history <ArrowRight /></Link>
+        <Link to={href("/updates")}>View history <ArrowRight /></Link>
       </div>
       {isLoading ? (
         <div className="client-dashboard-loading"><Loader2 className="animate-spin" /> Loading update…</div>
@@ -85,14 +86,15 @@ function LatestUpdate({ projectId }: { projectId: string | null }) {
 }
 
 const resources = [
-  { to: "/owner-portal/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
-  { to: "/owner-portal/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
-  { to: "/owner-portal/reports", label: "Reports", detail: "Owner-ready project records", icon: BarChart3 },
-  { to: "/owner-portal/documents", label: "Documents", detail: "Approved files in one place", icon: FolderOpen },
+  { to: "/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
+  { to: "/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
+  { to: "/reports", label: "Reports", detail: "Owner-ready project records", icon: BarChart3 },
+  { to: "/documents", label: "Documents", detail: "Approved files in one place", icon: FolderOpen },
 ];
 
 export default function OwnerDashboardPage() {
   const { user } = useAuth();
+  const href = useOwnerPortalHref();
   const { data, isLoading } = useOwnerPortalData();
   const { selectedProjectId: projectId, selectedContract } = useClientPortalProject();
   const pendingOcos = (data?.pendingOcos ?? [])
@@ -132,7 +134,7 @@ export default function OwnerDashboardPage() {
         {decisionCount > 0 && (
           <div className="client-decision-list">
             {pendingOcos.map((co) => (
-              <Link key={co.id} to={`/owner-portal/cos/${co.id}`} className="client-decision-row">
+              <Link key={co.id} to={href(`/cos/${co.id}`)} className="client-decision-row">
                 <span className="client-decision-row__type"><FileSignature /><small>Change order</small></span>
                 <span className="client-decision-row__detail"><strong>{co.title || `Owner change order ${co.co_no}`}</strong><small>OCO-{co.co_no} · Ready for review</small></span>
                 <span className="client-decision-row__amount">{fmt(co.amount)}</span>
@@ -140,7 +142,7 @@ export default function OwnerDashboardPage() {
               </Link>
             ))}
             {pendingPayApps.map((payApp) => (
-              <Link key={payApp.id} to={`/owner-portal/pay-apps/${payApp.id}`} className="client-decision-row">
+              <Link key={payApp.id} to={href(`/pay-apps/${payApp.id}`)} className="client-decision-row">
                 <span className="client-decision-row__type"><WalletCards /><small>Pay application</small></span>
                 <span className="client-decision-row__detail"><strong>Pay Application #{payApp.pay_app_no}</strong><small>Period ending {shortDate(payApp.period_end)}</small></span>
                 <span className="client-decision-row__amount">{fmt(payApp.submitted_amount)}</span>
@@ -156,7 +158,7 @@ export default function OwnerDashboardPage() {
         <section className="client-dashboard-panel client-dashboard-financial">
           <div className="client-panel-heading">
             <div><span className="client-panel-icon is-gold"><Landmark /></span><div><small>Approved financial view</small><h2>Financial status</h2></div></div>
-            <Link to="/owner-portal/reports">Open reports <ArrowRight /></Link>
+            <Link to={href("/reports")}>Open reports <ArrowRight /></Link>
           </div>
           <FinancialSnapshot projectId={projectId} />
         </section>
@@ -171,7 +173,7 @@ export default function OwnerDashboardPage() {
           {resources.map((resource) => {
             const Icon = resource.icon;
             return (
-              <Link key={resource.to} to={resource.to} className="client-resource-card">
+              <Link key={resource.to} to={href(resource.to)} className="client-resource-card">
                 <span><Icon /></span>
                 <div><strong>{resource.label}</strong><small>{resource.detail}</small></div>
                 <ArrowRight />

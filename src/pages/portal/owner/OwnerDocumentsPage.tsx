@@ -6,7 +6,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { FileText, Download, Loader2, FileDiff, ReceiptText, ShieldCheck } from 
 interface DocRow { id: string; label: string; sub: string; status?: string; url: string; }
 
 export default function OwnerDocumentsPage() {
+  const href = useOwnerPortalHref();
   const { selectedProjectId: projectId, selectedContract } = useClientPortalProject();
   const contractId = selectedContract?.id ?? null;
 
@@ -55,7 +56,7 @@ export default function OwnerDocumentsPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="text-3xl font-bold mt-2">Documents</h1>
         <p className="text-muted-foreground">Your project's change orders, pay applications and lien waivers — download anytime.</p>
       </div>

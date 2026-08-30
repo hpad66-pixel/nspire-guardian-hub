@@ -118,6 +118,7 @@ const OwnerSchedulePage = lazy(() => import('./pages/portal/owner/OwnerScheduleP
 const OwnerReportsPage = lazy(() => import('./pages/portal/owner/OwnerReportsPage'));
 const OwnerDocumentsPage = lazy(() => import('./pages/portal/owner/OwnerDocumentsPage'));
 const OwnerUpdatesPage = lazy(() => import('./pages/portal/owner/OwnerUpdatesPage'));
+const OwnerPortalLegacyRedirect = lazy(() => import('./pages/portal/owner/OwnerPortalLegacyRedirect'));
 const ClientPortalShell = lazy(() => import('./components/portal/ClientPortalShell'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
 const PortalInviteAcceptPage = lazy(() => import('./pages/portal/PortalInviteAcceptPage'));
@@ -277,14 +278,22 @@ const App = () => (
                     */}
                     <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
                       <Route element={<ClientPortalShell />}>
-                        <Route path="/owner-portal" element={<OwnerDashboardPage />} />
-                        <Route path="/owner-portal/contract" element={<OwnerContractPage />} />
-                        <Route path="/owner-portal/cos/:coId" element={<OwnerOcoApprovalPage />} />
-                        <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
-                        <Route path="/owner-portal/schedule" element={<OwnerSchedulePage />} />
-                        <Route path="/owner-portal/reports" element={<OwnerReportsPage />} />
-                        <Route path="/owner-portal/documents" element={<OwnerDocumentsPage />} />
-                        <Route path="/owner-portal/updates" element={<OwnerUpdatesPage />} />
+                        <Route path="/owner-portal" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/contract" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/cos/:coId" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/pay-apps/:payAppId" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/schedule" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/reports" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/documents" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/updates" element={<OwnerPortalLegacyRedirect />} />
+                        <Route path="/owner-portal/projects/:projectId" element={<OwnerDashboardPage />} />
+                        <Route path="/owner-portal/projects/:projectId/contract" element={<OwnerContractPage />} />
+                        <Route path="/owner-portal/projects/:projectId/cos/:coId" element={<OwnerOcoApprovalPage />} />
+                        <Route path="/owner-portal/projects/:projectId/pay-apps/:payAppId" element={<OwnerPayAppApprovalPage />} />
+                        <Route path="/owner-portal/projects/:projectId/schedule" element={<OwnerSchedulePage />} />
+                        <Route path="/owner-portal/projects/:projectId/reports" element={<OwnerReportsPage />} />
+                        <Route path="/owner-portal/projects/:projectId/documents" element={<OwnerDocumentsPage />} />
+                        <Route path="/owner-portal/projects/:projectId/updates" element={<OwnerUpdatesPage />} />
                       </Route>
                     </Route>
                      

@@ -12,9 +12,10 @@ import {
 import { GanttChart } from "@/components/schedule/GanttChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerSchedulePage() {
+  const href = useOwnerPortalHref();
   const { selectedProjectId: effectiveProjectId } = useClientPortalProject();
 
   const { data: schedules = [] } = useSchedules(effectiveProjectId);
@@ -36,7 +37,7 @@ export default function OwnerSchedulePage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">
           ← Portal overview
         </Link>
         <h1 className="text-3xl font-bold mt-2">Project schedule</h1>

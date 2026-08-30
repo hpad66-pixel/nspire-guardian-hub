@@ -170,7 +170,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.open(`${window.location.origin}/portal/${portal.portal_slug}`, '_blank')} className="text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => window.open(`${window.location.origin}/owner-portal/projects/${projectId}`, '_blank')} className="text-xs gap-1.5">
             <ExternalLink className="h-3 w-3" />
             Preview
           </Button>
