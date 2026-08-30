@@ -8,14 +8,17 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CreateApiClientDialog, type MintedApiClient } from "@/components/settings/api/CreateApiClientDialog";
+import { EditApiClientScopesDialog } from "@/components/settings/api/EditApiClientScopesDialog";
 import { RevealSecretOnceDialog } from "@/components/settings/api/RevealSecretOnceDialog";
 import { UpgradeRequired } from "@/components/portal/UpgradeRequired";
+import type { ApiClient } from "@/hooks/useApiClients";
 
 export default function ApiClientsPage() {
   const { data: gated, isLoading: featLoading } = useFeature("api");
-  const { data: clients = [], revoke, refetch } = useApiClients();
+  const { data: clients = [], revoke, updateScopes, refetch } = useApiClients();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [minted, setMinted] = useState<MintedApiClient | null>(null);
+  const [editing, setEditing] = useState<ApiClient | null>(null);
 
   if (featLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
@@ -78,16 +81,21 @@ export default function ApiClientsPage() {
                       ))}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
                     {c.is_active ? (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={revoke.isPending}
-                        onClick={() => revoke.mutateAsync(c.id).then(() => refetch())}
-                      >
-                        Revoke
-                      </Button>
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setEditing(c)}>
+                          Edit scopes
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={revoke.isPending}
+                          onClick={() => revoke.mutateAsync(c.id).then(() => refetch())}
+                        >
+                          Revoke
+                        </Button>
+                      </>
                     ) : (
                       <Badge variant="outline">Revoked</Badge>
                     )}
@@ -104,6 +112,18 @@ export default function ApiClientsPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onMinted={handleMinted}
+      />
+
+      <EditApiClientScopesDialog
+        client={editing}
+        open={editing !== null}
+        saving={updateScopes.isPending}
+        onClose={() => setEditing(null)}
+        onSave={async (scopes) => {
+          if (!editing) return;
+          await updateScopes.mutateAsync({ id: editing.id, scopes });
+          await refetch();
+        }}
       />
 
       {/* One-time-reveal of the plaintext secret. Closing destroys the only copy. */}

@@ -51,6 +51,26 @@ describe("useApiClients", () => {
     expect(insertArg.client_secret_hash).not.toBe(minted.client_secret);
   });
 
+  it("updateScopes writes the new scope array", async () => {
+    const updateBuilder = makeBuilder({ data: null, error: null });
+    __mock.from.mockReturnValue(updateBuilder);
+    const { result } = renderHookWithClient(() => useApiClients());
+    await result.current.updateScopes.mutateAsync({
+      id: "client-1",
+      scopes: ["read:projects", "read:proposals", "write:proposals"],
+    });
+    const updateArg = updateBuilder.update.mock.calls[0]?.[0] as any;
+    expect(updateArg.scopes).toEqual(["read:projects", "read:proposals", "write:proposals"]);
+  });
+
+  it("updateScopes rejects an empty scope list", async () => {
+    const { result } = renderHookWithClient(() => useApiClients());
+    await expect(result.current.updateScopes.mutateAsync({
+      id: "client-1",
+      scopes: [],
+    })).rejects.toThrow("Choose at least one scope");
+  });
+
   it("revoke flips is_active and stamps revoked_at", async () => {
     const updateBuilder = makeBuilder({ data: null, error: null });
     __mock.from.mockReturnValue(updateBuilder);

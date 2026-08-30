@@ -35,7 +35,7 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(body.result.serverInfo.name).toBe("proj-os");
   });
 
-  test("MCP publishes the initial CRM and project tools", async () => {
+  test("MCP publishes CRM, project, and financial tools", async () => {
     const response = await onRequest({ request: mcpRequest("tools/list"), env });
     const body = await response.json() as { result: { tools: Array<{ name: string }> } };
     const names = body.result.tools.map((tool) => tool.name);
@@ -46,6 +46,12 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
       "proj_os_link_contact_to_project",
       "proj_os_create_project_task",
       "proj_os_get_project_summary",
+      "proj_os_create_change_order",
+      "proj_os_create_proposal",
+      "proj_os_create_invoice",
+      "proj_os_list_change_orders",
+      "proj_os_list_proposals",
+      "proj_os_list_invoices",
     ]));
   });
 
@@ -77,11 +83,19 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
   test("API client UI and OpenAPI advertise agent scopes", () => {
     const ui = read("src/components/settings/api/CreateApiClientDialog.tsx");
     const spec = read("public/openapi.yaml");
+    const api = read("supabase/functions/api-v1/index.ts");
     expect(ui).toContain('"read:contacts", "write:contacts"');
     expect(ui).toContain('"read:action-items", "write:action-items"');
+    expect(ui).toContain('"read:proposals", "write:proposals"');
+    expect(ui).toContain('"read:pay-apps", "write:pay-apps"');
     expect(spec).toContain("title: Proj OS Public API");
     expect(spec).toContain("/api-v1/project-directory:");
     expect(spec).toContain("/api-v1/project-status:");
+    expect(spec).toContain("/api-v1/proposals:");
+    expect(spec).toContain("/api-v1/pay-apps:");
+    expect(api).toContain('case "proposals"');
+    expect(api).toContain('case "pay-apps"');
+    expect(api).toContain("routeChangeOrders");
   });
 
   test("API client mint accepts browser requests and verifies auth in-function", () => {
