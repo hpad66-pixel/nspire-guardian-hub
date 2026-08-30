@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { isPlatformSuperAdmin } from '@/lib/auth/platformAdmin';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -24,8 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<AppRole | null>(null);
 
   // Fetch user role from the database (picks highest privilege if multiple roles exist)
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = async (authUser: User) => {
     try {
+      // Platform authority lives in protected app_metadata. Map it to the
+      // existing UI admin role even if a database role query is briefly stale.
+      if (isPlatformSuperAdmin(authUser)) return 'admin';
+
+      const userId = authUser.id;
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -85,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Defer role fetch to avoid blocking auth state
           setTimeout(async () => {
-            const role = await fetchUserRole(session.user.id);
+            const role = await fetchUserRole(session.user);
             setUserRole(role);
           }, 0);
         } else {
@@ -102,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const role = await fetchUserRole(session.user.id);
+        const role = await fetchUserRole(session.user);
         setUserRole(role);
       }
       

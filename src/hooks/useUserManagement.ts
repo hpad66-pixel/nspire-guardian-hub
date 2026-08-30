@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { isPlatformSuperAdmin } from '@/lib/auth/platformAdmin';
 
 type AppRole = Database['public']['Enums']['app_role'];
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -78,6 +79,7 @@ export function useCurrentUserRole() {
       if (!user) return null;
       const { data: { user: freshUser } } = await supabase.auth.getUser();
       if (!freshUser) return null;
+      if (isPlatformSuperAdmin(freshUser)) return 'admin';
 
       const { data, error } = await supabase
         .from('user_roles')
