@@ -87,3 +87,13 @@ For “create an invoice / pay app for the owner”:
 3. Preview and confirm.
 4. Call `proj_os_create_invoice` once. Omit `pay_app_no` unless specified.
 
+## Owner payment / reconciliation workflow
+
+For “what has R4 paid” or “reconcile this pay app”:
+
+1. Resolve the project and list invoices with `proj_os_list_invoices`.
+2. List cash receipts with `proj_os_list_payments` (returns `total_received`).
+3. Compare cash `total_received` to G702 Line 7 (`less_previous_certificates` / prior TELR). Call out gaps.
+4. To record a new owner receipt, preview amount/date/pay-app, confirm, then call `proj_os_record_payment` once.
+5. Draft G702 corrections on a draft pay app use `proj_os_update_invoice` with `pay_app_data` + `submitted_amount`.
+
