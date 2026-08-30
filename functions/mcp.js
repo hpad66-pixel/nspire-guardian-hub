@@ -50,7 +50,7 @@ async function dispatch(message, request, env) {
       protocolVersion: SUPPORTED_PROTOCOLS.has(requested) ? requested : "2025-03-26",
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: "proj-os", title: "Proj OS", version: "1.1.0" },
-      instructions: "Use read tools freely. Before creating or updating contacts, tasks, proposals, change orders, or client invoices (pay apps), show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status.",
+      instructions: "Use read tools freely. Before creating or updating contacts, tasks, proposals, change orders, client invoices (pay apps), or owner payment receipts, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status. For pay-app reconciliation, list payments and compare Line 7 cash to prior certificates.",
     };
   }
   if (message.method === "ping") return {};
@@ -146,6 +146,10 @@ const TOOL_HANDLERS = {
     const body = pick(a, INVOICE_PATCH_FIELDS);
     return api(c, "PATCH", `/api-v1/pay-apps/${invoiceId}`, null, body);
   },
+  proj_os_list_payments: (a, c) => api(c, "GET", "/api-v1/payments", {
+    project_id: a.project_id, prime_contract_id: a.prime_contract_id, pay_app_id: a.pay_app_id, limit: a.limit,
+  }),
+  proj_os_record_payment: (a, c) => api(c, "POST", "/api-v1/payments", null, pick(a, PAYMENT_FIELDS)),
 };
 
 async function api(ctx, method, path, query = null, body = undefined) {
@@ -259,7 +263,8 @@ const CHANGE_ORDER_PATCH_FIELDS = ["title", "description", "amount", "days_impac
 const PROPOSAL_FIELDS = ["project_id", "proposal_no", "title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct", "lines"];
 const PROPOSAL_PATCH_FIELDS = ["title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct"];
 const INVOICE_FIELDS = ["project_id", "prime_contract_id", "pay_app_no", "period_end", "submitted_amount"];
-const INVOICE_PATCH_FIELDS = ["period_end", "submitted_amount"];
+const INVOICE_PATCH_FIELDS = ["period_end", "submitted_amount", "retainage_held", "invoice_no", "pay_app_data"];
+const PAYMENT_FIELDS = ["project_id", "prime_contract_id", "pay_app_id", "amount", "received_date", "method", "reference", "notes"];
 
 const string = (description) => ({ type: "string", description });
 const uuid = (description) => ({ type: "string", format: "uuid", description });
@@ -304,5 +309,23 @@ const TOOLS = [
   { name: "proj_os_list_invoices", title: "List client invoices / pay apps", description: "List GC-to-owner pay applications (client invoices) for a project or prime contract.", inputSchema: object({ project_id: uuid("Project ID"), prime_contract_id: uuid("Prime contract ID"), status: string("Optional status filter"), limit: { type: "integer", minimum: 1, maximum: 200 } }), annotations: readAnnotations },
   { name: "proj_os_get_invoice", title: "Get client invoice / pay app", description: "Get one prime-contract pay application by ID.", inputSchema: object({ invoice_id: uuid("Pay application ID") }, ["invoice_id"]), annotations: readAnnotations },
   { name: "proj_os_create_invoice", title: "Create client invoice / pay app", description: "Create a draft GC-to-owner pay application (client invoice). Confirm period and amount first. pay_app_no auto-generates when omitted.", inputSchema: object({ project_id: uuid("Project ID"), prime_contract_id: uuid("Prime contract ID"), period_end: { type: "string", format: "date", description: "Billing period end date YYYY-MM-DD" }, pay_app_no: { type: "integer" }, submitted_amount: { type: "number" } }, ["period_end"]), annotations: writeAnnotations },
-  { name: "proj_os_update_invoice", title: "Update client invoice / pay app", description: "Update a draft pay application after confirmation.", inputSchema: object({ invoice_id: uuid("Pay application ID"), period_end: { type: "string", format: "date" }, submitted_amount: { type: "number" } }, ["invoice_id"]), annotations: writeAnnotations },
+  { name: "proj_os_update_invoice", title: "Update client invoice / pay app", description: "Update a draft pay application after confirmation. May include G702 pay_app_data snapshot.", inputSchema: object({
+    invoice_id: uuid("Pay application ID"),
+    period_end: { type: "string", format: "date" },
+    submitted_amount: { type: "number" },
+    retainage_held: { type: "number" },
+    invoice_no: string("Invoice number"),
+    pay_app_data: { type: "object", description: "G702 summary snapshot (original_contract_sum, current_payment_due, etc.)" },
+  }, ["invoice_id"]), annotations: writeAnnotations },
+  { name: "proj_os_list_payments", title: "List owner payments received", description: "List R4/owner cash receipts (prime_contract_payments) for a project or prime contract, with total_received.", inputSchema: object({ project_id: uuid("Project ID"), prime_contract_id: uuid("Prime contract ID"), pay_app_id: uuid("Optional pay app filter"), limit: { type: "integer", minimum: 1, maximum: 200 } }), annotations: readAnnotations },
+  { name: "proj_os_record_payment", title: "Record owner payment received", description: "Record one owner→GC cash receipt against a pay application. Confirm amount and date first.", inputSchema: object({
+    project_id: uuid("Project ID"),
+    prime_contract_id: uuid("Prime contract ID"),
+    pay_app_id: uuid("Pay application ID"),
+    amount: { type: "number" },
+    received_date: { type: "string", format: "date", description: "YYYY-MM-DD" },
+    method: { type: "string", enum: ["check", "ach", "wire", "card", "other"] },
+    reference: string("Check/ACH/wire reference"),
+    notes: string("Payment notes"),
+  }, ["pay_app_id", "amount", "received_date"]), annotations: writeAnnotations },
 ];

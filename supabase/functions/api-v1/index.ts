@@ -89,6 +89,7 @@ serve(async (req) => {
       case "change-orders": response = await routeChangeOrders(req.method, ctx, id, req, url); break;
       case "proposals": response = await routeProposals(req.method, ctx, id, req, url); break;
       case "pay-apps": response = await routePayApps(req.method, ctx, id, req, url); break;
+      case "payments": response = await routePrimePayments(req.method, ctx, id, req, url); break;
       case "budget": response = await routeBudget(ctx, url); break;
       case "rfis": response = await routeRfis(ctx, url); break;
       case "direct-costs": response = await routeDirectCosts(req.method, ctx, req); break;
@@ -625,12 +626,108 @@ async function routePayApps(
     if (patch.period_end && !/^\d{4}-\d{2}-\d{2}$/.test(String(patch.period_end))) {
       throw new ApiError(400, "invalid_period_end");
     }
+    if (patch.submitted_amount !== undefined && !Number.isFinite(Number(patch.submitted_amount))) {
+      throw new ApiError(400, "invalid_submitted_amount");
+    }
+    if (patch.submitted_amount !== undefined) patch.submitted_amount = Number(patch.submitted_amount);
+    if (patch.retainage_held !== undefined) {
+      if (!Number.isFinite(Number(patch.retainage_held))) throw new ApiError(400, "invalid_retainage_held");
+      patch.retainage_held = Number(patch.retainage_held);
+    }
     if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
     const { data, error } = await admin.from("prime_contract_pay_apps").update(patch)
       .eq("id", id).eq("tenant_id", ctx.tenantId).select(PAY_APP_SELECT).single();
     if (error) throw error;
     await auditWrite(ctx, "prime_contract_pay_app", id, "update", contract.project_id);
     return json({ data });
+  }
+
+  throw new ApiError(405, "method_not_allowed");
+}
+
+async function routePrimePayments(
+  method: string,
+  ctx: RequestContext,
+  id: string | undefined,
+  req: Request,
+  url: URL,
+) {
+  if (method === "GET") {
+    if (id) {
+      const { data, error } = await admin.from("prime_contract_payments").select(PAYMENT_SELECT)
+        .eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new ApiError(404, "payment_not_found");
+      await requirePrimeContract(ctx.tenantId, (data as any).prime_contract_id);
+      return json({ data });
+    }
+    const projectId = url.searchParams.get("project_id");
+    let primeContractId = optionalUuid(url.searchParams.get("prime_contract_id"), "prime_contract_id");
+    if (projectId) {
+      primeContractId = (await resolvePrimeContractForProject(
+        ctx.tenantId,
+        requiredUuid(projectId, "project_id"),
+      )).id;
+    }
+    if (!primeContractId) throw new ApiError(400, "project_id_or_prime_contract_id_required");
+    await requirePrimeContract(ctx.tenantId, primeContractId);
+    let q = admin.from("prime_contract_payments").select(PAYMENT_SELECT)
+      .eq("tenant_id", ctx.tenantId).eq("prime_contract_id", primeContractId)
+      .order("received_date", { ascending: true });
+    const payAppId = optionalUuid(url.searchParams.get("pay_app_id"), "pay_app_id");
+    if (payAppId) q = q.eq("pay_app_id", payAppId);
+    const { data, error } = await q.limit(boundedLimit(url, 200));
+    if (error) throw error;
+    const rows = data ?? [];
+    const total = rows.reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0);
+    return json({ data: rows, total_received: Math.round(total * 100) / 100 });
+  }
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const projectId = optionalUuid(body.project_id, "project_id");
+    let primeContractId = optionalUuid(body.prime_contract_id, "prime_contract_id");
+    if (!primeContractId) {
+      if (!projectId) throw new ApiError(400, "project_id_or_prime_contract_id_required");
+      primeContractId = (await resolvePrimeContractForProject(ctx.tenantId, projectId)).id;
+    }
+    const contract = await requirePrimeContract(ctx.tenantId, primeContractId, projectId);
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) throw new ApiError(400, "invalid_amount");
+    const receivedDate = requiredText(body.received_date, "received_date", 40);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate)) throw new ApiError(400, "invalid_received_date");
+    const payAppId = requiredUuid(body.pay_app_id, "pay_app_id");
+    const { data: payApp, error: payAppError } = await admin.from("prime_contract_pay_apps")
+      .select("id, prime_contract_id").eq("id", payAppId).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (payAppError) throw payAppError;
+    if (!payApp) throw new ApiError(404, "pay_app_not_found");
+    if (payApp.prime_contract_id !== primeContractId) throw new ApiError(400, "pay_app_contract_mismatch");
+    const insertId = await idempotentUuid(req, ctx.apiClient.id, "payments");
+    const insert = {
+      id: insertId,
+      tenant_id: ctx.tenantId,
+      prime_contract_id: primeContractId,
+      pay_app_id: payAppId,
+      amount,
+      received_date: receivedDate,
+      method: cleanOptionalText(body.method, 40) ?? "ach",
+      reference: cleanOptionalText(body.reference, 120),
+      notes: cleanOptionalText(body.notes, 2000),
+      created_by: ctx.actorUserId,
+    };
+    const { data, error } = await admin.from("prime_contract_payments").insert(insert)
+      .select(PAYMENT_SELECT).single();
+    if (error?.code === "23505") {
+      const { data: existing } = await admin.from("prime_contract_payments").select(PAYMENT_SELECT)
+        .eq("id", insertId).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (!existing) throw error;
+      await auditWrite(ctx, "prime_contract_payment", existing.id, "create", contract.project_id);
+      return json({ data: existing, idempotent_replay: true });
+    }
+    if (error) throw error;
+    await auditWrite(ctx, "prime_contract_payment", data.id, "create", contract.project_id);
+    return json({ data }, 201);
   }
 
   throw new ApiError(405, "method_not_allowed");
@@ -888,5 +985,7 @@ const CHANGE_ORDER_SELECT = "id, project_id, prime_contract_id, commitment_id, c
 const CHANGE_ORDER_WRITE_FIELDS = ["title", "description", "amount", "days_impact", "status"] as const;
 const PROPOSAL_SELECT = "id, project_id, proposal_no, title, client_name, client_email, valid_until, status, notes, terms, scope_bullets, deliverables, markup_pct, overhead_pct, profit_pct, revision_no, locked, created_at, updated_at";
 const PROPOSAL_WRITE_FIELDS = ["title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct"] as const;
-const PAY_APP_SELECT = "id, prime_contract_id, pay_app_no, period_end, status, submitted_amount, created_at, updated_at";
-const PAY_APP_WRITE_FIELDS = ["period_end", "submitted_amount"] as const;
+const PAY_APP_SELECT = "id, prime_contract_id, pay_app_no, period_end, status, submitted_amount, approved_amount, retainage_held, invoice_no, pay_app_data, created_at, updated_at";
+const PAY_APP_WRITE_FIELDS = ["period_end", "submitted_amount", "retainage_held", "invoice_no", "pay_app_data"] as const;
+const PAYMENT_SELECT = "id, prime_contract_id, pay_app_id, amount, received_date, method, reference, notes, created_at, updated_at";
+const PAYMENT_WRITE_FIELDS = ["prime_contract_id", "pay_app_id", "amount", "received_date", "method", "reference", "notes"] as const;
