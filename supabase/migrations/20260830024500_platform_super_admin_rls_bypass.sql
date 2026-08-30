@@ -4,6 +4,16 @@
 
 BEGIN;
 
+-- The legacy projects_select policy joins clients under caller RLS, while the
+-- enterprise clients policy joins projects. That cycle can raise "infinite
+-- recursion detected" instead of returning a portfolio. The existing
+-- SECURITY DEFINER helper performs the same tenant/team decision without
+-- recursively invoking either table's policies.
+DROP POLICY IF EXISTS projects_select ON public.projects;
+CREATE POLICY projects_select ON public.projects
+  AS PERMISSIVE FOR SELECT TO authenticated
+  USING (public.can_access_project(auth.uid(), id));
+
 DROP POLICY IF EXISTS platform_super_admin_select ON public.projects;
 CREATE POLICY platform_super_admin_select ON public.projects
   AS PERMISSIVE FOR SELECT TO authenticated
