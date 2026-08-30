@@ -18,6 +18,8 @@ import {
   computeLineToDate,
   computeG702,
   seedContinuationRows,
+  clampProgressToScheduled,
+  linePctComplete,
   round2,
   type G702Summary,
   type PriorProgressLike,
@@ -113,6 +115,34 @@ async function loadApprovedCosInner(
         .eq("id", line.id);
       if (upErr) throw upErr;
       updated += 1;
+    }
+    // If the CO amount dropped below what was already billed, clamp progress so
+    // the G703 % column / "Over 100%" badge cannot outrun the new scheduled value.
+    if (amountChanged) {
+      const { data: prog, error: progErr } = await supabase
+        .from("pay_app_line_progress" as any)
+        .select("id, value_to_date, value_this_period, retainage")
+        .eq("sov_line_item_id", line.id);
+      if (progErr) throw progErr;
+      for (const p of (prog ?? []) as any[]) {
+        const clamped = clampProgressToScheduled({
+          scheduledValue: synced.scheduled_value,
+          valueToDate: Number(p.value_to_date),
+          valueThisPeriod: Number(p.value_this_period),
+          retainage: Number(p.retainage),
+        });
+        if (!clamped.clamped) continue;
+        const { error: clampErr } = await supabase
+          .from("pay_app_line_progress" as any)
+          .update({
+            value_to_date: clamped.value_to_date,
+            value_this_period: clamped.value_this_period,
+            pct_complete: clamped.pct_complete,
+            retainage: clamped.retainage,
+          } as any)
+          .eq("id", p.id);
+        if (clampErr) throw clampErr;
+      }
     }
   }
 
@@ -362,18 +392,22 @@ export function usePayAppContinuation(payAppId: string | null) {
     return (sov.data ?? []).map((li) => {
       const pr = priorByLineId[li.id];
       const cur = progByLine[li.id];
+      const scheduled_value = Number(li.scheduled_value);
+      const value_to_date = cur ? Number(cur.value_to_date) : pr ? Number(pr.value_to_date) : 0;
       return {
         sov_line_item_id: li.id, item_no: li.item_no, kind: li.kind,
         description: li.description, unit: li.unit,
         scheduled_qty: Number(li.scheduled_qty), unit_price: Number(li.unit_price),
-        scheduled_value: Number(li.scheduled_value),
+        scheduled_value,
         prior_value_to_date: pr ? Number(pr.value_to_date) : 0,
         prior_qty_to_date: pr ? Number(pr.qty_to_date) : 0,
         qty_this_period: cur ? Number(cur.qty_this_period) : 0,
         value_this_period: cur ? Number(cur.value_this_period) : 0,
-        value_to_date: cur ? Number(cur.value_to_date) : pr ? Number(pr.value_to_date) : 0,
+        value_to_date,
         qty_to_date: cur ? Number(cur.qty_to_date) : pr ? Number(pr.qty_to_date) : 0,
-        pct_complete: cur ? Number(cur.pct_complete) : 0,
+        // Derive % from value/scheduled so a stale stored pct cannot disagree
+        // with the Over 100% badge (value_to_date vs scheduled_value).
+        pct_complete: linePctComplete(value_to_date, scheduled_value),
         retainage: cur ? Number(cur.retainage) : 0,
         retainage_pct: li.retainage_pct == null ? null : Number(li.retainage_pct),
         retainage_exempt: li.retainage_pct != null && Number(li.retainage_pct) === 0,

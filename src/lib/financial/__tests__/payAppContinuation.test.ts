@@ -3,6 +3,8 @@ import {
   coToSovLine,
   coPricedRowToSovLine,
   computeLineToDate,
+  clampProgressToScheduled,
+  linePctComplete,
   seedContinuationRows,
   computeG702,
   computePaymentPosition,
@@ -102,6 +104,55 @@ describe("computeLineToDate", () => {
       valueThisPeriod: 0, qtyThisPeriod: 0, retainagePct: 10,
     });
     expect(r.pct_complete).toBe(0);
+  });
+});
+
+describe("linePctComplete", () => {
+  it("returns value/scheduled as a percent, including for credit lines", () => {
+    expect(linePctComplete(1870, 1710)).toBe(109.36);
+    expect(linePctComplete(-1800, -1800)).toBe(100);
+    expect(linePctComplete(0, 0)).toBe(0);
+  });
+});
+
+describe("clampProgressToScheduled", () => {
+  it("caps Glorieta #30 street-sweeper billing to the executed PCO amount", () => {
+    const r = clampProgressToScheduled({
+      scheduledValue: 1710,
+      valueToDate: 1870,
+      valueThisPeriod: 1870,
+      retainage: 93.5,
+    });
+    expect(r.clamped).toBe(true);
+    expect(r.value_to_date).toBe(1710);
+    expect(r.value_this_period).toBe(1710);
+    expect(r.pct_complete).toBe(100);
+    expect(r.retainage).toBe(85.5); // keeps 5% rate
+  });
+
+  it("caps Glorieta #32 sinkhole billing to the executed PCO amount", () => {
+    const r = clampProgressToScheduled({
+      scheduledValue: 8400,
+      valueToDate: 9600,
+      valueThisPeriod: 9600,
+      retainage: 480,
+    });
+    expect(r.clamped).toBe(true);
+    expect(r.value_to_date).toBe(8400);
+    expect(r.pct_complete).toBe(100);
+    expect(r.retainage).toBe(420);
+  });
+
+  it("is a no-op when already within scheduled", () => {
+    const r = clampProgressToScheduled({
+      scheduledValue: 1710,
+      valueToDate: 1710,
+      valueThisPeriod: 100,
+      retainage: 85.5,
+    });
+    expect(r.clamped).toBe(false);
+    expect(r.value_to_date).toBe(1710);
+    expect(r.value_this_period).toBe(100);
   });
 });
 
