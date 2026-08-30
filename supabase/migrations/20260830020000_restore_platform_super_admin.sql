@@ -37,7 +37,14 @@ BEGIN
     FROM auth.users
    WHERE lower(email) = lower('hardeep@apas.ai');
 
-  IF v_match_count <> 1 THEN
+  -- Fresh local/CI databases do not contain production Auth users. Install the
+  -- authorization function there, but leave the account-specific backfill for
+  -- environments where the canonical account exists.
+  IF v_match_count = 0 THEN
+    RAISE NOTICE
+      'Skipping platform super-admin account backfill; hardeep@apas.ai is not present';
+    RETURN;
+  ELSIF v_match_count > 1 THEN
     RAISE EXCEPTION
       'Expected exactly one auth user for hardeep@apas.ai; found %',
       v_match_count;

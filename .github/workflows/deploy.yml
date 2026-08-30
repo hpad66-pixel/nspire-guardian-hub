@@ -33,7 +33,7 @@ jobs:
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.sha }}
-          check-regexp: "^(TypeScript|Unit Tests.*|Production Build|Supabase Migration Dry-Run)$"
+          check-regexp: "^(TypeScript|Unit Tests.*|Production Build|E2E Tests.*|Supabase Migration Dry-Run|Supabase DB Tests.*)$"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 15
           allowed-conclusions: success
