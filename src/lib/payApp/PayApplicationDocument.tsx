@@ -99,9 +99,53 @@ const PAGE_COVER: React.CSSProperties = {
   width: 1056, minHeight: 620, background: "#fff", color: INK,
   fontFamily: "Georgia, 'Times New Roman', serif", padding: "26px 34px", boxSizing: "border-box", position: "relative",
 };
-const cell: React.CSSProperties = { padding: "5px 7px", fontSize: 12, borderBottom: `1px solid ${RULE}` };
-const numCell: React.CSSProperties = { ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-const th: React.CSSProperties = { padding: "6px 6px", fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.03em", color: MUTE, textAlign: "right", borderBottom: `2px solid ${INK}` };
+// Lining tabular figures stay inside the cell. Georgia oldstyle digits hang below
+// the baseline, so a border-bottom on the number itself prints as a slash through
+// 3/4/5/7/9 — keep rules on the BOX, never on the glyph.
+const NUM_FONT = "ui-sans-serif, system-ui, 'Segoe UI', Arial, sans-serif";
+const NUM: React.CSSProperties = {
+  fontFamily: NUM_FONT,
+  fontVariantNumeric: "tabular-nums lining-nums",
+  whiteSpace: "nowrap",
+};
+const cell: React.CSSProperties = {
+  padding: "4px 5px",
+  fontSize: 11.5,
+  borderBottom: `1px solid ${RULE}`,
+  verticalAlign: "middle",
+  boxSizing: "border-box",
+};
+const numCell: React.CSSProperties = {
+  ...cell,
+  ...NUM,
+  textAlign: "right",
+  fontSize: 10.5,
+  overflow: "hidden",
+};
+const th: React.CSSProperties = {
+  padding: "5px 4px",
+  fontSize: 9.5,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  color: MUTE,
+  textAlign: "right",
+  borderBottom: `2px solid ${INK}`,
+  boxSizing: "border-box",
+  overflow: "hidden",
+};
+const CERT_CELL: React.CSSProperties = {
+  ...NUM,
+  border: `1.5px solid ${INK}`,
+  background: "#fff",
+  padding: "6px 10px",
+  minWidth: 148,
+  boxSizing: "border-box",
+  textAlign: "right",
+  overflow: "hidden",
+  fontWeight: 700,
+  fontSize: 13,
+  lineHeight: 1.2,
+};
 
 // Max Schedule-of-Values rows (incl. section headers) per continuation page
 // (landscape is shorter, so fewer rows keep the dense quantity grid legible).
@@ -201,7 +245,8 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     );
     // Baseline alignment keeps the dollar amount on the MAIN label line (Procore
     // style); the parenthetical sub-note flows below without shoving the number
-    // down. The amount rides its own short ruled underline.
+    // down. Amounts are lining figures with no underline — a rule on the glyph
+    // slashes through the print.
     const SumRow = ({ no, label, sub, value, hi }: { no: string; label: string; sub?: string; value: number; hi?: boolean }) => (
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "2.5px 4px", background: hi ? `${GOLD}22` : undefined }}>
         <div style={{ width: 20, fontSize: 13, fontWeight: hi ? 700 : 400 }}>{no}</div>
@@ -209,13 +254,13 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
           <div style={{ fontSize: 13, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
           {sub && <div style={{ fontSize: 10.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
         </div>
-        <div style={{ width: 150, textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13.5, fontWeight: hi ? 700 : 400 }}>
+        <div data-money-cell style={{ width: 150, textAlign: "right", ...NUM, fontSize: 13.5, fontWeight: hi ? 700 : 400, overflow: "hidden" }}>
           {money(value)}
         </div>
       </div>
     );
-    const coTd: React.CSSProperties = { border: `1px solid ${INK}`, padding: "3px 6px", fontSize: 11 };
-    const coNum: React.CSSProperties = { ...coTd, textAlign: "right", width: 70, fontVariantNumeric: "tabular-nums" };
+    const coTd: React.CSSProperties = { border: `1px solid ${INK}`, padding: "4px 6px", fontSize: 11, boxSizing: "border-box", verticalAlign: "middle" };
+    const coNum: React.CSSProperties = { ...coTd, ...NUM, textAlign: "right", width: 96, overflow: "hidden", fontSize: 10.5 };
 
     return (
       <div ref={ref}>
@@ -292,15 +337,15 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                   <div style={{ fontSize: 13, lineHeight: 1.3 }}>Retainage:</div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 12 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{money(g.retainage_total)}</div>
+                    <div data-money-cell style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, ...NUM, overflow: "hidden" }}>{money(g.retainage_total)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
                     <div style={{ flex: 1, fontSize: 12 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
-                    <div style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{money(0)}</div>
+                    <div data-money-cell style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, ...NUM, overflow: "hidden" }}>{money(0)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", marginTop: 6 }}>
                     <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div style={{ width: 150, textAlign: "right", fontSize: 13, fontVariantNumeric: "tabular-nums", borderTop: `1px solid ${INK}`, paddingTop: 2 }}>{money(g.retainage_total)}</div>
+                    <div data-money-cell style={{ width: 150, textAlign: "right", fontSize: 13, ...NUM, overflow: "hidden", borderTop: `1px solid ${INK}`, paddingTop: 5 }}>{money(g.retainage_total)}</div>
                   </div>
                 </div>
               </div>
@@ -322,22 +367,22 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 <tbody>
                   <tr>
                     <td style={coTd}>Total changes approved in previous months by Owner/Client</td>
-                    <td style={coNum}>{money(prevAdd)}</td>
-                    <td style={coNum}>{money(prevDed)}</td>
+                    <td data-money-cell style={coNum}>{money(prevAdd)}</td>
+                    <td data-money-cell style={coNum}>{money(prevDed)}</td>
                   </tr>
                   <tr>
                     <td style={coTd}>Total approved this month</td>
-                    <td style={coNum}>{money(thisAdd)}</td>
-                    <td style={coNum}>{money(thisDed)}</td>
+                    <td data-money-cell style={coNum}>{money(thisAdd)}</td>
+                    <td data-money-cell style={coNum}>{money(thisDed)}</td>
                   </tr>
                   <tr>
                     <td style={{ ...coTd, textAlign: "right", fontWeight: 700 }}>Totals</td>
-                    <td style={{ ...coNum, fontWeight: 700 }}>{money(coAdd)}</td>
-                    <td style={{ ...coNum, fontWeight: 700 }}>{money(coDed)}</td>
+                    <td data-money-cell style={{ ...coNum, fontWeight: 700 }}>{money(coAdd)}</td>
+                    <td data-money-cell style={{ ...coNum, fontWeight: 700 }}>{money(coDed)}</td>
                   </tr>
                   <tr>
                     <td style={coTd}>Net change by change orders</td>
-                    <td style={{ ...coNum, textAlign: "center", fontWeight: 700 }} colSpan={2}>{money(g.net_change_orders)}</td>
+                    <td data-money-cell style={{ ...coNum, textAlign: "center", fontWeight: 700 }} colSpan={2}>{money(g.net_change_orders)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -379,9 +424,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                   knowledge, information and belief the Work is in accordance with the Contract Documents, and the Contractor
                   is entitled to payment of the AMOUNT CERTIFIED.
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 12 }}>
                   <div style={{ fontWeight: 700 }}>AMOUNT CERTIFIED:</div>
-                  <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums", borderBottom: `1px solid ${INK}`, minWidth: 90, textAlign: "right", paddingBottom: 1 }}>{money(amountCertified)}</div>
+                  <div data-testid="amount-certified-cell" data-money-cell style={CERT_CELL}>
+                    {money(amountCertified)}
+                  </div>
                 </div>
                 <div style={{ marginTop: 6, fontStyle: "italic", fontSize: 8.5, color: MUTE }}>
                   (Attach explanation if amount certified differs from the amount applied for. Initial all figures on this
@@ -417,21 +464,21 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
             <div style={{ fontSize: 11, color: MUTE, marginBottom: 6 }}>
               Quantity completed: through the previous application, this application, and total to date.
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
                 <tr>
-                  <th style={{ ...th, textAlign: "left", width: 24 }}>#</th>
+                  <th style={{ ...th, textAlign: "left", width: 28 }}>#</th>
                   <th style={{ ...th, textAlign: "left" }}>Description</th>
-                  <th style={{ ...th, width: 34 }}>Unit</th>
+                  <th style={{ ...th, width: 36 }}>Unit</th>
                   <th style={{ ...th, width: 56 }}>Sched Qty</th>
-                  <th style={{ ...th, width: 62 }}>Unit Price</th>
-                  <th style={{ ...th, width: 78 }}>Sched Value</th>
+                  <th style={{ ...th, width: 72 }}>Unit Price</th>
+                  <th style={{ ...th, width: 88 }}>Sched Value</th>
                   <th style={{ ...th, width: 56, background: "#faf8f4" }}>Prev Qty</th>
                   <th style={{ ...th, width: 56, background: "#faf8f4" }}>This Qty</th>
                   <th style={{ ...th, width: 60, background: "#faf8f4" }}>Total Qty</th>
-                  <th style={{ ...th, width: 34 }}>%</th>
-                  <th style={{ ...th, width: 80 }}>Value to Date</th>
-                  <th style={{ ...th, width: 66 }}>Retainage</th>
+                  <th style={{ ...th, width: 36 }}>%</th>
+                  <th style={{ ...th, width: 88 }}>Value to Date</th>
+                  <th style={{ ...th, width: 82 }}>Retainage</th>
                 </tr>
               </thead>
               <tbody>
@@ -445,15 +492,15 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                       <td style={{ ...cell, color: MUTE }}>{it.line.item_no}</td>
                       <td style={cell}>{it.line.description}</td>
                       <td style={{ ...cell, textAlign: "center", color: MUTE }}>{it.line.unit ?? "—"}</td>
-                      <td style={numCell}>{qty(it.line.scheduled_qty)}</td>
-                      <td style={numCell}>{money(it.line.unit_price)}</td>
-                      <td style={numCell}>{money(it.line.scheduled_value)}</td>
-                      <td style={{ ...numCell, background: "#faf8f4" }}>{qty(it.line.prev_qty)}</td>
-                      <td style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.this_qty)}</td>
-                      <td style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.qty_to_date)}</td>
-                      <td style={numCell}>{Math.round(it.line.pct)}%</td>
-                      <td style={numCell}>{money(it.line.value_to_date)}</td>
-                      <td style={numCell}>{money(it.line.retainage)}</td>
+                      <td data-money-cell style={numCell}>{qty(it.line.scheduled_qty)}</td>
+                      <td data-money-cell style={numCell}>{money(it.line.unit_price)}</td>
+                      <td data-money-cell style={numCell}>{money(it.line.scheduled_value)}</td>
+                      <td data-money-cell style={{ ...numCell, background: "#faf8f4" }}>{qty(it.line.prev_qty)}</td>
+                      <td data-money-cell style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.this_qty)}</td>
+                      <td data-money-cell style={{ ...numCell, background: "#faf8f4", fontWeight: 600 }}>{qty(it.line.qty_to_date)}</td>
+                      <td data-money-cell style={numCell}>{Math.round(it.line.pct)}%</td>
+                      <td data-money-cell style={numCell}>{money(it.line.value_to_date)}</td>
+                      <td data-money-cell style={numCell}>{money(it.line.retainage)}</td>
                     </tr>
                   ),
                 )}
@@ -463,11 +510,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 <tfoot>
                   <tr style={{ borderTop: `2px solid ${INK}`, fontWeight: 700 }}>
                     <td style={{ ...cell, borderBottom: "none" }} colSpan={5}>Grand total</td>
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
+                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
                     <td style={{ ...numCell, borderBottom: "none" }} colSpan={3} />
                     <td style={{ ...numCell, borderBottom: "none" }} />
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
-                    <td style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
+                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
+                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
                   </tr>
                 </tfoot>
               )}
