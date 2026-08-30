@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "proj_os": {
+      "url": "https://projos.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:PROJ_OS_MCP_SHARED_SECRET}"
+      }
+    }
+  }
+}
