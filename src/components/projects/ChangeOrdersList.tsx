@@ -301,6 +301,7 @@ export function ChangeOrdersList({ projectId, changeOrders, projectName = '' }: 
           documentTitle={emailCO.title}
           documentId={emailCO.id}
           projectName={projectName}
+          projectId={projectId}
           contentHtml={`<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Title</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailCO.title}</td></tr><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Amount</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${formatCurrency(Number(emailCO.amount))}</td></tr><tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailCO.status}</td></tr></table>`}
         />
       )}

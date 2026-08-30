@@ -44,6 +44,7 @@ import { saveDraft, loadDraft, clearDraft } from "@/hooks/useEmailDrafts";
 import { fileToBase64 } from "@/hooks/useEmailAttachments";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ContactPicker } from "@/components/crm/ContactPicker";
 
 const composeSchema = z.object({
   subject: z.string().min(1, "Subject is required").max(200, "Subject too long"),
@@ -332,7 +333,20 @@ export function ComposeEmailDialog({ open, onOpenChange }: ComposeEmailDialogPro
     placeholder: string
   ) => (
     <div className="space-y-2">
-      <FormLabel>{label}</FormLabel>
+      <div className="flex items-center justify-between gap-2">
+        <FormLabel>{label}</FormLabel>
+        <ContactPicker
+          selectedEmails={list}
+          onSelect={setList}
+          defaultScope="workspace"
+          trigger={
+            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+              <Users className="h-3 w-3" />
+              From contacts
+            </Button>
+          }
+        />
+      </div>
       <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]">
         {list.map((email) => (
           <Badge key={email} variant="secondary" className="gap-1">

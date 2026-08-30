@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ContactAssignmentBadges } from "@/components/crm/ContactAssignmentsEditor";
 
 interface ContactCardProps {
   contact: CRMContact;
@@ -30,6 +31,8 @@ interface ContactCardProps {
   onDelete: (id: string) => void;
   onToggleFavorite: (contact: CRMContact) => void;
   onSelect: (contact: CRMContact) => void;
+  projectNames?: string[];
+  propertyNames?: string[];
 }
 
 export function ContactCard({
@@ -38,6 +41,8 @@ export function ContactCard({
   onDelete,
   onToggleFavorite,
   onSelect,
+  projectNames = [],
+  propertyNames = [],
 }: ContactCardProps) {
   const getInitials = (contact: CRMContact) => {
     const first = contact.first_name?.charAt(0) || "";
@@ -112,7 +117,7 @@ export function ContactCard({
               >
                 {CONTACT_TYPE_LABELS[contact.contact_type]}
               </Badge>
-              {contact.property_id ? (
+              {propertyNames.length > 0 || contact.property_id ? (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   <Building2 className="h-2.5 w-2.5 mr-0.5" />
                   Property
@@ -123,6 +128,12 @@ export function ContactCard({
                   Personal
                 </Badge>
               )}
+            </div>
+            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+              <ContactAssignmentBadges
+                projectNames={projectNames}
+                propertyNames={propertyNames}
+              />
             </div>
           </div>
 

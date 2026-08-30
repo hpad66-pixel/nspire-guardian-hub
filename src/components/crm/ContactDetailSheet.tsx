@@ -37,6 +37,14 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import { ContactAssignmentsEditor } from "@/components/crm/ContactAssignmentsEditor";
+import {
+  useContactProjects,
+  useContactProperties,
+  useSyncContactAssignments,
+} from "@/hooks/useContactAssignments";
+import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 
 interface ContactDetailSheetProps {
   contact: CRMContact | null;
@@ -55,7 +63,33 @@ export function ContactDetailSheet({
   onDelete,
   onToggleFavorite,
 }: ContactDetailSheetProps) {
+  const { data: projectIds = [] } = useContactProjects(contact?.id ?? null);
+  const { data: propertyIds = [] } = useContactProperties(
+    contact?.id ?? null,
+    contact?.property_id,
+  );
+  const { sync } = useSyncContactAssignments();
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!contact) return;
+    setSelectedProjectIds(projectIds);
+    setSelectedPropertyIds(mergeAssignmentIds(contact.property_id, propertyIds));
+  }, [contact, projectIds, propertyIds]);
+
   if (!contact) return null;
+
+  const persistAssignments = (nextProjects: string[], nextProperties: string[]) => {
+    setSelectedProjectIds(nextProjects);
+    setSelectedPropertyIds(nextProperties);
+    sync.mutate({
+      contactId: contact.id,
+      projectIds: nextProjects,
+      propertyIds: nextProperties,
+      primaryPropertyId: nextProperties[0] ?? null,
+    });
+  };
 
   const getInitials = (contact: CRMContact) => {
     const first = contact.first_name?.charAt(0) || "";
@@ -243,6 +277,19 @@ export function ContactDetailSheet({
         {/* Content */}
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-6">
+            <section>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Projects & Properties
+              </h3>
+              <ContactAssignmentsEditor
+                selectedProjectIds={selectedProjectIds}
+                selectedPropertyIds={selectedPropertyIds}
+                onProjectIdsChange={(ids) => persistAssignments(ids, selectedPropertyIds)}
+                onPropertyIdsChange={(ids) => persistAssignments(selectedProjectIds, ids)}
+              />
+            </section>
+
             {/* Contact Information */}
             <section>
               <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">

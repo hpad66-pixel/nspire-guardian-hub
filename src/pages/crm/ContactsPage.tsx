@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,10 @@ import { AlphabetNav } from "@/components/crm/AlphabetNav";
 import { ContactsEmptyState } from "@/components/crm/ContactsEmptyState";
 import { ImportContactsDialog } from "@/components/crm/ImportContactsDialog";
 import { useProperties } from "@/hooks/useProperties";
+import { useProjects } from "@/hooks/useProjects";
+import { useContactAssignmentsMap } from "@/hooks/useContactAssignments";
+import { ContactAssignmentBadges } from "@/components/crm/ContactAssignmentsEditor";
+import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
@@ -49,7 +53,8 @@ type OwnershipTab = "all" | "personal" | "property";
 export default function ContactsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "all">("all");
-  const [propertyFilter, setPropertyFilter] = useState<string>("");
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
   const [ownershipTab, setOwnershipTab] = useState<OwnershipTab>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
@@ -62,23 +67,56 @@ export default function ContactsPage() {
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
     contactType: typeFilter,
-    // Only filter by property when explicitly on the "property" tab and a property is selected
-    propertyId: ownershipTab === "property" ? (propertyFilter || undefined) : undefined,
+    propertyId: undefined,
     showPersonal: ownershipTab === "all" || ownershipTab === "personal",
     showProperty: ownershipTab === "all" || ownershipTab === "property",
   });
 
   const { data: properties = [] } = useProperties();
+  const { data: projects = [] } = useProjects();
+  const { data: assignments } = useContactAssignmentsMap();
   const deleteContact = useDeleteCRMContact();
   const toggleFavorite = useToggleFavorite();
 
-  // Filter by letter
-  const filteredContacts = useMemo(() => {
-    if (!activeLetter) return contacts;
-    return contacts.filter((c) =>
-      c.first_name.toUpperCase().startsWith(activeLetter)
+  const projectNameById = useMemo(
+    () => Object.fromEntries(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
+  const propertyNameById = useMemo(
+    () => Object.fromEntries(properties.map((property) => [property.id, property.name])),
+    [properties],
+  );
+
+  const namesForContact = (contact: CRMContact) => {
+    const projectIds = assignments?.projectsByContact[contact.id] ?? [];
+    const propertyIds = mergeAssignmentIds(
+      contact.property_id,
+      assignments?.propertiesByContact[contact.id] ?? [],
     );
-  }, [contacts, activeLetter]);
+    return {
+      projectNames: projectIds.map((id) => projectNameById[id]).filter(Boolean),
+      propertyNames: propertyIds.map((id) => propertyNameById[id]).filter(Boolean),
+      projectIds,
+      propertyIds,
+    };
+  };
+
+  // Filter by letter, project, and extra property links
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact) => {
+      if (activeLetter && !contact.first_name.toUpperCase().startsWith(activeLetter)) {
+        return false;
+      }
+      const { projectIds, propertyIds } = namesForContact(contact);
+      if (projectFilter !== "all" && !projectIds.includes(projectFilter)) {
+        return false;
+      }
+      if (propertyFilter !== "all" && !propertyIds.includes(propertyFilter)) {
+        return false;
+      }
+      return true;
+    });
+  }, [contacts, activeLetter, projectFilter, propertyFilter, assignments, projectNameById, propertyNameById]);
 
   // Get available letters for alphabet nav
   const availableLetters = useMemo(() => {
@@ -125,15 +163,11 @@ export default function ContactsPage() {
     setDetailSheetOpen(true);
   };
 
-  useEffect(() => {
-    if (!propertyFilter && properties.length > 0) {
-      setPropertyFilter(properties[0].id);
-    }
-  }, [properties, propertyFilter]);
-
   const clearFilters = () => {
     setSearch("");
     setTypeFilter("all");
+    setPropertyFilter("all");
+    setProjectFilter("all");
     setOwnershipTab("all");
     setActiveLetter(null);
   };
@@ -141,6 +175,8 @@ export default function ContactsPage() {
   const hasActiveFilters =
     !!search ||
     typeFilter !== "all" ||
+    propertyFilter !== "all" ||
+    projectFilter !== "all" ||
     ownershipTab !== "all" ||
     activeLetter !== null;
 
@@ -290,12 +326,27 @@ export default function ContactsPage() {
 
               <Select value={propertyFilter} onValueChange={setPropertyFilter}>
                 <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue placeholder="Property" />
+                  <SelectValue placeholder="All properties" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All properties</SelectItem>
                   {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="All projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All projects</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -376,7 +427,9 @@ export default function ContactsPage() {
                     </span>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {letterContacts.map((contact) => (
+                    {letterContacts.map((contact) => {
+                      const { projectNames, propertyNames } = namesForContact(contact);
+                      return (
                       <ContactCard
                         key={contact.id}
                         contact={contact}
@@ -384,8 +437,11 @@ export default function ContactsPage() {
                         onDelete={handleDelete}
                         onToggleFavorite={handleToggleFavorite}
                         onSelect={handleSelectContact}
+                        projectNames={projectNames}
+                        propertyNames={propertyNames}
                       />
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -448,20 +504,12 @@ export default function ContactsPage() {
                       {CONTACT_TYPE_LABELS[contact.contact_type]}
                     </Badge>
 
-                    {/* Ownership */}
-                    <Badge variant="outline" className="shrink-0 hidden md:flex">
-                      {contact.property_id ? (
-                        <>
-                          <Building2 className="h-3 w-3 mr-1" />
-                          Property
-                        </>
-                      ) : (
-                        <>
-                          <User className="h-3 w-3 mr-1" />
-                          Personal
-                        </>
-                      )}
-                    </Badge>
+                    <div className="hidden md:block max-w-[220px]">
+                      <ContactAssignmentBadges
+                        projectNames={namesForContact(contact).projectNames}
+                        propertyNames={namesForContact(contact).propertyNames}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

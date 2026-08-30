@@ -299,6 +299,7 @@ export function ProposalList({ projectId, projectName = '' }: ProposalListProps)
           documentTitle={emailProposal.title}
           documentId={emailProposal.id}
           projectName={projectName}
+          projectId={projectId}
           contentHtml={`
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Proposal #</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailProposal.proposal_number}</td></tr>

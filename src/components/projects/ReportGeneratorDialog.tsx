@@ -497,6 +497,7 @@ export function ReportGeneratorDialog({
                     documentTitle={reportTitle}
                     documentId={savedReportId || "unsaved"}
                     projectName={projectName}
+                    projectId={projectId}
                     contentHtml={brandedFull}
                   />
                 </>
