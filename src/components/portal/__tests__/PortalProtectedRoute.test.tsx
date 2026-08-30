@@ -121,4 +121,15 @@ describe('PortalProtectedRoute', () => {
     renderAt('/portal/sub/commitments', 'subcontractor', 'sub_portal');
     expect(screen.getByTestId('portal-protected-loading')).toBeInTheDocument();
   });
+
+  it('lets a platform super admin open the owner portal immediately', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'super-1', app_metadata: { role: 'super_admin' } },
+      loading: false,
+    });
+    renderAt('/portal/owner/contract', 'owner', 'owner_portal');
+    await waitFor(() => expect(screen.getByText('OWNER OK')).toBeInTheDocument());
+    expect(mockCanUseFeature).not.toHaveBeenCalled();
+  });
 });
+

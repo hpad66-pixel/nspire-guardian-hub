@@ -246,6 +246,7 @@ export function useMarkMessageRead() {
 export function useClientActionItems(projectId: string, statusFilter?: ActionItemStatus[]) {
   return useQuery({
     queryKey: ['client-action-items', projectId, statusFilter],
+    enabled: Boolean(projectId),
     queryFn: async () => {
       let query = supabase
         .from('client_action_items')

@@ -21,6 +21,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { isPlatformSuperAdmin } from '@/lib/auth/platformAdmin';
 import { canUseFeature, type FeatureKey } from '@/lib/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { UpgradeRequired } from './UpgradeRequired';
@@ -61,31 +62,31 @@ export function PortalProtectedRoute({
     let cancelled = false;
 
     (async () => {
-      // Super-admin bypass: read app_metadata.role from the JWT.
-      // Plan still applies even for super admin so the upgrade
-      // page is testable from a super-admin account.
-      const isSuper =
-        (user as any)?.app_metadata?.role === 'super_admin' ||
-        (user as any)?.user_metadata?.role === 'super_admin';
+      // Super-admin bypass: platform authority lives in protected app_metadata.
+      // Super admins can open any owner/sub portal immediately.
+      const isSuper = isPlatformSuperAdmin(user);
 
       try {
+        if (isSuper) {
+          if (cancelled) return;
+          setGate({ status: 'allowed' });
+          return;
+        }
+
         // A workspace's own main member (the GC/admin) can preview & manage the
         // client/sub portals for their own project — they're not an "owner" role
         // but they own the data. The plan feature still applies.
-        let isMainAdmin = false;
-        if (!isSuper) {
-          const { data: mainMember } = await supabase
-            .from('portal_memberships' as any)
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('portal_kind', 'main')
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle();
-          isMainAdmin = Boolean(mainMember);
-        }
+        const { data: mainMember } = await supabase
+          .from('portal_memberships' as any)
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('portal_kind', 'main')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        const isMainAdmin = Boolean(mainMember);
 
-        if (isSuper || isMainAdmin) {
+        if (isMainAdmin) {
           const hasFeature = await canUseFeature(FEATURE_MAP[feature]);
           if (cancelled) return;
           setGate({ status: hasFeature ? 'allowed' : 'plan-locked' });

@@ -63,7 +63,26 @@ mcp_servers:
 
 Run `hermes mcp test proj_os`, then use `/reload-mcp` in the messaging gateway.
 
-## 5. Install the skill
+## 5. Connect Cursor (or another Streamable HTTP MCP client)
+
+The same endpoint works from Cursor if you add a remote MCP server. This Slack/Cursor cloud session does **not** include that server unless you register it in Cursor settings with the shared secret.
+
+```json
+{
+  "mcpServers": {
+    "proj_os": {
+      "url": "https://projos.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${PROJ_OS_MCP_SHARED_SECRET}"
+      }
+    }
+  }
+}
+```
+
+`GET /mcp` is not supported (no SSE). Clients must POST JSON-RPC. The live tools cover project search/status, contacts, directory, and action items. Financial and field modules stay on the REST API at `/functions/v1/api-v1`.
+
+## 6. Install the skill
 
 Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind `proj-os` to a dedicated Telegram topic. The skill requires previews and user confirmation before writes.
 

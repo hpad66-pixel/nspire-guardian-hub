@@ -16,7 +16,7 @@ import {
   Link2, Copy, CheckCheck, Send, MessageCircle, ClipboardList,
   AlertCircle, Clock, CheckSquare, DollarSign, Info, HelpCircle,
   Receipt, Eye, GitFork, Loader2, Plus, Megaphone,
-  ExternalLink, Users, ChevronDown, ChevronUp, Check,
+  ExternalLink, ChevronDown, ChevronUp, Check,
 } from 'lucide-react';
 import {
   useClientMessages,
@@ -30,14 +30,23 @@ import {
   type ActionItemPriority,
 } from '@/hooks/useClientCommunication';
 import { useAuth } from '@/hooks/useAuth';
-import { usePortalByProject, usePortalAccess, useInviteContact, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
+import { usePortalByProject, usePortalAccess, useInviteContact, useSetPortalLive, type PortalAccess } from '@/hooks/usePortal';
 import { ClientDocumentsCard } from '@/components/projects/ClientDocumentsCard';
 import { SendDigestDialog } from '@/components/projects/SendDigestDialog';
 import { useSendEmail } from '@/hooks/useSendEmail';
 import { useNavigate } from 'react-router-dom';
-import { CalendarRange, UserPlus, Mail as MailIcon, Settings } from 'lucide-react';
+import { CalendarRange, UserPlus, Mail as MailIcon, Settings, PauseCircle, PlayCircle, Radio } from 'lucide-react';
 import { useClientUpdates } from '@/hooks/useClientUpdates';
+import { useClientDocuments } from '@/hooks/useClientDocuments';
 import { UPDATE_TYPES } from '@/lib/clientUpdates/presentation';
+import {
+  buildClientPortalLoginUrl,
+  buildOwnerPortalPreviewUrl,
+  buildPortalInviteUrl,
+  getPortalGoLiveChecklist,
+  getPortalLiveState,
+  isPortalLive,
+} from '@/lib/portal/activation';
 
 // ─── Action type config ───────────────────────────────────────────────────────
 
@@ -105,7 +114,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
     });
 
     if (access?.magic_link_token) {
-      const magicUrl = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${access.magic_link_token}`;
+      const magicUrl = buildPortalInviteUrl(window.location.origin, access.magic_link_token);
       const accent = portal.brand_accent_color || '#1D6FE8';
       await sendEmail.mutateAsync({
         recipients: [inviteEmail.trim()],
@@ -150,7 +159,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/portal/${portal.portal_slug}/auth?token=${token}`;
+    const url = buildPortalInviteUrl(window.location.origin, token);
     navigator.clipboard.writeText(url);
     setCopiedLink(token);
     setTimeout(() => setCopiedLink(null), 2000);
@@ -170,9 +179,9 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.open(`${window.location.origin}/portal/${portal.portal_slug}`, '_blank')} className="text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => window.open(buildOwnerPortalPreviewUrl(projectId), '_blank')} className="text-xs gap-1.5">
             <ExternalLink className="h-3 w-3" />
-            Preview
+            Open owner view
           </Button>
           <Button size="sm" variant="outline" onClick={() => navigate(`/portals/${portal.id}`)} className="text-xs gap-1.5">
             <Settings className="h-3 w-3" />
@@ -286,61 +295,105 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
 
 // ─── Portal Link ──────────────────────────────────────────────────────────────
 
-function PortalLink({ slug, portalId }: { slug: string; portalId: string }) {
+function PortalActivationCard({
+  projectId,
+  portal,
+  publishedUpdates,
+  sharedDocuments,
+  invitedContacts,
+}: {
+  projectId: string;
+  portal: NonNullable<ReturnType<typeof usePortalByProject>['data']>;
+  publishedUpdates: number;
+  sharedDocuments: number;
+  invitedContacts: number;
+}) {
   const [copied, setCopied] = useState(false);
-  const url = `${window.location.origin}/portal/${slug}`;
+  const setLive = useSetPortalLive();
+  const loginUrl = buildClientPortalLoginUrl(window.location.origin, portal.portal_slug);
+  const previewUrl = buildOwnerPortalPreviewUrl(projectId);
+  const live = isPortalLive(portal);
+  const state = getPortalLiveState(portal);
+  const checklist = getPortalGoLiveChecklist({
+    publishedUpdates,
+    sharedDocuments,
+    invitedContacts,
+    live,
+  });
 
   function copy() {
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(loginUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // One-click admin preview: drop a preview session and open the live portal.
-  // The viewer is the workspace owner (they're on their own project), so this
-  // shows exactly what the client sees, banner and all.
-  function preview() {
-    setPortalSession({
-      portalId,
-      email: 'admin',
-      name: 'Admin preview',
-      accessId: 'admin-preview',
-      authenticated: true,
-      portalSlug: slug,
-      isAdminPreview: true,
-    });
-    window.open(`/portal/${slug}/home`, '_blank');
-  }
-
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Link2 className="h-3.5 w-3.5 text-primary" />
+    <div className="rounded-xl border bg-card overflow-hidden" data-testid="client-portal-activation">
+      <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center', live ? 'bg-emerald-500/15' : 'bg-amber-500/15')}>
+            <Radio className={cn('h-4 w-4', live ? 'text-emerald-600' : 'text-amber-600')} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-sm">Make the client portal live</h3>
+              <Badge variant="outline" className={live ? 'border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700' : 'border-amber-200 bg-amber-50 text-[10px] text-amber-700'}>
+                {state === 'live' ? 'Live for owner' : 'Draft'}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Curate the briefing and files first. The owner sees summaries and shared documents only — never the full project repository.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-sm">Client Portal Link</h3>
-          <p className="text-[11px] text-muted-foreground">Share this link with your client</p>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.open(previewUrl, '_blank')} className="text-xs gap-1.5">
+            <Eye className="h-3.5 w-3.5" />
+            Open owner view
+          </Button>
+          {live ? (
+            <Button size="sm" variant="outline" disabled={setLive.isPending} onClick={() => setLive.mutate({ id: portal.id, live: false })} className="text-xs gap-1.5">
+              {setLive.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PauseCircle className="h-3.5 w-3.5" />}
+              Pause
+            </Button>
+          ) : (
+            <Button size="sm" disabled={setLive.isPending || !checklist.readyToActivate} onClick={() => setLive.mutate({ id: portal.id, live: true })} className="text-xs gap-1.5">
+              {setLive.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+              Activate for client
+            </Button>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+
+      <div className="grid gap-3 p-4 md:grid-cols-3">
+        {checklist.items.map((item) => (
+          <div key={item.id} className="rounded-lg border bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center gap-1.5">
+              {item.done ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+              <p className="text-xs font-medium">{item.label}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 px-4 pb-4">
         <div className="flex-1 min-w-0 bg-muted/40 rounded-lg px-3 py-2 text-xs text-muted-foreground font-mono truncate border border-border/50">
-          {url}
+          {loginUrl}
         </div>
         <Button size="sm" variant="outline" onClick={copy} className="shrink-0">
           {copied ? <CheckCheck className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-          <span className="ml-1.5">{copied ? 'Copied!' : 'Copy'}</span>
+          <span className="ml-1.5">{copied ? 'Copied!' : 'Copy link'}</span>
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => window.open(url, '_blank')} className="shrink-0 px-2">
-          <ExternalLink className="h-3.5 w-3.5" />
+        <Button size="sm" variant="ghost" onClick={() => window.open(loginUrl, '_blank')} className="shrink-0 px-2">
+          <Link2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-      <Button size="sm" onClick={preview} className="w-full gap-1.5">
-        <Eye className="h-3.5 w-3.5" /> Preview as client
-      </Button>
-      <p className="text-[11px] text-muted-foreground">
-        Opens the live portal in admin preview — exactly what your client sees. Clients sign in (or are invited) to view it themselves.
-      </p>
+      {!checklist.readyToActivate && (
+        <p className="px-4 pb-4 text-[11px] text-muted-foreground">
+          Publish a briefing, share a file, or invite the owner before activating.
+        </p>
+      )}
     </div>
   );
 }
@@ -768,10 +821,13 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
   const { data: allItems = [], isLoading: itemsLoading } = useClientActionItems(projectId);
   const { data: messages = [] } = useClientMessages(projectId);
   const { data: updates = [] } = useClientUpdates(projectId);
+  const { data: documents = [] } = useClientDocuments(projectId);
   // #17: a PortalLink is only meaningful when a portal row actually exists —
   // otherwise it contradicts ScheduleAccessSection's "no portal linked" notice.
   const { data: portal } = usePortalByProject(projectId);
   const { data: accessList = [] } = usePortalAccess(portal?.id);
+  const publishedUpdates = updates.filter((update) => update.status === 'published').length;
+  const invitedContacts = accessList.filter((access) => access.is_active).length;
   // Whom an action-item / CO notification email would reach. If null, the client
   // won't be auto-notified — the GC needs a contact on file first.
   const clientEmail = portal?.client_contact_email || accessList.find(a => a.is_active)?.email || null;
@@ -833,8 +889,15 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
       {/* Views */}
       {activeView === 'overview' && (
         <div className="space-y-5">
-          {/* Portal link — only when a portal row exists (#17) */}
-          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} portalId={portal.id} />}
+          {portal && (
+            <PortalActivationCard
+              projectId={projectId}
+              portal={portal}
+              publishedUpdates={publishedUpdates}
+              sharedDocuments={documents.length}
+              invitedContacts={invitedContacts}
+            />
+          )}
 
           {/* Interactive Schedule & Access */}
           <ScheduleAccessSection projectId={projectId} />
@@ -847,7 +910,7 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
             {[
               { label: 'Pending Items', value: pendingItems.length, color: pendingItems.length > 0 ? 'text-amber-500' : 'text-muted-foreground' },
               { label: 'Unread Messages', value: unreadFromClient, color: unreadFromClient > 0 ? 'text-destructive' : 'text-muted-foreground' },
-              { label: 'Updates Posted', value: updates.length, color: 'text-foreground' },
+              { label: 'Live Briefings', value: publishedUpdates, color: 'text-foreground' },
             ].map(s => (
               <div key={s.label} className="rounded-xl border bg-card p-4 text-center">
                 <p className={cn('text-2xl font-bold leading-none', s.color)}>{s.value}</p>

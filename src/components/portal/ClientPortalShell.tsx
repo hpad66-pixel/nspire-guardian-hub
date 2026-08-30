@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { isPlatformSuperAdmin } from "@/lib/auth/platformAdmin";
 import { useClientPortalContext, useMyPortalKind, useOwnerPortalData } from "@/hooks/usePortals";
 import {
   ClientPortalProjectProvider,
@@ -62,6 +63,7 @@ export function ClientPortalShell() {
   const { data: portalContext } = useClientPortalContext();
   const { data: ownerData } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
+  const isSuperAdmin = isPlatformSuperAdmin(user);
 
   const contracts = ownerData?.primeContracts ?? [];
   const selectedContract = contracts.find((contract) => contract.project_id === selectedProjectId) ?? contracts[0] ?? null;
@@ -216,10 +218,16 @@ export function ClientPortalShell() {
         )}
       </header>
 
-      {portalKind === "main" && (
-        <div className="client-portal-preview">
+      {(portalKind === "main" || isSuperAdmin) && (
+        <div className="client-portal-preview" data-testid="owner-portal-admin-banner">
           <ShieldCheck aria-hidden="true" />
-          <span><strong>Client-view preview.</strong> You are signed in as a project administrator.</span>
+          <span>
+            <strong>{isSuperAdmin ? "Platform admin view." : "Client-view preview."}</strong>
+            {" "}
+            {isSuperAdmin
+              ? "You can open any project's owner portal instantly. The owner still sees only curated summaries and files."
+              : "You are signed in as a project administrator."}
+          </span>
         </div>
       )}
 

@@ -10,7 +10,8 @@ import { useClientPortalProject } from "@/components/portal/ClientPortalProjectC
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Loader2, FileDiff, ReceiptText, ShieldCheck } from "lucide-react";
+import { FileText, Download, Loader2, FileDiff, ReceiptText, ShieldCheck, FolderOpen } from "lucide-react";
+import { useClientDocuments } from "@/hooks/useClientDocuments";
 
 interface DocRow { id: string; label: string; sub: string; status?: string; url: string; }
 
@@ -57,15 +58,17 @@ export default function OwnerDocumentsPage() {
       <div>
         <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="text-3xl font-bold mt-2">Documents</h1>
-        <p className="text-muted-foreground">Your project's change orders, pay applications and lien waivers — download anytime.</p>
+        <p className="text-muted-foreground">Files your project team shared with you, plus approved change orders, pay applications, and lien waivers. The internal project repository is not included.</p>
       </div>
+
+      <SharedByTeam projectId={projectId} />
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading documents…
         </div>
       ) : total === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">No documents available yet.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-muted-foreground">No contract documents are ready yet. Shared project files appear above when your team publishes them.</CardContent></Card>
       ) : (
         sections.filter((s) => s.rows.length > 0).map((section) => (
           <Card key={section.title}>
@@ -97,5 +100,48 @@ export default function OwnerDocumentsPage() {
         ))
       )}
     </div>
+  );
+}
+
+function SharedByTeam({ projectId }: { projectId: string | null }) {
+  const { data: docs = [], isLoading } = useClientDocuments(projectId ?? undefined);
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center gap-2 p-6 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading shared files…
+        </CardContent>
+      </Card>
+    );
+  }
+  if (docs.length === 0) return null;
+
+  return (
+    <Card data-testid="owner-shared-documents">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FolderOpen className="h-4 w-4 text-[var(--apas-sapphire)]" /> Shared by your project team
+          <Badge variant="outline" className="ml-1">{docs.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="divide-y">
+        {docs.map((doc) => (
+          <div key={doc.id} className="flex items-center justify-between py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-medium truncate">{doc.name}</div>
+                <div className="text-xs text-muted-foreground">{doc.category || "Shared file"}</div>
+              </div>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                <Download className="h-4 w-4 mr-1" /> Open
+              </a>
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

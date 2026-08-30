@@ -319,10 +319,40 @@ export function useUpdatePortal() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['portal', data.id] });
       qc.invalidateQueries({ queryKey: ['portals'] });
+      qc.invalidateQueries({ queryKey: ['portal-by-project'] });
       toast.success('Portal updated ✓');
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update portal');
+    },
+  });
+}
+
+export function useSetPortalLive() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, live }: { id: string; live: boolean }) => {
+      const { data, error } = await supabase
+        .from('client_portals')
+        .update({
+          is_active: live,
+          status: live ? 'active' : 'draft',
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ClientPortal;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['portal', data.id] });
+      qc.invalidateQueries({ queryKey: ['portals'] });
+      qc.invalidateQueries({ queryKey: ['portal-by-project'] });
+      toast.success(data.is_active ? 'Client portal is live for the owner' : 'Client portal paused');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update portal status');
     },
   });
 }

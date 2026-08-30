@@ -19,6 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
+import { useClientDocuments } from "@/hooks/useClientDocuments";
+import { useClientActionItems } from "@/hooks/useClientCommunication";
 import { financialSummary } from "@/lib/reports/financialReports";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
@@ -61,6 +63,55 @@ function FinancialSnapshot({ projectId }: { projectId: string | null }) {
       </div>
       <p><ShieldCheck /> Owner-facing totals only. Internal vendor costs and private working data are not included.</p>
     </div>
+  );
+}
+
+function OwnerAttention({ projectId }: { projectId: string | null }) {
+  const { data: items = [] } = useClientActionItems(projectId ?? "");
+  const pending = items.filter((item) => item.status === "pending" || item.status === "viewed");
+  if (!projectId || pending.length === 0) return null;
+
+  return (
+    <section className="client-dashboard-panel" data-testid="owner-action-items">
+      <div className="client-panel-heading">
+        <div><span className="client-panel-icon is-gold"><ClipboardCheck /></span><div><small>Needs your input</small><h2>Items from your project team</h2></div></div>
+      </div>
+      <div className="client-decision-list">
+        {pending.slice(0, 4).map((item) => (
+          <div key={item.id} className="client-decision-row">
+            <span className="client-decision-row__type"><ClipboardCheck /><small>{item.action_type.replace(/_/g, " ")}</small></span>
+            <span className="client-decision-row__detail"><strong>{item.title}</strong><small>{item.due_date ? `Due ${shortDate(item.due_date)}` : "Awaiting your response"}</small></span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SharedFiles({ projectId }: { projectId: string | null }) {
+  const { data: docs = [], isLoading } = useClientDocuments(projectId ?? undefined);
+  return (
+    <section className="client-dashboard-panel" data-testid="owner-shared-files">
+      <div className="client-panel-heading">
+        <div><span className="client-panel-icon is-blue"><FolderOpen /></span><div><small>Curated for you</small><h2>Shared files</h2></div></div>
+        <Link to="/owner-portal/documents">All documents <ArrowRight /></Link>
+      </div>
+      {isLoading ? (
+        <div className="client-dashboard-loading"><Loader2 className="animate-spin" /> Loading files…</div>
+      ) : docs.length === 0 ? (
+        <div className="client-dashboard-empty">Your team has not shared files yet. When they do, they appear here — not the full project repository.</div>
+      ) : (
+        <div className="client-decision-list">
+          {docs.slice(0, 4).map((doc) => (
+            <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="client-decision-row">
+              <span className="client-decision-row__type"><FileText /><small>{doc.category || "Shared"}</small></span>
+              <span className="client-decision-row__detail"><strong>{doc.name}</strong><small>Uploaded by your project team</small></span>
+              <span className="client-decision-row__action">Open <ArrowRight /></span>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -151,6 +202,8 @@ export default function OwnerDashboardPage() {
         )}
       </section>
 
+      <OwnerAttention projectId={projectId} />
+
       <div className="client-dashboard-grid">
         <LatestUpdate projectId={projectId} />
         <section className="client-dashboard-panel client-dashboard-financial">
@@ -161,6 +214,8 @@ export default function OwnerDashboardPage() {
           <FinancialSnapshot projectId={projectId} />
         </section>
       </div>
+
+      <SharedFiles projectId={projectId} />
 
       <section className="client-dashboard-resources">
         <div className="client-dashboard-section-title">
