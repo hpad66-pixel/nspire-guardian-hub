@@ -72,4 +72,24 @@ authTest.describe("F2 Owner Portal — authed", () => {
     await authed.goto("/owner-portal/reports");
     await expect(authed.getByText(/executive|reports|owner/i).first()).toBeVisible();
   });
+
+  authTest("multi-project clients get a tab per project in the URL", async ({ authed }) => {
+    await authed.goto("/owner-portal");
+    await expect(authed).toHaveURL(/\/owner-portal(\/projects\/[0-9a-f-]+)?/i, { timeout: 15_000 });
+    const tabs = authed.getByTestId("owner-portal-project-tabs");
+    const single = authed.getByTestId("owner-portal-single-project");
+    const hasTabs = await tabs.isVisible().catch(() => false);
+    const hasSingle = await single.isVisible().catch(() => false);
+    expect(hasTabs || hasSingle).toBeTruthy();
+    if (hasTabs) {
+      const first = tabs.getByRole("tab").first();
+      const second = tabs.getByRole("tab").nth(1);
+      if (await second.isVisible().catch(() => false)) {
+        await second.click();
+        await expect(authed).toHaveURL(/\/owner-portal\/projects\/[^/]+/);
+        await expect(second).toHaveAttribute("aria-selected", "true");
+        await expect(first).toHaveAttribute("aria-selected", "false");
+      }
+    }
+  });
 });

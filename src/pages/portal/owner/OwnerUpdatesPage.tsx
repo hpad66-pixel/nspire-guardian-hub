@@ -9,9 +9,10 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { UPDATE_TYPES } from "@/lib/clientUpdates/presentation";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerUpdatesPage() {
+  const href = useOwnerPortalHref();
   const { selectedProjectId: projectId } = useClientPortalProject();
   const { data: updates = [], isLoading } = useClientUpdates(projectId, { publishedOnly: true });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function OwnerUpdatesPage() {
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="mt-2 text-4xl font-medium">Project briefings</h1>
         <p className="mt-1 text-muted-foreground">Clear, approved updates from your project team.</p>
         </div>

@@ -35,6 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
+import { useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 const REJECT_REASONS = [
   "work_not_complete",
@@ -46,6 +47,7 @@ const REJECT_REASONS = [
 ];
 
 export default function OwnerPayAppApprovalPage() {
+  const href = useOwnerPortalHref();
   const { payAppId } = useParams<{ payAppId: string }>();
   const navigate = useNavigate();
   const { detail, lines, upsertLine } = usePayApp(payAppId ?? null);
@@ -114,7 +116,7 @@ export default function OwnerPayAppApprovalPage() {
       // Then approve at the adjusted total
       await approve.mutateAsync({ payAppId: pa.id, approvedAmount: adjustedTotal });
       toast.success(`Pay App #${pa.pay_app_no} approved at ${money(adjustedTotal)}`);
-      navigate("/owner-portal");
+      navigate(href());
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -129,7 +131,7 @@ export default function OwnerPayAppApprovalPage() {
 
       toast.success("Rejected");
       setRejectOpen(false);
-      navigate("/owner-portal");
+      navigate(href());
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -140,7 +142,7 @@ export default function OwnerPayAppApprovalPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">
           ← Portal overview
         </Link>
         <div className="flex items-start justify-between mt-2">

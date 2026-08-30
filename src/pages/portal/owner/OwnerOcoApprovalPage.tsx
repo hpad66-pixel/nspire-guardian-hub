@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
 import { toast } from "sonner";
+import { useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 export default function OwnerOcoApprovalPage() {
+  const href = useOwnerPortalHref();
   const { coId } = useParams<{ coId: string }>();
   const navigate = useNavigate();
 
@@ -55,7 +57,7 @@ export default function OwnerOcoApprovalPage() {
     try {
       await approve.mutateAsync({ coId: co.id, signaturePath: sigPath });
       toast.success(`OCO-${co.co_no} approved and executed`);
-      navigate("/owner-portal");
+      navigate(href());
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -65,14 +67,14 @@ export default function OwnerOcoApprovalPage() {
     try {
       await reject.mutateAsync({ coId: co.id, reason: reason.trim() });
       toast.success("Rejected");
-      navigate("/owner-portal");
+      navigate(href());
     } catch (e: any) { toast.error(e.message); }
   }
 
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">
           ← Portal overview
         </Link>
         <div className="flex items-start justify-between mt-2">

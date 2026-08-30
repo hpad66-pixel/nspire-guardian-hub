@@ -50,6 +50,7 @@ export interface OwnerPortalContract {
   id: string;
   project_id: string;
   title: string;
+  project_name?: string | null;
   contract_no: string | null;
   status?: string;
   executed_date?: string | null;
@@ -82,11 +83,14 @@ export interface OwnerPortalData {
   pendingPayApps: OwnerPortalPayApp[];
 }
 
-export function useClientPortalContext() {
+export function useClientPortalContext(projectId?: string | null) {
   return useQuery<ClientPortalContext | null>({
-    queryKey: ["client-portal-context"],
+    queryKey: ["client-portal-context", projectId ?? "default"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_owner_portal_context" as any);
+      const { data, error } = await supabase.rpc(
+        "get_owner_portal_context" as any,
+        projectId ? { p_project_id: projectId } : {},
+      );
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
       return (row ?? null) as ClientPortalContext | null;
@@ -184,16 +188,23 @@ export function useOwnerPortalData() {
   return useQuery<OwnerPortalData>({
     queryKey: ["owner-portal-data"],
     queryFn: async () => {
-      const [primeContracts, cos, payApps] = await Promise.all([
+      const [primeContracts, projects, cos, payApps] = await Promise.all([
         supabase.from("prime_contracts" as any).select("*"),
+        supabase.from("projects" as any).select("id, name"),
         supabase.from("change_orders" as any).select("*")
           .eq("co_type", "OCO")
           .in("status", ["pending","out_for_signature"]),
         supabase.from("prime_contract_pay_apps" as any).select("*")
           .in("status", ["submitted"]),
       ]);
+      const projectNames = new Map(
+        ((projects.data ?? []) as Array<{ id: string; name: string }>).map((project) => [project.id, project.name]),
+      );
       return {
-        primeContracts: (primeContracts.data ?? []) as unknown as OwnerPortalContract[],
+        primeContracts: ((primeContracts.data ?? []) as unknown as OwnerPortalContract[]).map((contract) => ({
+          ...contract,
+          project_name: projectNames.get(contract.project_id) ?? contract.project_name ?? contract.title,
+        })),
         pendingOcos: (cos.data ?? []) as unknown as OwnerPortalChangeOrder[],
         pendingPayApps: (payApps.data ?? []) as unknown as OwnerPortalPayApp[],
       };

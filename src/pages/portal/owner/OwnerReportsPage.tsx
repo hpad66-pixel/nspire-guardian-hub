@@ -14,7 +14,7 @@ import { useClientPortalContext, useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
 import { OWNER_REPORTS, type ReportBrand } from "@/components/reports/financial/FinancialReportViews";
 import { downloadReportPdf } from "@/lib/reports/reportPdf";
-import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
+import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
 
 const ICONS: Record<string, typeof FileBarChart> = {
   summary: FileBarChart, billing: ReceiptText, "change-orders": FileDiff,
@@ -22,10 +22,11 @@ const ICONS: Record<string, typeof FileBarChart> = {
 
 export default function OwnerReportsPage() {
   const { isLoading: portalLoading } = useOwnerPortalData();
+  const href = useOwnerPortalHref();
   const { selectedProjectId: projectId } = useClientPortalProject();
 
   const { contract, data, isLoading } = useFinancialReportData(projectId, { ownerSafe: true });
-  const { data: portalContext } = useClientPortalContext();
+  const { data: portalContext } = useClientPortalContext(projectId);
   const [selected, setSelected] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -59,7 +60,7 @@ export default function OwnerReportsPage() {
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-6">
       <div>
-        <Link to="/owner-portal" className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
+        <Link to={href()} className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
         <h1 className="text-3xl font-bold mt-2">Financial Reports</h1>
         <p className="text-muted-foreground">Branded reports on your contract, billings and change orders — view or download as PDF.</p>
       </div>

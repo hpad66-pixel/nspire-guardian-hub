@@ -14,6 +14,7 @@ import { ClientPortal, useArchivePortal } from '@/hooks/usePortal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { ownerPortalPath } from '@/lib/portal/ownerPortalPaths';
 
 interface PortalCardProps {
   portal: ClientPortal;
@@ -32,9 +33,7 @@ export function PortalCard({ portal }: PortalCardProps) {
   const [confirming, setConfirming] = useState(false);
 
   const portalUrl = `${window.location.origin}/portal/${portal.portal_slug}`;
-  const previewUrl = portal.project_id
-    ? `/owner-portal?project=${encodeURIComponent(portal.project_id)}`
-    : '/owner-portal';
+  const previewUrl = ownerPortalPath(portal.project_id);
 
   function copyLink() {
     navigator.clipboard.writeText(portalUrl);

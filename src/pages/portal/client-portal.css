@@ -213,6 +213,27 @@
 .client-portal-context strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .client-portal-context select { max-width: min(520px, 58vw); border: 0; outline: 0; color: white; background: transparent; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .client-portal-context select option { color: var(--client-ink); background: var(--client-paper); }
+.client-portal-project-tabs { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.client-portal-project-tab {
+  max-width: 220px;
+  overflow: hidden;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.78);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-portal-project-tab:hover { border-color: rgba(255, 255, 255, 0.32); color: white; }
+.client-portal-project-tab.is-active {
+  color: #1a1714;
+  background: #f4e4b4;
+  border-color: #f4e4b4;
+}
 .client-portal-context__secure { display: inline-flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.54); font-size: 11px; }
 .client-portal-context__secure svg { width: 14px; height: 14px; color: var(--client-gold); }
 

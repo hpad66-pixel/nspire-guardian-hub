@@ -20,20 +20,28 @@ import { useClientPortalContext, useMyPortalKind, useOwnerPortalData } from "@/h
 import {
   ClientPortalProjectProvider,
 } from "./ClientPortalProjectContext";
+import {
+  ownerPortalPath,
+  ownerPortalProjectSwitchPath,
+  uniqueOwnerProjects,
+} from "@/lib/portal/ownerPortalPaths";
 import "@/pages/portal/client-portal.css";
 
-const primaryNavigation = [
-  { to: "/owner-portal", label: "Overview", icon: Home, exact: true },
-  { to: "/owner-portal#decisions", label: "Decisions", icon: ClipboardCheck, hash: true },
-  { to: "/owner-portal/updates", label: "Updates", icon: BellRing },
-  { to: "/owner-portal/schedule", label: "Schedule", icon: CalendarDays },
-  { to: "/owner-portal/documents", label: "Documents", icon: FolderOpen },
-];
-
-const secondaryNavigation = [
-  { to: "/owner-portal/contract", label: "Contract", icon: FileText },
-  { to: "/owner-portal/reports", label: "Reports", icon: BarChart3 },
-];
+function portalNav(projectId: string | null) {
+  return {
+    primary: [
+      { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true },
+      { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true },
+      { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing },
+      { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays },
+      { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen },
+    ],
+    secondary: [
+      { to: ownerPortalPath(projectId, "/contract"), label: "Contract", icon: FileText },
+      { to: ownerPortalPath(projectId, "/reports"), label: "Reports", icon: BarChart3 },
+    ],
+  };
+}
 
 function initials(value: string) {
   return value
@@ -53,29 +61,39 @@ export function ClientPortalShell() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const routeProjectId = location.pathname.match(/^\/owner-portal\/projects\/([^/]+)/)?.[1];
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-    const requestedProject = new URLSearchParams(location.search).get("project");
-    return requestedProject || null;
-  });
-  const { data: portalContext } = useClientPortalContext();
-  const { data: ownerData } = useOwnerPortalData();
+  const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
 
   const contracts = ownerData?.primeContracts ?? [];
-  const selectedContract = contracts.find((contract) => contract.project_id === selectedProjectId) ?? contracts[0] ?? null;
-  const activeProjectId = selectedContract?.project_id ?? null;
+  const projects = useMemo(() => uniqueOwnerProjects(contracts), [contracts]);
+  const requestedProjectId = routeProjectId
+    ?? new URLSearchParams(location.search).get("project")
+    ?? null;
+  const selectedProject = projects.find((project) => project.id === requestedProjectId) ?? projects[0] ?? null;
+  const activeProjectId = selectedProject?.id ?? null;
+  const selectedContract = selectedProject?.contract ?? contracts[0] ?? null;
   const selectedContractId = selectedContract?.id ?? null;
+  const { data: portalContext } = useClientPortalContext(activeProjectId);
+  const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(activeProjectId);
+
   const decisions = (ownerData?.pendingOcos ?? []).filter((item) => item.prime_contract_id === selectedContractId).length
     + (ownerData?.pendingPayApps ?? []).filter((item) => item.prime_contract_id === selectedContractId).length;
 
   const companyName = portalContext?.client_name || portalContext?.portal_name || "APAS Project Controls";
-  const projectName = selectedContract?.title || portalContext?.project_name || "Your project";
+  const projectName = selectedProject?.name || portalContext?.project_name || "Your project";
   const personName = useMemo(
     () => user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Client",
     [user],
   );
+
+  useEffect(() => {
+    if (!ownerLoading && routeProjectId && selectedProject && routeProjectId !== selectedProject.id) {
+      navigate(ownerPortalProjectSwitchPath(location.pathname, selectedProject.id) + location.hash, { replace: true });
+    }
+  }, [ownerLoading, routeProjectId, selectedProject, location.pathname, location.hash, navigate]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -86,6 +104,10 @@ export function ClientPortalShell() {
       });
     }
   }, [location.pathname, location.hash]);
+
+  function setSelectedProjectId(projectId: string) {
+    navigate(ownerPortalProjectSwitchPath(location.pathname, projectId) + location.hash);
+  }
 
   async function handleSignOut() {
     const returnPath = portalContext?.portal_slug
@@ -98,14 +120,16 @@ export function ClientPortalShell() {
   return (
     <ClientPortalProjectProvider value={{
       contracts,
+      projects,
       selectedProjectId: activeProjectId,
       selectedContract,
+      isLoading: ownerLoading,
       setSelectedProjectId,
     }}>
     <div className="client-portal-app">
       <header className="client-portal-header">
         <div className="client-portal-header__inner">
-          <Link to="/owner-portal" className="client-portal-brand" aria-label="Client portal home">
+          <Link to={ownerPortalPath(activeProjectId)} className="client-portal-brand" aria-label="Client portal home">
             {portalContext?.brand_logo_url ? (
               <span className="client-portal-brand__logo-wrap">
                 <img src={portalContext.brand_logo_url} alt={`${companyName} logo`} className="client-portal-brand__logo" />
@@ -184,18 +208,30 @@ export function ClientPortalShell() {
 
         <div className="client-portal-context">
           <div className="client-portal-context__inner">
-            <label className="client-portal-context__project">
-              <span className="client-portal-context__eyebrow">Current project</span>
-              {contracts.length > 1 ? (
-                <select value={activeProjectId ?? ""} onChange={(event) => setSelectedProjectId(event.target.value)}>
-                  {contracts.map((contract) => (
-                    <option key={contract.id} value={contract.project_id}>
-                      {contract.contract_no ? `${contract.contract_no} · ` : ""}{contract.title}
-                    </option>
-                  ))}
-                </select>
-              ) : <strong>{projectName}</strong>}
-            </label>
+            <div className="client-portal-context__project">
+              <span className="client-portal-context__eyebrow">
+                {projects.length > 1 ? "Your projects" : "Current project"}
+              </span>
+              {projects.length > 1 ? (
+                <div className="client-portal-project-tabs" data-testid="owner-portal-project-tabs" role="tablist" aria-label="Projects">
+                  {projects.map((project) => {
+                    const selected = project.id === activeProjectId;
+                    return (
+                      <Link
+                        key={project.id}
+                        role="tab"
+                        aria-selected={selected}
+                        data-testid={`owner-portal-project-tab-${project.id}`}
+                        to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
+                        className={`client-portal-project-tab${selected ? " is-active" : ""}`}
+                      >
+                        {project.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : <strong data-testid="owner-portal-single-project">{projectName}</strong>}
+            </div>
             <span className="client-portal-context__secure"><ShieldCheck /> Private &amp; role restricted</span>
           </div>
         </div>
@@ -242,8 +278,9 @@ export function ClientPortalShell() {
       <nav className="client-portal-bottom-nav" aria-label="Client portal shortcuts">
         {primaryNavigation.map((item) => {
           const Icon = item.icon;
+          const overviewPath = ownerPortalPath(activeProjectId);
           const active = item.hash
-            ? location.pathname === "/owner-portal" && location.hash === "#decisions"
+            ? location.pathname === overviewPath && location.hash === "#decisions"
             : location.pathname === item.to;
           return (
             <Link key={item.to} to={item.to} className={active ? "is-active" : ""}>

@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Loader2, LockKeyhole, Mail, ShieldCheck } fro
 import { useAuth } from "@/hooks/useAuth";
 import { usePortalBySlug } from "@/hooks/usePortal";
 import { supabase } from "@/integrations/supabase/client";
+import { ownerPortalPath } from "@/lib/portal/ownerPortalPaths";
 import "./client-portal.css";
 
 /**
@@ -28,7 +29,9 @@ export default function PortalLoginPage() {
   // Authenticated clients and project administrators share the same secure
   // destination; the portal gate decides whether this is an owner view or an
   // administrator preview.
-  if (user) return <Navigate to="/owner-portal" replace />;
+  if (user) {
+    return <Navigate to={ownerPortalPath(portal?.project_id)} replace />;
+  }
 
   if (!portal || !portal.is_active || portal.status === "archived") {
     return (
@@ -49,7 +52,7 @@ export default function PortalLoginPage() {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        emailRedirectTo: `${window.location.origin}/owner-portal`,
+        emailRedirectTo: `${window.location.origin}${ownerPortalPath(portal?.project_id)}`,
         shouldCreateUser: false,
       },
     });
