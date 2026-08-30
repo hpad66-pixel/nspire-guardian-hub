@@ -4,6 +4,15 @@
 
 BEGIN;
 
+-- RLS filters rows only after PostgreSQL table privileges allow the query.
+-- Keep these dashboard reads explicit so clean environments match production.
+GRANT SELECT ON TABLE
+  public.projects,
+  public.properties,
+  public.clients,
+  public.project_milestones
+TO authenticated;
+
 -- The legacy projects_select policy joins clients under caller RLS, while the
 -- enterprise clients policy joins projects. That cycle can raise "infinite
 -- recursion detected" instead of returning a portfolio. The existing
