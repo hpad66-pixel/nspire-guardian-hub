@@ -69,4 +69,27 @@ describe("PayApplicationDocument", () => {
     expect(getByText(/Draft — for owner review/i)).toBeTruthy();
     expect(container.querySelector('img[alt="signature"]')).toBeTruthy();
   });
+
+  it("contains Amount Certified in a boxed cell so the print rule cannot slash the figures", () => {
+    const { getByTestId } = render(
+      <PayApplicationDocument spec={{ ...spec, amountCertified: 1234567.89 }} />,
+    );
+    const cell = getByTestId("amount-certified-cell");
+    expect(cell.textContent).toBe("$1,234,567.89");
+    expect(cell.style.border).toContain("solid");
+    expect(cell.style.overflow).toBe("hidden");
+    expect(cell.style.whiteSpace).toBe("nowrap");
+    expect(cell.style.padding).toBe("6px 10px");
+  });
+
+  it("keeps money cells nowrap and overflow-hidden so table rules stay around the figures", () => {
+    const { container } = render(<PayApplicationDocument spec={spec} />);
+    const cells = container.querySelectorAll("[data-money-cell]");
+    expect(cells.length).toBeGreaterThan(10);
+    cells.forEach((el) => {
+      const s = (el as HTMLElement).style;
+      expect(s.whiteSpace).toBe("nowrap");
+      expect(s.overflow).toBe("hidden");
+    });
+  });
 });
