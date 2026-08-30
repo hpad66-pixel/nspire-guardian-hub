@@ -25,6 +25,7 @@ const AVAILABLE_SCOPES = [
   "read:project-status",
   "read:commitments", "write:commitments",
   "read:change-orders", "write:change-orders",
+  "read:proposals", "write:proposals",
   "read:rfis", "write:rfis",
   "read:budget",
   "read:pay-apps", "write:pay-apps",

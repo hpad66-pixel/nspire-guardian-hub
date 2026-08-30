@@ -25,6 +25,8 @@ tags:
   - name: project-status
   - name: commitments
   - name: change-orders
+  - name: proposals
+  - name: pay-apps
   - name: budget
   - name: rfis
   - name: direct-costs
@@ -140,9 +142,11 @@ paths:
   /api-v1/change-orders:
     get:
       tags: [change-orders]
-      summary: List change orders
+      summary: List change orders for a project
       parameters:
-        - { in: query, name: project_id, schema: { type: string, format: uuid } }
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: co_type, schema: { type: string, enum: [PCO, OCO, CCO] } }
       responses:
         "200":
           description: Change orders
@@ -154,6 +158,96 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/ChangeOrder" }
+    post:
+      tags: [change-orders]
+      summary: Create a draft change order (PCO or CCO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeOrderCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ChangeOrder" }
+
+  /api-v1/proposals:
+    get:
+      tags: [proposals]
+      summary: List financial proposals for a project
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200":
+          description: Proposals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Proposal" }
+    post:
+      tags: [proposals]
+      summary: Create a draft financial proposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProposalCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Proposal" }
+
+  /api-v1/pay-apps:
+    get:
+      tags: [pay-apps]
+      summary: List GC-to-owner pay applications (client invoices)
+      parameters:
+        - { in: query, name: project_id, schema: { type: string, format: uuid } }
+        - { in: query, name: prime_contract_id, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200":
+          description: Pay applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PayApp" }
+    post:
+      tags: [pay-apps]
+      summary: Create a draft client invoice / pay application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayAppCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PayApp" }
 
   /api-v1/budget:
     get:
@@ -435,6 +529,66 @@ components:
         title:     { type: string }
         amount:    { type: number }
         status:    { type: string }
+
+    ChangeOrderCreate:
+      type: object
+      required: [project_id, title]
+      properties:
+        project_id:        { type: string, format: uuid }
+        title:             { type: string }
+        description:       { type: string }
+        amount:            { type: number }
+        days_impact:       { type: integer }
+        co_type:           { type: string, enum: [PCO, CCO] }
+        prime_contract_id: { type: string, format: uuid }
+        commitment_id:     { type: string, format: uuid }
+
+    Proposal:
+      type: object
+      properties:
+        id:           { type: string, format: uuid }
+        project_id:   { type: string, format: uuid }
+        proposal_no:  { type: string }
+        title:        { type: string }
+        status:       { type: string, enum: [draft, sent, approved, rejected, expired] }
+        client_name:  { type: string, nullable: true }
+        client_email: { type: string, nullable: true }
+
+    ProposalCreate:
+      type: object
+      required: [project_id, title]
+      properties:
+        project_id:   { type: string, format: uuid }
+        title:        { type: string }
+        proposal_no:  { type: string }
+        client_name:  { type: string }
+        client_email: { type: string }
+        valid_until:  { type: string, format: date }
+        notes:        { type: string }
+        terms:        { type: string }
+        markup_pct:   { type: number }
+        overhead_pct: { type: number }
+        profit_pct:   { type: number }
+
+    PayApp:
+      type: object
+      properties:
+        id:                { type: string, format: uuid }
+        prime_contract_id: { type: string, format: uuid }
+        pay_app_no:        { type: integer }
+        period_end:        { type: string, format: date }
+        submitted_amount:  { type: number, nullable: true }
+        status:            { type: string, enum: [draft, submitted, approved, paid, rejected] }
+
+    PayAppCreate:
+      type: object
+      required: [period_end]
+      properties:
+        project_id:        { type: string, format: uuid }
+        prime_contract_id: { type: string, format: uuid }
+        period_end:        { type: string, format: date }
+        pay_app_no:        { type: integer }
+        submitted_amount:  { type: number }
 
     BudgetMatrixRow:
       type: object

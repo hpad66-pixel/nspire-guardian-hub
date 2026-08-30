@@ -49,8 +49,8 @@ async function dispatch(message, request, env) {
     return {
       protocolVersion: SUPPORTED_PROTOCOLS.has(requested) ? requested : "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "proj-os", title: "Proj OS", version: "1.0.0" },
-      instructions: "Use read tools freely. Before a write, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing.",
+      serverInfo: { name: "proj-os", title: "Proj OS", version: "1.1.0" },
+      instructions: "Use read tools freely. Before creating or updating contacts, tasks, proposals, change orders, or client invoices (pay apps), show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status.",
     };
   }
   if (message.method === "ping") return {};
@@ -115,6 +115,36 @@ const TOOL_HANDLERS = {
     delete body.task_id;
     delete body.project_id;
     return api(c, "PATCH", `/api-v1/action-items/${taskId}`, null, body);
+  },
+  proj_os_list_change_orders: (a, c) => api(c, "GET", "/api-v1/change-orders", {
+    project_id: requireUuid(a.project_id, "project_id"), status: a.status, co_type: a.co_type, limit: a.limit,
+  }),
+  proj_os_get_change_order: (a, c) => api(c, "GET", `/api-v1/change-orders/${requireUuid(a.change_order_id, "change_order_id")}`),
+  proj_os_create_change_order: (a, c) => api(c, "POST", "/api-v1/change-orders", null, pick(a, CHANGE_ORDER_FIELDS)),
+  proj_os_update_change_order: (a, c) => {
+    const changeOrderId = requireUuid(a.change_order_id, "change_order_id");
+    const body = pick(a, CHANGE_ORDER_PATCH_FIELDS);
+    return api(c, "PATCH", `/api-v1/change-orders/${changeOrderId}`, null, body);
+  },
+  proj_os_list_proposals: (a, c) => api(c, "GET", "/api-v1/proposals", {
+    project_id: requireUuid(a.project_id, "project_id"), status: a.status, limit: a.limit,
+  }),
+  proj_os_get_proposal: (a, c) => api(c, "GET", `/api-v1/proposals/${requireUuid(a.proposal_id, "proposal_id")}`),
+  proj_os_create_proposal: (a, c) => api(c, "POST", "/api-v1/proposals", null, pick(a, PROPOSAL_FIELDS)),
+  proj_os_update_proposal: (a, c) => {
+    const proposalId = requireUuid(a.proposal_id, "proposal_id");
+    const body = pick(a, PROPOSAL_PATCH_FIELDS);
+    return api(c, "PATCH", `/api-v1/proposals/${proposalId}`, null, body);
+  },
+  proj_os_list_invoices: (a, c) => api(c, "GET", "/api-v1/pay-apps", {
+    project_id: a.project_id, prime_contract_id: a.prime_contract_id, status: a.status, limit: a.limit,
+  }),
+  proj_os_get_invoice: (a, c) => api(c, "GET", `/api-v1/pay-apps/${requireUuid(a.invoice_id, "invoice_id")}`),
+  proj_os_create_invoice: (a, c) => api(c, "POST", "/api-v1/pay-apps", null, pick(a, INVOICE_FIELDS)),
+  proj_os_update_invoice: (a, c) => {
+    const invoiceId = requireUuid(a.invoice_id, "invoice_id");
+    const body = pick(a, INVOICE_PATCH_FIELDS);
+    return api(c, "PATCH", `/api-v1/pay-apps/${invoiceId}`, null, body);
   },
 };
 
@@ -224,6 +254,12 @@ function pick(source, fields) { return Object.fromEntries(fields.filter((key) =>
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CONTACT_FIELDS = ["first_name", "last_name", "company_name", "job_title", "contact_type", "email", "phone", "mobile", "address_line1", "address_line2", "city", "state", "zip_code", "country", "website", "tags", "notes", "is_favorite", "is_active"];
 const TASK_FIELDS = ["task_id", "project_id", "title", "description", "status", "priority", "assigned_to", "due_date", "completed_at", "tags", "sort_order"];
+const CHANGE_ORDER_FIELDS = ["project_id", "prime_contract_id", "commitment_id", "co_type", "title", "description", "amount", "days_impact"];
+const CHANGE_ORDER_PATCH_FIELDS = ["title", "description", "amount", "days_impact", "status"];
+const PROPOSAL_FIELDS = ["project_id", "proposal_no", "title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct", "lines"];
+const PROPOSAL_PATCH_FIELDS = ["title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct"];
+const INVOICE_FIELDS = ["project_id", "prime_contract_id", "pay_app_no", "period_end", "submitted_amount"];
+const INVOICE_PATCH_FIELDS = ["period_end", "submitted_amount"];
 
 const string = (description) => ({ type: "string", description });
 const uuid = (description) => ({ type: "string", format: "uuid", description });
@@ -242,4 +278,31 @@ const TOOLS = [
   { name: "proj_os_list_project_tasks", title: "List project tasks", description: "List action items for an authorized Proj OS project.", inputSchema: object({ project_id: uuid("Project ID"), status: string("Optional status filter"), limit: { type: "integer", minimum: 1, maximum: 200 } }, ["project_id"]), annotations: readAnnotations },
   { name: "proj_os_create_project_task", title: "Create project task", description: "Create one project action item after showing a preview and obtaining confirmation.", inputSchema: object({ project_id: uuid("Project ID"), title: string("Task title"), description: string("Task details"), status: { type: "string", enum: ["todo", "in_progress", "in_review", "done", "cancelled"] }, priority: { type: "string", enum: ["urgent", "high", "medium", "low"] }, assigned_to: uuid("Assignee user ID"), due_date: { type: "string", format: "date" }, tags: { type: "array", items: { type: "string" } } }, ["project_id", "title"]), annotations: writeAnnotations },
   { name: "proj_os_update_project_task", title: "Update project task", description: "Update approved fields on one project action item after confirmation.", inputSchema: object({ task_id: uuid("Action-item ID"), title: string("Task title"), description: string("Task details"), status: { type: "string", enum: ["todo", "in_progress", "in_review", "done", "cancelled"] }, priority: { type: "string", enum: ["urgent", "high", "medium", "low"] }, assigned_to: uuid("Assignee user ID"), due_date: { type: "string", format: "date" }, tags: { type: "array", items: { type: "string" } } }, ["task_id"]), annotations: writeAnnotations },
+  { name: "proj_os_list_change_orders", title: "List change orders", description: "List change orders for an authorized project.", inputSchema: object({ project_id: uuid("Project ID"), status: string("Optional status filter"), co_type: { type: "string", enum: ["PCO", "OCO", "CCO"] }, limit: { type: "integer", minimum: 1, maximum: 200 } }, ["project_id"]), annotations: readAnnotations },
+  { name: "proj_os_get_change_order", title: "Get change order", description: "Get one change order by ID.", inputSchema: object({ change_order_id: uuid("Change order ID") }, ["change_order_id"]), annotations: readAnnotations },
+  { name: "proj_os_create_change_order", title: "Create change order", description: "Create a draft prime (PCO) or commitment (CCO) change order. Confirm with the user first. Defaults to PCO and auto-resolves the prime contract when omitted.", inputSchema: object({ project_id: uuid("Project ID"), title: string("Change order title"), description: string("Scope / justification"), amount: { type: "number" }, days_impact: { type: "integer" }, co_type: { type: "string", enum: ["PCO", "CCO"] }, prime_contract_id: uuid("Prime contract ID for PCO"), commitment_id: uuid("Commitment ID for CCO") }, ["project_id", "title"]), annotations: writeAnnotations },
+  { name: "proj_os_update_change_order", title: "Update change order", description: "Update a draft/pending change order after confirmation.", inputSchema: object({ change_order_id: uuid("Change order ID"), title: string("Title"), description: string("Description"), amount: { type: "number" }, days_impact: { type: "integer" }, status: { type: "string", enum: ["draft", "pending"] } }, ["change_order_id"]), annotations: writeAnnotations },
+  { name: "proj_os_list_proposals", title: "List proposals", description: "List financial proposals for an authorized project.", inputSchema: object({ project_id: uuid("Project ID"), status: string("Optional status filter"), limit: { type: "integer", minimum: 1, maximum: 200 } }, ["project_id"]), annotations: readAnnotations },
+  { name: "proj_os_get_proposal", title: "Get proposal", description: "Get one financial proposal by ID.", inputSchema: object({ proposal_id: uuid("Proposal ID") }, ["proposal_id"]), annotations: readAnnotations },
+  { name: "proj_os_create_proposal", title: "Create proposal", description: "Create a draft financial proposal, optionally with line items. Confirm totals with the user first. proposal_no auto-generates when omitted.", inputSchema: object({
+    project_id: uuid("Project ID"),
+    title: string("Proposal title"),
+    proposal_no: string("Optional proposal number"),
+    client_name: string("Client display name"),
+    client_email: string("Client email"),
+    valid_until: { type: "string", format: "date" },
+    notes: string("Proposal notes"),
+    terms: string("Commercial terms"),
+    scope_bullets: { type: "array", items: { type: "string" } },
+    deliverables: { type: "array", items: { type: "string" } },
+    markup_pct: { type: "number" },
+    overhead_pct: { type: "number" },
+    profit_pct: { type: "number" },
+    lines: { type: "array", items: object({ description: string("Line description"), category: { type: "string", enum: ["labor", "material", "equipment", "subcontract", "other"] }, quantity: { type: "number" }, unit: string("Unit"), unit_cost: { type: "number" }, markup_pct: { type: "number" } }, ["description"]) },
+  }, ["project_id", "title"]), annotations: writeAnnotations },
+  { name: "proj_os_update_proposal", title: "Update proposal", description: "Update a draft financial proposal after confirmation.", inputSchema: object({ proposal_id: uuid("Proposal ID"), title: string("Title"), client_name: string("Client name"), client_email: string("Client email"), valid_until: { type: "string", format: "date" }, notes: string("Notes"), terms: string("Terms"), markup_pct: { type: "number" }, overhead_pct: { type: "number" }, profit_pct: { type: "number" } }, ["proposal_id"]), annotations: writeAnnotations },
+  { name: "proj_os_list_invoices", title: "List client invoices / pay apps", description: "List GC-to-owner pay applications (client invoices) for a project or prime contract.", inputSchema: object({ project_id: uuid("Project ID"), prime_contract_id: uuid("Prime contract ID"), status: string("Optional status filter"), limit: { type: "integer", minimum: 1, maximum: 200 } }), annotations: readAnnotations },
+  { name: "proj_os_get_invoice", title: "Get client invoice / pay app", description: "Get one prime-contract pay application by ID.", inputSchema: object({ invoice_id: uuid("Pay application ID") }, ["invoice_id"]), annotations: readAnnotations },
+  { name: "proj_os_create_invoice", title: "Create client invoice / pay app", description: "Create a draft GC-to-owner pay application (client invoice). Confirm period and amount first. pay_app_no auto-generates when omitted.", inputSchema: object({ project_id: uuid("Project ID"), prime_contract_id: uuid("Prime contract ID"), period_end: { type: "string", format: "date", description: "Billing period end date YYYY-MM-DD" }, pay_app_no: { type: "integer" }, submitted_amount: { type: "number" } }, ["period_end"]), annotations: writeAnnotations },
+  { name: "proj_os_update_invoice", title: "Update client invoice / pay app", description: "Update a draft pay application after confirmation.", inputSchema: object({ invoice_id: uuid("Pay application ID"), period_end: { type: "string", format: "date" }, submitted_amount: { type: "number" } }, ["invoice_id"]), annotations: writeAnnotations },
 ];

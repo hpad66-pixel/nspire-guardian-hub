@@ -86,7 +86,9 @@ serve(async (req) => {
       case "action-items": response = await routeActionItems(req.method, ctx, id, req, url); break;
       case "project-status": response = await routeProjectStatus(req.method, ctx, url); break;
       case "commitments": response = await routeCommitments(req.method, ctx, id, req); break;
-      case "change-orders": response = await routeChangeOrders(req.method, ctx, id, url); break;
+      case "change-orders": response = await routeChangeOrders(req.method, ctx, id, req, url); break;
+      case "proposals": response = await routeProposals(req.method, ctx, id, req, url); break;
+      case "pay-apps": response = await routePayApps(req.method, ctx, id, req, url); break;
       case "budget": response = await routeBudget(ctx, url); break;
       case "rfis": response = await routeRfis(ctx, url); break;
       case "direct-costs": response = await routeDirectCosts(req.method, ctx, req); break;
@@ -323,18 +325,315 @@ async function routeCommitments(method: string, ctx: RequestContext, id: string 
   throw new ApiError(405, "method_not_allowed");
 }
 
-async function routeChangeOrders(method: string, ctx: RequestContext, id: string | undefined, url: URL) {
-  if (method !== "GET") throw new ApiError(405, "method_not_allowed");
-  let q = admin.from("change_orders").select("*").eq("tenant_id", ctx.tenantId);
-  const projectId = url.searchParams.get("project_id");
-  if (projectId) {
-    await requireProject(ctx.tenantId, requiredUuid(projectId, "project_id"));
-    q = q.eq("project_id", projectId);
+async function routeChangeOrders(
+  method: string,
+  ctx: RequestContext,
+  id: string | undefined,
+  req: Request,
+  url: URL,
+) {
+  if (method === "GET") {
+    if (id) {
+      const { data, error } = await admin.from("change_orders").select(CHANGE_ORDER_SELECT)
+        .eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new ApiError(404, "change_order_not_found");
+      await requireProject(ctx.tenantId, data.project_id);
+      return json({ data });
+    }
+    const projectId = requiredUuid(url.searchParams.get("project_id"), "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    let q = admin.from("change_orders").select(CHANGE_ORDER_SELECT)
+      .eq("tenant_id", ctx.tenantId).eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+    const status = cleanOptionalText(url.searchParams.get("status"), 40);
+    if (status) q = q.eq("status", status);
+    const coType = cleanOptionalText(url.searchParams.get("co_type"), 10);
+    if (coType) q = q.eq("co_type", coType);
+    const { data, error } = await q.limit(boundedLimit(url, 100));
+    if (error) throw error;
+    return json({ data: data ?? [] });
   }
-  if (id) q = q.eq("id", id);
-  const { data, error } = await q;
-  if (error) throw error;
-  return json({ data });
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const projectId = requiredUuid(body.project_id, "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    const coType = String(body.co_type || "PCO").toUpperCase();
+    if (!["PCO", "CCO"].includes(coType)) throw new ApiError(400, "invalid_co_type");
+
+    let primeContractId = optionalUuid(body.prime_contract_id, "prime_contract_id");
+    let commitmentId = optionalUuid(body.commitment_id, "commitment_id");
+    if (coType === "PCO") {
+      if (!primeContractId) {
+        primeContractId = (await resolvePrimeContractForProject(ctx.tenantId, projectId)).id;
+      } else {
+        await requirePrimeContract(ctx.tenantId, primeContractId, projectId);
+      }
+      commitmentId = null;
+    } else {
+      if (!commitmentId) throw new ApiError(400, "commitment_id_required");
+      await requireCommitment(ctx.tenantId, commitmentId, projectId);
+      primeContractId = null;
+    }
+
+    const insertId = await idempotentUuid(req, ctx.apiClient.id, "change-orders");
+    const insert = {
+      id: insertId,
+      tenant_id: ctx.tenantId,
+      project_id: projectId,
+      prime_contract_id: primeContractId,
+      commitment_id: commitmentId,
+      co_type: coType,
+      title: requiredText(body.title, "title", 240),
+      description: cleanOptionalText(body.description, 4000),
+      amount: Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0,
+      days_impact: Number.isFinite(Number(body.days_impact)) ? Number(body.days_impact) : 0,
+      status: "draft",
+      requested_by: ctx.actorUserId,
+    };
+    const { data, error } = await admin.from("change_orders").insert(insert).select(CHANGE_ORDER_SELECT).single();
+    if (error?.code === "23505") {
+      const { data: existing } = await admin.from("change_orders").select(CHANGE_ORDER_SELECT)
+        .eq("id", insertId).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (!existing) throw error;
+      await auditWrite(ctx, "change_order", existing.id, "create", projectId);
+      return json({ data: existing, idempotent_replay: true });
+    }
+    if (error) throw error;
+    await auditWrite(ctx, "change_order", data.id, "create", projectId);
+    return json({ data }, 201);
+  }
+
+  if (method === "PATCH" && id) {
+    const { data: existing, error: findError } = await admin.from("change_orders")
+      .select("id, project_id, status").eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (findError) throw findError;
+    if (!existing) throw new ApiError(404, "change_order_not_found");
+    await requireProject(ctx.tenantId, existing.project_id);
+    if (!["draft", "pending"].includes(String(existing.status))) {
+      throw new ApiError(409, "change_order_not_editable");
+    }
+    const patch = pick(asObject(await req.json()), CHANGE_ORDER_WRITE_FIELDS);
+    if (patch.status && !["draft", "pending"].includes(String(patch.status))) {
+      throw new ApiError(400, "invalid_change_order_status");
+    }
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    const { data, error } = await admin.from("change_orders").update(patch)
+      .eq("id", id).eq("tenant_id", ctx.tenantId).select(CHANGE_ORDER_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "change_order", id, "update", existing.project_id);
+    return json({ data });
+  }
+
+  throw new ApiError(405, "method_not_allowed");
+}
+
+async function routeProposals(
+  method: string,
+  ctx: RequestContext,
+  id: string | undefined,
+  req: Request,
+  url: URL,
+) {
+  if (method === "GET") {
+    if (id) {
+      const { data, error } = await admin.from("proposals").select(PROPOSAL_SELECT)
+        .eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new ApiError(404, "proposal_not_found");
+      await requireProject(ctx.tenantId, data.project_id);
+      return json({ data });
+    }
+    const projectId = requiredUuid(url.searchParams.get("project_id"), "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    let q = admin.from("proposals").select(PROPOSAL_SELECT)
+      .eq("tenant_id", ctx.tenantId).eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+    const status = cleanOptionalText(url.searchParams.get("status"), 40);
+    if (status) q = q.eq("status", status);
+    const { data, error } = await q.limit(boundedLimit(url, 100));
+    if (error) throw error;
+    return json({ data: data ?? [] });
+  }
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const projectId = requiredUuid(body.project_id, "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    const insertId = await idempotentUuid(req, ctx.apiClient.id, "proposals");
+    const proposalNo = cleanOptionalText(body.proposal_no, 80)
+      || await nextProposalNo(ctx.tenantId, projectId);
+    const insert = {
+      id: insertId,
+      tenant_id: ctx.tenantId,
+      project_id: projectId,
+      proposal_no: proposalNo,
+      title: requiredText(body.title, "title", 240),
+      client_name: cleanOptionalText(body.client_name, 200),
+      client_email: cleanOptionalText(body.client_email, 200),
+      valid_until: cleanOptionalText(body.valid_until, 40),
+      notes: cleanOptionalText(body.notes, 8000),
+      terms: cleanOptionalText(body.terms, 8000),
+      scope_bullets: Array.isArray(body.scope_bullets) ? body.scope_bullets.map(String).slice(0, 50) : null,
+      deliverables: Array.isArray(body.deliverables) ? body.deliverables.map(String).slice(0, 50) : null,
+      markup_pct: Number.isFinite(Number(body.markup_pct)) ? Number(body.markup_pct) : undefined,
+      overhead_pct: Number.isFinite(Number(body.overhead_pct)) ? Number(body.overhead_pct) : undefined,
+      profit_pct: Number.isFinite(Number(body.profit_pct)) ? Number(body.profit_pct) : undefined,
+      status: "draft",
+    };
+    const { data, error } = await admin.from("proposals").insert(insert).select(PROPOSAL_SELECT).single();
+    if (error?.code === "23505") {
+      const { data: existing } = await admin.from("proposals").select(PROPOSAL_SELECT)
+        .eq("id", insertId).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (!existing) throw error;
+      await auditWrite(ctx, "proposal", existing.id, "create", projectId);
+      return json({ data: existing, idempotent_replay: true });
+    }
+    if (error) throw error;
+
+    const lines = Array.isArray(body.lines) ? body.lines : [];
+    if (lines.length > 0) {
+      const lineRows = lines.slice(0, 100).map((line: any, index: number) => ({
+        tenant_id: ctx.tenantId,
+        proposal_id: data.id,
+        line_no: index + 1,
+        category: ["labor", "material", "equipment", "subcontract", "other"].includes(line?.category)
+          ? line.category
+          : "other",
+        description: requiredText(line?.description, "lines.description", 500),
+        quantity: Number.isFinite(Number(line?.quantity)) ? Number(line.quantity) : 1,
+        unit: cleanOptionalText(line?.unit, 40) || "ea",
+        unit_cost: Number.isFinite(Number(line?.unit_cost)) ? Number(line.unit_cost) : 0,
+        markup_pct: Number.isFinite(Number(line?.markup_pct)) ? Number(line.markup_pct) : 0,
+      }));
+      const { error: lineError } = await admin.from("proposal_lines").insert(lineRows);
+      if (lineError) throw lineError;
+    }
+
+    await auditWrite(ctx, "proposal", data.id, "create", projectId);
+    return json({ data }, 201);
+  }
+
+  if (method === "PATCH" && id) {
+    const { data: existing, error: findError } = await admin.from("proposals")
+      .select("id, project_id, status, locked").eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (findError) throw findError;
+    if (!existing) throw new ApiError(404, "proposal_not_found");
+    await requireProject(ctx.tenantId, existing.project_id);
+    if (existing.locked || !["draft"].includes(String(existing.status))) {
+      throw new ApiError(409, "proposal_not_editable");
+    }
+    const patch = pick(asObject(await req.json()), PROPOSAL_WRITE_FIELDS);
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    const { data, error } = await admin.from("proposals").update(patch)
+      .eq("id", id).eq("tenant_id", ctx.tenantId).select(PROPOSAL_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "proposal", id, "update", existing.project_id);
+    return json({ data });
+  }
+
+  throw new ApiError(405, "method_not_allowed");
+}
+
+async function routePayApps(
+  method: string,
+  ctx: RequestContext,
+  id: string | undefined,
+  req: Request,
+  url: URL,
+) {
+  if (method === "GET") {
+    if (id) {
+      const { data, error } = await admin.from("prime_contract_pay_apps").select(PAY_APP_SELECT)
+        .eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new ApiError(404, "pay_app_not_found");
+      await requirePrimeContract(ctx.tenantId, data.prime_contract_id);
+      return json({ data });
+    }
+    const projectId = url.searchParams.get("project_id");
+    let primeContractId = optionalUuid(url.searchParams.get("prime_contract_id"), "prime_contract_id");
+    if (projectId) {
+      primeContractId = (await resolvePrimeContractForProject(
+        ctx.tenantId,
+        requiredUuid(projectId, "project_id"),
+      )).id;
+    }
+    if (!primeContractId) throw new ApiError(400, "project_id_or_prime_contract_id_required");
+    await requirePrimeContract(ctx.tenantId, primeContractId);
+    let q = admin.from("prime_contract_pay_apps").select(PAY_APP_SELECT)
+      .eq("tenant_id", ctx.tenantId).eq("prime_contract_id", primeContractId)
+      .order("pay_app_no", { ascending: false });
+    const status = cleanOptionalText(url.searchParams.get("status"), 40);
+    if (status) q = q.eq("status", status);
+    const { data, error } = await q.limit(boundedLimit(url, 100));
+    if (error) throw error;
+    return json({ data: data ?? [] });
+  }
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const projectId = optionalUuid(body.project_id, "project_id");
+    let primeContractId = optionalUuid(body.prime_contract_id, "prime_contract_id");
+    if (!primeContractId) {
+      if (!projectId) throw new ApiError(400, "project_id_or_prime_contract_id_required");
+      primeContractId = (await resolvePrimeContractForProject(ctx.tenantId, projectId)).id;
+    }
+    const contract = await requirePrimeContract(ctx.tenantId, primeContractId, projectId);
+    const periodEnd = requiredText(body.period_end, "period_end", 40);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)) throw new ApiError(400, "invalid_period_end");
+    const insertId = await idempotentUuid(req, ctx.apiClient.id, "pay-apps");
+    const payAppNo = Number.isFinite(Number(body.pay_app_no))
+      ? Number(body.pay_app_no)
+      : await nextPayAppNo(primeContractId);
+    const insert = {
+      id: insertId,
+      tenant_id: ctx.tenantId,
+      prime_contract_id: primeContractId,
+      pay_app_no: payAppNo,
+      period_end: periodEnd,
+      submitted_amount: Number.isFinite(Number(body.submitted_amount)) ? Number(body.submitted_amount) : 0,
+      status: "draft",
+      created_by: ctx.actorUserId,
+    };
+    const { data, error } = await admin.from("prime_contract_pay_apps").insert(insert)
+      .select(PAY_APP_SELECT).single();
+    if (error?.code === "23505") {
+      const { data: existing } = await admin.from("prime_contract_pay_apps").select(PAY_APP_SELECT)
+        .eq("id", insertId).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (!existing) throw error;
+      await auditWrite(ctx, "prime_contract_pay_app", existing.id, "create", contract.project_id);
+      return json({ data: existing, idempotent_replay: true });
+    }
+    if (error) throw error;
+    await auditWrite(ctx, "prime_contract_pay_app", data.id, "create", contract.project_id);
+    return json({ data }, 201);
+  }
+
+  if (method === "PATCH" && id) {
+    const { data: existing, error: findError } = await admin.from("prime_contract_pay_apps")
+      .select("id, prime_contract_id, status").eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (findError) throw findError;
+    if (!existing) throw new ApiError(404, "pay_app_not_found");
+    const contract = await requirePrimeContract(ctx.tenantId, existing.prime_contract_id);
+    if (!["draft"].includes(String(existing.status))) throw new ApiError(409, "pay_app_not_editable");
+    const patch = pick(asObject(await req.json()), PAY_APP_WRITE_FIELDS);
+    if (patch.period_end && !/^\d{4}-\d{2}-\d{2}$/.test(String(patch.period_end))) {
+      throw new ApiError(400, "invalid_period_end");
+    }
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    const { data, error } = await admin.from("prime_contract_pay_apps").update(patch)
+      .eq("id", id).eq("tenant_id", ctx.tenantId).select(PAY_APP_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "prime_contract_pay_app", id, "update", contract.project_id);
+    return json({ data });
+  }
+
+  throw new ApiError(405, "method_not_allowed");
 }
 
 async function routeBudget(ctx: RequestContext, url: URL) {
@@ -420,6 +719,69 @@ async function requireOrganization(tenantId: string, organizationId: string) {
     .eq("id", organizationId).eq("tenant_id", tenantId).maybeSingle();
   if (error) throw error;
   if (!data) throw new ApiError(404, "organization_not_found");
+}
+
+async function requirePrimeContract(tenantId: string, contractId: string, expectedProjectId?: string | null) {
+  const { data, error } = await admin.from("prime_contracts")
+    .select("id, project_id, tenant_id")
+    .eq("id", contractId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ApiError(404, "prime_contract_not_found");
+  if (expectedProjectId && data.project_id !== expectedProjectId) {
+    throw new ApiError(400, "prime_contract_project_mismatch");
+  }
+  await requireProject(tenantId, data.project_id);
+  return data as { id: string; project_id: string; tenant_id: string };
+}
+
+async function resolvePrimeContractForProject(tenantId: string, projectId: string) {
+  await requireProject(tenantId, projectId);
+  const { data, error } = await admin.from("prime_contracts")
+    .select("id, project_id, tenant_id")
+    .eq("project_id", projectId)
+    .eq("tenant_id", tenantId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ApiError(400, "prime_contract_required");
+  return data as { id: string; project_id: string; tenant_id: string };
+}
+
+async function requireCommitment(tenantId: string, commitmentId: string, expectedProjectId: string) {
+  const { data, error } = await admin.from("commitments")
+    .select("id, project_id, tenant_id")
+    .eq("id", commitmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ApiError(404, "commitment_not_found");
+  if (data.project_id !== expectedProjectId) throw new ApiError(400, "commitment_project_mismatch");
+  await requireProject(tenantId, data.project_id);
+  return data;
+}
+
+async function nextProposalNo(tenantId: string, projectId: string) {
+  const { data, error } = await admin.from("proposals").select("proposal_no")
+    .eq("tenant_id", tenantId).eq("project_id", projectId);
+  if (error) throw error;
+  let max = 0;
+  for (const row of data ?? []) {
+    const match = String((row as any).proposal_no || "").match(/(\d+)(?!.*\d)/);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return `P-${String(max + 1).padStart(3, "0")}`;
+}
+
+async function nextPayAppNo(primeContractId: string) {
+  const { data, error } = await admin.from("prime_contract_pay_apps").select("pay_app_no")
+    .eq("prime_contract_id", primeContractId)
+    .order("pay_app_no", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return (Number((data?.[0] as any)?.pay_app_no) || 0) + 1;
 }
 
 async function requireProjectAssignee(tenantId: string, projectId: string, userId: string) {
@@ -522,3 +884,9 @@ const CONTACT_WRITE_FIELDS = ["first_name", "last_name", "company_name", "job_ti
 const DIRECTORY_SELECT = "id, project_id, contact_id, organization_id, role_label, is_key_contact, created_at";
 const ACTION_ITEM_SELECT = "id, project_id, title, description, status, priority, assigned_to, created_by, due_date, completed_at, tags, linked_entity_type, linked_entity_id, sort_order, created_at, updated_at";
 const ACTION_ITEM_WRITE_FIELDS = ["project_id", "title", "description", "status", "priority", "assigned_to", "due_date", "completed_at", "tags", "sort_order"] as const;
+const CHANGE_ORDER_SELECT = "id, project_id, prime_contract_id, commitment_id, co_type, co_no, title, description, amount, days_impact, status, created_at, updated_at";
+const CHANGE_ORDER_WRITE_FIELDS = ["title", "description", "amount", "days_impact", "status"] as const;
+const PROPOSAL_SELECT = "id, project_id, proposal_no, title, client_name, client_email, valid_until, status, notes, terms, scope_bullets, deliverables, markup_pct, overhead_pct, profit_pct, revision_no, locked, created_at, updated_at";
+const PROPOSAL_WRITE_FIELDS = ["title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct"] as const;
+const PAY_APP_SELECT = "id, prime_contract_id, pay_app_no, period_end, status, submitted_amount, created_at, updated_at";
+const PAY_APP_WRITE_FIELDS = ["period_end", "submitted_amount"] as const;

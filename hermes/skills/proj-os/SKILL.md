@@ -1,17 +1,17 @@
 ---
 name: proj-os
-description: Operate Proj OS CRM and projects safely.
-version: 1.0.0
+description: Operate Proj OS CRM, projects, proposals, change orders, and client invoices safely.
+version: 1.1.0
 author: APAS.AI
 metadata:
   hermes:
-    tags: [proj-os, crm, project-management]
+    tags: [proj-os, crm, project-management, financials]
     category: productivity
 ---
 
 # Proj OS
 
-Use the Proj OS MCP tools to work with the shared CRM and authorized projects.
+Use the Proj OS MCP tools to work with the shared CRM, authorized projects, proposals, change orders, and client invoices (pay apps).
 
 ## Context rules
 
@@ -37,7 +37,7 @@ Before every create or update:
 6. Make exactly one write tool call after confirmation.
 7. Return the resulting IDs and a concise summary.
 
-Never delete, merge, bulk-update, send external communications, deploy, spend money, or change permissions through these v1 tools.
+Never delete, merge, bulk-update, send external communications, deploy, spend money, execute/sign financial documents, or change permissions through these tools. Financial writes create or edit **draft** records only.
 
 ## Contact workflow
 
@@ -58,4 +58,32 @@ For “create a task on this project”:
 4. Call `proj_os_create_project_task` once.
 
 Dates must be sent as `YYYY-MM-DD`. Do not invent assignee IDs or due dates.
+
+## Proposal workflow
+
+For “draft a proposal for this project”:
+
+1. Resolve the project.
+2. Collect title, client name/email when known, and line items or lump-sum notes.
+3. Preview the draft and confirm.
+4. Call `proj_os_create_proposal` once. Omit `proposal_no` unless the user specified one.
+
+## Change order workflow
+
+For “create a change order”:
+
+1. Resolve the project.
+2. Default to `co_type=PCO` for owner-facing prime change orders. Use `CCO` only when a commitment ID is known.
+3. Collect title, amount, days impact, and description.
+4. Preview and confirm.
+5. Call `proj_os_create_change_order` once.
+
+## Client invoice / pay app workflow
+
+For “create an invoice / pay app for the owner”:
+
+1. Resolve the project (or prime contract).
+2. Collect `period_end` (`YYYY-MM-DD`) and optional submitted amount.
+3. Preview and confirm.
+4. Call `proj_os_create_invoice` once. Omit `pay_app_no` unless specified.
 
