@@ -215,6 +215,7 @@ export function RFIList({ projectId, projectName = '' }: RFIListProps) {
           documentTitle={`RFI #${emailRFI.rfi_number} — ${emailRFI.subject}`}
           documentId={emailRFI.id}
           projectName={projectName}
+          projectId={projectId}
           contentHtml={`
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Status</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailRFI.status}</td></tr>

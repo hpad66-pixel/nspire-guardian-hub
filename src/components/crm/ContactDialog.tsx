@@ -21,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { TagInput } from "@/components/ui/tag-input";
-import { Loader2, User, Building2, MapPin, FileText, Star } from "lucide-react";
+import { Loader2, User, Star } from "lucide-react";
 import {
   CRMContact,
   CRMContactFormData,
@@ -30,7 +30,13 @@ import {
   useCreateCRMContact,
   useUpdateCRMContact,
 } from "@/hooks/useCRMContacts";
-import { useProperties } from "@/hooks/useProperties";
+import { ContactAssignmentsEditor } from "@/components/crm/ContactAssignmentsEditor";
+import {
+  useContactProjects,
+  useContactProperties,
+  useSyncContactAssignments,
+} from "@/hooks/useContactAssignments";
+import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 
 interface ContactDialogProps {
   open: boolean;
@@ -48,7 +54,12 @@ export function ContactDialog({
   const isEdit = !!contact;
   const createContact = useCreateCRMContact();
   const updateContact = useUpdateCRMContact();
-  const { data: properties } = useProperties();
+  const { sync: syncAssignments } = useSyncContactAssignments();
+  const { data: existingProjectIds = [] } = useContactProjects(contact?.id ?? null);
+  const { data: existingPropertyIds = [] } = useContactProperties(
+    contact?.id ?? null,
+    contact?.property_id,
+  );
 
   const [formData, setFormData] = useState<CRMContactFormData>({
     first_name: "",
@@ -76,6 +87,10 @@ export function ContactDialog({
   });
 
   const [isPersonal, setIsPersonal] = useState(!defaultPropertyId);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>(
+    defaultPropertyId ? [defaultPropertyId] : [],
+  );
 
   useEffect(() => {
     if (contact) {
@@ -103,7 +118,11 @@ export function ContactDialog({
         is_favorite: contact.is_favorite,
         property_id: contact.property_id || undefined,
       });
-      setIsPersonal(!contact.property_id);
+      setIsPersonal(!contact.property_id && existingPropertyIds.length === 0);
+      setSelectedProjectIds(existingProjectIds);
+      setSelectedPropertyIds(
+        mergeAssignmentIds(contact.property_id, existingPropertyIds),
+      );
     } else {
       setFormData({
         first_name: "",
@@ -130,8 +149,10 @@ export function ContactDialog({
         property_id: defaultPropertyId,
       });
       setIsPersonal(!defaultPropertyId);
+      setSelectedProjectIds([]);
+      setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
     }
-  }, [contact, defaultPropertyId, open]);
+  }, [contact, defaultPropertyId, open, existingProjectIds, existingPropertyIds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,9 +160,10 @@ export function ContactDialog({
     // Convert empty strings to null for nullable DB fields (dates, optional text)
     const nullify = (v: string | undefined) => (v === "" ? null : v) as string | undefined;
 
+    const primaryPropertyId = selectedPropertyIds[0];
     const submitData = {
       ...formData,
-      property_id: isPersonal ? undefined : formData.property_id,
+      property_id: primaryPropertyId,
       last_name: nullify(formData.last_name),
       company_name: nullify(formData.company_name),
       job_title: nullify(formData.job_title),
@@ -161,18 +183,29 @@ export function ContactDialog({
     };
 
     try {
-      if (isEdit && contact) {
-        await updateContact.mutateAsync({ id: contact.id, ...submitData });
-      } else {
-        await createContact.mutateAsync(submitData);
-      }
+      const saved =
+        isEdit && contact
+          ? await updateContact.mutateAsync({
+              id: contact.id,
+              ...submitData,
+              user_id: isPersonal || !primaryPropertyId ? contact.user_id : null,
+            })
+          : await createContact.mutateAsync(submitData);
+
+      await syncAssignments.mutateAsync({
+        contactId: saved.id,
+        projectIds: selectedProjectIds,
+        propertyIds: selectedPropertyIds,
+        primaryPropertyId,
+      });
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to save contact:", error);
     }
   };
 
-  const isLoading = createContact.isPending || updateContact.isPending;
+  const isLoading =
+    createContact.isPending || updateContact.isPending || syncAssignments.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -241,28 +274,16 @@ export function ContactDialog({
                 </div>
               </div>
 
-              {!isPersonal && (
-                <div className="space-y-2">
-                  <Label>Property</Label>
-                  <Select
-                    value={formData.property_id || ""}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, property_id: v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties?.map((property) => (
-                        <SelectItem key={property.id} value={property.id}>
-                          {property.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <ContactAssignmentsEditor
+                selectedProjectIds={selectedProjectIds}
+                selectedPropertyIds={selectedPropertyIds}
+                onProjectIdsChange={setSelectedProjectIds}
+                onPropertyIdsChange={(ids) => {
+                  setSelectedPropertyIds(ids);
+                  setFormData({ ...formData, property_id: ids[0] });
+                  if (ids.length > 0) setIsPersonal(false);
+                }}
+              />
 
               {/* Name */}
               <div className="grid grid-cols-2 gap-4">

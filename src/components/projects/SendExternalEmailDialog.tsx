@@ -58,6 +58,7 @@ export interface SendExternalEmailDialogProps {
   documentTitle: string;
   documentId: string;
   projectName: string;
+  projectId?: string;
   defaultSubject?: string;
   contentHtml?: string;
   onSent?: () => void;
@@ -294,6 +295,7 @@ export function SendExternalEmailDialog({
   documentTitle,
   documentId,
   projectName,
+  projectId,
   defaultSubject,
   contentHtml,
   onSent,
@@ -421,6 +423,8 @@ export function SendExternalEmailDialog({
                 <ContactPicker
                   selectedEmails={toEmails}
                   onSelect={setToEmails}
+                  projectId={projectId}
+                  defaultScope={projectId ? "project" : "workspace"}
                   trigger={
                     <Button variant="outline" size="sm" className="h-9 shrink-0 text-xs gap-1.5">
                       <Users className="h-3.5 w-3.5" />
@@ -445,6 +449,8 @@ export function SendExternalEmailDialog({
                 <ContactPicker
                   selectedEmails={ccEmails}
                   onSelect={setCcEmails}
+                  projectId={projectId}
+                  defaultScope={projectId ? "project" : "workspace"}
                   trigger={
                     <Button variant="outline" size="sm" className="h-9 shrink-0 text-xs gap-1.5">
                       <Users className="h-3.5 w-3.5" />
@@ -469,6 +475,8 @@ export function SendExternalEmailDialog({
                 <ContactPicker
                   selectedEmails={bccEmails}
                   onSelect={setBccEmails}
+                  projectId={projectId}
+                  defaultScope={projectId ? "project" : "workspace"}
                   trigger={
                     <Button variant="outline" size="sm" className="h-9 shrink-0 text-xs gap-1.5">
                       <Users className="h-3.5 w-3.5" />

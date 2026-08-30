@@ -291,6 +291,7 @@ export function RFIDetailSheet({ rfi, open, onOpenChange, projectName = '' }: RF
         documentTitle={`RFI #${rfi.rfi_number} — ${rfi.subject}`}
         documentId={rfi.id}
         projectName={projectName}
+        projectId={rfi.project_id}
         contentHtml={emailContentHtml}
       />
     </Sheet>

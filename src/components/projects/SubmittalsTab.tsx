@@ -298,6 +298,7 @@ export function SubmittalsTab({ projectId, projectName = '' }: { projectId: stri
           documentTitle={`Submittal #${emailSubmittal.submittal_number} — ${emailSubmittal.title}`}
           documentId={emailSubmittal.id}
           projectName={projectName}
+          projectId={projectId}
           contentHtml={`
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <tr><td style="padding:8px 12px;border:1px solid #E5E7EB;background:#F8FAFC;font-weight:600;width:140px;">Submittal #</td><td style="padding:8px 12px;border:1px solid #E5E7EB;">${emailSubmittal.submittal_number}</td></tr>

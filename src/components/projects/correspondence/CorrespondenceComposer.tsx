@@ -350,13 +350,13 @@ export function CorrespondenceComposer({
                 </button>
               )}
             </div>
-            <RecipientsInput value={recipients} onChange={setRecipients} placeholder="email@example.com — press Enter to add" />
+            <RecipientsInput value={recipients} onChange={setRecipients} projectId={projectId} placeholder="email@example.com — press Enter to add" />
             {showCcBcc && (
               <>
                 <Label className="text-xs">Cc</Label>
-                <RecipientsInput value={ccRecipients} onChange={setCcRecipients} placeholder="Visible to every recipient" />
+                <RecipientsInput value={ccRecipients} onChange={setCcRecipients} projectId={projectId} placeholder="Visible to every recipient" />
                 <Label className="text-xs">Bcc</Label>
-                <RecipientsInput value={bccRecipients} onChange={setBccRecipients} placeholder="Hidden from every other recipient" />
+                <RecipientsInput value={bccRecipients} onChange={setBccRecipients} projectId={projectId} placeholder="Hidden from every other recipient" />
               </>
             )}
           </div>

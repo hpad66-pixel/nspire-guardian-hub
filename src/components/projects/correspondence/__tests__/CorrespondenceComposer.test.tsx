@@ -11,6 +11,15 @@ vi.mock("@/hooks/useCorrespondenceTemplates", () => ({ useCorrespondenceTemplate
 vi.mock("@/hooks/useSavedRecipients", () => ({
   useSavedRecipients: () => ({ data: [], remember: { mutateAsync: vi.fn() }, rememberAll: vi.fn(), remove: { mutateAsync: vi.fn() } }),
 }));
+vi.mock("@/hooks/useCRMContacts", () => ({
+  useCRMContacts: () => ({ data: [], isLoading: false }),
+}));
+vi.mock("@/hooks/useContactAssignments", () => ({
+  useProjectContactIds: () => ({ data: [], isLoading: false }),
+}));
+vi.mock("@/components/crm/ContactPicker", () => ({
+  ContactPicker: () => <button type="button">Filter contacts</button>,
+}));
 vi.mock("@/hooks/useGmailConnection", () => ({
   useGmailConnection: () => ({
     status: { data: { connected: true, email: "hardeep@apas.ai" }, isLoading: false },
