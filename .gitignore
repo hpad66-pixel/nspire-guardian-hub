@@ -11,6 +11,7 @@ lerna-debug.log*
 !.env.example
 !.env.functions.example
 supabase/.env.functions
+supabase/.temp/
 
 node_modules
 dist
