@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const AVAILABLE_SCOPES = [
+export const AVAILABLE_SCOPES = [
   "read:projects",
   "read:contacts", "write:contacts",
   "read:project-directory", "write:project-directory",

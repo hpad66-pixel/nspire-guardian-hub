@@ -68,7 +68,18 @@ export function useApiClients() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["api-clients"] }),
   });
 
-  return { ...list, create, revoke };
+  const updateScopes = useMutation({
+    mutationFn: async (input: { id: string; scopes: string[] }) => {
+      if (input.scopes.length === 0) throw new Error("Choose at least one scope");
+      const { error } = await supabase.from("api_clients" as any).update({
+        scopes: input.scopes,
+      } as any).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["api-clients"] }),
+  });
+
+  return { ...list, create, revoke, updateScopes };
 }
 
 export interface WebhookSubscription {
