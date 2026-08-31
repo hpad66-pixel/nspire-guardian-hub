@@ -162,7 +162,7 @@ export function InvoiceDetailDialog({
           `<tr><td style="padding:8px 0;border-bottom:1px solid #eee">${l.description}</td>` +
           `<td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;font-variant-numeric:tabular-nums">${money(Number(l.amount))}</td></tr>`,
       )
-    90|      .join('');
+      .join('');
     setEmailHtml(`
       <div style="font-family:Georgia,serif;color:#1A1714;max-width:560px">
         <div style="border-bottom:3px solid #C4A35A;padding-bottom:12px;margin-bottom:20px">
