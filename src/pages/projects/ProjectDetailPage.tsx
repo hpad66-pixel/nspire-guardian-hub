@@ -175,6 +175,12 @@ export default function ProjectDetailPage() {
     project && projectKind(project) === 'consulting' ? (id ?? null) : null;
   const { data: detailProposals = [] } = useFinancialProposals(consultingProjectId);
   const { data: arLedger } = useConsultingArLedger(consultingProjectId);
+  const approvedFee = useMemo(
+    () => detailProposals
+      .filter((p) => p.status === 'approved')
+      .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
+    [detailProposals],
+  );
   const { tree: projectTree } = useProjectTree();
   const projectAncestors = id ? projectTree.ancestors(id).reverse() : []; // root → parent
   const subprojectCount = id ? projectTree.children(id).length : 0;
@@ -373,12 +379,6 @@ export default function ProjectDetailPage() {
   // Construction → financial cascade; consulting → sum of approved proposals
   // (Larkin MRI = PROP-001 $3,369 + PROP-002 $14,500).
   const fin = financialSummary.data;
-  const approvedFee = useMemo(
-    () => detailProposals
-      .filter((p) => p.status === 'approved')
-      .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
-    [detailProposals],
-  );
   const tileAmounts = resolveProjectTileAmounts({
     project,
     construction: fin,
