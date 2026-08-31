@@ -55,6 +55,7 @@ import { ProjectFinancials } from '@/components/projects/ProjectFinancials';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
+import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
@@ -622,12 +623,9 @@ export default function ProjectDetailPage() {
               )}
               <div className="flex items-center gap-2 mb-1.5">
                 <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-tight truncate">{project.name}</h1>
-                {isConsulting && (
-                  <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] border border-[var(--apas-sapphire)]/20">
-                    <Lightbulb className="h-3 w-3" />Consulting
-                  </span>
-                )}
+                <ProjectKindBadge project={project as { project_type?: string | null }} size="md" />
               </div>
+              <ProjectTypeMissingAlert project={project as { project_type?: string | null }} className="mb-2" />
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Construction phase — inline editable; drives the client portal tracker */}
                 <DropdownMenu>

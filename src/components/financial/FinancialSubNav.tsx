@@ -2,6 +2,7 @@ import { NavLink, useParams, Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/hooks/useProjects";
 import { projectKind } from "@/lib/projectKind";
+import { ProjectKindBadge, ProjectTypeMissingAlert } from "@/components/projects/ProjectKindBadge";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -111,11 +112,17 @@ export function FinancialSubNav() {
         )}
       </nav>
 
-      {isConsulting && (
-        <p className="mb-3 text-xs text-muted-foreground">
-          Consulting engagement — bill with <span className="font-medium text-foreground">proposals and client invoices</span>, not construction pay apps.
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <ProjectKindBadge project={project ?? {}} />
+        <p className="text-xs text-muted-foreground">
+          {isConsulting ? (
+            <>Consulting — bill with <span className="font-bold text-foreground">proposals and client invoices</span>, not construction pay apps.</>
+          ) : (
+            <>Construction — bill with <span className="font-bold text-foreground">pay apps, commitments, and budget</span>.</>
+          )}
         </p>
-      )}
+      </div>
+      <ProjectTypeMissingAlert project={project ?? {}} className="mb-3" />
 
       <div className="border-b border-border">
         <nav className="flex items-center gap-6 overflow-x-auto pl-0.5 scrollbar-hide">
