@@ -327,6 +327,49 @@ export function alignLineRetainageToCover<T extends { retainage: number }>(
   return next;
 }
 
+export interface G703GrandTotals {
+  scheduled: number;
+  prev: number;
+  thisP: number;
+  /** Column G — must equal G702 Line 4 when a cover snapshot is supplied. */
+  toDate: number;
+  /** Column I — must equal G702 Line 5 when a cover snapshot is supplied. */
+  retainage: number;
+}
+
+/**
+ * Sum G703 money columns with Number() coercion (Postgres `numeric` arrives as
+ * strings; bare `+` would concatenate into bogus totals like $90,000,369.16).
+ *
+ * AIA: when a G702 cover is present, Column G / Column I footers are pinned to
+ * Lines 4 / 5 so the continuation sheet never disagrees with the certificate.
+ */
+export function computeG703GrandTotals(
+  lines: Array<{
+    scheduled_value?: number | string | null;
+    prev_value?: number | string | null;
+    this_value?: number | string | null;
+    value_to_date?: number | string | null;
+    retainage?: number | string | null;
+  }>,
+  cover?: Pick<G702Summary, "completed_stored_to_date" | "retainage_total"> | null,
+): G703GrandTotals {
+  const scheduled = round2(sum(lines.map((l) => Number(l.scheduled_value) || 0)));
+  const prev = round2(sum(lines.map((l) => Number(l.prev_value) || 0)));
+  const thisP = round2(sum(lines.map((l) => Number(l.this_value) || 0)));
+  let toDate = round2(sum(lines.map((l) => Number(l.value_to_date) || 0)));
+  let retainage = round2(sum(lines.map((l) => Number(l.retainage) || 0)));
+
+  if (cover && typeof cover.completed_stored_to_date === "number") {
+    toDate = round2(cover.completed_stored_to_date);
+  }
+  if (cover && typeof cover.retainage_total === "number") {
+    retainage = round2(cover.retainage_total);
+  }
+
+  return { scheduled, prev, thisP, toDate, retainage };
+}
+
 /**
  * Compute the G702 cover summary from the full line set + prior certificates.
  * `previousCertificates` = the prior pay app's total-earned-less-retainage

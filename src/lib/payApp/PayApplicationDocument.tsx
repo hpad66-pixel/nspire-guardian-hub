@@ -14,6 +14,7 @@
  */
 import { forwardRef } from "react";
 import type { G702Summary } from "@/lib/financial/payAppContinuation";
+import { computeG703GrandTotals, round2 } from "@/lib/financial/payAppContinuation";
 import { g702LineCopy } from "@/lib/payApp/g702Labels";
 
 const INK = "#1A1714";
@@ -162,15 +163,19 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
   ({ spec }, ref) => {
     const g = spec.g702;
 
-    const totals = spec.lines.reduce(
-      (a, l) => ({
-        scheduled: a.scheduled + l.scheduled_value,
-        prev: a.prev + l.prev_value,
-        thisP: a.thisP + l.this_value,
-        toDate: a.toDate + l.value_to_date,
-        retainage: a.retainage + l.retainage,
-      }),
-      { scheduled: 0, prev: 0, thisP: 0, toDate: 0, retainage: 0 },
+    // Number()-coerce every cell and pin Column G / I footers to G702 Lines 4 / 5
+    // so a reconciled cover ($34,008.16 retainage / $921,212.36 to-date) cannot
+    // disagree with the continuation sheet (~$27k live retainage, or a string-
+    // concat $90M bogus total).
+    const totals = computeG703GrandTotals(
+      spec.lines.map((l) => ({
+        scheduled_value: l.scheduled_value,
+        prev_value: l.prev_value,
+        this_value: l.this_value,
+        value_to_date: l.value_to_date,
+        retainage: l.retainage,
+      })),
+      g,
     );
 
     // Flatten the SOV into render items (section headers + lines) and paginate.
@@ -259,12 +264,27 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     // Change Order Summary (additions vs deductions), split into prior periods vs
     // this application. We don't track per-CO approval timing, so the cumulative
     // net lands in "previous months" once past App #1 — matching the Procore sheet.
+    // When the SOV only has a partial CO set (e.g. $1,710 on sheet vs Line 2
+    // $430,289.35), prefer the G702 cover net so the summary cannot understate COs.
     const coLines = spec.lines.filter((l) => l.kind === "change_order");
-    const coAdd = coLines.reduce((t, l) => t + (l.scheduled_value > 0 ? l.scheduled_value : 0), 0);
-    const coDed = coLines.reduce((t, l) => t + (l.scheduled_value < 0 ? -l.scheduled_value : 0), 0);
+    const coAdd = round2(coLines.reduce((t, l) => {
+      const v = Number(l.scheduled_value) || 0;
+      return t + (v > 0 ? v : 0);
+    }, 0));
+    const coDed = round2(coLines.reduce((t, l) => {
+      const v = Number(l.scheduled_value) || 0;
+      return t + (v < 0 ? -v : 0);
+    }, 0));
+    const liveCoNet = round2(coAdd - coDed);
+    const coverCoNet = round2(Number(g.net_change_orders) || 0);
+    const useCoverCo = Math.abs(liveCoNet - coverCoNet) > 0.02;
     const firstApp = spec.payAppNo <= 1;
-    const prevAdd = firstApp ? 0 : coAdd, prevDed = firstApp ? 0 : coDed;
-    const thisAdd = firstApp ? coAdd : 0, thisDed = firstApp ? coDed : 0;
+    const summaryAdd = useCoverCo ? (coverCoNet > 0 ? coverCoNet : 0) : coAdd;
+    const summaryDed = useCoverCo ? (coverCoNet < 0 ? -coverCoNet : 0) : coDed;
+    const prevAdd = firstApp ? 0 : summaryAdd;
+    const prevDed = firstApp ? 0 : summaryDed;
+    const thisAdd = firstApp ? summaryAdd : 0;
+    const thisDed = firstApp ? summaryDed : 0;
 
     const periodLabel = spec.periodStart ? `${spec.periodStart} – ${spec.periodEnd}` : spec.periodEnd;
     const invoiceNo = spec.invoiceNo ?? spec.payAppNo;
@@ -619,13 +639,13 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               {/* Grand total only on the last continuation page */}
               {pi === sovPages.length - 1 && (
                 <tfoot>
-                  <tr style={{ borderTop: `2px solid ${INK}`, fontWeight: 700 }}>
+                  <tr style={{ borderTop: `2px solid ${INK}`, fontWeight: 700 }} data-testid="g703-grand-total">
                     <td style={{ ...cell, borderBottom: "none" }} colSpan={5}>Grand total</td>
-                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
+                    <td data-money-cell data-testid="g703-total-scheduled" style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
                     <td style={{ ...numCell, borderBottom: "none" }} colSpan={3} />
                     <td style={{ ...numCell, borderBottom: "none" }} />
-                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
-                    <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
+                    <td data-money-cell data-testid="g703-total-to-date" style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
+                    <td data-money-cell data-testid="g703-total-retainage" style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
                   </tr>
                 </tfoot>
               )}
