@@ -4,13 +4,13 @@ import { Card } from '@/components/ui/card';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Receipt, MoreHorizontal, Trash2, Eye } from 'lucide-react';
+import { Plus, Receipt, MoreHorizontal, Trash2, Eye, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
-import { useConsultingInvoices } from '@/hooks/useConsultingInvoices';
+import { useConsultingInvoices, useConsultingArLedger } from '@/hooks/useConsultingInvoices';
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
-import { ConsultingInvoiceBuilder } from './ConsultingInvoiceBuilder';
+import { ConsultingInvoiceBuilder, type InvoiceClientSeed } from './ConsultingInvoiceBuilder';
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
 import { cn } from '@/lib/utils';
@@ -19,30 +19,41 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
   return (
     <div className="rounded-lg bg-card border p-3">
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-xl font-semibold mt-0.5">{value}</div>
+      <div className="text-xl font-semibold mt-0.5 tabular-nums">{value}</div>
       {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }
 
-export function InvoicingTab({ projectId, projectName, clientName }: { projectId: string; projectName: string; clientName?: string | null }) {
+export function InvoicingTab({
+  projectId,
+  projectName,
+  clientName,
+  clientSeed,
+}: {
+  projectId: string;
+  projectName: string;
+  clientName?: string | null;
+  clientSeed?: InvoiceClientSeed | null;
+}) {
   const { data: invoices, isLoading, remove } = useConsultingInvoices(projectId);
+  const { data: ledger } = useConsultingArLedger(projectId);
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const summary = useMemo(() => summarizeScopes(scopes), [scopes]);
-  const invoiced = useMemo(
-    () => (invoices ?? []).filter((i) => i.status !== 'void').reduce((s, i) => s + (Number(i.total) || 0), 0),
-    [invoices],
-  );
   const approvedFee = useMemo(
     () => proposals
       .filter((p) => p.status === 'approved')
       .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
     [proposals],
   );
+  const invoiced = ledger?.totalInvoiced ?? 0;
+  const cashReceived = ledger?.totalPaid ?? 0;
+  const openAr = ledger?.openAr ?? 0;
   const unbilledApproved = Math.max(0, approvedFee - invoiced);
 
   return (
@@ -54,20 +65,79 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
             Client invoices
           </h2>
           <p className="text-sm text-muted-foreground">
-            Bill approved proposals (or scope progress). Branded PDF · email to project contacts.
+            Corporate invoices against approved proposals with a running payment tab. Branded PDF · client sign-off · email.
           </p>
         </div>
-        <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+        <Button onClick={() => { setEditId(null); setBuilderOpen(true); }} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
           <Plus className="h-4 w-4" />New invoice
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Metric label="Approved proposals" value={money(approvedFee)} sub={`${proposals.filter((p) => p.status === 'approved').length} approved`} />
-        <Metric label="Invoiced" value={money(invoiced)} sub={`${(invoices ?? []).length} invoices`} />
-        <Metric label="Unbilled (proposals)" value={money(unbilledApproved)} sub="approved − invoiced" />
-        <Metric label="Scope unbilled" value={money(summary.unbilled)} sub={`${summary.pctComplete}% complete`} />
+        <Metric label="Invoiced" value={money(invoiced)} sub={`${(invoices ?? []).filter((i) => i.status !== 'void').length} invoices`} />
+        <Metric label="Cash received" value={money(cashReceived)} sub="all payments" />
+        <Metric label="Open A/R" value={money(openAr)} sub="invoiced − paid" />
+        <Metric label="Unbilled" value={money(unbilledApproved || summary.unbilled)} sub={unbilledApproved > 0 ? 'approved − invoiced' : 'scope unbilled'} />
       </div>
+
+      {(ledger?.entries?.length ?? 0) > 0 && (
+        <Card className="overflow-hidden">
+          <div className="px-4 py-2.5 border-b bg-muted/30">
+            <h3 className="text-sm font-semibold">Running A/R ledger</h3>
+            <p className="text-xs text-muted-foreground">Every invoice and payment on this engagement — continuous accounting tab.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground border-b">
+                  <th className="font-medium px-4 py-2">Inv</th>
+                  <th className="font-medium px-3 py-2">Date</th>
+                  <th className="font-medium px-3 py-2">Subject / proposals</th>
+                  <th className="font-medium px-3 py-2">Status</th>
+                  <th className="font-medium px-3 py-2 text-right">Invoiced</th>
+                  <th className="font-medium px-3 py-2 text-right">Paid</th>
+                  <th className="font-medium px-3 py-2 text-right">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger!.entries.map((e) => {
+                  const meta = INVOICE_STATUS_META[e.status as keyof typeof INVOICE_STATUS_META] ?? INVOICE_STATUS_META.draft;
+                  return (
+                    <tr
+                      key={e.invoice_id}
+                      className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => setDetailId(e.invoice_id)}
+                    >
+                      <td className="px-4 py-2.5 font-medium">#{e.invoice_no}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                        {format(new Date(e.issue_date + 'T00:00:00'), 'MMM d, yyyy')}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="line-clamp-1">{e.subject || e.proposal_nos.join(', ') || '—'}</div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className={cn('inline-block text-[11px] px-2 py-0.5 rounded-full font-medium', meta.className)}>{meta.label}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{money(e.total)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{money(e.paid)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[var(--apas-sapphire)]">{money(e.balance)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t bg-muted/20 font-medium">
+                  <td colSpan={4} className="px-4 py-2.5 text-right text-muted-foreground">Totals</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{money(invoiced)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{money(cashReceived)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-[var(--apas-sapphire)]">{money(openAr)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground py-10 text-center">Loading invoices…</div>
@@ -78,7 +148,7 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
           </div>
           <p className="font-medium font-[Playfair_Display] text-lg">No invoices yet</p>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Create a branded client invoice from approved proposals, scopes, or a custom lump-sum. Send it to anyone on the project team.
+            Create a branded client invoice from approved proposals. Each successive invoice carries prior billed and paid amounts forward.
           </p>
           <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
             <Plus className="h-4 w-4" />Create first invoice
@@ -86,6 +156,9 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
         </Card>
       ) : (
         <Card className="overflow-hidden">
+          <div className="px-4 py-2.5 border-b bg-muted/20">
+            <h3 className="text-sm font-semibold">All invoices</h3>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -103,16 +176,24 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
                   const meta = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft;
                   return (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setDetailId(inv.id)}>
-                      <td className="px-4 py-3 font-medium">#{inv.invoice_no}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium">#{inv.invoice_no}</div>
+                        {inv.subject && <div className="text-xs text-muted-foreground line-clamp-1">{inv.subject}</div>}
+                      </td>
                       <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{format(new Date(inv.issue_date + 'T00:00:00'), 'MMM d, yyyy')}</td>
                       <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{inv.due_date ? format(new Date(inv.due_date + 'T00:00:00'), 'MMM d') : '—'}</td>
                       <td className="px-3 py-3"><span className={cn('inline-block text-[11px] px-2 py-0.5 rounded-full font-medium', meta.className)}>{meta.label}</span></td>
-                      <td className="px-3 py-3 text-right whitespace-nowrap">{money(Number(inv.total))}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap tabular-nums">{money(Number(inv.total))}</td>
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setDetailId(inv.id)}><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
+                            {inv.status === 'draft' && (
+                              <DropdownMenuItem onClick={() => { setEditId(inv.id); setBuilderOpen(true); }}>
+                                <Pencil className="h-4 w-4 mr-2" />Edit
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -126,8 +207,23 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
         </Card>
       )}
 
-      <ConsultingInvoiceBuilder open={builderOpen} onOpenChange={setBuilderOpen} projectId={projectId} />
-      <InvoiceDetailDialog open={!!detailId} onOpenChange={(v) => !v && setDetailId(null)} projectId={projectId} invoiceId={detailId} projectName={projectName} clientName={clientName} />
+      <ConsultingInvoiceBuilder
+        open={builderOpen}
+        onOpenChange={(v) => { setBuilderOpen(v); if (!v) setEditId(null); }}
+        projectId={projectId}
+        projectName={projectName}
+        clientSeed={clientSeed}
+        editInvoiceId={editId}
+      />
+      <InvoiceDetailDialog
+        open={!!detailId}
+        onOpenChange={(v) => !v && setDetailId(null)}
+        projectId={projectId}
+        invoiceId={detailId}
+        projectName={projectName}
+        clientName={clientName}
+        clientSeed={clientSeed}
+      />
     </div>
   );
 }
