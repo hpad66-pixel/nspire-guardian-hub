@@ -23,7 +23,7 @@ vi.mock('@/hooks/useProjectPeople', () => ({
   }),
 }));
 vi.mock('@/hooks/useProjectDirectory', () => ({ useProjectDirectory: () => ({ remove: { mutate: vi.fn() } }) }));
-vi.mock('@/components/directory/AddPersonDialog', () => ({ AddPersonDialog: () => null }));
+vi.mock('@/components/crm/AddFromCrmDialog', () => ({ AddFromCrmDialog: () => null }));
 vi.mock('@/components/projects/correspondence/CorrespondenceComposer', () => ({ CorrespondenceComposer: () => null }));
 vi.mock('@/components/projects/correspondence/ProjectSmsComposer', () => ({ ProjectSmsComposer: () => null }));
 
@@ -37,6 +37,6 @@ describe('ProjectTeamSheet', () => {
     expect(screen.getByText('No portal access')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Email' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Text' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Attach contact' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add from CRM' })).toBeInTheDocument();
   });
 });

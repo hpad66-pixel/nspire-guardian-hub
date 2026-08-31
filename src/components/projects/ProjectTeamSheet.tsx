@@ -42,7 +42,7 @@ import {
 import { useUsers } from '@/hooks/useUserManagement';
 import { useProjectContacts } from '@/hooks/useProjectPeople';
 import { useProjectDirectory } from '@/hooks/useProjectDirectory';
-import { AddPersonDialog } from '@/components/directory/AddPersonDialog';
+import { AddFromCrmDialog } from '@/components/crm/AddFromCrmDialog';
 import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
 import { ProjectSmsComposer, type SmsRecipient } from '@/components/projects/correspondence/ProjectSmsComposer';
 import type { Database } from '@/integrations/supabase/types';
@@ -152,18 +152,18 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                 <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Project Contacts ({projectContacts.length})</h3>
                 <p className="mt-1 text-xs text-muted-foreground">CRM contacts can receive project email and text without signing in.</p>
               </div>
-              <Button size="sm" className="h-8 shrink-0 gap-1.5" onClick={() => setAttachContactOpen(true)}>
-                <ContactRound className="h-3.5 w-3.5" />Attach contact
+              <Button size="sm" className="h-8 shrink-0 gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => setAttachContactOpen(true)}>
+                <ContactRound className="h-3.5 w-3.5" />Add from CRM
               </Button>
             </div>
 
             {contactsLoading ? (
               <div className="space-y-2">{[1, 2].map((i) => <Skeleton key={i} className="h-[76px] w-full rounded-lg" />)}</div>
             ) : projectContacts.length === 0 ? (
-              <button type="button" onClick={() => setAttachContactOpen(true)} className="w-full rounded-xl border border-dashed py-7 text-center text-muted-foreground hover:border-primary/40 hover:bg-primary/[0.02] transition-colors">
+              <button type="button" onClick={() => setAttachContactOpen(true)} className="w-full rounded-xl border border-dashed py-7 text-center text-muted-foreground hover:border-[var(--apas-sapphire)]/40 hover:bg-[var(--apas-sapphire)]/[0.03] transition-colors">
                 <ContactRound className="mx-auto mb-2 h-7 w-7 opacity-35" />
-                <span className="block text-sm font-medium">Attach someone from CRM</span>
-                <span className="mt-1 block text-xs">Property managers, clients, consultants, vendors, and agency contacts</span>
+                <span className="block text-sm font-medium">Add people from your CRM</span>
+                <span className="mt-1 block text-xs">Search and attach clients, consultants, vendors — they become available for email and invoices</span>
               </button>
             ) : (
               <div className="space-y-2">
@@ -418,7 +418,12 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
           </section>
         </div>
       </SheetContent>
-      <AddPersonDialog open={attachContactOpen} onOpenChange={setAttachContactOpen} projectId={projectId} contactsOnly />
+      <AddFromCrmDialog
+        open={attachContactOpen}
+        onOpenChange={setAttachContactOpen}
+        projectId={projectId}
+        projectName={projectName}
+      />
       <CorrespondenceComposer
         open={Boolean(emailContact)}
         onOpenChange={(next) => { if (!next) setEmailContact(null); }}

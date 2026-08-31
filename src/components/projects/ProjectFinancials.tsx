@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { ChangeOrdersList } from './ChangeOrdersList';
 import { useProjectFinancials } from '@/hooks/useProjectFinancials';
+import { ConsultingFinancialOverview } from '@/components/financial/ConsultingFinancialOverview';
+import { projectKind } from '@/lib/projectKind';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -45,6 +47,8 @@ interface ProjectFinancialsProps {
 }
 
 export function ProjectFinancials({ project, changeOrders, projectName }: ProjectFinancialsProps) {
+  const isConsulting = projectKind(project) === 'consulting';
+
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '$0';
     return new Intl.NumberFormat('en-US', {
@@ -63,7 +67,7 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   const { summary } = useProjectFinancials(project.id);
   const { data: directCostsTotal = 0 } = useQuery({
     queryKey: ['direct-costs-total', project.id],
-    enabled: Boolean(project.id),
+    enabled: Boolean(project.id) && !isConsulting,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('direct_costs' as any)
@@ -73,6 +77,17 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
       return (data ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
     },
   });
+
+  // Consulting / client engagements use proposal → invoice, not construction pay apps.
+  if (isConsulting) {
+    return (
+      <ConsultingFinancialOverview
+        projectId={project.id}
+        projectName={projectName ?? project.name}
+      />
+    );
+  }
+
   const rolledSpent = Number(summary.data?.commitment_invoiced ?? 0) + directCostsTotal;
   const spent = rolledSpent > 0 ? rolledSpent : Number(project.spent) || 0;
 

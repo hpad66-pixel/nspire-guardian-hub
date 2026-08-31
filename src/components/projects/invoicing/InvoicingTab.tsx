@@ -39,10 +39,17 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
     <div className="space-y-4 pb-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2"><Receipt className="h-5 w-5 text-muted-foreground" />Invoicing</h2>
-          <p className="text-sm text-muted-foreground">Bill against scope completion. Each invoice charges the progress since the last one.</p>
+          <h2 className="text-lg font-semibold flex items-center gap-2 font-[Playfair_Display]">
+            <Receipt className="h-5 w-5 text-[var(--apas-sapphire)]" />
+            Client invoices
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Bill against scope progress or lump-sum proposal lines. Branded PDF · email to project contacts.
+          </p>
         </div>
-        <Button onClick={() => setBuilderOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" />New invoice</Button>
+        <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+          <Plus className="h-4 w-4" />New invoice
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -55,11 +62,17 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
       {isLoading ? (
         <div className="text-sm text-muted-foreground py-10 text-center">Loading invoices…</div>
       ) : (invoices ?? []).length === 0 ? (
-        <Card className="p-10 text-center">
-          <Receipt className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">No invoices yet</p>
-          <p className="text-sm text-muted-foreground mb-4">Create an invoice to bill the completion recorded on your scopes.</p>
-          <Button onClick={() => setBuilderOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" />Create first invoice</Button>
+        <Card className="p-10 text-center border-dashed">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--apas-sapphire)]/10">
+            <Receipt className="h-6 w-6 text-[var(--apas-sapphire)]" />
+          </div>
+          <p className="font-medium font-[Playfair_Display] text-lg">No invoices yet</p>
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            Create a branded client invoice from scopes or a custom lump-sum (proposal amount). Send it to anyone on the project team.
+          </p>
+          <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+            <Plus className="h-4 w-4" />Create first invoice
+          </Button>
         </Card>
       ) : (
         <Card className="overflow-hidden">
