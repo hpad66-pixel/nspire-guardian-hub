@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { FileText, Receipt, ArrowRight, Plus, Banknote } from "lucide-react";
 import { useConsultingInvoices } from "@/hooks/useConsultingInvoices";
 import { useProjectScopes, summarizeScopes } from "@/hooks/useProjectScopes";
+import { useFinancialProposals } from "@/hooks/useFinancialProposals";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 import { money } from "@/components/projects/invoicing/invoiceMeta";
 import { INVOICE_STATUS_META } from "@/components/projects/invoicing/invoiceMeta";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useMemo } from "react";
 
 /**
  * Lean financial home for consulting / client engagements:
@@ -22,6 +25,7 @@ export function ConsultingFinancialOverview({
 }) {
   const { data: invoices = [], isLoading } = useConsultingInvoices(projectId);
   const { data: scopes } = useProjectScopes(projectId);
+  const { data: proposals = [] } = useFinancialProposals(projectId);
   const summary = summarizeScopes(scopes);
 
   const active = invoices.filter((i) => i.status !== "void");
@@ -29,6 +33,13 @@ export function ConsultingFinancialOverview({
   const paid = active.filter((i) => i.status === "paid").reduce((s, i) => s + (Number(i.total) || 0), 0);
   const open = invoiced - paid;
   const recent = active.slice(0, 5);
+  const approvedFee = useMemo(
+    () => proposals
+      .filter((p) => p.status === "approved")
+      .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
+    [proposals],
+  );
+  const unbilledApproved = Math.max(0, approvedFee - invoiced);
 
   return (
     <div className="space-y-6">
@@ -40,7 +51,7 @@ export function ConsultingFinancialOverview({
           {projectName ?? "Engagement"} — proposal to invoice
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Bill clients with branded invoices against scope progress or lump-sum proposal lines.
+          Bill clients with branded invoices against approved proposals (or scope progress).
           Construction pay applications are hidden on this project type.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -59,10 +70,10 @@ export function ConsultingFinancialOverview({
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: "Fee / earned", value: money(summary.earned), sub: `${summary.pctComplete}% complete` },
+          { label: "Approved proposals", value: money(approvedFee), sub: `${proposals.filter((p) => p.status === "approved").length} approved` },
           { label: "Invoiced", value: money(invoiced), sub: `${active.length} invoices` },
           { label: "Open A/R", value: money(open), sub: "sent − paid" },
-          { label: "Unbilled", value: money(summary.unbilled), sub: "earned − billed" },
+          { label: "Unbilled", value: money(unbilledApproved || summary.unbilled), sub: unbilledApproved > 0 ? "approved − invoiced" : "earned − billed" },
         ].map((m) => (
           <Card key={m.label} className="border-border/80">
             <CardContent className="p-4">

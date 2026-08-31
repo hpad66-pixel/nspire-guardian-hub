@@ -8,6 +8,8 @@ import { Plus, Receipt, MoreHorizontal, Trash2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConsultingInvoices } from '@/hooks/useConsultingInvoices';
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
+import { useFinancialProposals } from '@/hooks/useFinancialProposals';
+import { proposalTotals } from '@/lib/financial/proposalPricing';
 import { ConsultingInvoiceBuilder } from './ConsultingInvoiceBuilder';
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
@@ -26,6 +28,7 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
 export function InvoicingTab({ projectId, projectName, clientName }: { projectId: string; projectName: string; clientName?: string | null }) {
   const { data: invoices, isLoading, remove } = useConsultingInvoices(projectId);
   const { data: scopes } = useProjectScopes(projectId);
+  const { data: proposals = [] } = useFinancialProposals(projectId);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -34,6 +37,13 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
     () => (invoices ?? []).filter((i) => i.status !== 'void').reduce((s, i) => s + (Number(i.total) || 0), 0),
     [invoices],
   );
+  const approvedFee = useMemo(
+    () => proposals
+      .filter((p) => p.status === 'approved')
+      .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
+    [proposals],
+  );
+  const unbilledApproved = Math.max(0, approvedFee - invoiced);
 
   return (
     <div className="space-y-4 pb-6">
@@ -44,7 +54,7 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
             Client invoices
           </h2>
           <p className="text-sm text-muted-foreground">
-            Bill against scope progress or lump-sum proposal lines. Branded PDF · email to project contacts.
+            Bill approved proposals (or scope progress). Branded PDF · email to project contacts.
           </p>
         </div>
         <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
@@ -53,10 +63,10 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Metric label="Invoices" value={String((invoices ?? []).length)} />
-        <Metric label="Invoiced" value={money(invoiced)} />
-        <Metric label="Earned to date" value={money(summary.earned)} sub={`${summary.pctComplete}% complete`} />
-        <Metric label="Unbilled" value={money(summary.unbilled)} sub="earned − billed" />
+        <Metric label="Approved proposals" value={money(approvedFee)} sub={`${proposals.filter((p) => p.status === 'approved').length} approved`} />
+        <Metric label="Invoiced" value={money(invoiced)} sub={`${(invoices ?? []).length} invoices`} />
+        <Metric label="Unbilled (proposals)" value={money(unbilledApproved)} sub="approved − invoiced" />
+        <Metric label="Scope unbilled" value={money(summary.unbilled)} sub={`${summary.pctComplete}% complete`} />
       </div>
 
       {isLoading ? (
@@ -68,7 +78,7 @@ export function InvoicingTab({ projectId, projectName, clientName }: { projectId
           </div>
           <p className="font-medium font-[Playfair_Display] text-lg">No invoices yet</p>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Create a branded client invoice from scopes or a custom lump-sum (proposal amount). Send it to anyone on the project team.
+            Create a branded client invoice from approved proposals, scopes, or a custom lump-sum. Send it to anyone on the project team.
           </p>
           <Button onClick={() => setBuilderOpen(true)} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
             <Plus className="h-4 w-4" />Create first invoice
