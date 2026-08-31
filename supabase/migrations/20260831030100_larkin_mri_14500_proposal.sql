@@ -2,6 +2,12 @@
 -- on projects.budget. It never became a financial proposal, so invoice
 -- generation could only see PROP-001 (~$3,369 geotech). Backfill PROP-002 as
 -- an approved lump-sum proposal so both approved fees appear in Client Invoices.
+--
+-- IMPORTANT: proposal_lines are guarded by trg_financial_proposal_lines_guard —
+-- you cannot INSERT/UPDATE/DELETE lines while proposals.locked = true.
+-- Write the header unlocked, seed the lump-sum line, THEN lock/sign.
+-- (This file replaces the failed first push of the same version; it never
+-- applied on remote, so editing in place unblocks supabase db push.)
 
 DO $$
 DECLARE
@@ -60,6 +66,7 @@ BEGIN
   SELECT EXISTS (SELECT 1 FROM public.proposals WHERE id = v_proposal) INTO v_exists;
 
   IF NOT v_exists THEN
+    -- Insert UNLOCKED so the lump-sum line can be written under the lines guard.
     INSERT INTO public.proposals (
       id, tenant_id, project_id, proposal_no, title,
       client_name, client_email, status,
@@ -86,30 +93,28 @@ BEGIN
       '["Address PCD contamination assessment requirements between the dispenser area and the MRI Building","Evaluate stormwater management conditions against Class VI requirements","Demonstrate via groundwater calculations whether proposed stormwater activities disturb the existing contaminant plume","Prepare and submit the Class VI permit application with supporting documentation"]'::jsonb,
       '["Contamination assessment data evaluation and reporting for PCD","Class VI stormwater compliance evaluation memorandum","Groundwater / plume disturbance calculations","Class VI permit application package"]'::jsonb,
       0, 0, 0,
-      true,
-      now(),
-      'Larkin Hospital',
-      'offline',
+      false,
+      NULL,
+      NULL,
+      NULL,
       1,
       now(),
       now()
     );
   ELSE
+    -- Unlock briefly so line rewrite is allowed by the guard trigger.
     UPDATE public.proposals
-    SET status = 'approved',
-        locked = true,
+    SET locked = false,
+        status = 'approved',
         title = 'Contamination Assessment & Class VI Stormwater Compliance — MRI Building',
         client_name = coalesce(nullif(client_name, ''), 'Larkin Hospital'),
         overhead_pct = 0,
         profit_pct = 0,
-        accepted_signed_at = coalesce(accepted_signed_at, now()),
-        accepted_signed_name = coalesce(nullif(accepted_signed_name, ''), 'Larkin Hospital'),
-        acceptance_method = coalesce(acceptance_method, 'offline'),
         updated_at = now()
     WHERE id = v_proposal;
   END IF;
 
-  -- Ensure a single lump-sum line of $14,500
+  -- Ensure a single lump-sum line of $14,500 (proposal is unlocked here).
   DELETE FROM public.proposal_lines WHERE proposal_id = v_proposal;
 
   INSERT INTO public.proposal_lines (
@@ -126,6 +131,16 @@ BEGIN
     14500,
     0
   );
+
+  -- Lock / sign only AFTER lines are in place.
+  UPDATE public.proposals
+  SET locked = true,
+      status = 'approved',
+      accepted_signed_at = coalesce(accepted_signed_at, now()),
+      accepted_signed_name = coalesce(nullif(accepted_signed_name, ''), 'Larkin Hospital'),
+      acceptance_method = coalesce(acceptance_method, 'offline'),
+      updated_at = now()
+  WHERE id = v_proposal;
 
   -- Keep project budget aligned with the engagement fee
   UPDATE public.projects
