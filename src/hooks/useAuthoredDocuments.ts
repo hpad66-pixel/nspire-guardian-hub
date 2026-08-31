@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type DocWorkflowStatus = "uploaded" | "drafting" | "signed" | "sent" | "executed";
+
 export interface AuthoredDocument {
   id: string;
   project_id: string;
@@ -19,6 +21,16 @@ export interface AuthoredDocument {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  workflow_status?: DocWorkflowStatus;
+  sign_token?: string | null;
+  contractor_signed_at?: string | null;
+  contractor_signed_name?: string | null;
+  contractor_signature_data?: string | null;
+  client_signed_at?: string | null;
+  client_signed_name?: string | null;
+  client_signature_data?: string | null;
+  sent_to_client_at?: string | null;
+  sent_to_email?: string | null;
 }
 
 export interface DocumentVersion {
@@ -33,7 +45,7 @@ export interface DocumentVersion {
 // Columns for the list view — deliberately EXCLUDES original_base64/edited_html
 // (can be large; fetched on demand via fetchOriginal when opening a document).
 const LIST_COLS =
-  "id,project_id,title,doc_type,category,status,content_html,content_text,source,source_file_name,mime_type,version,has_original,finalized_at,created_by,created_at,updated_at";
+  "id,project_id,title,doc_type,category,status,content_html,content_text,source,source_file_name,mime_type,version,has_original,finalized_at,created_by,created_at,updated_at,workflow_status,sign_token,contractor_signed_at,contractor_signed_name,contractor_signature_data,client_signed_at,client_signed_name,sent_to_client_at,sent_to_email";
 
 export interface NewAuthoredDocument {
   title?: string;
@@ -179,6 +191,42 @@ export function useAuthoredDocuments(projectId: string | null) {
           status: finalized ? "final" : "draft",
           finalized_at: finalized ? new Date().toISOString() : null,
           finalized_by: finalized ? auth?.user?.id ?? null : null,
+          workflow_status: finalized ? "drafting" : "drafting",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSettled: invalidate,
+  });
+
+  const signDocument = useMutation({
+    mutationFn: async ({ id, name, signatureDataUrl }: { id: string; name: string; signatureDataUrl: string }) => {
+      const { error } = await supabase
+        .from("authored_documents" as any)
+        .update({
+          contractor_signed_at: new Date().toISOString(),
+          contractor_signed_name: name.trim(),
+          contractor_signature_data: signatureDataUrl,
+          workflow_status: "signed",
+          status: "final",
+          finalized_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSettled: invalidate,
+  });
+
+  const markSent = useMutation({
+    mutationFn: async ({ id, email }: { id: string; email: string }) => {
+      const { error } = await supabase
+        .from("authored_documents" as any)
+        .update({
+          sent_to_client_at: new Date().toISOString(),
+          sent_to_email: email.trim(),
+          workflow_status: "sent",
           updated_at: new Date().toISOString(),
         })
         .eq("id", id);
@@ -195,7 +243,7 @@ export function useAuthoredDocuments(projectId: string | null) {
     onSettled: invalidate,
   });
 
-  return { ...list, fetchOriginal, create, update, saveEdit, replaceOriginal, setFinalized, remove };
+  return { ...list, fetchOriginal, create, update, saveEdit, replaceOriginal, setFinalized, signDocument, markSent, remove };
 }
 
 // ── Version history — browse, restore, or delete a past snapshot ───────────

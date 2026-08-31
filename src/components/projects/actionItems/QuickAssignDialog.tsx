@@ -1,18 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { CheckSquare2, Loader2, Trello as TrelloIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CheckSquare2, Loader2, Trello as TrelloIcon, AlertCircle } from 'lucide-react';
 import { useCreateActionItem, type ActionItem } from '@/hooks/useActionItems';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
+import { useProjectContacts } from '@/hooks/useProjectPeople';
 import { usePushToTrello, useTrelloStatus } from '@/hooks/useTrello';
 import { TeamWatcherPicker } from './TeamWatcherPicker';
 
 const UNASSIGNED = '__unassigned__';
+const contactKey = (id: string) => `contact:${id}`;
+const userKey = (id: string) => `user:${id}`;
 
 export function QuickAssignDialog({
   open,
@@ -27,6 +31,7 @@ export function QuickAssignDialog({
 }) {
   const create = useCreateActionItem(projectId);
   const { data: team = [] } = useProjectTeamMembers(projectId);
+  const { data: contacts = [] } = useProjectContacts(projectId);
   const { data: trello } = useTrelloStatus();
   const pushTrello = usePushToTrello();
   const [title, setTitle] = useState('');
@@ -43,12 +48,20 @@ export function QuickAssignDialog({
     setSendToTrello(Boolean(trello?.connected && trello.autoPush));
   }, [open, trello?.connected, trello?.autoPush]);
 
+  const selectedContact = useMemo(() => {
+    if (!owner.startsWith('contact:')) return null;
+    return contacts.find((c) => c.contactId === owner.slice('contact:'.length)) ?? null;
+  }, [owner, contacts]);
+
   const submit = async () => {
     if (!title.trim()) return;
+    const assignedUserId = owner.startsWith('user:') ? owner.slice('user:'.length) : null;
+    const assignedContactId = owner.startsWith('contact:') ? owner.slice('contact:'.length) : null;
     const created = await create.mutateAsync({
       title: title.trim(),
       description: description.trim() || undefined,
-      assigned_to: owner === UNASSIGNED ? null : owner,
+      assigned_to: assignedUserId,
+      assigned_contact_id: assignedContactId,
       watcher_ids: watcherIds,
       due_date: dueDate || null,
       priority,
@@ -67,7 +80,7 @@ export function QuickAssignDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><CheckSquare2 className="h-5 w-5 text-[var(--apas-sapphire)]" />Assign project instruction</DialogTitle>
           <DialogDescription>
-            One accountable owner, optional CC followers, one project conversation. Everyone stays inside {projectName || 'this project'}.
+            Assign to internal team or project CRM contacts. Everyone with an email gets a branded action card — portal access is optional.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -80,15 +93,46 @@ export function QuickAssignDialog({
             <Textarea id="instruction-detail" value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="Context, expected result, links, or constraints…" />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
+            <div className="grid gap-1.5 sm:col-span-2">
               <Label>Accountable owner</Label>
-              <Select value={owner} onValueChange={(value) => { setOwner(value); setWatcherIds((ids) => ids.filter((id) => id !== value)); }}>
+              <Select value={owner} onValueChange={(value) => { setOwner(value); if (value.startsWith('user:')) setWatcherIds((ids) => ids.filter((id) => id !== value.slice('user:'.length))); }}>
                 <SelectTrigger><SelectValue placeholder="Choose owner" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {team.map((member) => <SelectItem key={member.user_id} value={member.user_id}>{member.profile?.full_name || member.profile?.email || 'Team member'}</SelectItem>)}
+                  {team.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Internal team</SelectLabel>
+                      {team.map((member) => (
+                        <SelectItem key={member.user_id} value={userKey(member.user_id)}>
+                          {member.profile?.full_name || member.profile?.email || 'Team member'}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {contacts.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Project contacts (CRM)</SelectLabel>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.contactId} value={contactKey(contact.contactId)} disabled={!contact.email}>
+                          {contact.name}{contact.email ? ` · ${contact.email}` : ' · no email'}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
+              {selectedContact && (
+                <div className="mt-1.5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium">{selectedContact.name}</span>
+                      <Badge variant="secondary" className="text-[10px]">No portal access</Badge>
+                    </div>
+                    <p className="mt-0.5">That’s fine — they’ll still get a branded email card with due date and a secure link to update this action.</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Due date</Label>
@@ -106,9 +150,9 @@ export function QuickAssignDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1.5">
-              <Label>CC / followers</Label>
-              <TeamWatcherPicker team={team} value={watcherIds} onChange={setWatcherIds} excludeUserId={owner === UNASSIGNED ? null : owner} />
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label>CC / followers (internal)</Label>
+              <TeamWatcherPicker team={team} value={watcherIds} onChange={setWatcherIds} excludeUserId={owner.startsWith('user:') ? owner.slice('user:'.length) : null} />
             </div>
           </div>
 
@@ -125,7 +169,7 @@ export function QuickAssignDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={!title.trim() || create.isPending || pushTrello.isPending}>
-            {(create.isPending || pushTrello.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}Assign instruction
+            {(create.isPending || pushTrello.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}Assign &amp; email
           </Button>
         </DialogFooter>
       </DialogContent>
