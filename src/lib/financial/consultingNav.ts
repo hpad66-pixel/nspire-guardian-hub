@@ -10,6 +10,8 @@ export const CONSULTING_FINANCIAL_PATHS = new Set([
   "ledger",
   "reports",
   "client-updates",
+  // Engagement agreement / prime contract record (routed from Contracts nav).
+  "prime-contract",
 ]);
 
 export function financialKindFor(

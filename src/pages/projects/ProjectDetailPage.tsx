@@ -20,7 +20,7 @@ import {
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
-  MoreHorizontal, Archive, Trash2, TriangleAlert, SlidersHorizontal, X,
+  MoreHorizontal, Archive, Trash2, TriangleAlert, Settings2, X,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature, Mail,
@@ -61,7 +61,12 @@ import { useConsultingArLedger } from '@/hooks/useConsultingInvoices';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
 import { projectKind } from '@/lib/projectKind';
 import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
-import { isModuleVisible } from '@/lib/projects/moduleVisibility';
+import {
+  getProjectNav,
+  routedTabDestinations,
+  GROUP_ICON_COLORS,
+  GROUP_ICON_BG,
+} from '@/lib/projects/projectNav';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
 import { ActionItemsTab } from '@/components/projects/actionItems/ActionItemsTab';
@@ -103,48 +108,6 @@ const PHASES: { value: string; label: string }[] = [
   { value: 'punch_list',       label: 'Punch List' },
   { value: 'closeout',         label: 'Closeout' },
 ];
-
-// Group colour tokens — used in both drawer and quick-jump
-const GROUP_ICON_COLORS: Record<string, string> = {
-  core:       'text-blue-400',
-  compliance: 'text-amber-400',
-  reports:    'text-purple-400',
-  engagement: 'text-blue-400',
-  delivery:   'text-emerald-400',
-  client:     'text-amber-400',
-};
-const GROUP_ICON_BG: Record<string, string> = {
-  core:       'bg-blue-500/15',
-  compliance: 'bg-amber-500/15',
-  reports:    'bg-purple-500/15',
-  engagement: 'bg-blue-500/15',
-  delivery:   'bg-emerald-500/15',
-  client:     'bg-amber-500/15',
-};
-
-const TAB_GROUPS = [
-  { key: 'core',       label: 'Core',       color: 'text-blue-400' },
-  { key: 'compliance', label: 'Compliance', color: 'text-amber-400' },
-  { key: 'reports',    label: 'Reports',    color: 'text-purple-400' },
-];
-
-// Consulting engagements get outcome-oriented section labels instead of the
-// construction Core/Compliance/Reports grouping.
-const CONSULTING_TAB_GROUPS = [
-  { key: 'engagement', label: 'Engagement', color: 'text-blue-400' },
-  { key: 'delivery',   label: 'Delivery',   color: 'text-emerald-400' },
-  { key: 'client',     label: 'Client',     color: 'text-amber-400' },
-];
-const CONSULTING_GROUP_OF: Record<string, string> = {
-  overview: 'engagement', subprojects: 'engagement', scope: 'engagement', schedule: 'engagement',
-  'action-items': 'delivery', meetings: 'delivery', 'project-log': 'delivery',
-  repository: 'delivery', gallery: 'delivery', 'daily-logs': 'delivery',
-  rfis: 'delivery', submittals: 'delivery', 'punch-list': 'delivery',
-  progress: 'delivery', procurement: 'delivery', safety: 'delivery', closeout: 'delivery',
-  'env-compliance': 'delivery',
-  invoicing: 'client', proposals: 'client', 'client-updates': 'client', 'client-portal': 'client',
-  financials: 'client', contracts: 'client',
-};
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -209,25 +172,8 @@ export default function ProjectDetailPage() {
   const { isAdmin } = useUserPermissions();
   const updateProject = useUpdateProject();
 
-  // Contracts and Repository live on their own routed pages, but are surfaced
-  // as entries in the project nav for discoverability (WS-7 #3). They are not
-  // in-page tabs — selecting one (click or ?tab= deep link) redirects to the
-  // dedicated route. Keeps a single source of truth for each module's UI.
-  const ROUTED_TABS: Record<string, string> = {
-    // Financials is a full routed workspace with its own navigation. Take the
-    // user directly to it instead of stopping at the legacy summary tab.
-    financials: `/projects/${id}/financials/overview`,
-    // Keep a single proposal record and workflow. The financial proposal module
-    // carries the editable scope, pricing, signatures, re-send and amendments.
-    proposals: `/projects/${id}/financials/proposals`,
-    // Contracts has no dedicated /contracts route — it lives under the financial
-    // cascade (prime contract page). Pointing here avoids a 404.
-    contracts: `/projects/${id}/financials/prime-contract`,
-    // Client communication is a project-wide workflow, not a construction-only
-    // financial tool. Both consulting and construction projects use one studio.
-    'client-updates': `/projects/${id}/client-updates`,
-    repository: `/projects/${id}/repository`,
-  };
+  // Routed modules (financials, directory, admin, …) leave the detail page.
+  const ROUTED_TABS = id ? routedTabDestinations(id) : {};
   useEffect(() => {
     const dest = ROUTED_TABS[activeTab];
     if (dest) navigate(dest, { replace: true });
@@ -401,55 +347,40 @@ export default function ProjectDetailPage() {
   const primeChangeOrderCount = changeOrders?.filter(co => (co as any).co_type !== 'CCO' && !(co as any).commitment_id).length || 0;
   const status = statusConfig[project.status] ?? statusConfig.planning;
   const isClientProject = (project as any).project_type === 'client';
-  const isConsulting = (project as any).project_type === 'consulting';
+  const isConsulting = projectKind(project) === 'consulting';
+  const parentProject = project.parent_project_id
+    ? projectTree.byId.get(project.parent_project_id) ?? null
+    : null;
 
-  const getBadgeCount = (key: string) => {
-    if (key === 'rfi') return rfiStats?.open ?? 0;
-    if (key === 'punch') return (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0);
-    return 0;
+  const punchOpen = (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0);
+  const { groups: tabGroups, items: visibleTabs } = getProjectNav({
+    project: project as never,
+    parent: parentProject as never,
+    isAdmin,
+    badges: {
+      subprojects: subprojectCount > 0 ? subprojectCount : null,
+      rfis: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null,
+      'punch-list': punchOpen > 0 ? punchOpen : null,
+      'project-log': unreadLogComments > 0 ? unreadLogComments : null,
+    },
+  });
+  const groupKeyOf = (value: string) =>
+    visibleTabs.find((t) => t.value === value)?.group
+    ?? tabGroups[0]?.key
+    ?? 'engagement';
+
+  const activeTabDef = visibleTabs.find(t => t.value === activeTab) ?? visibleTabs[0] ?? {
+    value: 'overview' as const,
+    label: 'Overview',
+    shortLabel: 'Overview',
+    icon: LayoutDashboard,
+    group: 'engagement' as const,
+    badge: null as number | null,
   };
-
-  // ── Tab definitions ────────────────────────────────────────────────────────
-  const PROJECT_TABS = [
-    { value: 'overview',     label: 'Overview',     shortLabel: 'Overview', icon: LayoutDashboard, group: 'core',       badge: null as number | null },
-    { value: 'subprojects',  label: 'Subprojects',  shortLabel: 'Subs',     icon: FolderTree,      group: 'core',       badge: subprojectCount > 0 ? subprojectCount : null },
-    { value: 'scope',        label: 'Scope',        shortLabel: 'Scope',    icon: ListTree,        group: 'core',       badge: null as number | null },
-    { value: 'schedule',     label: 'Schedule',     shortLabel: 'Schedule', icon: CalendarDays,    group: 'core',       badge: null as number | null },
-    { value: 'daily-logs',   label: 'Daily Logs',   shortLabel: 'Logs',     icon: ClipboardList,   group: 'core',       badge: null as number | null },
-    { value: 'gallery',      label: 'Gallery',      shortLabel: 'Gallery',  icon: Images,          group: 'core',       badge: null as number | null },
-    { value: 'financials',   label: 'Financials',   shortLabel: 'Finance',  icon: Wallet,          group: 'core',       badge: null as number | null },
-    { value: 'contracts',    label: 'Contracts',    shortLabel: 'Contracts',icon: FileSignature,   group: 'core',       badge: null as number | null },
-    { value: 'rfis',         label: 'RFIs',         shortLabel: 'RFIs',     icon: HelpCircle,      group: 'compliance', badge: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null },
-    { value: 'submittals',   label: 'Submittals',   shortLabel: 'Submit',   icon: Package,         group: 'compliance', badge: null as number | null },
-    { value: 'punch-list',   label: 'Punch List',   shortLabel: 'Punch',    icon: ListChecks,      group: 'compliance', badge: ((punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0)) > 0 ? (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0) : null },
-    { value: 'action-items', label: 'Action Items', shortLabel: 'Actions',  icon: CheckSquare,     group: 'compliance', badge: null as number | null },
-    { value: 'project-log',  label: 'Project Log',  shortLabel: 'Log',      icon: ClipboardList,   group: 'compliance', badge: unreadLogComments > 0 ? unreadLogComments : null },
-    { value: 'progress',     label: 'Progress',     shortLabel: 'Progress', icon: TrendingUpIcon,  group: 'reports',    badge: null as number | null },
-    { value: 'procurement',  label: 'Procurement',  shortLabel: 'Procure',  icon: ShoppingCart,    group: 'reports',    badge: null as number | null },
-    { value: 'safety',       label: 'Safety',       shortLabel: 'Safety',   icon: ShieldCheck,     group: 'reports',    badge: null as number | null },
-    { value: 'env-compliance', label: 'Environmental Compliance', shortLabel: 'Env', icon: FlaskConical, group: 'reports', badge: null as number | null },
-    { value: 'meetings',     label: 'Meetings & Agenda', shortLabel: 'Meetings', icon: MessageSquareText, group: 'reports',  badge: null as number | null },
-    { value: 'correspondence', label: 'Correspondence', shortLabel: 'Mail', icon: Mail, group: 'reports', badge: null as number | null },
-    { value: 'closeout',     label: 'Closeout',     shortLabel: 'Close',    icon: Award,           group: 'reports',    badge: null as number | null },
-    { value: 'invoicing',    label: 'Invoicing',    shortLabel: 'Invoices', icon: Receipt,         group: 'reports',    badge: null as number | null },
-    { value: 'proposals',    label: 'Proposals',    shortLabel: 'Proposals',icon: Send,            group: 'reports',    badge: null as number | null },
-    { value: 'client-updates', label: 'Client Updates', shortLabel: 'Updates', icon: Megaphone,     group: 'reports',    badge: null as number | null },
-    { value: 'repository',   label: 'Repository',   shortLabel: 'Repo',     icon: Brain,           group: 'core',       badge: null as number | null },
-    { value: 'client-portal',label: 'Client Portal',shortLabel: 'Portal',   icon: Users,           group: 'core',       badge: null as number | null },
-  ];
-
-  // Per-project module visibility: hide tabs the admin turned off (or that the
-  // project_type default hides). Empty module_config → every tab visible.
-  const visibleTabs = PROJECT_TABS.filter(t => isModuleVisible(project, t.value));
-
-  // Consulting projects use outcome-oriented section labels.
-  const tabGroups = isConsulting ? CONSULTING_TAB_GROUPS : TAB_GROUPS;
-  const groupKeyOf = (value: string) => isConsulting ? (CONSULTING_GROUP_OF[value] ?? 'delivery') : (PROJECT_TABS.find(t => t.value === value)?.group ?? 'core');
-
-  const activeTabDef = visibleTabs.find(t => t.value === activeTab) ?? visibleTabs[0] ?? PROJECT_TABS[0];
 
   // Tabs that have active badges — shown as quick-jump buttons on iPhone
   const badgeTabs = visibleTabs.filter(t => t.badge !== null);
+  const safetyEnabled = visibleTabs.some((t) => t.value === 'safety');
 
   return (
     <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
@@ -578,16 +509,18 @@ export default function ProjectDetailPage() {
                 <span className="hidden sm:inline">Edit</span>
               </Button>
 
-              {/* Log Incident */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                onClick={() => setIncidentSheetOpen(true)}
-              >
-                <TriangleAlert className="h-4 w-4 text-amber-500" />
-                <span className="hidden sm:inline">Log Incident</span>
-              </Button>
+              {/* Log Incident — only when Safety module is on */}
+              {safetyEnabled && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-amber-400 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                  onClick={() => setIncidentSheetOpen(true)}
+                >
+                  <TriangleAlert className="h-4 w-4 text-amber-500" />
+                  <span className="hidden sm:inline">Log Incident</span>
+                </Button>
+              )}
 
               {/* Overflow */}
               <DropdownMenu>
@@ -601,8 +534,13 @@ export default function ProjectDetailPage() {
                     <Edit className="h-4 w-4 mr-2" />Edit Project
                   </DropdownMenuItem>
                   {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/admin`)}>
+                      <Settings2 className="h-4 w-4 mr-2" />Project Admin
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
                     <DropdownMenuItem onClick={() => setModuleDialogOpen(true)}>
-                      <SlidersHorizontal className="h-4 w-4 mr-2" />Modules
+                      <Settings2 className="h-4 w-4 mr-2" />Modules…
                     </DropdownMenuItem>
                   )}
                   {isAdmin && (
