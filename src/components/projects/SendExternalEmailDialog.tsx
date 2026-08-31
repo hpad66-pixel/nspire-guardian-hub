@@ -49,7 +49,14 @@ export type ExternalEmailDocType =
   | 'submittal'
   | 'change_order'
   | 'progress_report'
-  | 'proposal';
+  | 'proposal'
+  | 'invoice';
+
+export interface SendExternalEmailAttachment {
+  filename: string;
+  contentBase64: string;
+  contentType: string;
+}
 
 export interface SendExternalEmailDialogProps {
   open: boolean;
@@ -62,6 +69,8 @@ export interface SendExternalEmailDialogProps {
   defaultSubject?: string;
   contentHtml?: string;
   onSent?: () => void;
+  /** Optional PDF (or other) attachment — used by consulting invoices. */
+  pdfAttachment?: SendExternalEmailAttachment;
 }
 
 // ── Config per document type ──────────────────────────────────────────────────
@@ -98,6 +107,12 @@ const DOC_CONFIG: Record<
     color: 'text-primary',
     bg: 'bg-primary/10',
     Icon: FileText,
+  },
+  invoice: {
+    label: 'Invoice',
+    color: 'text-[var(--apas-sapphire)]',
+    bg: 'bg-blue-500/10',
+    Icon: ReceiptText,
   },
 };
 
@@ -293,12 +308,13 @@ export function SendExternalEmailDialog({
   onOpenChange,
   documentType,
   documentTitle,
-  documentId,
+  documentId: _documentId,
   projectName,
   projectId,
   defaultSubject,
   contentHtml,
   onSent,
+  pdfAttachment,
 }: SendExternalEmailDialogProps) {
   const cfg = DOC_CONFIG[documentType];
   const DocIcon = cfg.Icon;
@@ -364,6 +380,14 @@ export function SendExternalEmailDialog({
       bccRecipients: bccEmails.length > 0 ? bccEmails : undefined,
       subject,
       bodyHtml: buildEmailBody(),
+      attachments: pdfAttachment
+        ? [{
+            filename: pdfAttachment.filename,
+            contentBase64: pdfAttachment.contentBase64,
+            contentType: pdfAttachment.contentType,
+            size: Math.round((pdfAttachment.contentBase64.length * 3) / 4),
+          }]
+        : undefined,
     });
     handleOpenChange(false);
     onSent?.();
@@ -405,7 +429,7 @@ export function SendExternalEmailDialog({
               </div>
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border rounded-full px-2 py-0.5 shrink-0">
                 <Paperclip className="h-3 w-3" />
-                Summary included
+                {pdfAttachment ? pdfAttachment.filename : 'Summary included'}
               </span>
             </div>
 

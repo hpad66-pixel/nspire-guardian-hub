@@ -137,6 +137,7 @@ const ChangeEventsPage = lazy(() => import('./pages/projects/financial/ChangeEve
 const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial/ChangeOrdersPage'));
 const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCostsPage'));
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
+const ClientInvoicesPage = lazy(() => import('./pages/projects/financial/ClientInvoicesPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
 const LedgerPage = lazy(() => import('./pages/projects/financial/LedgerPage'));
@@ -442,6 +443,7 @@ const App = () => (
                               <Route path="/settings/change-orders" element={<ChangeOrderSettingsPage />} />
                               <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                               <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
+                              <Route path="/projects/:projectId/financials/client-invoices" element={<ClientInvoicesPage />} />
                               <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                               <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
                               <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />

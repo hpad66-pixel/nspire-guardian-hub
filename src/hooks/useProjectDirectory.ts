@@ -46,6 +46,8 @@ export function useProjectDirectory(projectId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project-directory", projectId] });
       qc.invalidateQueries({ queryKey: ["project-contacts", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-contact-ids", projectId] });
+      qc.invalidateQueries({ queryKey: ["contact-assignments"] });
     },
   });
 
@@ -57,6 +59,8 @@ export function useProjectDirectory(projectId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["project-directory", projectId] });
       qc.invalidateQueries({ queryKey: ["project-contacts", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-contact-ids", projectId] });
+      qc.invalidateQueries({ queryKey: ["contact-assignments"] });
     },
   });
 
