@@ -23,7 +23,10 @@ WHERE pi.project_id IS NULL
   AND cp.project_id IS NOT NULL;
 
 -- Public brand RPC: expose project_id so magic-link redirects are project-scoped.
-CREATE OR REPLACE FUNCTION public.get_public_portal_brand(p_slug text)
+-- Must DROP first — Postgres forbids CREATE OR REPLACE when the return type changes.
+DROP FUNCTION IF EXISTS public.get_public_portal_brand(text);
+
+CREATE FUNCTION public.get_public_portal_brand(p_slug text)
 RETURNS TABLE (
   id uuid,
   name text,
