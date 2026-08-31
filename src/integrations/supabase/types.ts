@@ -7384,6 +7384,7 @@ export type Database = {
           created_by: string | null
           id: string
           invoice_no: string | null
+          is_final_invoice: boolean
           pay_app_data: Json | null
           pay_app_no: number
           pdf_path: string | null
@@ -7409,6 +7410,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_no?: string | null
+          is_final_invoice?: boolean
           pay_app_data?: Json | null
           pay_app_no: number
           pdf_path?: string | null
@@ -7434,6 +7436,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_no?: string | null
+          is_final_invoice?: boolean
           pay_app_data?: Json | null
           pay_app_no?: number
           pdf_path?: string | null

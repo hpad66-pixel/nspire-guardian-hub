@@ -36,7 +36,11 @@ export function PayAppPDFExport({ payAppId, contract }: PayAppPDFExportProps) {
     if (!docRef.current || !spec) { toast.error("Pay app not loaded"); return; }
     setBusy(true);
     try {
-      await downloadPayAppPdf(docRef.current, `pay-app-${spec.payAppNo}-${contract.contract_no || "g702"}.pdf`);
+      const finalTag = spec.isFinalInvoice ? "-FINAL" : "";
+      await downloadPayAppPdf(
+        docRef.current,
+        `pay-app-${spec.payAppNo}${finalTag}-${contract.contract_no || "g702"}.pdf`,
+      );
       toast.success(`Pay App #${spec.payAppNo} exported.`);
     } catch (e: any) {
       toast.error(`PDF failed: ${e.message}`);

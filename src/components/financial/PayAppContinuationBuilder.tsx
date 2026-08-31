@@ -18,25 +18,14 @@ import {
   type ContinuationLine,
 } from "@/hooks/usePayAppContinuation";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
-import { round2, type G702Summary } from "@/lib/financial/payAppContinuation";
+import { round2 } from "@/lib/financial/payAppContinuation";
+import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { money } from "@/lib/pdf";
 
 const qty = (n: number) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
-
-const G702_ROWS: Array<[string, keyof G702Summary]> = [
-  ["1. Original Contract Sum", "original_contract_sum"],
-  ["2. Net change by change orders", "net_change_orders"],
-  ["3. Contract Sum to date", "contract_sum_to_date"],
-  ["4. Total completed & stored to date", "completed_stored_to_date"],
-  ["5. Retainage", "retainage_total"],
-  ["6. Total earned less retainage", "total_earned_less_retainage"],
-  ["7. Less previous certificates", "less_previous_certificates"],
-  ["8. CURRENT PAYMENT DUE", "current_payment_due"],
-  ["9. Balance to finish (incl. retainage)", "balance_to_finish"],
-];
 
 export function PayAppContinuationBuilder({
   payAppId, projectId, primeContractId,
@@ -46,6 +35,10 @@ export function PayAppContinuationBuilder({
   const { data: contract } = usePrimeContract(projectId);
   const approvedCoQ = useApprovedCoValue(primeContractId, projectId);
   const status = detail.data?.status as string | undefined;
+  const isFinalInvoice =
+    Boolean((detail.data as any)?.is_final_invoice) ||
+    Boolean((detail.data as any)?.pay_app_data?.is_final_invoice);
+  const G702_ROWS = g702SidebarRows(isFinalInvoice);
   // A submitted pay app is a fixed certificate — lock all editing so its figures
   // stay exactly as submitted (later COs/progress go into the next pay app).
   const locked = isFrozen;
@@ -195,7 +188,14 @@ export function PayAppContinuationBuilder({
 
       {/* Live AIA G702 cover */}
       <div className="rounded-md border">
-        <div className="bg-muted/40 px-3 py-2 text-sm font-medium">AIA G702 — Application for Payment (live)</div>
+        <div className="bg-muted/40 px-3 py-2 text-sm font-medium flex items-center justify-between gap-2">
+          <span>AIA G702 — Application for Payment (live)</span>
+          {isFinalInvoice && (
+            <Badge className="bg-[var(--apas-sapphire)] text-white tracking-wider uppercase text-[10px]">
+              Final Invoice
+            </Badge>
+          )}
+        </div>
         <table className="w-full text-sm">
           <tbody>
             {G702_ROWS.map(([label, key]) => (
@@ -206,6 +206,12 @@ export function PayAppContinuationBuilder({
             ))}
           </tbody>
         </table>
+        {isFinalInvoice && (
+          <div className="border-t px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Final invoice:</strong> Line 7 is paid to date.
+            Line 9 is the unbilled leftover (quantities/credits left on the table) — it will not be billed, and the project closes on payment of Line 8.
+          </div>
+        )}
       </div>
     </div>
   );

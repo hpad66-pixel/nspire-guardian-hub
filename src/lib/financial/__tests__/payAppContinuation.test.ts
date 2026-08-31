@@ -273,6 +273,10 @@ describe("shouldUseG702Snapshot", () => {
       contract_sum_to_date: 100,
       reconciliation_note: "FINAL invoice",
     })).toBe(true);
+    expect(shouldUseG702Snapshot("draft", {
+      contract_sum_to_date: 100,
+      is_final_invoice: true,
+    })).toBe(true);
   });
 
   it("keeps ordinary drafts on live SOV math", () => {

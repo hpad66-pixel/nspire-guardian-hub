@@ -12,6 +12,9 @@ export interface PayApp {
   submitted_amount: number | null;
   approved_amount: number | null;
   retainage_held: number | null;
+  /** When true, G702 PDF renders FINAL INVOICE and Line 9 is unbilled leftover. */
+  is_final_invoice?: boolean;
+  pay_app_data?: Record<string, unknown> | null;
 }
 
 export interface PayAppLine {
@@ -253,6 +256,43 @@ export function useDeletePayApp() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pay-apps"] });
       qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+}
+
+/**
+ * Toggle the construction pay app as the FINAL invoice. Persists both the
+ * column and a mirror inside pay_app_data so Export PDF / snapshots stay in sync.
+ */
+export function useSetPayAppFinalInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ payAppId, isFinal }: { payAppId: string; isFinal: boolean }) => {
+      const { data: existing, error: readErr } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .select("pay_app_data")
+        .eq("id", payAppId)
+        .single();
+      if (readErr) throw readErr;
+      const prev = ((existing as any)?.pay_app_data ?? {}) as Record<string, unknown>;
+      const pay_app_data = {
+        ...prev,
+        is_final_invoice: isFinal,
+        ...(isFinal ? { use_reconciled_snapshot: true } : {}),
+      };
+      const { data, error } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .update({ is_final_invoice: isFinal, pay_app_data } as any)
+        .eq("id", payAppId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as PayApp;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["pay-app", vars.payAppId] });
+      qc.invalidateQueries({ queryKey: ["pay-apps"] });
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation", "detail", vars.payAppId] });
     },
   });
 }

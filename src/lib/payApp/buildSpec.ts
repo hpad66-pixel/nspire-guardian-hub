@@ -15,6 +15,8 @@ export interface BuildSpecOpts {
   signedDate?: string | null;
   draft?: boolean;
   reconciled?: boolean;
+  /** Force FINAL INVOICE rendering on the G702 cover. */
+  isFinalInvoice?: boolean;
 }
 
 export function buildPayAppSpec(
@@ -86,5 +88,9 @@ export function buildPayAppSpec(
     signedDate: opts.signedDate !== undefined ? opts.signedDate : signedAt,
     draft: opts.draft ?? false,
     reconciled: opts.reconciled !== undefined ? opts.reconciled : pa.status === "paid",
+    isFinalInvoice:
+      Boolean(pa?.is_final_invoice) ||
+      Boolean(pa?.pay_app_data?.is_final_invoice) ||
+      Boolean(opts.isFinalInvoice),
   };
 }

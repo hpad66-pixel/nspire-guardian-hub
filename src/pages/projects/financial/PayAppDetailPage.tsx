@@ -1,9 +1,10 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
-import { usePayApp, useDeletePayApp } from "@/hooks/usePayApp";
+import { usePayApp, useDeletePayApp, useSetPayAppFinalInvoice } from "@/hooks/usePayApp";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { computePaymentPosition } from "@/lib/financial/payAppContinuation";
+import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { usePrimeContractPayments, usePrimeContractPaymentsTotal } from "@/hooks/usePrimeContractPayments";
 import { ContractPaymentPosition } from "@/components/financial/ContractPaymentPosition";
 import { RecordPrimePaymentDialog } from "@/components/financial/RecordPrimePaymentDialog";
@@ -19,6 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { money } from "@/lib/pdf";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +33,7 @@ export default function PayAppDetailPage() {
   const { data: contract } = usePrimeContract(projectId ?? null);
   const { detail, approve, reject } = usePayApp(payAppId ?? null);
   const { submit, g702 } = usePayAppContinuation(payAppId ?? null);
+  const setFinal = useSetPayAppFinalInvoice();
   const del = useDeletePayApp();
   const { data: payments = [] } = usePrimeContractPayments(payAppId ?? null);
   const { data: receivedTotal = 0 } = usePrimeContractPaymentsTotal(contract?.id ?? null);
@@ -44,9 +48,26 @@ export default function PayAppDetailPage() {
   if (!pa) return <div className="p-6 text-muted-foreground">Loading pay app…</div>;
   if (!contract) return <div className="p-6 text-muted-foreground">Loading contract…</div>;
 
+  const isFinalInvoice =
+    Boolean((pa as any).is_final_invoice) ||
+    Boolean((pa as any).pay_app_data?.is_final_invoice);
+
   async function doSubmit() {
     try { await submit.mutateAsync(); toast.success("Submitted — G702 cover saved."); }
     catch (e: any) { toast.error(e.message); }
+  }
+
+  async function toggleFinalInvoice(checked: boolean) {
+    try {
+      await setFinal.mutateAsync({ payAppId: pa!.id, isFinal: checked });
+      toast.success(
+        checked
+          ? "Marked as FINAL invoice — PDF will show Final Invoice and Line 9 as unbilled leftover."
+          : "Final invoice flag cleared — this is a progress application again.",
+      );
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   }
   async function doApprove() {
     const amt = typeof approveAmount === "number" ? approveAmount : Number(pa!.submitted_amount ?? 0);
@@ -103,7 +124,14 @@ export default function PayAppDetailPage() {
         >← Prime Contract</Link>
         <div className="flex items-start justify-between mt-2">
           <div>
-            <h1 className="text-3xl font-bold">Pay Application #{pa.pay_app_no}</h1>
+            <h1 className="text-3xl font-bold flex flex-wrap items-center gap-3">
+              Pay Application #{pa.pay_app_no}
+              {isFinalInvoice && (
+                <Badge className="bg-[var(--apas-sapphire)] text-white tracking-wider uppercase text-xs">
+                  Final Invoice
+                </Badge>
+              )}
+            </h1>
             <div className="text-muted-foreground">
               Period ending {pa.period_end} · {contract.title} ({contract.contract_no})
             </div>
@@ -114,6 +142,30 @@ export default function PayAppDetailPage() {
             <PayAppSignSendDialog payAppId={pa.id} contract={contract} />
           </div>
         </div>
+
+        <div className="mt-4 rounded-lg border border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/5 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="final-invoice"
+              checked={isFinalInvoice}
+              disabled={setFinal.isPending}
+              onCheckedChange={(v) => toggleFinalInvoice(v === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="final-invoice" className="text-sm font-semibold cursor-pointer">
+                This is the final invoice
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Check this when Application #{pa.pay_app_no} closes the job. The PDF shows a{" "}
+                <strong>FINAL INVOICE</strong> banner. Line 7 is labeled as{" "}
+                <strong>paid to date</strong>, and Line 9 explains that leftover quantities/credits
+                will <strong>not</strong> be billed — the project closes on payment of the current due.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {((pa as any).sent_for_review_at || (pa as any).signed_at) && (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             {(pa as any).signed_at && (
@@ -153,20 +205,10 @@ export default function PayAppDetailPage() {
           <CardContent>
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <tbody>
-                {[
-                  ["1. Original Contract Sum", (pa as any).pay_app_data.original_contract_sum],
-                  ["2. Net change by change orders", (pa as any).pay_app_data.net_change_orders],
-                  ["3. Contract Sum to date", (pa as any).pay_app_data.contract_sum_to_date],
-                  ["4. Total completed & stored to date", (pa as any).pay_app_data.completed_stored_to_date],
-                  ["5. Retainage", (pa as any).pay_app_data.retainage_total],
-                  ["6. Total earned less retainage", (pa as any).pay_app_data.total_earned_less_retainage],
-                  ["7. Less previous certificates", (pa as any).pay_app_data.less_previous_certificates],
-                  ["8. Current payment due", (pa as any).pay_app_data.current_payment_due],
-                  ["9. Balance to finish", (pa as any).pay_app_data.balance_to_finish],
-                ].map(([label, val]: any, i) => (
-                  <tr key={i} className={`border-t ${String(label).startsWith("8.") ? "font-bold bg-[var(--apas-sapphire)]/5" : ""}`}>
+                {g702SidebarRows(isFinalInvoice).map(([label, key]) => (
+                  <tr key={key} className={`border-t ${key === "current_payment_due" ? "font-bold bg-[var(--apas-sapphire)]/5" : ""}`}>
                     <td className="py-2 pr-3">{label}</td>
-                    <td className="py-2 text-right font-mono">{money(Number(val ?? 0))}</td>
+                    <td className="py-2 text-right font-mono">{money(Number((pa as any).pay_app_data?.[key] ?? 0))}</td>
                   </tr>
                 ))}
               </tbody>

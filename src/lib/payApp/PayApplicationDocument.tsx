@@ -14,6 +14,7 @@
  */
 import { forwardRef } from "react";
 import type { G702Summary } from "@/lib/financial/payAppContinuation";
+import { g702LineCopy } from "@/lib/payApp/g702Labels";
 
 const INK = "#1A1714";
 const MUTE = "#6b6760";
@@ -80,6 +81,11 @@ export interface PayApplicationSpec {
   draft?: boolean;
   /** Stamp a green "RECONCILED" seal on the cover (e.g. the pay app is fully paid). */
   reconciled?: boolean;
+  /**
+   * When true, this is the FINAL invoice for the contract — banner + Line 9
+   * wording make clear leftover quantities/credits will not be billed.
+   */
+  isFinalInvoice?: boolean;
 }
 
 const PAGE: React.CSSProperties = {
@@ -178,12 +184,45 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     for (let i = 0; i < items.length; i += ROWS_PER_PAGE) sovPages.push(items.slice(i, i + ROWS_PER_PAGE));
     if (!sovPages.length) sovPages.push([]);
 
+    const isFinal = Boolean(spec.isFinalInvoice);
+
     const DraftBanner = () =>
       spec.draft ? (
-        <div style={{ background: `${GOLD}22`, border: `1px solid ${GOLD}`, color: "#7a5c14", textAlign: "center", fontWeight: 700, fontSize: 11, letterSpacing: "0.14em", padding: "5px 0", marginBottom: 14, textTransform: "uppercase" }}>
+        <div style={{ background: `${GOLD}22`, border: `1px solid ${GOLD}`, color: "#7a5c14", textAlign: "center", fontWeight: 700, fontSize: 11, letterSpacing: "0.14em", padding: "5px 0", marginBottom: isFinal ? 8 : 14, textTransform: "uppercase" }}>
           Draft — for owner review · not a request for payment
         </div>
       ) : null;
+
+    const FinalInvoiceBanner = () =>
+      isFinal ? (
+        <div
+          data-testid="final-invoice-banner"
+          style={{
+            // Solid ink fallback first so html2canvas / print never drops the
+            // white title if the gradient fails to paint.
+            backgroundColor: "#1A1714",
+            backgroundImage: "linear-gradient(90deg, #1A1714 0%, #2a241c 50%, #1D6FE8 100%)",
+            color: "#FDFCF9",
+            textAlign: "center",
+            fontWeight: 900,
+            fontSize: 14,
+            letterSpacing: "0.28em",
+            padding: "11px 14px",
+            marginBottom: 14,
+            textTransform: "uppercase",
+            border: `2px solid ${GOLD}`,
+            boxShadow: `inset 0 0 0 1px ${GOLD}66`,
+          }}
+        >
+          Final Invoice
+          <span style={{ display: "block", fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", marginTop: 4, color: GOLD, textTransform: "none" }}>
+            Closing application — leftover quantities and credits will not be billed
+          </span>
+        </div>
+      ) : null;
+
+    const lineCopy = g702LineCopy(isFinal);
+    const lineByKey = Object.fromEntries(lineCopy.map((r) => [r.key, r]));
 
     const Header = ({ sheet }: { sheet: "G702" | "G703" }) => (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `3px solid ${INK}`, paddingBottom: 10 }}>
@@ -289,15 +328,19 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
              so the two-column application/certificate split has room to breathe. */}
         <div data-pdf-page data-orientation="landscape" style={PAGE_COVER}>
           <DraftBanner />
+          <FinalInvoiceBanner />
 
           {/* Top bar: title · summary-sheet · page */}
           <div style={{ borderBottom: `3px solid ${INK}`, paddingBottom: 7 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <div style={{ fontSize: 15.5, fontWeight: 700, letterSpacing: "0.02em" }}>APPLICATION AND CERTIFICATE FOR PAYMENT</div>
+              <div style={{ fontSize: 15.5, fontWeight: 700, letterSpacing: "0.02em" }}>
+                APPLICATION AND CERTIFICATE FOR PAYMENT
+                {isFinal ? <span style={{ marginLeft: 10, fontSize: 11, letterSpacing: "0.14em", color: GOLD }}>· FINAL</span> : null}
+              </div>
               <div style={{ fontSize: 12, fontStyle: "italic", color: MUTE }}>DOCUMENT SUMMARY SHEET</div>
               <div style={{ fontSize: 11, color: MUTE }}>Page 1 of {totalPages}</div>
             </div>
-            <div style={{ fontSize: 10, color: MUTE, marginTop: 2 }}>{spec.wordmark} · AIA G702 (adapted)</div>
+            <div style={{ fontSize: 10, color: MUTE, marginTop: 2 }}>{spec.wordmark} · AIA G702 (adapted){isFinal ? " · FINAL INVOICE" : ""}</div>
           </div>
 
           {spec.reconciled && (
@@ -326,10 +369,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 ["PERIOD:", periodLabel],
                 ["PROJECT NO:", projectNo],
                 ["CONTRACT DATE:", contractDate],
+                ...(isFinal ? [["INVOICE TYPE:", "FINAL INVOICE"] as const] : []),
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", gap: 6, fontSize: 11.5, padding: "1.5px 0" }}>
-                  <div style={{ flex: 1, fontWeight: 700, textAlign: "right" }}>{k}</div>
-                  <div style={{ width: 116, fontVariantNumeric: "tabular-nums" }}>{v || "—"}</div>
+                  <div style={{ flex: 1, fontWeight: 700, textAlign: "right", color: k === "INVOICE TYPE:" ? GOLD : undefined }}>{k}</div>
+                  <div style={{ width: 116, fontVariantNumeric: "tabular-nums", fontWeight: k === "INVOICE TYPE:" ? 700 : 400 }}>{v || "—"}</div>
                 </div>
               ))}
             </div>
@@ -342,12 +386,35 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               <div style={{ fontSize: 12.5, fontWeight: 700 }}>CONTRACTOR&apos;S APPLICATION FOR PAYMENT</div>
               <div style={{ fontSize: 10.5, fontStyle: "italic", color: MUTE, marginTop: 2, marginBottom: 8, lineHeight: 1.35 }}>
                 Application is made for payment, as shown below, in connection with the Contract. Continuation Sheet is attached.
+                {isFinal
+                  ? " This is the FINAL invoice — any unbilled quantities or credits remaining on the Schedule of Values will not be billed, and the project will be closed upon payment."
+                  : ""}
               </div>
 
-              <SumRow no="1." label="Original Contract Sum" value={g.original_contract_sum} />
-              <SumRow no="2." label="Net change by change orders" value={g.net_change_orders} />
-              <SumRow no="3." label="Contract Sum to date (Line 1 ± 2)" value={g.contract_sum_to_date} />
-              <SumRow no="4." label="Total completed and stored to date" sub="(Column G on detail sheet)" value={g.completed_stored_to_date} />
+              <SumRow
+                no={lineByKey.original_contract_sum.no}
+                label={lineByKey.original_contract_sum.label}
+                sub={lineByKey.original_contract_sum.sub}
+                value={g.original_contract_sum}
+              />
+              <SumRow
+                no={lineByKey.net_change_orders.no}
+                label={lineByKey.net_change_orders.label}
+                sub={lineByKey.net_change_orders.sub}
+                value={g.net_change_orders}
+              />
+              <SumRow
+                no={lineByKey.contract_sum_to_date.no}
+                label={lineByKey.contract_sum_to_date.label}
+                sub={lineByKey.contract_sum_to_date.sub}
+                value={g.contract_sum_to_date}
+              />
+              <SumRow
+                no={lineByKey.completed_stored_to_date.no}
+                label={lineByKey.completed_stored_to_date.label}
+                sub={lineByKey.completed_stored_to_date.sub}
+                value={g.completed_stored_to_date}
+              />
 
               {/* 5 · Retainage — blended per-line roll-up. 5a/5b amounts ride an
                   intermediate column (Procore); the Total aligns to the main column. */}
@@ -355,6 +422,9 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 <div style={{ width: 22, fontSize: 13, lineHeight: 1.35 }}>5.</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, lineHeight: 1.35 }}>Retainage:</div>
+                  <div style={{ fontSize: 10.5, color: MUTE, lineHeight: 1.3, marginBottom: 2 }}>
+                    {lineByKey.retainage_total.sub}
+                  </div>
                   <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
                     <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
                     <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(g.retainage_total)}</div>
@@ -370,10 +440,31 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 </div>
               </div>
 
-              <SumRow no="6." label="Total earned less retainage" sub="(Line 4 less Line 5 Total)" value={g.total_earned_less_retainage} />
-              <SumRow no="7." label="Less previous certificates for payment" sub="(Line 6 from prior certificate)" value={g.less_previous_certificates} />
-              <SumRow no="8." label="Current payment due" value={g.current_payment_due} hi />
-              <SumRow no="9." label="Balance to finish, including retainage" sub="(Line 3 less Line 6)" value={g.balance_to_finish} />
+              <SumRow
+                no={lineByKey.total_earned_less_retainage.no}
+                label={lineByKey.total_earned_less_retainage.label}
+                sub={lineByKey.total_earned_less_retainage.sub}
+                value={g.total_earned_less_retainage}
+              />
+              <SumRow
+                no={lineByKey.less_previous_certificates.no}
+                label={lineByKey.less_previous_certificates.label}
+                sub={lineByKey.less_previous_certificates.sub}
+                value={g.less_previous_certificates}
+              />
+              <SumRow
+                no={lineByKey.current_payment_due.no}
+                label={lineByKey.current_payment_due.label}
+                sub={lineByKey.current_payment_due.sub}
+                value={g.current_payment_due}
+                hi
+              />
+              <SumRow
+                no={lineByKey.balance_to_finish.no}
+                label={lineByKey.balance_to_finish.label}
+                sub={lineByKey.balance_to_finish.sub}
+                value={g.balance_to_finish}
+              />
 
               {/* Change Order Summary */}
               <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 9 }}>

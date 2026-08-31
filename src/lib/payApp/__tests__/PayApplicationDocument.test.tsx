@@ -107,4 +107,34 @@ describe("PayApplicationDocument", () => {
       expect(s.overflow).toBe("hidden");
     });
   });
+
+  it("renders FINAL INVOICE banner and final Line 9 wording when isFinalInvoice", () => {
+    const { getByTestId, getByText, getAllByText } = render(
+      <PayApplicationDocument
+        spec={{
+          ...spec,
+          isFinalInvoice: true,
+          g702: {
+            ...spec.g702,
+            less_previous_certificates: 742871.38,
+            current_payment_due: 144332.82,
+            balance_to_finish: 66146.15,
+          },
+        }}
+      />,
+    );
+    expect(getByTestId("final-invoice-banner").textContent).toMatch(/Final Invoice/i);
+    expect(getByText(/INVOICE TYPE:/)).toBeTruthy();
+    expect(getAllByText(/FINAL INVOICE/i).length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText(/paid to date/i).length).toBeGreaterThanOrEqual(1);
+    expect(getByText(/Unbilled contract balance/i)).toBeTruthy();
+    expect(getAllByText(/will not be billed/i).length).toBeGreaterThanOrEqual(1);
+    expect(getByText(/Current payment due \(FINAL\)/i)).toBeTruthy();
+  });
+
+  it("does not show the FINAL banner on a progress application", () => {
+    const { queryByTestId, queryByText } = render(<PayApplicationDocument spec={spec} />);
+    expect(queryByTestId("final-invoice-banner")).toBeNull();
+    expect(queryByText(/Unbilled contract balance/i)).toBeNull();
+  });
 });
