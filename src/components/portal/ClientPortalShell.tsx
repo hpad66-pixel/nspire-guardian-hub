@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Home,
   LogOut,
+  Map,
   Menu,
   ShieldCheck,
   X,
@@ -32,13 +33,14 @@ import "@/pages/portal/client-portal.css";
 
 function portalNav(
   projectId: string | null,
-  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits"]),
+  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map"]),
 ) {
   const primary = [
     { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
     { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true, key: "overview" },
     { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing, key: "updates" },
     { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
+    { to: ownerPortalPath(projectId, "/site-map"), label: "Site map", icon: Map, key: "site-map" },
     { to: ownerPortalPath(projectId, "/permits"), label: "Permits", icon: FileBadge2, key: "permits" },
     { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen, key: "documents" },
   ].filter((item) => enabled.has(item.key));

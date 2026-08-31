@@ -58,6 +58,10 @@ interface DailyInspectionWizardProps {
   existingInspection?: DailyInspection | null;
   onComplete: () => void;
   onCancel: () => void;
+  /** Deep-link from site map — open this asset once the wizard reaches Assets. */
+  initialAssetId?: string | null;
+  /** Fallback when DB id is unknown — match assets.name (e.g. S-6, CO-04). */
+  initialAssetCode?: string | null;
 }
 
 interface AssetCheckData {
@@ -137,12 +141,18 @@ export function DailyInspectionWizard({
   existingInspection,
   onComplete,
   onCancel,
+  initialAssetId = null,
+  initialAssetCode = null,
 }: DailyInspectionWizardProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState<WizardStep>('start');
-  const [weather, setWeather] = useState(existingInspection?.weather || '');
+  const [step, setStep] = useState<WizardStep>(
+    existingInspection || initialAssetId || initialAssetCode ? 'assets' : 'start',
+  );
+  const [weather, setWeather] = useState(existingInspection?.weather || 'sunny');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
+  const deepLinkOpened = useRef(false);
+  const deepLinkBootstrapped = useRef(false);
   const [generalNotes, setGeneralNotes] = useState(existingInspection?.general_notes || '');
   const [generalNotesHtml, setGeneralNotesHtml] = useState(existingInspection?.general_notes_html || '');
   // General Observations (structured — mirrors the paper form's top section)
@@ -256,6 +266,43 @@ export function DailyInspectionWizard({
     setSelectedAssetId(assetId);
     setAssetDialogOpen(true);
   };
+
+  // Site-map deep link: ensure an in-progress inspection exists, then open the pin.
+  useEffect(() => {
+    if (deepLinkBootstrapped.current) return;
+    if (!initialAssetId && !initialAssetCode) return;
+    if (inspection) {
+      deepLinkBootstrapped.current = true;
+      setStep('assets');
+      return;
+    }
+    if (createInspection.isPending) return;
+    deepLinkBootstrapped.current = true;
+    void createInspection
+      .mutateAsync({ property_id: propertyId, weather: weather || 'sunny' })
+      .then((row) => {
+        setInspection(row);
+        setStep('assets');
+      })
+      .catch(() => {
+        deepLinkBootstrapped.current = false;
+      });
+  }, [initialAssetId, initialAssetCode, inspection, createInspection, propertyId, weather]);
+
+  useEffect(() => {
+    if (deepLinkOpened.current || activeAssets.length === 0 || !inspection) return;
+    let targetId = initialAssetId || null;
+    if (!targetId && initialAssetCode) {
+      const needle = initialAssetCode.trim().toLowerCase();
+      targetId = activeAssets.find((a) => a.name.trim().toLowerCase() === needle)?.id
+        ?? activeAssets.find((a) => a.name.toLowerCase().includes(needle))?.id
+        ?? null;
+    }
+    if (!targetId) return;
+    deepLinkOpened.current = true;
+    setStep('assets');
+    handleOpenAsset(targetId);
+  }, [activeAssets, initialAssetId, initialAssetCode, inspection]);
 
   // Voice for notes
   const handleVoiceNotes = () => {

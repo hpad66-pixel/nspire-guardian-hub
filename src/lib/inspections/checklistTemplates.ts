@@ -4,7 +4,7 @@
 //
 // Answers are stored on `daily_inspection_items.checklist` (jsonb), keyed by
 // field id. Templates are keyed by asset_type; asset types without a template
-// (lift_station, retention_pond, general_grounds) just use status + notes.
+// (lift_station, general_grounds) just use status + notes.
 
 export type ChecklistFieldType = 'select' | 'yesno' | 'yesnona' | 'text' | 'date';
 
@@ -50,6 +50,14 @@ export const CHECKLIST_TEMPLATES: Record<string, ChecklistField[]> = {
     { id: 'grate_condition', label: 'Condition of grate & frame', type: 'select', options: EGFP },
     { id: 'sediment', label: 'Sediment or debris accumulation', type: 'select', options: ['None', 'Low', 'Moderate', 'High'] },
     { id: 'outlet_pipe', label: 'Condition of outlet pipe', type: 'select', options: EGFP },
+  ],
+  // Retention Pond
+  retention_pond: [
+    { id: 'water_level', label: 'Water level / freeboard', type: 'select', options: ['Normal', 'High', 'Low', 'Dry'] },
+    { id: 'sediment', label: 'Visible sedimentation / debris', type: 'select', options: ['None', 'Low', 'Moderate', 'High'] },
+    { id: 'banks', label: 'Bank / edge condition', type: 'select', options: EGFP },
+    { id: 'outlet_control', label: 'Outlet / control structure clear?', type: 'yesno' },
+    { id: 'odor_algae', label: 'Odor, algae, or water-quality concern?', type: 'yesno' },
   ],
 };
 

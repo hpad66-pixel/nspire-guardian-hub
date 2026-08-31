@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Landmark,
   Loader2,
+  Map,
   Megaphone,
   ShieldCheck,
   WalletCards,
@@ -23,6 +24,10 @@ import { useClientUpdates } from "@/hooks/useClientUpdates";
 import { financialSummary } from "@/lib/reports/financialReports";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
+import { SiteAssetMap } from "@/components/projects/site-map/SiteAssetMap";
+import { useAssets } from "@/hooks/useAssets";
+import { useProject } from "@/hooks/useProjects";
+import { GLORIETA_SITE_LAYOUT } from "@/lib/site-map/glorietaSiteLayout";
 
 function fmt(value: number | null | undefined) {
   return `$${(Number(value) || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -87,6 +92,7 @@ function LatestUpdate({ projectId }: { projectId: string | null }) {
 }
 
 const resources = [
+  { to: "/site-map", label: "Site map", detail: "Interactive property assets & pond", icon: Map },
   { to: "/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
   { to: "/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
   { to: "/permits", label: "Permits", detail: "Closeout readiness and city status", icon: FileBadge2 },
@@ -107,6 +113,15 @@ export default function OwnerDashboardPage() {
   const decisionCount = pendingOcos.length + pendingPayApps.length;
   const pendingValue = pendingOcos.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
     + pendingPayApps.reduce((sum, item) => sum + (Number(item.submitted_amount) || 0), 0);
+  const { data: project } = useProject(projectId ?? null);
+  const { data: siteAssets = [] } = useAssets(project?.property_id ?? undefined);
+  const showSiteMap =
+    Boolean(projectId)
+    && (
+      (project?.name ?? "").toLowerCase().includes("conveyance")
+      || (project?.name ?? "").toLowerCase().includes("sewer extension")
+      || projectId === "4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d"
+    );
 
   return (
     <div className="client-dashboard">
@@ -121,6 +136,26 @@ export default function OwnerDashboardPage() {
           <span><Clock3 /> Current portal view</span>
         </div>
       </section>
+
+      {showSiteMap && (
+        <section className="space-y-3" data-testid="owner-dashboard-site-map">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <small className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Property command map</small>
+              <h2 className="font-display text-2xl font-bold">See every asset on site</h2>
+            </div>
+            <Link to={href("/site-map")} className="text-sm font-semibold text-[var(--apas-sapphire)] hover:underline">
+              Open full map <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <SiteAssetMap
+            layout={GLORIETA_SITE_LAYOUT}
+            dbAssets={siteAssets}
+            variant="hero"
+            readOnly
+          />
+        </section>
+      )}
 
       <section id="decisions" className={`client-decision-center ${decisionCount ? "has-decisions" : "is-clear"}`}>
         <div className="client-decision-center__summary">
