@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agingBreakdown,
   buildPermitComplianceBrief,
+  buildStatusAdvancePatch,
+  buildingReadiness,
+  closeoutPipeline,
   countPermitStatuses,
+  daysOpen,
   groupByBuilding,
+  groupByTrade,
   groupOpenByOwner,
   isCityBlocked,
+  nextPipelineAction,
   permitReadiness,
+  statusBreakdown,
 } from '../projectPermitStats';
 
 const sample = [
@@ -14,29 +22,37 @@ const sample = [
     description: 'Closed work',
     status: 'closed',
     building: 'Building 4',
+    trade: 'Plumbing',
     responsible_party: 'Greg',
+    issued_on: '2024-01-01',
+    closed_on: '2024-06-01',
   },
   {
     permit_number: 'B',
     description: 'Stormwater',
     status: 'open_active',
     building: 'Junkyard',
+    trade: 'Plumbing',
     notes: 'Pending Signoff From Public Works',
     responsible_party: 'Greg',
+    issued_on: '2024-01-15',
   },
   {
     permit_number: 'C',
     description: 'Foundation drains',
     status: 'pending',
     building: 'Building 4',
+    trade: 'Building',
     notes: 'City To Confirm Closed',
     responsible_party: 'James',
+    issued_on: '2026-08-01',
   },
   {
     permit_number: 'D',
     description: 'Sewer conveyance',
     status: 'open_active',
     building: 'Building 7',
+    trade: 'Plumbing',
     responsible_party: 'Vanessa',
   },
 ];
@@ -94,5 +110,53 @@ describe('projectPermitStats', () => {
     expect(brief).toContain('Stormwater');
     expect(brief).toContain('James');
     expect(brief).toContain('coordinating closure');
+  });
+
+  it('builds status / trade / building chart slices', () => {
+    const status = statusBreakdown(sample);
+    expect(status.find((s) => s.key === 'closed')?.value).toBe(1);
+    expect(status.find((s) => s.key === 'open_active')?.value).toBe(2);
+
+    const trades = groupByTrade(sample);
+    expect(trades[0].name).toBe('Plumbing');
+    expect(trades[0].value).toBe(3);
+
+    const buildings = buildingReadiness(sample);
+    const b4 = buildings.find((b) => b.name === 'Building 4');
+    expect(b4?.percent).toBe(50);
+    expect(b4?.closed).toBe(1);
+  });
+
+  it('computes open-permit aging and closeout pipeline', () => {
+    const asOf = new Date('2026-08-31T12:00:00Z');
+    expect(daysOpen(sample[0], asOf)).toBeNull();
+    expect(daysOpen(sample[1], asOf)).toBeGreaterThan(60);
+    expect(daysOpen(sample[3], asOf)).toBeNull(); // no issued_on
+
+    const aging = agingBreakdown(sample, asOf);
+    expect(aging.find((b) => b.key === '61_plus')?.value).toBeGreaterThanOrEqual(1);
+    expect(aging.find((b) => b.key === 'unknown')?.value).toBe(1);
+
+    const pipe = closeoutPipeline(sample);
+    expect(pipe.map((p) => p.key)).toEqual(['open_active', 'city_wait', 'closed']);
+    expect(pipe[2].count).toBe(1);
+  });
+
+  it('advances closeout pipeline with status patches', () => {
+    expect(nextPipelineAction('open_active')).toEqual({
+      next: 'pending',
+      actionLabel: 'Send to City',
+    });
+    expect(nextPipelineAction('pending')?.next).toBe('closed');
+    expect(nextPipelineAction('closed')).toBeNull();
+
+    const pending = buildStatusAdvancePatch(sample[3], 'pending', new Date('2026-08-31'));
+    expect(pending.status).toBe('pending');
+    expect(pending.next_action).toContain('City');
+
+    const closed = buildStatusAdvancePatch(sample[2], 'closed', new Date('2026-08-31'));
+    expect(closed.status).toBe('closed');
+    expect(closed.closed_on).toBe('2026-08-31');
+    expect(closed.city_confirmed_on).toBeTruthy();
   });
 });
