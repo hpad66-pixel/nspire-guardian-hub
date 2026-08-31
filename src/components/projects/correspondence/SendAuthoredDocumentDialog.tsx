@@ -1,13 +1,14 @@
 /**
  * Send a signed authored document to chosen recipients with a token-gated e-sign link.
- * Recipients are picked from project CRM / workspace contacts — never auto-forced.
+ * Recipients are picked from the full workspace CRM (all contacts) — never auto-forced.
+ * Project-directory people still surface first in autocomplete; the browse picker
+ * defaults to "All contacts" so nobody is hidden.
  */
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,6 @@ import { useProjectEmails } from "@/hooks/useProjectEmails";
 import { useSavedRecipients } from "@/hooks/useSavedRecipients";
 import { htmlToPdfAttachment } from "@/lib/docs/render";
 import type { AuthoredDocument } from "@/hooks/useAuthoredDocuments";
-import { useProjectContacts } from "@/hooks/useProjectPeople";
 import { RecipientsInput } from "./RecipientsInput";
 import { ESignStamp } from "@/components/correspondence/ESignStamp";
 
@@ -38,35 +38,25 @@ export function SendAuthoredDocumentDialog({
   const sendEmail = useSendEmail();
   const projectEmails = useProjectEmails(doc.project_id);
   const savedRecipients = useSavedRecipients();
-  const { data: contacts = [] } = useProjectContacts(doc.project_id);
   const [recipients, setRecipients] = useState<string[]>([]);
-  const [primary, setPrimary] = useState<string>("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   const signLink = `${window.location.origin}/sign/document/${doc.sign_token}`;
-  const emailable = contacts.filter((c) => c.email);
 
   useEffect(() => {
     if (!open) return;
     // Do NOT auto-pick the first contact — that was forcing Airia/Chris/etc.
     setRecipients([]);
-    setPrimary("");
     setMessage(
       `Please find “${doc.title}” for ${projectName || "the project"}. Review the document and sign electronically at the link below. Once executed, the fully signed copy is recorded in the project correspondence trail.`,
     );
   }, [open, doc.title, projectName]);
 
-  const applyQuickPick = (email: string) => {
-    if (!email) return;
-    setPrimary(email);
-    setRecipients((prev) => (prev.includes(email) ? prev : [...prev, email]));
-  };
-
   const send = async () => {
     const list = recipients.map((e) => e.trim().toLowerCase()).filter(Boolean);
     if (!list.length) {
-      toast.error("Choose who to send this to — pick from project contacts or type an email.");
+      toast.error("Choose who to send this to — pick from your contacts or type an email.");
       return;
     }
     if (!doc.contractor_signed_at && !doc.sign_token) {
@@ -167,7 +157,7 @@ export function SendAuthoredDocumentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Send className="h-4 w-4" /> Send to client</DialogTitle>
           <DialogDescription>
-            Choose who receives this — project CRM contacts, any workspace contact, or a typed address. Nothing is pre-selected.
+            Choose who receives this — every contact in your CRM is available. Nothing is pre-selected.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -181,25 +171,6 @@ export function SendAuthoredDocumentDialog({
             </div>
           )}
 
-          {emailable.length > 0 && (
-            <div>
-              <Label className="text-xs">Quick pick from this project</Label>
-              <Select value={primary || undefined} onValueChange={applyQuickPick}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select a project contact…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {emailable.map((c) => (
-                    <SelectItem key={c.contactId} value={c.email!}>
-                      {c.name}{c.isKeyContact ? " · key" : ""} · {c.email}
-                      {c.roleLabel ? ` (${c.roleLabel})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div>
             <Label className="text-xs">Send to</Label>
             <div className="mt-1">
@@ -207,11 +178,12 @@ export function SendAuthoredDocumentDialog({
                 value={recipients}
                 onChange={setRecipients}
                 projectId={doc.project_id}
-                placeholder="Search contacts or type an email — press Enter"
+                defaultScope="workspace"
+                placeholder="Search all contacts or type an email — press Enter"
               />
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Search your CRM, pick multiple people, or type any email. Project contacts show first when scoped.
+              Every CRM contact is available. Project people appear first in suggestions; open Browse all contacts for the full searchable list (or filter to this project).
             </p>
           </div>
 

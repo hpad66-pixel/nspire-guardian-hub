@@ -1,6 +1,8 @@
 /**
- * RecipientsInput — multi-email chip field with autocomplete from CRM
- * contacts (workspace or project-scoped) plus previously-used addresses.
+ * RecipientsInput — multi-email chip field with autocomplete from the full
+ * CRM (all contacts) plus previously-used addresses. When a projectId is set,
+ * project-directory people are listed first, but the rest of the workspace
+ * CRM stays searchable — Doc Studio / email send must never hide contacts.
  */
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -16,17 +18,24 @@ import { ContactPicker } from "@/components/crm/ContactPicker";
 import {
   contactDisplayName,
   filterContactsForEmail,
+  type ContactEmailScope,
 } from "@/lib/crm/contactAssignments";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function RecipientsInput({
-  value, onChange, placeholder, projectId,
+  value,
+  onChange,
+  placeholder,
+  projectId,
+  /** Default ContactPicker tab. Doc Studio / send flows use "workspace" so every CRM contact is visible. */
+  defaultScope = "workspace",
 }: {
   value: string[];
   onChange: (emails: string[]) => void;
   placeholder?: string;
   projectId?: string;
+  defaultScope?: ContactEmailScope;
 }) {
   const { data: saved = [] } = useSavedRecipients();
   const { data: contacts = [] } = useCRMContacts();
@@ -34,23 +43,33 @@ export function RecipientsInput({
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
 
-  const crmMatches = useMemo(() => {
-    const scoped = filterContactsForEmail(contacts, {
-      scope: projectId ? "project" : "workspace",
-      projectContactIds,
+  const projectIdSet = useMemo(() => new Set(projectContactIds), [projectContactIds]);
+
+  const { projectMatches, allMatches } = useMemo(() => {
+    const emailable = filterContactsForEmail(contacts, {
+      scope: "workspace",
       search: text,
-    });
-    return scoped.filter((contact) => contact.email && !value.includes(contact.email)).slice(0, 6);
-  }, [contacts, projectId, projectContactIds, text, value]);
+    }).filter((contact) => contact.email && !value.includes(contact.email));
+
+    const onProject = emailable.filter((c) => projectIdSet.has(c.id));
+    const rest = emailable.filter((c) => !projectIdSet.has(c.id));
+    return {
+      projectMatches: onProject.slice(0, 8),
+      allMatches: rest.slice(0, 12),
+    };
+  }, [contacts, projectIdSet, text, value]);
 
   const suggestions = useMemo(() => {
     const q = text.trim().toLowerCase();
+    const alreadyShown = new Set(
+      [...projectMatches, ...allMatches].map((c) => c.email).filter(Boolean),
+    );
     return saved
       .filter((s) => !value.includes(s.email))
       .filter((s) => !q || s.email.includes(q) || (s.label ?? "").toLowerCase().includes(q))
-      .filter((s) => !crmMatches.some((c) => c.email === s.email))
+      .filter((s) => !alreadyShown.has(s.email))
       .slice(0, 6);
-  }, [saved, text, value, crmMatches]);
+  }, [saved, text, value, projectMatches, allMatches]);
 
   const add = (raw: string) => {
     const email = raw.trim().replace(/[,;]$/, "").toLowerCase();
@@ -61,7 +80,8 @@ export function RecipientsInput({
   };
 
   const remove = (email: string) => onChange(value.filter((e) => e !== email));
-  const hasSuggestions = crmMatches.length > 0 || suggestions.length > 0;
+  const hasSuggestions =
+    projectMatches.length > 0 || allMatches.length > 0 || suggestions.length > 0;
 
   return (
     <div className="space-y-1.5">
@@ -103,9 +123,22 @@ export function RecipientsInput({
         <PopoverContent align="start" className="w-80 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
           <Command>
             <CommandList>
-              {crmMatches.length > 0 && (
-                <CommandGroup heading={projectId ? "Project contacts" : "All contacts"}>
-                  {crmMatches.map((contact) => (
+              {projectMatches.length > 0 && (
+                <CommandGroup heading="On this project">
+                  {projectMatches.map((contact) => (
+                    <CommandItem
+                      key={contact.id}
+                      onSelect={() => { add(contact.email!); setOpen(false); }}
+                      className="text-xs"
+                    >
+                      <span className="truncate">{contactDisplayName(contact)} — {contact.email}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {allMatches.length > 0 && (
+                <CommandGroup heading={projectMatches.length > 0 ? "All contacts" : "Contacts"}>
+                  {allMatches.map((contact) => (
                     <CommandItem
                       key={contact.id}
                       onSelect={() => { add(contact.email!); setOpen(false); }}
@@ -133,11 +166,11 @@ export function RecipientsInput({
         selectedEmails={value}
         onSelect={onChange}
         projectId={projectId}
-        defaultScope={projectId ? "project" : "workspace"}
+        defaultScope={defaultScope}
         trigger={
           <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 text-xs px-0">
             <Users className="h-3 w-3" />
-            {projectId ? "Filter project contacts" : "Filter all contacts"}
+            Browse all contacts
           </Button>
         }
       />
