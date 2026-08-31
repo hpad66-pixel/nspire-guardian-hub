@@ -30,7 +30,9 @@ import { EmailDocumentDialog, type DocAttachment } from "./EmailDocumentDialog";
 import { DocumentTasksPanel } from "./DocumentTasksPanel";
 import { SignAuthoredDocumentDialog } from "./SignAuthoredDocumentDialog";
 import { SendAuthoredDocumentDialog } from "./SendAuthoredDocumentDialog";
+import { ESignStamp } from "@/components/correspondence/ESignStamp";
 import { DOC_WORKFLOW_META, DOC_WORKFLOW_FILTERS, resolveDocWorkflow, type DocWorkflowStatus } from "@/lib/correspondence/docWorkflow";
+import { stampSignedHtml } from "@/lib/correspondence/stampSignedHtml";
 import { cn } from "@/lib/utils";
 
 const fmtAgo = (d: string): string => {
@@ -374,7 +376,17 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
       {isPdf && !isSigned && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 flex items-start gap-2">
           <PenLine className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>This is a PDF. Electronically sign it here, then send it to the client with a signature link — same flow as change orders.</span>
+          <span>This is a PDF. Electronically sign it here, click where the signature should go, then send it to the client — same flow as change orders.</span>
+        </div>
+      )}
+
+      {isSigned && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
+          <ESignStamp name={doc.contractor_signed_name} signedAt={doc.contractor_signed_at} />
+          <p className="text-sm text-emerald-900">
+            This document is locked with a verified electronic signature.
+            {doc.sent_to_email ? ` Sent to ${doc.sent_to_email}.` : " Ready to send — choose the recipient from your project contacts."}
+          </p>
         </div>
       )}
 
@@ -384,16 +396,13 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
         <FormattedDocEditor doc={doc} docs={docs} projectName={projectName} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
       ) : isPdf && payload?.b64 ? (
         <div className="space-y-3">
-          {doc.contractor_signature_data && (
-            <Card><CardContent className="p-3 flex items-center gap-3">
-              <img src={doc.contractor_signature_data} alt="Signature" className="h-12 object-contain" />
-              <div className="text-sm">
-                <div className="font-medium">Signed by {doc.contractor_signed_name}</div>
-                <div className="text-xs text-muted-foreground">{doc.contractor_signed_at ? new Date(doc.contractor_signed_at).toLocaleString() : ""}</div>
-              </div>
-            </CardContent></Card>
-          )}
-          <PdfView b64={payload.b64} />
+          <SignedPdfView
+            b64={payload.b64}
+            signatureDataUrl={doc.contractor_signature_data}
+            signerName={doc.contractor_signed_name}
+            signedAt={doc.contractor_signed_at}
+            placement={doc.signature_placement}
+          />
         </div>
       ) : (
         <BlankEditor doc={doc} docs={docs} projectName={projectName} locked={isFinal} />
@@ -408,8 +417,21 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
         open={signOpen}
         onOpenChange={setSignOpen}
         doc={doc}
-        onSign={async ({ name, signatureDataUrl }) => {
-          await docs.signDocument.mutateAsync({ id: doc.id, name, signatureDataUrl });
+        pdfBase64={isPdf ? payload?.b64 : null}
+        onSign={async ({ name, signatureDataUrl, placement, signedAt }) => {
+          const sourceHtml = payload?.edited ?? doc.content_html;
+          const stampedHtml = sourceHtml
+            ? stampSignedHtml(sourceHtml, { name, signatureDataUrl, signedAt, placement })
+            : null;
+          await docs.signDocument.mutateAsync({
+            id: doc.id,
+            name,
+            signatureDataUrl,
+            placement,
+            signedAt,
+            stampedHtml,
+          });
+          if (stampedHtml) setPayload((p) => (p ? { ...p, edited: stampedHtml } : p));
         }}
       />
       <SendAuthoredDocumentDialog
@@ -675,6 +697,46 @@ function PdfView({ b64 }: { b64: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { const u = pdfObjectUrl(b64); setUrl(u); return () => URL.revokeObjectURL(u); }, [b64]);
   return <iframe title="PDF preview" src={url ?? ""} className="w-full h-[72vh] rounded border bg-white" />;
+}
+
+function SignedPdfView({
+  b64,
+  signatureDataUrl,
+  signerName,
+  signedAt,
+  placement,
+}: {
+  b64: string;
+  signatureDataUrl?: string | null;
+  signerName?: string | null;
+  signedAt?: string | null;
+  placement?: AuthoredDocument["signature_placement"];
+}) {
+  return (
+    <div className="space-y-2">
+      {(signerName || signedAt) && (
+        <div className="flex flex-wrap items-center gap-3">
+          <ESignStamp name={signerName} signedAt={signedAt} />
+          {signatureDataUrl && (
+            <div className="rounded-md border border-emerald-600/40 bg-white px-2.5 py-1.5 shadow-sm">
+              <img src={signatureDataUrl} alt="Signature" className="h-10 object-contain" />
+              {placement && (
+                <div className="text-[10px] text-emerald-800">
+                  Placed on page {placement.page} · {Math.round(placement.xPct)}%, {Math.round(placement.yPct)}%
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="relative rounded-xl border bg-[#525659] p-2">
+        <div className="pointer-events-none absolute right-4 top-4 z-10 scale-90 origin-top-right">
+          {(signerName || signedAt) && <ESignStamp name={signerName} signedAt={signedAt} compact />}
+        </div>
+        <PdfView b64={b64} />
+      </div>
+    </div>
+  );
 }
 
 // Plain editor for blank documents (no uploaded letterhead to preserve).
