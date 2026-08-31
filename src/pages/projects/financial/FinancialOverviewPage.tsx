@@ -6,6 +6,7 @@ import { MarginOverviewCard } from "@/components/financial/MarginOverviewCard";
 import { BookOpen } from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { projectKind } from "@/lib/projectKind";
+import { ProjectKindBadge, ProjectTypeMissingAlert } from "@/components/projects/ProjectKindBadge";
 
 export default function FinancialOverviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -15,6 +16,17 @@ export default function FinancialOverviewPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <FinancialSubNav />
+      {project && (
+        <div className="flex flex-wrap items-center gap-2">
+          <ProjectKindBadge project={project} size="md" />
+          <span className="text-sm text-muted-foreground">
+            {consulting
+              ? "Consulting billing — proposals and client invoices"
+              : "Construction billing — pay apps, commitments, and budget"}
+          </span>
+        </div>
+      )}
+      {project && <ProjectTypeMissingAlert project={project} />}
       {consulting ? (
         projectId ? (
           <ConsultingFinancialOverview projectId={projectId} projectName={project?.name} />

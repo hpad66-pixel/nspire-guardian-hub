@@ -25,6 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
+import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { format } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
 
@@ -157,8 +158,11 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
                 className="cursor-pointer group"
                 onClick={() => navigate(`/projects/${project.id}`)}
               >
-                <TableCell className="font-medium max-w-[200px] truncate">
-                  {project.name}
+                <TableCell className="font-medium max-w-[220px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{project.name}</span>
+                    <ProjectKindBadge project={project} />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

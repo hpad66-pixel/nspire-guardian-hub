@@ -32,6 +32,7 @@ import {
 import { ChangeOrdersList } from './ChangeOrdersList';
 import { useProjectFinancials } from '@/hooks/useProjectFinancials';
 import { ConsultingFinancialOverview } from '@/components/financial/ConsultingFinancialOverview';
+import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { projectKind } from '@/lib/projectKind';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,10 +82,17 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
   // Consulting / client engagements use proposal → invoice, not construction pay apps.
   if (isConsulting) {
     return (
-      <ConsultingFinancialOverview
-        projectId={project.id}
-        projectName={projectName ?? project.name}
-      />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ProjectKindBadge project={project} size="md" />
+          <span className="text-sm text-muted-foreground">Proposals → client invoices</span>
+        </div>
+        <ProjectTypeMissingAlert project={project} />
+        <ConsultingFinancialOverview
+          projectId={project.id}
+          projectName={projectName ?? project.name}
+        />
+      </div>
     );
   }
 
@@ -323,6 +331,11 @@ export function ProjectFinancials({ project, changeOrders, projectName }: Projec
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <ProjectKindBadge project={project} size="md" />
+        <span className="text-sm text-muted-foreground">Pay apps · commitments · budget</span>
+      </div>
+      <ProjectTypeMissingAlert project={project} />
       {/* Financial module cards */}
       <div>
         <div className="flex items-center justify-between mb-4">

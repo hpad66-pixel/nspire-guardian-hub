@@ -10,6 +10,7 @@ describe("consulting financial nav", () => {
     expect(financialKindFor({ project_type: "consulting" })).toBe("consulting");
     expect(financialKindFor({ project_type: "client" })).toBe("consulting");
     expect(financialKindFor({ project_type: "property" })).toBe("construction");
+    expect(financialKindFor({ project_type: "construction" })).toBe("construction");
   });
 
   it("includes client invoices and excludes pay apps for consulting", () => {

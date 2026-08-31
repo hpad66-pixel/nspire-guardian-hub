@@ -98,7 +98,7 @@ export default function MyDayPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(projects ?? []).map((p) => {
               const counts = byProject.get(p.id) ?? { open: 0, overdue: 0 };
-              const isConsulting = (p as any).project_type === 'consulting';
+              const isConsulting = (p as any).project_type === 'consulting' || (p as any).project_type === 'client';
               return (
                 <button key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="text-left">
                   <Card className="p-4 hover:border-[var(--apas-sapphire)]/40 transition-colors h-full">

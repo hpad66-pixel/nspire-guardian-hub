@@ -13,6 +13,7 @@ import { Building2, Briefcase, MoreHorizontal, Edit, Archive, Trash2 } from 'luc
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
+import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import type { Project } from '@/hooks/useProjects';
 
 interface ProjectListViewProps {
@@ -79,6 +80,7 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
                 <span className={cn('font-medium text-sm truncate', isDone && 'line-through text-muted-foreground')}>
                   {project.name}
                 </span>
+                <ProjectKindBadge project={project} />
                 {parentName && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                     {isClientProject ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}

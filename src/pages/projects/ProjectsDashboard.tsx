@@ -39,6 +39,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { ProjectListView } from '@/components/projects/ProjectListView';
 import { ProjectTableView } from '@/components/projects/ProjectTableView';
+import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { computeHealth, HEALTH_CONFIG, type HealthStatus } from '@/lib/projectHealth';
@@ -287,6 +288,7 @@ export default function ProjectsDashboard() {
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold">{project.name}</h4>
+              <ProjectKindBadge project={project} />
               <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                 {project.status === 'active' ? 'Active' : project.status}
               </Badge>
