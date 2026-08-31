@@ -12,19 +12,21 @@ vi.mock("@/hooks/useProjectEmails", () => ({
 vi.mock("@/hooks/useSavedRecipients", () => ({
   useSavedRecipients: () => ({ rememberAll: vi.fn(), data: [] }),
 }));
-vi.mock("@/hooks/useProjectPeople", () => ({
-  useProjectContacts: () => ({
-    data: [
-      { contactId: "c1", name: "Airia Austin", email: "airia@example.com", isKeyContact: false, roleLabel: null },
-      { contactId: "c2", name: "Chris Sullivan", email: "chris@r4.com", isKeyContact: true, roleLabel: "Owner" },
-    ],
-  }),
-}));
 vi.mock("../RecipientsInput", () => ({
-  RecipientsInput: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
+  RecipientsInput: ({
+    value,
+    onChange,
+    defaultScope,
+  }: {
+    value: string[];
+    onChange: (v: string[]) => void;
+    defaultScope?: string;
+  }) => (
     <div>
       <div data-testid="recipients">{value.join(",")}</div>
+      <div data-testid="default-scope">{defaultScope ?? "workspace"}</div>
       <button type="button" onClick={() => onChange(["chris@r4.com"])}>pick-chris</button>
+      <button type="button" onClick={() => onChange(["outside@firm.com"])}>pick-outside</button>
     </div>
   ),
 }));
@@ -61,7 +63,7 @@ describe("SendAuthoredDocumentDialog", () => {
     expect(screen.queryByDisplayValue("airia@example.com")).not.toBeInTheDocument();
   });
 
-  it("lets the user add a recipient via the picker", async () => {
+  it("defaults the recipient picker to all workspace contacts", async () => {
     render(
       <SendAuthoredDocumentDialog
         open
@@ -72,7 +74,22 @@ describe("SendAuthoredDocumentDialog", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "pick-chris" }));
-    expect(screen.getByTestId("recipients")).toHaveTextContent("chris@r4.com");
+    expect(screen.getByTestId("default-scope")).toHaveTextContent("workspace");
+    expect(screen.getByText(/every contact in your CRM/i)).toBeInTheDocument();
+  });
+
+  it("lets the user add any CRM recipient via the picker", async () => {
+    render(
+      <SendAuthoredDocumentDialog
+        open
+        onOpenChange={() => {}}
+        doc={doc}
+        projectName="Conveyance"
+        onSent={async () => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "pick-outside" }));
+    expect(screen.getByTestId("recipients")).toHaveTextContent("outside@firm.com");
   });
 });
