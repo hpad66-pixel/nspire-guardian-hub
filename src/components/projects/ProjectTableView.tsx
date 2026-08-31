@@ -25,6 +25,10 @@ import {
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
+import { projectKind, projectKindTileClass } from '@/lib/projectKind';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
+import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
+import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { format } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
@@ -76,8 +80,16 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 
 export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchive }: ProjectTableViewProps) {
   const navigate = useNavigate();
+  const { financials } = useAllProjectFinancials();
+  const { consultingTotals } = useAllApprovedProposalTotals();
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const amountsFor = (p: Project) => resolveProjectTileAmounts({
+    project: p,
+    construction: financials.get(p.id),
+    consulting: consultingTotals.get(p.id),
+  });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -93,11 +105,14 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
     switch (sortKey) {
       case 'name': av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
       case 'status': av = a.status; bv = b.status; break;
-      case 'budget': av = Number(a.budget) || 0; bv = Number(b.budget) || 0; break;
-      case 'spent_pct':
-        av = a.budget ? (Number(a.spent) / Number(a.budget)) : 0;
-        bv = b.budget ? (Number(b.spent) / Number(b.budget)) : 0;
+      case 'budget': av = amountsFor(a).budget; bv = amountsFor(b).budget; break;
+      case 'spent_pct': {
+        const aa = amountsFor(a);
+        const bb = amountsFor(b);
+        av = aa.budget ? aa.spent / aa.budget : 0;
+        bv = bb.budget ? bb.spent / bb.budget : 0;
         break;
+      }
       case 'start_date': av = a.start_date || ''; bv = b.start_date || ''; break;
       case 'end_date': av = a.target_end_date || ''; bv = b.target_end_date || ''; break;
       case 'health':
@@ -145,8 +160,10 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
               : project.property?.name;
             const sc = SECTOR_CONFIG[getProjectSector(project)];
             const SIcon = sc.icon;
-            const budget = Number(project.budget) || 0;
-            const spent = Number(project.spent) || 0;
+            const kind = projectKind(project);
+            const amounts = amountsFor(project);
+            const budget = amounts.budget;
+            const spent = amounts.spent;
             const spentPct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
             const health = computeHealth(project);
             const hc = HEALTH_CONFIG[health];
@@ -155,7 +172,7 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
             return (
               <TableRow
                 key={project.id}
-                className="cursor-pointer group"
+                className={cn('cursor-pointer group border-l-4', projectKindTileClass(kind))}
                 onClick={() => navigate(`/projects/${project.id}`)}
               >
                 <TableCell className="font-medium max-w-[220px]">

@@ -31,7 +31,9 @@ import {
 import { buildProjectTree } from '@/lib/projectTree';
 import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
-import { projectKind, type ProjectKind } from '@/lib/projectKind';
+import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
+import { projectKind, projectKindTileClass, type ProjectKind } from '@/lib/projectKind';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { useProperties } from '@/hooks/useProperties';
 import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOrders';
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
@@ -96,6 +98,7 @@ export default function ProjectsDashboard() {
   // --- Data ---
   const { data: projects, isLoading } = useProjects();
   const { financials } = useAllProjectFinancials();
+  const { consultingTotals } = useAllApprovedProposalTotals();
   const { data: stats } = useProjectStats();
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
@@ -189,8 +192,16 @@ export default function ProjectsDashboard() {
         case 'created': av = a.created_at; bv = b.created_at; break;
         case 'due_date': av = a.target_end_date || '9999'; bv = b.target_end_date || '9999'; break;
         case 'budget':
-          av = financials.get(a.id)?.revised_contract || Number(a.budget) || 0;
-          bv = financials.get(b.id)?.revised_contract || Number(b.budget) || 0;
+          av = resolveProjectTileAmounts({
+            project: a,
+            construction: financials.get(a.id),
+            consulting: consultingTotals.get(a.id),
+          }).budget;
+          bv = resolveProjectTileAmounts({
+            project: b,
+            construction: financials.get(b.id),
+            consulting: consultingTotals.get(b.id),
+          }).budget;
           break;
         case 'health': av = HEALTH_ORDER[computeHealth(a)]; bv = HEALTH_ORDER[computeHealth(b)]; break;
         default: av = ''; bv = '';
@@ -201,21 +212,50 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, financials, propertyFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
-
-  // Real portfolio budget/billed from the financial view (projects.budget is never populated).
-  const portfolioMoney = useMemo(() => {
-    let budget = 0, billed = 0;
-    financials.forEach((f) => { budget += f.revised_contract; billed += f.billed_to_date; });
-    return { budget, billed };
-  }, [financials]);
+  }, [projects, financials, consultingTotals, propertyFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
 
   // ── Hierarchy (shared rollup layer) ────────────────────────────────────────
   const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
-  const ownBudget = (id: string) => { const f = financials.get(id); return f && f.revised_contract > 0 ? f.revised_contract : Number((tree.byId.get(id) as any)?.budget) || 0; };
-  const ownBilled = (id: string) => { const f = financials.get(id); return f && f.billed_to_date > 0 ? f.billed_to_date : Number((tree.byId.get(id) as any)?.spent) || 0; };
+  const ownBudget = (id: string) => {
+    const p = tree.byId.get(id) as Project | undefined;
+    return resolveProjectTileAmounts({
+      project: p ?? { budget: 0 },
+      construction: financials.get(id),
+      consulting: consultingTotals.get(id),
+    }).budget;
+  };
+  const ownBilled = (id: string) => {
+    const p = tree.byId.get(id) as Project | undefined;
+    return resolveProjectTileAmounts({
+      project: p ?? { budget: 0 },
+      construction: financials.get(id),
+      consulting: consultingTotals.get(id),
+    }).spent;
+  };
   const rolledBudget = (id: string) => tree.rollup(id, (n) => ownBudget(n.id));
   const rolledBilled = (id: string) => tree.rollup(id, (n) => ownBilled(n.id));
+
+  // Portfolio money: construction financials + consulting approved-proposal fees.
+  const portfolioMoney = useMemo(() => {
+    let budget = 0, billed = 0;
+    const seen = new Set<string>();
+    (projects ?? []).forEach((p) => {
+      seen.add(p.id);
+      const amt = resolveProjectTileAmounts({
+        project: p,
+        construction: financials.get(p.id),
+        consulting: consultingTotals.get(p.id),
+      });
+      budget += amt.budget;
+      billed += amt.spent;
+    });
+    consultingTotals.forEach((c, id) => {
+      if (seen.has(id)) return;
+      budget += c.approvedFee;
+      billed += c.invoiced;
+    });
+    return { budget, billed };
+  }, [projects, financials, consultingTotals]);
 
   const visibleIds = useMemo(() => new Set(displayProjects.map((p) => p.id)), [displayProjects]);
   const childrenOf = (id: string) => displayProjects.filter((p) => (p as any).parent_project_id === id);
@@ -229,12 +269,17 @@ export default function ProjectsDashboard() {
 
   // --- Card sub-component (inline to avoid prop-drilling) ---
   const ProjectCard = ({ project }: { project: Project }) => {
-    // Real budget/billed comes from the financial view (prime + approved COs),
-    // not the never-populated projects.budget column.
-    const fin = financials.get(project.id);
-    const budgetVal = fin && fin.revised_contract > 0 ? fin.revised_contract : Number(project.budget) || 0;
-    const spentVal = fin && fin.billed_to_date > 0 ? fin.billed_to_date : Number(project.spent) || 0;
+    // Construction → prime + COs; consulting → sum of approved proposals
+    // (e.g. Larkin MRI $3,369 + $14,500).
+    const amounts = resolveProjectTileAmounts({
+      project,
+      construction: financials.get(project.id),
+      consulting: consultingTotals.get(project.id),
+    });
+    const budgetVal = amounts.budget;
+    const spentVal = amounts.spent;
     const progress = budgetVal ? Math.round((spentVal / budgetVal) * 100) : 0;
+    const kind = projectKind(project);
     const isClientProject = (project as any).project_type === 'client';
     const parentName = isClientProject ? (project as any).client?.name : project.property?.name;
     const health = computeHealth(project);
@@ -246,8 +291,8 @@ export default function ProjectsDashboard() {
     return (
       <div
         className={cn(
-          'p-4 rounded-lg border border-l-4 bg-card hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group relative',
-          sc.accent,
+          'p-4 rounded-lg border border-l-4 hover:shadow-md transition-all cursor-pointer group relative',
+          projectKindTileClass(kind),
         )}
         onClick={() => navigate(`/projects/${project.id}`)}
       >
@@ -320,7 +365,9 @@ export default function ProjectsDashboard() {
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Budget</span>
+              <span className="text-xs text-muted-foreground">
+                {kind === 'consulting' ? 'Approved fees' : 'Budget'}
+              </span>
               <span className="text-xs font-medium">
                 {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
               </span>

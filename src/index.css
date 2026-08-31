@@ -19,6 +19,12 @@
   --apas-white: #FBF8F1;
   --apas-muted: #87958F;
   --apas-grid: rgba(213,170,82,0.05);
+  /* Project kind — Consulting green / Construction West orange */
+  --kind-consulting: #0F8A4B;
+  --kind-consulting-glow: rgba(16, 185, 129, 0.55);
+  --kind-consulting-gold: #C4A35A;
+  --kind-construction: #E67E22;
+  --kind-construction-glow: rgba(234, 88, 12, 0.55);
 }
 
 @layer base {
@@ -255,6 +261,74 @@
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  /* Electrified Construction / Consulting project-kind badges */
+  .project-kind-badge-consulting {
+    background: linear-gradient(135deg, #0B6B3A 0%, #10B981 45%, #0F8A4B 70%, #C4A35A 160%);
+    color: #ECFDF5;
+    border-color: rgba(196, 163, 90, 0.85);
+    animation: kindElectricConsulting 2.2s ease-in-out infinite;
+    will-change: box-shadow, filter;
+  }
+
+  .project-kind-badge-construction {
+    background: linear-gradient(135deg, #C2410C 0%, #E67E22 40%, #F59E0B 85%, #FBBF24 140%);
+    color: #1C1917;
+    border-color: rgba(194, 65, 12, 0.85);
+    animation: kindElectricConstruction 2.2s ease-in-out infinite;
+    will-change: box-shadow, filter;
+  }
+
+  .project-kind-badge-missing {
+    animation: kindMissingPulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes kindElectricConsulting {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgba(16, 185, 129, 0.35),
+        0 0 10px var(--kind-consulting-glow),
+        0 0 18px rgba(196, 163, 90, 0.25);
+      filter: brightness(1);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(196, 163, 90, 0.7),
+        0 0 16px var(--kind-consulting-glow),
+        0 0 28px rgba(196, 163, 90, 0.45);
+      filter: brightness(1.12);
+    }
+  }
+
+  @keyframes kindElectricConstruction {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgba(234, 88, 12, 0.4),
+        0 0 10px var(--kind-construction-glow),
+        0 0 18px rgba(251, 191, 36, 0.3);
+      filter: brightness(1);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(251, 191, 36, 0.75),
+        0 0 18px var(--kind-construction-glow),
+        0 0 30px rgba(251, 191, 36, 0.5);
+      filter: brightness(1.1);
+    }
+  }
+
+  @keyframes kindMissingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.35); }
+    50% { box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.15); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .project-kind-badge-consulting,
+    .project-kind-badge-construction,
+    .project-kind-badge-missing {
+      animation: none;
     }
   }
 

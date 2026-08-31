@@ -7230,6 +7230,7 @@ export type Database = {
           invited_at: string
           invited_by: string | null
           organization_id: string | null
+          project_id: string | null
           portal_kind: string
           role: string
           tenant_id: string
@@ -7243,6 +7244,7 @@ export type Database = {
           invited_at?: string
           invited_by?: string | null
           organization_id?: string | null
+          project_id?: string | null
           portal_kind: string
           role?: string
           tenant_id: string
@@ -7256,6 +7258,7 @@ export type Database = {
           invited_at?: string
           invited_by?: string | null
           organization_id?: string | null
+          project_id?: string | null
           portal_kind?: string
           role?: string
           tenant_id?: string

@@ -75,9 +75,17 @@ serve(async (req) => {
     .eq("token", token);
   if (acceptError) return json({ error: "invitation_update_failed" }, 500);
 
-  const ownerDestination = body?.next === "schedule"
-    ? `${APP_ORIGIN}/owner-portal/schedule`
-    : `${APP_ORIGIN}/owner-portal`;
+  // Deep-link owners into the exact project they were invited to. Falling back
+  // to flat /owner-portal made every client land on contracts[0].
+  const inviteProjectId = (invite as any).project_id as string | null | undefined;
+  let ownerDestination = `${APP_ORIGIN}/owner-portal`;
+  if (inviteProjectId) {
+    ownerDestination = body?.next === "schedule"
+      ? `${APP_ORIGIN}/owner-portal/projects/${inviteProjectId}/schedule`
+      : `${APP_ORIGIN}/owner-portal/projects/${inviteProjectId}`;
+  } else if (body?.next === "schedule") {
+    ownerDestination = `${APP_ORIGIN}/owner-portal/schedule`;
+  }
   const redirect = (invite as any).portal_kind === "owner"
     ? ownerDestination
     : `${APP_ORIGIN}/sub-portal`;

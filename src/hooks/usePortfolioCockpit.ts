@@ -3,9 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useProjects, type Project } from '@/hooks/useProjects';
 import { useMyDay } from '@/hooks/useMyDay';
 import { useAllProjectFinancials, type ProjectFin } from '@/hooks/useAllProjectFinancials';
+import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { isActiveProject } from '@/lib/projects';
 import { computeHealth, type HealthStatus } from '@/lib/projectHealth';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { buildProjectTree } from '@/lib/projectTree';
 import { computeComplianceScore, type ScoreBand, type ScoreInput } from '@/lib/envcompliance/complianceScore';
 
@@ -111,6 +113,7 @@ export function usePortfolioCockpit() {
   const { data: projects, isLoading: pLoading } = useProjects();
   const myDay = useMyDay();
   const { financials } = useAllProjectFinancials();
+  const { consultingTotals } = useAllApprovedProposalTotals();
   const { data: snapshots } = useRiskSnapshots();
   const { data: complianceInputs } = useComplianceInputs();
 
@@ -122,8 +125,14 @@ export function usePortfolioCockpit() {
     const counts = myDay.byProject.get(project.id) ?? { open: 0, overdue: 0 };
     const fin = financials.get(project.id);
     const snap = snapshots?.get(project.id) ?? null;
-    const revisedBudget = fin?.revised_contract ?? num((project as any).budget);
-    const billed = fin?.billed_to_date ?? num((project as any).spent);
+    const consulting = consultingTotals.get(project.id);
+    const tile = resolveProjectTileAmounts({
+      project,
+      construction: fin,
+      consulting,
+    });
+    const revisedBudget = tile.budget;
+    const billed = tile.spent;
     const billedPct = revisedBudget > 0 ? Math.round((billed / revisedBudget) * 100) : 0;
     const flags = buildFlags(project, fin, snap, counts.overdue, health);
 

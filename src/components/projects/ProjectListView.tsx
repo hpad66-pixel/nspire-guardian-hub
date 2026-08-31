@@ -13,6 +13,10 @@ import { Building2, Briefcase, MoreHorizontal, Edit, Archive, Trash2 } from 'luc
 import { cn } from '@/lib/utils';
 import { computeHealth, HEALTH_CONFIG } from '@/lib/projectHealth';
 import { getProjectSector, SECTOR_CONFIG } from '@/lib/projectSector';
+import { projectKind, projectKindTileClass } from '@/lib/projectKind';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
+import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
+import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import type { Project } from '@/hooks/useProjects';
 
@@ -43,17 +47,25 @@ const formatCurrency = (amount: number | string | null | undefined) => {
 
 export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive }: ProjectListViewProps) {
   const navigate = useNavigate();
+  const { financials } = useAllProjectFinancials();
+  const { consultingTotals } = useAllApprovedProposalTotals();
 
   return (
-    <div className="divide-y divide-border rounded-lg border bg-card">
+    <div className="divide-y divide-border rounded-lg border bg-card overflow-hidden">
       {projects.map((project) => {
         const isClientProject = (project as any).project_type === 'client';
         const parentName = isClientProject
           ? (project as any).client?.name
           : project.property?.name;
-        const progress = project.budget && project.spent
-          ? Math.round((Number(project.spent) / Number(project.budget)) * 100)
+        const amounts = resolveProjectTileAmounts({
+          project,
+          construction: financials.get(project.id),
+          consulting: consultingTotals.get(project.id),
+        });
+        const progress = amounts.budget
+          ? Math.round((amounts.spent / amounts.budget) * 100)
           : 0;
+        const kind = projectKind(project);
         const health = computeHealth(project);
         const hc = HEALTH_CONFIG[health];
         const HIcon = hc.icon;
@@ -67,7 +79,7 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
             key={project.id}
             className={cn(
               'group flex items-center gap-3 px-4 py-3 border-l-4 hover:bg-muted/40 transition-colors cursor-pointer',
-              sc.accent,
+              projectKindTileClass(kind),
             )}
             onClick={() => navigate(`/projects/${project.id}`)}
           >
@@ -96,7 +108,7 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
                 <Progress value={progress} className="h-1.5" />
               </div>
               <span className="text-xs text-muted-foreground tabular-nums w-20 text-right">
-                {formatCurrency(project.spent)}/{formatCurrency(project.budget)}
+                {formatCurrency(amounts.spent)}/{formatCurrency(amounts.budget)}
               </span>
             </div>
 

@@ -9,6 +9,7 @@ import {
   computeG702,
   computePaymentPosition,
   shouldUseG702Snapshot,
+  alignLineRetainageToCover,
   type G702Summary,
 } from "../payAppContinuation";
 
@@ -283,5 +284,26 @@ describe("shouldUseG702Snapshot", () => {
     expect(shouldUseG702Snapshot("draft", { contract_sum_to_date: 100 })).toBe(false);
     expect(shouldUseG702Snapshot("draft", null)).toBe(false);
     expect(shouldUseG702Snapshot("draft", {})).toBe(false);
+  });
+});
+
+describe("alignLineRetainageToCover", () => {
+  it("scales Column I so it matches G702 Line 5 exactly (AIA)", () => {
+    const lines = [
+      { id: "a", retainage: 20000 },
+      { id: "b", retainage: 7000 },
+      { id: "c", retainage: 0 }, // exempt
+    ];
+    // Live sum = 27000; cover = 34008.16
+    const aligned = alignLineRetainageToCover(lines, 34008.16);
+    const sum = aligned.reduce((s, l) => s + l.retainage, 0);
+    expect(Math.round(sum * 100) / 100).toBe(34008.16);
+    expect(aligned.find((l) => l.id === "c")?.retainage).toBe(0);
+    expect(aligned.find((l) => l.id === "a")!.retainage).toBeGreaterThan(20000);
+  });
+
+  it("is a no-op when already within a penny", () => {
+    const lines = [{ retainage: 17004.08 }, { retainage: 17004.08 }];
+    expect(alignLineRetainageToCover(lines, 34008.16)).toEqual(lines);
   });
 });

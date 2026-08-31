@@ -3,6 +3,8 @@ import {
   projectKind,
   projectKindLabel,
   isProjectTypeMissing,
+  projectKindBadgeClass,
+  projectKindTileClass,
 } from '@/lib/projectKind';
 
 describe('projectKind', () => {
@@ -31,5 +33,12 @@ describe('projectKind', () => {
   it('labels kinds in bold-ready Title Case', () => {
     expect(projectKindLabel('construction')).toBe('Construction');
     expect(projectKindLabel('consulting')).toBe('Consulting');
+  });
+
+  it('uses electrified green consulting and orange construction chrome', () => {
+    expect(projectKindBadgeClass('consulting')).toContain('project-kind-badge-consulting');
+    expect(projectKindBadgeClass('construction')).toContain('project-kind-badge-construction');
+    expect(projectKindTileClass('consulting')).toContain('--kind-consulting');
+    expect(projectKindTileClass('construction')).toContain('--kind-construction');
   });
 });

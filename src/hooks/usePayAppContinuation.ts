@@ -22,6 +22,7 @@ import {
   linePctComplete,
   round2,
   shouldUseG702Snapshot,
+  alignLineRetainageToCover,
   type G702Summary,
   type PriorProgressLike,
 } from "@/lib/financial/payAppContinuation";
@@ -440,9 +441,17 @@ export function usePayAppContinuation(payAppId: string | null) {
   const status = (detail.data as any)?.status as string | undefined;
   const isFrozen = Boolean(status && status !== "draft");
   const snapshot = (detail.data as any)?.pay_app_data as G702Summary | null | undefined;
-  const g702: G702Summary = shouldUseG702Snapshot(status, snapshot)
+  const useSnapshot = shouldUseG702Snapshot(status, snapshot);
+  const g702: G702Summary = useSnapshot
     ? (snapshot as G702Summary)
     : liveG702;
+
+  // AIA: Line 5 = Column I total. When the cover is pinned, keep G703 retainage
+  // in lockstep so the printed continuation sheet does not disagree with G702.
+  const displayLines = useMemo(
+    () => (useSnapshot ? alignLineRetainageToCover(lines, g702.retainage_total) : lines),
+    [useSnapshot, lines, g702.retainage_total],
+  );
 
   const upsertLine = useMutation({
     mutationFn: async (input: {
@@ -536,7 +545,7 @@ export function usePayAppContinuation(payAppId: string | null) {
   });
 
   return {
-    detail, contract, lines, g702, retainagePct, isFrozen,
+    detail, contract, lines: displayLines, g702, retainagePct, isFrozen,
     isLoading: detail.isLoading || sov.isLoading || thisProgress.isLoading,
     upsertLine, submit, setLineRetainage,
     refetch: () => {
