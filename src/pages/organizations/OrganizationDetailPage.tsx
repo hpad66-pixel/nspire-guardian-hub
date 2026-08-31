@@ -1,16 +1,15 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { format } from 'date-fns';
 import {
-  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe,
-  Building2, Calendar, Plus,
+  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ClientProjectKindGrid } from '@/components/organizations/ClientProjectKindGrid';
 import { useClient, type ClientType } from '@/hooks/useClients';
 import { useProjects } from '@/hooks/useProjects';
-import { cn } from '@/lib/utils';
+import { groupProjectsByKind } from '@/lib/projectKind';
 
 const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
   internal_org: 'Internal Organization',
@@ -18,14 +17,6 @@ const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
   property_management: 'Property Management',
   government: 'Government',
   other: 'Other',
-};
-
-const STATUS_CLASS: Record<string, string> = {
-  planning:  'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  active:    'bg-success/10 text-success border-success/20',
-  on_hold:   'bg-warning/10 text-warning border-warning/20',
-  completed: 'bg-muted text-muted-foreground border-border',
-  closed:    'bg-muted text-muted-foreground border-border',
 };
 
 export default function OrganizationDetailPage() {
@@ -40,10 +31,13 @@ export default function OrganizationDetailPage() {
     [allProjects, clientId],
   );
 
-  const formatCurrency = (amount: number | null | undefined) =>
-    amount
-      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
-      : null;
+  const kindCounts = useMemo(() => {
+    const grouped = groupProjectsByKind(projects);
+    return {
+      construction: grouped.construction.length,
+      consulting: grouped.consulting.length,
+    };
+  }, [projects]);
 
   if (orgLoading) {
     return (
@@ -115,19 +109,33 @@ export default function OrganizationDetailPage() {
         </div>
       </div>
 
-      {/* Projects */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
+      {/* Projects — Construction row + Consulting row */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
           <FolderKanban className="h-4 w-4 text-module-projects" />
           <h2 className="text-base font-semibold">Projects</h2>
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
             {projects.length}
           </span>
+          {projects.length > 0 && (
+            <div className="ml-auto flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
+              {kindCounts.construction > 0 && (
+                <span className="rounded-full border border-orange-600/30 bg-orange-500/15 px-2.5 py-0.5 text-orange-800 dark:text-orange-200">
+                  {kindCounts.construction} Construction
+                </span>
+              )}
+              {kindCounts.consulting > 0 && (
+                <span className="rounded-full border border-emerald-700/30 bg-[var(--apas-surface)] px-2.5 py-0.5 text-[var(--apas-white)]">
+                  {kindCounts.consulting} Consulting
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {projectsLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" />
+            <Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" />
           </div>
         ) : projects.length === 0 ? (
           <div className="rounded-xl border border-dashed bg-card py-12 text-center">
@@ -138,38 +146,7 @@ export default function OrganizationDetailPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => {
-              const budget = formatCurrency(Number(project.budget) || 0);
-              return (
-                <button
-                  key={project.id}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                  className="group rounded-xl border bg-card p-4 text-left transition-all hover:border-accent/50 hover:shadow-md hover:-translate-y-0.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="truncate font-semibold leading-tight">{project.name}</h3>
-                    <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize', STATUS_CLASS[project.status] ?? STATUS_CLASS.planning)}>
-                      {project.status?.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Building2 className="h-3 w-3" />
-                    {project.property?.name ?? 'Standalone'}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    {budget && <span className="font-medium text-foreground">{budget}</span>}
-                    {project.target_end_date && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(project.target_end_date), 'MMM d, yyyy')}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <ClientProjectKindGrid projects={projects} />
         )}
       </section>
     </div>

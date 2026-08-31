@@ -5,6 +5,7 @@ import {
   isProjectTypeMissing,
   projectKindBadgeClass,
   projectKindTileClass,
+  groupProjectsByKind,
 } from '@/lib/projectKind';
 
 describe('projectKind', () => {
@@ -41,5 +42,25 @@ describe('projectKind', () => {
     // Solid dark-green consulting tiles + West-orange construction tiles
     expect(projectKindTileClass('consulting')).toContain('project-kind-tile-consulting');
     expect(projectKindTileClass('construction')).toContain('project-kind-tile-construction');
+  });
+
+  it('groups client portfolio into Construction then Consulting rows by name', () => {
+    const grouped = groupProjectsByKind([
+      { name: 'Stucco Repairs', project_type: 'consulting' },
+      { name: 'Stormdrain Maintenance', project_type: 'property' },
+      { name: 'Design and Modeling', project_type: 'consulting' },
+      { name: 'Water Meter Box Program', project_type: 'consulting' },
+      { name: 'Conveyance & Close-Out', project_type: 'property' },
+    ]);
+    expect(grouped.construction.map((p) => p.name)).toEqual([
+      'Conveyance & Close-Out',
+      'Stormdrain Maintenance',
+    ]);
+    expect(grouped.consulting.map((p) => p.name)).toEqual([
+      'Design and Modeling',
+      'Stucco Repairs',
+      'Water Meter Box Program',
+    ]);
+    expect(grouped.missingType).toHaveLength(0);
   });
 });
