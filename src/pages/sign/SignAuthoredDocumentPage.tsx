@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, PenLine, Loader2, XCircle } from "lucide-react";
 import { TypedSignaturePad } from "@/components/financial/TypedSignaturePad";
+import { ESignStamp } from "@/components/correspondence/ESignStamp";
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/document-countersign`;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -135,14 +136,27 @@ export default function SignAuthoredDocumentPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         {done ? (
-          <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
-            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-600 mb-3" />
+          <div className="rounded-2xl border bg-white p-8 text-center shadow-sm space-y-4">
+            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-600" />
+            <div className="flex justify-center">
+              <ESignStamp name={name || doc.client_signed_name || "Client"} signedAt={new Date().toISOString()} />
+            </div>
             <h2 className="text-xl font-bold">Document executed</h2>
-            <p className="text-sm text-muted-foreground mt-2">Thank you. Your signature has been recorded on “{doc.title}”.</p>
+            <p className="text-sm text-muted-foreground">Thank you. Your signature has been recorded on “{doc.title}”.</p>
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border bg-white overflow-hidden shadow-sm">
+            {doc.contractor_signed_name && (
+              <div className="flex justify-start">
+                <ESignStamp name={doc.contractor_signed_name} signedAt={doc.contractor_signed_at} />
+              </div>
+            )}
+            <div className="relative rounded-2xl border bg-white overflow-hidden shadow-sm">
+              {doc.contractor_signed_name && (
+                <div className="pointer-events-none absolute right-3 top-3 z-10">
+                  <ESignStamp name={doc.contractor_signed_name} signedAt={doc.contractor_signed_at} compact />
+                </div>
+              )}
               {doc.has_pdf && doc.pdf_base64 ? (
                 <iframe
                   title="Document PDF"
@@ -157,11 +171,11 @@ export default function SignAuthoredDocumentPage() {
             </div>
 
             {doc.contractor_signature_data && (
-              <div className="rounded-xl border bg-white p-4 flex items-center gap-3">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 flex items-center gap-3">
                 <img src={doc.contractor_signature_data} alt="Contractor signature" className="h-12 object-contain" />
                 <div className="text-sm">
-                  <div className="font-medium">APAS signature on file</div>
-                  <div className="text-xs text-muted-foreground">{doc.contractor_signed_name}</div>
+                  <div className="font-medium text-emerald-950">APAS electronically signed</div>
+                  <div className="text-xs text-emerald-800">{doc.contractor_signed_name}</div>
                 </div>
               </div>
             )}

@@ -25,6 +25,7 @@ import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
 import { buildTaskUpdateHtml } from '@/lib/correspondence/taskUpdateEmail';
 import { STATUS_META, STATUS_ORDER, PRIORITY_META, PRIORITY_ORDER } from './actionItemMeta';
 import { TeamWatcherPicker } from './TeamWatcherPicker';
+import { RecipientsInput } from '@/components/projects/correspondence/RecipientsInput';
 
 interface Props {
   open: boolean;
@@ -60,13 +61,14 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const [desc, setDesc] = useState('');
   const [comment, setComment] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
+  const [emailTo, setEmailTo] = useState<string[]>([]);
   const [emailNote, setEmailNote] = useState('');
   const [watcherIds, setWatcherIds] = useState<string[]>([]);
   useEffect(() => {
     if (item) {
       setDesc(item.description ?? '');
-      setEmailTo(item.assignedContact?.email ?? item.assignee?.email ?? '');
+      const seed = item.assignedContact?.email ?? item.assignee?.email ?? '';
+      setEmailTo(seed ? [seed] : []);
       setEmailNote('');
       setEmailOpen(false);
       setWatcherIds((item.watchers ?? []).map((watcher) => watcher.user_id));
@@ -92,7 +94,7 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
     item.status === 'done' ? 'done' : (item.status === 'in_progress' || item.status === 'in_review') ? 'in_progress' : 'todo';
 
   const handleSendEmail = async () => {
-    const to = emailTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    const to = emailTo.map((s) => s.trim()).filter(Boolean);
     if (!to.length) return;
     const subject = `${item.status === 'done' ? 'Completed' : 'Update'}: ${item.title}`;
     const bodyHtml = buildTaskUpdateHtml({ projectName, taskTitle: item.title, status: brandedStatus(), note: emailNote.trim() || undefined, date: new Date().toISOString() });
@@ -262,7 +264,12 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
               {linkedThread.data && (
                 <p className="text-xs text-muted-foreground">Topic: <span className="font-medium text-foreground">{linkedThread.data.subject || linkedThread.data.topic}</span></p>
               )}
-              <Input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="name@example.com, teammate@example.com" className="h-9" />
+              <RecipientsInput
+                value={emailTo}
+                onChange={setEmailTo}
+                projectId={projectId}
+                placeholder="Search contacts or type email — Enter to add"
+              />
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Note</Label>
                 <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={handlePolishWithAI} disabled={draftUpdate.isPending}>
@@ -273,7 +280,7 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
               <Textarea rows={3} value={emailNote} onChange={(e) => setEmailNote(e.target.value)} placeholder="Add a note, or draft with AI from the comments above…" />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setEmailOpen(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleSendEmail} disabled={sendEmail.isPending || !emailTo.trim()} className="gap-1.5">
+                <Button size="sm" onClick={handleSendEmail} disabled={sendEmail.isPending || emailTo.length === 0} className="gap-1.5">
                   {sendEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send
                 </Button>
               </div>

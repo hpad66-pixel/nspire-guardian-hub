@@ -26,6 +26,12 @@ export interface AuthoredDocument {
   contractor_signed_at?: string | null;
   contractor_signed_name?: string | null;
   contractor_signature_data?: string | null;
+  signature_placement?: {
+    page: number;
+    xPct: number;
+    yPct: number;
+    widthPct: number;
+  } | null;
   client_signed_at?: string | null;
   client_signed_name?: string | null;
   client_signature_data?: string | null;
@@ -45,7 +51,7 @@ export interface DocumentVersion {
 // Columns for the list view — deliberately EXCLUDES original_base64/edited_html
 // (can be large; fetched on demand via fetchOriginal when opening a document).
 const LIST_COLS =
-  "id,project_id,title,doc_type,category,status,content_html,content_text,source,source_file_name,mime_type,version,has_original,finalized_at,created_by,created_at,updated_at,workflow_status,sign_token,contractor_signed_at,contractor_signed_name,contractor_signature_data,client_signed_at,client_signed_name,sent_to_client_at,sent_to_email";
+  "id,project_id,title,doc_type,category,status,content_html,content_text,source,source_file_name,mime_type,version,has_original,finalized_at,created_by,created_at,updated_at,workflow_status,sign_token,contractor_signed_at,contractor_signed_name,contractor_signature_data,signature_placement,client_signed_at,client_signed_name,sent_to_client_at,sent_to_email";
 
 export interface NewAuthoredDocument {
   title?: string;
@@ -201,18 +207,40 @@ export function useAuthoredDocuments(projectId: string | null) {
   });
 
   const signDocument = useMutation({
-    mutationFn: async ({ id, name, signatureDataUrl }: { id: string; name: string; signatureDataUrl: string }) => {
+    mutationFn: async ({
+      id,
+      name,
+      signatureDataUrl,
+      placement,
+      signedAt,
+      stampedHtml,
+    }: {
+      id: string;
+      name: string;
+      signatureDataUrl: string;
+      placement?: { page: number; xPct: number; yPct: number; widthPct: number } | null;
+      signedAt?: string;
+      /** Optional HTML with Electronically Signed stamp + placed signature baked in. */
+      stampedHtml?: string | null;
+    }) => {
+      const at = signedAt || new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        contractor_signed_at: at,
+        contractor_signed_name: name.trim(),
+        contractor_signature_data: signatureDataUrl,
+        signature_placement: placement ?? null,
+        workflow_status: "signed",
+        status: "final",
+        finalized_at: at,
+        updated_at: at,
+      };
+      if (stampedHtml != null) {
+        patch.edited_html = stampedHtml;
+        patch.content_html = stampedHtml;
+      }
       const { error } = await supabase
         .from("authored_documents" as any)
-        .update({
-          contractor_signed_at: new Date().toISOString(),
-          contractor_signed_name: name.trim(),
-          contractor_signature_data: signatureDataUrl,
-          workflow_status: "signed",
-          status: "final",
-          finalized_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update(patch)
         .eq("id", id);
       if (error) throw error;
     },
