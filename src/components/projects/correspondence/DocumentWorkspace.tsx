@@ -33,6 +33,7 @@ import { SendAuthoredDocumentDialog } from "./SendAuthoredDocumentDialog";
 import { ESignStamp } from "@/components/correspondence/ESignStamp";
 import { DOC_WORKFLOW_META, DOC_WORKFLOW_FILTERS, resolveDocWorkflow, type DocWorkflowStatus } from "@/lib/correspondence/docWorkflow";
 import { stampSignedHtml } from "@/lib/correspondence/stampSignedHtml";
+import { stampSignedPdfBlob } from "@/lib/correspondence/stampSignedPdf";
 import { cn } from "@/lib/utils";
 
 const fmtAgo = (d: string): string => {
@@ -321,23 +322,86 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
   const finalize = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: true }); toast.success("Finalized and locked."); };
   const reopen = async () => { await docs.setFinalized.mutateAsync({ id: doc.id, finalized: false }); };
 
+  const isDocx = doc.has_original ? payload?.mime === MIME.docx : true;
+  const isPdf = doc.has_original && payload?.mime === MIME.pdf;
+
   // Prepare a pixel-perfect PDF of the current content, then open the mailer.
+  // Signed PDFs burn the e-sign seal into the attachment so clients see who/when.
   const openEmail = async () => {
     if (!isFinal) { toast.error("Finalize or sign the document before emailing it."); return; }
     setPreparing(true);
     try {
       const html = payload?.edited ?? doc.content_html;
-      if (!html) { toast.error("Nothing to send yet."); return; }
-      const att = await htmlToPdfAttachment(html, doc.title);
-      setEmailAtt(att);
-      setEmailOpen(true);
+      if (html) {
+        const att = await htmlToPdfAttachment(html, doc.title);
+        setEmailAtt(att);
+        setEmailOpen(true);
+        return;
+      }
+      if (isPdf && payload?.b64 && doc.contractor_signed_at && doc.contractor_signed_name) {
+        const blob = await stampSignedPdfBlob(payload.b64, {
+          name: doc.contractor_signed_name,
+          signedAt: doc.contractor_signed_at,
+          signatureDataUrl: doc.contractor_signature_data,
+          placement: doc.signature_placement,
+        });
+        const contentBase64 = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onerror = () => reject(fr.error);
+          fr.onload = () => resolve(String(fr.result).slice(String(fr.result).indexOf(",") + 1));
+          fr.readAsDataURL(blob);
+        });
+        setEmailAtt({
+          filename: `${doc.title.replace(/[^\w.-]+/g, "_").slice(0, 72)}-signed.pdf`,
+          contentBase64,
+          contentType: MIME.pdf,
+          size: blob.size,
+        });
+        setEmailOpen(true);
+        return;
+      }
+      toast.error("Nothing to send yet.");
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't prepare the attachment.");
     } finally { setPreparing(false); }
   };
 
-  const isDocx = doc.has_original ? payload?.mime === MIME.docx : true;
-  const isPdf = doc.has_original && payload?.mime === MIME.pdf;
+  const downloadSigned = async () => {
+    if (!doc.contractor_signed_at || !doc.contractor_signed_name) {
+      toast.error("Sign the document first.");
+      return;
+    }
+    setPreparing(true);
+    try {
+      const html = payload?.edited ?? doc.content_html;
+      if (html) {
+        await downloadHtmlAsPdf(html, `${doc.title}-signed`);
+        return;
+      }
+      if (isPdf && payload?.b64) {
+        const blob = await stampSignedPdfBlob(payload.b64, {
+          name: doc.contractor_signed_name,
+          signedAt: doc.contractor_signed_at,
+          signatureDataUrl: doc.contractor_signature_data,
+          placement: doc.signature_placement,
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${doc.title.replace(/[^\w.-]+/g, "_").slice(0, 72)}-signed.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        return;
+      }
+      toast.error("Nothing to download yet.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't build the signed PDF.");
+    } finally {
+      setPreparing(false);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -350,6 +414,19 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
           {doc.has_original && (
             <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:bg-white/10" onClick={() => payload?.b64 && downloadBase64(payload.b64, payload.mime, filenameFor(`${doc.title} (source)`, payload.mime))} disabled={!payload?.b64} title="Download the untouched uploaded file">
               <FileDown className="h-4 w-4 mr-1" /> Source
+            </Button>
+          )}
+          {isSigned && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-emerald-300/40 bg-emerald-500/15 text-emerald-50 hover:bg-emerald-500/25"
+              onClick={downloadSigned}
+              disabled={preparing}
+              title="Download the signed PDF with the Electronically Signed seal burned in"
+            >
+              {preparing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileCheck2 className="h-4 w-4 mr-1" />}
+              Download signed
             </Button>
           )}
           <VersionHistory documentId={doc.id} onRestored={(html) => setPayload((p) => (p ? { ...p, edited: html } : p))} />

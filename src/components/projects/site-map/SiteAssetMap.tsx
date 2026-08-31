@@ -163,46 +163,48 @@ export function SiteAssetMap({
       <div className="pointer-events-none absolute -right-16 top-1/3 h-56 w-56 rounded-full bg-[var(--apas-emerald)]/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-40 w-72 rounded-full bg-[var(--apas-gold,#C4A35A)]/10 blur-3xl" />
 
-      {/* Header */}
-      <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-3 md:px-5 md:py-4">
-        <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
-              <MapIcon className="h-4 w-4 text-[var(--apas-gold,#C4A35A)]" />
-            </span>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--apas-gold,#C4A35A)]">
-                Property command map
-              </p>
-              <h3 className="font-display text-lg font-bold leading-tight md:text-xl">
-                {layout.title}
-              </h3>
+      {/* Compact chrome for portal/hero only — full project tab is map-first (no header). */}
+      {variant !== 'full' && (
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-3 md:px-5 md:py-4">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
+                <MapIcon className="h-4 w-4 text-[var(--apas-gold,#C4A35A)]" />
+              </span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--apas-gold,#C4A35A)]">
+                  Property command map
+                </p>
+                <h3 className="font-display text-lg font-bold leading-tight md:text-xl">
+                  {layout.title}
+                </h3>
+              </div>
             </div>
+            <p className="pl-10 text-xs text-white/65 md:text-sm">
+              {layout.subtitle} · {layout.address}
+            </p>
           </div>
-          <p className="pl-10 text-xs text-white/65 md:text-sm">
-            {layout.subtitle} · {layout.address}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="border-emerald-400/30 bg-emerald-500/15 font-semibold text-emerald-200">
+              {counts.total} inspectable assets
+            </Badge>
+            <Badge className="border-white/15 bg-white/10 font-medium text-white/80">
+              As-built sourced
+            </Badge>
+            {variant === 'hero' && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8 bg-white/10 text-white hover:bg-white/20"
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded ? <Minimize2 className="mr-1.5 h-3.5 w-3.5" /> : <Maximize2 className="mr-1.5 h-3.5 w-3.5" />}
+                {expanded ? 'Compact' : 'Expand'}
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="border-emerald-400/30 bg-emerald-500/15 font-semibold text-emerald-200">
-            {counts.total} inspectable assets
-          </Badge>
-          <Badge className="border-white/15 bg-white/10 font-medium text-white/80">
-            As-built sourced
-          </Badge>
-          {variant === 'hero' && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8 bg-white/10 text-white hover:bg-white/20"
-              onClick={() => setExpanded((v) => !v)}
-            >
-              {expanded ? <Minimize2 className="mr-1.5 h-3.5 w-3.5" /> : <Maximize2 className="mr-1.5 h-3.5 w-3.5" />}
-              {expanded ? 'Compact' : 'Expand'}
-            </Button>
-          )}
-        </div>
-      </div>
+      )}
 
       <div className={cn('relative grid', variant === 'hero' && !expanded ? 'lg:grid-cols-[1fr]' : 'lg:grid-cols-[220px_1fr]')}>
         {/* Legend / layers */}

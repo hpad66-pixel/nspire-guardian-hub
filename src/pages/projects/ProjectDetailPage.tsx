@@ -398,7 +398,6 @@ export default function ProjectDetailPage() {
   // Tabs that have active badges — shown as quick-jump buttons on iPhone
   const badgeTabs = visibleTabs.filter(t => t.badge !== null);
   const safetyEnabled = visibleTabs.some((t) => t.value === 'safety');
-  const siteMapEnabled = visibleTabs.some((t) => t.value === 'site-map');
 
   return (
     <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
@@ -645,13 +644,6 @@ export default function ProjectDetailPage() {
               </div>
             </div>
           </div>
-
-          {/* ── Site Asset Map — top-of-project WOW for construction ── */}
-          {siteMapEnabled && id && (
-            <div className="mt-4 md:mt-5">
-              <ProjectSiteMapTab projectId={id} variant="hero" />
-            </div>
-          )}
 
           {/* ── KPI Strip ── */}
           <div className="grid grid-cols-3 gap-2 md:gap-3 mt-4 md:mt-6">
