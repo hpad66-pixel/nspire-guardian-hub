@@ -7,9 +7,11 @@
  * cumulative figures carry forward automatically from the previous pay app, so
  * only this period's quantities are entered. The live AIA G702 cover recomputes.
  * Approved change orders are pulled in as lines via "Load approved change orders".
- * Locked once the pay app is approved/paid.
+ * Locked once the pay app is approved/paid — unless an administrator edits a
+ * scheduled value and clicks "Reload cover from SOV".
  */
-import { RefreshCw, Plus } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw, Plus, Pencil, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   usePayAppContinuation,
@@ -18,11 +20,22 @@ import {
   type ContinuationLine,
 } from "@/hooks/usePayAppContinuation";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
+import { useUserPermissions } from "@/hooks/usePermissions";
 import { computeG703GrandTotals, round2 } from "@/lib/financial/payAppContinuation";
 import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { money } from "@/lib/pdf";
 
 const qty = (n: number) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -30,18 +43,25 @@ const qty = (n: number) => Number(n).toLocaleString(undefined, { maximumFraction
 export function PayAppContinuationBuilder({
   payAppId, projectId, primeContractId,
 }: { payAppId: string; projectId: string; primeContractId: string }) {
-  const { detail, lines, g702, isFrozen, upsertLine, setLineRetainage, refetch } = usePayAppContinuation(payAppId);
+  const {
+    detail, lines, g702, isFrozen, upsertLine, setLineRetainage,
+    adminEditSovLine, reloadCoverFromSov, refetch,
+  } = usePayAppContinuation(payAppId);
   const loadCos = useLoadApprovedCos(primeContractId, projectId);
   const { data: contract } = usePrimeContract(projectId);
   const approvedCoQ = useApprovedCoValue(primeContractId, projectId);
+  const { isAdmin } = useUserPermissions();
   const status = detail.data?.status as string | undefined;
   const isFinalInvoice =
     Boolean((detail.data as any)?.is_final_invoice) ||
     Boolean((detail.data as any)?.pay_app_data?.is_final_invoice);
   const G702_ROWS = g702SidebarRows(isFinalInvoice);
-  // A submitted pay app is a fixed certificate — lock all editing so its figures
-  // stay exactly as submitted (later COs/progress go into the next pay app).
+  // A submitted pay app is a fixed certificate — lock ordinary editing.
+  // Admins can still correct scheduled values and reload the cover.
   const locked = isFrozen;
+  const [editLine, setEditLine] = useState<ContinuationLine | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [billToScheduled, setBillToScheduled] = useState(true);
 
   async function toggleRetainage(line: ContinuationLine) {
     try {
@@ -87,16 +107,52 @@ export function PayAppContinuationBuilder({
     }
   }
 
+  function openAdminEdit(line: ContinuationLine) {
+    setEditLine(line);
+    setEditAmount(String(line.scheduled_value));
+    setBillToScheduled(true);
+  }
+
+  async function saveAdminEdit() {
+    if (!editLine) return;
+    const amount = round2(Number(editAmount));
+    if (!Number.isFinite(amount) || amount === 0) {
+      toast.error("Enter a non-zero scheduled amount.");
+      return;
+    }
+    try {
+      await adminEditSovLine.mutateAsync({
+        sov_line_item_id: editLine.sov_line_item_id,
+        scheduled_value: amount,
+        billToScheduled,
+      });
+      toast.success(
+        `Updated #${editLine.item_no} to ${money(amount)}${billToScheduled ? " (billed 100%)" : ""}. Click Reload cover from SOV to refresh Lines 1–9.`,
+      );
+      setEditLine(null);
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
+
+  async function reloadCover() {
+    try {
+      const next = await reloadCoverFromSov.mutateAsync();
+      toast.success(
+        `Cover reloaded from SOV — Current due ${money(next.current_payment_due)}, Line 9 ${money(next.balance_to_finish)}.`,
+      );
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
+
   const base = lines.filter((l) => l.kind === "base");
   const cos = lines.filter((l) => l.kind === "change_order");
   // A line billed past its scheduled value (over 100%). Not allowed — needs a CO.
   const overbilled = lines.filter((l) => l.value_to_date > l.scheduled_value + 0.01);
 
   // ── Reconciliation vs the contract / financial dashboard ──────────────────
-  // Base:  contract Original Contract Sum (what the G702 uses)  vs  Σ base SOV lines.
-  // COs:   approved-CO value from change_orders (what the dashboard rolls up)
-  //        vs  Σ CO SOV lines (this pay app's net-change). A CO that hasn't been
-  //        loaded into the SOV shows up here as a positive delta.
   const reconReady = Boolean(contract) && approvedCoQ.isSuccess;
   const originalContract = round2(Number((contract as any)?.original_value ?? 0));
   const baseSov = round2(base.reduce((s, l) => s + l.scheduled_value, 0));
@@ -115,19 +171,36 @@ export function PayAppContinuationBuilder({
           <span className="text-muted-foreground">
             Billing past the contract quantity isn&apos;t allowed. Back these down to ≤ 100%, or raise an
             approved change order for the extra scope and bill it on the change-order line instead.
+            {isAdmin && <> Admins can also edit the scheduled value with the pencil and reload the cover.</>}
           </span>
         </div>
       )}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
           {locked
-            ? <>Submitted{status && status !== "submitted" ? ` · ${status}` : ""} — these figures are <strong>frozen exactly as submitted</strong>. Later change orders and progress go onto the next pay app, not this one.</>
+            ? <>Submitted{status && status !== "submitted" ? ` · ${status}` : ""} — these figures are <strong>frozen exactly as submitted</strong>.
+              {isAdmin
+                ? <> Admins can correct a line&apos;s scheduled value, then <strong>Reload cover from SOV</strong>.</>
+                : <> Later change orders and progress go onto the next pay app, not this one.</>}
+            </>
             : <>Enter the <strong>quantity completed this period</strong> per line — value computes from the unit price, and to-date carries forward from the prior pay app.</>}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {!locked && (
             <Button variant="outline" size="sm" disabled={loadCos.isPending} onClick={loadApprovedCos}>
               <Plus className="h-4 w-4 mr-1" />{loadCos.isPending ? "Loading…" : "Load approved change orders"}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reloadCoverFromSov.isPending}
+              onClick={reloadCover}
+              title="Recompute G702 Lines 1–9 from the current SOV and pin the cover"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              {reloadCoverFromSov.isPending ? "Reloading…" : "Reload cover from SOV"}
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={refetch} title="Refresh">
@@ -172,6 +245,7 @@ export function PayAppContinuationBuilder({
               <th className="p-2 text-left w-10">#</th>
               <th className="p-2 text-left">Description</th>
               <th className="p-2 text-left w-12">Unit</th>
+              <th className="p-2 text-right">Sched $</th>
               <th className="p-2 text-right">Sched qty</th>
               <th className="p-2 text-right">Prev qty</th>
               <th className="p-2 text-right w-28">This period qty</th>
@@ -179,10 +253,29 @@ export function PayAppContinuationBuilder({
               <th className="p-2 text-right w-14">%</th>
               <th className="p-2 text-right">Value to date</th>
               <th className="p-2 text-center w-20" title="Hold retainage on this line?">Retainage</th>
+              {isAdmin && <th className="p-2 text-center w-12">Admin</th>}
             </tr>
           </thead>
-          <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />
-          {cos.length > 0 && <LineSection title="Change orders" rows={cos} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />}
+          <LineSection
+            title="Base contract"
+            rows={base}
+            locked={locked}
+            isAdmin={isAdmin}
+            onCommit={commitQty}
+            onToggleRetainage={toggleRetainage}
+            onAdminEdit={openAdminEdit}
+          />
+          {cos.length > 0 && (
+            <LineSection
+              title="Change orders"
+              rows={cos}
+              locked={locked}
+              isAdmin={isAdmin}
+              onCommit={commitQty}
+              onToggleRetainage={toggleRetainage}
+              onAdminEdit={openAdminEdit}
+            />
+          )}
           {(() => {
             // AIA: footer Column G / I must match G702 Lines 4 / 5 (cover snapshot).
             const t = computeG703GrandTotals(
@@ -193,13 +286,15 @@ export function PayAppContinuationBuilder({
               })),
               g702,
             );
+            const colSpan = isAdmin ? 5 : 4;
             return (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30 font-semibold" data-testid="continuation-grand-total">
-                  <td className="p-2" colSpan={4}>Grand total</td>
+                  <td className="p-2" colSpan={colSpan}>Grand total</td>
                   <td className="p-2" colSpan={4} />
                   <td className="p-2 text-right font-mono" data-testid="continuation-total-to-date">{money(t.toDate)}</td>
                   <td className="p-2 text-center font-mono" data-testid="continuation-total-retainage">{money(t.retainage)}</td>
+                  {isAdmin && <td />}
                 </tr>
               </tfoot>
             );
@@ -230,28 +325,79 @@ export function PayAppContinuationBuilder({
         {isFinalInvoice && (
           <div className="border-t px-3 py-2 text-xs text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Final invoice:</strong> Line 7 is paid to date.
-            Line 9 is the unbilled leftover (quantities/credits left on the table) — it will not be billed, and the project closes on payment of Line 8.
+            Line 9 is <strong>Line 3 − Line 4</strong> (contract − completed) — the true unbuilt /
+            unbilled leftover. It is <em>not</em> Line 3 − Line 6 (that older AIA figure also
+            bundled retainage already shown in Lines 5–6). Leftover quantities will not be billed;
+            the project closes on payment of Line 8.
           </div>
         )}
       </div>
+
+      <Dialog open={Boolean(editLine)} onOpenChange={(o) => { if (!o) setEditLine(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Admin: edit scheduled value</DialogTitle>
+            <DialogDescription>
+              Correct item #{editLine?.item_no} {editLine?.description}. This updates the SOV
+              {editLine?.kind === "change_order" ? " and the linked change-order amount" : ""}.
+              Then click <strong>Reload cover from SOV</strong> so Lines 1–9 recalculate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="admin-sched">Scheduled value ($)</Label>
+              <Input
+                id="admin-sched"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Current billed to date: {money(editLine?.value_to_date ?? 0)}
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="bill-to-sched"
+                checked={billToScheduled}
+                onCheckedChange={(v) => setBillToScheduled(v === true)}
+              />
+              <Label htmlFor="bill-to-sched" className="text-sm font-normal leading-snug cursor-pointer">
+                Also set value to date = new scheduled (bill 100% on this line)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditLine(null)}>Cancel</Button>
+            <Button disabled={adminEditSovLine.isPending} onClick={saveAdminEdit}>
+              {adminEditSovLine.isPending ? "Saving…" : "Save correction"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function LineSection({
-  title, rows, locked, onCommit, onToggleRetainage,
+  title, rows, locked, isAdmin, onCommit, onToggleRetainage, onAdminEdit,
 }: {
-  title: string; rows: ContinuationLine[]; locked: boolean;
+  title: string; rows: ContinuationLine[]; locked: boolean; isAdmin: boolean;
   onCommit: (line: ContinuationLine, qtyThisPeriod: number) => void;
   onToggleRetainage: (line: ContinuationLine) => void;
+  onAdminEdit: (line: ContinuationLine) => void;
 }) {
+  const cols = isAdmin ? 12 : 11;
   return (
     <tbody>
       <tr className="bg-muted/20">
-        <td colSpan={10} className="px-2 py-1 text-xs font-semibold uppercase text-muted-foreground">{title}</td>
+        <td colSpan={cols} className="px-2 py-1 text-xs font-semibold uppercase text-muted-foreground">{title}</td>
       </tr>
       {rows.length === 0 && (
-        <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
+        <tr><td colSpan={cols} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
       )}
       {rows.map((l) => {
         const over = l.value_to_date > l.scheduled_value + 0.01;
@@ -265,6 +411,7 @@ function LineSection({
             {over && <Badge className="ml-2 text-[10px] bg-[var(--apas-rose)] text-white">Over 100%</Badge>}
           </td>
           <td className="p-2 text-muted-foreground">{l.unit ?? "—"}</td>
+          <td className="p-2 text-right font-mono">{money(l.scheduled_value)}</td>
           <td className="p-2 text-right font-mono">{qty(l.scheduled_qty)}</td>
           <td className="p-2 text-right font-mono text-muted-foreground">{qty(l.prior_qty_to_date)}</td>
           <td className="p-2 text-right">
@@ -288,17 +435,30 @@ function LineSection({
           <td className="p-2 text-right font-mono">{money(l.value_to_date)}</td>
           <td className="p-2 text-center">
             {l.retainage_exempt ? (
-              <button type="button" disabled={locked} onClick={() => onToggleRetainage(l)}
+              <button type="button" disabled={locked && !isAdmin} onClick={() => onToggleRetainage(l)}
                 className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-60" title="No retainage held — click to restore">
                 Exempt
               </button>
             ) : (
-              <button type="button" disabled={locked} onClick={() => onToggleRetainage(l)}
+              <button type="button" disabled={locked && !isAdmin} onClick={() => onToggleRetainage(l)}
                 className="font-mono text-xs hover:text-[var(--apas-rose)] disabled:opacity-60" title="Retainage held — click to exempt this line">
                 {money(l.retainage)}
               </button>
             )}
           </td>
+          {isAdmin && (
+            <td className="p-2 text-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Admin: edit scheduled value"
+                onClick={() => onAdminEdit(l)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </td>
+          )}
         </tr>
         );
       })}

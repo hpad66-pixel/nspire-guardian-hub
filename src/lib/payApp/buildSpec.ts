@@ -4,7 +4,7 @@
  * button and the sign/send dialog so both render an identical document.
  */
 import type { PayApplicationSpec } from "./PayApplicationDocument";
-import type { G702Summary } from "@/lib/financial/payAppContinuation";
+import { withResolvedLine9, type G702Summary } from "@/lib/financial/payAppContinuation";
 import type { ContinuationLine } from "@/hooks/usePayAppContinuation";
 import type { PrimeContract } from "@/hooks/usePrimeContract";
 
@@ -29,6 +29,13 @@ export function buildPayAppSpec(
 ): PayApplicationSpec {
   const s: any = coSettings ?? {};
   const signedAt = pa.signed_at ? new Date(pa.signed_at).toISOString().slice(0, 10) : null;
+  const isFinal =
+    Boolean(pa?.is_final_invoice) ||
+    Boolean(pa?.pay_app_data?.is_final_invoice) ||
+    Boolean(opts.isFinalInvoice);
+  // Final invoices must show Line 9 = contract − completed (unbuilt), never the
+  // AIA "incl. retainage" figure left in an older snapshot.
+  const resolvedG702 = withResolvedLine9(g702, isFinal);
   return {
     wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
     footer: s.footer ?? null,
@@ -64,8 +71,8 @@ export function buildPayAppSpec(
     amountCertified:
       pa?.pay_app_data?.amount_certified != null
         ? Number(pa.pay_app_data.amount_certified)
-        : g702.current_payment_due,
-    g702,
+        : resolvedG702.current_payment_due,
+    g702: resolvedG702,
     lines: lines.map((l) => ({
       item_no: l.item_no,
       description: l.description,
@@ -90,9 +97,6 @@ export function buildPayAppSpec(
     signedDate: opts.signedDate !== undefined ? opts.signedDate : signedAt,
     draft: opts.draft ?? false,
     reconciled: opts.reconciled !== undefined ? opts.reconciled : pa.status === "paid",
-    isFinalInvoice:
-      Boolean(pa?.is_final_invoice) ||
-      Boolean(pa?.pay_app_data?.is_final_invoice) ||
-      Boolean(opts.isFinalInvoice),
+    isFinalInvoice: isFinal,
   };
 }

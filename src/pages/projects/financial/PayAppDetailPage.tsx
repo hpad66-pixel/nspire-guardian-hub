@@ -62,7 +62,7 @@ export default function PayAppDetailPage() {
       await setFinal.mutateAsync({ payAppId: pa!.id, isFinal: checked });
       toast.success(
         checked
-          ? "Marked as FINAL invoice — PDF will show Final Invoice and Line 9 as unbilled leftover."
+          ? "Marked as FINAL invoice — PDF shows Final Invoice; Line 9 = contract − completed (true unbuilt leftover)."
           : "Final invoice flag cleared — this is a progress application again.",
       );
     } catch (e: any) {
@@ -158,9 +158,10 @@ export default function PayAppDetailPage() {
               </Label>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Check this when Application #{pa.pay_app_no} closes the job. The PDF shows a{" "}
-                <strong>FINAL INVOICE</strong> banner. Line 7 is labeled as{" "}
-                <strong>paid to date</strong>, and Line 9 explains that leftover quantities/credits
-                will <strong>not</strong> be billed — the project closes on payment of the current due.
+                <strong>FINAL INVOICE</strong> banner. Line 7 is <strong>paid to date</strong>.
+                Line 9 becomes <strong>contract − completed</strong> (the true unbuilt leftover —
+                not the older AIA figure that also bundled retainage). Leftover quantities will{" "}
+                <strong>not</strong> be billed; the project closes on payment of the current due.
               </p>
             </div>
           </div>

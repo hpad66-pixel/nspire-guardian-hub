@@ -8,13 +8,14 @@ describe("g702Labels", () => {
     expect(rows[6].label).toMatch(/paid to date/i);
     expect(rows[6].sub).toMatch(/paid/i);
     expect(rows[8].label).toMatch(/Balance to finish/i);
-    expect(rows[8].sub).toMatch(/remaining contract work/i);
+    expect(rows[8].sub).toMatch(/retainage still held/i);
   });
 
-  it("rewrites line 9 for a final invoice so leftover quantities are not billed", () => {
+  it("rewrites line 9 for a final invoice as contract − completed (true unbuilt)", () => {
     const rows = g702LineCopy(true);
     expect(rows[7].label).toMatch(/FINAL/i);
-    expect(rows[8].label).toMatch(/Unbilled contract balance/i);
+    expect(rows[8].label).toMatch(/Unbilled|unbuilt/i);
+    expect(rows[8].sub).toMatch(/Line 3.*Line 4/i);
     expect(rows[8].sub).toMatch(/will not be billed/i);
     expect(rows[8].sub).toMatch(/FINAL invoice closes the project/i);
     expect(rows[6].sub).toMatch(/paid/i);

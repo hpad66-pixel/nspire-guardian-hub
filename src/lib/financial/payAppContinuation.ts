@@ -375,6 +375,34 @@ export function computeG703GrandTotals(
  * `previousCertificates` = the prior pay app's total-earned-less-retainage
  * (what's already been billed), so current_payment_due is the increment.
  */
+/**
+ * Resolve G702 Line 9 for display / PDF.
+ *
+ * Progress invoices use the AIA definition: Line 3 − Line 6
+ * (= uncompleted work + retainage still held).
+ *
+ * Final invoices use the true unbuilt / unbilled delta: Line 3 − Line 4
+ * (= contract − completed). Retainage is already accounted for in Lines 5–6;
+ * calling Line 3 − Line 6 "unbilled" was misleading ($66k vs real $32k).
+ */
+export function resolveG702Line9(
+  g: Pick<G702Summary, "contract_sum_to_date" | "completed_stored_to_date" | "total_earned_less_retainage" | "balance_to_finish">,
+  isFinalInvoice = false,
+): number {
+  if (isFinalInvoice) {
+    return round2(g.contract_sum_to_date - g.completed_stored_to_date);
+  }
+  if (typeof g.balance_to_finish === "number" && Number.isFinite(g.balance_to_finish)) {
+    return round2(g.balance_to_finish);
+  }
+  return round2(g.contract_sum_to_date - g.total_earned_less_retainage);
+}
+
+/** Apply the correct Line 9 onto a G702 summary (mutates a shallow copy). */
+export function withResolvedLine9<T extends G702Summary>(g: T, isFinalInvoice = false): T {
+  return { ...g, balance_to_finish: resolveG702Line9(g, isFinalInvoice) };
+}
+
 export function computeG702(input: {
   originalContractSum: number;
   lines: Array<{
@@ -384,6 +412,8 @@ export function computeG702(input: {
     retainage: number;
   }>;
   previousCertificates: number;
+  /** When true, Line 9 = contract − completed (unbilled only). */
+  isFinalInvoice?: boolean;
 }): G702Summary {
   const original_contract_sum = round2(input.originalContractSum);
   const net_change_orders = round2(
@@ -395,10 +425,17 @@ export function computeG702(input: {
   const total_earned_less_retainage = round2(completed_stored_to_date - retainage_total);
   const less_previous_certificates = round2(input.previousCertificates);
   const current_payment_due = round2(total_earned_less_retainage - less_previous_certificates);
-  // AIA G702 line 9 = line 3 less line 6 (Contract Sum to Date − Total Earned Less
-  // Retainage). This is "balance to finish INCLUDING retainage" — it carries the
-  // retainage still to be released, matching the form's label.
-  const balance_to_finish = round2(contract_sum_to_date - total_earned_less_retainage);
+  // Progress: AIA Line 9 = Line 3 − Line 6 (includes retainage still held).
+  // Final: Line 9 = Line 3 − Line 4 (true unbuilt / unbilled delta only).
+  const balance_to_finish = resolveG702Line9(
+    {
+      contract_sum_to_date,
+      completed_stored_to_date,
+      total_earned_less_retainage,
+      balance_to_finish: round2(contract_sum_to_date - total_earned_less_retainage),
+    },
+    Boolean(input.isFinalInvoice),
+  );
   return {
     original_contract_sum,
     net_change_orders,

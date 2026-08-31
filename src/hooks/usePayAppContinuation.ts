@@ -21,8 +21,10 @@ import {
   clampProgressToScheduled,
   linePctComplete,
   round2,
+  round4,
   shouldUseG702Snapshot,
   alignLineRetainageToCover,
+  withResolvedLine9,
   type G702Summary,
   type PriorProgressLike,
 } from "@/lib/financial/payAppContinuation";
@@ -417,17 +419,22 @@ export function usePayAppContinuation(payAppId: string | null) {
     });
   }, [sov.data, thisProgress.data, priorByLineId]);
 
+  const isFinalInvoiceFlag =
+    Boolean((detail.data as any)?.is_final_invoice) ||
+    Boolean((detail.data as any)?.pay_app_data?.is_final_invoice);
+
   const liveG702: G702Summary = useMemo(
     () =>
       computeG702({
         originalContractSum: Number(contract.data?.original_value ?? 0),
         previousCertificates: prior.data?.earnedLessRetainage ?? 0,
+        isFinalInvoice: isFinalInvoiceFlag,
         lines: lines.map((l) => ({
           kind: l.kind, scheduled_value: l.scheduled_value,
           value_to_date: l.value_to_date, retainage: l.retainage,
         })),
       }),
-    [contract.data, prior.data, lines],
+    [contract.data, prior.data, lines, isFinalInvoiceFlag],
   );
 
   // Once a pay app leaves "draft" it's a submitted certificate — a fixed legal
@@ -438,13 +445,17 @@ export function usePayAppContinuation(payAppId: string | null) {
   // Cash-reconciled final invoices also pin the draft cover to pay_app_data
   // (use_reconciled_snapshot / reconciliation_note) so Export PDF does not fall
   // back to incomplete live SOV math (e.g. placeholder $140k / $600k rows).
+  //
+  // Line 9 is always re-resolved for finals so a stale snapshot that stored the
+  // AIA "incl. retainage" figure ($66k) cannot mislabel the true unbuilt delta.
   const status = (detail.data as any)?.status as string | undefined;
   const isFrozen = Boolean(status && status !== "draft");
   const snapshot = (detail.data as any)?.pay_app_data as G702Summary | null | undefined;
   const useSnapshot = shouldUseG702Snapshot(status, snapshot);
-  const g702: G702Summary = useSnapshot
-    ? (snapshot as G702Summary)
-    : liveG702;
+  const g702: G702Summary = withResolvedLine9(
+    useSnapshot ? (snapshot as G702Summary) : liveG702,
+    isFinalInvoiceFlag,
+  );
 
   // AIA: Line 5 = Column I total. When the cover is pinned, keep G703 retainage
   // in lockstep so the printed continuation sheet does not disagree with G702.
@@ -544,10 +555,201 @@ export function usePayAppContinuation(payAppId: string | null) {
     },
   });
 
+  /**
+   * Admin correction: edit a SOV line's scheduled value (and optionally bill
+   * to-date) even when the pay app is frozen. Updates the linked change order
+   * amount when present so "Load approved COs" cannot overwrite the correction.
+   * Does NOT rewrite the G702 cover — call reloadCoverFromSov afterward.
+   */
+  const adminEditSovLine = useMutation({
+    mutationFn: async (input: {
+      sov_line_item_id: string;
+      scheduled_value: number;
+      /** When set, also write value_to_date / this-period on this pay app. */
+      value_to_date?: number;
+      billToScheduled?: boolean;
+    }) => {
+      if (!payAppId) throw new Error("No pay app");
+      const line = (sov.data ?? []).find((l) => l.id === input.sov_line_item_id);
+      if (!line) throw new Error("SOV line not found");
+
+      const scheduled_value = round2(input.scheduled_value);
+      const qty = Number(line.scheduled_qty) || 1;
+      const unit_price = qty !== 0 ? round2(scheduled_value / qty) : scheduled_value;
+
+      // 1) Raise/lower scheduled value FIRST so the overbill guard accepts progress.
+      const { error: sovErr } = await supabase
+        .from("sov_line_items" as any)
+        .update({ scheduled_value, unit_price } as any)
+        .eq("id", input.sov_line_item_id);
+      if (sovErr) throw sovErr;
+
+      // 2) Keep the linked CO amount in sync so a later "Load approved COs" does
+      //    not clamp the line back down.
+      if (line.change_order_id) {
+        const { error: coErr } = await supabase
+          .from("change_orders" as any)
+          .update({ amount: scheduled_value } as any)
+          .eq("id", line.change_order_id);
+        if (coErr) throw coErr;
+      }
+
+      const billTo = input.billToScheduled
+        ? scheduled_value
+        : input.value_to_date != null
+          ? round2(input.value_to_date)
+          : null;
+
+      if (billTo != null) {
+        const pr = priorByLineId[input.sov_line_item_id];
+        const priorVal = pr ? Number(pr.value_to_date) : 0;
+        const priorQty = pr ? Number(pr.qty_to_date) : 0;
+        const effPct = line.retainage_pct == null ? retainagePct : Number(line.retainage_pct);
+        // Lump-sum CO lines are qty 1 — bill full qty when value reaches scheduled.
+        const qty_to_date =
+          Math.abs(scheduled_value) < 0.01
+            ? 0
+            : round4((billTo / scheduled_value) * qty);
+        const qty_this_period = round4(qty_to_date - priorQty);
+        const value_this_period = round2(billTo - priorVal);
+        const tenant_id = await requireTenantId();
+        const { error: progErr } = await supabase.from("pay_app_line_progress" as any).upsert(
+          {
+            tenant_id,
+            pay_app_id: payAppId,
+            sov_line_item_id: input.sov_line_item_id,
+            qty_this_period,
+            value_this_period,
+            qty_to_date,
+            value_to_date: billTo,
+            pct_complete: linePctComplete(billTo, scheduled_value),
+            retainage: round2(billTo * (effPct / 100)),
+          } as any,
+          { onConflict: "pay_app_id,sov_line_item_id" },
+        );
+        if (progErr) throw progErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation"] });
+      qc.invalidateQueries({ queryKey: ["sov-progress"] });
+      qc.invalidateQueries({ queryKey: ["change-orders"] });
+      qc.invalidateQueries({ queryKey: ["approved-co-value"] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+
+  /**
+   * Admin: recompute the G702 cover from the current SOV + progress and pin it
+   * into pay_app_data (works on draft AND approved). Cash-reconciled finals keep
+   * Line 7 as actual cash received (sum of prime_contract_payments).
+   */
+  const reloadCoverFromSov = useMutation({
+    mutationFn: async () => {
+      if (!payAppId || !primeContractId) throw new Error("No pay app");
+      const isFinal = isFinalInvoiceFlag;
+
+      // Fresh SOV + progress (do not trust stale React state after an admin edit).
+      const [{ data: sovRows, error: sErr }, { data: progRows, error: pErr }, { data: cRow, error: cErr }] =
+        await Promise.all([
+          supabase.from("sov_line_items" as any).select("*").eq("prime_contract_id", primeContractId),
+          supabase.from("pay_app_line_progress" as any).select("*").eq("pay_app_id", payAppId),
+          supabase.from("prime_contracts" as any).select("original_value, retainage_pct").eq("id", primeContractId).maybeSingle(),
+        ]);
+      if (sErr) throw sErr;
+      if (pErr) throw pErr;
+      if (cErr) throw cErr;
+
+      const progBy = new Map<string, any>((progRows ?? []).map((r: any) => [r.sov_line_item_id, r]));
+      const coverLines = ((sovRows ?? []) as any[]).map((li) => {
+        const cur = progBy.get(li.id);
+        return {
+          kind: li.kind as "base" | "change_order",
+          scheduled_value: Number(li.scheduled_value) || 0,
+          value_to_date: cur ? Number(cur.value_to_date) || 0 : 0,
+          retainage: cur ? Number(cur.retainage) || 0 : 0,
+        };
+      });
+
+      // Cash-reconciled finals: Line 7 = actual cash on the contract, not prior TELR.
+      const snap = (detail.data as any)?.pay_app_data as any;
+      const useCashLine7 =
+        isFinal ||
+        snap?.use_reconciled_snapshot === true ||
+        Boolean(snap?.cash_received_to_date);
+      let previousCertificates = prior.data?.earnedLessRetainage ?? 0;
+      let cashReceivedToDate: number | null = null;
+      if (useCashLine7) {
+        const { data: pays, error: payErr } = await supabase
+          .from("prime_contract_payments" as any)
+          .select("amount")
+          .eq("prime_contract_id", primeContractId);
+        if (payErr) throw payErr;
+        cashReceivedToDate = round2(
+          (pays ?? []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0),
+        );
+        previousCertificates = cashReceivedToDate;
+      }
+
+      let next = computeG702({
+        originalContractSum: Number((cRow as any)?.original_value ?? 0),
+        previousCertificates,
+        isFinalInvoice: isFinal,
+        lines: coverLines,
+      });
+      next = withResolvedLine9(next, isFinal);
+
+      const pay_app_data = {
+        ...(snap ?? {}),
+        ...next,
+        is_final_invoice: isFinal,
+        use_reconciled_snapshot: true,
+        amount_certified: next.current_payment_due,
+        ...(cashReceivedToDate != null
+          ? {
+              cash_received_to_date: cashReceivedToDate,
+              less_previous_certificates: cashReceivedToDate,
+              balance_still_due_this_app: next.current_payment_due,
+            }
+          : {}),
+        reconciliation_note:
+          `Admin reload from SOV ${new Date().toISOString().slice(0, 10)}. ` +
+          `Line 9 (final unbuilt) = Line 3 − Line 4 = $${next.balance_to_finish.toFixed(2)}. ` +
+          (cashReceivedToDate != null
+            ? `Line 7 = cash to date $${cashReceivedToDate.toFixed(2)}.`
+            : ""),
+      };
+
+      const { error: upErr } = await supabase
+        .from("prime_contract_pay_apps" as any)
+        .update({
+          submitted_amount: next.current_payment_due,
+          approved_amount: status === "approved" || status === "paid"
+            ? next.current_payment_due
+            : (detail.data as any)?.approved_amount,
+          retainage_held: next.retainage_total,
+          is_final_invoice: isFinal,
+          pay_app_data: pay_app_data as any,
+        } as any)
+        .eq("id", payAppId);
+      if (upErr) throw upErr;
+      return next;
+    },
+    onSuccess: () => {
+      detail.refetch();
+      thisProgress.refetch();
+      sov.refetch();
+      qc.invalidateQueries({ queryKey: ["pay-app", payAppId] });
+      qc.invalidateQueries({ queryKey: ["pay-apps"] });
+      qc.invalidateQueries({ queryKey: ["pay-app-continuation"] });
+      qc.invalidateQueries({ queryKey: ["project-financials"] });
+    },
+  });
+
   return {
     detail, contract, lines: displayLines, g702, retainagePct, isFrozen,
     isLoading: detail.isLoading || sov.isLoading || thisProgress.isLoading,
-    upsertLine, submit, setLineRetainage,
+    upsertLine, submit, setLineRetainage, adminEditSovLine, reloadCoverFromSov,
     refetch: () => {
       thisProgress.refetch(); sov.refetch(); detail.refetch();
     },
