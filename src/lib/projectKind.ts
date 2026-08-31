@@ -54,3 +54,22 @@ export function projectKindBadgeClass(kind: ProjectKind): string {
 export function projectKindTileClass(kind: ProjectKind): string {
   return PROJECT_KIND_TILE_STYLE[kind];
 }
+
+/** Split a project list into Construction / Consulting buckets for portfolio grids. */
+export function groupProjectsByKind<T extends { project_type?: string | null; name?: string | null }>(
+  projects: T[],
+): { construction: T[]; consulting: T[]; missingType: T[] } {
+  const construction: T[] = [];
+  const consulting: T[] = [];
+  const missingType: T[] = [];
+  for (const p of projects) {
+    if (isProjectTypeMissing(p)) missingType.push(p);
+    if (projectKind(p) === 'consulting') consulting.push(p);
+    else construction.push(p);
+  }
+  const byName = (a: T, b: T) => (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' });
+  construction.sort(byName);
+  consulting.sort(byName);
+  missingType.sort(byName);
+  return { construction, consulting, missingType };
+}
