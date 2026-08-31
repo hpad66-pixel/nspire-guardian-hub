@@ -18,6 +18,7 @@ export type ProjectModuleSlug =
   | 'directory'
   | 'env-compliance'
   | 'permits'
+  | 'site-map'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -61,7 +62,7 @@ export interface ProjectModuleDef {
   /** Only workspace/project admins see this nav item. */
   adminOnly?: boolean;
   /** Surfaces on the authenticated owner portal when enabled. */
-  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | null;
+  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | 'site-map' | null;
 }
 
 // The admin panel renders from this catalog. Order + grouping drive the panel
@@ -88,6 +89,13 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
     description: 'Construction / closeout permit register, city confirmations, owner readiness score',
     group: 'field',
     portalSlug: 'permits',
+  },
+  {
+    slug: 'site-map',
+    label: 'Site map',
+    description: 'Interactive property map — as-built manholes, cleanouts, pond; inspectable assets',
+    group: 'field',
+    portalSlug: 'site-map',
   },
   { slug: 'closeout', label: 'Closeout', description: 'Project closeout package', group: 'field' },
 
@@ -172,6 +180,7 @@ export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'procurement',
   'safety',
   'permits',
+  'site-map',
   'closeout',
 ]);
 

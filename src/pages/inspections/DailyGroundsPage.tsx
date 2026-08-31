@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,8 +22,14 @@ import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 
 export default function DailyGroundsPage() {
   // ── All hooks at the top level, before any early returns ──
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
-  const [showWizard, setShowWizard] = useState(false);
+  const [searchParams] = useSearchParams();
+  const deepLinkPropertyId = searchParams.get('propertyId') || '';
+  const deepLinkAssetId = searchParams.get('assetId');
+  const deepLinkAssetCode = searchParams.get('assetCode');
+  const deepLinkWizard = searchParams.get('wizard') === '1';
+
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>(deepLinkPropertyId);
+  const [showWizard, setShowWizard] = useState(deepLinkWizard && Boolean(deepLinkPropertyId));
   const [incidentSheetOpen, setIncidentSheetOpen] = useState(false);
   const [showAddendum, setShowAddendum] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -59,12 +66,17 @@ export default function DailyGroundsPage() {
     return { ok, attention, defect };
   }, [items]);
 
-  // Auto-select first property
+  // Auto-select first property (or honor site-map deep link)
   useEffect(() => {
+    if (deepLinkPropertyId && selectedPropertyId !== deepLinkPropertyId) {
+      setSelectedPropertyId(deepLinkPropertyId);
+      if (deepLinkWizard) setShowWizard(true);
+      return;
+    }
     if (properties.length === 1 && !selectedPropertyId) {
       setSelectedPropertyId(properties[0].id);
     }
-  }, [properties, selectedPropertyId]);
+  }, [properties, selectedPropertyId, deepLinkPropertyId, deepLinkWizard]);
 
   // Sync existing completed inspection into dashboard state
   useEffect(() => {
@@ -116,6 +128,8 @@ export default function DailyGroundsPage() {
         existingInspection={todayInspection?.status === 'in_progress' ? todayInspection : null}
         onComplete={handleCompleteInspection}
         onCancel={() => setShowWizard(false)}
+        initialAssetId={deepLinkAssetId}
+        initialAssetCode={deepLinkAssetCode}
       />
     );
   }
