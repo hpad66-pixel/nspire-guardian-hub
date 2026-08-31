@@ -256,4 +256,189 @@ describe("usePayAppContinuation", () => {
     expect(result.current.g702.less_previous_certificates).toBe(742871.38);
     expect(result.current.g702.completed_stored_to_date).toBe(921212.36);
   });
+
+  it("rewrites final-invoice Line 9 to contract − completed even when snapshot is stale", async () => {
+    const snapshot = {
+      original_contract_sum: 523061,
+      net_change_orders: 430289.35,
+      contract_sum_to_date: 953350.35,
+      completed_stored_to_date: 921212.36,
+      retainage_total: 34008.16,
+      total_earned_less_retainage: 887204.2,
+      less_previous_certificates: 742871.38,
+      current_payment_due: 144332.82,
+      balance_to_finish: 66146.15, // stale AIA (incl. retainage)
+      use_reconciled_snapshot: true,
+      is_final_invoice: true,
+    };
+    __mock.from.mockImplementation(((t: string) => {
+      if (t === "prime_contract_pay_apps") {
+        return makeBuilder({
+          data: {
+            id: "pa5",
+            prime_contract_id: "pc1",
+            pay_app_no: 5,
+            status: "approved",
+            is_final_invoice: true,
+            pay_app_data: snapshot,
+          },
+          error: null,
+        });
+      }
+      if (t === "prime_contracts") return makeBuilder({ data: { original_value: 523061, retainage_pct: 10 }, error: null });
+      if (t === "sov_line_items") return makeBuilder({ data: [], error: null });
+      return makeBuilder({ data: [], error: null });
+    }) as any);
+
+    const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
+    await waitFor(() => expect(result.current.detail.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.g702.current_payment_due).toBe(144332.82));
+    // True unbuilt = 953350.35 − 921212.36
+    expect(result.current.g702.balance_to_finish).toBe(32137.99);
+  });
+
+  it("adminEditSovLine updates scheduled value, linked CO, and bills to 100%", async () => {
+    const sovUpdates: any[] = [];
+    const coUpdates: any[] = [];
+    const progUpserts: any[] = [];
+    __mock.from.mockImplementation(((t: string) => {
+      if (t === "prime_contract_pay_apps") {
+        return makeBuilder({
+          data: { id: "pa5", prime_contract_id: "pc1", pay_app_no: 5, status: "approved", is_final_invoice: true },
+          error: null,
+        });
+      }
+      if (t === "prime_contracts") return makeBuilder({ data: { original_value: 523061, retainage_pct: 3 }, error: null });
+      if (t === "sov_line_items") {
+        const b = makeBuilder({
+          data: [{
+            id: "li32", item_no: "32", kind: "change_order", change_order_id: "co13",
+            description: "Road cavity", unit: "LS", scheduled_qty: 1, unit_price: 8400,
+            scheduled_value: 8400, sort_order: 32, retainage_pct: null,
+          }],
+          error: null,
+        });
+        b.update = vi.fn((payload: any) => { sovUpdates.push(payload); return b; });
+        return b;
+      }
+      if (t === "change_orders") {
+        const b = makeBuilder({ data: null, error: null });
+        b.update = vi.fn((payload: any) => { coUpdates.push(payload); return b; });
+        return b;
+      }
+      if (t === "pay_app_line_progress") {
+        const b = makeBuilder({
+          data: [{
+            sov_line_item_id: "li32", qty_to_date: 1, value_to_date: 8400, pct_complete: 100,
+            qty_this_period: 1, value_this_period: 8400, retainage: 252,
+          }],
+          error: null,
+        });
+        b.upsert = vi.fn((payload: any) => { progUpserts.push(payload); return b; });
+        return b;
+      }
+      return makeBuilder({ data: [], error: null });
+    }) as any);
+
+    const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
+    await waitFor(() => expect(result.current.detail.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.lines.length).toBe(1));
+
+    await result.current.adminEditSovLine.mutateAsync({
+      sov_line_item_id: "li32",
+      scheduled_value: 9600,
+      billToScheduled: true,
+    });
+
+    expect(sovUpdates[0]).toMatchObject({ scheduled_value: 9600, unit_price: 9600 });
+    expect(coUpdates[0]).toMatchObject({ amount: 9600 });
+    expect(progUpserts[0]).toMatchObject({ value_to_date: 9600, pct_complete: 100 });
+  });
+
+  it("reloadCoverFromSov recomputes G702 from SOV and pins cash Line 7 on finals", async () => {
+    const payAppUpdates: any[] = [];
+    __mock.from.mockImplementation(((t: string) => {
+      if (t === "prime_contract_pay_apps") {
+        const b = makeBuilder({
+          data: {
+            id: "pa5",
+            prime_contract_id: "pc1",
+            pay_app_no: 5,
+            status: "approved",
+            is_final_invoice: true,
+            pay_app_data: {
+              use_reconciled_snapshot: true,
+              cash_received_to_date: 742871.38,
+              contract_sum_to_date: 953350.35,
+              balance_to_finish: 66146.15,
+            },
+          },
+          error: null,
+        });
+        b.update = vi.fn((payload: any) => { payAppUpdates.push(payload); return b; });
+        return b;
+      }
+      if (t === "prime_contracts") {
+        return makeBuilder({ data: { original_value: 523061, retainage_pct: 10 }, error: null });
+      }
+      if (t === "sov_line_items") {
+        return makeBuilder({
+          data: [
+            {
+              id: "l1", item_no: "1", kind: "base", change_order_id: null,
+              description: "Base", unit: "LS", scheduled_qty: 1, unit_price: 523061,
+              scheduled_value: 523061, sort_order: 1, retainage_pct: null,
+            },
+            {
+              id: "l2", item_no: "32", kind: "change_order", change_order_id: "co13",
+              description: "Road cavity", unit: "LS", scheduled_qty: 1, unit_price: 9600,
+              scheduled_value: 9600, sort_order: 32, retainage_pct: null,
+            },
+          ],
+          error: null,
+        });
+      }
+      if (t === "pay_app_line_progress") {
+        return makeBuilder({
+          data: [
+            {
+              sov_line_item_id: "l1", qty_to_date: 1, value_to_date: 490923.01, pct_complete: 94,
+              qty_this_period: 0, value_this_period: 0, retainage: 18115,
+            },
+            {
+              sov_line_item_id: "l2", qty_to_date: 1, value_to_date: 9600, pct_complete: 100,
+              qty_this_period: 1, value_this_period: 9600, retainage: 288,
+            },
+          ],
+          error: null,
+        });
+      }
+      if (t === "prime_contract_payments") {
+        return makeBuilder({
+          data: [{ amount: 667871.38 }, { amount: 75000 }],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: [], error: null });
+    }) as any);
+
+    const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
+    await waitFor(() => expect(result.current.detail.isSuccess).toBe(true));
+
+    const next = await result.current.reloadCoverFromSov.mutateAsync();
+    // Net COs = 9600; contract = 523061 + 9600; completed = 490923.01 + 9600
+    expect(next.net_change_orders).toBe(9600);
+    expect(next.contract_sum_to_date).toBe(532661);
+    expect(next.completed_stored_to_date).toBe(500523.01);
+    // Final Line 9 = contract − completed
+    expect(next.balance_to_finish).toBe(Math.round((532661 - 500523.01) * 100) / 100);
+    // Cash Line 7
+    expect(next.less_previous_certificates).toBe(742871.38);
+
+    expect(payAppUpdates.length).toBeGreaterThan(0);
+    const updatePayload = payAppUpdates[payAppUpdates.length - 1];
+    expect(updatePayload.pay_app_data.use_reconciled_snapshot).toBe(true);
+    expect(updatePayload.pay_app_data.balance_to_finish).toBe(next.balance_to_finish);
+    expect(updatePayload.submitted_amount).toBe(next.current_payment_due);
+  });
 });
