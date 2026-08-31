@@ -137,14 +137,15 @@ const CERT_CELL: React.CSSProperties = {
   ...NUM,
   border: `1.5px solid ${INK}`,
   background: "#fff",
-  padding: "6px 10px",
-  minWidth: 148,
+  padding: "8px 12px",
+  minWidth: 158,
+  minHeight: 30,
   boxSizing: "border-box",
   textAlign: "right",
-  overflow: "hidden",
+  overflow: "visible",
   fontWeight: 700,
   fontSize: 13,
-  lineHeight: 1.2,
+  lineHeight: 1.35,
 };
 
 // Max Schedule-of-Values rows (incl. section headers) per continuation page
@@ -243,18 +244,37 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
         ))}
       </div>
     );
-    // Baseline alignment keeps the dollar amount on the MAIN label line (Procore
-    // style); the parenthetical sub-note flows below without shoving the number
-    // down. Amounts are lining figures with no underline — a rule on the glyph
-    // slashes through the print.
+    // Center-align the dollar amount with the label block so sub-notes do not
+    // shove figures off the row. Give every money cell explicit line-height +
+    // padding — overflow:hidden with a 2.5px row was clipping lining digits in
+    // print/PDF (rows shorter than the glyph box).
     const SumRow = ({ no, label, sub, value, hi }: { no: string; label: string; sub?: string; value: number; hi?: boolean }) => (
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "2.5px 4px", background: hi ? `${GOLD}22` : undefined }}>
-        <div style={{ width: 20, fontSize: 13, fontWeight: hi ? 700 : 400 }}>{no}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: hi ? 700 : 400, lineHeight: 1.3 }}>{label}</div>
-          {sub && <div style={{ fontSize: 10.5, color: MUTE, lineHeight: 1.25 }}>{sub}</div>}
+      <div
+        data-testid={hi ? "g702-sum-row-current-due" : undefined}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px", minHeight: 28, background: hi ? `${GOLD}22` : undefined, boxSizing: "border-box" }}
+      >
+        <div style={{ width: 22, fontSize: 13, fontWeight: hi ? 700 : 400, lineHeight: 1.35 }}>{no}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: hi ? 700 : 400, lineHeight: 1.35 }}>{label}</div>
+          {sub && <div style={{ fontSize: 10.5, color: MUTE, lineHeight: 1.3 }}>{sub}</div>}
         </div>
-        <div data-money-cell style={{ width: 150, textAlign: "right", ...NUM, fontSize: 13.5, fontWeight: hi ? 700 : 400, overflow: "hidden" }}>
+        <div
+          data-money-cell
+          data-g702-sum-amount
+          style={{
+            width: 158,
+            flexShrink: 0,
+            textAlign: "right",
+            ...NUM,
+            fontSize: 13.5,
+            fontWeight: hi ? 700 : 400,
+            lineHeight: 1.35,
+            padding: "4px 6px",
+            minHeight: 24,
+            boxSizing: "border-box",
+            overflow: "visible",
+          }}
+        >
           {money(value)}
         </div>
       </div>
@@ -331,21 +351,21 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
 
               {/* 5 · Retainage — blended per-line roll-up. 5a/5b amounts ride an
                   intermediate column (Procore); the Total aligns to the main column. */}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 4px" }}>
-                <div style={{ width: 20, fontSize: 13 }}>5.</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, lineHeight: 1.3 }}>Retainage:</div>
-                  <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
-                    <div style={{ flex: 1, fontSize: 12 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div data-money-cell style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, ...NUM, overflow: "hidden" }}>{money(g.retainage_total)}</div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "5px 6px" }}>
+                <div style={{ width: 22, fontSize: 13, lineHeight: 1.35 }}>5.</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.35 }}>Retainage:</div>
+                  <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
+                    <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
+                    <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(g.retainage_total)}</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", marginLeft: 14, marginTop: 4 }}>
-                    <div style={{ flex: 1, fontSize: 12 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
-                    <div data-money-cell style={{ width: 110, marginRight: 88, textAlign: "right", fontSize: 12.5, ...NUM, overflow: "hidden" }}>{money(0)}</div>
+                  <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
+                    <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
+                    <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(0)}</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", marginTop: 6 }}>
-                    <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.3 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div data-money-cell style={{ width: 150, textAlign: "right", fontSize: 13, ...NUM, overflow: "hidden", borderTop: `1px solid ${INK}`, paddingTop: 5 }}>{money(g.retainage_total)}</div>
+                  <div style={{ display: "flex", alignItems: "center", marginTop: 8, minHeight: 28 }}>
+                    <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.35 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
+                    <div data-money-cell style={{ width: 158, textAlign: "right", fontSize: 13, lineHeight: 1.35, padding: "4px 6px", ...NUM, overflow: "visible", borderTop: `1px solid ${INK}`, boxSizing: "border-box", minHeight: 24 }}>{money(g.retainage_total)}</div>
                   </div>
                 </div>
               </div>

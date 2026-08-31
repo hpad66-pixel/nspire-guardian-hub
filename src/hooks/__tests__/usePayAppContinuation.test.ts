@@ -3,6 +3,7 @@
  * continuation reader/editor on sov_line_items / pay_app_line_progress.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { waitFor } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", async () => {
   const m = await import("@/test/fixtures/supabase");
@@ -197,5 +198,62 @@ describe("usePayAppContinuation", () => {
     const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
     await result.current.setLineRetainage.mutateAsync({ sovLineItemId: "l1", exempt: true });
     expect((sovBuilder.update as any).mock.calls.some((c: any[]) => c[0].retainage_pct === 0)).toBe(true);
+  });
+
+  it("serves a reconciled draft snapshot for G702 instead of live SOV placeholders", async () => {
+    const snapshot = {
+      original_contract_sum: 523061,
+      net_change_orders: 430289.35,
+      contract_sum_to_date: 953350.35,
+      completed_stored_to_date: 921212.36,
+      retainage_total: 34008.16,
+      total_earned_less_retainage: 887204.2,
+      less_previous_certificates: 742871.38,
+      current_payment_due: 144332.82,
+      balance_to_finish: 66146.15,
+      use_reconciled_snapshot: true,
+      reconciliation_note: "FINAL invoice",
+    };
+    __mock.from.mockImplementation(((t: string) => {
+      if (t === "prime_contract_pay_apps") {
+        return makeBuilder({
+          data: {
+            id: "pa5",
+            prime_contract_id: "pc1",
+            pay_app_no: 5,
+            status: "draft",
+            pay_app_data: snapshot,
+          },
+          error: null,
+        });
+      }
+      if (t === "prime_contracts") return makeBuilder({ data: { original_value: 523061, retainage_pct: 10 }, error: null });
+      // Live SOV still has the old placeholder math — snapshot must win.
+      if (t === "sov_line_items") {
+        return makeBuilder({
+          data: [{
+            id: "l1", item_no: "1", kind: "base", description: "placeholder", unit: "LS",
+            scheduled_qty: 1, unit_price: 600000, scheduled_value: 600000, sort_order: 1,
+          }],
+          error: null,
+        });
+      }
+      if (t === "pay_app_line_progress") {
+        return makeBuilder({
+          data: [{
+            sov_line_item_id: "l1", qty_to_date: 1, value_to_date: 600000, pct_complete: 100,
+            qty_this_period: 0, value_this_period: 0, retainage: 60000,
+          }],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: [], error: null });
+    }) as any);
+
+    const { result } = renderHookWithClient(() => usePayAppContinuation("pa5"));
+    await waitFor(() => expect(result.current.detail.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.g702.current_payment_due).toBe(144332.82));
+    expect(result.current.g702.less_previous_certificates).toBe(742871.38);
+    expect(result.current.g702.completed_stored_to_date).toBe(921212.36);
   });
 });

@@ -57,6 +57,12 @@ export function buildPayAppSpec(
     contractDate: (contract as any).contract_date ?? (contract as any).start_date ?? null,
     contractFor: (contract as any).scope_of_work ?? (contract as any).description ?? contract.title,
     engineer: (contract as any).engineer_name ?? null,
+    // Prefer an explicit reconciled Amount Certified when the snapshot carries one
+    // (final invoice after interim cash); otherwise the document falls back to Line 8.
+    amountCertified:
+      pa?.pay_app_data?.amount_certified != null
+        ? Number(pa.pay_app_data.amount_certified)
+        : g702.current_payment_due,
     g702,
     lines: lines.map((l) => ({
       item_no: l.item_no,
