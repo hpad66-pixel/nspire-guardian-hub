@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  FileBadge2,
   FileSignature,
   FileText,
   FolderOpen,
@@ -88,6 +89,7 @@ function LatestUpdate({ projectId }: { projectId: string | null }) {
 const resources = [
   { to: "/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
   { to: "/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
+  { to: "/permits", label: "Permits", detail: "Closeout readiness and city status", icon: FileBadge2 },
   { to: "/reports", label: "Reports", detail: "Owner-ready project records", icon: BarChart3 },
   { to: "/documents", label: "Documents", detail: "Approved files in one place", icon: FolderOpen },
 ];

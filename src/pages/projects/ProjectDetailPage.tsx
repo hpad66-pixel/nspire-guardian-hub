@@ -82,6 +82,7 @@ import { ProcurementTab } from '@/components/projects/ProcurementTab';
 import { RiskRadarPanel } from '@/components/projects/RiskRadarPanel';
 import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
+import { ProjectPermitsTab } from '@/components/projects/permits/ProjectPermitsTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
 import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
@@ -1005,6 +1006,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
+                <TabsContent value="permits" className="mt-0"><ProjectPermitsTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
                 <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
@@ -1286,6 +1288,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
+              <TabsContent value="permits"><ProjectPermitsTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
               <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>

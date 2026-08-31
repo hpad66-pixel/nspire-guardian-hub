@@ -10,7 +10,7 @@ import {
   LayoutDashboard, FolderTree, Users, ListTree, CalendarDays, ClipboardList,
   Images, Wallet, FileSignature, HelpCircle, Package, ListChecks, CheckSquare,
   TrendingUp, ShoppingCart, ShieldCheck, FlaskConical, MessageSquareText, Mail,
-  Award, Receipt, Send, Megaphone, Brain, Settings2,
+  Award, Receipt, Send, Megaphone, Brain, Settings2, FileBadge2,
 } from 'lucide-react';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import {
@@ -89,6 +89,7 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'procurement', label: 'Procurement', shortLabel: 'Procure', icon: ShoppingCart, group: 'field' },
   { value: 'safety', label: 'Safety', shortLabel: 'Safety', icon: ShieldCheck, group: 'field' },
   { value: 'env-compliance', label: 'Environmental', shortLabel: 'Env', icon: FlaskConical, group: 'field' },
+  { value: 'permits', label: 'Permits', shortLabel: 'Permits', icon: FileBadge2, group: 'field' },
   { value: 'closeout', label: 'Closeout', shortLabel: 'Close', icon: Award, group: 'field' },
   { value: 'project-log', label: 'Project Log', shortLabel: 'Log', icon: ClipboardList, group: 'field' },
   { value: 'meetings', label: 'Meetings', shortLabel: 'Meetings', icon: MessageSquareText, group: 'documents' },

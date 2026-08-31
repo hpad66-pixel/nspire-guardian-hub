@@ -17,6 +17,7 @@ export type ProjectModuleSlug =
   | 'subprojects'
   | 'directory'
   | 'env-compliance'
+  | 'permits'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -60,7 +61,7 @@ export interface ProjectModuleDef {
   /** Only workspace/project admins see this nav item. */
   adminOnly?: boolean;
   /** Surfaces on the authenticated owner portal when enabled. */
-  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | null;
+  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | null;
 }
 
 // The admin panel renders from this catalog. Order + grouping drive the panel
@@ -81,6 +82,13 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'procurement', label: 'Procurement', description: 'Procurement and buyout tracking', group: 'field' },
   { slug: 'safety', label: 'Safety', description: 'Safety observations and incidents', group: 'field' },
   { slug: 'env-compliance', label: 'Environmental compliance', description: 'Sampling, exceedances, regulatory correspondence', group: 'field' },
+  {
+    slug: 'permits',
+    label: 'Permits & compliance',
+    description: 'Construction / closeout permit register, city confirmations, owner readiness score',
+    group: 'field',
+    portalSlug: 'permits',
+  },
   { slug: 'closeout', label: 'Closeout', description: 'Project closeout package', group: 'field' },
 
   { slug: 'financials', label: 'Financials', description: 'Pay apps (construction) or client invoices (consulting)', group: 'commercial' },
@@ -163,6 +171,7 @@ export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'progress',
   'procurement',
   'safety',
+  'permits',
   'closeout',
 ]);
 
