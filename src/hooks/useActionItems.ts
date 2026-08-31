@@ -11,6 +11,12 @@ export interface ActionItemProfile {
   avatar_url: string | null;
 }
 
+export interface ActionItemContact {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
 export interface ActionItem {
   id: string;
   project_id: string;
@@ -19,6 +25,9 @@ export interface ActionItem {
   status: 'todo' | 'in_progress' | 'in_review' | 'done' | 'cancelled';
   priority: 'urgent' | 'high' | 'medium' | 'low';
   assigned_to: string | null;
+  assigned_contact_id?: string | null;
+  access_token?: string | null;
+  assignment_email_sent_at?: string | null;
   created_by: string;
   due_date: string | null;
   completed_at: string | null;
@@ -35,6 +44,7 @@ export interface ActionItem {
   updated_at: string;
   // Joined
   assignee?: ActionItemProfile | null;
+  assignedContact?: ActionItemContact | null;
   creator?: ActionItemProfile | null;
   project?: { id: string; name: string } | null;
   comment_count?: number;
@@ -105,6 +115,22 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
     (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
   }
 
+  const contactIds = [...new Set(items.map((i: any) => i.assigned_contact_id).filter(Boolean))] as string[];
+  const contactMap: Record<string, ActionItemContact> = {};
+  if (contactIds.length > 0) {
+    const { data: contacts } = await supabase
+      .from('crm_contacts')
+      .select('id, first_name, last_name, email')
+      .in('id', contactIds);
+    (contacts || []).forEach((c: any) => {
+      contactMap[c.id] = {
+        id: c.id,
+        full_name: [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || null,
+        email: c.email,
+      };
+    });
+  }
+
   // Count comments per item
   const commentCounts: Record<string, number> = {};
   if (items.length > 0) {
@@ -123,6 +149,9 @@ async function fetchItemsForProject(projectId: string): Promise<ActionItem[]> {
     status: item.status as ActionItem['status'],
     priority: item.priority as ActionItem['priority'],
     assignee: item.assigned_to ? profileMap[item.assigned_to] ?? null : null,
+    assignedContact: (item as any).assigned_contact_id
+      ? contactMap[(item as any).assigned_contact_id] ?? null
+      : null,
     creator: item.created_by ? profileMap[item.created_by] ?? null : null,
     comment_count: commentCounts[item.id] || 0,
     watchers: ((watcherRows || []) as ActionItemWatcherRow[])
@@ -382,6 +411,7 @@ export function useCreateActionItem(projectId: string) {
       description?: string;
       priority?: ActionItem['priority'];
       assigned_to?: string | null;
+      assigned_contact_id?: string | null;
       due_date?: string | null;
       tags?: string[];
       linked_entity_type?: string | null;
@@ -403,7 +433,7 @@ export function useCreateActionItem(projectId: string) {
         title: payload.title,
         description: payload.description || null,
         priority: payload.priority || 'medium',
-        assigned_to: payload.assigned_to || null,
+        assigned_to: payload.assigned_contact_id ? null : (payload.assigned_to || null),
         due_date: payload.due_date || null,
         tags: payload.tags || [],
         linked_entity_type: payload.linked_entity_type || null,
@@ -411,6 +441,7 @@ export function useCreateActionItem(projectId: string) {
       };
       if (payload.scope_id != null) row.scope_id = payload.scope_id;
       if (payload.meeting_id != null) row.meeting_id = payload.meeting_id;
+      if (payload.assigned_contact_id != null) row.assigned_contact_id = payload.assigned_contact_id;
 
       const { data, error } = await supabase
         .from('project_action_items')
@@ -437,6 +468,7 @@ export function useCreateActionItem(projectId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ITEMS_QUERY_KEY(projectId) });
       qc.invalidateQueries({ queryKey: MY_ITEMS_QUERY_KEY });
+      toast.success('Instruction assigned — branded email sent when an email is on file.');
     },
     onError: (e: Error) => toast.error(`Couldn't add action item: ${e.message}`),
   });
@@ -453,19 +485,27 @@ export function useUpdateActionItem(projectId: string) {
       status?: ActionItem['status'];
       priority?: ActionItem['priority'];
       assigned_to?: string | null;
+      assigned_contact_id?: string | null;
       due_date?: string | null;
       tags?: string[];
       completed_at?: string | null;
       scope_id?: string | null;
       meeting_id?: string | null;
       previous_assigned_to?: string | null;
+      previous_assigned_contact_id?: string | null;
     }) => {
-      const { id, previous_assigned_to, ...updates } = payload;
+      const { id, previous_assigned_to, previous_assigned_contact_id, ...updates } = payload;
       if (updates.status === 'done' && !updates.completed_at) {
         updates.completed_at = new Date().toISOString();
       }
       if (updates.status && updates.status !== 'done') {
         updates.completed_at = null;
+      }
+      // Mutual exclusivity: assigning a CRM contact clears the internal user owner.
+      if (updates.assigned_contact_id) {
+        updates.assigned_to = null;
+      } else if (updates.assigned_to) {
+        (updates as any).assigned_contact_id = null;
       }
 
       const { data, error } = await supabase
@@ -477,7 +517,10 @@ export function useUpdateActionItem(projectId: string) {
 
       if (error) throw error;
 
-      if (updates.assigned_to !== undefined && updates.assigned_to !== previous_assigned_to) void notifyActionItem(id, 'assignment');
+      const assigneeChanged =
+        (updates.assigned_to !== undefined && updates.assigned_to !== previous_assigned_to)
+        || (updates.assigned_contact_id !== undefined && updates.assigned_contact_id !== previous_assigned_contact_id);
+      if (assigneeChanged) void notifyActionItem(id, 'assignment');
       else if (updates.status !== undefined) void notifyActionItem(id, 'status');
 
       return data;

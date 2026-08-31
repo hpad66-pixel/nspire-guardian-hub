@@ -168,6 +168,8 @@ const CounterSignChangeOrderPage = lazy(() => import('./pages/sign/CounterSignCh
 const SignProposalPage = lazy(() => import('./pages/sign/SignProposalPage'));
 const SignFinancialProposalPage = lazy(() => import('./pages/sign/SignFinancialProposalPage'));
 const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'));
+const SignAuthoredDocumentPage = lazy(() => import('./pages/sign/SignAuthoredDocumentPage'));
+const ActionItemPublicPage = lazy(() => import('./pages/action/ActionItemPublicPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
 const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage'));
@@ -270,6 +272,8 @@ const App = () => (
                      <Route path="/sign/proposal/:token" element={<SignProposalPage />} />
                      <Route path="/sign/financial-proposal/:token" element={<SignFinancialProposalPage />} />
                      <Route path="/sign/lien/:token" element={<SignLienWaiverPage />} />
+                     <Route path="/sign/document/:token" element={<SignAuthoredDocumentPage />} />
+                     <Route path="/action/:token" element={<ActionItemPublicPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      <Route path="/client/:token" element={<ClientPortalPage />} />

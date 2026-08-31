@@ -223,7 +223,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
           <MessageSquareText className="h-4 w-4" /> Texts {smsMessages.length ? <span className="text-xs text-muted-foreground">{smsMessages.length}</span> : null}
         </button>
         <button onClick={() => setView("documents")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${view === "documents" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}>
-          <FileText className="h-4 w-4" /> Documents
+          <FileText className="h-4 w-4" /> Doc Studio
         </button>
       </div>
 

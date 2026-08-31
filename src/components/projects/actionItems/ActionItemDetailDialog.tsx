@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Send, Printer, Mail, Loader2, Link2, Sparkles, Trello as TrelloIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,6 +18,7 @@ import { useCorrespondenceThreadById } from '@/hooks/useCorrespondenceThreads';
 import { useTaskUpdateDraft } from '@/hooks/useTaskUpdateDraft';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 import { usePushToTrello, useTrelloStatus } from '@/hooks/useTrello';
+import { useProjectContacts } from '@/hooks/useProjectPeople';
 import type { ProjectScope } from '@/hooks/useProjectScopes';
 import type { ProjectTeamMember } from '@/hooks/useProjectTeam';
 import { buildTaskHtml, printTaskHtml } from '@/lib/actionItems/taskDocument';
@@ -44,6 +45,7 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   const { data: comments } = useActionItemComments(open && item ? item.id : null);
   const createComment = useCreateActionItemComment();
   const setWatchers = useSetActionItemWatchers(projectId);
+  const { data: contacts = [] } = useProjectContacts(projectId);
   const sendEmail = useSendEmail();
   const projectEmails = useProjectEmails(projectId);
   const linkedThread = useCorrespondenceThreadById(
@@ -64,7 +66,7 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   useEffect(() => {
     if (item) {
       setDesc(item.description ?? '');
-      setEmailTo(item.assignee?.email ?? '');
+      setEmailTo(item.assignedContact?.email ?? item.assignee?.email ?? '');
       setEmailNote('');
       setEmailOpen(false);
       setWatcherIds((item.watchers ?? []).map((watcher) => watcher.user_id));
@@ -74,7 +76,10 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
   if (!item) return null;
 
   const scopeName = scopes.find((s) => s.id === item.scope_id)?.title ?? null;
-  const assigneeName = item.assignee?.full_name || item.assignee?.email || null;
+  const assigneeName = item.assignedContact?.full_name || item.assignedContact?.email || item.assignee?.full_name || item.assignee?.email || null;
+  const ownerValue = item.assigned_contact_id
+    ? `contact:${item.assigned_contact_id}`
+    : (item.assigned_to ?? UNASSIGNED);
 
   const taskHtml = (note?: string) => buildTaskHtml({
     title: item.title, description: item.description, status: item.status, priority: item.priority,
@@ -164,11 +169,37 @@ export function ActionItemDetailDialog({ open, onOpenChange, projectId, item, sc
             </div>
             <div className="grid gap-1.5">
               <Label className="text-xs">Owner</Label>
-              <Select value={item.assigned_to ?? UNASSIGNED} onValueChange={(v) => patch({ assigned_to: v === UNASSIGNED ? null : v })}>
+              <Select
+                value={ownerValue}
+                onValueChange={(v) => {
+                  if (v === UNASSIGNED) {
+                    patch({ assigned_to: null, assigned_contact_id: null, previous_assigned_contact_id: item.assigned_contact_id ?? null });
+                  } else if (v.startsWith('contact:')) {
+                    patch({ assigned_contact_id: v.slice('contact:'.length), assigned_to: null, previous_assigned_contact_id: item.assigned_contact_id ?? null });
+                  } else {
+                    patch({ assigned_to: v, assigned_contact_id: null, previous_assigned_contact_id: item.assigned_contact_id ?? null });
+                  }
+                }}
+              >
                 <SelectTrigger className="h-9"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {team.map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.profile?.full_name || m.profile?.email || 'Team member'}</SelectItem>)}
+                  {team.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Internal team</SelectLabel>
+                      {team.map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.profile?.full_name || m.profile?.email || 'Team member'}</SelectItem>)}
+                    </SelectGroup>
+                  )}
+                  {contacts.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Project contacts</SelectLabel>
+                      {contacts.map((c) => (
+                        <SelectItem key={c.contactId} value={`contact:${c.contactId}`} disabled={!c.email}>
+                          {c.name}{!c.email ? ' · no email' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
             </div>

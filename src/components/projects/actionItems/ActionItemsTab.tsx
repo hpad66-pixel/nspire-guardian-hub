@@ -56,9 +56,12 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
   }, [items, searchParams, setSearchParams]);
 
   const scopeName = (id: string | null) => scopes?.find((s) => s.id === id)?.title ?? null;
-  const ownerName = (id: string | null) => {
-    const m = (team ?? []).find((t) => t.user_id === id);
-    return m?.profile?.full_name || m?.profile?.email || null;
+  const ownerName = (item: ActionItem) => {
+    if (item.assignedContact?.full_name || item.assignedContact?.email) {
+      return item.assignedContact.full_name || item.assignedContact.email || null;
+    }
+    const m = (team ?? []).find((t) => t.user_id === item.assigned_to);
+    return m?.profile?.full_name || m?.profile?.email || item.assignee?.full_name || item.assignee?.email || null;
   };
 
   const filtered = useMemo(() => {
@@ -172,7 +175,7 @@ export function ActionItemsTab({ projectId, projectName }: { projectId: string; 
                           {(item.watchers?.length ?? 0) > 0 && <span className="inline-flex items-center gap-0.5" title={`Copied: ${item.watchers!.map((watcher) => watcher.full_name || watcher.email).join(', ')}`}><Users className="h-3 w-3" />CC {item.watchers!.length}</span>}
                         </div>
                       </div>
-                      {ownerName(item.assigned_to) && <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">{ownerName(item.assigned_to)}</span>}
+                      {ownerName(item) && <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">{ownerName(item)}</span>}
                       {item.due_date && <span className={cn('text-xs whitespace-nowrap', BUCKET_TONE[bucket])}>{format(new Date(item.due_date + 'T00:00:00'), 'MMM d')}</span>}
                     </div>
                   );

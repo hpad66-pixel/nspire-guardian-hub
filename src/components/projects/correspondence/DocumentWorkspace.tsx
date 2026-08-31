@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Trash2, Check,
   Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail, History, RotateCcw, X, Sparkles,
+  PenLine, Send, FileCheck2, Inbox,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,10 @@ import { parseUpload, htmlToText, ACCEPTED_UPLOAD } from "@/lib/docs/parseUpload
 import { fileToBase64, downloadBase64, renderDocxInto, pdfObjectUrl, downloadHtmlAsPdf, htmlToPdfAttachment, MIME, extFor, filenameFor } from "@/lib/docs/render";
 import { EmailDocumentDialog, type DocAttachment } from "./EmailDocumentDialog";
 import { DocumentTasksPanel } from "./DocumentTasksPanel";
+import { SignAuthoredDocumentDialog } from "./SignAuthoredDocumentDialog";
+import { SendAuthoredDocumentDialog } from "./SendAuthoredDocumentDialog";
+import { DOC_WORKFLOW_META, DOC_WORKFLOW_FILTERS, resolveDocWorkflow, type DocWorkflowStatus } from "@/lib/correspondence/docWorkflow";
+import { cn } from "@/lib/utils";
 
 const fmtAgo = (d: string): string => {
   const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000);
@@ -44,10 +49,21 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
   const docs = useAuthoredDocuments(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [filter, setFilter] = useState<DocWorkflowStatus | "all">("all");
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const list = (docs.data ?? []) as AuthoredDocument[];
   const selected = list.find((d) => d.id === selectedId) ?? null;
+  const filtered = filter === "all" ? list : list.filter((d) => resolveDocWorkflow(d) === filter);
+  const hoverDoc = list.find((d) => d.id === hoverId) ?? null;
+
+  const counts = list.reduce((acc, d) => {
+    const w = resolveDocWorkflow(d);
+    acc[w] = (acc[w] || 0) + 1;
+    acc.all += 1;
+    return acc;
+  }, { all: 0, uploaded: 0, drafting: 0, signed: 0, sent: 0, executed: 0 } as Record<string, number>);
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,6 +93,13 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
         edited_html: editedHtml,
         mime_type: mime,
       });
+      // Mark workflow as uploaded / drafting depending on type
+      try {
+        await docs.update.mutateAsync({
+          id: doc.id,
+          workflow_status: mime === MIME.pdf ? "uploaded" : "drafting",
+        } as any);
+      } catch { /* optional until migration lands */ }
       toast.success(`Imported “${stripExt(file.name)}.”`);
       setSelectedId(doc.id);
     } catch (err: any) {
@@ -88,6 +111,7 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
 
   const newBlank = async () => {
     const doc = await docs.create.mutateAsync({ title: "Untitled document", content_html: "<p></p>", source: "blank" });
+    try { await docs.update.mutateAsync({ id: doc.id, workflow_status: "drafting" } as any); } catch { /* optional */ }
     setSelectedId(doc.id);
   };
 
@@ -98,8 +122,12 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
       <input ref={fileRef} type="file" accept={ACCEPTED_UPLOAD} className="hidden" onChange={onUpload} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-[var(--apas-sapphire)]" /> Documents</h3>
-          <p className="text-sm text-muted-foreground">Upload a Word letter, edit it on its real letterhead, save, finalize, and email. No AI.</p>
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-[var(--apas-sapphire)]" /> Correspondence Doc Studio
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Upload Word or PDF · edit in place · e-sign · send to the client. Track uploaded, signed, and sent on the sidebar.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
@@ -114,34 +142,143 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
       {docs.isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-8 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
       ) : list.length === 0 ? (
-        <Card><CardContent className="p-8 text-center">
-          <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-          <div className="font-medium">No documents yet</div>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">Upload a Word letter — edit it on its real formatting, finalize, and email it straight from here.</p>
-        </CardContent></Card>
+        <Card className="border-dashed overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-gradient-to-br from-[#0D3B30] via-[#1A1714] to-[#1A1714] px-8 py-10 text-[#FAF8F4]">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#C4A35A]">Project correspondence</div>
+              <h4 className="mt-2 font-display text-2xl font-bold">A living document trail for every letter you send</h4>
+              <p className="mt-2 max-w-xl text-sm text-[#D9D4CB]">
+                Upload a Word letter or PDF, edit it here, electronically sign it, and send it to the client the same way you send change orders and proposals.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button size="sm" className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-4 w-4 mr-1.5" /> Upload Word / PDF
+                </Button>
+                <Button size="sm" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10" onClick={newBlank}>
+                  <Plus className="h-4 w-4 mr-1.5" /> Start blank letter
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-2">
-          {list.map((d) => (
-            <Card key={d.id} className="hover:bg-accent/30 transition-colors cursor-pointer" onClick={() => setSelectedId(d.id)}>
-              <CardContent className="p-3.5 flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]"><FileText className="h-4 w-4" /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{d.title || "Untitled document"}</span>
-                    {d.status === "final"
-                      ? <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Final</Badge>
-                      : <Badge variant="outline" className="text-[10px]">Draft</Badge>}
-                    {d.has_original && <Badge variant="outline" className="text-[10px]">{extFor(d.mime_type).toUpperCase()}</Badge>}
-                    <span className="text-[10px] text-muted-foreground">v{d.version}</span>
+        <div className="grid gap-3 lg:grid-cols-[200px_minmax(0,1fr)_240px]">
+          {/* Left status sidebar */}
+          <aside className="rounded-xl border bg-card p-2.5 space-y-1 h-fit lg:sticky lg:top-2">
+            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trail</div>
+            {DOC_WORKFLOW_FILTERS.map((key) => {
+              const meta = key === "all"
+                ? { label: "All documents", tone: "bg-muted text-foreground", short: "All" }
+                : DOC_WORKFLOW_META[key];
+              const Icon = key === "all" ? Inbox
+                : key === "uploaded" ? Upload
+                  : key === "signed" ? PenLine
+                    : key === "sent" ? Send
+                      : key === "executed" ? FileCheck2
+                        : FileText;
+              const active = filter === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={cn(
+                    "w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                    active ? "bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] font-semibold" : "hover:bg-muted/70 text-foreground",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{meta.label}</span>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">{counts[key] || 0}</span>
+                </button>
+              );
+            })}
+          </aside>
+
+          {/* Center document list */}
+          <div className="space-y-2 min-w-0">
+            {filtered.length === 0 ? (
+              <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No documents in this status yet.</CardContent></Card>
+            ) : filtered.map((d) => {
+              const workflow = resolveDocWorkflow(d);
+              const meta = DOC_WORKFLOW_META[workflow];
+              return (
+                <Card
+                  key={d.id}
+                  className="hover:bg-accent/30 transition-colors cursor-pointer group border-l-4"
+                  style={{ borderLeftColor: workflow === "sent" ? "#1D6FE8" : workflow === "signed" ? "#7C3AED" : workflow === "executed" ? "#059669" : workflow === "uploaded" ? "#0284C7" : "#C4A35A" }}
+                  onClick={() => setSelectedId(d.id)}
+                  onMouseEnter={() => setHoverId(d.id)}
+                  onFocus={() => setHoverId(d.id)}
+                >
+                  <CardContent className="p-3.5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold truncate">{d.title || "Untitled document"}</span>
+                        <Badge variant="outline" className={cn("text-[10px]", meta.tone)}>{meta.short}</Badge>
+                        {d.has_original && <Badge variant="outline" className="text-[10px]">{extFor(d.mime_type).toUpperCase()}</Badge>}
+                        <span className="text-[10px] text-muted-foreground">v{d.version}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {d.source === "upload_pdf" ? "From PDF" : d.source === "upload_docx" ? "From Word" : d.source === "ai_draft" ? "AI draft" : "Blank"}
+                        {d.sent_to_email ? ` · sent to ${d.sent_to_email}` : ""}
+                        {d.contractor_signed_name ? ` · signed by ${d.contractor_signed_name}` : ""}
+                        {" · "}updated {fmtAgo(d.updated_at)}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => { e.stopPropagation(); setSelectedId(d.id); }}>
+                      Open
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Right hover-preview rail */}
+          <aside className="hidden lg:block rounded-xl border bg-gradient-to-b from-[#FAF8F4] to-card p-3 h-fit sticky top-2 min-h-[280px]">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-2">Preview</div>
+            {hoverDoc ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-white p-3 shadow-sm">
+                  <div className="flex items-start gap-2">
+                    <FileText className="h-4 w-4 mt-0.5 text-[var(--apas-sapphire)]" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm leading-snug">{hoverDoc.title}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        {hoverDoc.source_file_name || (hoverDoc.source === "blank" ? "Blank letter" : "Document")}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {d.source === "upload_pdf" ? "From PDF" : d.source === "upload_docx" ? "From Word" : d.source === "ai_draft" ? "AI draft" : "Blank"}
-                    {d.source_file_name ? ` · ${d.source_file_name}` : ""} · updated {fmtAgo(d.updated_at)}
-                  </div>
+                  <Badge variant="outline" className={cn("mt-3 text-[10px]", DOC_WORKFLOW_META[resolveDocWorkflow(hoverDoc)].tone)}>
+                    {DOC_WORKFLOW_META[resolveDocWorkflow(hoverDoc)].label}
+                  </Badge>
+                  <p className="mt-2 text-xs text-muted-foreground line-clamp-4">
+                    {(hoverDoc.content_text || "").trim() || DOC_WORKFLOW_META[resolveDocWorkflow(hoverDoc)].description}
+                  </p>
+                  {hoverDoc.sent_to_client_at && (
+                    <p className="mt-2 text-[11px] text-[var(--apas-sapphire)]">
+                      Sent {fmtAgo(hoverDoc.sent_to_client_at)}{hoverDoc.sent_to_email ? ` → ${hoverDoc.sent_to_email}` : ""}
+                    </p>
+                  )}
+                  {hoverDoc.client_signed_at && (
+                    <p className="mt-1 text-[11px] text-emerald-700">
+                      Client signed{hoverDoc.client_signed_name ? `: ${hoverDoc.client_signed_name}` : ""}
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <Button size="sm" className="w-full" onClick={() => setSelectedId(hoverDoc.id)}>Open in editor</Button>
+              </div>
+            ) : (
+              <div className="flex h-[220px] flex-col items-center justify-center text-center px-3">
+                <Eye className="h-6 w-6 text-muted-foreground/50 mb-2" />
+                <p className="text-xs text-muted-foreground">Hover a document to preview what it is, its status, and who it was sent to.</p>
+              </div>
+            )}
+          </aside>
         </div>
       )}
     </div>
@@ -155,7 +292,12 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailAtt, setEmailAtt] = useState<DocAttachment | null>(null);
   const [preparing, setPreparing] = useState(false);
-  const isFinal = doc.status === "final";
+  const [signOpen, setSignOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const isFinal = doc.status === "final" || Boolean(doc.contractor_signed_at);
+  const workflow = resolveDocWorkflow(doc);
+  const workflowMeta = DOC_WORKFLOW_META[workflow];
+  const isSigned = Boolean(doc.contractor_signed_at);
 
   useEffect(() => {
     if (!doc.has_original) { setPayload({ b64: null, mime: doc.mime_type || "", edited: doc.content_html }); return; }
@@ -179,7 +321,7 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
 
   // Prepare a pixel-perfect PDF of the current content, then open the mailer.
   const openEmail = async () => {
-    if (!isFinal) { toast.error("Finalize the document before emailing it — this locks the exact version being sent."); return; }
+    if (!isFinal) { toast.error("Finalize or sign the document before emailing it."); return; }
     setPreparing(true);
     try {
       const html = payload?.edited ?? doc.content_html;
@@ -193,38 +335,66 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
   };
 
   const isDocx = doc.has_original ? payload?.mime === MIME.docx : true;
+  const isPdf = doc.has_original && payload?.mime === MIME.pdf;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <span className="font-semibold truncate max-w-[30%]">{doc.title}</span>
-        {isFinal
-          ? <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Final</Badge>
-          : <Badge variant="outline" className="text-[10px]">Draft v{doc.version}</Badge>}
+      <div className="rounded-xl border bg-gradient-to-r from-[#0D3B30]/95 to-[#1A1714] px-4 py-3 text-[#FAF8F4] flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={onBack} className="text-[#FAF8F4] hover:bg-white/10 hover:text-white"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+        <span className="font-semibold truncate max-w-[40%]">{doc.title}</span>
+        <Badge variant="outline" className={cn("text-[10px] border-white/20", workflowMeta.tone)}>{workflowMeta.label}</Badge>
+        {doc.contractor_signed_name && <span className="text-[11px] text-[#D9D4CB]">Signed by {doc.contractor_signed_name}</span>}
         <div className="flex flex-wrap gap-2 ml-auto">
           {doc.has_original && (
-            <Button variant="outline" size="sm" onClick={() => payload?.b64 && downloadBase64(payload.b64, payload.mime, filenameFor(`${doc.title} (source)`, payload.mime))} disabled={!payload?.b64} title="Download the untouched uploaded file">
+            <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:bg-white/10" onClick={() => payload?.b64 && downloadBase64(payload.b64, payload.mime, filenameFor(`${doc.title} (source)`, payload.mime))} disabled={!payload?.b64} title="Download the untouched uploaded file">
               <FileDown className="h-4 w-4 mr-1" /> Source
             </Button>
           )}
           <VersionHistory documentId={doc.id} onRestored={(html) => setPayload((p) => (p ? { ...p, edited: html } : p))} />
-          <Button variant="outline" size="sm" onClick={openEmail} disabled={preparing || !isFinal} title={isFinal ? "Email the finalized letter, attached as a pixel-perfect PDF" : "Finalize first — sending is locked to a finalized version"}>
+          {!isSigned && (
+            <Button size="sm" className="bg-[#C4A35A] text-[#1A1714] hover:bg-[#C4A35A]/90" onClick={() => setSignOpen(true)}>
+              <PenLine className="h-4 w-4 mr-1" /> E-sign
+            </Button>
+          )}
+          {isSigned && (
+            <Button size="sm" className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => setSendOpen(true)}>
+              <Send className="h-4 w-4 mr-1" /> {doc.sent_to_client_at ? "Re-send" : "Send to client"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:bg-white/10" onClick={openEmail} disabled={preparing || !isFinal} title={isFinal ? "Email without client signature request" : "Finalize or sign first"}>
             {preparing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />} Email
           </Button>
-          {isFinal
-            ? <Button variant="outline" size="sm" onClick={reopen}><Unlock className="h-4 w-4 mr-1" /> Reopen</Button>
-            : <Button size="sm" onClick={finalize} disabled={docs.setFinalized.isPending}><Lock className="h-4 w-4 mr-1" /> Finalize</Button>}
-          <Button variant="ghost" size="sm" onClick={del} className="text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+          {!isSigned && (isFinal
+            ? <Button variant="outline" size="sm" className="border-white/25 bg-white/5 text-white hover:bg-white/10" onClick={reopen}><Unlock className="h-4 w-4 mr-1" /> Reopen</Button>
+            : <Button size="sm" variant="secondary" onClick={finalize} disabled={docs.setFinalized.isPending}><Lock className="h-4 w-4 mr-1" /> Finalize</Button>)}
+          <Button variant="ghost" size="sm" onClick={del} className="text-rose-300 hover:text-rose-200 hover:bg-white/10"><Trash2 className="h-4 w-4" /></Button>
         </div>
       </div>
+
+      {isPdf && !isSigned && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 flex items-start gap-2">
+          <PenLine className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>This is a PDF. Electronically sign it here, then send it to the client with a signature link — same flow as change orders.</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-10 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading document…</div>
       ) : isDocx && (payload?.edited || payload?.b64) ? (
         <FormattedDocEditor doc={doc} docs={docs} projectName={projectName} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
-      ) : doc.has_original && payload?.mime === MIME.pdf && payload?.b64 ? (
-        <PdfView b64={payload.b64} />
+      ) : isPdf && payload?.b64 ? (
+        <div className="space-y-3">
+          {doc.contractor_signature_data && (
+            <Card><CardContent className="p-3 flex items-center gap-3">
+              <img src={doc.contractor_signature_data} alt="Signature" className="h-12 object-contain" />
+              <div className="text-sm">
+                <div className="font-medium">Signed by {doc.contractor_signed_name}</div>
+                <div className="text-xs text-muted-foreground">{doc.contractor_signed_at ? new Date(doc.contractor_signed_at).toLocaleString() : ""}</div>
+              </div>
+            </CardContent></Card>
+          )}
+          <PdfView b64={payload.b64} />
+        </div>
       ) : (
         <BlankEditor doc={doc} docs={docs} projectName={projectName} locked={isFinal} />
       )}
@@ -234,6 +404,22 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
       </div>
 
       <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
+      <SignAuthoredDocumentDialog
+        open={signOpen}
+        onOpenChange={setSignOpen}
+        doc={doc}
+        onSign={async ({ name, signatureDataUrl }) => {
+          await docs.signDocument.mutateAsync({ id: doc.id, name, signatureDataUrl });
+        }}
+      />
+      <SendAuthoredDocumentDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        doc={doc}
+        projectName={projectName}
+        editedHtml={payload?.edited ?? doc.content_html}
+        onSent={async (email) => { await docs.markSent.mutateAsync({ id: doc.id, email }); }}
+      />
     </div>
   );
 }

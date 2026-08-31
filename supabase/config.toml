@@ -28,6 +28,14 @@ verify_jwt = false
 [functions.co-countersign]
 verify_jwt = false
 
+# Authored correspondence document counter-sign — public, token-gated
+[functions.document-countersign]
+verify_jwt = false
+
+# Public action-item card for CRM / external assignees — token-gated
+[functions.action-item-public]
+verify_jwt = false
+
 # Proposal acceptance links are public capability URLs; the UUID token scopes
 # access to one proposal and the functions validate it before returning data.
 [functions.proposal-countersign]
