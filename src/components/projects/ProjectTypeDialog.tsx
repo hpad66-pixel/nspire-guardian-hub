@@ -10,9 +10,9 @@ interface Props {
 }
 
 const TYPES = [
-  { value: 'property',   label: 'Construction / Property', icon: Building2, desc: 'Full construction modules — contracts, RFIs, submittals, pay apps, daily logs.' },
-  { value: 'client',     label: 'Client / Standalone',     icon: Briefcase, desc: 'A general client project with the standard module set.' },
-  { value: 'consulting', label: 'Consulting',              icon: Lightbulb, desc: 'Advisory engagement — scope, action items, meetings, invoicing; construction modules hidden.' },
+  { value: 'property',   label: 'Construction / Property', icon: Building2, desc: 'Full construction suite — pay apps, RFIs, submittals, safety, procurement. Turn modules off in Project Admin.' },
+  { value: 'client',     label: 'Client / Consulting',     icon: Briefcase, desc: 'Client engagement billed with proposals & invoices (same lean module defaults as Consulting).' },
+  { value: 'consulting', label: 'Consulting',              icon: Lightbulb, desc: 'Advisory engagement — scope, proposals, client invoices, CRM; field construction modules hidden by default.' },
 ] as const;
 
 export function ProjectTypeDialog({ open, onOpenChange, project }: Props) {

@@ -78,10 +78,21 @@ export interface OwnerPortalPayApp {
   submitted_amount: number | null;
 }
 
+export interface OwnerPortalProjectMeta {
+  id: string;
+  name: string;
+  project_type?: string | null;
+  module_config?: Record<string, boolean> | null;
+  module_inherit_from_parent?: boolean | null;
+  parent_project_id?: string | null;
+}
+
 export interface OwnerPortalData {
   primeContracts: OwnerPortalContract[];
   pendingOcos: OwnerPortalChangeOrder[];
   pendingPayApps: OwnerPortalPayApp[];
+  /** Project rows keyed by id — used for portal module visibility. */
+  projectMeta: Record<string, OwnerPortalProjectMeta>;
 }
 
 export function useClientPortalContext(projectId?: string | null) {
@@ -192,16 +203,27 @@ export function useOwnerPortalData() {
     queryFn: async () => {
       const [primeContracts, projects, cos, payApps] = await Promise.all([
         supabase.from("prime_contracts" as any).select("*"),
-        supabase.from("projects" as any).select("id, name"),
+        // module_config drives which portal nav items the client sees
+        supabase.from("projects" as any).select(
+          "id, name, project_type, module_config, module_inherit_from_parent, parent_project_id",
+        ),
         supabase.from("change_orders" as any).select("*")
           .eq("co_type", "OCO")
           .in("status", ["pending","out_for_signature"]),
         supabase.from("prime_contract_pay_apps" as any).select("*")
           .in("status", ["submitted"]),
       ]);
-      const projectNames = new Map(
-        ((projects.data ?? []) as Array<{ id: string; name: string }>).map((project) => [project.id, project.name]),
-      );
+      const projectRows = (projects.data ?? []) as Array<{
+        id: string;
+        name: string;
+        project_type?: string | null;
+        module_config?: Record<string, boolean> | null;
+        module_inherit_from_parent?: boolean | null;
+        parent_project_id?: string | null;
+      }>;
+      const projectNames = new Map(projectRows.map((project) => [project.id, project.name]));
+      const metaRecord: Record<string, OwnerPortalProjectMeta> = {};
+      for (const row of projectRows) metaRecord[row.id] = row;
       return {
         primeContracts: ((primeContracts.data ?? []) as unknown as OwnerPortalContract[]).map((contract) => ({
           ...contract,
@@ -209,6 +231,7 @@ export function useOwnerPortalData() {
         })),
         pendingOcos: (cos.data ?? []) as unknown as OwnerPortalChangeOrder[],
         pendingPayApps: (payApps.data ?? []) as unknown as OwnerPortalPayApp[],
+        projectMeta: metaRecord,
       };
     },
   });

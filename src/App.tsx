@@ -10,6 +10,7 @@ import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
+import { FinancialKindGuard } from "@/components/financial/FinancialKindGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 
@@ -32,6 +33,7 @@ const InspectionReviewPage = lazy(() => import('./pages/inspections/InspectionRe
 const InspectionHistoryPage = lazy(() => import('./pages/inspections/InspectionHistoryPage'));
 const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'));
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
+const ProjectAdminPage = lazy(() => import('./pages/projects/ProjectAdminPage'));
 const ProposalsPage = lazy(() => import('./pages/projects/ProposalsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
@@ -349,6 +351,7 @@ const App = () => (
                               <Route path="/projects" element={<ProjectsDashboard />} />
                               <Route path="/projects/proposals" element={<ProposalsPage />} />
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                              <Route path="/projects/:projectId/admin" element={<ProjectAdminPage />} />
                               
                               {/* Permits & Compliance */}
                               <Route path="/permits" element={<PermitsDashboard />} />
@@ -421,40 +424,43 @@ const App = () => (
                               <Route path="/projects/:projectId/client-updates" element={<ClientUpdatesPage />} />
 
                               {/* ───── Procore Lite · Phase 3 (Financial Cascade) ───── */}
-                              {/* F0 · unified financials — Overview is the single home */}
-                              <Route path="/projects/:projectId/financials" element={<Navigate to="overview" replace />} />
-                              <Route path="/projects/:projectId/financials/overview" element={<FinancialOverviewPage />} />
-                              <Route path="/projects/:projectId/financials/lien-releases" element={<LienReleasesPage />} />
-                              <Route path="/projects/:projectId/financials/lien-releases/new" element={<LienWaiverGeneratorPage />} />
-                              <Route path="/projects/:projectId/financials/lien-releases/:waiverId" element={<LienWaiverDetailPage />} />
-                              <Route path="/projects/:projectId/financials/vendor-inbox" element={<VendorInboxPage />} />
-                              <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
-                              <Route path="/projects/:projectId/financials/pay-apps" element={<PayAppsPage />} />
-                              <Route path="/projects/:projectId/financials/reports" element={<FinancialReportsPage />} />
-                              <Route path="/projects/:projectId/financials/margin" element={<MarginPage />} />
-                              <Route path="/projects/:projectId/financials/vendors" element={<VendorDashboardPage />} />
-                              <Route path="/projects/:projectId/financials/apas" element={<ApasDashboardPage />} />
-                              <Route path="/projects/:projectId/financials/client-updates" element={<ClientUpdatesPage />} />
-                              <Route path="/projects/:projectId/financials/quantities" element={<QuantitiesProgressPage />} />
-                              <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
-                              <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
-                              <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
-                              <Route path="/projects/:projectId/financials/change-orders/new" element={<ChangeOrderGeneratorPage />} />
+                              {/* F0 · unified financials — Overview is the single home.
+                                  FinancialKindGuard keeps consulting jobs off pay-apps / budget. */}
                               <Route path="/settings/change-orders" element={<ChangeOrderSettingsPage />} />
-                              <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
-                              <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
-                              <Route path="/projects/:projectId/financials/client-invoices" element={<ClientInvoicesPage />} />
-                              <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
-                              <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
-                              <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
-                              <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
-                              <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
-                              <Route path="/projects/:projectId/financials/proposals/new" element={<ProposalGeneratorPage />} />
-                              <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />
-                              <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
-                              <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
-                              <Route path="/projects/:projectId/financials/change-events/:eventId" element={<ChangeEventDetailPage />} />
-                              <Route path="/projects/:projectId/financials/cos/:coId" element={<ChangeOrderDetailPage />} />
+                              <Route element={<FinancialKindGuard />}>
+                                <Route path="/projects/:projectId/financials" element={<Navigate to="overview" replace />} />
+                                <Route path="/projects/:projectId/financials/overview" element={<FinancialOverviewPage />} />
+                                <Route path="/projects/:projectId/financials/lien-releases" element={<LienReleasesPage />} />
+                                <Route path="/projects/:projectId/financials/lien-releases/new" element={<LienWaiverGeneratorPage />} />
+                                <Route path="/projects/:projectId/financials/lien-releases/:waiverId" element={<LienWaiverDetailPage />} />
+                                <Route path="/projects/:projectId/financials/vendor-inbox" element={<VendorInboxPage />} />
+                                <Route path="/projects/:projectId/financials/prime-contract" element={<PrimeContractPage />} />
+                                <Route path="/projects/:projectId/financials/pay-apps" element={<PayAppsPage />} />
+                                <Route path="/projects/:projectId/financials/reports" element={<FinancialReportsPage />} />
+                                <Route path="/projects/:projectId/financials/margin" element={<MarginPage />} />
+                                <Route path="/projects/:projectId/financials/vendors" element={<VendorDashboardPage />} />
+                                <Route path="/projects/:projectId/financials/apas" element={<ApasDashboardPage />} />
+                                <Route path="/projects/:projectId/financials/client-updates" element={<ClientUpdatesPage />} />
+                                <Route path="/projects/:projectId/financials/quantities" element={<QuantitiesProgressPage />} />
+                                <Route path="/projects/:projectId/financials/commitments" element={<PhaseThreeCommitmentsPage />} />
+                                <Route path="/projects/:projectId/financials/change-events" element={<ChangeEventsPage />} />
+                                <Route path="/projects/:projectId/financials/change-orders" element={<PhaseThreeChangeOrdersPage />} />
+                                <Route path="/projects/:projectId/financials/change-orders/new" element={<ChangeOrderGeneratorPage />} />
+                                <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
+                                <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
+                                <Route path="/projects/:projectId/financials/client-invoices" element={<ClientInvoicesPage />} />
+                                <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
+                                <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
+                                <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
+                                <Route path="/projects/:projectId/financials/issues" element={<IssuesLogPage />} />
+                                <Route path="/projects/:projectId/financials/proposals" element={<FinancialProposalsPage />} />
+                                <Route path="/projects/:projectId/financials/proposals/new" element={<ProposalGeneratorPage />} />
+                                <Route path="/projects/:projectId/financials/proposals/:proposalId" element={<ProposalBuilderPage />} />
+                                <Route path="/projects/:projectId/financials/commitments/:commitmentId" element={<CommitmentDetailPage />} />
+                                <Route path="/projects/:projectId/financials/prime-contract/pay-apps/:payAppId" element={<PayAppDetailPage />} />
+                                <Route path="/projects/:projectId/financials/change-events/:eventId" element={<ChangeEventDetailPage />} />
+                                <Route path="/projects/:projectId/financials/cos/:coId" element={<ChangeOrderDetailPage />} />
+                              </Route>
 
                               {/* ───── Procore Lite · Phase 4 ───── */}
                               <Route path="/reports/procore" element={<ProcoreReportsPage />} />

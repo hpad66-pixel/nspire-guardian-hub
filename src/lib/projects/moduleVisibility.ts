@@ -1,17 +1,21 @@
 // Per-project module visibility.
 //
 // Every module in a project's sidebar can be turned on or off per project from
-// the admin "Modules" panel. Resolution order for a given module slug:
+// the Project Admin panel. Resolution order for a given module slug:
 //   1. explicit override in project.module_config[slug]  (admin toggled it)
-//   2. otherwise the default for the project's project_type
+//   2. if module_inherit_from_parent and parent exists → parent resolution
+//   3. otherwise the default for the project's billing kind (consulting vs construction)
 //
-// project_type 'consulting' hides the construction machinery by default;
-// every other type keeps the current behaviour (everything visible), so
-// existing property/client projects are completely unaffected.
+// Consulting / client engagements hide construction field machinery by default;
+// construction / property projects hide consulting-only modules by default.
+// Admins can turn any module on or off at the project (or sub-project) level.
+
+import { projectKind } from '@/lib/projectKind';
 
 export type ProjectModuleSlug =
   | 'overview'
   | 'subprojects'
+  | 'directory'
   | 'env-compliance'
   | 'scope'
   | 'action-items'
@@ -34,52 +38,96 @@ export type ProjectModuleSlug =
   | 'invoicing'
   | 'correspondence'
   | 'client-updates'
-  | 'client-portal';
+  | 'client-portal'
+  | 'admin';
 
-export type ModuleGroup = 'core' | 'compliance' | 'reports';
+/** Admin-panel / sidebar category keys (kind-agnostic storage groups). */
+export type ModuleGroup =
+  | 'engagement'
+  | 'field'
+  | 'commercial'
+  | 'documents'
+  | 'client'
+  | 'admin';
 
 export interface ProjectModuleDef {
   slug: ProjectModuleSlug;
   label: string;
   description: string;
   group: ModuleGroup;
+  /** Cannot be turned off — always in the sidebar when the user can see the project. */
+  locked?: boolean;
+  /** Only workspace/project admins see this nav item. */
+  adminOnly?: boolean;
+  /** Surfaces on the authenticated owner portal when enabled. */
+  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | null;
 }
 
 // The admin panel renders from this catalog. Order + grouping drive the panel
-// layout; the sidebar itself keeps its own tab ordering.
+// layout; the sidebar itself keeps its own tab ordering via projectNav.
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
-  { slug: 'overview',      label: 'Overview',            description: 'Engagement summary and health',        group: 'core' },
-  { slug: 'subprojects',   label: 'Subprojects',         description: 'Child projects rolled up to this one',  group: 'core' },
-  { slug: 'env-compliance', label: 'Environmental Compliance', description: 'Sampling, exceedances, obligations, regulatory correspondence', group: 'reports' },
-  { slug: 'scope',         label: 'Scope',               description: 'Workstreams, owners, % complete',       group: 'core' },
-  { slug: 'action-items',  label: 'Action items',        description: 'Tasks grouped by date, owners, updates', group: 'compliance' },
-  { slug: 'schedule',      label: 'Schedule & timelines', description: 'Milestones, deadlines, timeline',     group: 'core' },
-  { slug: 'financials',    label: 'Financials',          description: 'Prime contract, budget, pay apps',     group: 'core' },
-  { slug: 'contracts',     label: 'Contracts',           description: 'Prime contract and change orders',     group: 'core' },
-  { slug: 'daily-logs',    label: 'Daily logs',          description: 'Field daily logs and inspections',     group: 'core' },
-  { slug: 'gallery',       label: 'Gallery',             description: 'Photos and site imagery',              group: 'core' },
-  { slug: 'repository',    label: 'Documents',           description: 'Deliverables, files, knowledge base',  group: 'core' },
-  { slug: 'project-log',   label: 'Project log',         description: 'Timestamped update history',           group: 'compliance' },
-  { slug: 'rfis',          label: 'RFIs',                description: 'Requests for information',             group: 'compliance' },
-  { slug: 'submittals',    label: 'Submittals',          description: 'Submittal register and reviews',       group: 'compliance' },
-  { slug: 'punch-list',    label: 'Punch list',          description: 'Punch items and closeout tracking',    group: 'compliance' },
-  { slug: 'meetings',      label: 'Meetings & agenda',   description: 'Agendas, minutes, transcript → actions', group: 'reports' },
-  { slug: 'correspondence', label: 'Correspondence',     description: 'Gmail thread sync, branded letters, full trail', group: 'reports' },
-  { slug: 'progress',      label: 'Progress',            description: 'Quantities and progress dashboard',    group: 'reports' },
-  { slug: 'procurement',   label: 'Procurement',         description: 'Procurement and buyout tracking',      group: 'reports' },
-  { slug: 'safety',        label: 'Safety',              description: 'Safety observations and incidents',    group: 'reports' },
-  { slug: 'closeout',      label: 'Closeout',            description: 'Project closeout package',             group: 'reports' },
-  { slug: 'invoicing',     label: 'Invoicing',           description: 'Bill against scope completion',        group: 'reports' },
-  { slug: 'proposals',     label: 'Proposals',           description: 'AI proposal generator',                group: 'reports' },
-  { slug: 'client-updates', label: 'Client updates',      description: 'Draft, review, and publish client briefings', group: 'reports' },
-  { slug: 'client-portal', label: 'Client portal',       description: 'External client access',               group: 'core' },
+  { slug: 'overview', label: 'Overview', description: 'Project health, KPIs, and quick actions', group: 'engagement', locked: true },
+  { slug: 'subprojects', label: 'Subprojects', description: 'Child projects rolled up under this one', group: 'engagement' },
+  { slug: 'directory', label: 'People & Team', description: 'CRM contacts and project directory — feeds email & invoices', group: 'engagement' },
+  { slug: 'scope', label: 'Scope', description: 'Workstreams, owners, % complete (consulting)', group: 'engagement' },
+  { slug: 'schedule', label: 'Schedule', description: 'Milestones, deadlines, and timeline', group: 'engagement', portalSlug: 'schedule' },
+  { slug: 'action-items', label: 'Action items', description: 'Tasks by date, owners, and updates', group: 'engagement' },
+
+  { slug: 'daily-logs', label: 'Daily logs', description: 'Field daily logs and inspections', group: 'field' },
+  { slug: 'rfis', label: 'RFIs', description: 'Requests for information', group: 'field' },
+  { slug: 'submittals', label: 'Submittals', description: 'Submittal register and reviews', group: 'field' },
+  { slug: 'punch-list', label: 'Punch list', description: 'Punch items and closeout tracking', group: 'field' },
+  { slug: 'progress', label: 'Progress', description: 'Quantities and progress dashboard', group: 'field' },
+  { slug: 'procurement', label: 'Procurement', description: 'Procurement and buyout tracking', group: 'field' },
+  { slug: 'safety', label: 'Safety', description: 'Safety observations and incidents', group: 'field' },
+  { slug: 'env-compliance', label: 'Environmental compliance', description: 'Sampling, exceedances, regulatory correspondence', group: 'field' },
+  { slug: 'closeout', label: 'Closeout', description: 'Project closeout package', group: 'field' },
+
+  { slug: 'financials', label: 'Financials', description: 'Pay apps (construction) or client invoices (consulting)', group: 'commercial' },
+  { slug: 'contracts', label: 'Contracts', description: 'Prime contract and change orders / amendments', group: 'commercial', portalSlug: 'contract' },
+  { slug: 'proposals', label: 'Proposals', description: 'Proposal builder and approvals', group: 'commercial' },
+  { slug: 'invoicing', label: 'Client invoices', description: 'Bill against approved proposals / scope', group: 'commercial' },
+
+  { slug: 'repository', label: 'Documents', description: 'Deliverables, files, knowledge base', group: 'documents', portalSlug: 'documents' },
+  { slug: 'gallery', label: 'Gallery', description: 'Photos and site imagery', group: 'documents' },
+  { slug: 'meetings', label: 'Meetings & agenda', description: 'Agendas, minutes, transcript → actions', group: 'documents' },
+  { slug: 'correspondence', label: 'Correspondence', description: 'Email trail, branded letters — uses project CRM', group: 'documents' },
+  { slug: 'project-log', label: 'Project log', description: 'Timestamped update history', group: 'documents' },
+
+  { slug: 'client-updates', label: 'Client updates', description: 'Draft, review, and publish client briefings', group: 'client', portalSlug: 'updates' },
+  { slug: 'client-portal', label: 'Client portal', description: 'External client access and invites', group: 'client' },
+
+  { slug: 'admin', label: 'Project admin', description: 'Turn modules on/off, project type, inheritance', group: 'admin', locked: true, adminOnly: true },
 ];
 
-// Modules shown by default on a consulting engagement. Everything not listed
-// here defaults to hidden for project_type === 'consulting'.
+export const MODULE_GROUP_LABELS: Record<ModuleGroup, string> = {
+  engagement: 'Engagement',
+  field: 'Field & delivery',
+  commercial: 'Money & commercial',
+  documents: 'Documents & communications',
+  client: 'Client-facing',
+  admin: 'Administration',
+};
+
+export const MODULE_GROUP_ORDER: ModuleGroup[] = [
+  'engagement',
+  'field',
+  'commercial',
+  'documents',
+  'client',
+  'admin',
+];
+
+/** Modules that cannot be disabled. */
+export const LOCKED_MODULES: ReadonlySet<ProjectModuleSlug> = new Set(
+  PROJECT_MODULE_CATALOG.filter((m) => m.locked).map((m) => m.slug),
+);
+
+// Modules shown by default on consulting / client engagements.
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
   'subprojects',
+  'directory',
   'env-compliance',
   'scope',
   'action-items',
@@ -91,53 +139,182 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'correspondence',
   'invoicing',
   'proposals',
-  // Consulting engagements still need the commercial controls: proposals,
-  // amendments/change orders, invoices, and the supporting financial ledger.
-  // The suite remains configurable per project, but it must be discoverable by
-  // default (Lorcan Hospital is a consulting engagement with active COs).
   'financials',
   'contracts',
   'client-updates',
   'client-portal',
+  'admin',
 ]);
 
-// Minimal shape we need off a project — accepts the full Project row too.
-export interface ModuleVisibilityProject {
-  project_type?: string | null;
-  module_config?: Record<string, boolean> | null;
-}
-
-// Consulting-native modules — hidden by default on construction/property/client
-// projects (but still turn-on-able per project from the admin Modules panel).
+// Consulting-native modules — hidden by default on construction/property.
 export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'scope',
   'action-items',
   'invoicing',
   'env-compliance',
 ]);
-// Correspondence (client emails + branded letters) is useful on EVERY project
-// type — construction jobs like Glorieta have R4/agency correspondence too — so it
-// is intentionally NOT consulting-only; it shows by default everywhere.
+
+// Construction field modules — hidden by default on consulting/client.
+export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
+  'daily-logs',
+  'rfis',
+  'submittals',
+  'punch-list',
+  'progress',
+  'procurement',
+  'safety',
+  'closeout',
+]);
+
+/** Preset packs for one-click module configuration. */
+export type ModulePresetId = 'consulting-lean' | 'construction-full' | 'communications' | 'reset-defaults';
+
+export interface ModulePreset {
+  id: ModulePresetId;
+  label: string;
+  description: string;
+  /** If set, apply these on/off values (merged over current type defaults). */
+  apply: (projectType: string | null | undefined) => Record<string, boolean>;
+}
+
+export const MODULE_PRESETS: ModulePreset[] = [
+  {
+    id: 'consulting-lean',
+    label: 'Consulting (lean)',
+    description: 'Proposals, invoices, documents, meetings, CRM — no field construction modules.',
+    apply: () => {
+      const out: Record<string, boolean> = {};
+      for (const def of PROJECT_MODULE_CATALOG) {
+        out[def.slug] = CONSULTING_DEFAULT_MODULES.has(def.slug);
+      }
+      return out;
+    },
+  },
+  {
+    id: 'construction-full',
+    label: 'Construction (full)',
+    description: 'Pay apps, RFIs, submittals, safety, procurement, punch — full jobsite suite.',
+    apply: () => {
+      const out: Record<string, boolean> = {};
+      for (const def of PROJECT_MODULE_CATALOG) {
+        out[def.slug] = !CONSULTING_ONLY_MODULES.has(def.slug);
+      }
+      // Directory is always useful on construction too.
+      out.directory = true;
+      out.admin = true;
+      return out;
+    },
+  },
+  {
+    id: 'communications',
+    label: 'Communications focus',
+    description: 'Keep overview + CRM + correspondence + portal + client updates; hide field noise.',
+    apply: (projectType) => {
+      const lean = MODULE_PRESETS[0].apply(projectType);
+      for (const slug of CONSTRUCTION_FIELD_MODULES) lean[slug] = false;
+      lean.procurement = false;
+      lean.progress = false;
+      lean.safety = false;
+      lean.directory = true;
+      lean.correspondence = true;
+      lean['client-updates'] = true;
+      lean['client-portal'] = true;
+      lean.meetings = true;
+      lean.repository = true;
+      lean.financials = true;
+      lean.proposals = projectKind({ project_type: projectType }) === 'consulting';
+      lean.invoicing = projectKind({ project_type: projectType }) === 'consulting';
+      return lean;
+    },
+  },
+  {
+    id: 'reset-defaults',
+    label: 'Reset to type defaults',
+    description: 'Clear custom overrides and use the consulting / construction defaults for this project type.',
+    apply: (projectType) => {
+      const out: Record<string, boolean> = {};
+      for (const def of PROJECT_MODULE_CATALOG) {
+        out[def.slug] = defaultModuleVisible(def.slug, projectType);
+      }
+      return out;
+    },
+  },
+];
+
+export interface ModuleVisibilityProject {
+  id?: string;
+  project_type?: string | null;
+  module_config?: Record<string, boolean> | null;
+  module_inherit_from_parent?: boolean | null;
+  parent_project_id?: string | null;
+}
 
 /** Default visibility for a module before any admin override is applied. */
 export function defaultModuleVisible(
   slug: ProjectModuleSlug,
   projectType: string | null | undefined,
 ): boolean {
-  if (projectType === 'consulting') return CONSULTING_DEFAULT_MODULES.has(slug);
-  // Everything visible by default on other project types, except the
-  // consulting-native modules (which an admin can still switch on per project).
-  return !CONSULTING_ONLY_MODULES.has(slug);
+  if (LOCKED_MODULES.has(slug)) return true;
+  const kind = projectKind({ project_type: projectType });
+  if (kind === 'consulting') return CONSULTING_DEFAULT_MODULES.has(slug);
+  // Construction: everything except consulting-native modules.
+  return !CONSULTING_ONLY_MODULES.has(slug) || slug === 'directory' || slug === 'admin';
 }
 
-/** Effective visibility: explicit override wins, else the type default. */
+/**
+ * Effective visibility for a single project row (no parent walk).
+ * Explicit override wins; else type default.
+ */
 export function isModuleVisible(
   project: ModuleVisibilityProject | null | undefined,
   slug: string,
 ): boolean {
+  if (LOCKED_MODULES.has(slug as ProjectModuleSlug)) return true;
   const cfg = project?.module_config;
   if (cfg && typeof cfg[slug] === 'boolean') return cfg[slug];
   return defaultModuleVisible(slug as ProjectModuleSlug, project?.project_type);
+}
+
+/**
+ * Resolve visibility with optional parent inheritance for sub-projects.
+ * Pass `parent` when the child has `module_inherit_from_parent === true`.
+ */
+export function resolveModuleVisible(
+  project: ModuleVisibilityProject | null | undefined,
+  slug: string,
+  parent?: ModuleVisibilityProject | null,
+): boolean {
+  if (LOCKED_MODULES.has(slug as ProjectModuleSlug)) return true;
+
+  const cfg = project?.module_config;
+  // Explicit local override always wins — even when inheriting.
+  if (cfg && typeof cfg[slug] === 'boolean') return cfg[slug];
+
+  if (project?.module_inherit_from_parent && parent) {
+    return isModuleVisible(parent, slug);
+  }
+
+  return defaultModuleVisible(slug as ProjectModuleSlug, project?.project_type);
+}
+
+/** Map internal module slugs → owner-portal nav segments. */
+export function portalModulesForProject(
+  project: ModuleVisibilityProject | null | undefined,
+  parent?: ModuleVisibilityProject | null,
+): Set<string> {
+  const enabled = new Set<string>(['overview']); // overview always
+  for (const def of PROJECT_MODULE_CATALOG) {
+    if (!def.portalSlug) continue;
+    if (resolveModuleVisible(project, def.slug, parent)) {
+      enabled.add(def.portalSlug);
+    }
+  }
+  // Contract / reports also need financials or contracts on.
+  if (resolveModuleVisible(project, 'financials', parent) || resolveModuleVisible(project, 'contracts', parent)) {
+    enabled.add('contract');
+    enabled.add('reports');
+  }
+  return enabled;
 }
 
 /**
@@ -150,7 +327,16 @@ export function buildModuleConfig(
 ): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   for (const def of PROJECT_MODULE_CATALOG) {
+    if (def.locked) {
+      out[def.slug] = true;
+      continue;
+    }
     out[def.slug] = values[def.slug] ?? true;
   }
   return out;
+}
+
+/** Empty config object meaning "use type defaults" (reset). */
+export function emptyModuleConfig(): Record<string, boolean> {
+  return {};
 }

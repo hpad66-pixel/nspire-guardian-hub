@@ -25,22 +25,28 @@ import {
   ownerPortalProjectSwitchPath,
   uniqueOwnerProjects,
 } from "@/lib/portal/ownerPortalPaths";
+import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
+import type { OwnerPortalProjectMeta } from "@/hooks/usePortals";
 import "@/pages/portal/client-portal.css";
 
-function portalNav(projectId: string | null) {
-  return {
-    primary: [
-      { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true },
-      { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true },
-      { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing },
-      { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays },
-      { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen },
-    ],
-    secondary: [
-      { to: ownerPortalPath(projectId, "/contract"), label: "Contract", icon: FileText },
-      { to: ownerPortalPath(projectId, "/reports"), label: "Reports", icon: BarChart3 },
-    ],
-  };
+function portalNav(
+  projectId: string | null,
+  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports"]),
+) {
+  const primary = [
+    { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
+    { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true, key: "overview" },
+    { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing, key: "updates" },
+    { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
+    { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen, key: "documents" },
+  ].filter((item) => enabled.has(item.key));
+
+  const secondary = [
+    { to: ownerPortalPath(projectId, "/contract"), label: "Contract", icon: FileText, key: "contract" },
+    { to: ownerPortalPath(projectId, "/reports"), label: "Reports", icon: BarChart3, key: "reports" },
+  ].filter((item) => enabled.has(item.key));
+
+  return { primary, secondary };
 }
 
 function initials(value: string) {
@@ -81,7 +87,19 @@ export function ClientPortalShell() {
   const selectedContractId = selectedContract?.id ?? null;
   const projectUnavailable = Boolean(requestedProjectId && !ownerLoading && !matchedProject && projects.length > 0);
   const { data: portalContext } = useClientPortalContext(activeProjectId);
-  const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(activeProjectId);
+  const projectMeta = (ownerData?.projectMeta ?? {}) as Record<string, OwnerPortalProjectMeta>;
+  const activeMeta = activeProjectId ? projectMeta[activeProjectId] : null;
+  const parentMeta = activeMeta?.parent_project_id
+    ? projectMeta[activeMeta.parent_project_id] ?? null
+    : null;
+  const enabledPortalModules = useMemo(
+    () => portalModulesForProject(activeMeta, parentMeta),
+    [activeMeta, parentMeta],
+  );
+  const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(
+    activeProjectId,
+    enabledPortalModules,
+  );
 
   const decisions = (ownerData?.pendingOcos ?? []).filter((item) => item.prime_contract_id === selectedContractId).length
     + (ownerData?.pendingPayApps ?? []).filter((item) => item.prime_contract_id === selectedContractId).length;
