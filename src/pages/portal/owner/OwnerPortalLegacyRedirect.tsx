@@ -9,10 +9,16 @@ import { rewriteOwnerPortalPath } from "@/lib/portal/ownerPortalPaths";
 export default function OwnerPortalLegacyRedirect() {
   const location = useLocation();
   const { contracts, selectedProjectId, isLoading } = useClientPortalProject();
-  const requested = new URLSearchParams(location.search).get("project");
+  const params = new URLSearchParams(location.search);
+  const requested = params.get("project");
+  // Prefer explicit ?project= so invite/login deep-links are not overwritten by
+  // the first contract in the org-wide list.
   const projectId = (requested && contracts.some((contract) => contract.project_id === requested))
     ? requested
-    : selectedProjectId ?? contracts[0]?.project_id ?? null;
+    : selectedProjectId
+      ?? (contracts.length === 1 ? contracts[0]?.project_id : null)
+      ?? contracts[0]?.project_id
+      ?? null;
 
   if (isLoading) return <div className="client-dashboard-loading">Loading portal…</div>;
 
@@ -25,5 +31,6 @@ export default function OwnerPortalLegacyRedirect() {
   }
 
   const next = rewriteOwnerPortalPath(location.pathname, projectId);
-  return <Navigate to={`${next ?? `/owner-portal/projects/${projectId}`}${location.hash}`} replace />;
+  const search = requested ? "" : location.search;
+  return <Navigate to={`${next ?? `/owner-portal/projects/${projectId}`}${search}${location.hash}`} replace />;
 }

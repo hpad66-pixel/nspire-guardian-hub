@@ -8,6 +8,7 @@ import { requireTenantId } from "@/lib/tenant";
 export interface PortalInvitation {
   id: string; tenant_id: string; email: string;
   organization_id: string | null;
+  project_id: string | null;
   portal_kind: "sub"|"owner";
   role: string;
   invited_at: string; accepted_at: string | null; expires_at: string;
@@ -151,6 +152,7 @@ export function usePortalInvitations() {
         tenant_id,
         email: input.email,
         organization_id: organizationId,
+        project_id: input.projectId ?? null,
         portal_kind: input.portalKind,
         role: input.role ?? (input.portalKind === "sub" ? "subcontractor_portal" : "owner_portal"),
         token,

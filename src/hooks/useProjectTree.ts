@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useProjects, type Project } from '@/hooks/useProjects';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
+import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { buildProjectTree } from '@/lib/projectTree';
 
 // The hierarchy view over all accessible projects, with budget/billed rolled up
@@ -9,20 +11,26 @@ import { buildProjectTree } from '@/lib/projectTree';
 export function useProjectTree() {
   const { data: projects, isLoading } = useProjects();
   const { financials } = useAllProjectFinancials();
+  const { consultingTotals } = useAllApprovedProposalTotals();
 
   const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
 
-  // "own" = this node's own money; construction reads the financial view (prime +
-  // approved COs), everything else falls back to the projects columns.
+  // Construction → prime + COs; consulting → approved proposal fee stack.
   const ownBudget = (id: string) => {
-    const f = financials.get(id);
-    if (f && f.revised_contract > 0) return f.revised_contract;
-    return Number((tree.byId.get(id) as any)?.budget) || 0;
+    const p = tree.byId.get(id) as Project | undefined;
+    return resolveProjectTileAmounts({
+      project: p ?? { budget: 0 },
+      construction: financials.get(id),
+      consulting: consultingTotals.get(id),
+    }).budget;
   };
   const ownBilled = (id: string) => {
-    const f = financials.get(id);
-    if (f && f.billed_to_date > 0) return f.billed_to_date;
-    return Number((tree.byId.get(id) as any)?.spent) || 0;
+    const p = tree.byId.get(id) as Project | undefined;
+    return resolveProjectTileAmounts({
+      project: p ?? { budget: 0 },
+      construction: financials.get(id),
+      consulting: consultingTotals.get(id),
+    }).spent;
   };
 
   // "rolled" = self + every descendant.

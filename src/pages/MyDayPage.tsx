@@ -9,6 +9,8 @@ import { useMyDay, useCompleteActionItemById } from '@/hooks/useMyDay';
 import { useActiveProjects } from '@/hooks/useProjects';
 import { groupByDate, BUCKET_META, type BucketableItem } from '@/lib/actionItems/grouping';
 import { PRIORITY_META, BUCKET_TONE, BUCKET_DOT } from '@/components/projects/actionItems/actionItemMeta';
+import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { projectKind, projectKindTileClass } from '@/lib/projectKind';
 
 export default function MyDayPage() {
   const navigate = useNavigate();
@@ -98,15 +100,17 @@ export default function MyDayPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(projects ?? []).map((p) => {
               const counts = byProject.get(p.id) ?? { open: 0, overdue: 0 };
-              const isConsulting = (p as any).project_type === 'consulting' || (p as any).project_type === 'client';
               return (
                 <button key={p.id} onClick={() => navigate(`/projects/${p.id}`)} className="text-left">
-                  <Card className="p-4 hover:border-[var(--apas-sapphire)]/40 transition-colors h-full">
+                  <Card className={cn(
+                    'p-4 transition-colors h-full border-l-4',
+                    projectKindTileClass(projectKind(p)),
+                  )}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-medium truncate">{p.name}</div>
                         <div className="flex items-center gap-1.5 mt-1">
-                          {isConsulting && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]">Consulting</span>}
+                          <ProjectKindBadge project={p} />
                           <span className="text-xs text-muted-foreground capitalize">{p.status ?? '—'}</span>
                         </div>
                       </div>

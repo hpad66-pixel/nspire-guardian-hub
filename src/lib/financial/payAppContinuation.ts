@@ -282,6 +282,52 @@ export function shouldUseG702Snapshot(
 }
 
 /**
+ * AIA G702 Line 5 = "total in Column I of detail sheet".
+ * When the cover is pinned to a reconciled retainage_total, scale per-line
+ * retainage so the G703 Column I grand total matches Line 5 exactly.
+ * Zero-retainage (exempt) lines stay at $0.
+ */
+export function alignLineRetainageToCover<T extends { retainage: number }>(
+  lines: T[],
+  coverRetainageTotal: number | null | undefined,
+): T[] {
+  const target = round2(Number(coverRetainageTotal) || 0);
+  if (!(target > 0) || lines.length === 0) return lines;
+
+  const current = round2(sum(lines.map((l) => Number(l.retainage) || 0)));
+  if (current <= 0 || Math.abs(current - target) < 0.02) return lines;
+
+  const scale = target / current;
+  const scaled = lines.map((l) => {
+    const ret = Number(l.retainage) || 0;
+    if (ret <= 0) return l;
+    return { ...l, retainage: round2(ret * scale) };
+  });
+
+  const after = round2(sum(scaled.map((l) => Number(l.retainage) || 0)));
+  const drift = round2(target - after);
+  if (Math.abs(drift) < 0.005) return scaled;
+
+  // Penny-fix the largest retainage line.
+  let fixIdx = -1;
+  let fixVal = -1;
+  scaled.forEach((l, i) => {
+    const ret = Number(l.retainage) || 0;
+    if (ret > fixVal) {
+      fixVal = ret;
+      fixIdx = i;
+    }
+  });
+  if (fixIdx < 0) return scaled;
+  const next = scaled.slice();
+  next[fixIdx] = {
+    ...next[fixIdx],
+    retainage: round2((Number(next[fixIdx].retainage) || 0) + drift),
+  };
+  return next;
+}
+
+/**
  * Compute the G702 cover summary from the full line set + prior certificates.
  * `previousCertificates` = the prior pay app's total-earned-less-retainage
  * (what's already been billed), so current_payment_due is the increment.

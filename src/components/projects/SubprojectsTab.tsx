@@ -13,7 +13,8 @@ import { useUpdateProject, type Project } from '@/hooks/useProjects';
 import { useMyDay } from '@/hooks/useMyDay';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ProgramTimeline } from '@/components/projects/ProgramTimeline';
-import { projectKind } from '@/lib/projectKind';
+import { projectKind, projectKindTileClass } from '@/lib/projectKind';
+import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { cn } from '@/lib/utils';
 
@@ -202,12 +203,18 @@ export function SubprojectsTab({ projectId, project }: { projectId: string; proj
             const pct = b > 0 ? Math.round((s / b) * 100) : 0;
             return (
               <button key={child.id} onClick={() => navigate(`/projects/${child.id}`)}
-                className="group text-left rounded-xl border p-3.5 transition-all hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40">
+                className={cn(
+                  'group text-left rounded-xl border border-l-4 p-3.5 transition-all hover:shadow-md hover:-translate-y-0.5',
+                  projectKindTileClass(projectKind(child)),
+                )}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-semibold truncate group-hover:underline">{child.name}</div>
-                    <div className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {projectKind(child)}{grandkids > 0 ? ` · ${grandkids} sub` : ''}
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <ProjectKindBadge project={child} />
+                      {grandkids > 0 && (
+                        <span className="text-[11px] text-muted-foreground">{grandkids} sub</span>
+                      )}
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />

@@ -394,6 +394,7 @@ async function createSecureOwnerInvitation(portalId: string, email: string) {
     tenant_id: portal.workspace_id,
     email: normalizedEmail,
     organization_id: ownerOrgId,
+    project_id: portal.project_id,
     portal_kind: 'owner',
     role: 'owner_portal',
     invited_by: user.id,

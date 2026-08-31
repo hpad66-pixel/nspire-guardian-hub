@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -56,6 +56,11 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
+import { useFinancialProposals } from '@/hooks/useFinancialProposals';
+import { useConsultingArLedger } from '@/hooks/useConsultingInvoices';
+import { proposalTotals } from '@/lib/financial/proposalPricing';
+import { projectKind } from '@/lib/projectKind';
+import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { isModuleVisible } from '@/lib/projects/moduleVisibility';
 import { ScopesTab } from '@/components/projects/scopes/ScopesTab';
 import { InvoicingTab } from '@/components/projects/invoicing/InvoicingTab';
@@ -165,6 +170,17 @@ export default function ProjectDetailPage() {
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
   const { summary: financialSummary } = useProjectFinancials(id ?? null);
+  // Always call hooks (Rules of Hooks) — enable only for consulting projects.
+  const consultingProjectId =
+    project && projectKind(project) === 'consulting' ? (id ?? null) : null;
+  const { data: detailProposals = [] } = useFinancialProposals(consultingProjectId);
+  const { data: arLedger } = useConsultingArLedger(consultingProjectId);
+  const approvedFee = useMemo(
+    () => detailProposals
+      .filter((p) => p.status === 'approved')
+      .reduce((sum, p) => sum + proposalTotals(p.proposal_lines ?? [], p).total, 0),
+    [detailProposals],
+  );
   const { tree: projectTree } = useProjectTree();
   const projectAncestors = id ? projectTree.ancestors(id).reverse() : []; // root → parent
   const subprojectCount = id ? projectTree.children(id).length : 0;
@@ -360,11 +376,19 @@ export default function ProjectDetailPage() {
     );
   }
 
-  // Prefer the live financial-cascade rollup (v_project_financial_summary) over
-  // projects.budget/spent, which are dead columns never populated after creation.
+  // Construction → financial cascade; consulting → sum of approved proposals
+  // (Larkin MRI = PROP-001 $3,369 + PROP-002 $14,500).
   const fin = financialSummary.data;
-  const budget = fin && fin.revised_contract > 0 ? fin.revised_contract : Number(project.budget) || 0;
-  const spent = fin && fin.billed_to_date > 0 ? fin.billed_to_date : Number(project.spent) || 0;
+  const tileAmounts = resolveProjectTileAmounts({
+    project,
+    construction: fin,
+    consulting: {
+      approvedFee,
+      invoiced: arLedger?.totalInvoiced ?? 0,
+    },
+  });
+  const budget = tileAmounts.budget;
+  const spent = tileAmounts.spent;
   const spentProgress = budget > 0 ? Math.round((spent / budget) * 100) : 0;
   const completedMilestones = milestones?.filter(m => m.status === 'completed').length || 0;
   const totalMilestones = milestones?.length || 0;
@@ -676,7 +700,9 @@ export default function ProjectDetailPage() {
                     <DollarSign className="h-3.5 w-3.5 md:h-4 md:w-4 text-accent" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Budget</p>
+                    <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                      {tileAmounts.kind === 'consulting' ? 'Approved fees' : 'Budget'}
+                    </p>
                     <p className="text-base md:text-xl font-bold leading-none mt-0.5 truncate">{formatCurrency(budget)}</p>
                   </div>
                 </div>

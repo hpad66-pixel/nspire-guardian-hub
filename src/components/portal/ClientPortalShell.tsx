@@ -72,10 +72,14 @@ export function ClientPortalShell() {
   const requestedProjectId = routeProjectId
     ?? new URLSearchParams(location.search).get("project")
     ?? null;
-  const selectedProject = projects.find((project) => project.id === requestedProjectId) ?? projects[0] ?? null;
+  // Never silently fall back to projects[0] when a specific project was requested —
+  // that made every client/preview see the same first contract.
+  const matchedProject = projects.find((project) => project.id === requestedProjectId) ?? null;
+  const selectedProject = matchedProject ?? (requestedProjectId ? null : projects[0] ?? null);
   const activeProjectId = selectedProject?.id ?? null;
-  const selectedContract = selectedProject?.contract ?? contracts[0] ?? null;
+  const selectedContract = selectedProject?.contract ?? null;
   const selectedContractId = selectedContract?.id ?? null;
+  const projectUnavailable = Boolean(requestedProjectId && !ownerLoading && !matchedProject && projects.length > 0);
   const { data: portalContext } = useClientPortalContext(activeProjectId);
   const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(activeProjectId);
 
@@ -90,10 +94,11 @@ export function ClientPortalShell() {
   );
 
   useEffect(() => {
-    if (!ownerLoading && routeProjectId && selectedProject && routeProjectId !== selectedProject.id) {
-      navigate(ownerPortalProjectSwitchPath(location.pathname, selectedProject.id) + location.hash, { replace: true });
+    // Flat /owner-portal handoff → first accessible project only when nothing was requested.
+    if (!ownerLoading && !routeProjectId && !requestedProjectId && projects[0]?.id) {
+      navigate(ownerPortalPath(projects[0].id) + location.hash, { replace: true });
     }
-  }, [ownerLoading, routeProjectId, selectedProject, location.pathname, location.hash, navigate]);
+  }, [ownerLoading, routeProjectId, requestedProjectId, projects, location.hash, navigate]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -260,7 +265,25 @@ export function ClientPortalShell() {
       )}
 
       <main className="client-portal-main">
-        <Outlet />
+        {projectUnavailable ? (
+          <div className="client-dashboard-empty" data-testid="owner-portal-project-unavailable">
+            <h2>This project is not available in your portal</h2>
+            <p>Choose one of your projects below — each client and project has its own portal view.</p>
+            <div className="client-portal-project-tabs" style={{ marginTop: 16, justifyContent: "center" }}>
+              {projects.map((project) => (
+                <Link
+                  key={project.id}
+                  to={ownerPortalPath(project.id)}
+                  className="client-portal-project-tab"
+                >
+                  {project.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
 
       <footer className="client-portal-footer">

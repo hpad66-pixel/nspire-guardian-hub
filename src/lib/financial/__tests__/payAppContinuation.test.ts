@@ -9,6 +9,7 @@ import {
   computeG702,
   computePaymentPosition,
   shouldUseG702Snapshot,
+  alignLineRetainageToCover,
   type G702Summary,
 } from "../payAppContinuation";
 
@@ -155,6 +156,18 @@ describe("clampProgressToScheduled", () => {
     expect(r.value_to_date).toBe(1710);
     expect(r.value_this_period).toBe(100);
   });
+
+  it("caps credit lines that are more negative than the scheduled credit", () => {
+    const r = clampProgressToScheduled({
+      scheduledValue: -1800,
+      valueToDate: -2000,
+      valueThisPeriod: -2000,
+      retainage: 0,
+    });
+    expect(r.clamped).toBe(true);
+    expect(r.value_to_date).toBe(-1800);
+    expect(r.pct_complete).toBe(100);
+  });
 });
 
 describe("seedContinuationRows", () => {
@@ -283,5 +296,51 @@ describe("shouldUseG702Snapshot", () => {
     expect(shouldUseG702Snapshot("draft", { contract_sum_to_date: 100 })).toBe(false);
     expect(shouldUseG702Snapshot("draft", null)).toBe(false);
     expect(shouldUseG702Snapshot("draft", {})).toBe(false);
+  });
+});
+
+describe("alignLineRetainageToCover", () => {
+  it("scales Column I so it matches G702 Line 5 exactly (AIA)", () => {
+    const lines = [
+      { id: "a", retainage: 20000 },
+      { id: "b", retainage: 7000 },
+      { id: "c", retainage: 0 }, // exempt
+    ];
+    // Live sum = 27000; cover = 34008.16
+    const aligned = alignLineRetainageToCover(lines, 34008.16);
+    const sum = aligned.reduce((s, l) => s + l.retainage, 0);
+    expect(Math.round(sum * 100) / 100).toBe(34008.16);
+    expect(aligned.find((l) => l.id === "c")?.retainage).toBe(0);
+    expect(aligned.find((l) => l.id === "a")!.retainage).toBeGreaterThan(20000);
+  });
+
+  it("is a no-op when already within a penny", () => {
+    const lines = [{ retainage: 17004.08 }, { retainage: 17004.08 }];
+    expect(alignLineRetainageToCover(lines, 34008.16)).toEqual(lines);
+  });
+
+  it("returns the same array when cover target is zero or lines empty", () => {
+    const lines = [{ retainage: 100 }];
+    expect(alignLineRetainageToCover(lines, 0)).toBe(lines);
+    expect(alignLineRetainageToCover(lines, null)).toBe(lines);
+    expect(alignLineRetainageToCover([], 34008.16)).toEqual([]);
+  });
+
+  it("returns lines unchanged when current retainage is all zeros", () => {
+    const lines = [{ retainage: 0 }, { retainage: 0 }];
+    expect(alignLineRetainageToCover(lines, 34008.16)).toBe(lines);
+  });
+
+  it("penny-fixes the largest line when scaling leaves a cent of drift", () => {
+    // 1+1+1 → target 10: each rounds to 3.33, sum 9.99, needs +0.01 on the first.
+    const lines = [
+      { id: "a", retainage: 1 },
+      { id: "b", retainage: 1 },
+      { id: "c", retainage: 1 },
+    ];
+    const aligned = alignLineRetainageToCover(lines, 10);
+    const total = Math.round(aligned.reduce((s, l) => s + l.retainage, 0) * 100) / 100;
+    expect(total).toBe(10);
+    expect(aligned.map((l) => l.retainage).sort((x, y) => y - x)).toEqual([3.34, 3.33, 3.33]);
   });
 });
