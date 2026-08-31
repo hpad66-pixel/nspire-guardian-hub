@@ -21,6 +21,7 @@ import {
   clampProgressToScheduled,
   linePctComplete,
   round2,
+  shouldUseG702Snapshot,
   type G702Summary,
   type PriorProgressLike,
 } from "@/lib/financial/payAppContinuation";
@@ -432,11 +433,15 @@ export function usePayAppContinuation(payAppId: string | null) {
   // record. Serve the snapshot frozen at submission (pay_app_data) instead of
   // recomputing live, so later change orders / progress don't rewrite a document
   // the client already received. New work flows into the next pay app.
+  //
+  // Cash-reconciled final invoices also pin the draft cover to pay_app_data
+  // (use_reconciled_snapshot / reconciliation_note) so Export PDF does not fall
+  // back to incomplete live SOV math (e.g. placeholder $140k / $600k rows).
   const status = (detail.data as any)?.status as string | undefined;
   const isFrozen = Boolean(status && status !== "draft");
   const snapshot = (detail.data as any)?.pay_app_data as G702Summary | null | undefined;
-  const g702: G702Summary = isFrozen && snapshot && typeof snapshot.contract_sum_to_date === "number"
-    ? snapshot
+  const g702: G702Summary = shouldUseG702Snapshot(status, snapshot)
+    ? (snapshot as G702Summary)
     : liveG702;
 
   const upsertLine = useMutation({

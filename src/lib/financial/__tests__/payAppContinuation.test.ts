@@ -8,6 +8,7 @@ import {
   seedContinuationRows,
   computeG702,
   computePaymentPosition,
+  shouldUseG702Snapshot,
   type G702Summary,
 } from "../payAppContinuation";
 
@@ -251,5 +252,32 @@ describe("computePaymentPosition", () => {
     const p = computePaymentPosition(zero, 0);
     expect(p.pctComplete).toBe(0);
     expect(Object.values(p).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("shouldUseG702Snapshot", () => {
+  const snap: Partial<G702Summary> = {
+    contract_sum_to_date: 953350.35,
+    current_payment_due: 144332.82,
+    use_reconciled_snapshot: true,
+  };
+
+  it("uses the snapshot for non-draft certificates", () => {
+    expect(shouldUseG702Snapshot("submitted", { contract_sum_to_date: 100 })).toBe(true);
+    expect(shouldUseG702Snapshot("paid", { contract_sum_to_date: 100 })).toBe(true);
+  });
+
+  it("uses a reconciled draft snapshot so Export PDF shows remaining cash due", () => {
+    expect(shouldUseG702Snapshot("draft", snap)).toBe(true);
+    expect(shouldUseG702Snapshot("draft", {
+      contract_sum_to_date: 100,
+      reconciliation_note: "FINAL invoice",
+    })).toBe(true);
+  });
+
+  it("keeps ordinary drafts on live SOV math", () => {
+    expect(shouldUseG702Snapshot("draft", { contract_sum_to_date: 100 })).toBe(false);
+    expect(shouldUseG702Snapshot("draft", null)).toBe(false);
+    expect(shouldUseG702Snapshot("draft", {})).toBe(false);
   });
 });

@@ -77,16 +77,31 @@ describe("PayApplicationDocument", () => {
     const cell = getByTestId("amount-certified-cell");
     expect(cell.textContent).toBe("$1,234,567.89");
     expect(cell.style.border).toContain("solid");
-    expect(cell.style.overflow).toBe("hidden");
+    expect(cell.style.overflow).toBe("visible");
     expect(cell.style.whiteSpace).toBe("nowrap");
-    expect(cell.style.padding).toBe("6px 10px");
+    expect(cell.style.lineHeight).toBe("1.35");
+    expect(Number.parseFloat(cell.style.minHeight)).toBeGreaterThanOrEqual(30);
   });
 
-  it("keeps money cells nowrap and overflow-hidden so table rules stay around the figures", () => {
+  it("keeps G702 summary amounts fully inside tall padded cells (no vertical clip)", () => {
     const { container } = render(<PayApplicationDocument spec={spec} />);
-    const cells = container.querySelectorAll("[data-money-cell]");
-    expect(cells.length).toBeGreaterThan(10);
-    cells.forEach((el) => {
+    const amounts = container.querySelectorAll("[data-g702-sum-amount]");
+    expect(amounts.length).toBeGreaterThanOrEqual(8); // lines 1–4, 6–9 (+ highlighted 8)
+    amounts.forEach((el) => {
+      const s = (el as HTMLElement).style;
+      expect(s.whiteSpace).toBe("nowrap");
+      expect(s.overflow).toBe("visible");
+      expect(s.lineHeight).toBe("1.35");
+      expect(Number.parseFloat(s.minHeight || "0")).toBeGreaterThanOrEqual(24);
+      expect(Number.parseFloat(s.paddingTop || s.padding || "0")).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  it("keeps G703 table money cells nowrap so column rules stay around the figures", () => {
+    const { container } = render(<PayApplicationDocument spec={spec} />);
+    const tableCells = container.querySelectorAll("table [data-money-cell]");
+    expect(tableCells.length).toBeGreaterThan(6);
+    tableCells.forEach((el) => {
       const s = (el as HTMLElement).style;
       expect(s.whiteSpace).toBe("nowrap");
       expect(s.overflow).toBe("hidden");

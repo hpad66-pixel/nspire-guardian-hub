@@ -255,6 +255,24 @@ export interface G702Summary {
   less_previous_certificates: number;
   current_payment_due: number;
   balance_to_finish: number;
+  /**
+   * When true (or when a reconciliation_note is present), draft pay apps serve
+   * this snapshot for the G702 cover / PDF instead of recomputing from live SOV
+   * progress — used for cash-reconciled final invoices.
+   */
+  use_reconciled_snapshot?: boolean;
+  reconciliation_note?: string;
+  amount_certified?: number;
+}
+
+/** Prefer a stored pay_app_data snapshot over live SOV math. */
+export function shouldUseG702Snapshot(
+  status: string | null | undefined,
+  snapshot: Partial<G702Summary> | null | undefined,
+): boolean {
+  if (!snapshot || typeof snapshot.contract_sum_to_date !== "number") return false;
+  if (status && status !== "draft") return true;
+  return snapshot.use_reconciled_snapshot === true || Boolean(snapshot.reconciliation_note);
 }
 
 /**

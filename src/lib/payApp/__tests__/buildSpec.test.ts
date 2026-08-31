@@ -35,4 +35,15 @@ describe("buildPayAppSpec", () => {
     expect(over.signatureUrl).toBe("data:fresh");
     expect(over.draft).toBe(true);
   });
+
+  it("prefers pay_app_data.amount_certified for the G702 Amount Certified box", () => {
+    const pa = {
+      pay_app_no: 5,
+      period_end: "2026-07-22",
+      pay_app_data: { amount_certified: 144332.82, current_payment_due: 144332.82 },
+    };
+    const dueG702 = { ...g702, current_payment_due: 219332.82 };
+    const spec = buildPayAppSpec(pa, contract, {}, dueG702, lines);
+    expect(spec.amountCertified).toBe(144332.82);
+  });
 });
