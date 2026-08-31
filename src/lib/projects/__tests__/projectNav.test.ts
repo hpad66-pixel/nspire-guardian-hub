@@ -27,6 +27,7 @@ describe('projectNav', () => {
     });
     expect(kind).toBe('construction');
     expect(items.find((i) => i.value === 'rfis')).toBeTruthy();
+    expect(items.find((i) => i.value === 'permits')).toBeTruthy();
     expect(items.find((i) => i.value === 'pay-apps' as never)).toBeFalsy();
     expect(items.find((i) => i.value === 'financials')).toBeTruthy();
     // Admin tab only for admins

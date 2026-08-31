@@ -96,6 +96,13 @@ describe('moduleVisibility', () => {
     expect(enabled.has('schedule')).toBe(false);
   });
 
+  it('surfaces permits on the owner portal when the construction module is on', () => {
+    const enabled = portalModulesForProject({ project_type: 'property' });
+    expect(enabled.has('permits')).toBe(true);
+    expect(defaultModuleVisible('permits', 'consulting')).toBe(false);
+    expect(defaultModuleVisible('permits', 'property')).toBe(true);
+  });
+
   it('buildModuleConfig emits an explicit boolean for every catalog slug', () => {
     const cfg = buildModuleConfig({ financials: false });
     expect(Object.keys(cfg).sort()).toEqual(PROJECT_MODULE_CATALOG.map((m) => m.slug).sort());
