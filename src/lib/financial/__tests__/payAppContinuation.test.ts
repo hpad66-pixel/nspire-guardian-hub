@@ -156,6 +156,18 @@ describe("clampProgressToScheduled", () => {
     expect(r.value_to_date).toBe(1710);
     expect(r.value_this_period).toBe(100);
   });
+
+  it("caps credit lines that are more negative than the scheduled credit", () => {
+    const r = clampProgressToScheduled({
+      scheduledValue: -1800,
+      valueToDate: -2000,
+      valueThisPeriod: -2000,
+      retainage: 0,
+    });
+    expect(r.clamped).toBe(true);
+    expect(r.value_to_date).toBe(-1800);
+    expect(r.pct_complete).toBe(100);
+  });
 });
 
 describe("seedContinuationRows", () => {
@@ -305,5 +317,30 @@ describe("alignLineRetainageToCover", () => {
   it("is a no-op when already within a penny", () => {
     const lines = [{ retainage: 17004.08 }, { retainage: 17004.08 }];
     expect(alignLineRetainageToCover(lines, 34008.16)).toEqual(lines);
+  });
+
+  it("returns the same array when cover target is zero or lines empty", () => {
+    const lines = [{ retainage: 100 }];
+    expect(alignLineRetainageToCover(lines, 0)).toBe(lines);
+    expect(alignLineRetainageToCover(lines, null)).toBe(lines);
+    expect(alignLineRetainageToCover([], 34008.16)).toEqual([]);
+  });
+
+  it("returns lines unchanged when current retainage is all zeros", () => {
+    const lines = [{ retainage: 0 }, { retainage: 0 }];
+    expect(alignLineRetainageToCover(lines, 34008.16)).toBe(lines);
+  });
+
+  it("penny-fixes the largest line when scaling leaves a cent of drift", () => {
+    // 1+1+1 → target 10: each rounds to 3.33, sum 9.99, needs +0.01 on the first.
+    const lines = [
+      { id: "a", retainage: 1 },
+      { id: "b", retainage: 1 },
+      { id: "c", retainage: 1 },
+    ];
+    const aligned = alignLineRetainageToCover(lines, 10);
+    const total = Math.round(aligned.reduce((s, l) => s + l.retainage, 0) * 100) / 100;
+    expect(total).toBe(10);
+    expect(aligned.map((l) => l.retainage).sort((x, y) => y - x)).toEqual([3.34, 3.33, 3.33]);
   });
 });
