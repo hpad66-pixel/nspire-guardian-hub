@@ -118,7 +118,7 @@ describe("PayApplicationDocument", () => {
             ...spec.g702,
             less_previous_certificates: 742871.38,
             current_payment_due: 144332.82,
-            balance_to_finish: 66146.15,
+            balance_to_finish: 32137.99,
           },
         }}
       />,
@@ -127,15 +127,16 @@ describe("PayApplicationDocument", () => {
     expect(getByText(/INVOICE TYPE:/)).toBeTruthy();
     expect(getAllByText(/FINAL INVOICE/i).length).toBeGreaterThanOrEqual(1);
     expect(getAllByText(/paid to date/i).length).toBeGreaterThanOrEqual(1);
-    expect(getByText(/Unbilled contract balance/i)).toBeTruthy();
+    expect(getByText(/Unbilled \/ unbuilt contract balance/i)).toBeTruthy();
     expect(getAllByText(/will not be billed/i).length).toBeGreaterThanOrEqual(1);
     expect(getByText(/Current payment due \(FINAL\)/i)).toBeTruthy();
+    expect(getAllByText(/\$32,137\.99/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("does not show the FINAL banner on a progress application", () => {
     const { queryByTestId, queryByText } = render(<PayApplicationDocument spec={spec} />);
     expect(queryByTestId("final-invoice-banner")).toBeNull();
-    expect(queryByText(/Unbilled contract balance/i)).toBeNull();
+    expect(queryByText(/Unbilled \/ unbuilt contract balance/i)).toBeNull();
   });
 
   it("pins G703 Column G / I grand totals to G702 Lines 4 / 5 even when live lines disagree", () => {

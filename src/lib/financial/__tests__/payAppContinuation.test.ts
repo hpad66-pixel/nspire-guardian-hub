@@ -11,6 +11,9 @@ import {
   shouldUseG702Snapshot,
   alignLineRetainageToCover,
   computeG703GrandTotals,
+  resolveG702Line9,
+  withResolvedLine9,
+  round2,
   type G702Summary,
 } from "../payAppContinuation";
 
@@ -221,9 +224,55 @@ describe("computeG702", () => {
     expect(g.balance_to_finish).toBe(152252.43);
   });
 
+  it("final invoice Line 9 = contract − completed (true unbuilt, not incl. retainage)", () => {
+    // Glorieta-shaped: contract 953350.35, completed 921212.36, retainage 34008.16
+    // AIA Line 9 (progress) = 953350.35 − 887204.20 = 66146.15
+    // Final Line 9 (unbuilt) = 953350.35 − 921212.36 = 32137.99
+    const g = computeG702({
+      originalContractSum: 523061,
+      previousCertificates: 742871.38,
+      isFinalInvoice: true,
+      lines: [
+        { kind: "base", scheduled_value: 523061, value_to_date: 490923.01, retainage: 18115 },
+        { kind: "change_order", scheduled_value: 430289.35, value_to_date: 430289.35, retainage: 15893.16 },
+      ],
+    });
+    expect(g.contract_sum_to_date).toBe(953350.35);
+    expect(g.completed_stored_to_date).toBe(921212.36);
+    expect(g.retainage_total).toBe(34008.16);
+    expect(g.total_earned_less_retainage).toBe(887204.2);
+    expect(g.balance_to_finish).toBe(32137.99);
+    // Proof: unbuilt + retainage = old AIA Line 9
+    expect(round2(g.balance_to_finish + g.retainage_total)).toBe(66146.15);
+  });
+
   it("zero lines → all zeros with no NaN", () => {
     const g = computeG702({ originalContractSum: 0, previousCertificates: 0, lines: [] });
     expect(Object.values(g).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("resolveG702Line9 / withResolvedLine9", () => {
+  const snap: G702Summary = {
+    original_contract_sum: 523061,
+    net_change_orders: 430289.35,
+    contract_sum_to_date: 953350.35,
+    completed_stored_to_date: 921212.36,
+    retainage_total: 34008.16,
+    total_earned_less_retainage: 887204.2,
+    less_previous_certificates: 742871.38,
+    current_payment_due: 144332.82,
+    // Stale AIA figure that bundled retainage
+    balance_to_finish: 66146.15,
+  };
+
+  it("keeps progress Line 9 as stored / AIA (incl. retainage)", () => {
+    expect(resolveG702Line9(snap, false)).toBe(66146.15);
+  });
+
+  it("rewrites final Line 9 to contract − completed even when snapshot is stale", () => {
+    expect(resolveG702Line9(snap, true)).toBe(32137.99);
+    expect(withResolvedLine9(snap, true).balance_to_finish).toBe(32137.99);
   });
 });
 

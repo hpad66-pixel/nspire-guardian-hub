@@ -84,11 +84,11 @@ export const G702_LINE_COPY: G702LineCopy[] = [
     no: "9.",
     key: "balance_to_finish",
     label: "Balance to finish, including retainage",
-    sub: "Line 3 less Line 6 — remaining contract work still to finish",
+    sub: "Line 3 − Line 6 = uncompleted work + retainage still held (not the unbuilt delta alone)",
   },
 ];
 
-/** Final-invoice overrides — Line 9 must not imply more work will be billed. */
+/** Final-invoice overrides — Line 9 is the true unbuilt delta (Line 3 − Line 4). */
 const FINAL_LINE_OVERRIDES: Partial<Record<G702LineKey, Pick<G702LineCopy, "label" | "sub">>> = {
   less_previous_certificates: {
     label: "Less previous certificates for payment (paid to date)",
@@ -99,8 +99,8 @@ const FINAL_LINE_OVERRIDES: Partial<Record<G702LineKey, Pick<G702LineCopy, "labe
     sub: "Remaining balance now due — this is the final invoice",
   },
   balance_to_finish: {
-    label: "Unbilled contract balance (not billed)",
-    sub: "Quantities/credits left on the table — will not be billed. This FINAL invoice closes the project.",
+    label: "Unbilled / unbuilt contract balance (not billed)",
+    sub: "Line 3 − Line 4 (contract − completed). Retainage is already in Lines 5–6 — this leftover will not be billed; the FINAL invoice closes the project.",
   },
 };
 
