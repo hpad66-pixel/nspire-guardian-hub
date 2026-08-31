@@ -509,12 +509,22 @@ export function usePayAppContinuation(payAppId: string | null) {
   const submit = useMutation({
     mutationFn: async () => {
       if (!payAppId) throw new Error("No pay app");
+      const isFinal =
+        Boolean((detail.data as any)?.is_final_invoice) ||
+        Boolean((snapshot as any)?.is_final_invoice);
+      const pay_app_data = {
+        ...((snapshot as any) ?? {}),
+        ...g702,
+        is_final_invoice: isFinal,
+        ...(isFinal ? { use_reconciled_snapshot: true } : {}),
+      };
       const { error } = await supabase
         .from("prime_contract_pay_apps" as any)
         .update({
           status: "submitted",
           submitted_amount: g702.current_payment_due,
-          pay_app_data: g702 as any,
+          is_final_invoice: isFinal,
+          pay_app_data: pay_app_data as any,
         } as any)
         .eq("id", payAppId);
       if (error) throw error;

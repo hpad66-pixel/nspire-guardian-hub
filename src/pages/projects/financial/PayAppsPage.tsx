@@ -8,6 +8,7 @@ import { useGeneratePayApp } from "@/hooks/usePayAppContinuation";
 import { useDeletePayApp } from "@/hooks/usePayApp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
 import { useCommitments } from "@/hooks/useCommitments";
@@ -118,7 +119,16 @@ export default function PayAppsPage() {
                 {(payApps as any[]).map((pa) => (
                   <tr key={pa.id} className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
                     onClick={() => (window.location.href = `/projects/${projectId}/financials/prime-contract/pay-apps/${pa.id}`)}>
-                    <td className="p-3 font-mono font-medium">#{pa.pay_app_no}</td>
+                    <td className="p-3 font-mono font-medium">
+                      <span className="inline-flex items-center gap-2">
+                        #{pa.pay_app_no}
+                        {(pa.is_final_invoice || pa.pay_app_data?.is_final_invoice) && (
+                          <Badge className="bg-[var(--apas-sapphire)] text-white tracking-wider uppercase text-[10px]">
+                            Final
+                          </Badge>
+                        )}
+                      </span>
+                    </td>
                     <td className="p-3 text-muted-foreground">{fmtDate(pa.period_end)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.submitted_amount)}</td>
                     <td className="p-3 text-right font-mono">{fmt2(pa.approved_amount)}</td>

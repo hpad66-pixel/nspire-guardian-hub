@@ -263,6 +263,8 @@ export interface G702Summary {
   use_reconciled_snapshot?: boolean;
   reconciliation_note?: string;
   amount_certified?: number;
+  /** Mirrored from prime_contract_pay_apps.is_final_invoice for PDF snapshots. */
+  is_final_invoice?: boolean;
 }
 
 /** Prefer a stored pay_app_data snapshot over live SOV math. */
@@ -272,7 +274,11 @@ export function shouldUseG702Snapshot(
 ): boolean {
   if (!snapshot || typeof snapshot.contract_sum_to_date !== "number") return false;
   if (status && status !== "draft") return true;
-  return snapshot.use_reconciled_snapshot === true || Boolean(snapshot.reconciliation_note);
+  return (
+    snapshot.use_reconciled_snapshot === true ||
+    Boolean(snapshot.reconciliation_note) ||
+    snapshot.is_final_invoice === true
+  );
 }
 
 /**
