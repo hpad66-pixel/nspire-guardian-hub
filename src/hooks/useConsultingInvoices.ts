@@ -26,6 +26,7 @@ export interface ConsultingInvoiceLine {
   id: string;
   invoice_id: string;
   scope_id: string | null;
+  proposal_id?: string | null;
   description: string;
   fee_amount: number;
   pct_prev: number;
@@ -45,6 +46,7 @@ export interface ConsultingInvoicePayment {
 
 export interface NewInvoiceLine {
   scope_id: string | null;
+  proposal_id?: string | null;
   description: string;
   fee_amount: number;
   pct_prev: number;
@@ -101,6 +103,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
         const rows = input.lines.map((l, i) => ({
           invoice_id: inv.id,
           scope_id: l.scope_id,
+          proposal_id: l.proposal_id ?? null,
           description: l.description,
           fee_amount: l.fee_amount,
           pct_prev: l.pct_prev,
