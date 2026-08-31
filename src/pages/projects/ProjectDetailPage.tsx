@@ -46,6 +46,8 @@ import { useChangeOrdersByProject } from '@/hooks/useChangeOrders';
 import { useRFIStats, useRFIsByProject } from '@/hooks/useRFIs';
 import { useSubmittalsByProject } from '@/hooks/useSubmittals';
 import { usePunchItemStats } from '@/hooks/usePunchItems';
+import { useConstructionCloseout } from '@/hooks/useConstructionCloseout';
+import { ConstructionCloseoutBanner } from '@/components/projects/ConstructionCloseoutBanner';
 import { useActionItemsByProject, useDeleteActionItem } from '@/hooks/useActionItems';
 import { MilestoneTimeline } from '@/components/projects/MilestoneTimeline';
 import { GanttChart } from '@/components/projects/GanttChart';
@@ -154,6 +156,7 @@ export default function ProjectDetailPage() {
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
   const { data: rfiStats } = useRFIStats(id ?? null);
   const { data: punchStats } = usePunchItemStats(id ?? null);
+  const closeout = useConstructionCloseout(project ?? null);
   const { data: unreadLogComments = 0 } = useUnreadClientComments(id ?? undefined);
   const { data: rfis = [] } = useRFIsByProject(id ?? null);
   const { data: submittals = [] } = useSubmittalsByProject(id ?? null);
@@ -341,6 +344,16 @@ export default function ProjectDetailPage() {
   const completedMilestones = milestones?.filter(m => m.status === 'completed').length || 0;
   const totalMilestones = milestones?.length || 0;
   const milestoneProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+  // Construction projects with a final invoice drive the Progress tile from G702 completion
+  const constructionProgress = closeout.readiness?.constructionPct ?? null;
+  const progressPct = constructionProgress != null && constructionProgress > 0
+    ? Math.round(constructionProgress)
+    : milestoneProgress;
+  const progressCaption = closeout.readiness?.isConstructionComplete
+    ? 'construction complete (final invoice)'
+    : constructionProgress != null && constructionProgress > 0
+      ? 'of contract completed'
+      : 'milestones done';
   const daysRemaining = project.target_end_date ? differenceInDays(new Date(project.target_end_date), new Date()) : null;
   const approvedCOAmount = changeOrders?.filter(co => co.status === 'approved').reduce((sum, co) => sum + (Number(co.amount) || 0), 0) || 0;
   // Count PRIME change orders only (exclude subcontractor/commitment COs) so this
@@ -355,6 +368,7 @@ export default function ProjectDetailPage() {
     : null;
 
   const punchOpen = (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0);
+  const trackerOpen = closeout.trackerOpen;
   const { groups: tabGroups, items: visibleTabs } = getProjectNav({
     project: project as never,
     parent: parentProject as never,
@@ -363,7 +377,8 @@ export default function ProjectDetailPage() {
       subprojects: subprojectCount > 0 ? subprojectCount : null,
       rfis: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null,
       'punch-list': punchOpen > 0 ? punchOpen : null,
-      'project-log': unreadLogComments > 0 ? unreadLogComments : null,
+      // Prefer open Project Log items (Glorieta punch path); fall back to unread client comments
+      'project-log': trackerOpen > 0 ? trackerOpen : (unreadLogComments > 0 ? unreadLogComments : null),
     },
   });
   const groupKeyOf = (value: string) =>
@@ -666,7 +681,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Progress */}
+            {/* Progress — SOV/final-invoice % for construction; milestones otherwise */}
             <div className="rounded-xl border bg-card/60 backdrop-blur-sm p-3 md:p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -675,14 +690,18 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[9px] md:text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Progress</p>
-                    <p className="text-base md:text-xl font-bold leading-none mt-0.5">{milestoneProgress}%</p>
+                    <p className="text-base md:text-xl font-bold leading-none mt-0.5">{progressPct}%</p>
                   </div>
                 </div>
-                <span className="text-[10px] md:text-xs font-medium text-muted-foreground hidden sm:block">{completedMilestones}/{totalMilestones}</span>
+                <span className="text-[10px] md:text-xs font-medium text-muted-foreground hidden sm:block">
+                  {closeout.readiness?.isConstructionComplete
+                    ? 'FINAL'
+                    : `${completedMilestones}/${totalMilestones}`}
+                </span>
               </div>
               <div>
-                <Progress value={milestoneProgress} className="h-1.5 [&>div]:bg-success" />
-                <p className="text-[9px] md:text-[10px] text-muted-foreground mt-1">milestones done</p>
+                <Progress value={progressPct} className="h-1.5 [&>div]:bg-success" />
+                <p className="text-[9px] md:text-[10px] text-muted-foreground mt-1 truncate">{progressCaption}</p>
               </div>
             </div>
 
@@ -778,6 +797,14 @@ export default function ProjectDetailPage() {
               {/* RIGHT: Tab content */}
               <div className="flex-1 min-w-0 space-y-4">
                 <TabsContent value="overview" className="space-y-6 mt-0">
+                  {closeout.readiness && (
+                    <ConstructionCloseoutBanner
+                      projectId={id!}
+                      readiness={closeout.readiness}
+                      payAppId={closeout.payAppId}
+                      onNavigateTab={setActiveTab}
+                    />
+                  )}
                   <RiskRadarPanel projectId={id!} />
                   {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
                   {!projectLoading && (
@@ -1105,6 +1132,14 @@ export default function ProjectDetailPage() {
             {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
             <div className="lg:hidden mt-2 space-y-4">
               <TabsContent value="overview" className="space-y-6">
+                {closeout.readiness && (
+                  <ConstructionCloseoutBanner
+                    projectId={id!}
+                    readiness={closeout.readiness}
+                    payAppId={closeout.payAppId}
+                    onNavigateTab={setActiveTab}
+                  />
+                )}
                 <RiskRadarPanel projectId={id!} />
                 {/* ── NEEDS ATTENTION ─────────────────────────────────────── */}
                 {!projectLoading && (
