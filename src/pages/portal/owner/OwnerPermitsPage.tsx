@@ -1,7 +1,8 @@
 /**
  * Owner portal — Permit / compliance closeout view.
- * Client-visible project_permits only; readiness score + chase narrative.
+ * Client-visible project_permits only; readiness score + interactive analytics.
  */
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -14,12 +15,17 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  PermitAnalyticsCharts,
+  applyPermitAnalyticsFilter,
+  type PermitAnalyticsFilter,
+} from '@/components/projects/permits/PermitAnalyticsCharts';
 import { useClientPortalProject, useOwnerPortalHref } from '@/components/portal/ClientPortalProjectContext';
 import { useProjectPermits } from '@/hooks/useProjectPermits';
 import {
   PERMIT_STATUS_LABEL,
   buildPermitComplianceBrief,
-  groupByBuilding,
+  daysOpen,
   isCityBlocked,
   permitReadiness,
 } from '@/lib/permits/projectPermitStats';
@@ -38,10 +44,18 @@ export default function OwnerPermitsPage() {
   const { selectedProjectId: projectId, projects } = useClientPortalProject();
   const projectName = projects.find((p) => p.id === projectId)?.name ?? 'Your project';
   const { data: permits = [], isLoading } = useProjectPermits(projectId, { clientVisibleOnly: true });
-  const readiness = permitReadiness(permits);
-  const buildings = groupByBuilding(permits);
-  const open = permits.filter((p) => p.status !== 'closed');
-  const brief = buildPermitComplianceBrief(permits, { projectName });
+  const [chartFilter, setChartFilter] = useState<PermitAnalyticsFilter>({ type: 'all' });
+
+  const readiness = useMemo(() => permitReadiness(permits), [permits]);
+  const brief = useMemo(
+    () => buildPermitComplianceBrief(permits, { projectName }),
+    [permits, projectName],
+  );
+  const filtered = useMemo(
+    () => applyPermitAnalyticsFilter(permits, chartFilter),
+    [permits, chartFilter],
+  );
+  const openFiltered = filtered.filter((p) => p.status !== 'closed');
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6" data-testid="owner-permits-page">
@@ -50,7 +64,7 @@ export default function OwnerPermitsPage() {
           <Link to={href()} className="text-sm text-muted-foreground hover:underline">← Portal overview</Link>
           <h1 className="mt-2 font-display text-4xl font-medium text-[#082b23]">Permit compliance</h1>
           <p className="mt-1 text-muted-foreground">
-            Live closeout status for {projectName}. APAS coordinates closure with the City — not just documentation.
+            Live closeout status for {projectName}. Click any chart to focus the register — APAS coordinates closure with the City.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
@@ -113,21 +127,12 @@ export default function OwnerPermitsPage() {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {buildings.map((b) => (
-              <span
-                key={b.building}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold',
-                  b.open > 0 ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-800',
-                )}
-              >
-                <Building2 className="h-3.5 w-3.5" />
-                {b.building}
-                <span className="opacity-70">{b.open} open</span>
-              </span>
-            ))}
-          </div>
+          <PermitAnalyticsCharts
+            permits={permits}
+            filter={chartFilter}
+            onFilterChange={setChartFilter}
+            variant="owner"
+          />
 
           <Card className="border-sky-200/80 bg-sky-50/40 shadow-sm">
             <CardContent className="space-y-2 p-5">
@@ -141,30 +146,54 @@ export default function OwnerPermitsPage() {
 
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-[#082b23]">
-              {open.length > 0 ? 'Open items requiring attention' : 'All permits closed'}
+              {chartFilter.type === 'all'
+                ? openFiltered.length > 0
+                  ? 'Open items requiring attention'
+                  : 'All permits closed'
+                : `Filtered view · ${filtered.length} permit${filtered.length === 1 ? '' : 's'}`}
             </h3>
-            {(open.length > 0 ? open : permits.slice(0, 6)).map((p) => (
-              <article key={p.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-bold">{p.permit_number}</span>
-                  <Badge variant="outline" className={cn('font-semibold', STATUS_STYLE[p.status])}>
-                    {PERMIT_STATUS_LABEL[p.status] ?? p.status}
-                  </Badge>
-                  {isCityBlocked(p) && (
-                    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
-                      City confirmation
+            {(
+              chartFilter.type === 'all'
+                ? (openFiltered.length > 0 ? openFiltered : permits.slice(0, 6))
+                : filtered
+            ).map((p) => {
+              const age = daysOpen(p);
+              return (
+                <article key={p.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm font-bold">{p.permit_number}</span>
+                    <Badge variant="outline" className={cn('font-semibold', STATUS_STYLE[p.status])}>
+                      {PERMIT_STATUS_LABEL[p.status] ?? p.status}
                     </Badge>
+                    {isCityBlocked(p) && (
+                      <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
+                        City confirmation
+                      </Badge>
+                    )}
+                    {age != null && age > 30 && (
+                      <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-800">
+                        {age} days open
+                      </Badge>
+                    )}
+                  </div>
+                  <h4 className="mt-1.5 font-semibold text-[#082b23]">{p.description}</h4>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {[p.building, p.street_address, p.department, p.contractor, p.responsible_party]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                  {p.next_action && (
+                    <p className="mt-1.5 text-xs font-medium text-sky-800">Next: {p.next_action}</p>
                   )}
-                </div>
-                <h4 className="mt-1.5 font-semibold text-[#082b23]">{p.description}</h4>
-                <p className="mt-1 text-sm text-slate-600">
-                  {[p.building, p.street_address, p.department, p.contractor, p.responsible_party]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                {p.notes && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{p.notes}</p>}
-              </article>
-            ))}
+                  {p.notes && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{p.notes}</p>}
+                  {p.building && (
+                    <p className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500">
+                      <Building2 className="h-3 w-3" /> {p.building}
+                    </p>
+                  )}
+                </article>
+              );
+            })}
           </section>
         </>
       )}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   Building2,
   CheckCircle2,
   ClipboardList,
@@ -9,6 +10,7 @@ import {
   Filter,
   Loader2,
   MapPin,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -25,14 +27,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import {
+  PermitAnalyticsCharts,
+  applyPermitAnalyticsFilter,
+  type PermitAnalyticsFilter,
+} from '@/components/projects/permits/PermitAnalyticsCharts';
 import { useProjectPermits, type ProjectPermit } from '@/hooks/useProjectPermits';
 import {
   PERMIT_STATUS_LABEL,
   buildPermitComplianceBrief,
-  groupByBuilding,
+  buildStatusAdvancePatch,
+  daysOpen,
   groupOpenByOwner,
   isCityBlocked,
+  nextPipelineAction,
   permitReadiness,
+  type ProjectPermitStatus,
 } from '@/lib/permits/projectPermitStats';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +62,37 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/** Mini pipeline dots on each card so status advance is visible. */
+function PermitPipelineDots({ status }: { status: string }) {
+  const steps = [
+    { key: 'open_active', label: 'Open' },
+    { key: 'pending', label: 'City' },
+    { key: 'closed', label: 'Closed' },
+  ] as const;
+  const idx =
+    status === 'closed' ? 2 : status === 'pending' ? 1 : 0;
+  return (
+    <div className="flex items-center gap-1.5" aria-label="Closeout pipeline">
+      {steps.map((s, i) => (
+        <div key={s.key} className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              'h-2 w-2 rounded-full',
+              i < idx && 'bg-emerald-500',
+              i === idx && (status === 'closed' ? 'bg-emerald-500' : 'bg-[var(--apas-sapphire)] ring-2 ring-[var(--apas-sapphire)]/30'),
+              i > idx && 'bg-muted-foreground/25',
+            )}
+            title={s.label}
+          />
+          {i < steps.length - 1 && (
+            <span className={cn('h-px w-3', i < idx ? 'bg-emerald-400' : 'bg-muted-foreground/20')} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ProjectPermitsTab({
   projectId,
   projectName,
@@ -62,9 +103,9 @@ export function ProjectPermitsTab({
   const { data: permits = [], isLoading, update } = useProjectPermits(projectId);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'pending' | 'closed' | 'blocked'>('all');
+  const [chartFilter, setChartFilter] = useState<PermitAnalyticsFilter>({ type: 'all' });
 
   const readiness = useMemo(() => permitReadiness(permits), [permits]);
-  const buildings = useMemo(() => groupByBuilding(permits), [permits]);
   const owners = useMemo(() => groupOpenByOwner(permits), [permits]);
   const brief = useMemo(
     () => buildPermitComplianceBrief(permits, { projectName: projectName || 'Project' }),
@@ -72,8 +113,9 @@ export function ProjectPermitsTab({
   );
 
   const filtered = useMemo(() => {
+    const charted = applyPermitAnalyticsFilter(permits, chartFilter);
     const q = query.trim().toLowerCase();
-    return permits.filter((p) => {
+    return charted.filter((p) => {
       if (statusFilter === 'closed' && p.status !== 'closed') return false;
       if (statusFilter === 'pending' && p.status !== 'pending') return false;
       if (statusFilter === 'open' && p.status !== 'open_active') return false;
@@ -93,17 +135,11 @@ export function ProjectPermitsTab({
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [permits, query, statusFilter]);
+  }, [permits, query, statusFilter, chartFilter]);
 
-  async function markClosed(permit: ProjectPermit) {
-    await update.mutateAsync({
-      id: permit.id,
-      status: 'closed',
-      closed_on: new Date().toISOString().slice(0, 10),
-      notes: permit.notes
-        ? `${permit.notes} · Closed in Proj OS ${new Date().toLocaleDateString()}`
-        : `Closed in Proj OS ${new Date().toLocaleDateString()}`,
-    });
+  async function advanceStatus(permit: ProjectPermit, next: ProjectPermitStatus) {
+    const patch = buildStatusAdvancePatch(permit, next);
+    await update.mutateAsync({ id: permit.id, ...patch });
   }
 
   function copyBrief() {
@@ -130,8 +166,8 @@ export function ProjectPermitsTab({
             </div>
             <h2 className="font-display text-3xl font-bold tracking-tight">Closeout readiness</h2>
             <p className="text-sm text-white/80 leading-relaxed">
-              Coordinate closure with the City — not just a spreadsheet. Open items, city confirmations,
-              and responsible parties in one living register.
+              Coordinate closure with the City — not just a spreadsheet. Advance each permit through
+              Open → City wait → Closed, and use the charts below to focus the chase.
             </p>
           </div>
           <div className="flex items-end gap-4">
@@ -152,27 +188,84 @@ export function ProjectPermitsTab({
         </div>
       </section>
 
-      {/* KPI chips */}
+      {/* KPI chips — clickable filters */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Closed', value: readiness.counts.closed, icon: CheckCircle2, tone: 'text-emerald-600 bg-emerald-500/10' },
-          { label: 'Open · Active', value: readiness.counts.openActive, icon: ClipboardList, tone: 'text-amber-700 bg-amber-500/10' },
-          { label: 'Pending city', value: readiness.counts.pending, icon: AlertTriangle, tone: 'text-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/10' },
-          { label: 'City / agency wait', value: readiness.counts.blocked, icon: FileBadge2, tone: 'text-rose-600 bg-rose-500/10' },
+          {
+            label: 'Closed',
+            value: readiness.counts.closed,
+            icon: CheckCircle2,
+            tone: 'text-emerald-600 bg-emerald-500/10',
+            onClick: () => {
+              setStatusFilter('closed');
+              setChartFilter({ type: 'all' });
+            },
+            active: statusFilter === 'closed',
+          },
+          {
+            label: 'Open · Active',
+            value: readiness.counts.openActive,
+            icon: ClipboardList,
+            tone: 'text-amber-700 bg-amber-500/10',
+            onClick: () => {
+              setStatusFilter('open');
+              setChartFilter({ type: 'all' });
+            },
+            active: statusFilter === 'open',
+          },
+          {
+            label: 'Pending city',
+            value: readiness.counts.pending,
+            icon: AlertTriangle,
+            tone: 'text-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/10',
+            onClick: () => {
+              setStatusFilter('pending');
+              setChartFilter({ type: 'all' });
+            },
+            active: statusFilter === 'pending',
+          },
+          {
+            label: 'City / agency wait',
+            value: readiness.counts.blocked,
+            icon: FileBadge2,
+            tone: 'text-rose-600 bg-rose-500/10',
+            onClick: () => {
+              setStatusFilter('blocked');
+              setChartFilter({ type: 'all' });
+            },
+            active: statusFilter === 'blocked',
+          },
         ].map((kpi) => (
-          <Card key={kpi.label} className="border-border/70 shadow-sm">
-            <CardContent className="flex items-center gap-3 p-4">
-              <span className={cn('grid h-10 w-10 place-items-center rounded-xl', kpi.tone)}>
-                <kpi.icon className="h-5 w-5" />
-              </span>
-              <div>
-                <div className="text-2xl font-bold tabular-nums">{kpi.value}</div>
-                <div className="text-xs font-medium text-muted-foreground">{kpi.label}</div>
-              </div>
-            </CardContent>
-          </Card>
+          <button key={kpi.label} type="button" onClick={kpi.onClick} className="text-left">
+            <Card
+              className={cn(
+                'border-border/70 shadow-sm transition-all hover:shadow-md',
+                kpi.active && 'ring-2 ring-[#0D3B30]/30 border-[#0D3B30]/40',
+              )}
+            >
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className={cn('grid h-10 w-10 place-items-center rounded-xl', kpi.tone)}>
+                  <kpi.icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="text-2xl font-bold tabular-nums">{kpi.value}</div>
+                  <div className="text-xs font-medium text-muted-foreground">{kpi.label}</div>
+                </div>
+              </CardContent>
+            </Card>
+          </button>
         ))}
       </div>
+
+      {/* Interactive analytics */}
+      <PermitAnalyticsCharts
+        permits={permits}
+        filter={chartFilter}
+        onFilterChange={(f) => {
+          setChartFilter(f);
+          if (f.type !== 'all') setStatusFilter('all');
+        }}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         {/* Action by owner */}
@@ -202,52 +295,22 @@ export function ProjectPermitsTab({
           </CardContent>
         </Card>
 
-        {/* Buildings + AI brief */}
-        <div className="space-y-4">
-          <Card className="border-border/70 shadow-sm">
-            <CardContent className="space-y-3 p-5">
+        <Card className="border-[var(--apas-sapphire)]/20 bg-[var(--apas-sapphire)]/[0.04] shadow-sm">
+          <CardContent className="space-y-3 p-5">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-amber-600" />
-                <h3 className="font-semibold">By building / area</h3>
+                <Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" />
+                <h3 className="font-semibold">Monthly compliance brief</h3>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {buildings.map((b) => (
-                  <button
-                    key={b.building}
-                    type="button"
-                    onClick={() => setQuery(b.building)}
-                    className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                      b.open > 0
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-900'
-                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800',
-                    )}
-                  >
-                    {b.building}
-                    <span className="ml-1.5 opacity-70">{b.open}/{b.total} open</span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[var(--apas-sapphire)]/20 bg-[var(--apas-sapphire)]/[0.04] shadow-sm">
-            <CardContent className="space-y-3 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" />
-                  <h3 className="font-semibold">Monthly compliance brief</h3>
-                </div>
-                <Button type="button" size="sm" variant="outline" onClick={copyBrief}>
-                  <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy
-                </Button>
-              </div>
-              <pre className="whitespace-pre-wrap rounded-xl border border-border/60 bg-background/80 p-3 text-[11px] leading-relaxed text-foreground/90 font-sans">
-                {brief}
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
+              <Button type="button" size="sm" variant="outline" onClick={copyBrief}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy
+              </Button>
+            </div>
+            <pre className="whitespace-pre-wrap rounded-xl border border-border/60 bg-background/80 p-3 text-[11px] leading-relaxed text-foreground/90 font-sans">
+              {brief}
+            </pre>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters + register */}
@@ -261,7 +324,13 @@ export function ProjectPermitsTab({
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => {
+            setStatusFilter(v as typeof statusFilter);
+            setChartFilter({ type: 'all' });
+          }}
+        >
           <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Filter status" />
           </SelectTrigger>
@@ -273,6 +342,26 @@ export function ProjectPermitsTab({
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
+        {(statusFilter !== 'all' || chartFilter.type !== 'all' || query) && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setStatusFilter('all');
+              setChartFilter({ type: 'all' });
+              setQuery('');
+            }}
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          Register · {filtered.length} of {permits.length}
+        </h3>
       </div>
 
       <div className="space-y-3">
@@ -283,67 +372,111 @@ export function ProjectPermitsTab({
             </CardContent>
           </Card>
         ) : (
-          filtered.map((p) => (
-            <article
-              key={p.id}
-              className={cn(
-                'rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
-                isCityBlocked(p) ? 'border-amber-500/40' : 'border-border/70',
-              )}
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-foreground">{p.permit_number}</span>
-                    <StatusBadge status={p.status} />
-                    {isCityBlocked(p) && (
-                      <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-900">
-                        Needs city
-                      </Badge>
-                    )}
-                    {p.trade && <Badge variant="secondary">{p.trade}</Badge>}
-                  </div>
-                  <h4 className="text-base font-semibold leading-snug">{p.description}</h4>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {p.building && (
-                      <span className="inline-flex items-center gap-1">
-                        <Building2 className="h-3 w-3" /> {p.building}
-                      </span>
-                    )}
-                    {p.street_address && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> {p.street_address}
-                      </span>
-                    )}
-                    {p.department && <span>{p.department}</span>}
-                    {p.contractor && <span>{p.contractor}</span>}
-                    {p.responsible_party && (
-                      <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                        <UserRound className="h-3 w-3" /> {p.responsible_party}
-                      </span>
-                    )}
-                  </div>
-                  {p.notes && (
-                    <p className="text-sm text-foreground/80 bg-muted/40 rounded-lg px-3 py-2 border border-border/50">
-                      {p.notes}
-                    </p>
-                  )}
-                </div>
-                {p.status !== 'closed' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={update.isPending}
-                    onClick={() => void markClosed(p)}
-                  >
-                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark closed
-                  </Button>
+          filtered.map((p) => {
+            const advance = nextPipelineAction(p.status);
+            const age = daysOpen(p);
+            return (
+              <article
+                key={p.id}
+                className={cn(
+                  'rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
+                  isCityBlocked(p) ? 'border-amber-500/40' : 'border-border/70',
                 )}
-              </div>
-            </article>
-          ))
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-bold text-foreground">{p.permit_number}</span>
+                      <StatusBadge status={p.status} />
+                      <PermitPipelineDots status={p.status} />
+                      {isCityBlocked(p) && (
+                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-900">
+                          Needs city
+                        </Badge>
+                      )}
+                      {p.trade && <Badge variant="secondary">{p.trade}</Badge>}
+                      {age != null && age > 60 && (
+                        <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-rose-700">
+                          {age}d open
+                        </Badge>
+                      )}
+                      {age != null && age > 30 && age <= 60 && (
+                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800">
+                          {age}d open
+                        </Badge>
+                      )}
+                    </div>
+                    <h4 className="text-base font-semibold leading-snug">{p.description}</h4>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {p.building && (
+                        <span className="inline-flex items-center gap-1">
+                          <Building2 className="h-3 w-3" /> {p.building}
+                        </span>
+                      )}
+                      {p.street_address && (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {p.street_address}
+                        </span>
+                      )}
+                      {p.department && <span>{p.department}</span>}
+                      {p.contractor && <span>{p.contractor}</span>}
+                      {p.responsible_party && (
+                        <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                          <UserRound className="h-3 w-3" /> {p.responsible_party}
+                        </span>
+                      )}
+                    </div>
+                    {p.next_action && (
+                      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--apas-sapphire)]">
+                        <ArrowRight className="h-3 w-3" /> Next: {p.next_action}
+                      </p>
+                    )}
+                    {p.notes && (
+                      <p className="text-sm text-foreground/80 bg-muted/40 rounded-lg px-3 py-2 border border-border/50">
+                        {p.notes}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
+                    {advance && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-[#0D3B30] text-white hover:bg-[#0D3B30]/90"
+                        disabled={update.isPending}
+                        onClick={() => void advanceStatus(p, advance.next)}
+                      >
+                        <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
+                        {advance.actionLabel}
+                      </Button>
+                    )}
+                    {p.status !== 'closed' && p.status !== 'pending' && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={update.isPending}
+                        onClick={() => void advanceStatus(p, 'closed')}
+                      >
+                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark closed
+                      </Button>
+                    )}
+                    {p.status === 'closed' && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={update.isPending}
+                        onClick={() => void advanceStatus(p, 'open_active')}
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reopen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            );
+          })
         )}
       </div>
     </div>
