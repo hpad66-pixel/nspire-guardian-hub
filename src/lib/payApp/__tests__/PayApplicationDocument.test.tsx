@@ -137,4 +137,75 @@ describe("PayApplicationDocument", () => {
     expect(queryByTestId("final-invoice-banner")).toBeNull();
     expect(queryByText(/Unbilled contract balance/i)).toBeNull();
   });
+
+  it("pins G703 Column G / I grand totals to G702 Lines 4 / 5 even when live lines disagree", () => {
+    const reconciled: PayApplicationSpec = {
+      ...spec,
+      isFinalInvoice: true,
+      g702: {
+        original_contract_sum: 523061,
+        net_change_orders: 430289.35,
+        contract_sum_to_date: 953350.35,
+        completed_stored_to_date: 921212.36,
+        retainage_total: 34008.16,
+        total_earned_less_retainage: 887204.2,
+        less_previous_certificates: 742871.38,
+        current_payment_due: 144332.82,
+        balance_to_finish: 66146.15,
+      },
+      // Live SOV understates retainage (~$27k) and would string-concat if uncoerced
+      lines: [
+        {
+          item_no: "1", description: "Sewer", unit: "LF", kind: "base",
+          scheduled_qty: 1000, unit_price: 523.061, scheduled_value: 523061,
+          prev_qty: 800, this_qty: 100, qty_to_date: 900,
+          prev_value: 400000, this_value: 100000, value_to_date: 500000, pct: 95,
+          retainage: 20000,
+        },
+        {
+          item_no: "30", description: "Street Sweeper", unit: "LS", kind: "change_order",
+          scheduled_qty: 1, unit_price: 1710, scheduled_value: 1710,
+          prev_qty: 1, this_qty: 0, qty_to_date: 1,
+          prev_value: 1710, this_value: 0, value_to_date: 1710, pct: 100,
+          retainage: 7657.75,
+        },
+      ],
+    };
+    const { getByTestId, getAllByText, container } = render(<PayApplicationDocument spec={reconciled} />);
+    expect(getByTestId("g703-total-to-date").textContent).toBe("$921,212.36");
+    expect(getByTestId("g703-total-retainage").textContent).toBe("$34,008.16");
+    // CO summary must use cover net ($430,289.35), not the lone $1,710 SOV CO line
+    expect(getAllByText("$430,289.35").length).toBeGreaterThanOrEqual(2); // Line 2 + CO summary
+    const coSummary = Array.from(container.querySelectorAll("td")).find((td) =>
+      /Total changes approved in previous months/i.test(td.textContent || ""),
+    );
+    expect(coSummary?.parentElement?.textContent).toContain("$430,289.35");
+    expect(coSummary?.parentElement?.textContent).not.toContain("$1,710.00");
+  });
+
+  it("never string-concatenates G703 value-to-date into a $90M figure", () => {
+    const poisoned = {
+      ...spec,
+      g702: { ...spec.g702, completed_stored_to_date: 90369.16, retainage_total: 2711.07 },
+      lines: [
+        {
+          ...spec.lines[0],
+          value_to_date: "90000" as unknown as number,
+          retainage: "2700" as unknown as number,
+          scheduled_value: "100000" as unknown as number,
+          prev_value: 0,
+          this_value: "90000" as unknown as number,
+        },
+        {
+          ...spec.lines[1],
+          value_to_date: "369.16" as unknown as number,
+          retainage: "11.07" as unknown as number,
+          scheduled_value: 500,
+        },
+      ],
+    };
+    const { getByTestId } = render(<PayApplicationDocument spec={poisoned} />);
+    expect(getByTestId("g703-total-to-date").textContent).toBe("$90,369.16");
+    expect(getByTestId("g703-total-to-date").textContent).not.toMatch(/90,000,369/);
+  });
 });

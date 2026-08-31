@@ -281,6 +281,39 @@
     will-change: box-shadow, filter;
   }
 
+  /*
+   * Solid project cards — consulting = brand dark green (#0D3B30) + cream text
+   * (same treatment as the module-projects icon / landing surface). Construction
+   * = West-orange hardhat color. Remap muted text so labels stay readable.
+   */
+  .project-kind-tile-consulting {
+    background: var(--apas-surface);
+    color: var(--apas-white);
+    border-color: rgba(8, 39, 31, 0.55);
+    border-left-color: var(--kind-consulting-gold);
+    box-shadow: 0 1px 0 rgba(196, 163, 90, 0.25), 0 8px 24px rgba(4, 25, 20, 0.28);
+  }
+  .project-kind-tile-consulting .text-muted-foreground {
+    color: rgba(251, 248, 241, 0.68) !important;
+  }
+  .project-kind-tile-consulting:hover {
+    filter: brightness(1.06);
+  }
+
+  .project-kind-tile-construction {
+    background: linear-gradient(145deg, #E67E22 0%, #F59E0B 55%, #EA580C 100%);
+    color: #1C1917;
+    border-color: rgba(194, 65, 12, 0.45);
+    border-left-color: #9A3412;
+    box-shadow: 0 1px 0 rgba(251, 191, 36, 0.35), 0 8px 24px rgba(194, 65, 12, 0.22);
+  }
+  .project-kind-tile-construction .text-muted-foreground {
+    color: rgba(28, 25, 23, 0.72) !important;
+  }
+  .project-kind-tile-construction:hover {
+    filter: brightness(1.04);
+  }
+
   .project-kind-badge-missing {
     animation: kindMissingPulse 1.4s ease-in-out infinite;
   }

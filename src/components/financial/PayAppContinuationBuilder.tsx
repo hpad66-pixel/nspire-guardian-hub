@@ -18,7 +18,7 @@ import {
   type ContinuationLine,
 } from "@/hooks/usePayAppContinuation";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
-import { round2 } from "@/lib/financial/payAppContinuation";
+import { computeG703GrandTotals, round2 } from "@/lib/financial/payAppContinuation";
 import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -183,6 +183,27 @@ export function PayAppContinuationBuilder({
           </thead>
           <LineSection title="Base contract" rows={base} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />
           {cos.length > 0 && <LineSection title="Change orders" rows={cos} locked={locked} onCommit={commitQty} onToggleRetainage={toggleRetainage} />}
+          {(() => {
+            // AIA: footer Column G / I must match G702 Lines 4 / 5 (cover snapshot).
+            const t = computeG703GrandTotals(
+              lines.map((l) => ({
+                scheduled_value: l.scheduled_value,
+                value_to_date: l.value_to_date,
+                retainage: l.retainage,
+              })),
+              g702,
+            );
+            return (
+              <tfoot>
+                <tr className="border-t-2 bg-muted/30 font-semibold" data-testid="continuation-grand-total">
+                  <td className="p-2" colSpan={4}>Grand total</td>
+                  <td className="p-2" colSpan={4} />
+                  <td className="p-2 text-right font-mono" data-testid="continuation-total-to-date">{money(t.toDate)}</td>
+                  <td className="p-2 text-center font-mono" data-testid="continuation-total-retainage">{money(t.retainage)}</td>
+                </tr>
+              </tfoot>
+            );
+          })()}
         </table>
       </div>
 

@@ -37,12 +37,14 @@ export const PROJECT_KIND_BADGE_STYLE: Record<ProjectKind, string> = {
     'project-kind-badge-construction text-orange-950 border-orange-500/90 bg-[var(--kind-construction)] shadow-[0_0_0_1px_rgba(234,88,12,0.45)]',
 };
 
-/** Soft tile wash + left accent so cards read green (consulting) or orange (construction). */
+/**
+ * Solid project tiles — consulting uses the brand dark green (`--apas-surface`
+ * #0D3B30) with cream/white text; construction uses West-orange. CSS classes in
+ * index.css also remap `.text-muted-foreground` so secondary copy stays readable.
+ */
 export const PROJECT_KIND_TILE_STYLE: Record<ProjectKind, string> = {
-  consulting:
-    'border-l-[var(--kind-consulting)] bg-gradient-to-br from-emerald-50/90 via-card to-card border-emerald-200/70 dark:from-emerald-950/35 dark:border-emerald-800/50',
-  construction:
-    'border-l-[var(--kind-construction)] bg-gradient-to-br from-orange-50/90 via-card to-card border-orange-200/80 dark:from-orange-950/30 dark:border-orange-800/50',
+  consulting: 'project-kind-tile-consulting border-l-4',
+  construction: 'project-kind-tile-construction border-l-4',
 };
 
 export function projectKindBadgeClass(kind: ProjectKind): string {

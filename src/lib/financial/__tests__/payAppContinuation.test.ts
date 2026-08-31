@@ -10,6 +10,7 @@ import {
   computePaymentPosition,
   shouldUseG702Snapshot,
   alignLineRetainageToCover,
+  computeG703GrandTotals,
   type G702Summary,
 } from "../payAppContinuation";
 
@@ -342,5 +343,33 @@ describe("alignLineRetainageToCover", () => {
     const total = Math.round(aligned.reduce((s, l) => s + l.retainage, 0) * 100) / 100;
     expect(total).toBe(10);
     expect(aligned.map((l) => l.retainage).sort((x, y) => y - x)).toEqual([3.34, 3.33, 3.33]);
+  });
+});
+
+describe("computeG703GrandTotals", () => {
+  it("Number()-coerces string numerics so totals cannot string-concat into $90M", () => {
+    // Classic bug: 90000 + "369.16" → "90000369.16"
+    const totals = computeG703GrandTotals([
+      { scheduled_value: 100000, prev_value: 0, this_value: 90000, value_to_date: 90000, retainage: 2700 },
+      { scheduled_value: "500", prev_value: "0", this_value: "369.16", value_to_date: "369.16", retainage: "11.07" },
+    ]);
+    expect(totals.toDate).toBe(90369.16);
+    expect(totals.retainage).toBe(2711.07);
+    expect(totals.toDate).toBeLessThan(1_000_000);
+  });
+
+  it("pins Column G / Column I footers to G702 Lines 4 / 5 (AIA)", () => {
+    // Live lines sum ~$27k retainage; cover is the reconciled workbook figure.
+    const totals = computeG703GrandTotals(
+      [
+        { scheduled_value: 500000, value_to_date: 400000, retainage: 20000 },
+        { scheduled_value: 100000, value_to_date: 100000, retainage: 7657.75 },
+      ],
+      { completed_stored_to_date: 921212.36, retainage_total: 34008.16 },
+    );
+    expect(totals.toDate).toBe(921212.36);
+    expect(totals.retainage).toBe(34008.16);
+    // Scheduled still sums from the sheet
+    expect(totals.scheduled).toBe(600000);
   });
 });
