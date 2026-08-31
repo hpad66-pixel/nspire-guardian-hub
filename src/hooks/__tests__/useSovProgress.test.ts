@@ -59,6 +59,35 @@ describe("useSovProgress", () => {
     expect(row.sort_order).toBe(1);
   });
 
+  it("derives pct_complete from value/scheduled when the stored pct is stale", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({
+        data: [
+          {
+            sov_line_item_id: "sov30",
+            item_no: "30",
+            kind: "change_order",
+            description: "Street Sweeper",
+            scheduled_qty: "1",
+            unit_price: "1710",
+            scheduled_value: "1710",
+            qty_to_date: "1",
+            value_to_date: "1870",
+            pct_complete: "100", // stale — true rate is 109.36%
+            retainage: "93.5",
+            qty_remaining: "0",
+            value_remaining: "-160",
+            sort_order: "29",
+          },
+        ],
+        error: null,
+      }),
+    );
+    const { result } = renderHookWithClient(() => useSovProgress("p1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data![0].pct_complete).toBe(109.36);
+  });
+
   it("surfaces view query errors as query errors", async () => {
     __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
     const { result } = renderHookWithClient(() => useSovProgress("p1"));

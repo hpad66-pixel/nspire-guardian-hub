@@ -134,10 +134,64 @@ export function computeLineToDate(input: {
 }): LineToDate {
   const value_to_date = round2(input.priorValueToDate + input.valueThisPeriod);
   const qty_to_date = round4(input.priorQtyToDate + input.qtyThisPeriod);
-  const pct_complete =
-    input.scheduledValue > 0 ? round2((value_to_date / input.scheduledValue) * 100) : 0;
+  const pct_complete = linePctComplete(value_to_date, input.scheduledValue);
   const retainage = round2(value_to_date * ((Number(input.retainagePct) || 0) / 100));
   return { value_to_date, qty_to_date, pct_complete, retainage };
+}
+
+/** G703 % complete from value-to-date / scheduled (works for deductive/negative lines). */
+export function linePctComplete(valueToDate: number, scheduledValue: number): number {
+  const sched = Number(scheduledValue) || 0;
+  if (sched === 0) return 0;
+  return round2((Number(valueToDate) / sched) * 100);
+}
+
+/**
+ * Cap a progress row so value_to_date never exceeds |scheduled_value|.
+ * Used when a change-order amount is reduced after progress was already billed
+ * at the old (higher) scheduled value — otherwise the line shows Over 100%.
+ */
+export function clampProgressToScheduled(input: {
+  scheduledValue: number;
+  valueToDate: number;
+  valueThisPeriod: number;
+  retainage: number;
+}): {
+  value_to_date: number;
+  value_this_period: number;
+  pct_complete: number;
+  retainage: number;
+  clamped: boolean;
+} {
+  const scheduled = round2(input.scheduledValue);
+  const valueToDate = round2(input.valueToDate);
+  const over =
+    scheduled >= 0
+      ? valueToDate > scheduled + 0.01
+      : valueToDate < scheduled - 0.01; // more negative than allowed on a credit
+  if (!over) {
+    return {
+      value_to_date: valueToDate,
+      value_this_period: round2(input.valueThisPeriod),
+      pct_complete: linePctComplete(valueToDate, scheduled),
+      retainage: round2(input.retainage),
+      clamped: false,
+    };
+  }
+  const rate = valueToDate !== 0 ? Number(input.retainage) / valueToDate : 0;
+  const capped = scheduled;
+  const overage = round2(valueToDate - capped);
+  const adjustedThis = round2(round2(input.valueThisPeriod) - overage);
+  // Keep this-period on the same side of zero as the scheduled line (additive vs credit).
+  const value_this_period =
+    scheduled >= 0 ? Math.max(0, adjustedThis) : Math.min(0, adjustedThis);
+  return {
+    value_to_date: capped,
+    value_this_period,
+    pct_complete: linePctComplete(capped, scheduled),
+    retainage: round2(capped * rate),
+    clamped: true,
+  };
 }
 
 // ── Continuation seeding ─────────────────────────────────────────────────────
@@ -174,8 +228,7 @@ export function seedContinuationRows(input: {
     const prior = input.priorByLineId[li.id];
     const value_to_date = prior ? round2(prior.value_to_date) : 0;
     const qty_to_date = prior ? round4(prior.qty_to_date) : 0;
-    const pct_complete =
-      li.scheduled_value > 0 ? round2((value_to_date / li.scheduled_value) * 100) : 0;
+    const pct_complete = linePctComplete(value_to_date, li.scheduled_value);
     return {
       tenant_id: input.tenantId,
       pay_app_id: input.payAppId,

@@ -61,7 +61,8 @@ describe("useLoadApprovedCos", () => {
     let sovBuilder: any;
     __mock.from.mockImplementation(((t: string) => {
       if (t === "change_orders") return makeBuilder({ data: [{ id: "co1", co_no: 1, title: "On-Site Owner's Rep", amount: 100, status: "approved" }], error: null });
-      sovBuilder = makeBuilder({ data: [{ id: "li1", item_no: "17", change_order_id: "co1", sort_order: 17, description: "PCO #001" }], error: null });
+      if (t === "pay_app_line_progress") return makeBuilder({ data: [], error: null });
+      sovBuilder = makeBuilder({ data: [{ id: "li1", item_no: "17", change_order_id: "co1", sort_order: 17, description: "PCO #001", scheduled_value: 100 }], error: null });
       return sovBuilder;
     }) as any);
     const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
@@ -69,6 +70,39 @@ describe("useLoadApprovedCos", () => {
     expect(n).toMatchObject({ inserted: 0, updated: 1 });
     expect((sovBuilder.update as any).mock.calls[0][0]).toMatchObject({ description: "On-Site Owner's Rep" });
     expect((sovBuilder.insert as any)).not.toHaveBeenCalled();
+  });
+
+  it("clamps progress when a CO amount drops below what was already billed", async () => {
+    let progressBuilder: any;
+    __mock.from.mockImplementation(((t: string) => {
+      if (t === "change_orders") {
+        return makeBuilder({
+          data: [{ id: "co14", co_no: 14, title: "Street Sweeper", amount: 1710, status: "executed" }],
+          error: null,
+        });
+      }
+      if (t === "pay_app_line_progress") {
+        progressBuilder = makeBuilder({
+          data: [{ id: "prog1", value_to_date: 1870, value_this_period: 1870, retainage: 93.5 }],
+          error: null,
+        });
+        return progressBuilder;
+      }
+      return makeBuilder({
+        data: [{
+          id: "li30", item_no: "30", change_order_id: "co14", sort_order: 29,
+          description: "Street Sweeper", scheduled_value: 1870,
+        }],
+        error: null,
+      });
+    }) as any);
+    const { result } = renderHookWithClient(() => useLoadApprovedCos("pc1", "p1"));
+    await result.current.mutateAsync();
+    expect((progressBuilder.update as any).mock.calls[0][0]).toMatchObject({
+      value_to_date: 1710,
+      pct_complete: 100,
+      retainage: 85.5,
+    });
   });
 
   it("rejects when the change-order query errors", async () => {

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { linePctComplete } from "@/lib/financial/payAppContinuation";
 
 /** One Schedule-of-Values line with its latest pay-app progress (G703 grid). */
 export interface SovProgressRow {
@@ -37,19 +38,24 @@ export function useSovProgress(projectId: string | null) {
         .eq("project_id", projectId!)
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({
-        ...r,
-        scheduled_qty: num(r.scheduled_qty),
-        unit_price: num(r.unit_price),
-        scheduled_value: num(r.scheduled_value),
-        qty_to_date: num(r.qty_to_date),
-        value_to_date: num(r.value_to_date),
-        pct_complete: num(r.pct_complete),
-        retainage: num(r.retainage),
-        qty_remaining: num(r.qty_remaining),
-        value_remaining: num(r.value_remaining),
-        sort_order: num(r.sort_order),
-      })) as SovProgressRow[];
+      return (data ?? []).map((r: any) => {
+        const scheduled_value = num(r.scheduled_value);
+        const value_to_date = num(r.value_to_date);
+        return {
+          ...r,
+          scheduled_qty: num(r.scheduled_qty),
+          unit_price: num(r.unit_price),
+          scheduled_value,
+          qty_to_date: num(r.qty_to_date),
+          value_to_date,
+          // Derive from money so a stale stored pct cannot disagree with value_remaining.
+          pct_complete: linePctComplete(value_to_date, scheduled_value),
+          retainage: num(r.retainage),
+          qty_remaining: num(r.qty_remaining),
+          value_remaining: num(r.value_remaining),
+          sort_order: num(r.sort_order),
+        };
+      }) as SovProgressRow[];
     },
   });
 }
