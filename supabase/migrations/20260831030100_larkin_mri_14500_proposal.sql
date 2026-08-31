@@ -11,12 +11,29 @@ DECLARE
   v_exists boolean := false;
   v_has_14500 boolean := false;
 BEGIN
-  SELECT tenant_id INTO v_tenant
-  FROM public.projects
-  WHERE id = v_project;
+  -- projects has no tenant_id — resolve workspace via client / property / creator
+  IF NOT EXISTS (SELECT 1 FROM public.projects WHERE id = v_project) THEN
+    RAISE NOTICE 'Larkin MRI project not found — skipping $14,500 proposal backfill';
+    RETURN;
+  END IF;
+
+  SELECT COALESCE(
+    (SELECT c.workspace_id
+       FROM public.clients c
+       JOIN public.projects p ON p.client_id = c.id
+      WHERE p.id = v_project),
+    (SELECT pr.workspace_id
+       FROM public.properties pr
+       JOIN public.projects p ON p.property_id = pr.id
+      WHERE p.id = v_project),
+    (SELECT pf.workspace_id
+       FROM public.profiles pf
+       JOIN public.projects p ON p.created_by = pf.user_id
+      WHERE p.id = v_project)
+  ) INTO v_tenant;
 
   IF v_tenant IS NULL THEN
-    RAISE NOTICE 'Larkin MRI project not found — skipping $14,500 proposal backfill';
+    RAISE NOTICE 'Larkin MRI workspace not resolvable — skipping $14,500 proposal backfill';
     RETURN;
   END IF;
 
