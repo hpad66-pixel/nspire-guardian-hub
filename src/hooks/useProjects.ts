@@ -16,7 +16,16 @@ export interface Project extends ProjectRow {
   // Optional "starts after" scheduling dependency (migration 20260705200000).
   depends_on_project_id?: string | null;
   property?: { name: string } | null;
-  client?: { name: string; client_type?: string } | null;
+  client?: {
+    name: string;
+    client_type?: string;
+    contact_name?: string | null;
+    contact_email?: string | null;
+    contact_phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+  } | null;
   milestones?: Array<{
     id: string;
     name: string;
@@ -35,7 +44,7 @@ const PROJECT_SELECT = `
 const PROJECT_SELECT_DETAIL = `
   *,
   property:properties(name),
-  client:clients(name, client_type),
+  client:clients(name, client_type, contact_name, contact_email, contact_phone, address, city, state),
   milestones:project_milestones(id, name, due_date, status, notes, completed_at)
 `;
 

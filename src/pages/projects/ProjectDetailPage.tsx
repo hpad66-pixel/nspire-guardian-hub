@@ -1044,7 +1044,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="meetings" className="mt-0">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
                 <TabsContent value="correspondence" className="mt-0"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="closeout" className="mt-0"><CloseoutTab projectId={id!} /></TabsContent>
-                <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
+                <TabsContent value="invoicing" className="mt-0"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} clientSeed={{ name: project.client?.contact_name || project.client?.name || null, company: project.client?.name || null, email: project.client?.contact_email || null, phone: project.client?.contact_phone || null, address: project.client?.address || null, city: project.client?.city || null, state: project.client?.state || null }} /></TabsContent>
                 <TabsContent value="client-portal" className="mt-0 pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
               </div>
             </div>
@@ -1325,7 +1325,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="meetings">{isConsulting ? <ConsultingMeetingsTab projectId={id!} projectName={project.name} /> : <MeetingsTab projectId={id!} />}</TabsContent>
               <TabsContent value="correspondence"><CorrespondenceTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="closeout"><CloseoutTab projectId={id!} /></TabsContent>
-              <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
+              <TabsContent value="invoicing"><InvoicingTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} clientSeed={{ name: project.client?.contact_name || project.client?.name || null, company: project.client?.name || null, email: project.client?.contact_email || null, phone: project.client?.contact_phone || null, address: project.client?.address || null, city: project.client?.city || null, state: project.client?.state || null }} /></TabsContent>
               <TabsContent value="client-portal" className="pb-6"><ClientPortalTab projectId={id!} /></TabsContent>
             </div>
 

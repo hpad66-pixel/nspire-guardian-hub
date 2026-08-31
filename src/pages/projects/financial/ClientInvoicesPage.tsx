@@ -25,7 +25,16 @@ export default function ClientInvoicesPage() {
         <InvoicingTab
           projectId={projectId}
           projectName={project?.name ?? "Project"}
-          clientName={(project as { client?: { name?: string } } | null)?.client?.name ?? null}
+          clientName={project?.client?.name ?? null}
+          clientSeed={{
+            name: project?.client?.contact_name || project?.client?.name || null,
+            company: project?.client?.name || null,
+            email: project?.client?.contact_email || null,
+            phone: project?.client?.contact_phone || null,
+            address: project?.client?.address || null,
+            city: project?.client?.city || null,
+            state: project?.client?.state || null,
+          }}
         />
       )}
     </div>

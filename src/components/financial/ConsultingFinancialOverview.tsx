@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Receipt, ArrowRight, Plus, Banknote } from "lucide-react";
-import { useConsultingInvoices } from "@/hooks/useConsultingInvoices";
+import { useConsultingInvoices, useConsultingArLedger } from "@/hooks/useConsultingInvoices";
 import { useProjectScopes, summarizeScopes } from "@/hooks/useProjectScopes";
 import { useFinancialProposals } from "@/hooks/useFinancialProposals";
 import { proposalTotals } from "@/lib/financial/proposalPricing";
@@ -24,14 +24,15 @@ export function ConsultingFinancialOverview({
   projectName?: string;
 }) {
   const { data: invoices = [], isLoading } = useConsultingInvoices(projectId);
+  const { data: ledger } = useConsultingArLedger(projectId);
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
   const summary = summarizeScopes(scopes);
 
   const active = invoices.filter((i) => i.status !== "void");
-  const invoiced = active.reduce((s, i) => s + (Number(i.total) || 0), 0);
-  const paid = active.filter((i) => i.status === "paid").reduce((s, i) => s + (Number(i.total) || 0), 0);
-  const open = invoiced - paid;
+  const invoiced = ledger?.totalInvoiced ?? active.reduce((s, i) => s + (Number(i.total) || 0), 0);
+  const paid = ledger?.totalPaid ?? 0;
+  const open = ledger?.openAr ?? Math.max(0, invoiced - paid);
   const recent = active.slice(0, 5);
   const approvedFee = useMemo(
     () => proposals
@@ -51,8 +52,8 @@ export function ConsultingFinancialOverview({
           {projectName ?? "Engagement"} — proposal to invoice
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Bill clients with branded invoices against approved proposals (or scope progress).
-          Construction pay applications are hidden on this project type.
+          Bill clients with corporate invoices against approved proposals. Each invoice carries
+          prior billed and paid amounts forward so A/R stays continuous. Construction pay apps stay hidden.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
@@ -68,11 +69,12 @@ export function ConsultingFinancialOverview({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
           { label: "Approved proposals", value: money(approvedFee), sub: `${proposals.filter((p) => p.status === "approved").length} approved` },
           { label: "Invoiced", value: money(invoiced), sub: `${active.length} invoices` },
-          { label: "Open A/R", value: money(open), sub: "sent − paid" },
+          { label: "Cash received", value: money(paid), sub: "all payments" },
+          { label: "Open A/R", value: money(open), sub: "invoiced − paid" },
           { label: "Unbilled", value: money(unbilledApproved || summary.unbilled), sub: unbilledApproved > 0 ? "approved − invoiced" : "earned − billed" },
         ].map((m) => (
           <Card key={m.label} className="border-border/80">
@@ -95,13 +97,13 @@ export function ConsultingFinancialOverview({
           },
           {
             title: "Client invoices",
-            desc: "Create, send, and collect against scopes or custom lines.",
+            desc: "Editable corporate invoices with running A/R tab and client sign-off PDF.",
             href: `/projects/${projectId}/financials/client-invoices`,
             icon: Receipt,
           },
           {
             title: "Payments",
-            desc: "Record cash received and keep open balances current.",
+            desc: "Record cash received — automatically rolls into the next invoice.",
             href: `/projects/${projectId}/financials/payments`,
             icon: Banknote,
           },
