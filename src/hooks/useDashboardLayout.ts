@@ -15,11 +15,12 @@ export interface DashboardLayoutData {
 
 const DEFAULT_LAYOUT: WidgetLayout[] = [
   { id: 'kpi-strip', order: 0, size: 'full' },
-  { id: 'alerts-critical', order: 1, size: 'full' },
-  { id: 'alerts-warning', order: 2, size: 'full' },
-  { id: 'coming-up', order: 3, size: 'large' },
-  { id: 'team-compliance', order: 4, size: 'full' },
-  { id: 'module-snapshot', order: 5, size: 'full' },
+  { id: 'nav-map', order: 1, size: 'full' },
+  { id: 'portfolio', order: 2, size: 'full' },
+  { id: 'alerts-critical', order: 3, size: 'full' },
+  { id: 'alerts-warning', order: 4, size: 'full' },
+  { id: 'coming-up', order: 5, size: 'large' },
+  { id: 'team-compliance', order: 6, size: 'full' },
 ];
 
 export function useDashboardLayout() {
