@@ -6,9 +6,11 @@ import {
   Camera,
   CheckCircle2,
   ClipboardList,
+  Columns3,
   Copy,
   FileBadge2,
   Filter,
+  LayoutList,
   Loader2,
   MapPin,
   RotateCcw,
@@ -33,6 +35,7 @@ import {
   applyPermitAnalyticsFilter,
   type PermitAnalyticsFilter,
 } from '@/components/projects/permits/PermitAnalyticsCharts';
+import { ProjectPermitsBoard } from '@/components/projects/permits/ProjectPermitsBoard';
 import { ScanPermitDialog } from '@/components/permits/ScanPermitDialog';
 import { PermitScanGallery } from '@/components/permits/PermitScanGallery';
 import { useProjectPermits, type ProjectPermit } from '@/hooks/useProjectPermits';
@@ -110,6 +113,7 @@ export function ProjectPermitsTab({
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'pending' | 'closed' | 'blocked'>('all');
   const [chartFilter, setChartFilter] = useState<PermitAnalyticsFilter>({ type: 'all' });
   const [scanOpen, setScanOpen] = useState(false);
+  const [view, setView] = useState<'board' | 'register'>('board');
 
   const readiness = useMemo(() => permitReadiness(permits), [permits]);
   const owners = useMemo(() => groupOpenByOwner(permits), [permits]);
@@ -168,12 +172,13 @@ export function ProjectPermitsTab({
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
-              <ShieldCheck className="h-3.5 w-3.5" /> Permit command center
+              <ShieldCheck className="h-3.5 w-3.5" /> Project Permits
             </div>
             <h2 className="font-display text-3xl font-bold tracking-tight">Closeout readiness</h2>
             <p className="text-sm text-white/80 leading-relaxed">
-              Coordinate closure with the City — not just a spreadsheet. Advance each permit through
-              Open → City wait → Closed, and use the charts below to focus the chase.
+              Construction permit register for this project. Scan from your phone, annotate photo tiles,
+              and advance each item Open → City wait → Closed. Property-level Compliance Permits live
+              under Property Management.
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
@@ -334,172 +339,219 @@ export function ProjectPermitsTab({
         </Card>
       </div>
 
-      {/* Filters + register */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search permit #, building, contractor, notes…"
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => {
-            setStatusFilter(v as typeof statusFilter);
-            setChartFilter({ type: 'all' });
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="open">Open · Active</SelectItem>
-            <SelectItem value="pending">Pending city</SelectItem>
-            <SelectItem value="blocked">City / agency wait</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
-        {(statusFilter !== 'all' || chartFilter.type !== 'all' || query) && (
-          <Button
+      {/* Board / Register toggle */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex rounded-full border bg-background p-0.5 text-xs font-semibold self-start">
+          <button
             type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setStatusFilter('all');
-              setChartFilter({ type: 'all' });
-              setQuery('');
-            }}
+            onClick={() => setView('board')}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 transition',
+              view === 'board' ? 'bg-[#0D3B30] text-white' : 'text-muted-foreground',
+            )}
           >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
-          </Button>
-        )}
+            <Columns3 className="h-3.5 w-3.5" /> Open board
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('register')}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 transition',
+              view === 'register' ? 'bg-[#0D3B30] text-white' : 'text-muted-foreground',
+            )}
+          >
+            <LayoutList className="h-3.5 w-3.5" /> Full register
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-1 sm:justify-end">
+          <div className="relative w-full sm:max-w-xs">
+            <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search permit #, building, contractor…"
+              className="pl-9"
+            />
+          </div>
+          {view === 'register' && (
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v as typeof statusFilter);
+                setChartFilter({ type: 'all' });
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filter status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="open">Open · Active</SelectItem>
+                <SelectItem value="pending">Pending city</SelectItem>
+                <SelectItem value="blocked">City / agency wait</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {(statusFilter !== 'all' || chartFilter.type !== 'all' || query) && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setStatusFilter('all');
+                setChartFilter({ type: 'all' });
+                setQuery('');
+              }}
+            >
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          Register · {filtered.length} of {permits.length}
-        </h3>
-      </div>
+      {view === 'board' ? (
+        <ProjectPermitsBoard
+          permits={filtered}
+          busy={update.isPending}
+          onAdvance={(p, next) => void advanceStatus(p, next)}
+        />
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              Register · {filtered.length} of {permits.length}
+            </h3>
+          </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              No permits match this filter.
-            </CardContent>
-          </Card>
-        ) : (
-          filtered.map((p) => {
-            const advance = nextPipelineAction(p.status);
-            const age = daysOpen(p);
-            return (
-              <article
-                key={p.id}
-                className={cn(
-                  'rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
-                  isCityBlocked(p) ? 'border-amber-500/40' : 'border-border/70',
-                )}
-              >
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-foreground">{p.permit_number}</span>
-                      <StatusBadge status={p.status} />
-                      <PermitPipelineDots status={p.status} />
-                      {isCityBlocked(p) && (
-                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-900">
-                          Needs city
-                        </Badge>
-                      )}
-                      {p.trade && <Badge variant="secondary">{p.trade}</Badge>}
-                      {age != null && age > 60 && (
-                        <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-rose-700">
-                          {age}d open
-                        </Badge>
-                      )}
-                      {age != null && age > 30 && age <= 60 && (
-                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800">
-                          {age}d open
-                        </Badge>
-                      )}
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No permits match this filter.
+                </CardContent>
+              </Card>
+            ) : (
+              filtered.map((p) => {
+                const advance = nextPipelineAction(p.status);
+                const age = daysOpen(p);
+                return (
+                  <article
+                    key={p.id}
+                    className={cn(
+                      'rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md',
+                      isCityBlocked(p) ? 'border-amber-500/40' : 'border-border/70',
+                    )}
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-foreground">{p.permit_number}</span>
+                          <StatusBadge status={p.status} />
+                          <PermitPipelineDots status={p.status} />
+                          {isCityBlocked(p) && (
+                            <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-900">
+                              Needs city
+                            </Badge>
+                          )}
+                          {p.trade && <Badge variant="secondary">{p.trade}</Badge>}
+                          {age != null && age > 60 && (
+                            <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-rose-700">
+                              {age}d open
+                            </Badge>
+                          )}
+                          {age != null && age > 30 && age <= 60 && (
+                            <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800">
+                              {age}d open
+                            </Badge>
+                          )}
+                        </div>
+                        <h4 className="text-base font-semibold leading-snug">{p.description}</h4>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          {p.building && (
+                            <span className="inline-flex items-center gap-1">
+                              <Building2 className="h-3 w-3" /> {p.building}
+                            </span>
+                          )}
+                          {p.street_address && (
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-3 w-3" /> {p.street_address}
+                            </span>
+                          )}
+                          {p.department && <span>{p.department}</span>}
+                          {p.contractor && <span>{p.contractor}</span>}
+                          {p.responsible_party && (
+                            <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                              <UserRound className="h-3 w-3" /> {p.responsible_party}
+                            </span>
+                          )}
+                        </div>
+                        {p.next_action && (
+                          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--apas-sapphire)]">
+                            <ArrowRight className="h-3 w-3" /> Next: {p.next_action}
+                          </p>
+                        )}
+                        {p.notes && (
+                          <p className="text-sm text-foreground/80 bg-muted/40 rounded-lg px-3 py-2 border border-border/50">
+                            {p.notes}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
+                        {advance && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="bg-[#0D3B30] text-white hover:bg-[#0D3B30]/90"
+                            disabled={update.isPending}
+                            onClick={() => void advanceStatus(p, advance.next)}
+                          >
+                            <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
+                            {advance.actionLabel}
+                          </Button>
+                        )}
+                        {p.status !== 'closed' && p.status !== 'pending' && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={update.isPending}
+                            onClick={() => void advanceStatus(p, 'closed')}
+                          >
+                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark closed
+                          </Button>
+                        )}
+                        {p.status === 'closed' && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={update.isPending}
+                            onClick={() => void advanceStatus(p, 'open_active')}
+                          >
+                            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reopen
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <h4 className="text-base font-semibold leading-snug">{p.description}</h4>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {p.building && (
-                        <span className="inline-flex items-center gap-1">
-                          <Building2 className="h-3 w-3" /> {p.building}
-                        </span>
-                      )}
-                      {p.street_address && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {p.street_address}
-                        </span>
-                      )}
-                      {p.department && <span>{p.department}</span>}
-                      {p.contractor && <span>{p.contractor}</span>}
-                      {p.responsible_party && (
-                        <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                          <UserRound className="h-3 w-3" /> {p.responsible_party}
-                        </span>
-                      )}
-                    </div>
-                    {p.next_action && (
-                      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--apas-sapphire)]">
-                        <ArrowRight className="h-3 w-3" /> Next: {p.next_action}
-                      </p>
-                    )}
-                    {p.notes && (
-                      <p className="text-sm text-foreground/80 bg-muted/40 rounded-lg px-3 py-2 border border-border/50">
-                        {p.notes}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
-                    {advance && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-[#0D3B30] text-white hover:bg-[#0D3B30]/90"
-                        disabled={update.isPending}
-                        onClick={() => void advanceStatus(p, advance.next)}
-                      >
-                        <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
-                        {advance.actionLabel}
-                      </Button>
-                    )}
-                    {p.status !== 'closed' && p.status !== 'pending' && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={update.isPending}
-                        onClick={() => void advanceStatus(p, 'closed')}
-                      >
-                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark closed
-                      </Button>
-                    )}
-                    {p.status === 'closed' && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={update.isPending}
-                        onClick={() => void advanceStatus(p, 'open_active')}
-                      >
-                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reopen
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Sticky phone scan CTA */}
+      <button
+        type="button"
+        onClick={() => setScanOpen(true)}
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-[#0D3B30] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 md:hidden"
+        aria-label="Scan permit from phone"
+      >
+        <Camera className="h-4 w-4" />
+        Scan
+      </button>
 
       <ScanPermitDialog
         open={scanOpen}

@@ -17,6 +17,7 @@ import { PermitDialog } from '@/components/permits/PermitDialog';
 import { ScanPermitDialog } from '@/components/permits/ScanPermitDialog';
 import { PermitScanGallery } from '@/components/permits/PermitScanGallery';
 import { ComplianceStats } from '@/components/permits/ComplianceStats';
+import { FieldReportsStrip } from '@/components/property/FieldReportsStrip';
 
 const permitTypes = [
   { value: 'all', label: 'All Types' },
@@ -94,10 +95,11 @@ export default function PermitsDashboard() {
         <div>
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Permits & Compliance</h1>
+            <h1 className="text-2xl font-bold">Compliance Permits</h1>
           </div>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Track regulatory requirements and deadlines
+          <p className="text-muted-foreground mt-1 text-sm max-w-2xl">
+            Property-level regulatory permits and compliance documents (CO, fire, elevator, HUD, ADA).
+            Construction / closeout permits live on each project under <span className="font-medium text-foreground">Permits</span>.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
@@ -112,11 +114,13 @@ export default function PermitsDashboard() {
         </div>
       </div>
 
+      <FieldReportsStrip highlight="permits" />
+
       {/* Stats */}
       <ComplianceStats stats={stats} isLoading={statsLoading} onSelectStatus={setStatusFilter} />
 
       <PermitScanGallery
-        emptyHint="Scan a property permit from your phone — tiles group by client or project."
+        emptyHint="Scan a compliance permit from your phone — tiles group by client or project. Add a notation under each photo."
       />
 
       {/* Filters */}
@@ -211,6 +215,16 @@ export default function PermitsDashboard() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
       />
+      <button
+        type="button"
+        onClick={() => setScanOpen(true)}
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-[var(--apas-sapphire)] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 md:hidden"
+        aria-label="Scan compliance permit from phone"
+      >
+        <Camera className="h-4 w-4" />
+        Scan
+      </button>
+
       <ScanPermitDialog
         open={scanOpen}
         onOpenChange={setScanOpen}

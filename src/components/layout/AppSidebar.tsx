@@ -255,7 +255,7 @@ export function AppSidebar() {
                   <NavItem to="/work-orders" icon={Wrench} label="Work Orders" collapsed={collapsed} />
                 )}
                 {canView('work_orders') && (
-                  <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
+                  <NavItem to="/permits" icon={Shield} label="Compliance Permits" collapsed={collapsed} />
                 )}
               </div>
             </>

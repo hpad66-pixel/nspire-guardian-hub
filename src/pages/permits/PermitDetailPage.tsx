@@ -101,7 +101,7 @@ export default function PermitDetailPage() {
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold">Permit not found</h2>
         <Button className="mt-4" onClick={() => navigate('/permits')}>
-          Back to Permits
+          Back to Compliance Permits
         </Button>
       </div>
     );
@@ -122,7 +122,7 @@ export default function PermitDetailPage() {
             className="mb-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Permits
+            Back to Compliance Permits
           </Button>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{permit.name}</h1>

@@ -328,8 +328,8 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
           <DrawerTile
             icon={<Shield className={iconClass} />}
             iconBg={portfolioIconBg}
-            title="Permits"
-            subtitle="Scan & track permits"
+            title="Compliance Permits"
+            subtitle="Property compliance docs & scan"
             onClick={() => go('/permits')}
           />
           {(canView('reports') || isAdminOrOwner) && (

@@ -87,8 +87,8 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'env-compliance', label: 'Environmental compliance', description: 'Sampling, exceedances, regulatory correspondence', group: 'field' },
   {
     slug: 'permits',
-    label: 'Permits & compliance',
-    description: 'Construction / closeout permit register, city confirmations, owner readiness score',
+    label: 'Permits',
+    description: 'Project permit register — scan, annotate, open/closed status, city chase, owner readiness',
     group: 'field',
     portalSlug: 'permits',
   },

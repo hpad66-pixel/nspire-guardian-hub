@@ -363,7 +363,7 @@ const App = () => (
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
                               <Route path="/projects/:projectId/admin" element={<ProjectAdminPage />} />
                               
-                              {/* Permits & Compliance */}
+                              {/* Compliance Permits (property-level) — project Permits live under /projects/:id */}
                               <Route path="/permits" element={<PermitsDashboard />} />
                               <Route path="/permits/:id" element={<PermitDetailPage />} />
                               
