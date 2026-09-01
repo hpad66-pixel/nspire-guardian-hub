@@ -7,6 +7,10 @@ type WorkOrderRow = Database['public']['Tables']['work_orders']['Row'];
 type WorkOrderInsert = Database['public']['Tables']['work_orders']['Insert'];
 
 export interface WorkOrder extends WorkOrderRow {
+  /** Present after stores / voice migrations; types may lag. */
+  requester_name?: string | null;
+  demo_seed?: boolean | null;
+  linked_project_id?: string | null;
   property?: {
     name: string;
   };

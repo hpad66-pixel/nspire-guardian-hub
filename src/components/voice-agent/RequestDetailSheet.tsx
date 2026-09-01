@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatDistanceToNow, format } from 'date-fns';
 import { 
   Phone, 
@@ -11,7 +12,8 @@ import {
   FileText,
   ChevronRight,
   PawPrint,
-  Wrench
+  Wrench,
+  ExternalLink,
 } from 'lucide-react';
 import { TranscriptIssueReview } from './TranscriptIssueReview';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -87,7 +89,7 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <SheetTitle className="flex items-center gap-3">
               <span className="font-mono">{ticketNumber}</span>
               {request.is_emergency && (
@@ -97,6 +99,21 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
                 </Badge>
               )}
             </SheetTitle>
+            {request.work_order_id ? (
+              <Button asChild size="sm" variant="outline" className="shrink-0 gap-1.5">
+                <Link
+                  to={`/work-orders?propertyId=${request.property_id}&workOrderId=${request.work_order_id}`}
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  Open work order
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            ) : (
+              <Badge variant="outline" className="shrink-0 text-muted-foreground">
+                WO pending
+              </Badge>
+            )}
           </div>
         </SheetHeader>
 

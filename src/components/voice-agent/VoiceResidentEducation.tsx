@@ -1,12 +1,15 @@
-import { BookOpen, Droplets, Fan, Home, Mail, ShieldCheck } from 'lucide-react';
+import { BookOpen, Droplets, Fan, Home, Mail, PhoneCall, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RESIDENT_EDUCATION_ENTRIES } from '@/lib/voice/residentEducation';
+import {
+  LIVE_OPERATOR_PHONE,
+  RESIDENT_EDUCATION_ENTRIES,
+} from '@/lib/voice/residentEducation';
 
-const ICONS = [Fan, ShieldCheck, Droplets, Home, Mail, Home] as const;
+const ICONS = [Fan, ShieldCheck, Droplets, Home, Mail, Home, PhoneCall, PhoneCall] as const;
 
 /**
  * At-a-glance education topics the voice agent is trained to cover
- * (filters, AC door/window checks, humidity / mold, vacancy / leasing).
+ * (filters, AC, humidity / mold, vacancy / leasing, live-operator escalate).
  */
 export function VoiceResidentEducation({ className }: { className?: string }) {
   return (
@@ -17,9 +20,10 @@ export function VoiceResidentEducation({ className }: { className?: string }) {
           Call agent education
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Wired into the live ElevenLabs agent — used for AC / filters, and when
-          outsiders ask about vacancies at Glorieta Gardens (direct to{' '}
-          <span className="font-medium text-foreground">leasing@glorietagardens.com</span>).
+          Wired into the live ElevenLabs agent — AC / filters, vacancy callers
+          (→ <span className="font-medium text-foreground">leasing@glorietagardens.com</span>),
+          and unhappy callers escalated to a live operator at{' '}
+          <span className="font-medium text-foreground">{LIVE_OPERATOR_PHONE}</span>.
         </p>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

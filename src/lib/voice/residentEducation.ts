@@ -64,10 +64,33 @@ export const LEASING_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
   },
 ];
 
+/**
+ * Human-in-the-loop escalate — last resort when a caller is unhappy or asks
+ * for a live person. Route verbally to APAS operator line.
+ */
+export const LIVE_OPERATOR_PHONE = '954-243-1238';
+export const LIVE_OPERATOR_PHONE_SPOKEN = '9-5-4, 2-4-3, 1-2-3-8';
+
+export const LIVE_OPERATOR_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
+  {
+    id: 'live-operator-escalate',
+    topic: 'Live operator',
+    question: 'I want to speak to a real person / I’m not happy with this.',
+    answer: `If the caller is frustrated, upset, asks for a manager/human, or says the AI is not helping: apologize briefly, offer a live operator as a last resort, and give them this number clearly — ${LIVE_OPERATOR_PHONE} (speak it slowly as ${LIVE_OPERATOR_PHONE_SPOKEN}). Invite them to call that number now, or stay on the line while you finish creating their maintenance ticket first if they still need one. Never argue. Keep it warm and short.`,
+  },
+  {
+    id: 'live-operator-when',
+    topic: 'Escalate when',
+    question: 'When should you escalate to a live operator?',
+    answer: `Escalate when the caller (1) asks for a human / manager / real person, (2) sounds angry or says they are unhappy, (3) repeats that the bot is not helping, or (4) has a sensitive situation you cannot resolve. Give ${LIVE_OPERATOR_PHONE}. Still create the maintenance request if they reported a unit issue — unless they only wanted to be transferred and refuse to share details.`,
+  },
+];
+
 /** Full knowledge set injected into call context + knowledge_base. */
 export const RESIDENT_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
   ...HVAC_EDUCATION_ENTRIES,
   ...LEASING_EDUCATION_ENTRIES,
+  ...LIVE_OPERATOR_EDUCATION_ENTRIES,
 ];
 
 /** Compact coaching script the agent can paraphrase on AC calls. */
@@ -91,17 +114,27 @@ export const LEASING_EDUCATION_SCRIPT = [
   'Spell the email clearly. Do not create a maintenance ticket for leasing calls.',
 ].join(' ');
 
+/** Last-resort human handoff script. */
+export const LIVE_OPERATOR_SCRIPT = [
+  'Apologize briefly and acknowledge their frustration.',
+  `Offer a live operator and give ${LIVE_OPERATOR_PHONE} (speak ${LIVE_OPERATOR_PHONE_SPOKEN}).`,
+  'Invite them to call that number now for a person.',
+  'If they still have a maintenance issue, create the ticket before ending when they will share details.',
+  'Never argue; stay warm, short, and helpful.',
+].join(' ');
+
 export function formatResidentEducationForAgent(
   entries: ResidentEducationEntry[] = RESIDENT_EDUCATION_ENTRIES,
 ): string {
   const lines = [
-    'Resident & prospect education knowledge for this call (use when AC, filters, doors/windows, humidity, mold, vacancies, leasing, or “do you have a unit available?” come up):',
+    'Resident & prospect education knowledge for this call (use when AC, filters, doors/windows, humidity, mold, vacancies, leasing, “do you have a unit available?”, or the caller is unhappy / wants a human):',
     ...entries.map(
       (e, i) => `${i + 1}. Q: ${e.question}\n   A: ${e.answer}`,
     ),
     `AC call coaching: ${AC_EDUCATION_SCRIPT}`,
     `Vacancy / leasing coaching: ${LEASING_EDUCATION_SCRIPT}`,
-    'Tone: warm, polite, educational, inviting — never lecture or shame. For leasing callers: thank them, collect needs, send them to leasing@glorietagardens.com.',
+    `Live operator (last resort): ${LIVE_OPERATOR_SCRIPT}`,
+    'Tone: warm, polite, educational, inviting — never lecture or shame. For leasing callers: thank them, collect needs, send them to leasing@glorietagardens.com. For unhappy callers: escalate to the live operator number.',
   ];
   return lines.join('\n');
 }

@@ -4,6 +4,9 @@ import {
   HVAC_EDUCATION_ENTRIES,
   LEASING_EDUCATION_ENTRIES,
   LEASING_EDUCATION_SCRIPT,
+  LIVE_OPERATOR_EDUCATION_ENTRIES,
+  LIVE_OPERATOR_PHONE,
+  LIVE_OPERATOR_SCRIPT,
   RESIDENT_EDUCATION_ENTRIES,
   formatResidentEducationForAgent,
   toKnowledgeBaseJson,
@@ -31,17 +34,26 @@ describe('residentEducation', () => {
     expect(blob.toLowerCase()).toMatch(/do not create a maintenance/);
   });
 
+  it('covers live-operator escalate to 954-243-1238', () => {
+    const blob = LIVE_OPERATOR_EDUCATION_ENTRIES.map((e) => `${e.question} ${e.answer}`).join(' ');
+    expect(blob).toContain(LIVE_OPERATOR_PHONE);
+    expect(blob.toLowerCase()).toMatch(/unhappy|frustrated|human|real person|manager/);
+    expect(LIVE_OPERATOR_SCRIPT).toContain(LIVE_OPERATOR_PHONE);
+  });
+
   it('formats a contextual update the voice agent can use on calls', () => {
     const text = formatResidentEducationForAgent();
     expect(text).toContain('Resident & prospect education knowledge');
     expect(text).toContain(RESIDENT_EDUCATION_ENTRIES[0].question);
     expect(text).toContain(AC_EDUCATION_SCRIPT.split('.')[0]);
     expect(text).toContain(LEASING_EDUCATION_SCRIPT.split('.')[0]);
+    expect(text).toContain(LIVE_OPERATOR_SCRIPT.split('.')[0]);
     expect(text.toLowerCase()).toContain('never lecture');
     expect(text.toLowerCase()).toContain('leasing@glorietagardens.com');
+    expect(text).toContain(LIVE_OPERATOR_PHONE);
   });
 
-  it('maps to voice_agent_config knowledge_base shape including leasing', () => {
+  it('maps to voice_agent_config knowledge_base shape including leasing + operator', () => {
     const json = toKnowledgeBaseJson();
     expect(json).toHaveLength(RESIDENT_EDUCATION_ENTRIES.length);
     expect(json[0]).toMatchObject({
@@ -51,5 +63,6 @@ describe('residentEducation', () => {
     });
     expect(json.some((e) => e.id === 'vacancy-inquiry')).toBe(true);
     expect(json.some((e) => e.id === 'leasing-contact')).toBe(true);
+    expect(json.some((e) => e.id === 'live-operator-escalate')).toBe(true);
   });
 });
