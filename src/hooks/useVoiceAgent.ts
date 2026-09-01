@@ -256,7 +256,7 @@ export function useVoiceAgent(context?: VoiceAgentContext) {
           `Context for this call: ${parts.join(', ')}. Use this context when creating the maintenance request.`,
         );
       }
-      // Reinforce HVAC / filter / humidity education on every call (in addition
+      // Reinforce HVAC + vacancy/leasing education on every call (in addition
       // to the ElevenLabs system prompt) so the agent can answer those questions.
       conversation.sendContextualUpdate(formatResidentEducationForAgent());
     } catch (error) {
