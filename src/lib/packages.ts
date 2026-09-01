@@ -44,7 +44,11 @@ export const MODULE_CATALOG: ModuleCategory[] = [
     { key: 'reportsEnabled', label: 'Reports & documents', description: 'Reports center, documents, CaseIQ' },
   ] },
   { key: 'ai', label: 'AI', modules: [
-    { key: 'aiEnabled', label: 'AI capabilities', description: 'Assistant, drafting, analysis, and briefings across the app' },
+    {
+      key: 'aiEnabled',
+      label: 'AI + Resident Voice',
+      description: 'Assistant, drafting, analysis, briefings, and the ElevenLabs Voice Complaints hotline (sidebar → Resident Voice)',
+    },
   ] },
 ];
 

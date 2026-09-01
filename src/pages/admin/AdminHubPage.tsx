@@ -19,6 +19,7 @@ import {
   ChevronRight,
   LayoutGrid,
   Lightbulb,
+  Phone,
   type LucideIcon,
 } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -47,6 +48,14 @@ const WORKSPACE_TILES: AdminTile[] = [
   { title: 'Workflows', description: 'Approval flows and ball-in-court routing.', icon: Workflow, to: '/admin/workflows', scope: 'owner' },
   { title: 'Distribution Lists', description: 'Named recipient groups for notifications and sends.', icon: Send, to: '/settings/distribution-lists', scope: 'owner' },
   { title: 'Client Portals', description: 'Owner and subcontractor portal access.', icon: Globe, to: '/portals', scope: 'owner', module: 'clientPortalEnabled' },
+  {
+    title: 'Voice Complaints',
+    description: 'ElevenLabs resident maintenance hotline — live calls, tickets, and work orders.',
+    icon: Phone,
+    to: '/voice-agent',
+    scope: 'owner',
+    module: 'aiEnabled',
+  },
   { title: 'Activity Log', description: 'Audit trail of changes across the workspace.', icon: ScrollText, to: '/settings/activity-log', scope: 'owner' },
 ];
 
