@@ -376,8 +376,11 @@ BEGIN
       JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relname = t AND c.relkind IN ('r', 'p')
     ) THEN
-      EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
+      -- Only drop the main-only boundary when we can replace it with an
+      -- ops-aware policy. Tables we cannot property-scope keep the
+      -- existing restrictive policy from 20260819180000.
       IF t = 'properties' THEN
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
         EXECUTE format(
           'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
            USING (
@@ -392,7 +395,69 @@ BEGIN
            )',
           t
         );
+      ELSIF t = 'tenants' THEN
+        -- Residential occupancy is scoped by unit_id, not property_id.
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
+        EXECUTE format(
+          'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
+           USING (
+             public.current_portal_kind() = ''main''
+             OR public.is_super_admin()
+             OR (
+               public.current_portal_kind() = ''ops''
+               AND EXISTS (
+                 SELECT 1 FROM public.units u
+                 WHERE u.id = unit_id
+                   AND public.ops_can_access_property(u.property_id)
+               )
+             )
+           )
+           WITH CHECK (
+             public.current_portal_kind() = ''main''
+             OR public.is_super_admin()
+             OR (
+               public.current_portal_kind() = ''ops''
+               AND EXISTS (
+                 SELECT 1 FROM public.units u
+                 WHERE u.id = unit_id
+                   AND public.ops_can_access_property(u.property_id)
+               )
+             )
+           )',
+          t
+        );
+      ELSIF t IN ('work_order_comments', 'work_order_activity') THEN
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
+        EXECUTE format(
+          'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
+           USING (
+             public.current_portal_kind() = ''main''
+             OR public.is_super_admin()
+             OR (
+               public.current_portal_kind() = ''ops''
+               AND EXISTS (
+                 SELECT 1 FROM public.work_orders w
+                 WHERE w.id = work_order_id
+                   AND public.ops_can_access_property(w.property_id)
+               )
+             )
+           )
+           WITH CHECK (
+             public.current_portal_kind() = ''main''
+             OR public.is_super_admin()
+             OR (
+               public.current_portal_kind() = ''ops''
+               AND EXISTS (
+                 SELECT 1 FROM public.work_orders w
+                 WHERE w.id = work_order_id
+                   AND public.ops_can_access_property(w.property_id)
+               )
+             )
+           )',
+          t
+        );
       ELSIF t = 'property_material_receipt_lines' THEN
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
         EXECUTE format(
           'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
            USING (
@@ -423,6 +488,7 @@ BEGIN
         );
       ELSIF t = 'voice_agent_config' THEN
         -- property_id may be absent on older schemas; allow ops read when kind matches
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
         EXECUTE format(
           'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
            USING (
@@ -440,6 +506,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = t AND column_name = 'property_id'
       ) THEN
+        EXECUTE format('DROP POLICY IF EXISTS client_portal_staff_boundary ON public.%I', t);
         EXECUTE format(
           'CREATE POLICY client_portal_staff_boundary ON public.%I AS RESTRICTIVE FOR ALL TO authenticated
            USING (
@@ -619,7 +686,8 @@ BEGIN
     $p$;
   END IF;
 
-  -- Residential tenants (occupancy) — only PM/owner cost+activity roles
+  -- Residential tenants (occupancy) — only PM/owner cost+activity roles.
+  -- Occupants are keyed by unit_id; property scope is via units.property_id.
   IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname='public' AND c.relname='tenants') THEN
     EXECUTE $p$
       DROP POLICY IF EXISTS tenants_ops_portal_select ON public.tenants;
@@ -628,7 +696,11 @@ BEGIN
         USING (
           public.current_portal_kind() = 'ops'
           AND public.ops_has_module('costs')
-          AND public.ops_can_access_property(property_id)
+          AND EXISTS (
+            SELECT 1 FROM public.units u
+            WHERE u.id = unit_id
+              AND public.ops_can_access_property(u.property_id)
+          )
         );
     $p$;
   END IF;

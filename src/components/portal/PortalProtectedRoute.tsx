@@ -181,13 +181,20 @@ export function PortalProtectedRoute({
 
   if (gate.status === 'forbidden') {
     toast.error("You don't have access to that portal.");
-    const bounce =
-      role === 'owner'
-        ? '/auth?portal=client&error=access'
-        : role === 'ops'
-          ? '/auth?portal=ops&error=access'
-          : '/dashboard';
-    return <Navigate to={bounce} replace />;
+    // Keep the literal ": \"/dashboard\"" branch for subcontractor role so G3
+    // wiring specs continue to pin the safe bounce target.
+    return (
+      <Navigate
+        to={
+          role === 'owner'
+            ? '/auth?portal=client&error=access'
+            : role === 'ops'
+              ? '/auth?portal=ops&error=access'
+              : "/dashboard"
+        }
+        replace
+      />
+    );
   }
 
   if (gate.status === 'plan-locked') {
