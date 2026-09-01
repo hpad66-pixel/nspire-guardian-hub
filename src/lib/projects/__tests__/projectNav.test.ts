@@ -29,12 +29,22 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'rfis')).toBeTruthy();
     expect(items.find((i) => i.value === 'permits')).toBeTruthy();
     expect(items.find((i) => i.value === 'site-map')).toBeTruthy();
+    // Stores is opt-in — hidden until Project Admin enables it
+    expect(items.find((i) => i.value === 'stores')).toBeFalsy();
     expect(items.find((i) => i.value === 'pay-apps' as never)).toBeFalsy();
     expect(items.find((i) => i.value === 'financials')).toBeTruthy();
     // Admin tab only for admins
     expect(items.find((i) => i.value === 'admin')).toBeFalsy();
     // Consulting-only hidden
     expect(items.find((i) => i.value === 'invoicing')).toBeFalsy();
+  });
+
+  it('shows Stores when the admin turns the optional module on', () => {
+    const { items } = getProjectNav({
+      project: { project_type: 'property', module_config: { stores: true } },
+      isAdmin: true,
+    });
+    expect(items.find((i) => i.value === 'stores')).toBeTruthy();
   });
 
   it('hides modules the admin turned off', () => {

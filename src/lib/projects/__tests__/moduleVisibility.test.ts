@@ -9,6 +9,7 @@ import {
   CONSULTING_DEFAULT_MODULES,
   CONSULTING_ONLY_MODULES,
   CONSTRUCTION_FIELD_MODULES,
+  OPT_IN_MODULES,
   MODULE_PRESETS,
   LOCKED_MODULES,
 } from '../moduleVisibility';
@@ -20,10 +21,23 @@ describe('moduleVisibility', () => {
         expect(isModuleVisible({ project_type: 'property' }, def.slug)).toBe(true);
         continue;
       }
+      if (OPT_IN_MODULES.has(def.slug)) {
+        expect(isModuleVisible({ project_type: 'property' }, def.slug)).toBe(false);
+        expect(isModuleVisible({ project_type: 'construction' }, def.slug)).toBe(false);
+        continue;
+      }
       const expected = !CONSULTING_ONLY_MODULES.has(def.slug);
       expect(isModuleVisible({ project_type: 'property' }, def.slug)).toBe(expected);
       expect(isModuleVisible({ project_type: 'construction' }, def.slug)).toBe(expected);
     }
+  });
+
+  it('keeps Stores opt-in until Project Admin enables it', () => {
+    expect(defaultModuleVisible('stores', 'property')).toBe(false);
+    expect(defaultModuleVisible('stores', 'consulting')).toBe(false);
+    expect(isModuleVisible({ project_type: 'property', module_config: { stores: true } }, 'stores')).toBe(true);
+    const portal = portalModulesForProject({ project_type: 'property', module_config: { stores: true } });
+    expect(portal.has('operations')).toBe(true);
   });
 
   it('uses consulting defaults for client and consulting project types', () => {
