@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object') {
+    const e = error as { message?: string; code?: string; details?: string; hint?: string; error?: string };
+    return [e.message || e.error, e.code, e.details, e.hint].filter(Boolean).join(' | ') || JSON.stringify(error);
+  }
+  return String(error);
+}
+
+function asText(value: unknown, fallback: string): string {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  return fallback;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -18,10 +32,21 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { tool_name, parameters } = await req.json();
+    const body = await req.json();
+    // Support both { tool_name, parameters } and a bare parameters body with ?tool=
+    const url = new URL(req.url);
+    const tool_name = body?.tool_name || url.searchParams.get('tool');
+    const parameters = body?.parameters || (body?.tool_name ? {} : body) || {};
     console.log('Tool call received:', tool_name, parameters);
 
-    let result: any;
+    if (!tool_name) {
+      return new Response(
+        JSON.stringify({ error: 'Missing tool_name' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+      );
+    }
+
+    let result: Record<string, unknown>;
 
     switch (tool_name) {
       case 'lookup_property': {
@@ -47,10 +72,10 @@ serve(async (req) => {
           .single();
 
         if (error && error.code !== 'PGRST116') throw error;
-        result = { 
-          verified: !!data, 
+        result = {
+          verified: !!data,
           unit: data,
-          message: data ? `Unit ${unit_number} verified` : `Unit ${unit_number} not found`
+          message: data ? `Unit ${unit_number} verified` : `Unit ${unit_number} not found`,
         };
         break;
       }
@@ -76,39 +101,56 @@ serve(async (req) => {
           call_id,
         } = parameters;
 
+        if (!property_id) {
+          throw new Error('property_id is required to create a maintenance request / work order');
+        }
+
         const { data, error } = await supabase
           .from('maintenance_requests')
           .insert({
-            caller_name,
-            caller_phone,
-            caller_email,
-            caller_unit_number: unit_number,
+            caller_name: asText(caller_name, 'Resident'),
+            // DB column is NOT NULL — voice calls often omit phone
+            caller_phone: asText(caller_phone, 'not provided'),
+            caller_email: caller_email || null,
+            caller_unit_number: unit_number || null,
             property_id,
-            unit_id,
-            issue_category,
-            issue_subcategory,
-            issue_description,
-            issue_location,
+            unit_id: unit_id || null,
+            issue_category: asText(issue_category, 'other'),
+            issue_subcategory: issue_subcategory || null,
+            issue_description: asText(issue_description, 'No description provided'),
+            issue_location: issue_location || null,
             urgency_level: urgency_level || 'normal',
-            is_emergency: is_emergency || false,
-            preferred_contact_time,
-            preferred_access_time,
-            has_pets: has_pets || false,
-            special_access_instructions: special_instructions,
-            call_id,
+            is_emergency: Boolean(is_emergency),
+            preferred_contact_time: preferred_contact_time || null,
+            preferred_access_time: preferred_access_time || null,
+            has_pets: Boolean(has_pets),
+            special_access_instructions: special_instructions || null,
+            call_id: call_id || null,
             call_started_at: new Date().toISOString(),
             status: 'new',
           })
-          .select('id, ticket_number')
+          .select('id, ticket_number, work_order_id')
           .single();
 
         if (error) throw error;
-        
-        result = { 
-          success: true, 
+
+        // AFTER INSERT trigger sets work_order_id; re-read if racey
+        let workOrderId = data.work_order_id;
+        if (!workOrderId) {
+          const { data: again } = await supabase
+            .from('maintenance_requests')
+            .select('work_order_id')
+            .eq('id', data.id)
+            .maybeSingle();
+          workOrderId = again?.work_order_id ?? null;
+        }
+
+        result = {
+          success: true,
           request_id: data.id,
           ticket_number: data.ticket_number,
-          formatted_ticket: `MR-${String(data.ticket_number).padStart(4, '0')}`
+          work_order_id: workOrderId,
+          formatted_ticket: `MR-${String(data.ticket_number).padStart(4, '0')}`,
         };
         break;
       }
@@ -122,9 +164,9 @@ serve(async (req) => {
           .single();
 
         if (error) throw error;
-        result = { 
+        result = {
           ticket_number: data.ticket_number,
-          formatted: `MR-${String(data.ticket_number).padStart(4, '0')}`
+          formatted: `MR-${String(data.ticket_number).padStart(4, '0')}`,
         };
         break;
       }
@@ -161,9 +203,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error('Error in voice-agent-tools:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: errorMessage(error) }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
