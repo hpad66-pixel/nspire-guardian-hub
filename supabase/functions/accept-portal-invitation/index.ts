@@ -59,11 +59,12 @@ serve(async (req) => {
   })).data?.user;
   if (!user) return json({ error: "user_create_failed" }, 500);
 
-  // Write portal_memberships
+  // Write portal_memberships (ops invites also carry property_id)
   const { error: membershipError } = await admin.from("portal_memberships").upsert({
     tenant_id: (invite as any).tenant_id,
     user_id: (user as any).id,
     organization_id: (invite as any).organization_id,
+    property_id: (invite as any).property_id ?? null,
     portal_kind: (invite as any).portal_kind,
     role: (invite as any).role,
     is_active: true,
@@ -78,6 +79,7 @@ serve(async (req) => {
   // Deep-link owners into the exact project they were invited to. Falling back
   // to flat /owner-portal made every client land on contracts[0].
   const inviteProjectId = (invite as any).project_id as string | null | undefined;
+  const invitePropertyId = (invite as any).property_id as string | null | undefined;
   let ownerDestination = `${APP_ORIGIN}/owner-portal`;
   if (inviteProjectId) {
     ownerDestination = body?.next === "schedule"
@@ -86,9 +88,17 @@ serve(async (req) => {
   } else if (body?.next === "schedule") {
     ownerDestination = `${APP_ORIGIN}/owner-portal/schedule`;
   }
-  const redirect = (invite as any).portal_kind === "owner"
+
+  const opsDestination = invitePropertyId
+    ? `${APP_ORIGIN}/ops-portal/properties/${invitePropertyId}`
+    : `${APP_ORIGIN}/ops-portal`;
+
+  const kind = (invite as any).portal_kind as string;
+  const redirect = kind === "owner"
     ? ownerDestination
-    : `${APP_ORIGIN}/sub-portal`;
+    : kind === "ops"
+      ? opsDestination
+      : `${APP_ORIGIN}/sub-portal`;
 
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",

@@ -124,6 +124,15 @@ const OwnerSiteMapPage = lazy(() => import('./pages/portal/owner/OwnerSiteMapPag
 const OwnerOperationsPage = lazy(() => import('./pages/portal/owner/OwnerOperationsPage'));
 const OwnerPortalLegacyRedirect = lazy(() => import('./pages/portal/owner/OwnerPortalLegacyRedirect'));
 const ClientPortalShell = lazy(() => import('./components/portal/ClientPortalShell'));
+const OpsPortalShell = lazy(() => import('./components/portal/OpsPortalShell'));
+const OpsHomePage = lazy(() => import('./pages/portal/ops/OpsHomePage'));
+const OpsWorkOrdersPage = lazy(() => import('./pages/portal/ops/OpsWorkOrdersPage'));
+const OpsExecutivePage = lazy(() => import('./pages/portal/ops/OpsExecutivePage'));
+const OpsStoresPage = lazy(() => import('./pages/portal/ops/OpsStoresPage'));
+const OpsCostsPage = lazy(() => import('./pages/portal/ops/OpsCostsPage'));
+const OpsVoicePage = lazy(() => import('./pages/portal/ops/OpsVoicePage'));
+const OpsNspirePage = lazy(() => import('./pages/portal/ops/OpsNspirePage'));
+const PropertyOpsAdminPage = lazy(() => import('./pages/admin/PropertyOpsAdminPage'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
 const PortalInviteAcceptPage = lazy(() => import('./pages/portal/PortalInviteAcceptPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
@@ -308,6 +317,23 @@ const App = () => (
                         <Route path="/owner-portal/projects/:projectId/operations" element={<OwnerOperationsPage />} />
                       </Route>
                     </Route>
+
+                    {/*
+                      Property Ops portal — external Glorieta maintenance / PM / owner.
+                      Outside AppLayout so crew never sees construction modules.
+                    */}
+                    <Route element={<PortalProtectedRoute role="ops" feature="ops_portal" />}>
+                      <Route element={<OpsPortalShell />}>
+                        <Route path="/ops-portal" element={<OpsHomePage />} />
+                        <Route path="/ops-portal/properties/:propertyId" element={<OpsHomePage />} />
+                        <Route path="/ops-portal/properties/:propertyId/executive" element={<OpsExecutivePage />} />
+                        <Route path="/ops-portal/properties/:propertyId/work-orders" element={<OpsWorkOrdersPage />} />
+                        <Route path="/ops-portal/properties/:propertyId/nspire" element={<OpsNspirePage />} />
+                        <Route path="/ops-portal/properties/:propertyId/stores" element={<OpsStoresPage />} />
+                        <Route path="/ops-portal/properties/:propertyId/voice" element={<OpsVoicePage />} />
+                        <Route path="/ops-portal/properties/:propertyId/costs" element={<OpsCostsPage />} />
+                      </Route>
+                    </Route>
                      
                     {/* Protected Routes */}
                     <Route
@@ -377,6 +403,7 @@ const App = () => (
                               <Route path="/admin" element={<AdminHubPage />} />
                               <Route path="/admin/ai-usage" element={<AiUsageAnalyticsPage />} />
                               <Route path="/admin/modules" element={<ModulePackagesPage />} />
+                              <Route path="/admin/property-ops" element={<PropertyOpsAdminPage />} />
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
                               <Route path="/admin/registry" element={<FeatureRegistryPage />} />
 

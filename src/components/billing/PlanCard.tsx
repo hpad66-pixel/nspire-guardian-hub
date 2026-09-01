@@ -11,6 +11,7 @@ const FEATURE_LABELS: Record<string, string> = {
   webhooks: "Outbound webhooks",
   subcontractor_portal: "Subcontractor portal",
   owner_portal: "Owner portal",
+  ops_portal: "Property Ops portal",
   reporting_advanced: "Advanced reporting",
   custom_workflows: "Custom workflows",
 };

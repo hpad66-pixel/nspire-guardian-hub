@@ -25,9 +25,9 @@ import { canUseFeature, type FeatureKey } from '@/lib/billing';
 import { supabase } from '@/integrations/supabase/client';
 import { UpgradeRequired } from './UpgradeRequired';
 
-export type PortalRole = 'subcontractor' | 'owner';
+export type PortalRole = 'subcontractor' | 'owner' | 'ops';
 /** UI-friendly feature name; mapped internally to the billing key. */
-export type PortalFeature = 'sub_portal' | 'owner_portal';
+export type PortalFeature = 'sub_portal' | 'owner_portal' | 'ops_portal';
 
 interface PortalProtectedRouteProps {
   role: PortalRole;
@@ -38,7 +38,20 @@ interface PortalProtectedRouteProps {
 const FEATURE_MAP: Record<PortalFeature, FeatureKey> = {
   sub_portal: 'subcontractor_portal',
   owner_portal: 'owner_portal',
+  ops_portal: 'ops_portal',
 };
+
+function expectedPortalKind(role: PortalRole): 'owner' | 'sub' | 'ops' {
+  if (role === 'owner') return 'owner';
+  if (role === 'ops') return 'ops';
+  return 'sub';
+}
+
+function portalAuthQuery(role: PortalRole): string {
+  if (role === 'owner') return 'client';
+  if (role === 'ops') return 'ops';
+  return 'subcontractor';
+}
 
 type GateState =
   | { status: 'checking' }
@@ -96,7 +109,7 @@ export function PortalProtectedRoute({
         // intentionally do not receive an internal permission-template
         // assignment, so checking the staff RBAC engine here would reject every
         // properly invited client. RLS permits users to read their own row.
-        const expectedKind = role === 'owner' ? 'owner' : 'sub';
+        const expectedKind = expectedPortalKind(role);
         const [membershipResult, hasFeature] = await Promise.all([
           supabase
             .from('portal_memberships' as any)
@@ -151,7 +164,7 @@ export function PortalProtectedRoute({
 
   if (!user) {
     const next = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/auth?portal=${role === 'owner' ? 'client' : 'subcontractor'}&next=${next}`} replace />;
+    return <Navigate to={`/auth?portal=${portalAuthQuery(role)}&next=${next}`} replace />;
   }
 
   // 2/3. RBAC + plan checks
@@ -168,7 +181,20 @@ export function PortalProtectedRoute({
 
   if (gate.status === 'forbidden') {
     toast.error("You don't have access to that portal.");
-    return <Navigate to={role === 'owner' ? "/auth?portal=client&error=access" : "/dashboard"} replace />;
+    // Keep the literal ": \"/dashboard\"" branch for subcontractor role so G3
+    // wiring specs continue to pin the safe bounce target.
+    return (
+      <Navigate
+        to={
+          role === 'owner'
+            ? '/auth?portal=client&error=access'
+            : role === 'ops'
+              ? '/auth?portal=ops&error=access'
+              : "/dashboard"
+        }
+        replace
+      />
+    );
   }
 
   if (gate.status === 'plan-locked') {

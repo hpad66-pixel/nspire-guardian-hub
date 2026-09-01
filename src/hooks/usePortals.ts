@@ -25,12 +25,12 @@ export interface PortalMembership {
 }
 
 export function useMyPortalKind() {
-  return useQuery<"main"|"sub"|"owner">({
+  return useQuery<"main"|"sub"|"owner"|"ops">({
     queryKey: ["my-portal-kind"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("current_portal_kind" as any);
       if (error) return "main";
-      return (data as "main"|"sub"|"owner") ?? "main";
+      return (data as "main"|"sub"|"owner"|"ops") ?? "main";
     },
     staleTime: 60_000,
   });

@@ -97,6 +97,7 @@ export async function resolveCurrentWorkspaceId(userId?: string | null): Promise
 
   const membershipWorkspaceId =
     memberships?.find((row) => row.portal_kind === "main")?.tenant_id ??
+    memberships?.find((row) => row.portal_kind === "ops")?.tenant_id ??
     memberships?.find((row) => row.portal_kind === "owner")?.tenant_id ??
     memberships?.find((row) => row.portal_kind === "sub")?.tenant_id ??
     null;

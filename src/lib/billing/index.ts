@@ -14,6 +14,7 @@ export type FeatureKey =
   | "webhooks"
   | "subcontractor_portal"
   | "owner_portal"
+  | "ops_portal"
   | "reporting_advanced"
   | "custom_workflows";
 
