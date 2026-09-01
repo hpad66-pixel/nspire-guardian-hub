@@ -192,9 +192,30 @@ serve(async (req) => {
           normalizeString(dynamicVars?.callerEmail) ||
           normalizeString(dynamicVars?.email);
 
-        const propertyId = normalizeString(dynamicVars?.property_id) || null;
+        let propertyId = normalizeString(dynamicVars?.property_id) || null;
         const unitId = normalizeString(dynamicVars?.unit_id) || null;
-        const unitNumber = normalizeString(dynamicVars?.unit_number) || null;
+        let unitNumber = normalizeString(dynamicVars?.unit_number) || null;
+
+        // Contextual updates are plain text — recover property_id / unit from transcript if needed
+        const contextBlob = `${transcriptText || ''} ${userOnlyTranscript || ''}`;
+        if (!propertyId) {
+          const m = contextBlob.match(/property_id\s*=\s*([0-9a-f-]{36})/i);
+          if (m) propertyId = m[1];
+        }
+        if (!unitNumber) {
+          const m = contextBlob.match(/\b(?:unit|apartment|apt\.?)\s*#?\s*([A-Za-z0-9-]+)/i);
+          if (m) unitNumber = m[1];
+        }
+        // Glorieta voice agent fallback when context never arrived as dynamic vars
+        if (!propertyId) {
+          const { data: glorieta } = await supabase
+            .from('properties')
+            .select('id')
+            .ilike('name', '%glorieta%')
+            .limit(1)
+            .maybeSingle();
+          propertyId = glorieta?.id || null;
+        }
 
         const dataCollection = postCallData?.analysis?.data_collection_results || {};
 
@@ -344,20 +365,27 @@ serve(async (req) => {
           break;
         }
 
-        const { error: insertError } = await supabase
+        if (!propertyId) {
+          console.error('post_call_transcription: refusing insert without property_id', {
+            conversationId,
+          });
+          break;
+        }
+
+        const { data: inserted, error: insertError } = await supabase
           .from('maintenance_requests')
           .insert({
-            caller_name: callerName,
-            caller_phone: callerPhone,
+            caller_name: callerName || 'Resident',
+            caller_phone: callerPhone || 'not provided',
             caller_email: callerEmail,
             caller_unit_number: unitNumber,
             property_id: propertyId,
             unit_id: unitId,
-            issue_category: issueCategory,
+            issue_category: issueCategory || 'other',
             issue_subcategory: issueSubcategory,
             issue_description: issueDescription,
             issue_location: issueLocation,
-            urgency_level: urgencyLevel,
+            urgency_level: urgencyLevel || 'normal',
             is_emergency: emergencyDetected,
             preferred_contact_time: preferredContactTime,
             preferred_access_time: preferredAccessTime,
@@ -370,10 +398,14 @@ serve(async (req) => {
             call_transcript: transcriptText || userOnlyTranscript || issueDescription,
             call_recording_url: callRecordingUrl,
             status: 'new',
-          });
+          })
+          .select('id, ticket_number, work_order_id')
+          .single();
 
         if (insertError) {
           console.error('Error creating request from post_call_transcription:', insertError);
+        } else {
+          console.log('Created maintenance request from post_call_transcription:', inserted);
         }
 
         break;
