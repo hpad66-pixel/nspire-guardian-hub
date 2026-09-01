@@ -1,12 +1,12 @@
-import { BookOpen, Droplets, Fan, ShieldCheck } from 'lucide-react';
+import { BookOpen, Droplets, Fan, Home, Mail, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RESIDENT_EDUCATION_ENTRIES } from '@/lib/voice/residentEducation';
 
-const ICONS = [Fan, ShieldCheck, Droplets] as const;
+const ICONS = [Fan, ShieldCheck, Droplets, Home, Mail, Home] as const;
 
 /**
- * At-a-glance resident education topics the voice agent is trained to cover
- * (filters, AC door/window checks, humidity / mold).
+ * At-a-glance education topics the voice agent is trained to cover
+ * (filters, AC door/window checks, humidity / mold, vacancy / leasing).
  */
 export function VoiceResidentEducation({ className }: { className?: string }) {
   return (
@@ -17,10 +17,12 @@ export function VoiceResidentEducation({ className }: { className?: string }) {
           Call agent education
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Wired into the live ElevenLabs agent — used when residents ask about AC, filters, or open doors.
+          Wired into the live ElevenLabs agent — used for AC / filters, and when
+          outsiders ask about vacancies at Glorieta Gardens (direct to{' '}
+          <span className="font-medium text-foreground">leasing@glorietagardens.com</span>).
         </p>
       </CardHeader>
-      <CardContent className="grid gap-3 md:grid-cols-3">
+      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {RESIDENT_EDUCATION_ENTRIES.map((entry, idx) => {
           const Icon = ICONS[idx % ICONS.length];
           return (

@@ -1,5 +1,5 @@
 /**
- * Resident education knowledge for the Glorieta / APAS voice agent.
+ * Resident + prospect education knowledge for the Glorieta / APAS voice agent.
  * Kept in-repo so call context, DB seed, and ElevenLabs prompt stay aligned.
  */
 
@@ -11,7 +11,7 @@ export interface ResidentEducationEntry {
 }
 
 /** Canonical Q&A used by the voice agent for HVAC / AC / filter calls. */
-export const RESIDENT_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
+export const HVAC_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
   {
     id: 'filter-responsibility',
     topic: 'Filters',
@@ -35,6 +35,41 @@ export const RESIDENT_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
   },
 ];
 
+/**
+ * Vacancy / leasing Q&A for outsiders who call asking about available units.
+ * Property name on the phone: Glorieta Gardens. Leasing inbox:
+ * leasing@glorietagardens.com
+ */
+export const LEASING_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
+  {
+    id: 'vacancy-inquiry',
+    topic: 'Vacancies',
+    question: 'Do you have a vacancy? / I’m interested in renting.',
+    answer:
+      'Thank them warmly for their interest in Glorieta Gardens. Share that we pride ourselves on a great community and are happy they are considering our location. You cannot confirm live availability on this line — invite them to email leasing@glorietagardens.com and someone will get back ASAP. Collect: preferred move-in date, number of bedrooms and baths, unit size preference, and any other pertinent information they want to share. Spell the email clearly: L-E-A-S-I-N-G at glorietagardens.com. Do NOT create a maintenance work order for a leasing/vacancy inquiry.',
+  },
+  {
+    id: 'leasing-contact',
+    topic: 'Leasing contact',
+    question: 'How do I apply / who do I contact about leasing?',
+    answer:
+      'Please send an email to leasing@glorietagardens.com with your preferred move-in date, bedrooms and baths needed, unit size preference, and any other details that would help our leasing team. Someone will get back to you as soon as possible. Tone: to the point, polite, inviting, and friendly — best-in-class customer service.',
+  },
+  {
+    id: 'leasing-info-to-collect',
+    topic: 'Leasing intake',
+    question: 'What information should I share for a vacancy inquiry?',
+    answer:
+      'Please tell us: (1) When would you like to move in? (2) How many bedrooms and baths do you need? (3) Are you looking at a particular unit size? (4) Any other pertinent information you would like to share. Then email that to leasing@glorietagardens.com so our team can follow up quickly.',
+  },
+];
+
+/** Full knowledge set injected into call context + knowledge_base. */
+export const RESIDENT_EDUCATION_ENTRIES: ResidentEducationEntry[] = [
+  ...HVAC_EDUCATION_ENTRIES,
+  ...LEASING_EDUCATION_ENTRIES,
+];
+
 /** Compact coaching script the agent can paraphrase on AC calls. */
 export const AC_EDUCATION_SCRIPT = [
   'Empathize briefly.',
@@ -44,16 +79,29 @@ export const AC_EDUCATION_SCRIPT = [
   'If everything is already closed / filter is fresh and it still will not cool, create a maintenance request.',
 ].join(' ');
 
+/** Compact coaching script for vacancy / leasing calls. */
+export const LEASING_EDUCATION_SCRIPT = [
+  'Thank them for their interest in Glorieta Gardens.',
+  'Say we pride ourselves on a great community and are happy they are considering our location.',
+  'Ask when they would like to move in.',
+  'Ask how many bedrooms and baths they need.',
+  'Ask if they have a unit size in mind.',
+  'Invite any other pertinent information.',
+  'Direct them to email leasing@glorietagardens.com — someone will get back ASAP.',
+  'Spell the email clearly. Do not create a maintenance ticket for leasing calls.',
+].join(' ');
+
 export function formatResidentEducationForAgent(
   entries: ResidentEducationEntry[] = RESIDENT_EDUCATION_ENTRIES,
 ): string {
   const lines = [
-    'Resident education knowledge for this call (use when AC, filters, doors/windows, humidity, or mold come up):',
+    'Resident & prospect education knowledge for this call (use when AC, filters, doors/windows, humidity, mold, vacancies, leasing, or “do you have a unit available?” come up):',
     ...entries.map(
       (e, i) => `${i + 1}. Q: ${e.question}\n   A: ${e.answer}`,
     ),
-    `Call coaching: ${AC_EDUCATION_SCRIPT}`,
-    'Tone: warm, polite, educational — never lecture or shame the resident.',
+    `AC call coaching: ${AC_EDUCATION_SCRIPT}`,
+    `Vacancy / leasing coaching: ${LEASING_EDUCATION_SCRIPT}`,
+    'Tone: warm, polite, educational, inviting — never lecture or shame. For leasing callers: thank them, collect needs, send them to leasing@glorietagardens.com.',
   ];
   return lines.join('\n');
 }
