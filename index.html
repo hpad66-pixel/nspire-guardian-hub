@@ -8,7 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <!-- Viewport — viewport-fit=cover handles iPhone notch & Dynamic Island -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="light" />
 
     <!-- Primary meta -->
     <title>APAS Project Controls · Powered by projOS</title>
@@ -17,17 +19,22 @@
     <meta name="application-name" content="APAS Project Controls" />
 
     <!-- Theme color — APAS infrastructure green -->
-    <meta name="theme-color" content="#08271f" />
+    <meta name="theme-color" content="#08271f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#041914" media="(prefers-color-scheme: dark)" />
 
-    <!-- iOS PWA meta tags -->
+    <!-- Installable web app (PWA) meta -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="APAS Controls" />
     <link rel="apple-touch-icon" href="/icons/apas-os-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apas-os-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/apas-os-192.png" />
 
     <!-- Favicon — branded projOS mark -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/apas-os-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/apas-os-192.png" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="APAS Project Controls · Powered by projOS" />

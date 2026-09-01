@@ -79,7 +79,8 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
   return (
     <button
       onClick={onClick}
-      className="flex flex-1 flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 cursor-pointer select-none active:scale-[0.96] transition-transform"
+      className="flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 cursor-pointer select-none active:scale-[0.96] transition-transform"
+      type="button"
     >
       {/* Active pill indicator */}
       <div
@@ -183,8 +184,11 @@ function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#041914] px-3 scrollbar-hide"
-      style={{ bottom: 64, borderLeft: `3px solid ${borderColor}` }}
+      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#041914] px-3 no-scrollbar"
+      style={{
+        bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
+        borderLeft: `3px solid ${borderColor}`,
+      }}
     >
       {/* Colored context dot */}
       <span
@@ -522,14 +526,15 @@ export function MobileNav() {
         <SecondaryBar activeSection={activeSection} />
       </div>
 
-      {/* Primary bar */}
+      {/* Primary bar — 4rem tap row + home-indicator safe area */}
       <div
         className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-white/10 bg-[#041914]/95 backdrop-blur-xl"
         style={{
-          height: 64,
+          minHeight: '4rem',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           backgroundColor: 'hsl(222 47% 8% / 0.92)',
         }}
+        data-testid="mobile-bottom-nav"
       >
         {/* Portals — always visible */}
         <PrimaryItem

@@ -371,8 +371,8 @@ export function ProjectStoresTab({
         </TabsContent>
 
         <TabsContent value="issues" className="mt-4">
-          <div className="overflow-hidden rounded-xl border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border mobile-table-scroll">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Date</th>

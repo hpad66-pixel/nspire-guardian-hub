@@ -311,7 +311,7 @@ export default function ContactsPage() {
                 value={typeFilter}
                 onValueChange={(v) => setTypeFilter(v as ContactType | "all")}
               >
-                <SelectTrigger className="w-[150px] h-9">
+                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[150px]">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -325,7 +325,7 @@ export default function ContactsPage() {
               </Select>
 
               <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                <SelectTrigger className="w-[180px] h-9">
+                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[180px]">
                   <SelectValue placeholder="All properties" />
                 </SelectTrigger>
                 <SelectContent>
@@ -339,7 +339,7 @@ export default function ContactsPage() {
               </Select>
 
               <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[180px] h-9">
+                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[180px]">
                   <SelectValue placeholder="All projects" />
                 </SelectTrigger>
                 <SelectContent>

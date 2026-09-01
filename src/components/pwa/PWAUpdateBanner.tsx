@@ -8,15 +8,15 @@ export function PWAUpdateBanner() {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-between gap-3 bg-primary text-primary-foreground px-4 py-2.5 shadow-md">
-      <div className="flex items-center gap-2 text-sm">
+    <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-between gap-3 bg-primary px-4 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top,0px))] text-primary-foreground shadow-md">
+      <div className="flex min-w-0 items-center gap-2 text-sm">
         <RefreshCw className="h-4 w-4 shrink-0" />
-        <span className="font-medium">APAS Project Controls has been updated.</span>
+        <span className="truncate font-medium">APAS Project Controls has been updated.</span>
       </div>
       <Button
         size="sm"
         variant="secondary"
-        className="h-7 text-xs shrink-0"
+        className="h-8 min-h-[36px] shrink-0 text-xs"
         onClick={updateServiceWorker}
       >
         Reload now

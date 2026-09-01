@@ -142,8 +142,8 @@ export default function SchedulePage() {
                         No tasks match the current filter.
                       </div>
                     ) : (
-                      <div className="max-h-[65vh] overflow-y-auto">
-                        <table className="w-full text-sm">
+                      <div className="max-h-[65vh] overflow-x-auto overflow-y-auto mobile-table-scroll">
+                        <table className="w-full min-w-[640px] text-sm">
                           <thead className="bg-muted/60 text-xs uppercase text-muted-foreground sticky top-0">
                             <tr>
                               <th className="text-left px-3 py-2">Code</th>

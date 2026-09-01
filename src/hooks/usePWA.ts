@@ -13,36 +13,50 @@ export function usePWAInstall() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // Detect iOS
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    // Detect iOS (also treat iPadOS desktop-UA as iOS for Add to Home Screen).
+    const ua = navigator.userAgent;
+    const ios =
+      /iphone|ipad|ipod/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     setIsIOS(ios);
 
-    // Detect if already installed (standalone mode)
+    // Detect if already installed (standalone / TWA / iOS home-screen).
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsInstalled(standalone);
 
-    // Listen for Chrome/Android install prompt
+    // Listen for Chrome/Android/desktop install prompt
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      setShowBanner(false);
+      setInstallPrompt(null);
+    };
 
-    // Show banner after 15s if not installed and not previously dismissed
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', onInstalled);
+
+    // Show banner after 12s if not installed and not previously dismissed
     const dismissed = localStorage.getItem('apas-os-install-dismissed');
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (!standalone && !dismissed) {
-      const timer = setTimeout(() => setShowBanner(true), 15000);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('beforeinstallprompt', handler);
-      };
+      timer = setTimeout(() => setShowBanner(true), 12000);
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
 
   const install = async () => {
@@ -54,6 +68,11 @@ export function usePWAInstall() {
         setShowBanner(false);
       }
       setInstallPrompt(null);
+      return;
+    }
+    // iOS / browsers without beforeinstallprompt — send them to the guide.
+    if (isIOS) {
+      window.location.assign('/install');
     }
   };
 

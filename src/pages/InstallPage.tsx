@@ -19,27 +19,27 @@ const androidSteps = [
 
 export default function InstallPage() {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex min-h-dvh flex-col overflow-x-clip bg-background">
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/icons/apas-os-192.png" alt="APAS Project Controls" className="h-8 w-8 rounded-lg" />
-          <span className="font-semibold text-foreground">APAS Project Controls</span>
+      <header className="flex items-center justify-between border-b border-border px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
+        <div className="flex min-w-0 items-center gap-3">
+          <img src="/icons/apas-os-192.png" alt="APAS Project Controls" className="h-8 w-8 shrink-0 rounded-lg" />
+          <span className="truncate font-semibold text-foreground">APAS Project Controls</span>
         </div>
         <Link to="/auth">
-          <Button variant="outline" size="sm">Sign In</Button>
+          <Button variant="outline" size="sm" className="min-h-[40px]">Sign In</Button>
         </Link>
       </header>
 
-      <main className="flex-1 px-4 py-10 max-w-2xl mx-auto w-full space-y-12">
+      <main className="mx-auto w-full max-w-2xl flex-1 space-y-12 px-4 py-10 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
         {/* Hero */}
-        <div className="text-center space-y-4">
-          <div className="h-20 w-20 mx-auto rounded-2xl overflow-hidden shadow-lg">
-            <img src="/icons/apas-os-512.png" alt="APAS Project Controls" className="w-full h-full object-cover" />
+        <div className="space-y-4 text-center">
+          <div className="mx-auto h-20 w-20 overflow-hidden rounded-2xl shadow-lg">
+            <img src="/icons/apas-os-512.png" alt="APAS Project Controls" className="h-full w-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Install APAS Project Controls</h1>
-          <p className="text-muted-foreground max-w-sm mx-auto">
-            Add the projOS-powered APAS workspace to your home screen for fast, offline-capable access — no app store required.
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Install APAS Project Controls</h1>
+          <p className="mx-auto max-w-sm text-muted-foreground">
+            Add the projOS-powered APAS workspace to your home screen for fast, offline-capable access — no app store required. Fully mobile-responsive and downloadable as a web app.
           </p>
           <Link to="/portals">
             <Button className="gap-2">

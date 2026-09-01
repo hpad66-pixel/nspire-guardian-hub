@@ -108,7 +108,7 @@ export default function ActivityLogPage() {
             <div className="space-y-1">
               <Label className="text-xs">Entity Type</Label>
               <Select value={entityFilter} onValueChange={setEntityFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full min-w-[140px] sm:w-[180px]">
                   <SelectValue placeholder="All entities" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,7 +125,7 @@ export default function ActivityLogPage() {
             <div className="space-y-1">
               <Label className="text-xs">Action</Label>
               <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full min-w-[140px] sm:w-[180px]">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>
@@ -142,7 +142,7 @@ export default function ActivityLogPage() {
             <div className="space-y-1">
               <Label className="text-xs">Show</Label>
               <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-full min-w-[100px] sm:w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
