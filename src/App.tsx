@@ -122,6 +122,7 @@ const OwnerDocumentsPage = lazy(() => import('./pages/portal/owner/OwnerDocument
 const OwnerUpdatesPage = lazy(() => import('./pages/portal/owner/OwnerUpdatesPage'));
 const OwnerPermitsPage = lazy(() => import('./pages/portal/owner/OwnerPermitsPage'));
 const OwnerSiteMapPage = lazy(() => import('./pages/portal/owner/OwnerSiteMapPage'));
+const OwnerOperationsPage = lazy(() => import('./pages/portal/owner/OwnerOperationsPage'));
 const OwnerPortalLegacyRedirect = lazy(() => import('./pages/portal/owner/OwnerPortalLegacyRedirect'));
 const ClientPortalShell = lazy(() => import('./components/portal/ClientPortalShell'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
@@ -305,6 +306,7 @@ const App = () => (
                         <Route path="/owner-portal/projects/:projectId/updates" element={<OwnerUpdatesPage />} />
                         <Route path="/owner-portal/projects/:projectId/permits" element={<OwnerPermitsPage />} />
                         <Route path="/owner-portal/projects/:projectId/site-map" element={<OwnerSiteMapPage />} />
+                        <Route path="/owner-portal/projects/:projectId/operations" element={<OwnerOperationsPage />} />
                       </Route>
                     </Route>
                      

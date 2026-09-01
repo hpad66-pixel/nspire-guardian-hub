@@ -19,6 +19,7 @@ export type ProjectModuleSlug =
   | 'env-compliance'
   | 'permits'
   | 'site-map'
+  | 'stores'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -62,7 +63,7 @@ export interface ProjectModuleDef {
   /** Only workspace/project admins see this nav item. */
   adminOnly?: boolean;
   /** Surfaces on the authenticated owner portal when enabled. */
-  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | 'site-map' | null;
+  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | 'site-map' | 'operations' | null;
 }
 
 // The admin panel renders from this catalog. Order + grouping drive the panel
@@ -96,6 +97,13 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
     description: 'Interactive property map — as-built manholes, cleanouts, pond; inspectable assets',
     group: 'field',
     portalSlug: 'site-map',
+  },
+  {
+    slug: 'stores',
+    label: 'Stores & materials',
+    description: 'Optional stock room — receipts, work-order-gated issue, unit deployment, owner ops analytics',
+    group: 'field',
+    portalSlug: 'operations',
   },
   { slug: 'closeout', label: 'Closeout', description: 'Project closeout package', group: 'field' },
 
@@ -184,6 +192,11 @@ export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'closeout',
 ]);
 
+/** Opt-in modules — off for every project type until an admin enables them. */
+export const OPT_IN_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
+  'stores',
+]);
+
 /** Preset packs for one-click module configuration. */
 export type ModulePresetId = 'consulting-lean' | 'construction-full' | 'communications' | 'reset-defaults';
 
@@ -215,7 +228,7 @@ export const MODULE_PRESETS: ModulePreset[] = [
     apply: () => {
       const out: Record<string, boolean> = {};
       for (const def of PROJECT_MODULE_CATALOG) {
-        out[def.slug] = !CONSULTING_ONLY_MODULES.has(def.slug);
+        out[def.slug] = !CONSULTING_ONLY_MODULES.has(def.slug) && !OPT_IN_MODULES.has(def.slug);
       }
       // Directory is always useful on construction too.
       out.directory = true;
@@ -273,6 +286,8 @@ export function defaultModuleVisible(
   projectType: string | null | undefined,
 ): boolean {
   if (LOCKED_MODULES.has(slug)) return true;
+  // Optional suites (e.g. Stores) stay off until Project Admin turns them on.
+  if (OPT_IN_MODULES.has(slug)) return false;
   const kind = projectKind({ project_type: projectType });
   if (kind === 'consulting') return CONSULTING_DEFAULT_MODULES.has(slug);
   // Construction: everything except consulting-native modules.

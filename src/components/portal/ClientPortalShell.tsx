@@ -14,6 +14,7 @@ import {
   LogOut,
   Map,
   Menu,
+  Package,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -33,7 +34,7 @@ import "@/pages/portal/client-portal.css";
 
 function portalNav(
   projectId: string | null,
-  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map"]),
+  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map", "operations"]),
 ) {
   const primary = [
     { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
@@ -42,6 +43,7 @@ function portalNav(
     { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
     { to: ownerPortalPath(projectId, "/site-map"), label: "Site map", icon: Map, key: "site-map" },
     { to: ownerPortalPath(projectId, "/permits"), label: "Permits", icon: FileBadge2, key: "permits" },
+    { to: ownerPortalPath(projectId, "/operations"), label: "Operations", icon: Package, key: "operations" },
     { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen, key: "documents" },
   ].filter((item) => enabled.has(item.key));
 
