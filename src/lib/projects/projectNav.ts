@@ -80,8 +80,9 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'schedule', label: 'Schedule', shortLabel: 'Schedule', icon: CalendarDays, group: 'engagement' },
   { value: 'action-items', label: 'Action Items', shortLabel: 'Actions', icon: CheckSquare, group: 'engagement' },
 
-  // Field / Delivery
+  // Field / Delivery — Permits near the top so scan/upload is easy to find on PWA
   { value: 'daily-logs', label: 'Daily Logs', shortLabel: 'Logs', icon: ClipboardList, group: 'field' },
+  { value: 'permits', label: 'Permits', shortLabel: 'Permits', icon: FileBadge2, group: 'field' },
   { value: 'rfis', label: 'RFIs', shortLabel: 'RFIs', icon: HelpCircle, group: 'field' },
   { value: 'submittals', label: 'Submittals', shortLabel: 'Submit', icon: Package, group: 'field' },
   { value: 'punch-list', label: 'Punch List', shortLabel: 'Punch', icon: ListChecks, group: 'field' },
@@ -89,7 +90,6 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'procurement', label: 'Procurement', shortLabel: 'Procure', icon: ShoppingCart, group: 'field' },
   { value: 'safety', label: 'Safety', shortLabel: 'Safety', icon: ShieldCheck, group: 'field' },
   { value: 'env-compliance', label: 'Environmental', shortLabel: 'Env', icon: FlaskConical, group: 'field' },
-  { value: 'permits', label: 'Permits', shortLabel: 'Permits', icon: FileBadge2, group: 'field' },
   { value: 'site-map', label: 'Site Map', shortLabel: 'Map', icon: Map, group: 'field' },
   { value: 'stores', label: 'Stores & Materials', shortLabel: 'Stores', icon: Warehouse, group: 'field' },
   { value: 'voice-agent', label: 'Voice Complaints', shortLabel: 'Voice', icon: Phone, group: 'field' },
