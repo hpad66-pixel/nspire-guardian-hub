@@ -24,11 +24,14 @@ import {
   useWorkOrderStats,
   useWorkOrdersByProperty,
   useCreateWorkOrder,
+  useUpdateWorkOrder,
   useAssignWorkOrder,
+  useAssignWorkOrderCrew,
+  useCompleteWorkOrder,
   useVerifyWorkOrder,
 } from "../useWorkOrders";
 import { renderHookWithClient } from "@/test/utils";
-import { __mock, makeBuilder } from "@/test/fixtures/supabase";
+import { __mock, makeBuilder, supabase } from "@/test/fixtures/supabase";
 
 describe("useWorkOrders", () => {
   beforeEach(() => __mock.reset());
@@ -87,6 +90,15 @@ describe("useWorkOrders", () => {
     });
   });
 
+  it("lists work orders by property when propertyId is set", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: [{ id: "wo-p", property_id: "prop1" }], error: null }),
+    );
+    const { result } = renderHookWithClient(() => useWorkOrdersByProperty("prop1"));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0].id).toBe("wo-p");
+  });
+
   it("create inserts the supplied work order", async () => {
     const builder = makeBuilder({ data: { id: "wo-new" }, error: null });
     __mock.from.mockReturnValue(builder);
@@ -101,14 +113,109 @@ describe("useWorkOrders", () => {
     expect(inserted).toMatchObject({ property_id: "prop1", title: "Fix leak" });
   });
 
-  it("assign sets assigned_to + assigned status", async () => {
+  it("create auto-assigns ops supervisor when RPC returns one", async () => {
+    __mock.rpc.mockResolvedValueOnce({ data: "sup-1", error: null });
+    const builder = makeBuilder({ data: { id: "wo-sup" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useCreateWorkOrder());
+
+    await result.current.mutateAsync({
+      property_id: "prop1",
+      title: "Voice leak",
+      intake_source: "manual",
+    } as any);
+    const inserted = (builder.insert as any).mock.calls[0][0];
+    expect(inserted).toMatchObject({
+      supervisor_id: "sup-1",
+      assigned_to: "sup-1",
+      status: "assigned",
+      intake_source: "manual",
+    });
+  });
+
+  it("create surfaces insert errors", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "insert failed" } as any }),
+    );
+    const { result } = renderHookWithClient(() => useCreateWorkOrder());
+    await expect(
+      result.current.mutateAsync({
+        property_id: "prop1",
+        title: "Broken",
+      } as any),
+    ).rejects.toBeTruthy();
+  });
+
+  it("update patches work order fields", async () => {
+    const builder = makeBuilder({ data: { id: "wo1", notes: "done" }, error: null });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useUpdateWorkOrder());
+    await result.current.mutateAsync({ id: "wo1", notes: "done" } as any);
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({ notes: "done" });
+  });
+
+  it("assign sets supervisor + assigned status", async () => {
     const builder = makeBuilder({ data: { id: "wo1", status: "assigned" }, error: null });
     __mock.from.mockReturnValue(builder);
+    (supabase.auth.getUser as any).mockResolvedValue({
+      data: { user: { id: "u1" } },
+      error: null,
+    });
     const { result } = renderHookWithClient(() => useAssignWorkOrder());
 
     await result.current.mutateAsync({ id: "wo1", assigneeId: "u9" });
     const updated = (builder.update as any).mock.calls[0][0];
-    expect(updated).toMatchObject({ assigned_to: "u9", status: "assigned" });
+    expect(updated).toMatchObject({
+      assigned_to: "u9",
+      supervisor_id: "u9",
+      status: "assigned",
+    });
+  });
+
+  it("assign crew dispatches tech and sets in_progress", async () => {
+    const builder = makeBuilder({
+      data: { id: "wo1", status: "in_progress", crew_assigned_to: "tech-1" },
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    (supabase.auth.getUser as any).mockResolvedValue({
+      data: { user: { id: "u1" } },
+      error: null,
+    });
+    const { result } = renderHookWithClient(() => useAssignWorkOrderCrew());
+    await result.current.mutateAsync({ id: "wo1", crewUserId: "tech-1" });
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({
+      crew_assigned_to: "tech-1",
+      status: "in_progress",
+    });
+  });
+
+  it("complete marks completed and stores proof photos", async () => {
+    const builder = makeBuilder({
+      data: { id: "wo1", status: "completed" },
+      error: null,
+    });
+    __mock.from.mockReturnValue(builder);
+    const { result } = renderHookWithClient(() => useCompleteWorkOrder());
+    await result.current.mutateAsync({
+      id: "wo1",
+      proofPhotos: ["https://x/a.jpg"],
+    });
+    expect((builder.update as any).mock.calls[0][0]).toMatchObject({
+      status: "completed",
+      proof_photos: ["https://x/a.jpg"],
+    });
+  });
+
+  it("complete surfaces parts-gate errors", async () => {
+    __mock.from.mockReturnValue(
+      makeBuilder({
+        data: null,
+        error: { message: "WO_PARTS_NOT_INSTALLED: 1 part(s) still assigned" } as any,
+      }),
+    );
+    const { result } = renderHookWithClient(() => useCompleteWorkOrder());
+    await expect(result.current.mutateAsync({ id: "wo1" })).rejects.toBeTruthy();
   });
 
   it("verify sets status to verified", async () => {
