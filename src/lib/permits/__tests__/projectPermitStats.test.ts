@@ -10,6 +10,7 @@ import {
   groupByBuilding,
   groupByTrade,
   groupOpenByOwner,
+  groupPermitsByPipelineBoard,
   isCityBlocked,
   nextPipelineAction,
   permitReadiness,
@@ -97,6 +98,16 @@ describe('projectPermitStats', () => {
     const b4 = buildings.find((b) => b.building === 'Building 4');
     expect(b4?.total).toBe(2);
     expect(b4?.open).toBe(1);
+  });
+
+  it('builds the construction open-permits board columns', () => {
+    const cols = groupPermitsByPipelineBoard(sample);
+    expect(cols.map((c) => c.key)).toEqual(['open_active', 'pending', 'closed']);
+    expect(cols[0].permits).toHaveLength(2);
+    expect(cols[1].permits).toHaveLength(1);
+    expect(cols[2].permits).toHaveLength(1);
+    expect(cols[0].label).toBe('Open · Active');
+    expect(cols[2].label).toBe('Closed');
   });
 
   it('builds an owner-ready compliance brief with the hot path', () => {

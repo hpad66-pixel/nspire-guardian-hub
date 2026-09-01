@@ -138,6 +138,63 @@ export function groupByBuilding(permits: ProjectPermitLike[]): { building: strin
     .sort((a, b) => b.open - a.open || a.building.localeCompare(b.building));
 }
 
+/** Construction board columns: Open → Pending city → Closed (+ other). */
+export type PermitBoardColumnKey = 'open_active' | 'pending' | 'closed' | 'other';
+
+export interface PermitBoardColumn<T extends ProjectPermitLike = ProjectPermitLike> {
+  key: PermitBoardColumnKey;
+  label: string;
+  description: string;
+  permits: T[];
+}
+
+export function groupPermitsByPipelineBoard<T extends ProjectPermitLike>(
+  permits: T[],
+): PermitBoardColumn<T>[] {
+  const columns: Record<PermitBoardColumnKey, T[]> = {
+    open_active: [],
+    pending: [],
+    closed: [],
+    other: [],
+  };
+  for (const p of permits) {
+    const s = (p.status || '').toLowerCase();
+    if (OPEN.has(s)) columns.open_active.push(p);
+    else if (PENDING.has(s)) columns.pending.push(p);
+    else if (CLOSED.has(s)) columns.closed.push(p);
+    else columns.other.push(p);
+  }
+  const out: PermitBoardColumn<T>[] = [
+    {
+      key: 'open_active',
+      label: 'Open · Active',
+      description: 'Work still in the field or awaiting package',
+      permits: columns.open_active,
+    },
+    {
+      key: 'pending',
+      label: 'Pending city',
+      description: 'Waiting on agency / city confirmation',
+      permits: columns.pending,
+    },
+    {
+      key: 'closed',
+      label: 'Closed',
+      description: 'Confirmed closed — ready for closeout evidence',
+      permits: columns.closed,
+    },
+  ];
+  if (columns.other.length > 0) {
+    out.push({
+      key: 'other',
+      label: 'On hold / other',
+      description: 'Expired or paused items',
+      permits: columns.other,
+    });
+  }
+  return out;
+}
+
 /**
  * Deterministic "AI-style" monthly compliance brief from live status.
  * No model call — safe for owner PDF / dashboard copy; can later feed CaseIQ.

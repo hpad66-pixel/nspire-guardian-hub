@@ -1,9 +1,9 @@
 /**
- * Connects inspections ↔ daily reports ↔ reports archive inside Property Management
- * so users don't bounce to Insights to view what they just captured.
+ * Connects inspections ↔ daily reports ↔ compliance permits ↔ reports archive
+ * inside Property Management so users don't bounce across buckets.
  */
 import { Link } from 'react-router-dom';
-import { ClipboardCheck, ClipboardList, FileBarChart2, ArrowRight, Sun } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, FileBarChart2, ArrowRight, Sun, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
@@ -26,6 +26,12 @@ const LINKS = [
     icon: ClipboardList,
   },
   {
+    to: '/permits',
+    label: 'Compliance Permits',
+    hint: 'Scan & track property permits',
+    icon: Shield,
+  },
+  {
     to: '/reports',
     label: 'Reports archive',
     hint: 'Analytics & history',
@@ -39,12 +45,13 @@ export function FieldReportsStrip({
 }: {
   className?: string;
   /** Soft-highlight the current surface */
-  highlight?: 'nspire' | 'grounds' | 'daily-reports' | 'reports';
+  highlight?: 'nspire' | 'grounds' | 'daily-reports' | 'permits' | 'reports';
 }) {
   const activeFor = (to: string) => {
     if (highlight === 'nspire' && to === '/inspections') return true;
     if (highlight === 'grounds' && to === '/inspections/daily') return true;
     if (highlight === 'daily-reports' && to === '/daily-reports') return true;
+    if (highlight === 'permits' && to === '/permits') return true;
     if (highlight === 'reports' && to === '/reports') return true;
     return false;
   };
@@ -65,7 +72,7 @@ export function FieldReportsStrip({
           </p>
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {LINKS.map((item) => {
           const active = activeFor(item.to);
           return (

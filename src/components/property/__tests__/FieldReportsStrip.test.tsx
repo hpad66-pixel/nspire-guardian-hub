@@ -14,6 +14,8 @@ describe('FieldReportsStrip', () => {
     expect(screen.getByText('NSPIRE')).toBeTruthy();
     expect(screen.getByText('Daily Reports')).toBeTruthy();
     expect(screen.getByText('Daily Grounds')).toBeTruthy();
+    expect(screen.getByText('Compliance Permits')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Daily Reports/i }).getAttribute('href')).toBe('/daily-reports');
+    expect(screen.getByRole('link', { name: /Compliance Permits/i }).getAttribute('href')).toBe('/permits');
   });
 });
