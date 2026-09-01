@@ -23,6 +23,7 @@ import {
   Box,
   Home,
   Shield,
+  ShieldCheck,
   QrCode,
   Settings,
   MoreHorizontal,
@@ -258,7 +259,8 @@ interface MoreDrawerProps {
 function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   const navigate = useNavigate();
   const { isModuleEnabled } = useModules();
-  const { canView } = useUserPermissions();
+  const { canView, currentRole } = useUserPermissions();
+  const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
 
   const go = (path: string) => {
     onClose();
@@ -272,6 +274,7 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   const greenIconBg = 'bg-[hsl(142,76%,36%)]/15';
   const operationsRedBg = 'bg-[hsl(0,84%,60%)]/15';
   const operationsAmberBg = 'bg-[hsl(30,100%,50%)]/15';
+  const adminIconBg = 'bg-[hsl(215,70%,45%)]/20';
 
   const iconClass = 'h-5 w-5 text-[hsl(215,25%,75%)]';
 
@@ -384,13 +387,6 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
               onClick={() => go('/voice-agent')}
             />
           )}
-          <DrawerTile
-            icon={<Lightbulb className={iconClass} />}
-            iconBg={commIconBg}
-            title="Product Ideas"
-            subtitle="Vote & shape the roadmap"
-            onClick={() => go('/product-ideas')}
-          />
 
           {/* ORGANIZATION */}
           <DrawerSectionLabel label="Organization" />
@@ -434,6 +430,27 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
               subtitle="Analytics"
               onClick={() => go('/reports')}
             />
+          )}
+
+          {/* ADMIN — Product Ideas lives here (also in top bar for everyone) */}
+          {isAdminOrOwner && (
+            <>
+              <DrawerSectionLabel label="Admin" />
+              <DrawerTile
+                icon={<ShieldCheck className={iconClass} />}
+                iconBg={adminIconBg}
+                title="Admin"
+                subtitle="Modules, packages, hub"
+                onClick={() => go('/admin')}
+              />
+              <DrawerTile
+                icon={<Lightbulb className={iconClass} />}
+                iconBg={adminIconBg}
+                title="Product Ideas"
+                subtitle="Roadmap & client requests"
+                onClick={() => go('/product-ideas')}
+              />
+            </>
           )}
 
           {/* TOOLS */}
