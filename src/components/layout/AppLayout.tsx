@@ -116,15 +116,28 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (modulesLoading) return;
 
     const path = location.pathname;
+
+    // Projects suite is gated by Construction / Consulting (and the legacy
+    // properties.projects_enabled flag) — not by projectsEnabled alone.
+    // Previously this redirected to /portals whenever projectsEnabled was off,
+    // even when the sidebar correctly showed All Projects under Construction.
+    if (path.startsWith('/projects')) {
+      const projectsOk =
+        isModuleEnabled('constructionEnabled') ||
+        isModuleEnabled('consultingEnabled') ||
+        isModuleEnabled('projectsEnabled');
+      if (!projectsOk) {
+        navigate('/dashboard', { replace: true });
+      }
+      return;
+    }
+
     const moduleForPath = (() => {
       if (path.startsWith('/inspections/daily') || path.startsWith('/inspections/history') || path.startsWith('/inspections/review')) {
         return 'dailyGroundsEnabled';
       }
       if (path.startsWith('/inspections')) {
         return 'nspireEnabled';
-      }
-      if (path.startsWith('/projects')) {
-        return 'projectsEnabled';
       }
       if (path.startsWith('/occupancy')) {
         return 'occupancyEnabled';
@@ -139,7 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     })() as keyof ModuleConfig | null;
 
     if (moduleForPath && !isModuleEnabled(moduleForPath)) {
-      navigate('/portals', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
 

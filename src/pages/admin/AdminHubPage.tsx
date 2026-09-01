@@ -71,18 +71,33 @@ const PLATFORM_TILES: AdminTile[] = [
   { title: 'AI Usage & Cost', description: 'Token usage and spend by model, feature, project, and client.', icon: Sparkles, to: '/admin/ai-usage', scope: 'admin' },
 ];
 
-function TileCard({ tile, onOpen }: { tile: AdminTile; onOpen: (to: string) => void }) {
+function TileCard({
+  tile,
+  onOpen,
+  locked,
+}: {
+  tile: AdminTile;
+  onOpen: (to: string) => void;
+  locked?: boolean;
+}) {
   const Icon = tile.icon;
   return (
     <button
-      onClick={() => onOpen(tile.to)}
+      onClick={() => onOpen(locked ? '/admin/modules' : tile.to)}
       className={cn(
         'group flex items-start gap-4 rounded-xl border bg-card p-5 text-left',
-        'transition-all duration-200 hover:border-accent/50 hover:shadow-md hover:-translate-y-0.5',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+        'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+        locked
+          ? 'opacity-60 hover:opacity-90 hover:border-muted-foreground/30'
+          : 'hover:border-accent/50 hover:shadow-md hover:-translate-y-0.5',
       )}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent transition-colors group-hover:bg-accent/20">
+      <div
+        className={cn(
+          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors',
+          locked ? 'bg-muted text-muted-foreground' : 'bg-accent/12 text-accent group-hover:bg-accent/20',
+        )}
+      >
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -91,6 +106,11 @@ function TileCard({ tile, onOpen }: { tile: AdminTile; onOpen: (to: string) => v
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
         </div>
         <p className="mt-1 text-sm text-muted-foreground leading-snug">{tile.description}</p>
+        {locked && (
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Enable in Modules &amp; Packages
+          </p>
+        )}
       </div>
     </button>
   );
@@ -109,11 +129,11 @@ export default function AdminHubPage() {
     tiles.filter((t) => {
       if (t.scope === 'admin' && !isAdmin) return false;
       if (t.scope === 'owner' && !(isAdmin || isOwner)) return false;
-      if (t.module && !isModuleEnabled(t.module as any)) return false;
+      // Keep module-gated tiles visible (grayed) so admins can discover and enable them.
       return true;
     });
 
-  const workspaceTiles = useMemo(() => visible(WORKSPACE_TILES), [currentRole, isModuleEnabled]);
+  const workspaceTiles = useMemo(() => visible(WORKSPACE_TILES), [currentRole]);
   const platformTiles = useMemo(() => visible(PLATFORM_TILES), [currentRole]);
 
   if (!canSeeHub) {
@@ -151,7 +171,12 @@ export default function AdminHubPage() {
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {workspaceTiles.map((tile) => (
-              <TileCard key={tile.to} tile={tile} onOpen={navigate} />
+              <TileCard
+                key={tile.to}
+                tile={tile}
+                onOpen={navigate}
+                locked={!!tile.module && !isModuleEnabled(tile.module as any)}
+              />
             ))}
           </div>
         </section>

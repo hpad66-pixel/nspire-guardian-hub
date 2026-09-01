@@ -34,7 +34,6 @@ const InspectionHistoryPage = lazy(() => import('./pages/inspections/InspectionH
 const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'));
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProjectAdminPage = lazy(() => import('./pages/projects/ProjectAdminPage'));
-const ProposalsPage = lazy(() => import('./pages/projects/ProposalsPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
@@ -359,7 +358,8 @@ const App = () => (
                               
                               {/* Projects Module */}
                               <Route path="/projects" element={<ProjectsDashboard />} />
-                              <Route path="/projects/proposals" element={<ProposalsPage />} />
+                              {/* Legacy flat proposals hub — proposals live inside each project */}
+                              <Route path="/projects/proposals" element={<Navigate to="/projects" replace />} />
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
                               <Route path="/projects/:projectId/admin" element={<ProjectAdminPage />} />
                               

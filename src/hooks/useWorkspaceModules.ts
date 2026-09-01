@@ -10,7 +10,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MODULE_WS_COLUMN, PACKAGES, type ModuleKey } from '@/lib/packages';
+import { buildPackageModulePatch, buildPackagePropertyFlags } from '@/lib/packages';
 
 export interface WorkspaceModuleRow {
   id: string;
@@ -109,35 +109,32 @@ export function useToggleWorkspaceModule() {
 }
 
 // Apply a package preset: turn every workspace-backed module ON iff the package
-// includes it, and record the package name.
+// includes it, open matching platform gates (so nothing stays "Not in plan"),
+// and record the package name.
 export function useApplyPackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ workspaceId, packageKey }: { workspaceId: string; packageKey: string }) => {
-      const pkg = PACKAGES.find((p) => p.key === packageKey);
-      if (!pkg) throw new Error('Unknown package');
-      const has = (k: ModuleKey) => pkg.modules.includes(k);
-      const patch: Record<string, any> = { package: pkg.name };
-      for (const [mk, col] of Object.entries(MODULE_WS_COLUMN)) {
-        patch[col as string] = has(mk as ModuleKey);
-      }
-      await upsertWorkspaceModules(workspaceId, patch);
+      const patch = buildPackageModulePatch(packageKey);
+      await upsertWorkspaceModules(workspaceId, patch as any);
 
       // nspire / daily-grounds / projects are read from the PROPERTIES table, not
       // workspace_modules — set them there too so the package name is truthful.
+      const propFlags = buildPackagePropertyFlags(packageKey);
       const { error: propErr } = await supabase.from('properties')
-        .update({
-          nspire_enabled: has('nspireEnabled'),
-          daily_grounds_enabled: has('dailyGroundsEnabled'),
-          projects_enabled: has('constructionEnabled') || has('consultingEnabled'),
-        } as any)
+        .update(propFlags as any)
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (propErr) throw propErr;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-      toast.success('Package applied');
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      toast.success(
+        vars.packageKey === 'enterprise'
+          ? 'Enterprise applied — all modules unlocked'
+          : 'Package applied',
+      );
     },
     onError: (err) => {
       console.error('Failed to apply package:', err);
