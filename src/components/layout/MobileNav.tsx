@@ -173,7 +173,7 @@ function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
     borderColor = MODULE_COLORS.projects;
     items = [
       { to: '/projects', label: 'All Projects' },
-      { to: '/projects/proposals', label: 'Proposals' },
+      { to: '/organizations', label: 'Clients' },
     ];
   }
 
@@ -479,7 +479,12 @@ export function MobileNav() {
 
   const isDailyGrounds = isModuleEnabled('dailyGroundsEnabled');
   const isNspire = isModuleEnabled('nspireEnabled');
-  const isProjects = isModuleEnabled('projectsEnabled');
+  // Align with desktop sidebar: Projects = Construction or Consulting suite
+  // (legacy properties.projects_enabled still counts as an enable).
+  const isProjects =
+    isModuleEnabled('constructionEnabled') ||
+    isModuleEnabled('consultingEnabled') ||
+    isModuleEnabled('projectsEnabled');
 
   const activeSection = getActiveSection(location.pathname);
 

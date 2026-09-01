@@ -228,8 +228,7 @@ export function AppSidebar() {
             </>
           )}
 
-          {/* ─── Property Management (nSpire / property ops) — one module-gated
-              section for everything tied to operating a property. ─── */}
+          {/* ─── Property Management (nSpire / property ops) ─── */}
           {isModuleEnabled('propertyMgmtEnabled') && (
             <>
               <SectionLabel label="Property Management" collapsed={collapsed} />
@@ -255,6 +254,20 @@ export function AppSidebar() {
                 {canView('work_orders') && (
                   <NavItem to="/permits" icon={Shield} label="Permits" collapsed={collapsed} />
                 )}
+              </div>
+            </>
+          )}
+
+          {/* ─── Field Ops — own section so Safety / Equipment / Training are not
+              buried under Property Management (and still show when that suite is off). ─── */}
+          {(isModuleEnabled('safetyModuleEnabled') ||
+            isModuleEnabled('equipmentTrackerEnabled') ||
+            isModuleEnabled('qrScanningEnabled') ||
+            isModuleEnabled('credentialWalletEnabled') ||
+            isModuleEnabled('trainingHubEnabled')) && (
+            <>
+              <SectionLabel label="Field Ops" collapsed={collapsed} />
+              <div className="space-y-px">
                 {isModuleEnabled('safetyModuleEnabled') && (
                   <NavItem to="/safety" icon={ShieldAlert} label="Safety" collapsed={collapsed} />
                 )}

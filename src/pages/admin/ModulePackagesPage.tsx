@@ -10,7 +10,7 @@ import { useWorkspaceModules, useToggleWorkspaceModule, useApplyPackage, type Wo
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useProperties, useUpdateProperty } from '@/hooks/useProperties';
-import { MODULE_CATALOG, PACKAGES, MODULE_WS_COLUMN, type ModuleKey } from '@/lib/packages';
+import { MODULE_CATALOG, PACKAGES, MODULE_WS_COLUMN, MODULE_PLATFORM_COLUMN, type ModuleKey } from '@/lib/packages';
 import { cn } from '@/lib/utils';
 
 export default function ModulePackagesPage() {
@@ -19,6 +19,7 @@ export default function ModulePackagesPage() {
   const applyPkg = useApplyPackage();
   const { refetchModules, isModuleEnabled, toggleModule } = useModules();
   const { currentRole } = useUserPermissions();
+  const isAdmin = currentRole === 'admin';
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
   const { data: properties, isLoading: propertiesLoading } = useProperties();
   const updateProperty = useUpdateProperty();
@@ -59,6 +60,24 @@ export default function ModulePackagesPage() {
     const s = state(key);
     if (s.propertyBacked) { void toggleModule(key); return; } // flips across all workspace properties
     if (!s.wsCol || !workspaceId) return;
+    // Platform admins can unlock a "Not in plan" gate by flipping the platform_* column too.
+    if (s.locked && isAdmin) {
+      const platformCol = MODULE_PLATFORM_COLUMN[key];
+      if (platformCol) {
+        toggle.mutate(
+          { workspaceId, field: platformCol as any, value: true },
+          {
+            onSuccess: () => {
+              toggle.mutate(
+                { workspaceId, field: s.wsCol as any, value },
+                { onSuccess: () => refetchModules() },
+              );
+            },
+          },
+        );
+        return;
+      }
+    }
     toggle.mutate({ workspaceId, field: s.wsCol as any, value }, { onSuccess: () => refetchModules() });
   };
   const apply = (packageKey: string) => {
@@ -80,23 +99,36 @@ export default function ModulePackagesPage() {
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background"><Boxes className="h-6 w-6" /></div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Modules &amp; Packages</h1>
-          <p className="mt-1 text-muted-foreground">Turn suites on or off for this workspace. Apply a package to set them all at once.</p>
+          <p className="mt-1 text-muted-foreground">
+            Turn suites on or off for this workspace. Apply a package to set them all at once.
+            <span className="font-medium text-foreground"> Enterprise unlocks every module</span> (no grayed “Not in plan” switches).
+          </p>
         </div>
         {r?.package && <Badge variant="secondary" className="ml-auto mt-1">Package: {r.package}</Badge>}
       </div>
 
       {/* Packages */}
       <div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">Packages</div>
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">Packages / Offerings</div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {PACKAGES.map((p) => {
             const active = r?.package === p.name;
+            const isEnterprise = p.key === 'enterprise';
             return (
               <button key={p.key} onClick={() => apply(p.key)} disabled={applyPkg.isPending || !workspaceId}
-                className={cn('text-left rounded-xl border p-3 transition-all hover:border-primary/50 hover:shadow-sm', active && 'border-primary bg-primary/5')}>
-                <div className="flex items-center justify-between"><span className="font-semibold text-sm">{p.name}</span>{active && <Check className="h-4 w-4 text-primary" />}</div>
+                className={cn(
+                  'text-left rounded-xl border p-3 transition-all hover:border-primary/50 hover:shadow-sm',
+                  active && 'border-primary bg-primary/5',
+                  isEnterprise && !active && 'border-[var(--apas-sapphire)]/40 bg-[var(--apas-sapphire)]/5',
+                )}>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-sm">{p.name}</span>
+                  {active && <Check className="h-4 w-4 text-primary" />}
+                </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{p.description}</div>
-                <div className="mt-1 text-[11px] text-muted-foreground">{p.modules.length} modules</div>
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  {isEnterprise ? 'All modules · full unlock' : `${p.modules.length} modules`}
+                </div>
               </button>
             );
           })}
@@ -124,7 +156,12 @@ export default function ModulePackagesPage() {
                       </div>
                       <Switch
                         checked={s.on}
-                        disabled={s.locked || !s.controllable || (!!s.wsCol && !workspaceId) || toggle.isPending}
+                        disabled={
+                          (s.locked && !isAdmin) ||
+                          !s.controllable ||
+                          (!!s.wsCol && !workspaceId) ||
+                          toggle.isPending
+                        }
                         onCheckedChange={(v) => setModule(m.key, v)}
                       />
                     </div>
@@ -136,7 +173,10 @@ export default function ModulePackagesPage() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">“Not in plan” means a super-admin platform gate is off (upsell). “Per property” modules (NSPIRE, Daily Grounds, Projects) are turned on inside each property.</p>
+      <p className="text-xs text-muted-foreground">
+        “Not in plan” means a platform gate is off. Apply <span className="font-medium text-foreground">Enterprise</span> to unlock every gate,
+        or (as platform admin) toggle a locked switch to open that gate. Property-backed modules (NSPIRE, Daily Grounds, Projects) also need at least one property checked below.
+      </p>
 
       {/* Per-property overrides — Daily Grounds / NSPIRE / Projects are also toggleable per property, on top of the workspace-wide switches above. */}
       <div>

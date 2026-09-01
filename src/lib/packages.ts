@@ -73,3 +73,47 @@ export const MODULE_WS_COLUMN: Partial<Record<ModuleKey, string>> = {
   credentialWalletEnabled: 'credential_wallet_enabled', trainingHubEnabled: 'training_hub_enabled', safetyModuleEnabled: 'safety_module_enabled',
   equipmentTrackerEnabled: 'equipment_tracker_enabled', clientPortalEnabled: 'client_portal_enabled',
 };
+
+/** Module key → matching platform gate column (`platform_*`). */
+export const MODULE_PLATFORM_COLUMN: Partial<Record<ModuleKey, string>> = Object.fromEntries(
+  Object.entries(MODULE_WS_COLUMN).map(([mk, col]) => [
+    mk,
+    `platform_${(col as string).replace(/_enabled$/, '')}`,
+  ]),
+) as Partial<Record<ModuleKey, string>>;
+
+/**
+ * Build the workspace_modules upsert patch for a package preset.
+ * Sets both workspace toggles AND platform gates so modules do not stay
+ * grayed as "Not in plan" after applying Enterprise (or any package).
+ */
+export function buildPackageModulePatch(packageKey: string): Record<string, string | boolean> {
+  const pkg = PACKAGES.find((p) => p.key === packageKey);
+  if (!pkg) throw new Error(`Unknown package: ${packageKey}`);
+  const has = (k: ModuleKey) => pkg.modules.includes(k);
+  const patch: Record<string, string | boolean> = { package: pkg.name };
+  for (const mk of Object.keys(MODULE_WS_COLUMN) as ModuleKey[]) {
+    const on = has(mk);
+    const wsCol = MODULE_WS_COLUMN[mk];
+    const platformCol = MODULE_PLATFORM_COLUMN[mk];
+    if (wsCol) patch[wsCol] = on;
+    if (platformCol) patch[platformCol] = on;
+  }
+  return patch;
+}
+
+/** Property-table flags that accompany a package apply. */
+export function buildPackagePropertyFlags(packageKey: string): {
+  nspire_enabled: boolean;
+  daily_grounds_enabled: boolean;
+  projects_enabled: boolean;
+} {
+  const pkg = PACKAGES.find((p) => p.key === packageKey);
+  if (!pkg) throw new Error(`Unknown package: ${packageKey}`);
+  const has = (k: ModuleKey) => pkg.modules.includes(k);
+  return {
+    nspire_enabled: has('nspireEnabled'),
+    daily_grounds_enabled: has('dailyGroundsEnabled'),
+    projects_enabled: has('constructionEnabled') || has('consultingEnabled') || has('projectsEnabled'),
+  };
+}
