@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { emitVoiceLive } from '@/lib/voice/liveBus';
+import { formatResidentEducationForAgent } from '@/lib/voice/residentEducation';
 
 interface VoiceAgentState {
   isConnecting: boolean;
@@ -255,6 +256,9 @@ export function useVoiceAgent(context?: VoiceAgentContext) {
           `Context for this call: ${parts.join(', ')}. Use this context when creating the maintenance request.`,
         );
       }
+      // Reinforce HVAC / filter / humidity education on every call (in addition
+      // to the ElevenLabs system prompt) so the agent can answer those questions.
+      conversation.sendContextualUpdate(formatResidentEducationForAgent());
     } catch (error) {
       console.error('Failed to start conversation:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start voice agent';

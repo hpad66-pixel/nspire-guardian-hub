@@ -17,6 +17,7 @@ import { RequestQueue } from '@/components/voice-agent/RequestQueue';
 import { VoiceAgentStats } from '@/components/voice-agent/VoiceAgentStats';
 import { VoiceAgentWidget } from '@/components/voice-agent/VoiceAgentWidget';
 import { VoiceLiveFeed } from '@/components/voice-agent/VoiceLiveFeed';
+import { VoiceResidentEducation } from '@/components/voice-agent/VoiceResidentEducation';
 import { useProjectPropertyId } from '@/hooks/useProjectStores';
 import { useMaintenanceRequests, type MaintenanceRequest } from '@/hooks/useMaintenanceRequests';
 import { useAiUsage } from '@/hooks/useAiUsage';
@@ -190,6 +191,8 @@ export function ProjectVoiceAgentTab({
       </div>
 
       <VoiceLiveFeed stage={pipeline} />
+
+      <VoiceResidentEducation />
 
       <EmergencyAlertBanner
         requests={requests}
