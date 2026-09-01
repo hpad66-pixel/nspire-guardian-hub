@@ -80,8 +80,42 @@ async function htmlToPdfBlob(html: string): Promise<Blob> {
   try {
     // docx-preview renders one .docx section per physical page when breakPages
     // is on — capture each separately so a multi-page letter gets real PDF pages.
+    // When an e-sign root wraps the letter, stamp/signature sit as siblings of
+    // .docx sections and would be dropped unless we clone them into each page.
     const pages = Array.from(host.querySelectorAll<HTMLElement>(".docx"));
-    const nodes = pages.length ? pages : [host];
+    const esignRoot = host.querySelector<HTMLElement>("[data-esign-root]");
+    const stampEl = esignRoot?.querySelector<HTMLElement>("[data-esign-stamp]");
+    const signatureEl = esignRoot?.querySelector<HTMLElement>("[data-esign-signature]");
+
+    const nodes: HTMLElement[] = [];
+    if (pages.length && (stampEl || signatureEl)) {
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const wrap = document.createElement("div");
+        wrap.setAttribute("data-esign-capture", "1");
+        wrap.style.cssText = "position:relative;background:#ffffff;display:inline-block;";
+        // Move page into wrap for capture (restored in finally via host.remove).
+        page.parentElement?.insertBefore(wrap, page);
+        wrap.appendChild(page);
+        // Certificate seal on every page so downloads prove the e-sign.
+        if (stampEl) {
+          const stampClone = stampEl.cloneNode(true) as HTMLElement;
+          stampClone.style.position = "absolute";
+          stampClone.style.top = "14px";
+          stampClone.style.right = "16px";
+          stampClone.style.zIndex = "40";
+          wrap.appendChild(stampClone);
+        }
+        // Placed signature only on the first page for Word letters (single placement).
+        if (signatureEl && i === 0) {
+          const sigClone = signatureEl.cloneNode(true) as HTMLElement;
+          wrap.appendChild(sigClone);
+        }
+        nodes.push(wrap);
+      }
+    } else {
+      nodes.push(...(pages.length ? pages : [host]));
+    }
 
     const pdf = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
     const pageW = pdf.internal.pageSize.getWidth();

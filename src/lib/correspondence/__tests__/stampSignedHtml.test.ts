@@ -26,6 +26,6 @@ describe("stampSignedHtml", () => {
     });
     expect(stamp).toContain("Electronically Signed");
     expect(stamp).toContain("Chris Sullivan");
-    expect(stamp).toContain("Verified · projOS");
+    expect(stamp).toContain("Secured by projOS");
   });
 });

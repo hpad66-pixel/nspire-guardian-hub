@@ -16,6 +16,7 @@ import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails } from "@/hooks/useProjectEmails";
 import { useSavedRecipients } from "@/hooks/useSavedRecipients";
 import { htmlToPdfAttachment } from "@/lib/docs/render";
+import { stampedPdfAttachment } from "@/lib/correspondence/stampSignedPdf";
 import type { AuthoredDocument } from "@/hooks/useAuthoredDocuments";
 import { RecipientsInput } from "./RecipientsInput";
 import { ESignStamp } from "@/components/correspondence/ESignStamp";
@@ -82,12 +83,32 @@ export function SendAuthoredDocumentDialog({
           .single();
         const row = data as any;
         if (row?.original_base64) {
-          attachments = [{
-            filename: row.source_file_name || `${doc.title}.pdf`,
-            contentBase64: row.original_base64,
-            contentType: row.mime_type || "application/pdf",
-            size: Math.round((row.original_base64.length * 3) / 4),
-          }];
+          // Burn the e-sign seal + placed signature into the PDF bytes so the
+          // client download shows who signed and when — not the raw upload.
+          if (doc.contractor_signed_at && doc.contractor_signed_name) {
+            try {
+              attachments = [await stampedPdfAttachment(row.original_base64, doc.title, {
+                name: doc.contractor_signed_name,
+                signedAt: doc.contractor_signed_at,
+                signatureDataUrl: doc.contractor_signature_data,
+                placement: doc.signature_placement,
+              })];
+            } catch {
+              attachments = [{
+                filename: row.source_file_name || `${doc.title}.pdf`,
+                contentBase64: row.original_base64,
+                contentType: row.mime_type || "application/pdf",
+                size: Math.round((row.original_base64.length * 3) / 4),
+              }];
+            }
+          } else {
+            attachments = [{
+              filename: row.source_file_name || `${doc.title}.pdf`,
+              contentBase64: row.original_base64,
+              contentType: row.mime_type || "application/pdf",
+              size: Math.round((row.original_base64.length * 3) / 4),
+            }];
+          }
         }
       }
 
@@ -99,12 +120,14 @@ export function SendAuthoredDocumentDialog({
               <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a877f;">Correspondence for signature</div>
             </div>
             ${doc.contractor_signed_at ? `
-              <div style="border:2px solid #059669;border-radius:8px;overflow:hidden;background:#ecfdf5;font-size:10px;">
-                <div style="display:flex;">
-                  <div style="background:#059669;color:#fff;padding:6px 8px;font-weight:700;">✓</div>
-                  <div style="padding:4px 8px;">
-                    <div style="font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#047857;">Electronically Signed</div>
-                    <div style="color:#064e3b;font-weight:600;">${(doc.contractor_signed_name || "").replace(/</g, "")}</div>
+              <div style="border:1px solid rgba(4,120,87,.72);border-radius:10px;background:#FBFDF9;font-size:10px;box-shadow:0 8px 18px -12px rgba(4,120,87,.45);">
+                <div style="margin:3px;border:1px solid rgba(4,120,87,.22);border-radius:7px;padding:6px 8px;display:flex;align-items:center;gap:8px;">
+                  <div style="width:28px;height:28px;border-radius:999px;background:linear-gradient(145deg,#34d399,#047857);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">✓</div>
+                  <div>
+                    <div style="font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#065f46;font-size:9px;">Electronically Signed</div>
+                    <div style="color:#0f172a;font-weight:700;">${(doc.contractor_signed_name || "").replace(/</g, "")}</div>
+                    <div style="color:#047857;font-size:9px;">${new Date(doc.contractor_signed_at).toLocaleString()}</div>
+                    <div style="color:#047857;opacity:.75;font-size:8px;letter-spacing:.06em;">Secured by projOS</div>
                   </div>
                 </div>
               </div>` : ""}
