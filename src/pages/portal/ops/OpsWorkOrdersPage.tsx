@@ -71,11 +71,20 @@ export default function OpsWorkOrdersPage() {
               className="flex w-full items-start justify-between gap-3 rounded-2xl border border-[#dedbd1] bg-white p-4 text-left shadow-sm transition hover:border-[#d5aa52]/50"
             >
               <div>
-                <div className="font-semibold text-[#08271f]">{wo.title}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-semibold text-[#08271f]">{wo.title}</div>
+                  {wo.intake_source === 'voice' && (
+                    <Badge className="bg-[#2A5A8A] text-[10px] text-white hover:bg-[#2A5A8A]">Voice</Badge>
+                  )}
+                  {wo.intake_source === 'manual' && (
+                    <Badge variant="outline" className="text-[10px]">Manual</Badge>
+                  )}
+                </div>
                 <div className="mt-1 text-xs text-[#5c6863]">
                   {wo.priority ? `${String(wo.priority).replace('_', ' ')} · ` : ''}
                   Due {wo.due_date ? format(new Date(wo.due_date), 'MMM d') : '—'}
                   {wo.requester_name ? ` · ${wo.requester_name}` : ''}
+                  {wo.crew_assigned_to ? ' · Crew assigned' : wo.supervisor_id ? ' · With supervisor' : ''}
                 </div>
               </div>
               <Badge variant="outline" className="shrink-0 capitalize">{String(wo.status || '').replace(/_/g, ' ')}</Badge>

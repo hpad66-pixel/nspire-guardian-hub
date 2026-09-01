@@ -11,6 +11,13 @@ export interface WorkOrder extends WorkOrderRow {
   requester_name?: string | null;
   demo_seed?: boolean | null;
   linked_project_id?: string | null;
+  /** Two-tier dispatch — types may lag until regenerated. */
+  supervisor_id?: string | null;
+  crew_assigned_to?: string | null;
+  crew_assigned_at?: string | null;
+  assigned_by?: string | null;
+  assigned_at?: string | null;
+  intake_source?: string | null;
   property?: {
     name: string;
   };
@@ -139,14 +146,40 @@ export function useWorkOrderStats() {
   });
 }
 
+async function resolveOpsSupervisor(propertyId: string): Promise<string | null> {
+  const { data, error } = await (supabase as any).rpc(
+    'resolve_property_ops_supervisor',
+    { p_property_id: propertyId },
+  );
+  if (error) return null;
+  return (data as string | null) ?? null;
+}
+
 export function useCreateWorkOrder() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (workOrder: Omit<WorkOrderInsert, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
+    mutationFn: async (workOrder: Omit<WorkOrderInsert, 'id' | 'created_at' | 'updated_at'> & {
+      intake_source?: string | null;
+      requester_name?: string | null;
+    }) => {
+      const propertyId = workOrder.property_id;
+      const supervisorId = propertyId
+        ? await resolveOpsSupervisor(propertyId)
+        : null;
+      const payload: Record<string, unknown> = {
+        ...workOrder,
+        intake_source: workOrder.intake_source ?? 'manual',
+        supervisor_id: supervisorId,
+        assigned_to: workOrder.assigned_to ?? supervisorId,
+        assigned_at: supervisorId ? new Date().toISOString() : null,
+        status:
+          workOrder.status
+          ?? (supervisorId ? 'assigned' : 'pending'),
+      };
+      const { data, error } = await (supabase as any)
         .from('work_orders')
-        .insert(workOrder)
+        .insert(payload)
         .select()
         .single();
       
@@ -155,7 +188,7 @@ export function useCreateWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
-      toast.success('Work order created successfully');
+      toast.success('Work order created — assigned to maintenance supervisor');
     },
     onError: (error: Error) => {
       toast.error(`Failed to create work order: ${error.message}`);
@@ -188,14 +221,22 @@ export function useUpdateWorkOrder() {
   });
 }
 
+/** Assign / reassign the maintenance supervisor (first tier). */
 export function useAssignWorkOrder() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ id, assigneeId }: { id: string; assigneeId: string }) => {
-      const { data, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await (supabase as any)
         .from('work_orders')
-        .update({ assigned_to: assigneeId, status: 'assigned' })
+        .update({
+          supervisor_id: assigneeId,
+          assigned_to: assigneeId,
+          assigned_by: user?.id ?? null,
+          assigned_at: new Date().toISOString(),
+          status: 'assigned',
+        })
         .eq('id', id)
         .select()
         .single();
@@ -205,10 +246,42 @@ export function useAssignWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
-      toast.success('Work order assigned successfully');
+      toast.success('Assigned to maintenance supervisor');
     },
     onError: (error: Error) => {
       toast.error(`Failed to assign work order: ${error.message}`);
+    },
+  });
+}
+
+/** Supervisor dispatches the WO to a maintenance crew tech. */
+export function useAssignWorkOrderCrew() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, crewUserId }: { id: string; crewUserId: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await (supabase as any)
+        .from('work_orders')
+        .update({
+          crew_assigned_to: crewUserId,
+          crew_assigned_at: new Date().toISOString(),
+          assigned_by: user?.id ?? null,
+          status: 'in_progress',
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['work-orders'] });
+      toast.success('Dispatched to maintenance crew');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to assign crew: ${error.message}`);
     },
   });
 }
@@ -218,7 +291,7 @@ export function useCompleteWorkOrder() {
   
   return useMutation({
     mutationFn: async ({ id, proofPhotos }: { id: string; proofPhotos?: string[] }) => {
-      const updates: Partial<WorkOrderRow> = {
+      const updates: Record<string, unknown> = {
         status: 'completed',
         completed_at: new Date().toISOString(),
       };
@@ -227,7 +300,7 @@ export function useCompleteWorkOrder() {
         updates.proof_photos = proofPhotos;
       }
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('work_orders')
         .update(updates)
         .eq('id', id)
@@ -242,7 +315,8 @@ export function useCompleteWorkOrder() {
       toast.success('Work order marked as completed');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to complete work order: ${error.message}`);
+      const msg = error.message || 'Failed to complete work order';
+      toast.error(msg.replace(/^WO_PARTS_[A-Z_]+:\s*/, ''));
     },
   });
 }
