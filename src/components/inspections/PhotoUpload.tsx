@@ -3,16 +3,26 @@ import { Button } from '@/components/ui/button';
 import { Camera, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FieldCameraDialog } from '@/components/camera/FieldCameraDialog';
+import type { StampContext } from '@/lib/camera';
 
 interface PhotoUploadProps {
   photos: string[];
   onPhotosChange: (photos: string[]) => void;
   maxPhotos?: number;
   folder?: string;
+  stampContext?: StampContext | null;
 }
 
-export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'inspections' }: PhotoUploadProps) {
+export function PhotoUpload({
+  photos,
+  onPhotosChange,
+  maxPhotos = 5,
+  folder = 'inspections',
+  stampContext = null,
+}: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,17 +40,17 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
     setUploading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const uploadedUrls: string[] = [];
 
       for (const file of filesToUpload) {
-        // Validate file type
         if (!file.type.startsWith('image/')) {
           toast.error(`${file.name} is not an image`);
           continue;
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(`${file.name} is too large (max 5MB)`);
           continue;
@@ -49,7 +59,7 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
         const fileExt = file.name.split('.').pop();
         const fileName = `${user?.id}/${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('inspection-photos')
           .upload(fileName, file);
 
@@ -59,9 +69,9 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
           continue;
         }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('inspection-photos')
-          .getPublicUrl(fileName);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('inspection-photos').getPublicUrl(fileName);
 
         uploadedUrls.push(publicUrl);
       }
@@ -88,7 +98,17 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setCameraOpen(true)}
+          disabled={uploading || photos.length >= maxPhotos}
+          className="bg-[var(--apas-sapphire,#1D6FE8)] hover:bg-[var(--apas-sapphire,#1D6FE8)]/90"
+        >
+          <Camera className="mr-2 h-4 w-4" />
+          Field Camera
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -98,12 +118,12 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
         >
           {uploading ? (
             <>
-              <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               Uploading...
             </>
           ) : (
             <>
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="mr-2 h-4 w-4" />
               Upload Photo
             </>
           )}
@@ -112,7 +132,6 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           multiple
           className="hidden"
           onChange={handleFileChange}
@@ -122,16 +141,16 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {photos.map((url, index) => (
-            <div key={index} className="relative group aspect-square">
+            <div key={index} className="group relative aspect-square">
               <img
                 src={url}
                 alt={`Photo ${index + 1}`}
-                className="w-full h-full object-cover rounded-lg border"
+                className="h-full w-full rounded-lg border object-cover"
               />
               <button
                 type="button"
                 onClick={() => handleRemovePhoto(index)}
-                className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -141,16 +160,30 @@ export function PhotoUpload({ photos, onPhotosChange, maxPhotos = 5, folder = 'i
       )}
 
       {photos.length === 0 && (
-        <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground">
-          <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No photos uploaded</p>
-          <p className="text-xs">Click "Upload Photo" to add images</p>
+        <div className="rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
+          <ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-50" />
+          <p className="text-sm">No photos yet</p>
+          <p className="text-xs">Open Field Camera to capture a stamped photo</p>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground">
-        {photos.length} of {maxPhotos} photos • Max 5MB each
+        {photos.length} of {maxPhotos} photos · Field Camera stamps time + GPS into pixels
       </p>
+
+      <FieldCameraDialog
+        open={cameraOpen}
+        onOpenChange={setCameraOpen}
+        folder={folder}
+        context={stampContext}
+        onCaptured={({ url }) => {
+          if (photos.length >= maxPhotos) {
+            toast.error(`Maximum ${maxPhotos} photos allowed`);
+            return;
+          }
+          onPhotosChange([...photos, url]);
+        }}
+      />
     </div>
   );
 }
