@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
   ClipboardCheck,
+  ClipboardList,
   AlertTriangle,
   Wrench,
   Sun,
@@ -324,9 +325,18 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
             icon={<Shield className={iconClass} />}
             iconBg={portfolioIconBg}
             title="Permits"
-            subtitle="Permit tracking"
+            subtitle="Scan & track permits"
             onClick={() => go('/permits')}
           />
+          {(canView('reports') || isAdminOrOwner) && (
+            <DrawerTile
+              icon={<ClipboardList className={iconClass} />}
+              iconBg={greenIconBg}
+              title="Daily Reports"
+              subtitle="View field reports"
+              onClick={() => go('/daily-reports')}
+            />
+          )}
 
           {/* PORTFOLIO */}
           <DrawerSectionLabel label="Portfolio" />
