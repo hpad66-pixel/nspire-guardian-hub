@@ -19,12 +19,16 @@
   --apas-white: #FBF8F1;
   --apas-muted: #87958F;
   --apas-grid: rgba(213,170,82,0.05);
-  /* Project kind — Consulting green / Construction West orange */
-  --kind-consulting: #0F8A4B;
-  --kind-consulting-glow: rgba(16, 185, 129, 0.55);
-  --kind-consulting-gold: #C4A35A;
-  --kind-construction: #E67E22;
-  --kind-construction-glow: rgba(234, 88, 12, 0.55);
+  /* Project kind — Consulting professional blue / Construction ivory */
+  --kind-consulting: #2A5A8A;
+  --kind-consulting-glow: rgba(42, 90, 138, 0.22);
+  --kind-consulting-accent: #A8C5DE;
+  --kind-consulting-ink: #FBF8F1;
+  --kind-construction: #F5F1E8;
+  --kind-construction-ink: #1A1714;
+  --kind-construction-border: #E0D8C8;
+  --kind-construction-accent: #8B7E6A;
+  --kind-construction-glow: rgba(139, 126, 106, 0.18);
 }
 
 @layer base {
@@ -264,92 +268,56 @@
     }
   }
 
-  /* Electrified Construction / Consulting project-kind badges */
+  /* Professional Construction / Consulting project-kind badges (no electric glow) */
   .project-kind-badge-consulting {
-    background: linear-gradient(135deg, #0B6B3A 0%, #10B981 45%, #0F8A4B 70%, #C4A35A 160%);
-    color: #ECFDF5;
-    border-color: rgba(196, 163, 90, 0.85);
-    animation: kindElectricConsulting 2.2s ease-in-out infinite;
-    will-change: box-shadow, filter;
+    background: var(--kind-consulting);
+    color: var(--kind-consulting-ink);
+    border-color: rgba(30, 69, 112, 0.55);
+    box-shadow: 0 1px 0 rgba(42, 90, 138, 0.18);
   }
 
   .project-kind-badge-construction {
-    background: linear-gradient(135deg, #C2410C 0%, #E67E22 40%, #F59E0B 85%, #FBBF24 140%);
-    color: #1C1917;
-    border-color: rgba(194, 65, 12, 0.85);
-    animation: kindElectricConstruction 2.2s ease-in-out infinite;
-    will-change: box-shadow, filter;
+    background: var(--kind-construction);
+    color: var(--kind-construction-ink);
+    border-color: rgba(139, 126, 106, 0.45);
+    box-shadow: 0 1px 0 rgba(26, 23, 20, 0.06);
   }
 
   /*
-   * Solid project cards — consulting = brand dark green (#0D3B30) + cream text
-   * (same treatment as the module-projects icon / landing surface). Construction
-   * = West-orange hardhat color. Remap muted text so labels stay readable.
+   * Solid project cards — consulting = professional mid-blue + cream text;
+   * construction = warm ivory + dark ink. Remap muted text for contrast.
    */
   .project-kind-tile-consulting {
-    background: var(--apas-surface);
-    color: var(--apas-white);
-    border-color: rgba(8, 39, 31, 0.55);
-    border-left-color: var(--kind-consulting-gold);
-    box-shadow: 0 1px 0 rgba(196, 163, 90, 0.25), 0 8px 24px rgba(4, 25, 20, 0.28);
+    background: linear-gradient(160deg, #2F6696 0%, var(--kind-consulting) 55%, #234A72 100%);
+    color: var(--kind-consulting-ink);
+    border-color: rgba(30, 69, 112, 0.45);
+    border-left-color: var(--kind-consulting-accent);
+    box-shadow: 0 1px 0 rgba(168, 197, 222, 0.22), 0 8px 22px rgba(30, 69, 112, 0.16);
   }
   .project-kind-tile-consulting .text-muted-foreground {
-    color: rgba(251, 248, 241, 0.68) !important;
+    color: rgba(251, 248, 241, 0.72) !important;
   }
   .project-kind-tile-consulting:hover {
-    filter: brightness(1.06);
+    filter: brightness(1.04);
   }
 
   .project-kind-tile-construction {
-    background: linear-gradient(145deg, #E67E22 0%, #F59E0B 55%, #EA580C 100%);
-    color: #1C1917;
-    border-color: rgba(194, 65, 12, 0.45);
-    border-left-color: #9A3412;
-    box-shadow: 0 1px 0 rgba(251, 191, 36, 0.35), 0 8px 24px rgba(194, 65, 12, 0.22);
+    background: linear-gradient(160deg, #FAF7F0 0%, var(--kind-construction) 50%, #EFE9DC 100%);
+    color: var(--kind-construction-ink);
+    border-color: var(--kind-construction-border);
+    border-left-color: var(--kind-construction-accent);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65), 0 8px 22px rgba(26, 23, 20, 0.06);
   }
   .project-kind-tile-construction .text-muted-foreground {
-    color: rgba(28, 25, 23, 0.72) !important;
+    color: rgba(26, 23, 20, 0.62) !important;
   }
   .project-kind-tile-construction:hover {
-    filter: brightness(1.04);
+    filter: brightness(0.99);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 10px 26px rgba(26, 23, 20, 0.09);
   }
 
   .project-kind-badge-missing {
     animation: kindMissingPulse 1.4s ease-in-out infinite;
-  }
-
-  @keyframes kindElectricConsulting {
-    0%, 100% {
-      box-shadow:
-        0 0 0 1px rgba(16, 185, 129, 0.35),
-        0 0 10px var(--kind-consulting-glow),
-        0 0 18px rgba(196, 163, 90, 0.25);
-      filter: brightness(1);
-    }
-    50% {
-      box-shadow:
-        0 0 0 1px rgba(196, 163, 90, 0.7),
-        0 0 16px var(--kind-consulting-glow),
-        0 0 28px rgba(196, 163, 90, 0.45);
-      filter: brightness(1.12);
-    }
-  }
-
-  @keyframes kindElectricConstruction {
-    0%, 100% {
-      box-shadow:
-        0 0 0 1px rgba(234, 88, 12, 0.4),
-        0 0 10px var(--kind-construction-glow),
-        0 0 18px rgba(251, 191, 36, 0.3);
-      filter: brightness(1);
-    }
-    50% {
-      box-shadow:
-        0 0 0 1px rgba(251, 191, 36, 0.75),
-        0 0 18px var(--kind-construction-glow),
-        0 0 30px rgba(251, 191, 36, 0.5);
-      filter: brightness(1.1);
-    }
   }
 
   @keyframes kindMissingPulse {
@@ -358,8 +326,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .project-kind-badge-consulting,
-    .project-kind-badge-construction,
     .project-kind-badge-missing {
       animation: none;
     }

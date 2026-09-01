@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Calendar, HardHat, Lightbulb, Sparkles } from 'lucide-react';
+import { Building2, Calendar, HardHat, Lightbulb } from 'lucide-react';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import type { Project } from '@/hooks/useProjects';
@@ -13,7 +13,8 @@ import {
 import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { cn } from '@/lib/utils';
 
-const STATUS_ON_DARK: Record<string, string> = {
+/** Status chips on blue (consulting) tiles — light on dark. */
+const STATUS_ON_BLUE: Record<string, string> = {
   planning: 'bg-white/15 text-white border-white/25',
   active: 'bg-emerald-300/25 text-emerald-50 border-emerald-200/40',
   on_hold: 'bg-amber-300/25 text-amber-50 border-amber-200/40',
@@ -21,12 +22,13 @@ const STATUS_ON_DARK: Record<string, string> = {
   closed: 'bg-white/10 text-white/80 border-white/20',
 };
 
-const STATUS_ON_ORANGE: Record<string, string> = {
-  planning: 'bg-stone-900/15 text-stone-900 border-stone-900/20',
-  active: 'bg-stone-900/20 text-stone-950 border-stone-900/25',
-  on_hold: 'bg-amber-950/15 text-amber-950 border-amber-950/25',
-  completed: 'bg-stone-900/10 text-stone-800 border-stone-900/15',
-  closed: 'bg-stone-900/10 text-stone-800 border-stone-900/15',
+/** Status chips on ivory (construction) tiles — dark on light. */
+const STATUS_ON_IVORY: Record<string, string> = {
+  planning: 'bg-[var(--kind-construction-ink)]/8 text-[var(--kind-construction-ink)] border-[var(--kind-construction-ink)]/15',
+  active: 'bg-[var(--kind-consulting)]/12 text-[var(--kind-consulting)] border-[var(--kind-consulting)]/25',
+  on_hold: 'bg-amber-900/10 text-amber-950 border-amber-900/20',
+  completed: 'bg-[var(--kind-construction-ink)]/6 text-[var(--kind-construction-ink)]/80 border-[var(--kind-construction-ink)]/12',
+  closed: 'bg-[var(--kind-construction-ink)]/6 text-[var(--kind-construction-ink)]/80 border-[var(--kind-construction-ink)]/12',
 };
 
 function formatCurrency(amount: number) {
@@ -52,16 +54,16 @@ function KindSectionHeader({
       className={cn(
         'flex items-center gap-3 rounded-2xl border px-4 py-3',
         isConsulting
-          ? 'border-[rgba(8,39,31,0.35)] bg-[var(--apas-surface)] text-[var(--apas-white)] shadow-[0_8px_24px_rgba(4,25,20,0.22)]'
-          : 'border-orange-700/30 bg-gradient-to-r from-[#E67E22] via-[#F59E0B] to-[#EA580C] text-stone-950 shadow-[0_8px_24px_rgba(194,65,12,0.2)]',
+          ? 'border-[rgba(30,69,112,0.35)] bg-[var(--kind-consulting)] text-[var(--kind-consulting-ink)] shadow-[0_8px_22px_rgba(30,69,112,0.14)]'
+          : 'border-[var(--kind-construction-border)] bg-[var(--kind-construction)] text-[var(--kind-construction-ink)] shadow-[0_8px_22px_rgba(26,23,20,0.05)]',
       )}
     >
       <div
         className={cn(
           'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border',
           isConsulting
-            ? 'border-[var(--kind-consulting-gold)]/50 bg-black/20 text-[var(--kind-consulting-gold)]'
-            : 'border-stone-900/20 bg-stone-950/10 text-stone-950',
+            ? 'border-white/25 bg-white/10 text-[var(--kind-consulting-accent)]'
+            : 'border-[var(--kind-construction-accent)]/35 bg-white/60 text-[var(--kind-construction-accent)]',
         )}
       >
         <Icon className="h-5 w-5" />
@@ -71,17 +73,11 @@ function KindSectionHeader({
           <h3 className="font-display text-lg font-black tracking-wide uppercase">
             {isConsulting ? 'Consulting' : 'Construction'}
           </h3>
-          <Sparkles
-            className={cn(
-              'h-3.5 w-3.5',
-              isConsulting ? 'text-[var(--kind-consulting-gold)]' : 'text-stone-950/70',
-            )}
-          />
         </div>
         <p
           className={cn(
             'text-xs',
-            isConsulting ? 'text-[rgba(251,248,241,0.72)]' : 'text-stone-900/70',
+            isConsulting ? 'text-[rgba(251,248,241,0.72)]' : 'text-[rgba(26,23,20,0.62)]',
           )}
         >
           {isConsulting
@@ -94,7 +90,7 @@ function KindSectionHeader({
           'shrink-0 rounded-full border px-2.5 py-1 text-xs font-black tabular-nums',
           isConsulting
             ? 'border-white/20 bg-white/10 text-white'
-            : 'border-stone-900/20 bg-stone-950/10 text-stone-950',
+            : 'border-[var(--kind-construction-ink)]/15 bg-[var(--kind-construction-ink)]/5 text-[var(--kind-construction-ink)]',
         )}
       >
         {count}
@@ -119,8 +115,8 @@ function ClientProjectTile({
   const amountLabel = kind === 'consulting' ? 'Approved fees' : 'Budget';
   const amount = formatCurrency(amounts.budget);
   const statusClass =
-    (kind === 'consulting' ? STATUS_ON_DARK : STATUS_ON_ORANGE)[project.status] ??
-    (kind === 'consulting' ? STATUS_ON_DARK.planning : STATUS_ON_ORANGE.planning);
+    (kind === 'consulting' ? STATUS_ON_BLUE : STATUS_ON_IVORY)[project.status] ??
+    (kind === 'consulting' ? STATUS_ON_BLUE.planning : STATUS_ON_IVORY.planning);
   const Icon = kind === 'consulting' ? Lightbulb : HardHat;
 
   return (
@@ -129,19 +125,19 @@ function ClientProjectTile({
       onClick={() => navigate(`/projects/${project.id}`)}
       className={cn(
         'group relative overflow-hidden rounded-2xl border border-l-4 p-4 text-left transition-all',
-        'hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         projectKindTileClass(kind),
         kind === 'consulting'
-          ? 'focus-visible:ring-[var(--kind-consulting-gold)]'
-          : 'focus-visible:ring-[var(--kind-construction)]',
+          ? 'focus-visible:ring-[var(--kind-consulting)]'
+          : 'focus-visible:ring-[var(--kind-construction-accent)]',
       )}
       data-testid={`client-project-tile-${project.id}`}
       data-kind={kind}
     >
       <div
         className={cn(
-          'pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-40',
-          kind === 'consulting' ? 'bg-[var(--kind-consulting-gold)]' : 'bg-white',
+          'pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-15 blur-2xl transition-opacity group-hover:opacity-30',
+          kind === 'consulting' ? 'bg-[var(--kind-consulting-accent)]' : 'bg-[var(--kind-construction-accent)]',
         )}
       />
       <div className="relative flex items-start gap-3">
@@ -149,11 +145,11 @@ function ClientProjectTile({
           className={cn(
             'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm',
             kind === 'consulting'
-              ? 'border-[var(--kind-consulting-gold)]/40 bg-black/25 text-[var(--kind-consulting-gold)]'
-              : 'border-stone-900/20 bg-stone-950/10 text-stone-950',
+              ? 'border-white/25 bg-white/10 text-[var(--kind-consulting-accent)]'
+              : 'border-[var(--kind-construction-accent)]/30 bg-white/70 text-[var(--kind-construction-accent)]',
           )}
         >
-          <Icon className="h-6 w-6 drop-shadow-sm" />
+          <Icon className="h-6 w-6" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
