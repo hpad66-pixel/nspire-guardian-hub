@@ -23,6 +23,7 @@ import {
 import {
   Building2,
   Calendar,
+  Camera,
   User,
   Wrench,
   Clock,
@@ -39,6 +40,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { WorkOrderComments } from './WorkOrderComments';
 import { WorkOrderStatusStepper } from './WorkOrderStatusStepper';
 import { WorkOrderActivityLog } from './WorkOrderActivityLog';
+import { FieldCameraDialog } from '@/components/camera/FieldCameraDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { enqueue } from '@/lib/offlineQueue';
@@ -70,6 +72,7 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   const [notes, setNotes] = useState(workOrder?.notes || '');
   const [estimatedCost, setEstimatedCost] = useState(workOrder?.estimated_cost?.toString() || '');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [fieldCameraOpen, setFieldCameraOpen] = useState(false);
   
   if (!workOrder) return null;
   
@@ -387,22 +390,79 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               )}
             </div>
             
-            {/* Proof Photos */}
-            {workOrder.proof_photos && workOrder.proof_photos.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">Proof Photos</Label>
-                <div className="grid grid-cols-4 gap-2">
+            {/* Evidence / Field Camera */}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                Evidence Photos
+              </Label>
+              <Button
+                type="button"
+                className="w-full bg-[var(--apas-sapphire,#1D6FE8)] hover:bg-[var(--apas-sapphire,#1D6FE8)]/90"
+                onClick={() => setFieldCameraOpen(true)}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Open Field Camera
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Time + GPS stamp burned into every photo · attaches to this work order
+              </p>
+              {workOrder.proof_photos && workOrder.proof_photos.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 pt-1">
                   {workOrder.proof_photos.map((url, index) => (
                     <img
                       key={index}
                       src={url}
                       alt={`Proof ${index + 1}`}
-                      className="w-full h-16 object-cover rounded-lg border"
+                      className="h-16 w-full rounded-lg border object-cover"
                     />
                   ))}
                 </div>
+              )}
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-[11px] text-emerald-900">
+                <span className="font-semibold">Photo proof you can trust.</span>{' '}
+                Stamps are burned into the image pixels and cannot be removed.
               </div>
-            )}
+            </div>
+
+            <FieldCameraDialog
+              open={fieldCameraOpen}
+              onOpenChange={setFieldCameraOpen}
+              folder={`work-orders/${workOrder.id}`}
+              showNotation
+              attachLabel="Attach to WO"
+              context={{
+                workOrderLabel: `WO · ${workOrder.title}`,
+                unitLabel: workOrder.unit?.unit_number
+                  ? `Unit ${workOrder.unit.unit_number}`
+                  : null,
+                propertyLabel: workOrder.property?.name ?? null,
+                addressHint: workOrder.property?.name
+                  ? `${workOrder.property.name}${
+                      workOrder.unit?.unit_number ? ` · Unit ${workOrder.unit.unit_number}` : ''
+                    }`
+                  : null,
+              }}
+              onCaptured={async ({ url, notation }) => {
+                const next = [...(workOrder.proof_photos ?? []), url];
+                await updateWorkOrder.mutateAsync({
+                  id: workOrder.id,
+                  proof_photos: next,
+                  ...(notation
+                    ? {
+                        notes: [workOrder.notes, notation].filter(Boolean).join('\n'),
+                      }
+                    : {}),
+                });
+                if (user?.id) {
+                  await supabase.from('work_order_activity').insert({
+                    work_order_id: workOrder.id,
+                    user_id: user.id,
+                    action: 'proof_photo_added',
+                    details: { url, notation: notation ?? null, stamped: true },
+                  });
+                }
+              }}
+            />
             
             {/* Rejection Reason */}
             {workOrder.status === 'rejected' && workOrder.rejection_reason && (
