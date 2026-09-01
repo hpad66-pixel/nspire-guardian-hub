@@ -47,7 +47,8 @@ export function CreateWorkOrderDialog({
     try {
       await create.mutateAsync({
         title: title.trim(), property_id: lockedPropertyId, due_date: dueDate,
-        priority, status: "pending", description: description.trim() || null,
+        priority, description: description.trim() || null,
+        intake_source: 'manual',
       } as any);
       reset();
       onOpenChange(false);

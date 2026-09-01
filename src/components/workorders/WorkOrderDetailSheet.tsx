@@ -33,14 +33,25 @@ import {
   Send,
   XCircle,
 } from 'lucide-react';
-import { WorkOrder, useUpdateWorkOrder, useCompleteWorkOrder, useVerifyWorkOrder } from '@/hooks/useWorkOrders';
+import {
+  WorkOrder,
+  useUpdateWorkOrder,
+  useCompleteWorkOrder,
+  useVerifyWorkOrder,
+  useAssignWorkOrderCrew,
+} from '@/hooks/useWorkOrders';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { WorkOrderComments } from './WorkOrderComments';
 import { WorkOrderStatusStepper } from './WorkOrderStatusStepper';
 import { WorkOrderActivityLog } from './WorkOrderActivityLog';
+import { WorkOrderPartsPanel } from './WorkOrderPartsPanel';
 import { FieldCameraDialog } from '@/components/camera/FieldCameraDialog';
+import { useWorkOrderParts } from '@/hooks/useWorkOrderParts';
+import { partsCompletionBlocker } from '@/lib/workorders/workOrderParts';
+import { useOpsPortalProperty } from '@/components/portal/OpsPortalPropertyContext';
+import { isOpsPmOrOwner } from '@/lib/portal/opsPortal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { enqueue } from '@/lib/offlineQueue';
@@ -67,7 +78,10 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   const updateWorkOrder = useUpdateWorkOrder();
   const completeWorkOrder = useCompleteWorkOrder();
   const verifyWorkOrder = useVerifyWorkOrder();
+  const assignCrew = useAssignWorkOrderCrew();
   const { canUpdate, canAssign, canApprove } = useUserPermissions();
+  const ops = useOpsPortalProperty();
+  const { data: woParts = [] } = useWorkOrderParts(workOrder?.id);
   
   const [notes, setNotes] = useState(workOrder?.notes || '');
   const [estimatedCost, setEstimatedCost] = useState(workOrder?.estimated_cost?.toString() || '');
@@ -75,12 +89,32 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   const [fieldCameraOpen, setFieldCameraOpen] = useState(false);
   
   if (!workOrder) return null;
+
+  const partsBlocker = partsCompletionBlocker(woParts);
+  const crewProfile = profiles?.find(
+    (p) => p.user_id === (workOrder.crew_assigned_to || workOrder.assigned_to),
+  );
+  const crewName = crewProfile?.full_name || crewProfile?.email || null;
+  const intakeLabel =
+    workOrder.intake_source === 'voice'
+      ? 'Voice complaint'
+      : workOrder.intake_source === 'nspire'
+        ? 'NSPIRE'
+        : workOrder.intake_source === 'stores'
+          ? 'Stores'
+          : workOrder.intake_source === 'manual'
+            ? 'Manual'
+            : null;
+
+  const inOpsPortal = Boolean(ops.propertyId && ops.can('maintenance'));
+  const opsCanDispatch = inOpsPortal && isOpsPmOrOwner(ops.role);
+  const opsCanExecute = inOpsPortal; // tech + PM + owner can capture photos / install / complete
   
   const dueDate = new Date(workOrder.due_date);
   const isOverdue = dueDate < new Date() && workOrder.status !== 'verified' && workOrder.status !== 'completed';
-  const canEditWorkOrder = canUpdate('work_orders');
-  const canAssignWorkOrder = canAssign('work_orders');
-  const canApproveWorkOrder = canApprove('work_orders');
+  const canEditWorkOrder = canUpdate('work_orders') || opsCanExecute;
+  const canAssignWorkOrder = canAssign('work_orders') || opsCanDispatch;
+  const canApproveWorkOrder = canApprove('work_orders') || opsCanDispatch;
   
   const handleStatusChange = async (newStatus: string) => {
     await updateWorkOrder.mutateAsync({
@@ -97,18 +131,32 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
     });
   };
   
-  const handleAssign = async (userId: string) => {
+  const handleAssignSupervisor = async (userId: string) => {
     await updateWorkOrder.mutateAsync({
       id: workOrder.id,
+      supervisor_id: userId,
       assigned_to: userId,
+      assigned_by: user?.id ?? null,
+      assigned_at: new Date().toISOString(),
       status: 'assigned',
-    });
+    } as any);
     
     await supabase.from('work_order_activity').insert({
       work_order_id: workOrder.id,
       user_id: user?.id,
-      action: 'assigned',
-      details: { assigned_to: userId },
+      action: 'assigned_supervisor',
+      details: { supervisor_id: userId },
+    });
+    toast.success('Assigned to maintenance supervisor');
+  };
+
+  const handleAssignCrew = async (userId: string) => {
+    await assignCrew.mutateAsync({ id: workOrder.id, crewUserId: userId });
+    await supabase.from('work_order_activity').insert({
+      work_order_id: workOrder.id,
+      user_id: user?.id,
+      action: 'assigned_crew',
+      details: { crew_assigned_to: userId },
     });
   };
   
@@ -188,16 +236,24 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
   };
   
   const handleComplete = async () => {
-    await completeWorkOrder.mutateAsync({
-      id: workOrder.id,
-    });
-    
-    await supabase.from('work_order_activity').insert({
-      work_order_id: workOrder.id,
-      user_id: user?.id,
-      action: 'completed',
-      details: {},
-    });
+    if (partsBlocker) {
+      toast.error(partsBlocker);
+      return;
+    }
+    try {
+      await completeWorkOrder.mutateAsync({
+        id: workOrder.id,
+      });
+      
+      await supabase.from('work_order_activity').insert({
+        work_order_id: workOrder.id,
+        user_id: user?.id,
+        action: 'completed',
+        details: {},
+      });
+    } catch {
+      /* toast handled in mutation */
+    }
   };
   
   const handleVerify = async () => {
@@ -259,6 +315,11 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               <Badge variant="outline">Routine</Badge>
             )}
             {getStatusBadge(workOrder.status)}
+            {intakeLabel && (
+              <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                {intakeLabel}
+              </Badge>
+            )}
           </div>
           <SheetTitle className="text-xl">{workOrder.title}</SheetTitle>
           <SheetDescription>
@@ -320,17 +381,19 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                   </div>
                 </div>
                 
-                {/* Assignee */}
+                {/* Supervisor (tier 1) */}
                 <div className="space-y-1">
-                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">Assigned To</Label>
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                    Maintenance supervisor
+                  </Label>
                   {canAssignWorkOrder ? (
                     <Select
-                      value={workOrder.assigned_to || ''}
-                      onValueChange={handleAssign}
+                      value={workOrder.supervisor_id || workOrder.assigned_to || ''}
+                      onValueChange={handleAssignSupervisor}
                       disabled={updateWorkOrder.isPending}
                     >
                       <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select assignee" />
+                        <SelectValue placeholder="Assign supervisor" />
                       </SelectTrigger>
                       <SelectContent>
                         {profiles?.map((profile) => (
@@ -342,13 +405,57 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                     </Select>
                   ) : (
                     <span className="text-sm text-muted-foreground">
-                      {workOrder.assigned_to
-                        ? profiles?.find((p) => p.user_id === workOrder.assigned_to)?.full_name ||
-                          profiles?.find((p) => p.user_id === workOrder.assigned_to)?.email ||
-                          'Assigned'
+                      {workOrder.supervisor_id || workOrder.assigned_to
+                        ? profiles?.find(
+                            (p) =>
+                              p.user_id === (workOrder.supervisor_id || workOrder.assigned_to),
+                          )?.full_name
+                          || profiles?.find(
+                            (p) =>
+                              p.user_id === (workOrder.supervisor_id || workOrder.assigned_to),
+                          )?.email
+                          || 'Assigned'
                         : 'Unassigned'}
                     </span>
                   )}
+                </div>
+
+                {/* Crew (tier 2) */}
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+                    Maintenance crew
+                  </Label>
+                  {canAssignWorkOrder ? (
+                    <Select
+                      value={workOrder.crew_assigned_to || ''}
+                      onValueChange={handleAssignCrew}
+                      disabled={assignCrew.isPending}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Dispatch to crew tech" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles?.map((profile) => (
+                          <SelectItem key={profile.user_id} value={profile.user_id}>
+                            {profile.full_name || profile.email || 'Unknown'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      {workOrder.crew_assigned_to
+                        ? profiles?.find((p) => p.user_id === workOrder.crew_assigned_to)
+                            ?.full_name
+                          || profiles?.find((p) => p.user_id === workOrder.crew_assigned_to)
+                            ?.email
+                          || 'Assigned'
+                        : 'Not dispatched yet'}
+                    </span>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Supervisor assigns the crew tech who will install parts and capture photos.
+                  </p>
                 </div>
                 
                 {/* Defect Info */}
@@ -390,6 +497,15 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
               )}
             </div>
             
+            {/* Parts from stores — before/after photos + install gate */}
+            <WorkOrderPartsPanel
+              workOrder={workOrder}
+              crewName={crewName}
+              readOnly={!canEditWorkOrder && !canAssignWorkOrder}
+            />
+
+            <Separator />
+
             {/* Evidence / Field Camera */}
             <div className="space-y-2">
               <Label className="text-muted-foreground text-xs uppercase tracking-wider">
@@ -534,30 +650,42 @@ export function WorkOrderDetailSheet({ workOrder, open, onOpenChange }: WorkOrde
                 </div>
               )}
               
-              {/* In Progress - Mark Complete */}
-              {workOrder.status === 'in_progress' && canEditWorkOrder && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button className="w-full" variant="default">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Mark as Completed
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Complete Work Order</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to mark this work order as completed? This will notify the manager for verification.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleComplete}>
-                        Complete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+              {/* In Progress / Assigned - Mark Complete (blocked until parts installed) */}
+              {(workOrder.status === 'in_progress' || workOrder.status === 'assigned')
+                && canEditWorkOrder && (
+                <>
+                  {partsBlocker && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                      <strong>Cannot finalize yet.</strong> {partsBlocker}
+                    </div>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        className="w-full"
+                        variant="default"
+                        disabled={!!partsBlocker}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Mark as Completed
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Complete Work Order</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Confirm every assigned part has before/after photos and is marked Installed. This notifies the manager for verification.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleComplete} disabled={!!partsBlocker}>
+                          Complete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               )}
               
               {/* Completed - Verify */}
