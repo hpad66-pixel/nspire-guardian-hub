@@ -14,44 +14,122 @@ import {
   ClipboardCheck,
   CloudRain,
   Construction,
+  Download,
   FileCheck2,
   FileSearch,
   FileText,
   Gauge,
+  HardHat,
   Headphones,
   Landmark,
   Leaf,
+  Lightbulb,
   Link2,
   LockKeyhole,
   Mail,
+  Map,
   Menu,
   MessageSquareText,
+  Package,
+  PenLine,
   Phone,
+  QrCode,
   Radio,
   ReceiptText,
   Route,
+  ScanLine,
   ShieldCheck,
   Siren,
   Smartphone,
   Sparkles,
   TriangleAlert,
   UserCheck,
-  Waypoints,
+  Users,
   Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import './r4-landing.css';
 
 const WALKTHROUGH_MAILTO =
   'mailto:sales@apas.ai?subject=R4%20Project%20Controls%20Walkthrough&body=I%20would%20like%20to%20review%20the%20R4%20Project%20Controls%20workspace.';
 
+const APP_URL = 'https://projos.ai';
+const INSTALL_URL = 'https://projos.ai/install';
+
 const NAV_LINKS = [
+  { label: 'Platform', href: '#platform' },
   { label: 'Workstreams', href: '#workstreams' },
   { label: 'Voice & alerts', href: '#voice-alerts' },
-  { label: 'Financial control', href: '#financial-control' },
-  { label: 'Risk & compliance', href: '#risk-compliance' },
-  { label: 'Documentation', href: '#documentation' },
+  { label: 'Financials', href: '#financial-control' },
+  { label: 'Get the app', href: '#get-app' },
+];
+
+const PLATFORM_PILLARS: Array<{
+  icon: LucideIcon;
+  eyebrow: string;
+  title: string;
+  description: string;
+  features: Array<{ icon: LucideIcon; name: string; blurb: string }>;
+  tone: 'ivory' | 'blue' | 'forest' | 'gold';
+}> = [
+  {
+    icon: HardHat,
+    eyebrow: 'Construction',
+    title: 'Pay apps, field, and closeout that stay in sync',
+    description:
+      'AIA G702/G703 pay applications, final invoices, site maps, and project permits share one construction operating record.',
+    tone: 'ivory',
+    features: [
+      { icon: ReceiptText, name: 'Pay Apps & Final Invoice', blurb: 'G702 cover, SOV detail, retainage QA, final-invoice banner' },
+      { icon: Map, name: 'Site Asset Map', blurb: 'As-built manholes, cleanouts, pond — inspect from the pin' },
+      { icon: ScanLine, name: 'Project Permits', blurb: 'Phone OCR scan, annotate, Open → City → Closed board' },
+      { icon: ClipboardCheck, name: 'Closeout sync', blurb: 'Punch, metrics, and checklist tied to the final pay app' },
+    ],
+  },
+  {
+    icon: Lightbulb,
+    eyebrow: 'Consulting',
+    title: 'Proposal → branded invoice → running A/R',
+    description:
+      'Fee engagements skip construction pay apps. Bill approved proposals with editable corporate invoices and a continuous ledger.',
+    tone: 'blue',
+    features: [
+      { icon: FileText, name: 'Approved proposals', blurb: 'Multi-proposal totals seed the invoice automatically' },
+      { icon: Banknote, name: 'Corporate invoices', blurb: 'Bill-to, terms, notes, client sign-off, branded PDF' },
+      { icon: Activity, name: 'Running A/R', blurb: 'Prior billed + paid continuity on every follow-on invoice' },
+      { icon: Users, name: 'CRM recipients', blurb: 'Project team + full contact book for send / assign' },
+    ],
+  },
+  {
+    icon: Building2,
+    eyebrow: 'Property operations',
+    title: 'Voice, work orders, stores, and compliance',
+    description:
+      'Resident calls become tickets and work orders. Inventory issues only against a WO. Compliance permits stay phone-scannable.',
+    tone: 'forest',
+    features: [
+      { icon: Phone, name: 'Voice Complaints', blurb: 'ElevenLabs intake → MR ticket → pending work order' },
+      { icon: Wrench, name: 'Work Orders hub', blurb: 'Today / processed / backlog / aging — newest first' },
+      { icon: Package, name: 'Stores & Materials', blurb: 'WO-gated issue, receipts, trends, owner brief' },
+      { icon: FileCheck2, name: 'Compliance Permits', blurb: 'Property-level OCR tiles + notation for PMO compliance' },
+    ],
+  },
+  {
+    icon: Sparkles,
+    eyebrow: 'Collaboration',
+    title: 'Portals, Doc Studio, My Day, modular admin',
+    description:
+      'Owner portals are project-specific. Correspondence is signed and sent. Modules turn on only when the project needs them.',
+    tone: 'gold',
+    features: [
+      { icon: LockKeyhole, name: 'Owner / client portals', blurb: 'One tab per project — never the wrong client view' },
+      { icon: PenLine, name: 'Doc Studio', blurb: 'Upload, edit, e-sign seal, send with contact picker' },
+      { icon: BadgeCheck, name: 'My Day', blurb: 'On your plate, waiting on others, address-these-first' },
+      { icon: Route, name: 'Project Admin modules', blurb: 'Toggle procurement, safety, stores, voice per project' },
+    ],
+  },
 ];
 
 const WORKSTREAMS: Array<{
@@ -412,8 +490,8 @@ function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            projOS connects sewer, stormwater, water meters, inspections, phone calls, emails, work orders,
-            financials, permits, risks, compliance, and documentation in one owner-ready operating record.
+            Construction pay apps, consulting invoices, resident voice, stores, project permits, owner portals,
+            Doc Studio, and an installable PWA — one corporate operating system for every workstream.
           </motion.p>
 
           <motion.div
@@ -422,11 +500,11 @@ function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.46 }}
           >
-            <a className="r4-primary-button" href={WALKTHROUGH_MAILTO}>
-              Review the R4 command center <ArrowRight aria-hidden="true" />
+            <a className="r4-primary-button" href="#platform">
+              Explore the platform <ArrowRight aria-hidden="true" />
             </a>
-            <a className="r4-secondary-button" href="#operating-record">
-              <Waypoints aria-hidden="true" /> See the control flow
+            <a className="r4-secondary-button" href="#get-app">
+              <QrCode aria-hidden="true" /> Get the app
             </a>
           </motion.div>
 
@@ -437,6 +515,7 @@ function Hero() {
             transition={{ duration: 0.5, delay: 0.65 }}
           >
             <span><ShieldCheck aria-hidden="true" /> Owner-safe access</span>
+            <span><Smartphone aria-hidden="true" /> Installable PWA</span>
             <span><UserCheck aria-hidden="true" /> Human-reviewed AI</span>
             <span><LockKeyhole aria-hidden="true" /> Time-stamped history</span>
           </motion.div>
@@ -452,6 +531,149 @@ function Hero() {
           <div><strong>Every exception</strong><span>Exposure, owner, date, evidence</span></div>
           <div><strong>Every action</strong><span>Reviewed, attributable, traceable</span></div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PlatformFeatures() {
+  return (
+    <section id="platform" className="r4-section r4-platform-section">
+      <div className="r4-container">
+        <Reveal className="r4-section-heading r4-section-heading--center">
+          <span className="r4-section-eyebrow">The complete platform</span>
+          <h2>Every capability. One corporate operating system.</h2>
+          <p>
+            Construction pay apps, consulting invoices, resident voice, stores, permits, portals, and Doc Studio —
+            modular by project, enterprise-ready when you need everything on.
+          </p>
+        </Reveal>
+
+        <div className="r4-platform-pillars">
+          {PLATFORM_PILLARS.map((pillar, index) => {
+            const PillarIcon = pillar.icon;
+            return (
+              <Reveal key={pillar.eyebrow} className={`r4-platform-pillar r4-platform-pillar--${pillar.tone}`} delay={index * 0.08}>
+                <div className="r4-platform-pillar-header">
+                  <span className="r4-platform-pillar-icon"><PillarIcon aria-hidden="true" /></span>
+                  <div>
+                    <span className="r4-platform-eyebrow">{pillar.eyebrow}</span>
+                    <h3>{pillar.title}</h3>
+                  </div>
+                </div>
+                <p>{pillar.description}</p>
+                <ul className="r4-platform-feature-list">
+                  {pillar.features.map((feature) => {
+                    const FeatureIcon = feature.icon;
+                    return (
+                      <li key={feature.name}>
+                        <span className="r4-platform-feature-icon"><FeatureIcon aria-hidden="true" /></span>
+                        <div>
+                          <strong>{feature.name}</strong>
+                          <small>{feature.blurb}</small>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <Reveal className="r4-platform-strip" delay={0.15}>
+          {[
+            ['Construction vs Consulting tiles', HardHat],
+            ['Phone OCR permit scan', ScanLine],
+            ['ElevenLabs voice → WO', Phone],
+            ['Doc Studio e-sign seal', PenLine],
+            ['Owner portal project tabs', LockKeyhole],
+            ['Enterprise unlocks all modules', BadgeCheck],
+          ].map(([label, Icon]) => {
+            const ItemIcon = Icon as LucideIcon;
+            return (
+              <span key={label as string}>
+                <ItemIcon aria-hidden="true" /> {label as string}
+              </span>
+            );
+          })}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function GetTheApp() {
+  return (
+    <section id="get-app" className="r4-section r4-get-app-section">
+      <div className="r4-get-app-grid" aria-hidden="true" />
+      <div className="r4-container r4-get-app-layout">
+        <Reveal className="r4-get-app-copy">
+          <span className="r4-section-eyebrow r4-section-eyebrow--dark">Progressive Web App</span>
+          <h2>Install Proj OS on any phone. No app store.</h2>
+          <p>
+            Scan the QR code, open <strong>projos.ai</strong>, then Add to Home Screen.
+            Field teams get a native-feel app with offline inspections, camera capture, voice intake, and push alerts —
+            fully mobile-responsive and downloadable in seconds.
+          </p>
+
+          <div className="r4-get-app-steps">
+            <div>
+              <span>01</span>
+              <strong>Scan the QR</strong>
+              <small>Opens the install guide on your phone</small>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Add to Home Screen</strong>
+              <small>Safari Share → Add · Chrome ⋮ → Install</small>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Launch like a native app</strong>
+              <small>Offline-capable · instant load · push ready</small>
+            </div>
+          </div>
+
+          <div className="r4-get-app-actions">
+            <Link className="r4-primary-button" to="/install">
+              Open install guide <ArrowRight aria-hidden="true" />
+            </Link>
+            <a className="r4-secondary-button" href={APP_URL} target="_blank" rel="noreferrer">
+              <Download aria-hidden="true" /> projos.ai
+            </a>
+          </div>
+        </Reveal>
+
+        <Reveal className="r4-get-app-card" delay={0.12}>
+          <div className="r4-get-app-card-header">
+            <div>
+              <span className="r4-live-dot" /> Corporate PWA download
+            </div>
+            <span>Scan with your camera</span>
+          </div>
+
+          <div className="r4-get-app-qr-frame">
+            <div className="r4-get-app-qr-glow" aria-hidden="true" />
+            <div className="r4-get-app-qr-inner">
+              <QRCodeGenerator value={INSTALL_URL} size={220} className="r4-get-app-qr-image" />
+            </div>
+            <div className="r4-get-app-qr-brand">
+              <QrCode aria-hidden="true" />
+              <div>
+                <strong>APAS Project Controls</strong>
+                <small>Powered by projOS · {INSTALL_URL.replace('https://', '')}</small>
+              </div>
+            </div>
+          </div>
+
+          <div className="r4-get-app-benefits">
+            <span><Smartphone aria-hidden="true" /> iPhone & Android</span>
+            <span><CloudRain aria-hidden="true" /> Works offline</span>
+            <span><BellRing aria-hidden="true" /> Push alerts</span>
+            <span><ShieldCheck aria-hidden="true" /> No store required</span>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -806,16 +1028,18 @@ function MarketingFooter() {
         </div>
         <div className="r4-footer-column">
           <strong>Platform</strong>
+          <a href="#platform">All features</a>
           <a href="#workstreams">Workstreams</a>
           <a href="#voice-alerts">Voice & alerts</a>
           <a href="#financial-control">Financial control</a>
-          <a href="#risk-compliance">Risk & compliance</a>
+          <a href="#get-app">Get the app</a>
         </div>
         <div className="r4-footer-column">
           <strong>Access</strong>
           <Link to="/auth">Sign in</Link>
+          <Link to="/install">Install PWA</Link>
           <a href={WALKTHROUGH_MAILTO}>Request walkthrough</a>
-          <a href="https://projos.ai">projos.ai</a>
+          <a href={APP_URL}>projos.ai</a>
         </div>
         <div className="r4-footer-column r4-footer-contact">
           <strong>Contact</strong>
@@ -838,12 +1062,14 @@ export default function R4LandingPage() {
       <MarketingNav />
       <main>
         <Hero />
+        <PlatformFeatures />
         <OperatingRecord />
         <Workstreams />
         <VoiceAlerts />
         <ControlSystem />
         <FinancialControl />
         <HumanControl />
+        <GetTheApp />
         <FinalCallToAction />
       </main>
       <MarketingFooter />
