@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -9,6 +9,7 @@ import {
   Columns3,
   Copy,
   FileBadge2,
+  FileUp,
   Filter,
   LayoutList,
   Loader2,
@@ -103,10 +104,15 @@ export function ProjectPermitsTab({
   projectId,
   projectName,
   clientId,
+  autoOpenScan = false,
+  onAutoOpenScanConsumed,
 }: {
   projectId: string;
   projectName?: string | null;
   clientId?: string | null;
+  /** When true (e.g. Overview → Scan CTA), open the scan dialog immediately. */
+  autoOpenScan?: boolean;
+  onAutoOpenScanConsumed?: () => void;
 }) {
   const { data: permits = [], isLoading, update } = useProjectPermits(projectId);
   const [query, setQuery] = useState('');
@@ -114,6 +120,12 @@ export function ProjectPermitsTab({
   const [chartFilter, setChartFilter] = useState<PermitAnalyticsFilter>({ type: 'all' });
   const [scanOpen, setScanOpen] = useState(false);
   const [view, setView] = useState<'board' | 'register'>('board');
+
+  useEffect(() => {
+    if (!autoOpenScan) return;
+    setScanOpen(true);
+    onAutoOpenScanConsumed?.();
+  }, [autoOpenScan, onAutoOpenScanConsumed]);
 
   const readiness = useMemo(() => permitReadiness(permits), [permits]);
   const owners = useMemo(() => groupOpenByOwner(permits), [permits]);
@@ -165,7 +177,36 @@ export function ProjectPermitsTab({
   }
 
   return (
-    <div className="space-y-6" data-testid="project-permits-tab">
+    <div className="space-y-6 pb-24 md:pb-0" data-testid="project-permits-tab">
+      {/* Always-visible scan strip — first thing on phone */}
+      <section
+        data-testid="project-permits-scan-strip"
+        className="rounded-2xl border-2 border-[var(--apas-sapphire)]/40 bg-[var(--apas-sapphire)]/[0.08] p-4 shadow-sm"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--apas-sapphire)]">
+              Important · Project Permits
+            </p>
+            <h3 className="text-lg font-bold text-foreground">Scan or upload a permit document</h3>
+            <p className="text-sm text-muted-foreground">
+              Use your phone camera or upload a PDF/photo. OCR fills the fields — add a notation and save
+              to this project’s register.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => setScanOpen(true)}
+            className="h-12 shrink-0 bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90 font-bold shadow-md"
+            data-testid="project-permits-scan-strip-cta"
+          >
+            <Camera className="mr-2 h-5 w-5" />
+            Scan / Upload Permit
+          </Button>
+        </div>
+      </section>
+
       {/* Hero readiness */}
       <section className="relative overflow-hidden rounded-2xl border border-[#0D3B30]/20 bg-gradient-to-br from-[#0D3B30] via-[#134e3a] to-[#0f766e] p-6 text-white shadow-lg">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
@@ -184,11 +225,13 @@ export function ProjectPermitsTab({
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
             <Button
               type="button"
+              size="lg"
               onClick={() => setScanOpen(true)}
-              className="bg-white text-[#0D3B30] hover:bg-emerald-50 font-semibold shadow-md"
+              className="h-12 bg-white text-[#0D3B30] hover:bg-emerald-50 font-bold shadow-md"
+              data-testid="project-permits-hero-scan"
             >
-              <Camera className="h-4 w-4 mr-2" />
-              Scan permit
+              <Camera className="h-5 w-5 mr-2" />
+              Scan / Upload Permit
             </Button>
             <div>
               <div className="text-5xl font-bold tabular-nums leading-none">{readiness.percent}%</div>
@@ -542,15 +585,17 @@ export function ProjectPermitsTab({
         </>
       )}
 
-      {/* Sticky phone scan CTA */}
+      {/* Sticky phone scan CTA — always visible above bottom nav */}
       <button
         type="button"
         onClick={() => setScanOpen(true)}
-        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-[#0D3B30] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 md:hidden"
-        aria-label="Scan permit from phone"
+        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] inset-x-4 z-40 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--apas-sapphire)] px-4 py-3.5 text-base font-bold text-white shadow-xl shadow-black/25 ring-2 ring-white/40 md:hidden"
+        aria-label="Scan or upload permit from phone"
+        data-testid="project-permits-sticky-scan"
       >
-        <Camera className="h-4 w-4" />
-        Scan
+        <Camera className="h-5 w-5" />
+        Scan / Upload Permit
+        <FileUp className="h-4 w-4 opacity-90" />
       </button>
 
       <ScanPermitDialog

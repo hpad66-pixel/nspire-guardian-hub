@@ -24,7 +24,7 @@ import {
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
   FileSignature, Mail,
-  Megaphone, UserPlus,
+  Megaphone, UserPlus, Camera,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
@@ -85,6 +85,7 @@ import { RiskRadarPanel } from '@/components/projects/RiskRadarPanel';
 import { ProgressTab } from '@/components/projects/ProgressTab';
 import { CloseoutTab } from '@/components/projects/CloseoutTab';
 import { ProjectPermitsTab } from '@/components/projects/permits/ProjectPermitsTab';
+import { ProjectPermitScanEntry } from '@/components/projects/permits/ProjectPermitScanEntry';
 import { ProjectSiteMapTab } from '@/components/projects/site-map/ProjectSiteMapTab';
 import { ProjectStoresTab } from '@/components/projects/stores/ProjectStoresTab';
 import { ProjectVoiceAgentTab } from '@/components/projects/voice-agent/ProjectVoiceAgentTab';
@@ -135,6 +136,10 @@ export default function ProjectDetailPage() {
   // Honor a ?tab= deep link (e.g. global search → /projects/:id?tab=rfis).
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Overview / mobile shortcut → open Scan dialog on Permits tab
+  const [permitScanRequested, setPermitScanRequested] = useState(
+    () => searchParams.get('scan') === '1' || searchParams.get('scan') === 'true',
+  );
   const tabScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: project, isLoading: projectLoading } = useProject(id ?? null);
@@ -400,6 +405,11 @@ export default function ProjectDetailPage() {
   // Tabs that have active badges — shown as quick-jump buttons on iPhone
   const badgeTabs = visibleTabs.filter(t => t.badge !== null);
   const safetyEnabled = visibleTabs.some((t) => t.value === 'safety');
+  const permitsEnabled = visibleTabs.some((t) => t.value === 'permits');
+  const openPermitScan = () => {
+    setActiveTab('permits');
+    setPermitScanRequested(true);
+  };
 
   return (
     <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
@@ -753,25 +763,37 @@ export default function ProjectDetailPage() {
                       {groupTabs.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.value;
+                        const isPermits = tab.value === 'permits';
                         return (
                           <button
                             key={tab.value}
-                            onClick={() => setActiveTab(tab.value)}
+                            onClick={() => (isPermits ? openPermitScan() : setActiveTab(tab.value))}
                             className={cn(
                               'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-left group relative',
                               isActive
                                 ? 'bg-module-projects/10 text-module-projects'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                : isPermits
+                                  ? 'text-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/10'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                             )}
                           >
                             {isActive && (
                               <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-module-projects" />
                             )}
-                            <Icon className={cn(
-                              'h-3.5 w-3.5 shrink-0 transition-colors',
-                              isActive ? 'text-module-projects' : GROUP_ICON_COLORS[group.key]
-                            )} />
+                            {isPermits ? (
+                              <Camera className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-module-projects' : 'text-[var(--apas-sapphire)]')} />
+                            ) : (
+                              <Icon className={cn(
+                                'h-3.5 w-3.5 shrink-0 transition-colors',
+                                isActive ? 'text-module-projects' : GROUP_ICON_COLORS[group.key]
+                              )} />
+                            )}
                             <span className="flex-1 truncate">{tab.label}</span>
+                            {isPermits && (
+                              <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/15 px-1.5 py-0.5 rounded-full shrink-0">
+                                Scan
+                              </span>
+                            )}
                             {tab.badge !== null && (
                               <span className={cn(
                                 'h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0',
@@ -797,6 +819,14 @@ export default function ProjectDetailPage() {
                       readiness={closeout.readiness}
                       payAppId={closeout.payAppId}
                       onNavigateTab={setActiveTab}
+                      onScanPermit={permitsEnabled ? openPermitScan : undefined}
+                    />
+                  )}
+                  {permitsEnabled && (
+                    <ProjectPermitScanEntry
+                      onScan={openPermitScan}
+                      onOpenPermits={() => setActiveTab('permits')}
+                      openCount={closeout.readiness?.openCityItems ?? null}
                     />
                   )}
                   <RiskRadarPanel projectId={id!} />
@@ -1036,7 +1066,15 @@ export default function ProjectDetailPage() {
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
-                <TabsContent value="permits" className="mt-0"><ProjectPermitsTab projectId={id!} projectName={project.name} clientId={project.client_id ?? project.client?.id ?? null} /></TabsContent>
+                <TabsContent value="permits" className="mt-0">
+                  <ProjectPermitsTab
+                    projectId={id!}
+                    projectName={project.name}
+                    clientId={project.client_id ?? project.client?.id ?? null}
+                    autoOpenScan={permitScanRequested}
+                    onAutoOpenScanConsumed={() => setPermitScanRequested(false)}
+                  />
+                </TabsContent>
                 <TabsContent value="site-map" className="mt-0"><ProjectSiteMapTab projectId={id!} variant="full" /></TabsContent>
                 <TabsContent value="stores" className="mt-0"><ProjectStoresTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="voice-agent" className="mt-0"><ProjectVoiceAgentTab projectId={id!} projectName={project.name} /></TabsContent>
@@ -1063,9 +1101,9 @@ export default function ProjectDetailPage() {
               })}
             </div>
 
-            {/* ── MOBILE: active-tab pill + quick-jump badges + drawer (<768px) ── */}
+            {/* ── MOBILE: active-tab pill + Permits shortcut + badge jumps (<768px) ── */}
             <div className="flex md:hidden items-stretch gap-2">
-              <button onClick={() => setMobileNavOpen(true)} className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/5 transition-colors text-left">
+              <button onClick={() => setMobileNavOpen(true)} className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/5 transition-colors text-left min-w-0">
                 <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', GROUP_ICON_BG[activeTabDef.group])}><activeTabDef.icon className={cn('h-4 w-4', GROUP_ICON_COLORS[activeTabDef.group])} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -1076,7 +1114,24 @@ export default function ProjectDetailPage() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
-              {badgeTabs.slice(0, 2).map(tab => {
+              {permitsEnabled && (
+                <button
+                  type="button"
+                  onClick={openPermitScan}
+                  className={cn(
+                    'h-[52px] min-w-[72px] px-2 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 flex-shrink-0 transition-all',
+                    activeTab === 'permits'
+                      ? 'border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)] text-white shadow-md'
+                      : 'border-[var(--apas-sapphire)]/50 bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
+                  )}
+                  aria-label="Scan or upload project permit"
+                  data-testid="mobile-permits-scan-shortcut"
+                >
+                  <Camera className="h-4 w-4" />
+                  <span className="text-[9px] font-bold leading-none">Scan</span>
+                </button>
+              )}
+              {badgeTabs.filter((t) => t.value !== 'permits').slice(0, 1).map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
                 return (
@@ -1106,12 +1161,36 @@ export default function ProjectDetailPage() {
                           {groupTabs.map(tab => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.value;
+                            const isPermits = tab.value === 'permits';
                             return (
-                              <button key={tab.value} onClick={() => { setActiveTab(tab.value); setMobileNavOpen(false); }} className={cn('flex items-center gap-3 px-3 py-3.5 rounded-xl border transition-all text-left', isActive ? 'border-primary/30 bg-primary/10' : 'border-[hsl(222,30%,17%)] bg-[hsl(222,47%,11%)] hover:bg-[hsl(222,30%,15%)]')}>
-                                <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', isActive ? 'bg-primary/20' : GROUP_ICON_BG[group.key])}><Icon className={cn('h-4 w-4', isActive ? 'text-primary' : GROUP_ICON_COLORS[group.key])} /></div>
+                              <button
+                                key={tab.value}
+                                onClick={() => {
+                                  if (isPermits) {
+                                    openPermitScan();
+                                  } else {
+                                    setActiveTab(tab.value);
+                                  }
+                                  setMobileNavOpen(false);
+                                }}
+                                className={cn(
+                                  'flex items-center gap-3 px-3 py-3.5 rounded-xl border transition-all text-left',
+                                  isPermits && !isActive && 'border-[var(--apas-sapphire)]/50 bg-[var(--apas-sapphire)]/15',
+                                  isActive ? 'border-primary/30 bg-primary/10' : !isPermits && 'border-[hsl(222,30%,17%)] bg-[hsl(222,47%,11%)] hover:bg-[hsl(222,30%,15%)]',
+                                )}
+                              >
+                                <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', isActive ? 'bg-primary/20' : isPermits ? 'bg-[var(--apas-sapphire)]/25' : GROUP_ICON_BG[group.key])}>
+                                  {isPermits ? <Camera className={cn('h-4 w-4', isActive ? 'text-primary' : 'text-[var(--apas-sapphire)]')} /> : <Icon className={cn('h-4 w-4', isActive ? 'text-primary' : GROUP_ICON_COLORS[group.key])} />}
+                                </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className={cn('text-sm font-medium leading-tight truncate', isActive ? 'text-primary' : 'text-[hsl(215,25%,85%)]')}>{tab.label}</p>
-                                  {tab.badge !== null && (<p className="text-[10px] text-destructive font-medium mt-0.5 leading-none">{tab.badge} open</p>)}
+                                  <p className={cn('text-sm font-medium leading-tight truncate', isActive ? 'text-primary' : isPermits ? 'text-[hsl(215,25%,95%)]' : 'text-[hsl(215,25%,85%)]')}>
+                                    {isPermits ? 'Permits · Scan' : tab.label}
+                                  </p>
+                                  {isPermits ? (
+                                    <p className="text-[10px] text-[var(--apas-sapphire)] font-semibold mt-0.5 leading-none">Camera / upload</p>
+                                  ) : tab.badge !== null ? (
+                                    <p className="text-[10px] text-destructive font-medium mt-0.5 leading-none">{tab.badge} open</p>
+                                  ) : null}
                                 </div>
                                 {isActive && (<div className="h-2 w-2 rounded-full bg-primary shrink-0" />)}
                               </button>
@@ -1134,6 +1213,14 @@ export default function ProjectDetailPage() {
                     readiness={closeout.readiness}
                     payAppId={closeout.payAppId}
                     onNavigateTab={setActiveTab}
+                    onScanPermit={permitsEnabled ? openPermitScan : undefined}
+                  />
+                )}
+                {permitsEnabled && (
+                  <ProjectPermitScanEntry
+                    onScan={openPermitScan}
+                    onOpenPermits={() => setActiveTab('permits')}
+                    openCount={closeout.readiness?.openCityItems ?? null}
                   />
                 )}
                 <RiskRadarPanel projectId={id!} />
@@ -1329,7 +1416,15 @@ export default function ProjectDetailPage() {
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
-              <TabsContent value="permits"><ProjectPermitsTab projectId={id!} projectName={project.name} clientId={project.client_id ?? project.client?.id ?? null} /></TabsContent>
+              <TabsContent value="permits">
+                <ProjectPermitsTab
+                  projectId={id!}
+                  projectName={project.name}
+                  clientId={project.client_id ?? project.client?.id ?? null}
+                  autoOpenScan={permitScanRequested}
+                  onAutoOpenScanConsumed={() => setPermitScanRequested(false)}
+                />
+              </TabsContent>
               <TabsContent value="site-map"><ProjectSiteMapTab projectId={id!} variant="full" /></TabsContent>
               <TabsContent value="stores"><ProjectStoresTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="voice-agent"><ProjectVoiceAgentTab projectId={id!} projectName={project.name} /></TabsContent>

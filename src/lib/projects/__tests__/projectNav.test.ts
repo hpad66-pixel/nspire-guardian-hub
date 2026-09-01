@@ -30,6 +30,9 @@ describe('projectNav', () => {
     expect(kind).toBe('construction');
     expect(items.find((i) => i.value === 'rfis')).toBeTruthy();
     expect(items.find((i) => i.value === 'permits')).toBeTruthy();
+    // Permits should sit near the top of Field for easy PWA discovery
+    const fieldOrder = items.filter((i) => i.group === 'field').map((i) => i.value);
+    expect(fieldOrder.indexOf('permits')).toBeLessThan(fieldOrder.indexOf('rfis'));
     expect(items.find((i) => i.value === 'site-map')).toBeTruthy();
     // Stores is opt-in — hidden until Project Admin enables it
     expect(items.find((i) => i.value === 'stores')).toBeFalsy();

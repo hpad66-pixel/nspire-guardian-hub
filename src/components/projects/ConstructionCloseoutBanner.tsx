@@ -1,11 +1,12 @@
 import type { ElementType } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  CheckCircle2, ClipboardList, FileBadge2, HardHat, Landmark, Receipt,
+  Camera, CheckCircle2, ClipboardList, FileBadge2, HardHat, Landmark, Receipt,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ConstructionCloseoutReadiness } from '@/lib/projects/constructionCloseout';
 
@@ -51,11 +52,13 @@ export function ConstructionCloseoutBanner({
   readiness,
   payAppId,
   onNavigateTab,
+  onScanPermit,
 }: {
   projectId: string;
   readiness: ConstructionCloseoutReadiness;
   payAppId?: string | null;
   onNavigateTab?: (tab: string) => void;
+  onScanPermit?: () => void;
 }) {
   return (
     <Card className="overflow-hidden border-[#0D3B30]/25 shadow-sm">
@@ -72,6 +75,34 @@ export function ConstructionCloseoutBanner({
         </Badge>
       </div>
       <CardContent className="p-4 space-y-4">
+        {(onScanPermit || onNavigateTab) && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {onScanPermit && (
+              <Button
+                type="button"
+                size="lg"
+                onClick={onScanPermit}
+                className="h-11 flex-1 bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90 font-bold"
+                data-testid="closeout-scan-permit"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Scan / Upload Permit
+              </Button>
+            )}
+            {onNavigateTab && (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={() => onNavigateTab('permits')}
+                className="h-11 flex-1 font-semibold"
+              >
+                <FileBadge2 className="mr-2 h-4 w-4" />
+                Open Permits
+              </Button>
+            )}
+          </div>
+        )}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-muted-foreground">Overall closeout readiness</span>
