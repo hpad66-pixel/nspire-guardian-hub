@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, Download, Lightbulb, WifiOff } from 'lucide-react';
-import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { usePWAInstall } from '@/hooks/usePWA';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCompactNav } from '@/hooks/use-mobile';
 import { GlobalSearch } from '@/components/global/GlobalSearch';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
@@ -20,6 +20,7 @@ import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { OwnerAssistantLauncher } from '@/components/assistant/OwnerAssistantLauncher';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
+import { MOBILE_MAIN_PADDING_CLASS } from '@/lib/mobileShell';
 import { cn } from '@/lib/utils';
 import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,20 +34,11 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isModuleEnabled, isLoading: modulesLoading } = useModules();
-  const { isInstallable, install } = usePWAInstall();
+  const { isInstallable, isIOS, isInstalled, install } = usePWAInstall();
   const isOnline = useOnlineStatus();
-  const isMobile = useIsMobile(); // < 768px
   // Show bottom nav on anything below desktop (< 1024px)
-  const [showMobileNav, setShowMobileNav] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
-  );
-  useEffect(() => {
-    const mql = window.matchMedia('(max-width: 1023px)');
-    const onChange = () => setShowMobileNav(mql.matches);
-    mql.addEventListener('change', onChange);
-    setShowMobileNav(mql.matches);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
+  const showMobileNav = useIsCompactNav();
+  const canOfferInstall = !isInstalled && (isInstallable || isIOS);
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const { data: myProfile } = useMyProfile();
@@ -160,15 +152,15 @@ export function AppLayout({ children }: AppLayoutProps) {
     <>
       <PWAUpdateBanner />
       <SidebarProvider>
-        <div className="apas-app-shell flex min-h-screen w-full">
+        <div className="apas-app-shell flex min-h-dvh w-full max-w-[100vw] overflow-x-clip">
           {/* Desktop sidebar — hidden on mobile/tablet */}
           <div className="hidden lg:block">
             <AppSidebar />
           </div>
 
           <div className="flex flex-1 flex-col min-w-0">
-            {/* Header */}
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border/80 bg-background/80 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 md:px-5">
+            {/* Header — safe-area top for notch / Dynamic Island in standalone PWA */}
+            <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 border-b border-border/80 bg-background/80 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 md:px-5">
 
               {/* Desktop only: sidebar trigger */}
               <div className="hidden lg:block">
@@ -179,8 +171,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn('h-9 w-9 lg:hidden')}
+                className={cn('h-10 w-10 min-h-[44px] min-w-[44px] lg:hidden')}
                 onClick={() => setSearchOpen(true)}
+                aria-label="Search"
               >
                 <Search className="h-4 w-4" />
               </Button>
@@ -218,16 +211,27 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <span className="hidden min-[380px]:inline">Product Ideas</span>
                   <span className="min-[380px]:hidden">Ideas</span>
                 </Button>
-                {isInstallable && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={install}
-                    className="hidden h-10 items-center gap-2 rounded-lg border-border/70 text-sm font-medium sm:flex"
-                  >
-                    <Download className="h-[15px] w-[15px]" />
-                    Install App
-                  </Button>
+                {canOfferInstall && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => void install()}
+                      className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg border-border/70 sm:hidden"
+                      aria-label="Install app"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void install()}
+                      className="hidden h-10 items-center gap-2 rounded-lg border-border/70 text-sm font-medium sm:flex"
+                    >
+                      <Download className="h-[15px] w-[15px]" />
+                      Install App
+                    </Button>
+                  </>
                 )}
                 <NotificationCenter />
                 {/* Role badge — hidden on mobile to save space */}
@@ -242,7 +246,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => navigate('/profile')}
-                      className="rounded-full ring-2 ring-transparent transition-all duration-200 hover:ring-primary/30 focus:outline-none focus:ring-primary/50"
+                      className="rounded-full ring-2 ring-transparent transition-all duration-200 hover:ring-primary/30 focus:outline-none focus:ring-primary/50 min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
                       aria-label="My Profile"
                     >
                       <Avatar className="h-8 w-8">
@@ -266,12 +270,17 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Push notification permission banner */}
             <NotificationPermissionBanner />
 
-            {/* Main Content — pb-16 on mobile/tablet for bottom nav bar */}
-            <main className={cn('flex-1 overflow-auto', showMobileNav && 'pb-16')}>
+            {/* Main Content — bottom padding clears MobileNav (+ iPad secondary bar) */}
+            <main
+              className={cn(
+                'flex-1 overflow-x-clip overflow-y-auto overscroll-y-contain',
+                showMobileNav && MOBILE_MAIN_PADDING_CLASS,
+              )}
+            >
               {!isOnline && (
                 <div className="flex items-center justify-center gap-2 bg-yellow-500/90 px-4 py-2 text-sm font-medium text-yellow-950">
                   <WifiOff className="h-4 w-4 shrink-0" />
-                  <span>You are offline — your changes will sync when connection is restored</span>
+                  <span className="text-left">You are offline — your changes will sync when connection is restored</span>
                 </div>
               )}
               {children}

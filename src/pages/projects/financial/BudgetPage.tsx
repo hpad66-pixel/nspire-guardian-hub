@@ -220,7 +220,8 @@ export default function BudgetPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Subcontract Commitments</CardTitle></CardHeader>
           <CardContent className="p-0">
-            <table className="w-full text-sm">
+            <div className="mobile-table-scroll">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase tracking-wide">
                   <th className="text-left p-3">Commitment #</th>
@@ -258,6 +259,7 @@ export default function BudgetPage() {
                 </tr>
               </tfoot>
             </table>
+            </div>
           </CardContent>
         </Card>
       )}

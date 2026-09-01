@@ -7,12 +7,15 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Sparkles } from "lucide-react";
+import { useIsCompactNav } from "@/hooks/use-mobile";
 import { useOwnerPortalData } from "@/hooks/usePortals";
+import { cn } from "@/lib/utils";
 import { AssistantPanel } from "./AssistantPanel";
 
 export function OwnerAssistantLauncher() {
   const location = useLocation();
   const onOwnerPortal = location.pathname.startsWith("/owner-portal");
+  const showMobileNav = useIsCompactNav();
   const { data } = useOwnerPortalData();
   const [open, setOpen] = useState(false);
 
@@ -27,7 +30,12 @@ export function OwnerAssistantLauncher() {
         type="button"
         onClick={() => setOpen(true)}
         title="Ask about your contract"
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-[var(--apas-sapphire)] text-white shadow-lg shadow-[var(--apas-sapphire)]/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className={cn(
+          "fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--apas-sapphire)] text-white shadow-lg shadow-[var(--apas-sapphire)]/30 transition-transform hover:scale-105 active:scale-95 sm:right-6",
+          showMobileNav
+            ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6"
+            : "bottom-6",
+        )}
         aria-label="Open client assistant"
       >
         <Sparkles className="h-6 w-6" />

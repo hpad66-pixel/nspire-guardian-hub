@@ -425,6 +425,12 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 img,
 video,
@@ -443,10 +449,26 @@ a,
   -webkit-tap-highlight-color: hsl(var(--primary) / 0.12);
 }
 /* Hide scrollbars on horizontal chip/breadcrumb rows without losing scroll. */
-.no-scrollbar {
+.no-scrollbar,
+.scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Standalone PWA: prefer dynamic viewport height so chrome doesn't clip content. */
+@supports (height: 100dvh) {
+  .apas-app-shell {
+    min-height: 100dvh;
+  }
+}
+
+/* Wide data tables: always allow horizontal scroll on narrow screens. */
+.mobile-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }

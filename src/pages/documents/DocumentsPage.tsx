@@ -649,12 +649,12 @@ export default function DocumentsPage() {
         {/* Main Content */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{getFolderPathLabel(selectedFolderId)}</CardTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <CardTitle className="truncate">{getFolderPathLabel(selectedFolderId)}</CardTitle>
                 <CardDescription>{filteredDocuments?.length || 0} documents</CardDescription>
               </div>
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search documents..."

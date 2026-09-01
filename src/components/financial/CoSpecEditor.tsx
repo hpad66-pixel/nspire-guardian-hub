@@ -83,7 +83,7 @@ export function CoSpecEditor({
           <Input value={spec.pricing.groups[0].label} placeholder="A. Group label" onChange={(e) => onPatch((s) => { s.pricing.groups[0].label = e.target.value; })} />
           <div className="space-y-2">
             {spec.pricing.groups[0].rows.map((r, ri) => (
-              <div key={ri} className="grid grid-cols-[1fr_56px_44px_72px_64px_auto] gap-1.5 items-center">
+              <div key={ri} className="grid grid-cols-1 gap-1.5 items-center sm:grid-cols-[1fr_56px_44px_72px_64px_auto]">
                 <Input className="h-8 text-xs" placeholder="Description" value={r.desc} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].desc = e.target.value; })} />
                 <Input className="h-8 text-xs" placeholder="Unit" value={r.unit} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].unit = e.target.value; })} />
                 <Input className="h-8 text-xs" placeholder="Qty" value={r.qty} onChange={(e) => onPatch((s) => { s.pricing.groups[0].rows[ri].qty = e.target.value; })} />

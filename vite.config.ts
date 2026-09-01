@@ -59,34 +59,64 @@ export default defineConfig(() => ({
       // click. This replaces the old silent autoUpdate, which left users on stale
       // JS until a manual cache clear.
       registerType: "prompt",
-      includeAssets: ["favicon.ico", "icons/*.png", "robots.txt"],
+      includeAssets: ["favicon.svg", "icons/*.png", "robots.txt", "offline.html"],
       manifest: {
+        id: "/",
         name: "APAS Project Controls · projOS",
         short_name: "APAS Controls",
         description: "Infrastructure financial, risk, compliance, field, and document control in one operating record.",
         theme_color: "#08271f",
         background_color: "#041914",
         display: "standalone",
+        display_override: ["standalone", "minimal-ui", "browser"],
         start_url: "/dashboard",
         scope: "/",
-        orientation: "portrait-primary",
+        // Allow landscape on tablets / field tablets — portrait lock frustrated iPad users.
+        orientation: "any",
         categories: ["business", "productivity", "utilities"],
+        lang: "en",
+        dir: "ltr",
         icons: [
           {
             src: "/icons/apas-os-192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "/icons/apas-os-512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "/icons/apas-os-maskable.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
+          },
+        ],
+        shortcuts: [
+          {
+            name: "My Day",
+            short_name: "My Day",
+            description: "Open your personal work plate",
+            url: "/my-day",
+            icons: [{ src: "/icons/apas-os-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Projects",
+            short_name: "Projects",
+            description: "Open all projects",
+            url: "/projects",
+            icons: [{ src: "/icons/apas-os-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Install guide",
+            short_name: "Install",
+            description: "How to add Proj OS to your home screen",
+            url: "/install",
+            icons: [{ src: "/icons/apas-os-192.png", sizes: "192x192", type: "image/png" }],
           },
         ],
       },
