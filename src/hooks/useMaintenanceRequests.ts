@@ -1,6 +1,22 @@
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { computeVoiceLiveKpis } from '@/lib/voice/liveStats';
+import { emitVoiceLive } from '@/lib/voice/liveBus';
+
+// Unique channel names so concurrent subscribers never share a subscribed channel.
+let rtSeq = 0;
+const rtNonce = () => `${(++rtSeq).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+const REQUESTS_KEY = 'maintenance-requests';
+const STATS_KEY = 'maintenance-request-stats';
+
+function invalidateVoiceQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: [REQUESTS_KEY] });
+  qc.invalidateQueries({ queryKey: [STATS_KEY] });
+  qc.invalidateQueries({ queryKey: ['work-orders'] });
+}
 
 export interface MaintenanceRequest {
   id: string;
@@ -38,6 +54,7 @@ export interface MaintenanceRequest {
   work_order_id: string | null;
   created_at: string;
   updated_at: string;
+  demo_seed?: boolean | null;
   properties?: {
     name: string;
     address: string;
@@ -59,16 +76,26 @@ export interface MaintenanceRequestActivity {
   } | null;
 }
 
+/**
+ * Live maintenance-request list with Supabase realtime + short polling after
+ * a call hangs up so tickets/WOs appear without a manual Refresh.
+ */
 export function useMaintenanceRequests(filters?: {
   status?: string;
   urgency?: string;
   property_id?: string;
   is_emergency?: boolean;
+  /** When true, refetch every few seconds (used while a call is processing). */
+  live?: boolean;
 }) {
-  return useQuery({
-    queryKey: ['maintenance-requests', filters],
+  const qc = useQueryClient();
+  const seenIds = useRef<Set<string>>(new Set());
+  const bootstrapped = useRef(false);
+
+  const query = useQuery({
+    queryKey: [REQUESTS_KEY, filters],
     queryFn: async () => {
-      let query = supabase
+      let q = supabase
         .from('maintenance_requests')
         .select(`
           *,
@@ -78,23 +105,108 @@ export function useMaintenanceRequests(filters?: {
         .order('created_at', { ascending: false });
 
       if (filters?.status) {
-        query = query.eq('status', filters.status);
+        q = q.eq('status', filters.status);
       }
       if (filters?.urgency) {
-        query = query.eq('urgency_level', filters.urgency);
+        q = q.eq('urgency_level', filters.urgency);
       }
       if (filters?.property_id) {
-        query = query.eq('property_id', filters.property_id);
+        q = q.eq('property_id', filters.property_id);
       }
       if (filters?.is_emergency !== undefined) {
-        query = query.eq('is_emergency', filters.is_emergency);
+        q = q.eq('is_emergency', filters.is_emergency);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await q;
       if (error) throw error;
       return data as MaintenanceRequest[];
     },
+    refetchInterval: filters?.live ? 2500 : 12_000,
+    refetchOnWindowFocus: true,
   });
+
+  // Bootstrap "seen" set so we only toast on *new* realtime inserts.
+  useEffect(() => {
+    if (!query.data || bootstrapped.current) return;
+    query.data.forEach((r) => seenIds.current.add(r.id));
+    bootstrapped.current = true;
+  }, [query.data]);
+
+  useEffect(() => {
+    const filter = filters?.property_id
+      ? `property_id=eq.${filters.property_id}`
+      : undefined;
+
+    const channel = supabase
+      .channel(`maintenance-requests-${rtNonce()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'maintenance_requests',
+          ...(filter ? { filter } : {}),
+        },
+        (payload) => {
+          invalidateVoiceQueries(qc);
+
+          const row = (payload.new || payload.old) as Partial<MaintenanceRequest> | undefined;
+          if (!row?.id) return;
+
+          if (payload.eventType === 'INSERT') {
+            if (!seenIds.current.has(row.id)) {
+              seenIds.current.add(row.id);
+              const ticket =
+                typeof row.ticket_number === 'number'
+                  ? `MR-${String(row.ticket_number).padStart(4, '0')}`
+                  : undefined;
+              emitVoiceLive({
+                kind: 'ticket_created',
+                title: ticket ? `Ticket ${ticket} created` : 'New maintenance ticket',
+                detail: row.issue_category
+                  ? `${row.issue_category}${row.caller_unit_number ? ` · Unit ${row.caller_unit_number}` : ''}`
+                  : row.caller_name || undefined,
+                ticketNumber: ticket,
+                requestId: row.id,
+              });
+              if (row.work_order_id) {
+                emitVoiceLive({
+                  kind: 'wo_linked',
+                  title: 'Work order wired',
+                  detail: ticket ? `${ticket} → work order ready` : 'Work order linked to ticket',
+                  ticketNumber: ticket,
+                  requestId: row.id,
+                  workOrderId: row.work_order_id,
+                });
+              }
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const prev = payload.old as Partial<MaintenanceRequest> | undefined;
+            if (row.work_order_id && !prev?.work_order_id) {
+              const ticket =
+                typeof row.ticket_number === 'number'
+                  ? `MR-${String(row.ticket_number).padStart(4, '0')}`
+                  : undefined;
+              emitVoiceLive({
+                kind: 'wo_linked',
+                title: 'Work order wired',
+                detail: ticket ? `${ticket} linked to a work order` : 'Work order linked',
+                ticketNumber: ticket,
+                requestId: row.id,
+                workOrderId: row.work_order_id,
+              });
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [filters?.property_id, qc]);
+
+  return query;
 }
 
 export function useMaintenanceRequest(id: string) {
@@ -232,14 +344,23 @@ export function useResolveMaintenanceRequest() {
   });
 }
 
-export function useMaintenanceRequestStats() {
-  return useQuery({
-    queryKey: ['maintenance-request-stats'],
+export function useMaintenanceRequestStats(opts?: { property_id?: string; live?: boolean }) {
+  const qc = useQueryClient();
+
+  const query = useQuery({
+    queryKey: [STATS_KEY, opts?.property_id ?? 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('maintenance_requests')
-        .select('status, urgency_level, is_emergency, created_at, issue_category');
-      
+        .select(
+          'status, urgency_level, is_emergency, created_at, updated_at, call_ended_at, issue_category, work_order_id, demo_seed',
+        );
+
+      if (opts?.property_id) {
+        q = q.eq('property_id', opts.property_id);
+      }
+
+      const { data, error } = await q;
       if (error) throw error;
 
       const now = new Date();
@@ -248,29 +369,64 @@ export function useMaintenanceRequestStats() {
       thisWeek.setDate(thisWeek.getDate() - 7);
 
       const requests = data || [];
-      
+      const live = computeVoiceLiveKpis(requests, { now });
+
       return {
         total: requests.length,
-        totalThisMonth: requests.filter(r => new Date(r.created_at) >= thisMonth).length,
-        emergency: requests.filter(r => r.is_emergency && r.status !== 'closed').length,
-        pending: requests.filter(r => ['new', 'reviewed', 'assigned'].includes(r.status)).length,
-        inProgress: requests.filter(r => r.status === 'in_progress').length,
-        completedThisWeek: requests.filter(r => 
-          r.status === 'completed' && new Date(r.created_at) >= thisWeek
+        totalThisMonth: requests.filter((r) => new Date(r.created_at) >= thisMonth).length,
+        emergency: requests.filter((r) => r.is_emergency && r.status !== 'closed').length,
+        pending: requests.filter((r) => ['new', 'reviewed', 'assigned'].includes(r.status)).length,
+        inProgress: requests.filter((r) => r.status === 'in_progress').length,
+        completedThisWeek: requests.filter(
+          (r) => r.status === 'completed' && new Date(r.created_at) >= thisWeek,
         ).length,
+        todayCalls: live.todayCalls,
+        todayProcessed: live.todayProcessed,
+        backlog: live.backlog,
+        withWorkOrder: live.withWorkOrder,
         byStatus: {
-          new: requests.filter(r => r.status === 'new').length,
-          reviewed: requests.filter(r => r.status === 'reviewed').length,
-          assigned: requests.filter(r => r.status === 'assigned').length,
-          in_progress: requests.filter(r => r.status === 'in_progress').length,
-          completed: requests.filter(r => r.status === 'completed').length,
-          closed: requests.filter(r => r.status === 'closed').length,
+          new: requests.filter((r) => r.status === 'new').length,
+          reviewed: requests.filter((r) => r.status === 'reviewed').length,
+          assigned: requests.filter((r) => r.status === 'assigned').length,
+          in_progress: requests.filter((r) => r.status === 'in_progress').length,
+          completed: requests.filter((r) => r.status === 'completed').length,
+          closed: requests.filter((r) => r.status === 'closed').length,
         },
-        byCategory: requests.reduce((acc, r) => {
-          acc[r.issue_category] = (acc[r.issue_category] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
+        byCategory: requests.reduce(
+          (acc, r) => {
+            acc[r.issue_category] = (acc[r.issue_category] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
       };
     },
+    refetchInterval: opts?.live ? 2500 : 12_000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    const filter = opts?.property_id ? `property_id=eq.${opts.property_id}` : undefined;
+    const channel = supabase
+      .channel(`maintenance-request-stats-${rtNonce()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'maintenance_requests',
+          ...(filter ? { filter } : {}),
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: [STATS_KEY] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [opts?.property_id, qc]);
+
+  return query;
 }

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Mic, Phone, Sparkles } from 'lucide-react';
+import { Loader2, Mic, Phone, Radio, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,10 +16,13 @@ import { RequestDetailSheet } from '@/components/voice-agent/RequestDetailSheet'
 import { RequestQueue } from '@/components/voice-agent/RequestQueue';
 import { VoiceAgentStats } from '@/components/voice-agent/VoiceAgentStats';
 import { VoiceAgentWidget } from '@/components/voice-agent/VoiceAgentWidget';
+import { VoiceLiveFeed } from '@/components/voice-agent/VoiceLiveFeed';
 import { useProjectPropertyId } from '@/hooks/useProjectStores';
 import { useMaintenanceRequests, type MaintenanceRequest } from '@/hooks/useMaintenanceRequests';
 import { useAiUsage } from '@/hooks/useAiUsage';
 import { useSeedVoiceAgentDemo } from '@/hooks/useProjectStores';
+import { subscribeVoiceLive } from '@/lib/voice/liveBus';
+import { computeVoiceLiveKpis, nextPipelineStage, type VoicePipelineStage } from '@/lib/voice/liveStats';
 import { toast } from 'sonner';
 
 /**
@@ -39,25 +42,44 @@ export function ProjectVoiceAgentTab({
   const [selected, setSelected] = useState<MaintenanceRequest | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [pipeline, setPipeline] = useState<VoicePipelineStage>('idle');
+  const [liveMode, setLiveMode] = useState(false);
   const { isSuperAdmin } = useAiUsage('30d');
   const seedVoice = useSeedVoiceAgentDemo();
 
-  const { data: requests = [], isLoading: loadingReq, refetch } = useMaintenanceRequests(
+  const { data: requests = [], isLoading: loadingReq, isFetching, refetch } = useMaintenanceRequests(
     propertyId
       ? {
           property_id: propertyId,
           ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          live: liveMode,
         }
       : undefined,
   );
 
-  const stats = useMemo(() => {
-    const total = requests.length;
-    const open = requests.filter((r) => !['completed', 'closed'].includes(r.status)).length;
-    const emergency = requests.filter((r) => r.is_emergency).length;
-    const newCount = requests.filter((r) => r.status === 'new').length;
-    return { total, open, emergency, newCount };
-  }, [requests]);
+  const kpis = useMemo(() => computeVoiceLiveKpis(requests), [requests]);
+
+  useEffect(() => {
+    return subscribeVoiceLive((event) => {
+      if (event.kind === 'call_started') {
+        setLiveMode(true);
+        setPipeline((s) => nextPipelineStage(s, 'call_start'));
+      } else if (event.kind === 'call_ended' || event.kind === 'processing') {
+        setLiveMode(true);
+        setPipeline((s) => nextPipelineStage(s, 'call_end'));
+      } else if (event.kind === 'ticket_created') {
+        setPipeline((s) => nextPipelineStage(s, 'ticket'));
+        void refetch();
+      } else if (event.kind === 'wo_linked') {
+        setPipeline((s) => nextPipelineStage(s, 'work_order'));
+        void refetch();
+        window.setTimeout(() => {
+          setPipeline('ready');
+          setLiveMode(false);
+        }, 8000);
+      }
+    });
+  }, [refetch]);
 
   if (isLoading) {
     return (
@@ -86,10 +108,13 @@ export function ProjectVoiceAgentTab({
       <section className="overflow-hidden rounded-3xl border border-[var(--apas-sapphire)]/25 bg-gradient-to-br from-[#0b1f3a] via-[#12305a] to-[#1D6FE8] p-6 text-white shadow-md">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-100/90">ElevenLabs · Voice Complaints</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-100/90">
+              ElevenLabs · Voice Complaints · Live
+            </p>
             <h2 className="mt-1 font-display text-3xl font-bold">Tenant maintenance hotline</h2>
             <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Residents call or you simulate a live complaint. Tickets land here, create work orders, and stay tied to {projectName}.
+              Residents call or you simulate a live complaint. As soon as the call hangs up, tickets and work orders
+              land here for {projectName} — no manual refresh.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -126,25 +151,26 @@ export function ProjectVoiceAgentTab({
             )}
           </div>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Tickets" value={String(stats.total)} />
-          <Kpi label="Open" value={String(stats.open)} />
-          <Kpi label="New" value={String(stats.newCount)} />
-          <Kpi label="Emergency" value={String(stats.emergency)} warn={stats.emergency > 0} />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Kpi label="Today" value={String(kpis.todayCalls)} />
+          <Kpi label="Processed" value={String(kpis.todayProcessed)} />
+          <Kpi label="Backlog" value={String(kpis.backlog)} />
+          <Kpi label="Work orders" value={String(kpis.withWorkOrder)} />
+          <Kpi label="Emergency" value={String(kpis.emergencyOpen)} warn={kpis.emergencyOpen > 0} />
         </div>
       </section>
 
-      <EmergencyAlertBanner
-        requests={requests}
-        onViewRequest={(r) => {
-          setSelected(r);
-          setDetailOpen(true);
-        }}
-      />
-
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-900">
-          <Phone className="mr-1 h-3.5 w-3.5" /> Powered by ElevenLabs
+        <Badge
+          variant="outline"
+          className={
+            liveMode
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+              : 'border-sky-300 bg-sky-50 text-sky-900'
+          }
+        >
+          <Radio className="mr-1 h-3.5 w-3.5" />
+          {liveMode ? (isFetching ? 'Live · syncing' : 'Live') : 'Powered by ElevenLabs'}
         </Badge>
         <Badge variant="secondary">Property-scoped</Badge>
         <div className="ml-auto w-44">
@@ -163,7 +189,17 @@ export function ProjectVoiceAgentTab({
         </div>
       </div>
 
-      <VoiceAgentStats />
+      <VoiceLiveFeed stage={pipeline} />
+
+      <EmergencyAlertBanner
+        requests={requests}
+        onViewRequest={(r) => {
+          setSelected(r);
+          setDetailOpen(true);
+        }}
+      />
+
+      <VoiceAgentStats propertyId={propertyId} live={liveMode} />
 
       {loadingReq ? (
         <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground">
@@ -175,7 +211,7 @@ export function ProjectVoiceAgentTab({
             <Phone className="mx-auto h-8 w-8 text-muted-foreground" />
             <h3 className="font-semibold">No complaint tickets yet</h3>
             <p className="text-sm text-muted-foreground">
-              Start a test call, or load 6 months of demo resident complaints for tomorrow’s owner conversation.
+              Start a test call — after hang-up you should see Processing → Ticket → Work order without refreshing.
             </p>
             <Button onClick={() => setCallOpen(true)}>
               <Mic className="mr-1.5 h-4 w-4" /> Start test call
@@ -207,6 +243,14 @@ export function ProjectVoiceAgentTab({
             propertyId={propertyId}
             propertyName={projectName}
             onClose={() => setCallOpen(false)}
+            onCallEnded={() => {
+              setLiveMode(true);
+              setPipeline((s) => nextPipelineStage(s, 'call_end'));
+            }}
+            onTicketCreated={() => {
+              setPipeline((s) => nextPipelineStage(s, 'ticket'));
+              void refetch();
+            }}
           />
         </DialogContent>
       </Dialog>
