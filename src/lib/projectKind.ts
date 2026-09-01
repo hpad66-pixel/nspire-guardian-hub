@@ -29,18 +29,18 @@ export function projectKindLabel(kind: ProjectKind): 'Construction' | 'Consultin
   return kind === 'consulting' ? 'Consulting' : 'Construction';
 }
 
-/** Electrified badge chrome — consulting = green + gold glow, construction = West orange. */
+/** Badge chrome — consulting = professional blue, construction = warm ivory. */
 export const PROJECT_KIND_BADGE_STYLE: Record<ProjectKind, string> = {
   consulting:
-    'project-kind-badge-consulting text-emerald-50 border-emerald-300/80 bg-emerald-700 shadow-[0_0_0_1px_rgba(16,185,129,0.35)]',
+    'project-kind-badge-consulting text-[var(--kind-consulting-ink)] border-[rgba(30,69,112,0.55)] bg-[var(--kind-consulting)]',
   construction:
-    'project-kind-badge-construction text-orange-950 border-orange-500/90 bg-[var(--kind-construction)] shadow-[0_0_0_1px_rgba(234,88,12,0.45)]',
+    'project-kind-badge-construction text-[var(--kind-construction-ink)] border-[rgba(139,126,106,0.45)] bg-[var(--kind-construction)]',
 };
 
 /**
- * Solid project tiles — consulting uses the brand dark green (`--apas-surface`
- * #0D3B30) with cream/white text; construction uses West-orange. CSS classes in
- * index.css also remap `.text-muted-foreground` so secondary copy stays readable.
+ * Solid project tiles — consulting = professional mid-blue + cream text;
+ * construction = warm ivory + dark ink. CSS classes in index.css remap
+ * `.text-muted-foreground` so secondary copy stays readable on each surface.
  */
 export const PROJECT_KIND_TILE_STYLE: Record<ProjectKind, string> = {
   consulting: 'project-kind-tile-consulting border-l-4',

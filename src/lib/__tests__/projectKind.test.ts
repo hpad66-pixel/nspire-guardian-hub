@@ -36,10 +36,9 @@ describe('projectKind', () => {
     expect(projectKindLabel('consulting')).toBe('Consulting');
   });
 
-  it('uses electrified green consulting and orange construction chrome', () => {
+  it('uses professional blue consulting and ivory construction chrome', () => {
     expect(projectKindBadgeClass('consulting')).toContain('project-kind-badge-consulting');
     expect(projectKindBadgeClass('construction')).toContain('project-kind-badge-construction');
-    // Solid dark-green consulting tiles + West-orange construction tiles
     expect(projectKindTileClass('consulting')).toContain('project-kind-tile-consulting');
     expect(projectKindTileClass('construction')).toContain('project-kind-tile-construction');
   });

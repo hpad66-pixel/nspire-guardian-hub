@@ -10,7 +10,7 @@ import {
 
 /**
  * Bold Construction / Consulting label for project cards and headers.
- * Consulting = electrified green; Construction = West-orange construction yellow.
+ * Consulting = professional blue; Construction = warm ivory + dark ink.
  * If project_type is missing or unrecognized, flash a critical warning —
  * billing mode (pay apps vs client invoices) depends on this field.
  */
