@@ -403,7 +403,54 @@ export function useResetStoresDemo() {
       qc.invalidateQueries({ queryKey: ['stores-receipts', propertyId] });
       qc.invalidateQueries({ queryKey: ['stores-work-orders', propertyId] });
       qc.invalidateQueries({ queryKey: ['stores-units', propertyId] });
+      qc.invalidateQueries({ queryKey: ['maintenance-requests'] });
       toast.success('Demo stores data reset');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+/** Super-admin: wipe + load 6 months of Glorieta-style stores mock data. */
+export function useSeedStoresDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { propertyId: string; projectId: string }) => {
+      const { data, error } = await (supabase as any).rpc('seed_stores_demo_data', {
+        p_property_id: params.propertyId,
+        p_project_id: params.projectId,
+      });
+      if (error) throw error;
+      return data as Record<string, unknown>;
+    },
+    onSuccess: (_d, params) => {
+      qc.invalidateQueries({ queryKey: ['stores-items', params.propertyId] });
+      qc.invalidateQueries({ queryKey: ['stores-transactions', params.propertyId] });
+      qc.invalidateQueries({ queryKey: ['stores-receipts', params.propertyId] });
+      qc.invalidateQueries({ queryKey: ['stores-work-orders', params.propertyId] });
+      qc.invalidateQueries({ queryKey: ['stores-work-orders-open', params.propertyId] });
+      qc.invalidateQueries({ queryKey: ['stores-units', params.propertyId] });
+      toast.success('6-month Stores demo loaded');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+/** Super-admin: load demo ElevenLabs complaint tickets for a property. */
+export function useSeedVoiceAgentDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { propertyId: string; projectId?: string }) => {
+      const { data, error } = await (supabase as any).rpc('seed_voice_agent_demo', {
+        p_property_id: params.propertyId,
+      });
+      if (error) throw error;
+      return data as Record<string, unknown>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['maintenance-requests'] });
+      qc.invalidateQueries({ queryKey: ['maintenance-request-stats'] });
+      qc.invalidateQueries({ queryKey: ['voice-agent-config'] });
+      toast.success('Voice complaint demo tickets loaded');
     },
     onError: (err: Error) => toast.error(err.message),
   });

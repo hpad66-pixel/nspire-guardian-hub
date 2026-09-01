@@ -48,9 +48,13 @@ export function StoresAnalyticsCharts({
               <BarChart data={byMonth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="qty" name="Parts issued" fill="#0D3B30" radius={[4, 4, 0, 0]} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v: number, name: string) => (
+                  name === 'spend' ? [`$${Number(v).toFixed(2)}`, 'Spend'] : [v, 'Parts issued']
+                )} />
+                <Bar yAxisId="left" dataKey="qty" name="qty" fill="#0D3B30" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="spend" name="spend" fill="#C4A35A" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
