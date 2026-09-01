@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   Lightbulb,
   Phone,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -48,6 +49,13 @@ const WORKSPACE_TILES: AdminTile[] = [
   { title: 'Workflows', description: 'Approval flows and ball-in-court routing.', icon: Workflow, to: '/admin/workflows', scope: 'owner' },
   { title: 'Distribution Lists', description: 'Named recipient groups for notifications and sends.', icon: Send, to: '/settings/distribution-lists', scope: 'owner' },
   { title: 'Client Portals', description: 'Owner and subcontractor portal access.', icon: Globe, to: '/portals', scope: 'owner', module: 'clientPortalEnabled' },
+  {
+    title: 'Property Ops Portal',
+    description: 'License Glorieta maintenance, PM, and owner users — magic-link ops shell, no construction modules.',
+    icon: Warehouse,
+    to: '/admin/property-ops',
+    scope: 'owner',
+  },
   {
     title: 'Voice Complaints',
     description: 'ElevenLabs resident maintenance hotline — live calls, tickets, and work orders.',

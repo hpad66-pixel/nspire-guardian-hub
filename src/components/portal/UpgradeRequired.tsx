@@ -19,6 +19,7 @@ interface UpgradeRequiredProps {
 const FEATURE_LABELS: Record<string, string> = {
   subcontractor_portal: 'Subcontractor Portal',
   owner_portal: 'Owner Portal',
+  ops_portal: 'Property Ops Portal',
   api: 'Public API',
   webhooks: 'Webhooks',
   sso: 'Single Sign-On',

@@ -15,28 +15,38 @@ import { toast } from "sonner";
 import { useProperties } from "@/hooks/useProperties";
 import { useCreateWorkOrder } from "@/hooks/useWorkOrders";
 
-export function CreateWorkOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CreateWorkOrderDialog({
+  open,
+  onOpenChange,
+  defaultPropertyId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** When set (e.g. Property Ops portal), lock the work order to this property. */
+  defaultPropertyId?: string;
+}) {
   const { data: properties } = useProperties();
   const create = useCreateWorkOrder();
   const today = new Date().toISOString().slice(0, 10);
 
   const [title, setTitle] = useState("");
-  const [propertyId, setPropertyId] = useState("");
+  const [propertyId, setPropertyId] = useState(defaultPropertyId ?? "");
   const [dueDate, setDueDate] = useState(today);
   const [priority, setPriority] = useState<"routine" | "emergency">("routine");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState<{ title?: boolean; property?: boolean; due?: boolean }>({});
 
   function reset() {
-    setTitle(""); setPropertyId(""); setDueDate(today); setPriority("routine"); setDescription(""); setErrors({});
+    setTitle(""); setPropertyId(defaultPropertyId ?? ""); setDueDate(today); setPriority("routine"); setDescription(""); setErrors({});
   }
 
   async function submit() {
-    const e = { title: !title.trim(), property: !propertyId, due: !dueDate };
+    const lockedPropertyId = defaultPropertyId || propertyId;
+    const e = { title: !title.trim(), property: !lockedPropertyId, due: !dueDate };
     if (e.title || e.property || e.due) { setErrors(e); toast.error("Fill in the required fields."); return; }
     try {
       await create.mutateAsync({
-        title: title.trim(), property_id: propertyId, due_date: dueDate,
+        title: title.trim(), property_id: lockedPropertyId, due_date: dueDate,
         priority, status: "pending", description: description.trim() || null,
       } as any);
       reset();
@@ -62,12 +72,19 @@ export function CreateWorkOrderDialog({ open, onOpenChange }: { open: boolean; o
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Property *</Label>
-              <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); if (errors.property) setErrors((x) => ({ ...x, property: false })); }}>
-                <SelectTrigger className={cn(errors.property && "border-destructive")}><SelectValue placeholder="Select property" /></SelectTrigger>
-                <SelectContent>
-                  {properties?.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {defaultPropertyId ? (
+                <Input
+                  value={properties?.find((p) => p.id === defaultPropertyId)?.name ?? 'Assigned property'}
+                  disabled
+                />
+              ) : (
+                <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); if (errors.property) setErrors((x) => ({ ...x, property: false })); }}>
+                  <SelectTrigger className={cn(errors.property && "border-destructive")}><SelectValue placeholder="Select property" /></SelectTrigger>
+                  <SelectContent>
+                    {properties?.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Due date *</Label>
