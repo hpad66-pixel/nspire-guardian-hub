@@ -15,6 +15,7 @@ import {
   Calendar,
   DollarSign,
   Building,
+  Upload,
 } from 'lucide-react';
 import { useTenants, useTenantStats, type Tenant } from '@/hooks/useTenants';
 import { useManagedProperties } from '@/hooks/useProperties';
@@ -22,6 +23,13 @@ import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TenantDialog } from '@/components/occupancy/TenantDialog';
 import { TenantDetailSheet } from '@/components/occupancy/TenantDetailSheet';
+import { TenantImportDialog } from '@/components/occupancy/TenantImportDialog';
+import { OccupancyPmsSourceBanner } from '@/components/occupancy/OccupancyPmsSourceBanner';
+import { OccupancyPmsIntroCard } from '@/components/occupancy/OccupancyPmsIntroCard';
+import {
+  dismissOccupancyPmsIntro,
+  isOccupancyPmsIntroDismissed,
+} from '@/lib/occupancy/pmsSourceOfTruth';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import {
   Tooltip,
@@ -34,6 +42,8 @@ export default function OccupancyPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [introDismissed, setIntroDismissed] = useState(() => isOccupancyPmsIntroDismissed());
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -73,6 +83,19 @@ export default function OccupancyPage() {
     const movedOut = filteredTenants.filter(t => t.status === 'moved_out').length;
     return { total, active, noticeGiven, movedOut };
   }, [filteredTenants]);
+
+  const showIntro =
+    !introDismissed &&
+    !isLoading &&
+    !searchQuery &&
+    statusFilter === 'all' &&
+    (tenants?.length ?? 0) === 0;
+
+  const openImport = () => {
+    dismissOccupancyPmsIntro();
+    setIntroDismissed(true);
+    setImportDialogOpen(true);
+  };
 
   const handleTenantClick = (tenant: Tenant) => {
     setSelectedTenant(tenant);
@@ -128,179 +151,215 @@ export default function OccupancyPage() {
               </div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Occupancy</h1>
             </div>
-            <p className="text-sm text-muted-foreground">Manage tenants and lease information</p>
+            <p className="text-sm text-muted-foreground">
+              Reporting mirror of your Property Management Office — not a second leasing system
+            </p>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" onClick={() => setDialogOpen(true)} className="self-start sm:self-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Tenant
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add a new tenant to a unit</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* Stats */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <StatCard
-            title="Total Tenants"
-            value={selectedPropertyId ? filteredStats.total : (stats?.total || 0)}
-            subtitle="All tenants"
-            icon={Users}
-          />
-          <StatCard
-            title="Active"
-            value={selectedPropertyId ? filteredStats.active : (stats?.active || 0)}
-            subtitle="Currently residing"
-            icon={UserCheck}
-            variant="success"
-          />
-          <StatCard
-            title="Notice Given"
-            value={selectedPropertyId ? filteredStats.noticeGiven : (stats?.noticeGiven || 0)}
-            subtitle="Moving soon"
-            icon={AlertCircle}
-            variant="moderate"
-          />
-          <StatCard
-            title="Moved Out"
-            value={selectedPropertyId ? filteredStats.movedOut : (stats?.movedOut || 0)}
-            subtitle="Historical records"
-            icon={UserMinus}
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tenants, units, properties..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-wrap gap-2 self-start">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" variant="outline" onClick={openImport}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Import a CSV export from your PMO (one-way)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Tenant
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add a tenant manually for an edge case</TooltipContent>
+            </Tooltip>
           </div>
-          <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select property" />
-            </SelectTrigger>
-            <SelectContent>
-              {properties.map((property) => (
-                <SelectItem key={property.id} value={property.id}>
-                  {property.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="notice_given">Notice Given</SelectItem>
-              <SelectItem value="moved_out">Moved Out</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Tenants List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tenants</CardTitle>
-            <CardDescription>
-              {filteredTenants.length} tenant{filteredTenants.length !== 1 ? 's' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
+        {/* Always-visible source-of-truth note */}
+        <OccupancyPmsSourceBanner onImport={openImport} />
+
+        {showIntro ? (
+          <OccupancyPmsIntroCard
+            onImport={openImport}
+            onAddTenant={() => setDialogOpen(true)}
+          />
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+              <StatCard
+                title="Total Tenants"
+                value={selectedPropertyId ? filteredStats.total : (stats?.total || 0)}
+                subtitle="All tenants"
+                icon={Users}
+              />
+              <StatCard
+                title="Active"
+                value={selectedPropertyId ? filteredStats.active : (stats?.active || 0)}
+                subtitle="Currently residing"
+                icon={UserCheck}
+                variant="success"
+              />
+              <StatCard
+                title="Notice Given"
+                value={selectedPropertyId ? filteredStats.noticeGiven : (stats?.noticeGiven || 0)}
+                subtitle="Moving soon"
+                icon={AlertCircle}
+                variant="moderate"
+              />
+              <StatCard
+                title="Moved Out"
+                value={selectedPropertyId ? filteredStats.movedOut : (stats?.movedOut || 0)}
+                subtitle="Historical records"
+                icon={UserMinus}
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-4 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tenants, units, properties..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-            ) : filteredTenants.length > 0 ? (
-              <div className="space-y-3">
-                {filteredTenants.map((tenant) => (
-                  <div 
-                    key={tenant.id}
-                    onClick={() => handleTenantClick(tenant)}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {tenant.first_name.charAt(0)}{tenant.last_name.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{tenant.first_name} {tenant.last_name}</p>
-                          {getStatusBadge(tenant.status)}
-                          {getLeaseStatus(tenant)}
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          {tenant.email && <span>{tenant.email}</span>}
-                          {tenant.phone && <span>• {tenant.phone}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Building className="h-4 w-4 text-muted-foreground" />
-                          <span>{tenant.unit?.property?.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Home className="h-4 w-4" />
-                          <span>Unit {tenant.unit?.unit_number}</span>
-                        </div>
-                      </div>
-                      <div className="text-right min-w-[120px]">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {format(parseISO(tenant.lease_start), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                        {tenant.rent_amount && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <DollarSign className="h-4 w-4" />
-                            <span>{tenant.rent_amount.toLocaleString()}/mo</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="notice_given">Notice Given</SelectItem>
+                  <SelectItem value="moved_out">Moved Out</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tenants List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tenants</CardTitle>
+                <CardDescription>
+                  {filteredTenants.length} tenant{filteredTenants.length !== 1 ? 's' : ''} · synced for reporting from your PMO
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="font-medium">No tenants found</p>
-                <p className="text-sm text-muted-foreground">
-                  {searchQuery || statusFilter !== 'all' 
-                    ? 'Try adjusting your filters'
-                    : 'Add your first tenant to get started'}
-                </p>
-                {!searchQuery && statusFilter === 'all' && (
-                  <Button className="mt-4" onClick={() => setDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Tenant
-                  </Button>
+                ) : filteredTenants.length > 0 ? (
+                  <div className="space-y-3">
+                    {filteredTenants.map((tenant) => (
+                      <div 
+                        key={tenant.id}
+                        onClick={() => handleTenantClick(tenant)}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-accent/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-medium text-primary">
+                              {tenant.first_name.charAt(0)}{tenant.last_name.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{tenant.first_name} {tenant.last_name}</p>
+                              {getStatusBadge(tenant.status)}
+                              {getLeaseStatus(tenant)}
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              {tenant.email && <span>{tenant.email}</span>}
+                              {tenant.phone && <span>• {tenant.phone}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Building className="h-4 w-4 text-muted-foreground" />
+                              <span>{tenant.unit?.property?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Home className="h-4 w-4" />
+                              <span>Unit {tenant.unit?.unit_number}</span>
+                            </div>
+                          </div>
+                          <div className="text-right min-w-[120px]">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>
+                                {format(parseISO(tenant.lease_start), 'MMM d, yyyy')}
+                              </span>
+                            </div>
+                            {tenant.rent_amount && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <DollarSign className="h-4 w-4" />
+                                <span>{tenant.rent_amount.toLocaleString()}/mo</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="font-medium">No tenants found</p>
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery || statusFilter !== 'all' 
+                        ? 'Try adjusting your filters'
+                        : 'Import a CSV from your Property Management system, or add a tenant'}
+                    </p>
+                    {!searchQuery && statusFilter === 'all' && (
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <Button onClick={openImport}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Import from PMO
+                        </Button>
+                        <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Tenant
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <TenantDialog
           open={dialogOpen}
           onOpenChange={handleDialogClose}
           tenant={editingTenant}
+        />
+
+        <TenantImportDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
         />
 
         <TenantDetailSheet

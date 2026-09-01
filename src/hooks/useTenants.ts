@@ -165,3 +165,41 @@ export function useDeleteTenant() {
     },
   });
 }
+
+/** One-way PMO → ProjOS bulk insert (does not write back to the PMO). */
+export function useBulkCreateTenants() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      tenants: Omit<Tenant, 'id' | 'created_at' | 'updated_at' | 'unit'>[],
+    ) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const batchSize = 100;
+      const results: Tenant[] = [];
+
+      for (let i = 0; i < tenants.length; i += batchSize) {
+        const batch = tenants.slice(i, i + batchSize).map((t) => ({
+          ...t,
+          created_by: t.created_by ?? user?.id ?? null,
+        }));
+        const { data, error } = await supabase
+          .from('tenants')
+          .insert(batch)
+          .select();
+
+        if (error) throw error;
+        results.push(...((data || []) as Tenant[]));
+      }
+
+      return results;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      toast.success(`Imported ${data.length} tenant${data.length === 1 ? '' : 's'} from your PMO`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to import tenants: ${error.message}`);
+    },
+  });
+}
