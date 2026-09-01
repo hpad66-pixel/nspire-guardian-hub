@@ -221,3 +221,7 @@ verify_jwt = true
 # Authenticated fan-out for assignment/comment/status mobile push notices.
 [functions.project-task-notify]
 verify_jwt = true
+
+# Permit phone OCR — authenticated; Claude vision extracts permit fields
+[functions.extract-permit]
+verify_jwt = true

@@ -14,6 +14,8 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'invoicing')).toBeTruthy();
     expect(items.find((i) => i.value === 'directory')).toBeTruthy();
     expect(items.find((i) => i.value === 'admin')).toBeTruthy();
+    // Permits available on consulting for phone OCR / closeout
+    expect(items.find((i) => i.value === 'permits')).toBeTruthy();
     // Field construction modules hidden by default
     expect(items.find((i) => i.value === 'rfis')).toBeFalsy();
     expect(items.find((i) => i.value === 'safety')).toBeFalsy();

@@ -23,6 +23,12 @@ export interface ProjectPermit {
   closed_on: string | null;
   client_visible: boolean;
   sort_order: number;
+  photo_url?: string | null;
+  photo_path?: string | null;
+  notation?: string | null;
+  document_id?: string | null;
+  ocr_extracted?: Record<string, unknown> | null;
+  scanned_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +88,12 @@ export function useProjectPermits(
           next_action: input.next_action ?? null,
           client_visible: input.client_visible ?? true,
           sort_order: input.sort_order ?? 0,
+          photo_url: input.photo_url ?? null,
+          photo_path: input.photo_path ?? null,
+          notation: input.notation ?? null,
+          document_id: input.document_id ?? null,
+          ocr_extracted: input.ocr_extracted ?? null,
+          scanned_at: input.scanned_at ?? null,
           created_by: auth?.user?.id ?? null,
         })
         .select('*')

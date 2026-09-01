@@ -244,6 +244,10 @@ export function AppSidebar() {
                 {isModuleEnabled('dailyGroundsEnabled') && canView('inspections') && (
                   <NavItem to="/inspections/daily" icon={Sun} label="Daily Grounds" collapsed={collapsed} />
                 )}
+                {/* Daily Reports lives with inspections so conduct → view is one bucket */}
+                {isModuleEnabled('reportsEnabled') && (canView('reports') || isAdmin) && (
+                  <NavItem to="/daily-reports" icon={ClipboardList} label="Daily Reports" collapsed={collapsed} />
+                )}
                 {canView('issues') && (
                   <NavItem to="/issues" icon={AlertTriangle} label="Issues" collapsed={collapsed} badge={openIssueCount} />
                 )}
@@ -295,7 +299,8 @@ export function AppSidebar() {
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
           </div>
 
-          {/* ─── Insights ─── */}
+          {/* ─── Insights (archive / analyze). Daily Reports lives under Property Mgmt
+              when that suite is on; otherwise keep it here so it never disappears. ─── */}
           {isModuleEnabled('reportsEnabled') && (canView('documents') || canView('reports') || isAdmin) && (
             <>
               <SectionLabel label="Insights" collapsed={collapsed} />
@@ -303,7 +308,7 @@ export function AppSidebar() {
                 {canView('reports') && (
                   <NavItem to="/reports" icon={BarChart3} label="Reports" collapsed={collapsed} />
                 )}
-                {(canView('reports') || isAdmin) && (
+                {!isModuleEnabled('propertyMgmtEnabled') && (canView('reports') || isAdmin) && (
                   <NavItem to="/daily-reports" icon={ClipboardList} label="Daily Reports" collapsed={collapsed} />
                 )}
                 {canView('documents') && (

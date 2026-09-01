@@ -1036,7 +1036,7 @@ export default function ProjectDetailPage() {
                 <TabsContent value="procurement" className="mt-0"><ProcurementTab projectId={id!} /></TabsContent>
                 <TabsContent value="safety" className="mt-0"><SafetyTab projectId={id!} /></TabsContent>
                 <TabsContent value="env-compliance" className="mt-0"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
-                <TabsContent value="permits" className="mt-0"><ProjectPermitsTab projectId={id!} projectName={project.name} /></TabsContent>
+                <TabsContent value="permits" className="mt-0"><ProjectPermitsTab projectId={id!} projectName={project.name} clientId={project.client_id ?? project.client?.id ?? null} /></TabsContent>
                 <TabsContent value="site-map" className="mt-0"><ProjectSiteMapTab projectId={id!} variant="full" /></TabsContent>
                 <TabsContent value="stores" className="mt-0"><ProjectStoresTab projectId={id!} projectName={project.name} /></TabsContent>
                 <TabsContent value="voice-agent" className="mt-0"><ProjectVoiceAgentTab projectId={id!} projectName={project.name} /></TabsContent>
@@ -1329,7 +1329,7 @@ export default function ProjectDetailPage() {
               <TabsContent value="procurement"><ProcurementTab projectId={id!} /></TabsContent>
               <TabsContent value="safety"><SafetyTab projectId={id!} /></TabsContent>
               <TabsContent value="env-compliance"><EnvComplianceTab projectId={id!} project={project} /></TabsContent>
-              <TabsContent value="permits"><ProjectPermitsTab projectId={id!} projectName={project.name} /></TabsContent>
+              <TabsContent value="permits"><ProjectPermitsTab projectId={id!} projectName={project.name} clientId={project.client_id ?? project.client?.id ?? null} /></TabsContent>
               <TabsContent value="site-map"><ProjectSiteMapTab projectId={id!} variant="full" /></TabsContent>
               <TabsContent value="stores"><ProjectStoresTab projectId={id!} projectName={project.name} /></TabsContent>
               <TabsContent value="voice-agent"><ProjectVoiceAgentTab projectId={id!} projectName={project.name} /></TabsContent>

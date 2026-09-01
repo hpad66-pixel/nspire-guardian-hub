@@ -160,6 +160,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'subprojects',
   'directory',
   'env-compliance',
+  'permits',
   'scope',
   'action-items',
   'schedule',
@@ -186,6 +187,8 @@ export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<P
 ]);
 
 // Construction field modules — hidden by default on consulting/client.
+// Note: `permits` is available on consulting too (phone OCR / closeout), so it
+// is NOT in this set — see CONSULTING_DEFAULT_MODULES.
 export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'daily-logs',
   'rfis',
@@ -194,7 +197,6 @@ export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'progress',
   'procurement',
   'safety',
-  'permits',
   'site-map',
   'closeout',
 ]);

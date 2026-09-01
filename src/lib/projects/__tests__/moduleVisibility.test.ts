@@ -112,10 +112,10 @@ describe('moduleVisibility', () => {
     expect(enabled.has('schedule')).toBe(false);
   });
 
-  it('surfaces permits on the owner portal when the construction module is on', () => {
+  it('surfaces permits on construction and consulting by default', () => {
     const enabled = portalModulesForProject({ project_type: 'property' });
     expect(enabled.has('permits')).toBe(true);
-    expect(defaultModuleVisible('permits', 'consulting')).toBe(false);
+    expect(defaultModuleVisible('permits', 'consulting')).toBe(true);
     expect(defaultModuleVisible('permits', 'property')).toBe(true);
   });
 
@@ -126,10 +126,11 @@ describe('moduleVisibility', () => {
     expect(cfg.overview).toBe(true); // locked
   });
 
-  it('consulting-lean preset hides field modules', () => {
+  it('consulting-lean preset hides field modules but keeps permits', () => {
     const cfg = MODULE_PRESETS.find((p) => p.id === 'consulting-lean')!.apply('consulting');
     expect(cfg.safety).toBe(false);
     expect(cfg.procurement).toBe(false);
+    expect(cfg.permits).toBe(true);
     expect(cfg.invoicing).toBe(true);
     expect(cfg.directory).toBe(true);
   });

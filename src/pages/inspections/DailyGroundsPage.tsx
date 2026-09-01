@@ -19,6 +19,7 @@ import { format, parseISO } from 'date-fns';
 import { Download, Printer, Mail, FileText, PlusCircle, Loader2, CheckCircle2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
+import { FieldReportsStrip } from '@/components/property/FieldReportsStrip';
 
 export default function DailyGroundsPage() {
   // ── All hooks at the top level, before any early returns ──
@@ -170,6 +171,9 @@ export default function DailyGroundsPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <div className="px-4 pt-3 max-w-2xl mx-auto w-full">
+        <FieldReportsStrip highlight="grounds" />
+      </div>
       {/* Property switcher when multiple */}
       {properties.length > 1 && (
         <div className="px-4 pt-3 pb-0 max-w-2xl mx-auto w-full">

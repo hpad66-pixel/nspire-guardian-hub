@@ -28,6 +28,7 @@ import { InspectionWizard } from '@/components/inspections/InspectionWizard';
 import { ComplianceDashboard } from '@/components/inspections/ComplianceDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { FieldReportsStrip } from '@/components/property/FieldReportsStrip';
 
 export default function InspectionsDashboard() {
   const navigate = useNavigate();
@@ -80,6 +81,8 @@ export default function InspectionsDashboard() {
           </Button>
         )}
       </div>
+
+      <FieldReportsStrip highlight="nspire" />
 
       {/* Property filter banner */}
       {filteredProperty && (

@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Building2,
+  Camera,
   CheckCircle2,
   ClipboardList,
   Copy,
@@ -32,6 +33,8 @@ import {
   applyPermitAnalyticsFilter,
   type PermitAnalyticsFilter,
 } from '@/components/projects/permits/PermitAnalyticsCharts';
+import { ScanPermitDialog } from '@/components/permits/ScanPermitDialog';
+import { PermitScanGallery } from '@/components/permits/PermitScanGallery';
 import { useProjectPermits, type ProjectPermit } from '@/hooks/useProjectPermits';
 import {
   PERMIT_STATUS_LABEL,
@@ -96,14 +99,17 @@ function PermitPipelineDots({ status }: { status: string }) {
 export function ProjectPermitsTab({
   projectId,
   projectName,
+  clientId,
 }: {
   projectId: string;
   projectName?: string | null;
+  clientId?: string | null;
 }) {
   const { data: permits = [], isLoading, update } = useProjectPermits(projectId);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'pending' | 'closed' | 'blocked'>('all');
   const [chartFilter, setChartFilter] = useState<PermitAnalyticsFilter>({ type: 'all' });
+  const [scanOpen, setScanOpen] = useState(false);
 
   const readiness = useMemo(() => permitReadiness(permits), [permits]);
   const owners = useMemo(() => groupOpenByOwner(permits), [permits]);
@@ -170,7 +176,15 @@ export function ProjectPermitsTab({
               Open → City wait → Closed, and use the charts below to focus the chase.
             </p>
           </div>
-          <div className="flex items-end gap-4">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+            <Button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              className="bg-white text-[#0D3B30] hover:bg-emerald-50 font-semibold shadow-md"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Scan permit
+            </Button>
             <div>
               <div className="text-5xl font-bold tabular-nums leading-none">{readiness.percent}%</div>
               <div className="mt-1 text-sm font-medium text-emerald-100">{readiness.label}</div>
@@ -256,6 +270,13 @@ export function ProjectPermitsTab({
           </button>
         ))}
       </div>
+
+      {/* Photo tiles from phone OCR scans */}
+      <PermitScanGallery
+        projectId={projectId}
+        clientId={clientId}
+        emptyHint="Scan a permit from your phone — tiles with photo + notation show up here."
+      />
 
       {/* Interactive analytics */}
       <PermitAnalyticsCharts
@@ -479,6 +500,14 @@ export function ProjectPermitsTab({
           })
         )}
       </div>
+
+      <ScanPermitDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        scope="project"
+        projectId={projectId}
+        clientId={clientId}
+      />
     </div>
   );
 }

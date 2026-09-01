@@ -22,6 +22,7 @@ import { PrintableProjectDailyReport } from '@/components/projects/PrintableProj
 import { DailyReviewSeal, DailyReviewBadge } from '@/components/projects/DailyReviewSeal';
 import { DailyReportActionItems } from '@/components/projects/DailyReportActionItems';
 import { useOpenActionItemCounts } from '@/hooks/useDailyReportActionItems';
+import { FieldReportsStrip } from '@/components/property/FieldReportsStrip';
 import { generatePDF, printReport } from '@/lib/generatePDF';
 
 const safeDate = (d: unknown) => new Date(String(d ?? '').slice(0, 10) + 'T12:00:00');
@@ -99,7 +100,9 @@ export default function DailyReportsHubPage() {
         <FileText className="h-6 w-6 text-[var(--apas-sapphire)]" />
         <h1 className="text-3xl font-bold">Daily Field Reports</h1>
       </div>
-      <p className="text-muted-foreground mb-6">Every project's daily field reports in one place. Open a project's Daily Logs to create one.</p>
+      <p className="text-muted-foreground mb-4">Every project's daily field reports in one place. Open a project's Daily Logs to create one.</p>
+
+      <FieldReportsStrip highlight="daily-reports" className="mb-6" />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">

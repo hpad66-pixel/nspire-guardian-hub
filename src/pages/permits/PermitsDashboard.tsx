@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Plus, Search, Filter } from 'lucide-react';
+import { Shield, Plus, Search, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,9 +12,10 @@ import {
 } from '@/components/ui/select';
 import { usePermits, usePermitStats } from '@/hooks/usePermits';
 import { useProperties } from '@/hooks/useProperties';
-import { useRequirementsByPermit } from '@/hooks/usePermitRequirements';
 import { PermitCard } from '@/components/permits/PermitCard';
 import { PermitDialog } from '@/components/permits/PermitDialog';
+import { ScanPermitDialog } from '@/components/permits/ScanPermitDialog';
+import { PermitScanGallery } from '@/components/permits/PermitScanGallery';
 import { ComplianceStats } from '@/components/permits/ComplianceStats';
 
 const permitTypes = [
@@ -47,6 +48,7 @@ export default function PermitsDashboard() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const { data: permits, isLoading: permitsLoading } = usePermits();
   const { data: stats, isLoading: statsLoading } = usePermitStats();
@@ -98,14 +100,24 @@ export default function PermitsDashboard() {
             Track regulatory requirements and deadlines
           </p>
         </div>
-        <Button size="sm" onClick={() => setIsDialogOpen(true)} className="self-start sm:self-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Permit
-        </Button>
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          <Button size="sm" variant="outline" onClick={() => setScanOpen(true)}>
+            <Camera className="h-4 w-4 mr-2" />
+            Scan permit
+          </Button>
+          <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Permit
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
       <ComplianceStats stats={stats} isLoading={statsLoading} onSelectStatus={setStatusFilter} />
+
+      <PermitScanGallery
+        emptyHint="Scan a property permit from your phone — tiles group by client or project."
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -198,6 +210,13 @@ export default function PermitsDashboard() {
       <PermitDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
+      />
+      <ScanPermitDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        scope="property"
+        propertyId={propertyFilter || properties[0]?.id || null}
+        properties={properties.map((p) => ({ id: p.id, name: p.name }))}
       />
     </div>
   );
