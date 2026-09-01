@@ -375,13 +375,15 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
             subtitle="Email inbox"
             onClick={() => go('/inbox')}
           />
-          <DrawerTile
-            icon={<Phone className={iconClass} />}
-            iconBg={commIconBg}
-            title="Voice Agent"
-            subtitle="AI call center"
-            onClick={() => go('/voice-agent')}
-          />
+          {isModuleEnabled('aiEnabled') && (
+            <DrawerTile
+              icon={<Phone className={iconClass} />}
+              iconBg={commIconBg}
+              title="Voice Complaints"
+              subtitle="ElevenLabs resident hotline"
+              onClick={() => go('/voice-agent')}
+            />
+          )}
           <DrawerTile
             icon={<Lightbulb className={iconClass} />}
             iconBg={commIconBg}

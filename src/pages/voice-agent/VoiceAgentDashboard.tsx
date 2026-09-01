@@ -93,13 +93,16 @@ export default function VoiceAgentDashboard() {
                   <Phone className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Voice Agent Console</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">Voice Complaints</h1>
                   <p className="text-muted-foreground mt-1">
-                    AI-powered maintenance request handling
+                    ElevenLabs resident maintenance hotline — take a test call, review tickets, open work orders
                   </p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
+                <span className="text-xs rounded-full border border-sky-300 bg-sky-50 px-2 py-1 font-medium text-sky-900">
+                  Powered by ElevenLabs
+                </span>
                 <span className="text-xs rounded-full border px-2 py-1 text-muted-foreground">
                   Total requests: <span className="text-foreground font-medium">{requestCounts.total}</span>
                 </span>
