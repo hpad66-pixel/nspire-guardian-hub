@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VoiceAgentStats } from '@/components/voice-agent/VoiceAgentStats';
 import { VoiceAgentWidget } from '@/components/voice-agent/VoiceAgentWidget';
 import { VoiceLiveFeed } from '@/components/voice-agent/VoiceLiveFeed';
+import { VoiceResidentEducation } from '@/components/voice-agent/VoiceResidentEducation';
 import { RequestQueue } from '@/components/voice-agent/RequestQueue';
 import { RequestDetailSheet } from '@/components/voice-agent/RequestDetailSheet';
 import { EmergencyAlertBanner } from '@/components/voice-agent/EmergencyAlertBanner';
@@ -179,6 +180,8 @@ export default function VoiceAgentDashboard() {
       </Card>
 
       <VoiceAgentStats live={liveMode} />
+
+      <VoiceResidentEducation />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
