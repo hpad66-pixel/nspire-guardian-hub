@@ -252,9 +252,17 @@ export function AppSidebar() {
                 {isModuleEnabled('trainingHubEnabled') && (
                   <NavItem to="/training" icon={GraduationCap} label="Training" collapsed={collapsed} />
                 )}
-                {isModuleEnabled('aiEnabled') && (
-                  <NavItem to="/voice-agent" icon={Phone} label="Voice Agent" collapsed={collapsed} />
-                )}
+              </div>
+            </>
+          )}
+
+          {/* Voice complaints — ElevenLabs hotline (visible when AI is on, even
+              without the full Property Management package). */}
+          {isModuleEnabled('aiEnabled') && (
+            <>
+              <SectionLabel label="Resident Voice" collapsed={collapsed} />
+              <div className="space-y-px">
+                <NavItem to="/voice-agent" icon={Phone} label="Voice Complaints" collapsed={collapsed} />
               </div>
             </>
           )}

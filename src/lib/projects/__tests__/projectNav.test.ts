@@ -31,6 +31,7 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'site-map')).toBeTruthy();
     // Stores is opt-in — hidden until Project Admin enables it
     expect(items.find((i) => i.value === 'stores')).toBeFalsy();
+    expect(items.find((i) => i.value === 'voice-agent')).toBeFalsy();
     expect(items.find((i) => i.value === 'pay-apps' as never)).toBeFalsy();
     expect(items.find((i) => i.value === 'financials')).toBeTruthy();
     // Admin tab only for admins
@@ -45,6 +46,14 @@ describe('projectNav', () => {
       isAdmin: true,
     });
     expect(items.find((i) => i.value === 'stores')).toBeTruthy();
+  });
+
+  it('shows Voice Complaints when the optional module is enabled', () => {
+    const { items } = getProjectNav({
+      project: { project_type: 'construction', module_config: { 'voice-agent': true } },
+      isAdmin: true,
+    });
+    expect(items.find((i) => i.value === 'voice-agent')?.label).toBe('Voice Complaints');
   });
 
   it('hides modules the admin turned off', () => {

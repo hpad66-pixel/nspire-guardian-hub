@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildOwnerStoresReport,
   buildStoresAiBrief,
   issuesByMonth,
   issuesByUnit,
   lowStockItems,
   onHandValue,
   orphanIssues,
+  predictiveFlags,
   repeatOffenders,
   spendByCategory,
   topMovedParts,
+  txnSpend,
   type StoresItemLike,
   type StoresTxnLike,
 } from '../storesAnalytics';
@@ -78,5 +81,41 @@ describe('storesAnalytics', () => {
     expect(brief).toContain('Glorieta Gardens');
     expect(brief).toContain('Faucet cartridge');
     expect(brief).toContain('B5-201');
+  });
+
+  it('falls back to unit_cost × qty when total_cost is missing', () => {
+    expect(txnSpend({
+      id: 'x', item_id: 'i1', transaction_type: 'used', quantity: -2, total_cost: null,
+      unit_cost: 10, transaction_date: '2026-07-01',
+    })).toBe(20);
+  });
+
+  it('flags predictive red flags and builds a printable owner report', () => {
+    const heavy: StoresTxnLike[] = [
+      ...txns,
+      {
+        id: 't5', item_id: 'i1', transaction_type: 'used', quantity: -1, total_cost: 18.5,
+        transaction_date: '2026-07-20', deployed_at: '2026-07-20', unit_label: 'B5-201',
+        linked_work_order_id: 'wo4',
+      },
+      {
+        id: 't6', item_id: 'i1', transaction_type: 'used', quantity: -1, total_cost: 18.5,
+        transaction_date: '2026-08-10', deployed_at: '2026-08-10', unit_label: 'B5-201',
+        linked_work_order_id: 'wo5',
+      },
+    ];
+    const flags = predictiveFlags(items, heavy);
+    expect(flags.some((f) => f.title.includes('B5-201'))).toBe(true);
+
+    const report = buildOwnerStoresReport({
+      propertyName: 'Glorieta Gardens',
+      projectName: 'Conveyance & Close-Out',
+      items,
+      txns: heavy,
+      workOrders: [{ id: 'wo1', title: 'Leak', status: 'completed' }],
+    });
+    expect(report).toContain('OWNER MATERIALS');
+    expect(report).toContain('RED FLAGS');
+    expect(report).toContain('Glorieta Gardens');
   });
 });

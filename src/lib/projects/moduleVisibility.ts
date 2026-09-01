@@ -20,6 +20,7 @@ export type ProjectModuleSlug =
   | 'permits'
   | 'site-map'
   | 'stores'
+  | 'voice-agent'
   | 'scope'
   | 'action-items'
   | 'schedule'
@@ -104,6 +105,12 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
     description: 'Optional stock room — receipts, work-order-gated issue, unit deployment, owner ops analytics',
     group: 'field',
     portalSlug: 'operations',
+  },
+  {
+    slug: 'voice-agent',
+    label: 'Voice complaints',
+    description: 'ElevenLabs tenant maintenance hotline — call intake → tickets → work orders',
+    group: 'field',
   },
   { slug: 'closeout', label: 'Closeout', description: 'Project closeout package', group: 'field' },
 
@@ -195,6 +202,7 @@ export const CONSTRUCTION_FIELD_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
 /** Opt-in modules — off for every project type until an admin enables them. */
 export const OPT_IN_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'stores',
+  'voice-agent',
 ]);
 
 /** Preset packs for one-click module configuration. */

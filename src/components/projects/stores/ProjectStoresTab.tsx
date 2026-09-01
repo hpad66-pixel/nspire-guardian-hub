@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ClipboardPlus,
   Copy,
+  FileText,
   Loader2,
   PackagePlus,
   RefreshCcw,
@@ -41,6 +42,7 @@ import {
   useProjectPropertyId,
   useReceiveMaterialReceipt,
   useResetStoresDemo,
+  useSeedStoresDemo,
   useStoresItems,
   useStoresReceipts,
   useStoresTransactions,
@@ -49,6 +51,7 @@ import {
   uploadStoresReceiptFile,
 } from '@/hooks/useProjectStores';
 import {
+  buildOwnerStoresReport,
   buildStoresAiBrief,
   issuesByMonth,
   issuesByTech,
@@ -57,11 +60,13 @@ import {
   money,
   onHandValue,
   orphanIssues,
+  predictiveFlags,
   repeatOffenders,
   spendByCategory,
   topMovedParts,
 } from '@/lib/stores/storesAnalytics';
 import { StoresAnalyticsCharts } from '@/components/projects/stores/StoresAnalyticsCharts';
+import { StoresOwnerReportDialog } from '@/components/projects/stores/StoresOwnerReportDialog';
 import { cn } from '@/lib/utils';
 import { toDateOnly } from '@/lib/date';
 
@@ -82,10 +87,12 @@ export function ProjectStoresTab({
   const { data: openWos = [] } = useOpenStoresWorkOrders(propertyId);
   const { isSuperAdmin } = useAiUsage('30d');
   const resetDemo = useResetStoresDemo();
+  const seedDemo = useSeedStoresDemo();
 
   const [issueOpen, setIssueOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [woOpen, setWoOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const loading = loadingProject || loadingItems || loadingTxns;
@@ -99,8 +106,16 @@ export function ProjectStoresTab({
     const byTech = issuesByTech(txns);
     const low = lowStockItems(items);
     const orphans = orphanIssues(txns);
+    const flags = predictiveFlags(items, txns);
     const brief = buildStoresAiBrief({
       propertyName: projectName,
+      items,
+      txns,
+      workOrders,
+    });
+    const report = buildOwnerStoresReport({
+      propertyName: projectName,
+      projectName,
       items,
       txns,
       workOrders,
@@ -114,9 +129,12 @@ export function ProjectStoresTab({
       byTech,
       low,
       orphans,
+      flags,
       brief,
+      report,
       onHand: onHandValue(items),
       issueCount: txns.filter((t) => t.transaction_type === 'used').length,
+      materialsSpend: money(byCategory.reduce((s, c) => s + c.spend, 0)),
     };
   }, [items, txns, workOrders, projectName]);
 
@@ -174,15 +192,50 @@ export function ProjectStoresTab({
             <Button size="sm" variant="outline" className="border-white/40 bg-white/10 text-white hover:bg-white/20" onClick={() => setWoOpen(true)}>
               New work order
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-200/60 bg-amber-400/20 text-white hover:bg-amber-400/30"
+              disabled={items.length === 0}
+              onClick={() => setReportOpen(true)}
+            >
+              <FileText className="mr-1.5 h-4 w-4" /> Simulate owner report
+            </Button>
           </div>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Kpi label="On-hand value" value={`$${analytics.onHand.toLocaleString()}`} />
           <Kpi label="SKUs / low stock" value={`${items.length} / ${analytics.low.length}`} warn={analytics.low.length > 0} />
           <Kpi label="Parts issued" value={String(analytics.issueCount)} />
+          <Kpi label="Materials spend" value={`$${analytics.materialsSpend.toLocaleString()}`} />
           <Kpi label="Open work orders" value={String(openWos.length)} />
         </div>
       </section>
+
+      {items.length === 0 && (
+        <Card className="border-amber-300 bg-amber-50/50">
+          <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-semibold text-amber-950">No stock room data yet</h3>
+              <p className="text-sm text-amber-900/80">
+                Load a 6-month Glorieta demo (catalog, Home Depot receipts, WO-gated issues, red flags) so analytics and the owner report light up.
+              </p>
+            </div>
+            {isSuperAdmin ? (
+              <Button
+                className="bg-[#0D3B30] hover:bg-[#0D3B30]/90"
+                disabled={seedDemo.isPending}
+                onClick={() => seedDemo.mutate({ propertyId, projectId })}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {seedDemo.isPending ? 'Seeding…' : 'Load 6-month demo'}
+              </Button>
+            ) : (
+              <p className="text-xs text-amber-900">Ask a super-admin to load demo data.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800">
@@ -190,23 +243,40 @@ export function ProjectStoresTab({
         </Badge>
         <Badge variant="outline">{receipts.length} receipts</Badge>
         <Badge variant="outline">{units.length} units</Badge>
+        {analytics.flags.length > 0 && (
+          <Badge className="bg-rose-600">{analytics.flags.length} red flags</Badge>
+        )}
         {analytics.orphans.length > 0 && (
           <Badge variant="destructive">{analytics.orphans.length} orphan issues (control gap)</Badge>
         )}
         {isSuperAdmin && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto text-rose-700"
-            disabled={resetDemo.isPending}
-            onClick={() => {
-              if (confirm('Reset all demo stores data for this property? Live non-demo rows are kept.')) {
-                resetDemo.mutate(propertyId);
-              }
-            }}
-          >
-            <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> Reset demo data
-          </Button>
+          <div className="ml-auto flex flex-wrap gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={seedDemo.isPending}
+              onClick={() => {
+                if (confirm('Reload 6-month demo data? Existing demo rows for this property will be replaced.')) {
+                  seedDemo.mutate({ propertyId, projectId });
+                }
+              }}
+            >
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Load / refresh demo
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-rose-700"
+              disabled={resetDemo.isPending}
+              onClick={() => {
+                if (confirm('Reset all demo stores data for this property? Live non-demo rows are kept.')) {
+                  resetDemo.mutate(propertyId);
+                }
+              }}
+            >
+              <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> Reset demo data
+            </Button>
+          </div>
         )}
       </div>
 
@@ -221,6 +291,30 @@ export function ProjectStoresTab({
         </TabsList>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
+          {analytics.flags.length > 0 && (
+            <Card className="border-rose-200 bg-rose-50/40">
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center gap-2 text-rose-800">
+                  <AlertTriangle className="h-4 w-4" />
+                  <h3 className="font-semibold">Red flags & predictive actions</h3>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {analytics.flags.map((f) => (
+                    <div key={f.id} className="rounded-xl border bg-white/80 p-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Badge className={f.severity === 'critical' ? 'bg-rose-600' : f.severity === 'watch' ? 'bg-amber-500' : 'bg-emerald-700'}>
+                          {f.severity}
+                        </Badge>
+                        <p className="font-medium leading-tight">{f.title}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{f.detail}</p>
+                      <p className="mt-2 text-xs font-medium text-[#0D3B30]">→ {f.recommendation}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <StoresAnalyticsCharts
             byCategory={analytics.byCategory}
             byMonth={analytics.byMonth}
@@ -346,12 +440,20 @@ export function ProjectStoresTab({
           ))}
         </TabsContent>
 
-        <TabsContent value="brief" className="mt-4">
+        <TabsContent value="brief" className="mt-4 space-y-3">
           <Card className="border-[#0D3B30]/20">
             <CardContent className="space-y-3 p-5">
-              <div className="flex items-center gap-2 text-[#0D3B30]">
+              <div className="flex flex-wrap items-center gap-2 text-[#0D3B30]">
                 <Sparkles className="h-4 w-4" />
                 <h3 className="font-semibold">AI monthly materials brief</h3>
+                <Button
+                  size="sm"
+                  className="ml-auto bg-[#0D3B30] hover:bg-[#0D3B30]/90"
+                  disabled={items.length === 0}
+                  onClick={() => setReportOpen(true)}
+                >
+                  <FileText className="mr-1.5 h-3.5 w-3.5" /> Simulate owner report
+                </Button>
               </div>
               <pre className="whitespace-pre-wrap rounded-xl bg-muted/50 p-4 text-sm leading-relaxed">{analytics.brief}</pre>
               <Button
@@ -368,6 +470,13 @@ export function ProjectStoresTab({
           </Card>
         </TabsContent>
       </Tabs>
+
+      <StoresOwnerReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        report={analytics.report}
+        flags={analytics.flags}
+      />
 
       <IssueDialog
         open={issueOpen}

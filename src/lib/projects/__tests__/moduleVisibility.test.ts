@@ -35,7 +35,9 @@ describe('moduleVisibility', () => {
   it('keeps Stores opt-in until Project Admin enables it', () => {
     expect(defaultModuleVisible('stores', 'property')).toBe(false);
     expect(defaultModuleVisible('stores', 'consulting')).toBe(false);
+    expect(defaultModuleVisible('voice-agent', 'construction')).toBe(false);
     expect(isModuleVisible({ project_type: 'property', module_config: { stores: true } }, 'stores')).toBe(true);
+    expect(isModuleVisible({ project_type: 'construction', module_config: { 'voice-agent': true } }, 'voice-agent')).toBe(true);
     const portal = portalModulesForProject({ project_type: 'property', module_config: { stores: true } });
     expect(portal.has('operations')).toBe(true);
   });

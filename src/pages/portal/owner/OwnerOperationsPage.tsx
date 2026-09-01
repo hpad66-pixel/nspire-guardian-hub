@@ -2,13 +2,15 @@
  * Owner portal — Stores / maintenance operations (high-level).
  * Shows trends, top repairs, repeat offenders — not the full stock cage.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Package, ShieldCheck, Sparkles, Warehouse } from 'lucide-react';
+import { FileText, Loader2, Package, ShieldCheck, Sparkles, Warehouse } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useClientPortalProject, useOwnerPortalHref } from '@/components/portal/ClientPortalProjectContext';
 import { StoresAnalyticsCharts } from '@/components/projects/stores/StoresAnalyticsCharts';
+import { StoresOwnerReportDialog } from '@/components/projects/stores/StoresOwnerReportDialog';
 import {
   useProjectPropertyId,
   useStoresItems,
@@ -16,12 +18,14 @@ import {
   useStoresWorkOrders,
 } from '@/hooks/useProjectStores';
 import {
+  buildOwnerStoresReport,
   buildStoresAiBrief,
   issuesByMonth,
   issuesByUnit,
   lowStockItems,
   money,
   onHandValue,
+  predictiveFlags,
   repeatOffenders,
   spendByCategory,
   topMovedParts,
@@ -36,6 +40,7 @@ export default function OwnerOperationsPage() {
   const { data: items = [], isLoading: loadingItems } = useStoresItems(propertyId);
   const { data: txns = [], isLoading: loadingTxns } = useStoresTransactions(propertyId);
   const { data: workOrders = [] } = useStoresWorkOrders(propertyId);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const view = useMemo(() => {
     const byCategory = spendByCategory(items, txns);
@@ -43,7 +48,15 @@ export default function OwnerOperationsPage() {
     const topParts = topMovedParts(items, txns, 8);
     const byUnit = issuesByUnit(txns, 10);
     const repeats = repeatOffenders(items, txns, 2);
+    const flags = predictiveFlags(items, txns);
     const brief = buildStoresAiBrief({ propertyName: projectName, items, txns, workOrders });
+    const report = buildOwnerStoresReport({
+      propertyName: projectName,
+      projectName,
+      items,
+      txns,
+      workOrders,
+    });
     const closed = workOrders.filter((w) => ['completed', 'verified', 'closed'].includes(w.status)).length;
     return {
       byCategory,
@@ -51,7 +64,9 @@ export default function OwnerOperationsPage() {
       topParts,
       byUnit,
       repeats,
+      flags,
       brief,
+      report,
       onHand: onHandValue(items),
       low: lowStockItems(items).length,
       closed,
@@ -72,9 +87,16 @@ export default function OwnerOperationsPage() {
             Transparent maintenance for {projectName} — what was repaired, where, and how often. Every part ties to a work order.
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-          <ShieldCheck className="h-4 w-4" /> Work-order controlled
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+            <ShieldCheck className="h-4 w-4" /> Work-order controlled
+          </span>
+          {items.length > 0 && (
+            <Button size="sm" className="bg-[#0D3B30] hover:bg-[#0D3B30]/90" onClick={() => setReportOpen(true)}>
+              <FileText className="mr-1.5 h-4 w-4" /> Simulate owner report
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -116,6 +138,21 @@ export default function OwnerOperationsPage() {
             </div>
           </section>
 
+          {view.flags.length > 0 && (
+            <Card className="border-rose-200 bg-rose-50/40">
+              <CardContent className="space-y-2 p-4">
+                <p className="text-sm font-semibold text-rose-800">Red flags the owner should see</p>
+                <div className="flex flex-wrap gap-2">
+                  {view.flags.map((f) => (
+                    <Badge key={f.id} className={f.severity === 'critical' ? 'bg-rose-600' : f.severity === 'watch' ? 'bg-amber-500' : 'bg-emerald-700'}>
+                      {f.title}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <StoresAnalyticsCharts
             byCategory={view.byCategory}
             byMonth={view.byMonth}
@@ -136,6 +173,13 @@ export default function OwnerOperationsPage() {
               </pre>
             </CardContent>
           </Card>
+
+          <StoresOwnerReportDialog
+            open={reportOpen}
+            onOpenChange={setReportOpen}
+            report={view.report}
+            flags={view.flags}
+          />
         </>
       )}
     </div>
