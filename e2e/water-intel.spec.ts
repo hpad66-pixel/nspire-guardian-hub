@@ -100,7 +100,8 @@ test("magic link page mounts for an unknown token", async ({ page }) => {
 });
 
 test("WASD statement backups are served for quick view", async ({ page }) => {
-  await page.goto("/water-bills/");
+  // Explicit .html paths — Vite's SPA fallback swallows `/water-bills/`.
+  await page.goto("/water-bills/index.html");
   await expect(page.getByText(/Glorieta Gardens/i)).toBeVisible();
   await expect(page.getByText("122,667.65")).toBeVisible();
   await page.goto("/water-bills/2745714336-2026-06.html");
