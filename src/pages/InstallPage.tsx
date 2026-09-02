@@ -19,7 +19,7 @@ const androidSteps = [
 
 export default function InstallPage() {
   return (
-    <div className="flex min-h-dvh flex-col overflow-x-clip bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
         <div className="flex min-w-0 items-center gap-3">

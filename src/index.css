@@ -421,18 +421,32 @@
 
 /* ── Mobile / PWA ergonomics (safe, global) ──────────────────────────────────
    Keep iOS from inflating text in landscape, never let media overflow its box,
-   give horizontal scroll regions momentum, and use a subtle tap highlight. */
+   give horizontal scroll regions momentum, and use a subtle tap highlight.
+
+   Document scroll: overflow-x clip/hidden on BOTH html and body (or on a
+   min-height flex shell) computes overflow-y to clip/auto. The nested
+   scrollport then deadlocks with flex-1 + min-h-dvh and the page cannot
+   scroll. Horizontal clipping lives on html only; body/#root/the app shell
+   stay overflow:visible so the document is the only vertical scroller. */
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 body {
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
+}
+#root {
+  min-height: 100dvh;
+  overflow: visible;
+}
+.apas-app-shell,
+.apas-app-shell main,
+.group\/sidebar-wrapper {
+  overflow: visible;
 }
 img,
 video,

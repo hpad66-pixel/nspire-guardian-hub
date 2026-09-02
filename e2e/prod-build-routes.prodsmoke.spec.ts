@@ -72,6 +72,27 @@ test.describe("production bundle mounts every high-risk route", () => {
       // We must not have been bounced to auth — that would mean the stub failed
       // and the route was never actually exercised.
       expect(new URL(page.url()).pathname, "auth stub failed — route not exercised").not.toMatch(/^\/auth/);
+
+      if (route.name === "dashboard") {
+        const overflow = await page.evaluate(() => {
+          const html = document.documentElement;
+          const body = document.body;
+          const shell = document.querySelector(".apas-app-shell");
+          const main = document.querySelector("[data-testid='app-main']");
+          return {
+            htmlY: getComputedStyle(html).overflowY,
+            bodyY: getComputedStyle(body).overflowY,
+            shellY: shell ? getComputedStyle(shell).overflowY : null,
+            mainY: main ? getComputedStyle(main).overflowY : null,
+          };
+        });
+        expect(["auto", "scroll", "visible"]).toContain(overflow.htmlY);
+        expect(overflow.htmlY).not.toBe("clip");
+        expect(overflow.bodyY).not.toBe("clip");
+        expect(overflow.bodyY).not.toBe("hidden");
+        expect(overflow.shellY).toBe("visible");
+        expect(overflow.mainY).toBe("visible");
+      }
     });
   }
 
