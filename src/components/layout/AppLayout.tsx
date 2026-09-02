@@ -152,7 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <>
       <PWAUpdateBanner />
       <SidebarProvider>
-        <div className="apas-app-shell flex min-h-dvh w-full max-w-[100vw] overflow-x-hidden">
+        <div className="apas-app-shell flex min-h-dvh w-full max-w-[100vw]">
           {/* Desktop sidebar — hidden on mobile/tablet */}
           <div className="hidden lg:block">
             <AppSidebar />
@@ -272,8 +272,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Main Content — bottom padding clears MobileNav (+ iPad secondary bar) */}
             <main
+              data-testid="app-main"
               className={cn(
-                'flex-1 overflow-x-hidden',
+                'flex-1',
                 showMobileNav && MOBILE_MAIN_PADDING_CLASS,
               )}
             >

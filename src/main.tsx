@@ -26,7 +26,9 @@ if (typeof window !== "undefined") {
 // and the new immediate-update-check (stale precache was hiding fresh deploys).
 // 2026-08-18: flush the pre-Product-Ideas chunk graph after the authenticated
 // header and feedback workspace shipped in the same release.
-const SW_CLEANUP_VERSION = "2026-08-18-product-ideas-flush";
+// 2026-09-02: flush so every client drops the overflow-x:clip shell that
+// trapped document scroll on every page.
+const SW_CLEANUP_VERSION = "2026-09-02-document-scroll-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {
