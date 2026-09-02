@@ -1,7 +1,7 @@
 ---
 name: proj-os
-description: Operate Proj OS CRM, projects, proposals, change orders, and client invoices safely.
-version: 1.1.0
+description: Operate Proj OS CRM, projects, client portal updates, proposals, change orders, and invoices from Telegram or other Hermes channels.
+version: 1.2.0
 author: APAS.AI
 metadata:
   hermes:
@@ -11,7 +11,9 @@ metadata:
 
 # Proj OS
 
-Use the Proj OS MCP tools to work with the shared CRM, authorized projects, proposals, change orders, and client invoices (pay apps).
+Use the Proj OS MCP tools from Telegram (or any Hermes channel) to work with the shared CRM, authorized projects, client portal briefings, proposals, change orders, and client invoices (pay apps).
+
+If tools are missing, tell the user to run `/reload-mcp` after `hermes mcp test proj_os`. Start a session with `proj_os_health` when connectivity is in doubt.
 
 ## Context rules
 
@@ -49,7 +51,16 @@ For “post an update to the client portal” or “publish a client briefing”
 4. Preview the briefing and confirm.
 5. Call `proj_os_create_client_update` with `status=published` to push it to the owner portal in one step, or create a draft then `proj_os_publish_client_update`.
 
-Published rows are what the owner/client portal shows. Drafts stay internal.
+Published rows are what the owner/client portal shows (`/owner-portal/.../updates` and the GC Client Updates page). Drafts stay internal.
+
+## Project record workflow
+
+For “update the project itself” (status, description, or scope — not the client portal):
+
+1. Resolve the project with `proj_os_search_projects`.
+2. Preview the field changes.
+3. Confirm, then call `proj_os_update_project`.
+4. If the user also wants the owner to see it, follow the client portal update workflow and publish.
 
 ## Contact workflow
 

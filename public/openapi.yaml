@@ -85,6 +85,26 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
+  /api-v1/projects/{id}:
+    patch:
+      tags: [projects]
+      summary: Update name, description, scope, or status on an authorized project
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                scope: { type: string }
+                status: { type: string, enum: [planning, active, on_hold, completed, closed] }
+      responses:
+        "200": { description: Updated project }
+
   /api-v1/commitments:
     get:
       tags: [commitments]

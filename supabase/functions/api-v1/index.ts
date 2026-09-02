@@ -80,7 +80,7 @@ serve(async (req) => {
   try {
     let response: Response;
     switch (resource) {
-      case "projects": response = await routeProjects(req.method, ctx, id, url); break;
+      case "projects": response = await routeProjects(req.method, ctx, id, req, url); break;
       case "contacts": response = await routeContacts(req.method, ctx, id, req, url); break;
       case "project-directory": response = await routeProjectDirectory(req.method, ctx, req, url); break;
       case "action-items": response = await routeActionItems(req.method, ctx, id, req, url); break;
@@ -119,15 +119,30 @@ function enforceRateLimit(client: ApiClient): Response | null {
   return json({ error: "rate_limit_exceeded" }, 429, { "Retry-After": String(Math.ceil((current.resetAt - now) / 1000)) });
 }
 
-async function routeProjects(method: string, ctx: RequestContext, id: string | undefined, url: URL) {
-  if (method !== "GET") throw new ApiError(405, "method_not_allowed");
-  if (id) return json({ data: await requireProject(ctx.tenantId, id) });
-  const projects = await listAuthorizedProjects(ctx.tenantId);
-  const q = cleanOptionalText(url.searchParams.get("q"), 120)?.toLowerCase();
-  const data = q
-    ? projects.filter((p: any) => projectSearchHaystack(p).includes(q))
-    : projects;
-  return json({ data: data.slice(0, boundedLimit(url, 100)) });
+async function routeProjects(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
+  if (method === "GET") {
+    if (id) return json({ data: await requireProject(ctx.tenantId, id) });
+    const projects = await listAuthorizedProjects(ctx.tenantId);
+    const q = cleanOptionalText(url.searchParams.get("q"), 120)?.toLowerCase();
+    const data = q
+      ? projects.filter((p: any) => projectSearchHaystack(p).includes(q))
+      : projects;
+    return json({ data: data.slice(0, boundedLimit(url, 100)) });
+  }
+
+  if (method === "PATCH" && id) {
+    requireActor(ctx);
+    await requireProject(ctx.tenantId, id);
+    const patch = pick(asObject(await req.json()), PROJECT_WRITE_FIELDS);
+    validateProject(patch);
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    const { data, error } = await admin.from("projects").update(patch)
+      .eq("id", id).select(PROJECT_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "project", id, "update", id);
+    return json({ data });
+  }
+  throw new ApiError(405, "method_not_allowed");
 }
 
 async function routeContacts(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
@@ -1006,6 +1021,19 @@ function validateClientUpdate(input: Record<string, any>) {
   }
 }
 
+function validateProject(input: Record<string, any>) {
+  if (input.status && !["planning", "active", "on_hold", "completed", "closed"].includes(input.status)) {
+    throw new ApiError(400, "invalid_project_status");
+  }
+  if (input.name !== undefined) input.name = requiredText(input.name, "name", 240);
+  if (input.description !== undefined && input.description !== null) {
+    input.description = cleanOptionalText(input.description, 8000);
+  }
+  if (input.scope !== undefined && input.scope !== null) {
+    input.scope = cleanOptionalText(input.scope, 8000);
+  }
+}
+
 function asObject(value: unknown): Record<string, any> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, "json_object_required");
   return value as Record<string, any>;
@@ -1059,6 +1087,7 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROJECT_SELECT = "id, name, description, scope, status, budget, spent, start_date, target_end_date, actual_end_date, property_id, client_id, parent_project_id, program_meta, updated_at";
+const PROJECT_WRITE_FIELDS = ["name", "description", "scope", "status"] as const;
 const CONTACT_SELECT = "id, first_name, last_name, company_name, job_title, contact_type, email, phone, mobile, address_line1, address_line2, city, state, zip_code, country, website, tags, notes, is_favorite, is_active, created_at, updated_at";
 const CONTACT_WRITE_FIELDS = ["first_name", "last_name", "company_name", "job_title", "contact_type", "email", "phone", "mobile", "fax", "address_line1", "address_line2", "city", "state", "zip_code", "country", "website", "license_number", "insurance_expiry", "tags", "notes", "is_favorite", "is_active"] as const;
 const DIRECTORY_SELECT = "id, project_id, contact_id, organization_id, role_label, is_key_contact, created_at";

@@ -1,4 +1,4 @@
--- Grant client-portal briefing API scopes to existing agent/MCP API clients.
+-- Grant client-portal briefing and project-write API scopes to existing agent/MCP API clients.
 -- In-flight oauth tokens keep their old scopes until they expire (~1 hour).
 
 UPDATE public.api_clients
@@ -7,6 +7,7 @@ SET scopes = (
   FROM unnest(
     coalesce(scopes, '{}'::text[])
     || ARRAY[
+      'write:projects',
       'read:client-updates',
       'write:client-updates'
     ]

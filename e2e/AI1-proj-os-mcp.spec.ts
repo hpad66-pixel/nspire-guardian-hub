@@ -52,10 +52,22 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
       "proj_os_list_change_orders",
       "proj_os_list_proposals",
       "proj_os_list_invoices",
+      "proj_os_health",
+      "proj_os_update_project",
       "proj_os_list_client_updates",
       "proj_os_create_client_update",
       "proj_os_publish_client_update",
     ]));
+  });
+
+  test("MCP GET preflight returns JSON so Hermes does not reject the endpoint", async () => {
+    const request = new Request("https://projos.ai/mcp", {
+      method: "GET",
+      headers: { accept: "application/json, text/event-stream" },
+    });
+    const response = await onRequest({ request, env });
+    expect(response.status).toBe(405);
+    expect(response.headers.get("content-type") || "").toContain("application/json");
   });
 
   test("MCP accepts Cursor Origin when the shared bearer is present", async () => {
@@ -127,12 +139,14 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(ui).toContain('"read:action-items", "write:action-items"');
     expect(ui).toContain('"read:proposals", "write:proposals"');
     expect(ui).toContain('"read:pay-apps", "write:pay-apps"');
+    expect(ui).toContain('"read:projects", "write:projects"');
     expect(ui).toContain('"read:client-updates", "write:client-updates"');
     expect(spec).toContain("title: Proj OS Public API");
     expect(spec).toContain("/api-v1/project-directory:");
     expect(spec).toContain("/api-v1/project-status:");
     expect(spec).toContain("/api-v1/proposals:");
     expect(spec).toContain("/api-v1/pay-apps:");
+    expect(spec).toContain("/api-v1/projects/{id}:");
     expect(spec).toContain("/api-v1/client-updates:");
     expect(api).toContain('case "proposals"');
     expect(api).toContain('case "pay-apps"');
@@ -141,8 +155,12 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(api).toContain("projectSearchHaystack");
     expect(api).toContain("meta.program_key");
     const grant = read("supabase/migrations/20260902180000_grant_agent_client_updates_api_scope.sql");
+    expect(grant).toContain("write:projects");
     expect(grant).toContain("read:client-updates");
     expect(grant).toContain("write:client-updates");
+    const hermes = read("hermes/config.yaml.example");
+    expect(hermes).toContain("skip_preflight: true");
+    expect(hermes).toContain('include: ["proj_os_*"]');
   });
 
   test("API client mint accepts browser requests and verifies auth in-function", () => {
