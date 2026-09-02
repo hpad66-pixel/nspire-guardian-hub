@@ -133,6 +133,11 @@ const OpsCostsPage = lazy(() => import('./pages/portal/ops/OpsCostsPage'));
 const OpsVoicePage = lazy(() => import('./pages/portal/ops/OpsVoicePage'));
 const OpsNspirePage = lazy(() => import('./pages/portal/ops/OpsNspirePage'));
 const PropertyOpsAdminPage = lazy(() => import('./pages/admin/PropertyOpsAdminPage'));
+const WaterIntelAdminPage = lazy(() => import('./pages/water-intel/WaterIntelAdminPage'));
+const WaterIntelHomePage = lazy(() => import('./pages/water-intel/WaterIntelHomePage'));
+const WaterIntelPage = lazy(() => import('./pages/water-intel/WaterIntelPage'));
+const WaterMagicLinkPage = lazy(() => import('./pages/portal/water/WaterMagicLinkPage'));
+const OpsWaterPage = lazy(() => import('./pages/portal/ops/OpsWaterPage'));
 const ClientUpdatesPage = lazy(() => import('./pages/projects/ClientUpdatesPage'));
 const PortalInviteAcceptPage = lazy(() => import('./pages/portal/PortalInviteAcceptPage'));
 const ApiClientsPage = lazy(() => import('./pages/settings/api/ApiClientsPage'));
@@ -288,6 +293,7 @@ const App = () => (
                      <Route path="/client/:token" element={<ClientPortalPage />} />
                      <Route path="/capture/:token" element={<CaptureUploadPage />} />
                      <Route path="/bid/:token" element={<BidSubmitPage />} />
+                     <Route path="/water/:token" element={<WaterMagicLinkPage />} />
 
                     {/*
                       The client portal is deliberately mounted outside AppLayout.
@@ -332,6 +338,7 @@ const App = () => (
                         <Route path="/ops-portal/properties/:propertyId/stores" element={<OpsStoresPage />} />
                         <Route path="/ops-portal/properties/:propertyId/voice" element={<OpsVoicePage />} />
                         <Route path="/ops-portal/properties/:propertyId/costs" element={<OpsCostsPage />} />
+                        <Route path="/ops-portal/properties/:propertyId/water" element={<OpsWaterPage />} />
                       </Route>
                     </Route>
                      
@@ -347,6 +354,8 @@ const App = () => (
                               <Route path="/my-day" element={<MyDayPage />} />
                               <Route path="/cockpit" element={<PortfolioCockpitPage />} />
                               {/* Core Platform */}
+              <Route path="/water-intel" element={<WaterIntelHomePage />} />
+              <Route path="/water-intel/:propertyId" element={<WaterIntelPage />} />
               <Route path="/properties" element={<PropertiesPage />} />
               <Route path="/properties/:id/gallery" element={<PropertyGalleryPage />} />
               <Route path="/properties/:propertyId/analytics" element={<PropertyAnalyticsPage />} />
@@ -404,6 +413,7 @@ const App = () => (
                               <Route path="/admin/ai-usage" element={<AiUsageAnalyticsPage />} />
                               <Route path="/admin/modules" element={<ModulePackagesPage />} />
                               <Route path="/admin/property-ops" element={<PropertyOpsAdminPage />} />
+                              <Route path="/admin/water-intelligence" element={<WaterIntelAdminPage />} />
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
                               <Route path="/admin/registry" element={<FeatureRegistryPage />} />
 

@@ -19,17 +19,20 @@ describe('Property Ops role matrix', () => {
     expect(tech.has('stores')).toBe(false);
     expect(tech.has('voice')).toBe(false);
     expect(tech.has('costs')).toBe(false);
+    expect(tech.has('water')).toBe(false);
     expect(tech.has('executive')).toBe(false);
   });
 
   it('gives PM costs + ops modules without executive', () => {
     expect(opsHasModule('ops_pm', 'costs')).toBe(true);
     expect(opsHasModule('ops_pm', 'voice')).toBe(true);
+    expect(opsHasModule('ops_pm', 'water')).toBe(true);
     expect(opsHasModule('ops_pm', 'executive')).toBe(false);
   });
 
   it('gives owner the exclusive executive dashboard', () => {
     expect(opsHasModule('ops_owner', 'executive')).toBe(true);
     expect(opsHasModule('ops_owner', 'costs')).toBe(true);
+    expect(opsHasModule('ops_owner', 'water')).toBe(true);
   });
 });

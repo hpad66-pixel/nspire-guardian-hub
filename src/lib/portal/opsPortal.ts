@@ -12,7 +12,8 @@ export type OpsPortalModule =
   | 'stores'
   | 'voice'
   | 'costs'
-  | 'executive';
+  | 'executive'
+  | 'water';
 
 export const OPS_ROLE_LABELS: Record<OpsPortalRole, string> = {
   ops_tech: 'Maintenance Tech',
@@ -22,8 +23,8 @@ export const OPS_ROLE_LABELS: Record<OpsPortalRole, string> = {
 
 export const OPS_ROLE_MODULES: Record<OpsPortalRole, OpsPortalModule[]> = {
   ops_tech: ['maintenance'],
-  ops_pm: ['maintenance', 'nspire', 'stores', 'voice', 'costs'],
-  ops_owner: ['maintenance', 'nspire', 'stores', 'voice', 'costs', 'executive'],
+  ops_pm: ['maintenance', 'nspire', 'stores', 'voice', 'costs', 'water'],
+  ops_owner: ['maintenance', 'nspire', 'stores', 'voice', 'costs', 'executive', 'water'],
 };
 
 export function modulesForOpsRole(role: string | null | undefined): Set<OpsPortalModule> {

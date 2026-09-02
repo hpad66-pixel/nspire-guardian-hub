@@ -13,6 +13,7 @@ import {
   Mic,
   Package,
   ShieldCheck,
+  Droplets,
   Warehouse,
   X,
 } from 'lucide-react';
@@ -70,6 +71,13 @@ function useOpsNav(propertyId: string | null) {
           icon: Package,
           exact: undefined as boolean | undefined,
           show: can('costs'),
+        },
+        {
+          to: opsPortalPath(propertyId, 'water'),
+          label: 'Water Intel',
+          icon: Droplets,
+          exact: undefined as boolean | undefined,
+          show: can('water'),
         },
       ].filter((item) => item.show),
     [propertyId, can],

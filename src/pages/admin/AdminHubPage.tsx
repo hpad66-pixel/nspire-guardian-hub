@@ -21,6 +21,7 @@ import {
   Lightbulb,
   Phone,
   Warehouse,
+  Droplets,
   type LucideIcon,
 } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -54,6 +55,13 @@ const WORKSPACE_TILES: AdminTile[] = [
     description: 'License Glorieta maintenance, PM, and owner users — magic-link ops shell, no construction modules.',
     icon: Warehouse,
     to: '/admin/property-ops',
+    scope: 'owner',
+  },
+  {
+    title: 'Water Intelligence',
+    description: 'Turn the executive water/sewer brief on per client and copy the magic link.',
+    icon: Droplets,
+    to: '/admin/water-intelligence',
     scope: 'owner',
   },
   {
