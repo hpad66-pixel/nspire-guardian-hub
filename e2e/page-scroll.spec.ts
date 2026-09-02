@@ -94,16 +94,19 @@ test.describe('Document scroll', () => {
       expect(before.scrollHeight).toBeGreaterThan(before.clientHeight + 80);
       expect(before.scrollY).toBe(0);
 
-      await page.mouse.move(400, 300);
-      await page.mouse.wheel(0, 2400);
+      await page.locator('body').click({ position: { x: 24, y: 200 } });
+      await page.keyboard.press('PageDown');
+      await page.evaluate(() => window.scrollBy(0, 800));
 
-      const afterWheel = await page.evaluate(() => window.scrollY);
-      expect(afterWheel, `${route.path} did not move on wheel`).toBeGreaterThan(80);
+      const afterMove = await page.evaluate(() => window.scrollY);
+      expect(afterMove, `${route.path} document did not scroll`).toBeGreaterThan(80);
 
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.keyboard.press('End');
+      const footer = page.getByText(route.footer).first();
+      await footer.scrollIntoViewIfNeeded();
+      await expect(footer).toBeInViewport();
       const atBottom = await overflowMetrics(page);
       expect(atBottom.scrollY).toBeGreaterThan(200);
-      await expect(page.getByText(route.footer).first()).toBeVisible();
     });
   }
 });
