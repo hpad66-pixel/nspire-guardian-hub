@@ -43,6 +43,30 @@ test("Glorieta seed includes every service address, not just Building 8", () => 
   expect(sql).toContain("13010 Alexandria");
 });
 
+test("real-bill overlay maps WASD account numbers from the June 2026 cycle", () => {
+  const overlay = path.resolve(
+    __dirname,
+    "../supabase/migrations/20260902030000_water_intelligence_real_bills.sql",
+  );
+  const sql = fs.readFileSync(overlay, "utf8");
+  for (const acct of [
+    "2745714336",
+    "1674911185",
+    "8082997418",
+    "2218802663",
+    "4621903166",
+    "1787762492",
+    "7963207450",
+    "1692380502",
+    "0285466092",
+    "9952938168",
+  ]) {
+    expect(sql).toContain(acct);
+  }
+  expect(sql).toContain("113874.41");
+  expect(sql).toContain("source = 'ocr'");
+});
+
 test("App wires staff, admin, magic-link, and ops routes", () => {
   const app = fs.readFileSync(APP, "utf8");
   expect(app).toContain('path="/water/:token"');

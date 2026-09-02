@@ -4,6 +4,8 @@ import {
   buildMonthlySeries,
   compactSnapshot,
   computeKpis,
+  inferPeriodFromFilename,
+  matchServiceAccount,
   money,
   parseMiamiDadeBillText,
   parseRecipients,
@@ -120,6 +122,49 @@ describe('water intel analytics', () => {
     expect(parsed.consumptionGallons).toBe(12000);
     expect(parsed.isEstimated).toBe(true);
     expect(parseRecipients('a@x.com; b@y.com, bad')).toEqual(['a@x.com', 'b@y.com']);
+  });
+
+  it('parses a real WASD June 2026 statement including KGW', () => {
+    const parsed = parseMiamiDadeBillText(`
+Name: GLORETTA APARTMENTS LTD Account Number: 2745714336 Billing Date: 07/13/2026 Past Due Date: 08/03/2026
+Account Summary Previous Balance $ 113,874.41 Current Charges 8,793.24 Total Account Balance $ 122,667.65
+From To Number Service Reading Reading in GAL 06/01/26 06/29/26 61302354 28 5994 6417 423
+Service Address: 13010 ALEXANDRIA DR
+Water Charges Subtotal 3,426.54 $ 3,426.54
+Sewer Charges Subtotal $ 4,868.97
+Consumption KGW (Thousands gallons water)
+    `);
+    expect(parsed.accountNumber).toBe('2745714336');
+    expect(parsed.meterNumber).toBe('61302354');
+    expect(parsed.periodStart).toBe('2026-06-01');
+    expect(parsed.periodEnd).toBe('2026-06-29');
+    expect(parsed.currentCharges).toBe(8793.24);
+    expect(parsed.amountDue).toBe(122667.65);
+    expect(parsed.previousBalance).toBe(113874.41);
+    expect(parsed.consumptionGallons).toBe(423000);
+    expect(parsed.waterCharges).toBe(3426.54);
+    expect(parsed.sewerCharges).toBe(4868.97);
+  });
+
+  it('infers Glorieta filename periods and matches accounts without falling back to Building 8', () => {
+    expect(inferPeriodFromFilename('BILL 05-2024 TO 06-2024 13235 ALEXANDRIA DR.pdf')).toEqual({
+      start: '2024-05-01',
+      end: '2024-06-30',
+    });
+    expect(inferPeriodFromFilename('BILL 06-2026 13180 PORT SAID RD.pdf')).toEqual({
+      start: '2026-06-01',
+      end: '2026-06-30',
+    });
+    const roster = [
+      account(),
+      account({ id: 'a2', account_number: '1674911185', service_address: '13235 Alexandria Dr', building_label: 'Building 3' }),
+      account({ id: 'a3', account_number: '8082997418', service_address: '13210 Alexandria Dr', building_label: '13210' }),
+      account({ id: 'a4', account_number: '2218802663', service_address: '13210 Alexandria Dr', building_label: 'idle meter' }),
+    ];
+    expect(matchServiceAccount(roster, { filename: 'BILL 06-2026 13235 ALEXANDRIA DR.pdf' })?.id).toBe('a2');
+    expect(matchServiceAccount(roster, { filename: 'BILL 06-2026 ACCOUNT 8082997418.pdf' })?.id).toBe('a3');
+    expect(matchServiceAccount(roster, { filename: '2026.07.13_Account 2663.pdf' })?.id).toBe('a4');
+    expect(matchServiceAccount(roster, { filename: 'unrelated.pdf' })).toBeNull();
   });
 
   it('builds a compact AI snapshot and answers locally', () => {

@@ -7,6 +7,7 @@ import {
   computeKpis,
   deriveInsights,
   inferPeriodFromFilename,
+  matchServiceAccount,
   parseMiamiDadeBillText,
   parseRecipients,
   rollupAccounts,
@@ -306,27 +307,26 @@ export function useIngestWaterBill(propertyId: string | null) {
       });
       if (up.error) throw up.error;
 
+      const { data: roster, error: rosterErr } = await supabase
+        .from('water_service_accounts' as any)
+        .select('id, account_number, meter_number, service_address, building_label')
+        .eq('property_id', propertyId)
+        .order('sort_order');
+      if (rosterErr) throw rosterErr;
+      const accounts = (roster ?? []) as WaterServiceAccount[];
+
       let accountId = input.accountId ?? null;
-      if (!accountId && parsed.accountNumber) {
-        const { data: found } = await supabase
-          .from('water_service_accounts' as any)
-          .select('id')
-          .eq('property_id', propertyId)
-          .eq('account_number', parsed.accountNumber)
-          .maybeSingle();
-        accountId = (found as any)?.id ?? null;
+      if (!accountId) {
+        accountId = matchServiceAccount(accounts, {
+          accountNumber: parsed.accountNumber,
+          meterNumber: parsed.meterNumber,
+          serviceAddress: parsed.serviceAddress,
+          filename: input.file.name,
+        })?.id ?? null;
       }
       if (!accountId) {
-        const { data: first } = await supabase
-          .from('water_service_accounts' as any)
-          .select('id')
-          .eq('property_id', propertyId)
-          .order('sort_order')
-          .limit(1)
-          .maybeSingle();
-        accountId = (foundId(first) );
+        throw new Error('Could not match this PDF to a service account. Pick one from the list and retry.');
       }
-      if (!accountId) throw new Error('Add a service account before ingesting bills.');
 
       const start = parsed.periodStart || inferred.start || new Date().toISOString().slice(0, 8) + '01';
       const end = parsed.periodEnd || inferred.end || start;
@@ -343,6 +343,7 @@ export function useIngestWaterBill(propertyId: string | null) {
             bill_period_end: end,
             billing_date: parsed.billingDate ?? null,
             due_date: parsed.dueDate ?? null,
+            previous_balance: parsed.previousBalance ?? 0,
             current_charges: charges,
             amount_due: parsed.amountDue ?? charges,
             water_charges: parsed.waterCharges ?? 0,
@@ -351,8 +352,9 @@ export function useIngestWaterBill(propertyId: string | null) {
             consumption_gallons: parsed.consumptionGallons ?? 0,
             prior_reading: parsed.priorReading ?? null,
             current_reading: parsed.currentReading ?? null,
+            days_of_service: parsed.daysOfService ?? null,
             is_estimated: Boolean(parsed.isEstimated),
-            status: parsed.isEstimated ? 'disputed' : 'open',
+            status: parsed.isEstimated || parsed.accountNumber === '2745714336' ? 'disputed' : 'open',
             document_url: path,
             document_name: input.file.name,
             source: parsed.confidence >= 0.4 ? 'ocr' : 'upload',
@@ -372,10 +374,6 @@ export function useIngestWaterBill(propertyId: string | null) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-}
-
-function foundId(row: unknown): string | null {
-  return (row as { id?: string } | null)?.id ?? null;
 }
 
 export function useWaterIntelAdmin() {
