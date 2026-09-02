@@ -56,7 +56,7 @@ describe("useOwnerPortalData", () => {
     };
     mockFrom.mockImplementation((table: string) => {
       if (table === "prime_contracts") return chain([{ id: "c1", project_id: "p1", title: "PC-01" }]);
-      if (table === "projects") return chain([{ id: "p1", name: "Sewer close-out" }]);
+      if (table === "projects") return chain([{ id: "p1", name: "Sewer close-out", client_id: "r4", client: { name: "R4 Capital" } }]);
       if (table === "change_orders") return chain([]);
       if (table === "prime_contract_pay_apps") return chain([]);
       return chain([]);
@@ -65,5 +65,11 @@ describe("useOwnerPortalData", () => {
     const { result } = renderHook(() => useOwnerPortalData(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.primeContracts[0].project_name).toBe("Sewer close-out");
+    expect(result.current.data?.projects[0]).toMatchObject({
+      id: "p1",
+      name: "Sewer close-out",
+      client_id: "r4",
+      client_name: "R4 Capital",
+    });
   });
 });

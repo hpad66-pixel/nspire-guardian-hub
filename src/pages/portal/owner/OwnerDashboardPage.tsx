@@ -20,10 +20,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useOwnerPortalData } from "@/hooks/usePortals";
 import { useFinancialReportData } from "@/hooks/useFinancialReportData";
-import { useClientUpdates } from "@/hooks/useClientUpdates";
+import { useClientUpdates, useClientUpdatesForProjects } from "@/hooks/useClientUpdates";
 import { financialSummary } from "@/lib/reports/financialReports";
 import { ClientUpdateView } from "@/components/portal/ClientUpdateView";
 import { useClientPortalProject, useOwnerPortalHref } from "@/components/portal/ClientPortalProjectContext";
+import { ownerPortalPath } from "@/lib/portal/ownerPortalPaths";
 import { SiteAssetMap } from "@/components/projects/site-map/SiteAssetMap";
 import { useAssets } from "@/hooks/useAssets";
 import { useProject } from "@/hooks/useProjects";
@@ -67,6 +68,42 @@ function FinancialSnapshot({ projectId }: { projectId: string | null }) {
       </div>
       <p><ShieldCheck /> Owner-facing totals only. Internal vendor costs and private working data are not included.</p>
     </div>
+  );
+}
+
+function PortfolioStrip() {
+  const { projects, selectedProjectId } = useClientPortalProject();
+  const { data: updates = [] } = useClientUpdatesForProjects(projects.map((p) => p.id), { publishedOnly: true });
+  if (projects.length <= 1) return null;
+  const latestByProject = new Map<string, (typeof updates)[number]>();
+  for (const update of updates) {
+    if (!latestByProject.has(update.project_id)) latestByProject.set(update.project_id, update);
+  }
+  return (
+    <section className="client-portfolio" data-testid="owner-portal-portfolio">
+      <div className="client-dashboard-section-title">
+        <div><small>Your portfolio</small><h2>Every project on this portal</h2></div>
+        <span>Switch tabs above to move between jobs. Briefings stay with each project.</span>
+      </div>
+      <div className="client-portfolio-grid">
+        {projects.map((project) => {
+          const latest = latestByProject.get(project.id);
+          const current = project.id === selectedProjectId;
+          return (
+            <Link
+              key={project.id}
+              to={ownerPortalPath(project.id)}
+              className={`client-portfolio-card${current ? " is-active" : ""}`}
+              data-testid={`owner-portal-portfolio-${project.id}`}
+            >
+              <small>{current ? "Viewing" : "Open"}</small>
+              <strong>{project.name}</strong>
+              <span>{latest ? latest.title : "No published briefing yet"}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -136,6 +173,8 @@ export default function OwnerDashboardPage() {
           <span><Clock3 /> Current portal view</span>
         </div>
       </section>
+
+      <PortfolioStrip />
 
       {showSiteMap && (
         <section className="space-y-3" data-testid="owner-dashboard-site-map">

@@ -11,6 +11,7 @@ export interface ClientPortal {
   name: string;
   portal_type: 'client' | 'project';
   project_id: string | null;
+  client_id: string | null;
   client_name: string | null;
   client_contact_name: string | null;
   client_contact_email: string | null;
@@ -233,6 +234,58 @@ export function usePortalCount() {
   return { count, limit, canCreate, isLoading };
 }
 
+export function useEnsureProjectPortal() {
+  const qc = useQueryClient();
+  const { data: workspaceId } = useCurrentWorkspaceId();
+
+  return useMutation({
+    mutationFn: async (input: { projectId: string; projectName?: string; clientName?: string; clientId?: string | null }) => {
+      const { data: existing } = await supabase
+        .from('client_portals')
+        .select('*')
+        .eq('project_id', input.projectId)
+        .neq('status', 'archived')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) return existing as ClientPortal;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !workspaceId) throw new Error('Not authenticated');
+      const slugBase = generateSlug(input.projectName || 'project');
+      const slug = `${slugBase}-${input.projectId.replace(/-/g, '').slice(0, 8)}`;
+      const { data, error } = await supabase
+        .from('client_portals')
+        .insert({
+          workspace_id: workspaceId,
+          project_id: input.projectId,
+          client_id: input.clientId ?? null,
+          portal_type: 'client',
+          name: input.projectName || 'Project portal',
+          client_name: input.clientName ?? null,
+          portal_slug: slug,
+          status: 'active',
+          is_active: true,
+          brand_accent_color: '#1D6FE8',
+          shared_modules: [],
+          created_by: user.id,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ClientPortal;
+    },
+    onSuccess: (portal) => {
+      qc.invalidateQueries({ queryKey: ['portals'] });
+      qc.invalidateQueries({ queryKey: ['portal-by-project', portal.project_id] });
+      toast.success('Client portal is ready');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Could not set up the portal');
+    },
+  });
+}
+
 export function usePortalByProject(projectId: string | undefined) {
   return useQuery({
     queryKey: ['portal-by-project', projectId],
@@ -377,16 +430,24 @@ async function createSecureOwnerInvitation(portalId: string, email: string) {
   if (portalError) throw portalError;
   if (!portal.project_id) throw new Error('Connect this portal to a project before inviting a client.');
 
-  const { data: contract, error: contractError } = await supabase
-    .from('prime_contracts' as any)
-    .select('owner_org_id')
-    .eq('project_id', portal.project_id)
-    .not('owner_org_id', 'is', null)
-    .limit(1)
-    .maybeSingle();
-  if (contractError) throw contractError;
-  const ownerOrgId = (contract as any)?.owner_org_id as string | undefined;
-  if (!ownerOrgId) throw new Error("Add the client's organization to the prime contract before inviting them.");
+  const { data: resolvedOrg, error: orgError } = await supabase.rpc(
+    'resolve_owner_org_for_project' as any,
+    { p_project_id: portal.project_id } as any,
+  );
+  if (orgError) throw orgError;
+  let ownerOrgId = (resolvedOrg as string | null) ?? null;
+  if (!ownerOrgId) {
+    const { data: contract, error: contractError } = await supabase
+      .from('prime_contracts' as any)
+      .select('owner_org_id')
+      .eq('project_id', portal.project_id)
+      .not('owner_org_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (contractError) throw contractError;
+    ownerOrgId = (contract as any)?.owner_org_id ?? null;
+  }
+  if (!ownerOrgId) throw new Error("Add the client's organization on this project or a sibling project before inviting them.");
 
   const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
   const expires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();

@@ -20,7 +20,7 @@ export function OwnerAssistantLauncher() {
   const [open, setOpen] = useState(false);
 
   const contract = (data?.primeContracts as any[] | undefined)?.[0];
-  const projectId = contract?.project_id ?? null;
+  const projectId = data?.projects?.[0]?.id ?? contract?.project_id ?? null;
 
   if (!onOwnerPortal || !projectId) return null;
 

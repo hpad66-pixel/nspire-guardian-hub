@@ -100,3 +100,23 @@ export function useClientUpdates(projectId: string | null, opts: { publishedOnly
 
   return { ...list, create, save, setStatus, remove };
 }
+
+export function useClientUpdatesForProjects(
+  projectIds: string[],
+  opts: { publishedOnly?: boolean } = {},
+) {
+  const ids = [...new Set(projectIds.filter(Boolean))].sort();
+  return useQuery<ClientUpdate[]>({
+    queryKey: ["client-updates", "portfolio", ids, opts.publishedOnly ? "published" : "all"],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      let q = supabase.from("client_updates" as any).select("*").in("project_id", ids);
+      if (opts.publishedOnly) q = q.eq("status", "published");
+      const { data, error } = await q
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as ClientUpdate[];
+    },
+  });
+}

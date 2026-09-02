@@ -1313,6 +1313,7 @@ export type Database = {
           brand_logo_url: string | null
           client_contact_email: string | null
           client_contact_name: string | null
+          client_id: string | null
           client_name: string | null
           created_at: string
           created_by: string
@@ -1334,6 +1335,7 @@ export type Database = {
           brand_logo_url?: string | null
           client_contact_email?: string | null
           client_contact_name?: string | null
+          client_id?: string | null
           client_name?: string | null
           created_at?: string
           created_by: string
@@ -1355,6 +1357,7 @@ export type Database = {
           brand_logo_url?: string | null
           client_contact_email?: string | null
           client_contact_name?: string | null
+          client_id?: string | null
           client_name?: string | null
           created_at?: string
           created_by?: string
