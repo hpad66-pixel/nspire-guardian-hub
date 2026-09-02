@@ -27,6 +27,8 @@ tags:
   - name: change-orders
   - name: proposals
   - name: pay-apps
+  - name: payments
+  - name: client-updates
   - name: budget
   - name: rfis
   - name: direct-costs
@@ -441,6 +443,54 @@ paths:
         - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
       responses:
         "200": { description: Project status summary }
+
+  /api-v1/client-updates:
+    get:
+      tags: [client-updates]
+      summary: List client portal briefings for an authorized project
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string, enum: [draft, published] } }
+      responses:
+        "200": { description: Client updates }
+    post:
+      tags: [client-updates]
+      summary: Create a client briefing (draft or published)
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, title]
+              properties:
+                project_id: { type: string, format: uuid }
+                title: { type: string }
+                update_type: { type: string, enum: [general, progress, milestone, decision, risk] }
+                period_label: { type: string }
+                health: { type: string, enum: [on_track, at_risk, delayed] }
+                summary: { type: string }
+                accomplishments: { type: array, items: { type: string } }
+                next_steps: { type: array, items: { type: string } }
+                status: { type: string, enum: [draft, published] }
+      responses:
+        "201": { description: Client update created }
+
+  /api-v1/client-updates/{id}:
+    patch:
+      tags: [client-updates]
+      summary: Update or publish one client briefing
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Updated client update }
 
 components:
   securitySchemes:

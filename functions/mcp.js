@@ -14,32 +14,33 @@ let tokenCache = null;
 
 export async function onRequest(context) {
   const { request, env } = context;
+  if (request.method === "OPTIONS") return corsPreflight(request);
   if (request.method === "GET") return new Response("SSE not supported", { status: 405 });
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   const originError = validateOrigin(request, env);
-  if (originError) return rpcHttpError(null, -32001, originError, 403);
-  if (!env.PROJ_OS_MCP_SHARED_SECRET) return rpcHttpError(null, -32000, "MCP is not configured", 503);
+  if (originError) return rpcHttpError(null, -32001, originError, 403, request);
+  if (!env.PROJ_OS_MCP_SHARED_SECRET) return rpcHttpError(null, -32000, "MCP is not configured", 503, request);
   const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!bearer || !(await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET))) {
-    return rpcHttpError(null, -32001, "Unauthorized", 401);
+    return rpcHttpError(null, -32001, "Unauthorized", 401, request);
   }
 
   let message;
   try { message = await request.json(); }
-  catch { return rpcHttpError(null, -32700, "Parse error", 400); }
+  catch { return rpcHttpError(null, -32700, "Parse error", 400, request); }
 
   if (!message || message.jsonrpc !== "2.0" || typeof message.method !== "string") {
-    return rpcHttpError(message?.id ?? null, -32600, "Invalid Request", 400);
+    return rpcHttpError(message?.id ?? null, -32600, "Invalid Request", 400, request);
   }
   if (message.id === undefined || message.id === null) return new Response(null, { status: 202 });
 
   try {
     const result = await dispatch(message, request, env);
-    return rpcResponse(message.id, result);
+    return rpcResponse(message.id, result, undefined, request);
   } catch (error) {
     const code = Number.isInteger(error?.rpcCode) ? error.rpcCode : -32603;
-    return rpcResponse(message.id, undefined, { code, message: error?.message || "Internal error" });
+    return rpcResponse(message.id, undefined, { code, message: error?.message || "Internal error" }, request);
   }
 }
 
@@ -50,7 +51,7 @@ async function dispatch(message, request, env) {
       protocolVersion: SUPPORTED_PROTOCOLS.has(requested) ? requested : "2025-03-26",
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: "proj-os", title: "Proj OS", version: "1.1.0" },
-      instructions: "Use read tools freely. Before creating or updating contacts, tasks, proposals, change orders, client invoices (pay apps), or owner payment receipts, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status. For pay-app reconciliation, list payments and compare Line 7 cash to prior certificates.",
+      instructions: "Use read tools freely. Before creating or updating contacts, tasks, proposals, change orders, client invoices (pay apps), owner payment receipts, or client portal updates, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status. Published client_updates appear on the owner portal; drafts stay internal. For pay-app reconciliation, list payments and compare Line 7 cash to prior certificates.",
     };
   }
   if (message.method === "ping") return {};
@@ -150,6 +151,16 @@ const TOOL_HANDLERS = {
     project_id: a.project_id, prime_contract_id: a.prime_contract_id, pay_app_id: a.pay_app_id, limit: a.limit,
   }),
   proj_os_record_payment: (a, c) => api(c, "POST", "/api-v1/payments", null, pick(a, PAYMENT_FIELDS)),
+  proj_os_list_client_updates: (a, c) => api(c, "GET", "/api-v1/client-updates", {
+    project_id: requireUuid(a.project_id, "project_id"), status: a.status, limit: a.limit,
+  }),
+  proj_os_create_client_update: (a, c) => api(c, "POST", "/api-v1/client-updates", null, pick(a, CLIENT_UPDATE_FIELDS)),
+  proj_os_update_client_update: (a, c) => {
+    const updateId = requireUuid(a.update_id, "update_id");
+    const body = pick(a, CLIENT_UPDATE_PATCH_FIELDS);
+    return api(c, "PATCH", `/api-v1/client-updates/${updateId}`, null, body);
+  },
+  proj_os_publish_client_update: (a, c) => api(c, "PATCH", `/api-v1/client-updates/${requireUuid(a.update_id, "update_id")}`, null, { status: "published" }),
 };
 
 async function api(ctx, method, path, query = null, body = undefined) {
@@ -213,11 +224,43 @@ function functionsBase(env) {
   return `${supabase}/functions/v1`;
 }
 
+const CURSOR_ORIGINS = new Set([
+  "https://cursor.com",
+  "https://www.cursor.com",
+  "https://cloud.cursor.com",
+]);
+
 function validateOrigin(request, env) {
   const origin = request.headers.get("origin");
   if (!origin) return null;
-  const allowed = String(env.PROJ_OS_MCP_ALLOWED_ORIGINS || "").split(",").map((x) => x.trim()).filter(Boolean);
-  return allowed.includes(origin) ? null : "Origin not allowed";
+  // Cursor Slack/cloud agents send Origin: https://cursor.com. The shared
+  // bearer secret is the actual credential; browsers cannot attach it without
+  // possessing the secret, so an authenticated request is allowed through.
+  if (/^Bearer\s+\S+/i.test(request.headers.get("authorization") || "")) return null;
+  const allowed = String(env.PROJ_OS_MCP_ALLOWED_ORIGINS || "https://projos.ai")
+    .split(",").map((x) => x.trim()).filter(Boolean);
+  return allowed.includes(origin) || CURSOR_ORIGINS.has(origin) ? null : "Origin not allowed";
+}
+
+function corsHeaders(request) {
+  const origin = request?.headers?.get("origin");
+  if (!origin) return {};
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version",
+    vary: "Origin",
+  };
+}
+
+function corsPreflight(request) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      ...corsHeaders(request),
+      "access-control-allow-methods": "POST, OPTIONS",
+      "access-control-max-age": "86400",
+    },
+  });
 }
 
 async function secureEqual(a, b) {
@@ -237,16 +280,16 @@ async function sha256Hex(value) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function rpcResponse(id, result, error) {
+function rpcResponse(id, result, error, request) {
   return new Response(JSON.stringify(error ? { jsonrpc: "2.0", id, error } : { jsonrpc: "2.0", id, result }), {
     status: 200,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request) },
   });
 }
-function rpcHttpError(id, code, message, status) {
+function rpcHttpError(id, code, message, status, request) {
   return new Response(JSON.stringify({ jsonrpc: "2.0", id, error: { code, message } }), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request) },
   });
 }
 function rpcError(rpcCode, message) { const error = new Error(message); error.rpcCode = rpcCode; return error; }
@@ -265,6 +308,8 @@ const PROPOSAL_PATCH_FIELDS = ["title", "client_name", "client_email", "valid_un
 const INVOICE_FIELDS = ["project_id", "prime_contract_id", "pay_app_no", "period_end", "submitted_amount"];
 const INVOICE_PATCH_FIELDS = ["period_end", "submitted_amount", "retainage_held", "invoice_no", "pay_app_data"];
 const PAYMENT_FIELDS = ["project_id", "prime_contract_id", "pay_app_id", "amount", "received_date", "method", "reference", "notes"];
+const CLIENT_UPDATE_FIELDS = ["project_id", "title", "update_type", "period_label", "health", "summary", "accomplishments", "risks", "decisions", "action_items", "next_steps", "status"];
+const CLIENT_UPDATE_PATCH_FIELDS = ["title", "update_type", "period_label", "health", "summary", "accomplishments", "risks", "decisions", "action_items", "next_steps", "status"];
 
 const string = (description) => ({ type: "string", description });
 const uuid = (description) => ({ type: "string", format: "uuid", description });
@@ -328,4 +373,28 @@ const TOOLS = [
     reference: string("Check/ACH/wire reference"),
     notes: string("Payment notes"),
   }, ["pay_app_id", "amount", "received_date"]), annotations: writeAnnotations },
+  { name: "proj_os_list_client_updates", title: "List client portal updates", description: "List GC briefings for an authorized project. Published rows appear on the owner/client portal.", inputSchema: object({ project_id: uuid("Project ID"), status: { type: "string", enum: ["draft", "published"] }, limit: { type: "integer", minimum: 1, maximum: 200 } }, ["project_id"]), annotations: readAnnotations },
+  { name: "proj_os_create_client_update", title: "Create client portal update", description: "Create a client briefing. Confirm the preview with the user first. Set status=published to push it to the owner portal immediately; otherwise it stays a draft.", inputSchema: object({
+    project_id: uuid("Project ID"),
+    title: string("Update title"),
+    update_type: { type: "string", enum: ["general", "progress", "milestone", "decision", "risk"] },
+    period_label: string("Period label, e.g. Week of Sep 1–7, 2026"),
+    health: { type: "string", enum: ["on_track", "at_risk", "delayed"] },
+    summary: string("Client-facing narrative"),
+    accomplishments: { type: "array", items: { type: "string" } },
+    next_steps: { type: "array", items: { type: "string" } },
+    status: { type: "string", enum: ["draft", "published"] },
+  }, ["project_id", "title"]), annotations: writeAnnotations },
+  { name: "proj_os_update_client_update", title: "Update client portal update", description: "Edit a draft or published client briefing after confirmation.", inputSchema: object({
+    update_id: uuid("Client update ID"),
+    title: string("Update title"),
+    update_type: { type: "string", enum: ["general", "progress", "milestone", "decision", "risk"] },
+    period_label: string("Period label"),
+    health: { type: "string", enum: ["on_track", "at_risk", "delayed"] },
+    summary: string("Client-facing narrative"),
+    accomplishments: { type: "array", items: { type: "string" } },
+    next_steps: { type: "array", items: { type: "string" } },
+    status: { type: "string", enum: ["draft", "published"] },
+  }, ["update_id"]), annotations: writeAnnotations },
+  { name: "proj_os_publish_client_update", title: "Publish client portal update", description: "Publish one client briefing so it appears on the owner/client portal. Confirm with the user first.", inputSchema: object({ update_id: uuid("Client update ID") }, ["update_id"]), annotations: writeAnnotations },
 ];

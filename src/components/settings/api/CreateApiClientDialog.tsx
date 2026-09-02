@@ -29,6 +29,8 @@ export const AVAILABLE_SCOPES = [
   "read:rfis", "write:rfis",
   "read:budget",
   "read:pay-apps", "write:pay-apps",
+  "read:payments", "write:payments",
+  "read:client-updates", "write:client-updates",
   "write:direct-costs",
 ];
 

@@ -14,6 +14,7 @@ Apply `20260827220000_agent_api_audit_log.sql`, then deploy the updated `api-v1`
 - `read:change-orders`, `write:change-orders`
 - `read:proposals`, `write:proposals`
 - `read:pay-apps`, `write:pay-apps`
+- `read:client-updates`, `write:client-updates`
 
 Mint a dedicated API client for agents and grant only the scopes you want those agents to use.
 
@@ -66,6 +67,9 @@ mcp_servers:
         - proj_os_create_proposal
         - proj_os_list_invoices
         - proj_os_create_invoice
+        - proj_os_list_client_updates
+        - proj_os_create_client_update
+        - proj_os_publish_client_update
       prompts: false
       resources: false
 ```
@@ -91,6 +95,8 @@ Add a remote MCP server in Cursor and store `PROJ_OS_MCP_SHARED_SECRET` as a Cur
 
 `GET /mcp` is not supported (no SSE). Clients must POST JSON-RPC.
 
+Cursor Slack/cloud agents send `Origin: https://cursor.com`. Authenticated bearer requests are allowed regardless of Origin so those agents can load the tools. Unauthenticated browser origins still must match `PROJ_OS_MCP_ALLOWED_ORIGINS` (default `https://projos.ai`) or the Cursor hosts.
+
 Financial tools create **draft** records only:
 
 | Tool family | Creates |
@@ -110,4 +116,4 @@ Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind `proj-os
 - Cross-workspace records return `404`, avoiding record-existence disclosure.
 - Create operations require idempotency keys and derive stable record IDs from them.
 - API writes are recorded in the immutable, tenant-scoped `agent_api_audit_log` with API client, requester, project, tenant, and correlation metadata.
-- The MCP endpoint validates browser origins when an `Origin` header is present and requires a separate bearer secret for every request.
+- The MCP endpoint requires a separate bearer secret for every request. Unauthenticated browser origins must match `PROJ_OS_MCP_ALLOWED_ORIGINS` or the Cursor hosts; authenticated bearer requests are allowed regardless of Origin so Slack/cloud agents can load tools.

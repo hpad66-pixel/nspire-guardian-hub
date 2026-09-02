@@ -52,7 +52,46 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
       "proj_os_list_change_orders",
       "proj_os_list_proposals",
       "proj_os_list_invoices",
+      "proj_os_list_client_updates",
+      "proj_os_create_client_update",
+      "proj_os_publish_client_update",
     ]));
+  });
+
+  test("MCP accepts Cursor Origin when the shared bearer is present", async () => {
+    const request = mcpRequest("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "cursor", version: "1" } });
+    request.headers.set("origin", "https://cursor.com");
+    const response = await onRequest({ request, env });
+    expect(response.status).toBe(200);
+    const body = await response.json() as { result: { serverInfo: { name: string } } };
+    expect(body.result.serverInfo.name).toBe("proj-os");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://cursor.com");
+  });
+
+  test("MCP rejects Cursor Origin without a bearer as 401, not Origin 403", async () => {
+    const request = mcpRequest("tools/list");
+    request.headers.delete("authorization");
+    request.headers.set("origin", "https://cursor.com");
+    const response = await onRequest({ request, env });
+    expect(response.status).toBe(401);
+  });
+
+  test("MCP rejects untrusted Origin without a bearer", async () => {
+    const request = mcpRequest("tools/list");
+    request.headers.delete("authorization");
+    request.headers.set("origin", "https://evil.example");
+    const response = await onRequest({ request, env });
+    expect(response.status).toBe(403);
+  });
+
+  test("MCP answers CORS preflight", async () => {
+    const request = new Request("https://projos.ai/mcp", {
+      method: "OPTIONS",
+      headers: { origin: "https://cursor.com", "access-control-request-method": "POST" },
+    });
+    const response = await onRequest({ request, env });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://cursor.com");
   });
 
   test("MCP rejects missing authentication", async () => {
@@ -88,14 +127,22 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(ui).toContain('"read:action-items", "write:action-items"');
     expect(ui).toContain('"read:proposals", "write:proposals"');
     expect(ui).toContain('"read:pay-apps", "write:pay-apps"');
+    expect(ui).toContain('"read:client-updates", "write:client-updates"');
     expect(spec).toContain("title: Proj OS Public API");
     expect(spec).toContain("/api-v1/project-directory:");
     expect(spec).toContain("/api-v1/project-status:");
     expect(spec).toContain("/api-v1/proposals:");
     expect(spec).toContain("/api-v1/pay-apps:");
+    expect(spec).toContain("/api-v1/client-updates:");
     expect(api).toContain('case "proposals"');
     expect(api).toContain('case "pay-apps"');
+    expect(api).toContain('case "client-updates"');
     expect(api).toContain("routeChangeOrders");
+    expect(api).toContain("projectSearchHaystack");
+    expect(api).toContain("meta.program_key");
+    const grant = read("supabase/migrations/20260902180000_grant_agent_client_updates_api_scope.sql");
+    expect(grant).toContain("read:client-updates");
+    expect(grant).toContain("write:client-updates");
   });
 
   test("API client mint accepts browser requests and verifies auth in-function", () => {

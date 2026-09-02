@@ -37,7 +37,19 @@ Before every create or update:
 6. Make exactly one write tool call after confirmation.
 7. Return the resulting IDs and a concise summary.
 
-Never delete, merge, bulk-update, send external communications, deploy, spend money, execute/sign financial documents, or change permissions through these tools. Financial writes create or edit **draft** records only.
+Never delete, merge, bulk-update, send external communications, deploy, spend money, execute/sign financial documents, or change permissions through these tools. Financial writes create or edit **draft** records only. Client portal briefings may be published only after explicit confirmation.
+
+## Client portal update workflow
+
+For “post an update to the client portal” or “publish a client briefing”:
+
+1. Resolve the project with `proj_os_search_projects` (search program keys like Glorieta, not just the title).
+2. Optionally list existing briefings with `proj_os_list_client_updates`.
+3. Collect title, health (`on_track` / `at_risk` / `delayed`), summary, accomplishments, and next steps.
+4. Preview the briefing and confirm.
+5. Call `proj_os_create_client_update` with `status=published` to push it to the owner portal in one step, or create a draft then `proj_os_publish_client_update`.
+
+Published rows are what the owner/client portal shows. Drafts stay internal.
 
 ## Contact workflow
 
