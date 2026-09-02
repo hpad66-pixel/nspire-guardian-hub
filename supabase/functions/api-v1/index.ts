@@ -80,7 +80,7 @@ serve(async (req) => {
   try {
     let response: Response;
     switch (resource) {
-      case "projects": response = await routeProjects(req.method, ctx, id, url); break;
+      case "projects": response = await routeProjects(req.method, ctx, id, req, url); break;
       case "contacts": response = await routeContacts(req.method, ctx, id, req, url); break;
       case "project-directory": response = await routeProjectDirectory(req.method, ctx, req, url); break;
       case "action-items": response = await routeActionItems(req.method, ctx, id, req, url); break;
@@ -93,6 +93,7 @@ serve(async (req) => {
       case "budget": response = await routeBudget(ctx, url); break;
       case "rfis": response = await routeRfis(ctx, url); break;
       case "direct-costs": response = await routeDirectCosts(req.method, ctx, req); break;
+      case "client-updates": response = await routeClientUpdates(req.method, ctx, id, req, url); break;
       default: response = json({ error: "unknown_resource" }, 404);
     }
     await meter(tenantId, apiClient.id, response.status >= 400);
@@ -118,16 +119,30 @@ function enforceRateLimit(client: ApiClient): Response | null {
   return json({ error: "rate_limit_exceeded" }, 429, { "Retry-After": String(Math.ceil((current.resetAt - now) / 1000)) });
 }
 
-async function routeProjects(method: string, ctx: RequestContext, id: string | undefined, url: URL) {
-  if (method !== "GET") throw new ApiError(405, "method_not_allowed");
-  if (id) return json({ data: await requireProject(ctx.tenantId, id) });
-  const projects = await listAuthorizedProjects(ctx.tenantId);
-  const q = cleanOptionalText(url.searchParams.get("q"), 120)?.toLowerCase();
-  const data = q
-    ? projects.filter((p: any) => [p.name, p.description, p.scope, p.program_meta?.project_key]
-      .filter(Boolean).some((value) => String(value).toLowerCase().includes(q)))
-    : projects;
-  return json({ data: data.slice(0, boundedLimit(url, 100)) });
+async function routeProjects(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
+  if (method === "GET") {
+    if (id) return json({ data: await requireProject(ctx.tenantId, id) });
+    const projects = await listAuthorizedProjects(ctx.tenantId);
+    const q = cleanOptionalText(url.searchParams.get("q"), 120)?.toLowerCase();
+    const data = q
+      ? projects.filter((p: any) => projectSearchHaystack(p).includes(q))
+      : projects;
+    return json({ data: data.slice(0, boundedLimit(url, 100)) });
+  }
+
+  if (method === "PATCH" && id) {
+    requireActor(ctx);
+    await requireProject(ctx.tenantId, id);
+    const patch = pick(asObject(await req.json()), PROJECT_WRITE_FIELDS);
+    validateProject(patch);
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    const { data, error } = await admin.from("projects").update(patch)
+      .eq("id", id).select(PROJECT_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "project", id, "update", id);
+    return json({ data });
+  }
+  throw new ApiError(405, "method_not_allowed");
 }
 
 async function routeContacts(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
@@ -764,6 +779,81 @@ async function routeDirectCosts(method: string, ctx: RequestContext, req: Reques
   return json({ data }, 201);
 }
 
+async function routeClientUpdates(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
+  if (method === "GET") {
+    const projectId = requiredUuid(url.searchParams.get("project_id"), "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    let query = admin.from("client_updates").select(CLIENT_UPDATE_SELECT)
+      .eq("tenant_id", ctx.tenantId).eq("project_id", projectId)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    const status = cleanOptionalText(url.searchParams.get("status"), 30);
+    if (status) {
+      if (!["draft", "published"].includes(status)) throw new ApiError(400, "invalid_client_update_status");
+      query = query.eq("status", status);
+    }
+    const { data, error } = await query.limit(boundedLimit(url, 50));
+    if (error) throw error;
+    return json({ data: data ?? [] });
+  }
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const projectId = requiredUuid(body.project_id, "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    const insert = pick(body, CLIENT_UPDATE_WRITE_FIELDS);
+    insert.id = await idempotentUuid(req, ctx.apiClient.id, "client-updates");
+    insert.tenant_id = ctx.tenantId;
+    insert.project_id = projectId;
+    insert.title = requiredText(body.title, "title", 240);
+    insert.created_by = ctx.actorUserId;
+    validateClientUpdate(insert);
+    if (insert.status === "published") insert.published_at = new Date().toISOString();
+    const { data, error } = await admin.from("client_updates").insert(insert).select(CLIENT_UPDATE_SELECT).single();
+    if (error?.code === "23505") {
+      const { data: existing } = await admin.from("client_updates").select(CLIENT_UPDATE_SELECT)
+        .eq("id", insert.id).eq("tenant_id", ctx.tenantId).maybeSingle();
+      if (!existing) throw error;
+      await auditWrite(ctx, "client_update", existing.id, "create", projectId);
+      return json({ data: existing, idempotent_replay: true });
+    }
+    if (error) throw error;
+    await auditWrite(ctx, "client_update", data.id, "create", projectId);
+    return json({ data }, 201);
+  }
+
+  if (method === "PATCH" && id) {
+    const { data: existing, error: findError } = await admin.from("client_updates")
+      .select("id, project_id, status").eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (findError) throw findError;
+    if (!existing) throw new ApiError(404, "client_update_not_found");
+    await requireProject(ctx.tenantId, existing.project_id);
+    const patch = pick(asObject(await req.json()), CLIENT_UPDATE_WRITE_FIELDS);
+    delete patch.project_id;
+    validateClientUpdate(patch);
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    if (patch.status === "published" && existing.status !== "published") {
+      patch.published_at = new Date().toISOString();
+    }
+    if (patch.status === "draft") patch.published_at = null;
+    const { data, error } = await admin.from("client_updates").update(patch)
+      .eq("id", id).eq("tenant_id", ctx.tenantId).select(CLIENT_UPDATE_SELECT).single();
+    if (error) throw error;
+    await auditWrite(ctx, "client_update", id, "update", existing.project_id);
+    return json({ data });
+  }
+  throw new ApiError(405, "method_not_allowed");
+}
+
+function projectSearchHaystack(project: any): string {
+  const meta = project?.program_meta && typeof project.program_meta === "object" ? project.program_meta : {};
+  return [
+    project?.name, project?.description, project?.scope, project?.status,
+    meta.project_key, meta.program_key, meta.status_label, meta.headline, meta.bucket_key,
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
 async function listAuthorizedProjects(tenantId: string): Promise<ProjectRow[]> {
   const [{ data: properties, error: propertyError }, { data: clients, error: clientError }] = await Promise.all([
     admin.from("properties").select("id").eq("workspace_id", tenantId),
@@ -923,6 +1013,27 @@ function validateActionItem(input: Record<string, any>) {
   if (input.due_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(input.due_date))) throw new ApiError(400, "invalid_due_date");
 }
 
+function validateClientUpdate(input: Record<string, any>) {
+  if (input.status && !["draft", "published"].includes(input.status)) throw new ApiError(400, "invalid_client_update_status");
+  if (input.health && !["on_track", "at_risk", "delayed"].includes(input.health)) throw new ApiError(400, "invalid_client_update_health");
+  if (input.update_type && !["general", "progress", "milestone", "decision", "risk"].includes(input.update_type)) {
+    throw new ApiError(400, "invalid_client_update_type");
+  }
+}
+
+function validateProject(input: Record<string, any>) {
+  if (input.status && !["planning", "active", "on_hold", "completed", "closed"].includes(input.status)) {
+    throw new ApiError(400, "invalid_project_status");
+  }
+  if (input.name !== undefined) input.name = requiredText(input.name, "name", 240);
+  if (input.description !== undefined && input.description !== null) {
+    input.description = cleanOptionalText(input.description, 8000);
+  }
+  if (input.scope !== undefined && input.scope !== null) {
+    input.scope = cleanOptionalText(input.scope, 8000);
+  }
+}
+
 function asObject(value: unknown): Record<string, any> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ApiError(400, "json_object_required");
   return value as Record<string, any>;
@@ -976,6 +1087,7 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROJECT_SELECT = "id, name, description, scope, status, budget, spent, start_date, target_end_date, actual_end_date, property_id, client_id, parent_project_id, program_meta, updated_at";
+const PROJECT_WRITE_FIELDS = ["name", "description", "scope", "status"] as const;
 const CONTACT_SELECT = "id, first_name, last_name, company_name, job_title, contact_type, email, phone, mobile, address_line1, address_line2, city, state, zip_code, country, website, tags, notes, is_favorite, is_active, created_at, updated_at";
 const CONTACT_WRITE_FIELDS = ["first_name", "last_name", "company_name", "job_title", "contact_type", "email", "phone", "mobile", "fax", "address_line1", "address_line2", "city", "state", "zip_code", "country", "website", "license_number", "insurance_expiry", "tags", "notes", "is_favorite", "is_active"] as const;
 const DIRECTORY_SELECT = "id, project_id, contact_id, organization_id, role_label, is_key_contact, created_at";
@@ -989,3 +1101,5 @@ const PAY_APP_SELECT = "id, prime_contract_id, pay_app_no, period_end, status, s
 const PAY_APP_WRITE_FIELDS = ["period_end", "submitted_amount", "retainage_held", "invoice_no", "pay_app_data"] as const;
 const PAYMENT_SELECT = "id, prime_contract_id, pay_app_id, amount, received_date, method, reference, notes, created_at, updated_at";
 const PAYMENT_WRITE_FIELDS = ["prime_contract_id", "pay_app_id", "amount", "received_date", "method", "reference", "notes"] as const;
+const CLIENT_UPDATE_SELECT = "id, tenant_id, project_id, title, update_type, period_label, health, summary, accomplishments, risks, decisions, action_items, next_steps, status, published_at, created_at, updated_at";
+const CLIENT_UPDATE_WRITE_FIELDS = ["title", "update_type", "period_label", "health", "summary", "accomplishments", "risks", "decisions", "action_items", "next_steps", "status"] as const;

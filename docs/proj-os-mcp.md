@@ -6,7 +6,7 @@ Proj OS exposes a remote Streamable HTTP MCP endpoint at `/mcp`. The endpoint ca
 
 Apply `20260827220000_agent_api_audit_log.sql`, then deploy the updated `api-v1` Supabase Edge Function and Cloudflare Pages function `functions/mcp.js`. Recommended agent scopes:
 
-- `read:projects`
+- `read:projects`, `write:projects`
 - `read:contacts`, `write:contacts`
 - `read:project-directory`, `write:project-directory`
 - `read:action-items`, `write:action-items`
@@ -14,6 +14,7 @@ Apply `20260827220000_agent_api_audit_log.sql`, then deploy the updated `api-v1`
 - `read:change-orders`, `write:change-orders`
 - `read:proposals`, `write:proposals`
 - `read:pay-apps`, `write:pay-apps`
+- `read:client-updates`, `write:client-updates`
 
 Mint a dedicated API client for agents and grant only the scopes you want those agents to use.
 
@@ -35,42 +36,18 @@ PROJ_OS_MCP_ALLOWED_ORIGINS=https://projos.ai
 
 `PROJ_OS_MCP_SHARED_SECRET` authenticates Hermes to the MCP endpoint. It must be different from the Proj OS API client secret.
 
-## 4. Connect Hermes
+## 4. Connect Hermes (Telegram)
 
-Store the shared MCP bearer secret in the Hermes environment as `PROJ_OS_MCP_TOKEN`. Add the following to `~/.hermes/config.yaml`:
+Store the shared MCP bearer secret in `~/.hermes/.env` as `PROJ_OS_MCP_TOKEN`. Merge `hermes/config.yaml.example` into `~/.hermes/config.yaml`. Important Hermes settings:
 
-```yaml
-mcp_servers:
-  proj_os:
-    url: "https://projos.ai/mcp"
-    headers:
-      Authorization: "Bearer ${PROJ_OS_MCP_TOKEN}"
-    timeout: 30
-    connect_timeout: 15
-    supports_parallel_tool_calls: false
-    tools:
-      include:
-        - proj_os_search_projects
-        - proj_os_get_project_summary
-        - proj_os_search_contacts
-        - proj_os_get_contact
-        - proj_os_create_contact
-        - proj_os_update_contact
-        - proj_os_link_contact_to_project
-        - proj_os_list_project_tasks
-        - proj_os_create_project_task
-        - proj_os_update_project_task
-        - proj_os_list_change_orders
-        - proj_os_create_change_order
-        - proj_os_list_proposals
-        - proj_os_create_proposal
-        - proj_os_list_invoices
-        - proj_os_create_invoice
-      prompts: false
-      resources: false
-```
+- `skip_preflight: true` — older `/mcp` GET responses were `text/plain` and Hermes rejected the server
+- `tools.include: ["proj_os_*"]` — do not hard-code tool names; new portal/project tools would never appear
+- `sampling.enabled: false` and `elicitation.enabled: false` — some MCP servers reject extra initialize capabilities
+- `protocol: legacy` — this endpoint is Streamable HTTP JSON-RPC, not SSE discovery
 
-Run `hermes mcp test proj_os`, then use `/reload-mcp` in the messaging gateway.
+Then run `hermes mcp test proj_os`. In the Telegram topic use `/reload-mcp`. Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind it to that topic.
+
+`GET /mcp` now returns JSON (`405` + `application/json`) so a current Hermes preflight can succeed even without `skip_preflight`. Keep the flag anyway.
 
 ## 5. Connect Cursor / Slack agents
 
@@ -91,6 +68,8 @@ Add a remote MCP server in Cursor and store `PROJ_OS_MCP_SHARED_SECRET` as a Cur
 
 `GET /mcp` is not supported (no SSE). Clients must POST JSON-RPC.
 
+Cursor Slack/cloud agents send `Origin: https://cursor.com`. Authenticated bearer requests are allowed regardless of Origin so those agents can load the tools. Unauthenticated browser origins still must match `PROJ_OS_MCP_ALLOWED_ORIGINS` (default `https://projos.ai`) or the Cursor hosts.
+
 Financial tools create **draft** records only:
 
 | Tool family | Creates |
@@ -110,4 +89,4 @@ Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind `proj-os
 - Cross-workspace records return `404`, avoiding record-existence disclosure.
 - Create operations require idempotency keys and derive stable record IDs from them.
 - API writes are recorded in the immutable, tenant-scoped `agent_api_audit_log` with API client, requester, project, tenant, and correlation metadata.
-- The MCP endpoint validates browser origins when an `Origin` header is present and requires a separate bearer secret for every request.
+- The MCP endpoint requires a separate bearer secret for every request. Unauthenticated browser origins must match `PROJ_OS_MCP_ALLOWED_ORIGINS` or the Cursor hosts; authenticated bearer requests are allowed regardless of Origin so Slack/cloud agents can load tools.

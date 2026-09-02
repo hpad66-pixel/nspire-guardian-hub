@@ -1,0 +1,29 @@
+# Copy the proj_os server block into ~/.hermes/config.yaml, then:
+#   1. Put the MCP bearer in ~/.hermes/.env as PROJ_OS_MCP_TOKEN
+#   2. Copy hermes/skills/proj-os/ into the Hermes skills directory
+#   3. Bind the proj-os skill to the Telegram topic you use for client updates
+#   4. Run: hermes mcp test proj_os
+#   5. In Telegram: /reload-mcp
+#
+# Do not put the bearer token in this file. Do not use tools.include with a
+# static name list — the glob below picks up new Proj OS tools automatically.
+
+mcp_servers:
+  proj_os:
+    url: "https://projos.ai/mcp"
+    headers:
+      Authorization: "Bearer ${PROJ_OS_MCP_TOKEN}"
+      X-Proj-Requester-Id: "hermes-telegram"
+    timeout: 60
+    connect_timeout: 20
+    supports_parallel_tool_calls: false
+    skip_preflight: true
+    protocol: legacy
+    sampling:
+      enabled: false
+    elicitation:
+      enabled: false
+    tools:
+      include: ["proj_os_*"]
+      resources: false
+      prompts: false

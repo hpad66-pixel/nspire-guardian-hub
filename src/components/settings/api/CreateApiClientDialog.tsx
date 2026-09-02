@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const AVAILABLE_SCOPES = [
-  "read:projects",
+  "read:projects", "write:projects",
   "read:contacts", "write:contacts",
   "read:project-directory", "write:project-directory",
   "read:action-items", "write:action-items",
@@ -29,6 +29,8 @@ export const AVAILABLE_SCOPES = [
   "read:rfis", "write:rfis",
   "read:budget",
   "read:pay-apps", "write:pay-apps",
+  "read:payments", "write:payments",
+  "read:client-updates", "write:client-updates",
   "write:direct-costs",
 ];
 
