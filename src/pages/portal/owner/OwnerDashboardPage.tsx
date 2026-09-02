@@ -109,18 +109,36 @@ function PortfolioStrip() {
 
 function LatestUpdate({ projectId }: { projectId: string | null }) {
   const href = useOwnerPortalHref();
+  const { projects } = useClientPortalProject();
   const { data: updates = [], isLoading } = useClientUpdates(projectId, { publishedOnly: true });
+  const siblingIds = projects.filter((project) => project.id !== projectId).map((project) => project.id);
+  const { data: portfolioUpdates = [], isLoading: portfolioLoading } = useClientUpdatesForProjects(
+    updates.length ? [] : siblingIds,
+    { publishedOnly: true },
+  );
   const latest = updates[0];
+  const portfolioLatest = portfolioUpdates[0];
+  const portfolioProject = portfolioLatest
+    ? projects.find((project) => project.id === portfolioLatest.project_id)
+    : null;
   return (
     <section className="client-dashboard-panel client-dashboard-update">
       <div className="client-panel-heading">
         <div><span className="client-panel-icon is-blue"><Megaphone /></span><div><small>Project briefing</small><h2>Latest update</h2></div></div>
         <Link to={href("/updates")}>View history <ArrowRight /></Link>
       </div>
-      {isLoading ? (
+      {isLoading || (!latest && portfolioLoading) ? (
         <div className="client-dashboard-loading"><Loader2 className="animate-spin" /> Loading update…</div>
       ) : latest ? (
         <div className="client-dashboard-update__body"><ClientUpdateView update={latest} /></div>
+      ) : portfolioLatest && portfolioProject ? (
+        <div className="client-dashboard-update__body" data-testid="owner-portal-portfolio-update">
+          <p className="client-dashboard-empty" style={{ marginBottom: "0.75rem" }}>
+            No published briefing on this project yet. Latest portfolio update from{" "}
+            <Link to={ownerPortalPath(portfolioProject.id)}>{portfolioProject.name}</Link>:
+          </p>
+          <ClientUpdateView update={portfolioLatest} />
+        </div>
       ) : (
         <div className="client-dashboard-empty">Your first verified project update has not been published yet.</div>
       )}

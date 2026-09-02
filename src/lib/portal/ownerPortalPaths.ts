@@ -8,6 +8,39 @@
 
 const PROJECT_PREFIX = "/owner-portal/projects/";
 
+/** Remember which client portfolio a public /portal/:slug link opened. */
+export const OWNER_PORTAL_CLIENT_KEY = "owner-portal-client-id";
+
+export function rememberOwnerPortalClient(clientId: string | null | undefined) {
+  if (typeof sessionStorage === "undefined") return;
+  if (clientId) sessionStorage.setItem(OWNER_PORTAL_CLIENT_KEY, clientId);
+}
+
+export function readRememberedOwnerPortalClient() {
+  if (typeof sessionStorage === "undefined") return null;
+  return sessionStorage.getItem(OWNER_PORTAL_CLIENT_KEY);
+}
+
+/** Prefer an explicit project, then the first tab in the active portfolio. */
+export function pickOwnerPortalLandingProject(input: {
+  requestedProjectId?: string | null;
+  selectedProjectId?: string | null;
+  projectIds: string[];
+  contractProjectIds?: string[];
+}) {
+  const {
+    requestedProjectId = null,
+    selectedProjectId = null,
+    projectIds,
+    contractProjectIds = [],
+  } = input;
+  if (requestedProjectId && projectIds.includes(requestedProjectId)) return requestedProjectId;
+  if (requestedProjectId && contractProjectIds.includes(requestedProjectId)) return requestedProjectId;
+  if (selectedProjectId && projectIds.includes(selectedProjectId)) return selectedProjectId;
+  if (projectIds.length === 1) return projectIds[0] ?? null;
+  return projectIds[0] ?? contractProjectIds[0] ?? null;
+}
+
 export function ownerPortalPath(
   projectId: string | null | undefined,
   suffix = "",
@@ -131,13 +164,20 @@ export function buildOwnerProjectTabs<T extends OwnerContractSource>(
 export function filterOwnerProjectsForClient<T>(
   projects: OwnerProjectTab<T>[],
   anchorProjectId: string | null,
+  clientId?: string | null,
 ) {
-  if (!anchorProjectId || projects.length <= 1) return projects;
-  const anchor = projects.find((project) => project.id === anchorProjectId);
-  if (!anchor) return projects;
-  if (anchor.client_id) {
-    const siblings = projects.filter((project) => project.client_id === anchor.client_id);
-    return siblings.length ? siblings : [anchor];
+  if (projects.length <= 1) return projects;
+  if (anchorProjectId) {
+    const anchor = projects.find((project) => project.id === anchorProjectId);
+    if (anchor?.client_id) {
+      const siblings = projects.filter((project) => project.client_id === anchor.client_id);
+      return siblings.length ? siblings : [anchor];
+    }
+    if (anchor) return [anchor];
   }
-  return [anchor];
+  if (clientId) {
+    const byClient = projects.filter((project) => project.client_id === clientId);
+    if (byClient.length) return byClient;
+  }
+  return projects;
 }

@@ -172,24 +172,57 @@ export function usePortalBySlug(slug: string | undefined) {
     queryKey: ['portal-by-slug', slug],
     queryFn: async () => {
       if (!slug) return null;
-      const { data: session } = await supabase.auth.getSession();
-      if (session.session) {
-        const { data, error } = await supabase
-          .from('client_portals')
-          .select('*')
-          .eq('portal_slug', slug)
-          .single();
-        if (error) throw error;
-        return data as ClientPortal;
-      }
 
-      // Public callers receive only the safe brand projection from a narrowly
-      // scoped SECURITY DEFINER function—never the portal row's contact or
-      // project configuration fields.
+      // Always try the public brand RPC first. Owner-portal users have
+      // current_tenant_id() = NULL, so a direct client_portals select fails RLS
+      // even when the slug is valid — which broke post-login redirects.
       const { data, error } = await supabase.rpc('get_public_portal_brand' as any, { p_slug: slug } as any);
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      return (row ?? null) as ClientPortal | null;
+      const brand = (Array.isArray(data) ? data[0] : data) as Partial<ClientPortal> | null;
+      if (brand?.portal_slug) {
+        const { data: session } = await supabase.auth.getSession();
+        if (session.session) {
+          const { data: full } = await supabase
+            .from('client_portals')
+            .select('*')
+            .eq('portal_slug', slug)
+            .maybeSingle();
+          if (full) return full as ClientPortal;
+        }
+        return {
+          id: brand.id!,
+          workspace_id: '',
+          name: brand.name ?? slug,
+          portal_type: 'client',
+          project_id: (brand as { project_id?: string | null }).project_id ?? null,
+          client_id: (brand as { client_id?: string | null }).client_id ?? null,
+          client_name: brand.client_name ?? null,
+          client_contact_name: null,
+          client_contact_email: null,
+          brand_logo_url: brand.brand_logo_url ?? null,
+          brand_accent_color: brand.brand_accent_color ?? '#0F172A',
+          welcome_message: null,
+          portal_slug: brand.portal_slug,
+          is_active: brand.is_active ?? true,
+          status: (brand.status as ClientPortal['status']) ?? 'active',
+          shared_modules: [],
+          pending_requests_count: 0,
+          created_by: '',
+          created_at: '',
+          updated_at: '',
+        } satisfies ClientPortal;
+      }
+
+      // Staff-only fallback for draft portals that the public RPC hides.
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) return null;
+      const { data: full, error: fullError } = await supabase
+        .from('client_portals')
+        .select('*')
+        .eq('portal_slug', slug)
+        .maybeSingle();
+      if (fullError) throw fullError;
+      return (full as ClientPortal | null) ?? null;
     },
     enabled: !!slug,
   });
