@@ -53,8 +53,16 @@ export function WaterIntelCharts({
       gallons: Math.round(r.last12Gallons),
     }));
 
+  if (!bills.length) {
+    return (
+      <div className="rounded-3xl border border-dashed border-[#dedbd1] bg-white p-10 text-center text-sm text-[#8a8478]" data-testid="water-charts-empty">
+        No trend data yet — ingest WASD statements to populate spend, gallons, and year-over-year charts.
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
+    <div className="grid gap-4 xl:grid-cols-3" data-testid="water-intel-charts">
       <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm xl:col-span-2">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>

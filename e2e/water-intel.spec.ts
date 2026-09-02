@@ -76,9 +76,34 @@ test("App wires staff, admin, magic-link, and ops routes", () => {
   expect(app).toContain('path="/ops-portal/properties/:propertyId/water"');
 });
 
+test("bill archive and QA overlay are checked into the repo", () => {
+  const overlay = path.resolve(
+    __dirname,
+    "../supabase/migrations/20260902040000_water_intel_bill_documents.sql",
+  );
+  const archive = path.resolve(__dirname, "../docs/water-intel/glorieta-wasd-june-2026.json");
+  const html = path.resolve(__dirname, "../public/water-bills/2745714336-2026-06.html");
+  const layout = path.resolve(__dirname, "../src/components/layout/AppLayout.tsx");
+  expect(fs.readFileSync(overlay, "utf8")).toContain("water-bills/");
+  expect(fs.readFileSync(archive, "utf8")).toContain("122667.65");
+  expect(fs.readFileSync(html, "utf8")).toContain("122,667.65");
+  const appLayout = fs.readFileSync(layout, "utf8");
+  expect(appLayout).not.toContain("overscroll-y-contain");
+  expect(appLayout).not.toMatch(/overflow-y-auto/);
+});
+
 test("magic link page mounts for an unknown token", async ({ page }) => {
   await page.goto("/water/not-a-real-token");
   await expect(page.locator("body")).toBeVisible();
   await expect(page.getByTestId("water-magic-page")).toBeVisible();
   await expect(page.getByText(/Water Intelligence/i).first()).toBeVisible();
+});
+
+test("WASD statement backups are served for quick view", async ({ page }) => {
+  await page.goto("/water-bills/");
+  await expect(page.getByText(/Glorieta Gardens/i)).toBeVisible();
+  await expect(page.getByText("122,667.65")).toBeVisible();
+  await page.goto("/water-bills/2745714336-2026-06.html");
+  await expect(page.getByText("2745714336")).toBeVisible();
+  await expect(page.getByText("Building 8")).toBeVisible();
 });

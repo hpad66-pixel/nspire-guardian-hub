@@ -16,9 +16,12 @@ import {
   useWaterIntelligence,
   type WaterIntelScope,
 } from '@/hooks/useWaterIntelligence';
+import { auditWaterIntel } from '@/lib/water-intel/qa';
+import { WaterIntelBillLedger } from './WaterIntelBillLedger';
 import { WaterIntelCharts } from './WaterIntelCharts';
 import { WaterIntelChat } from './WaterIntelChat';
 import { WaterIntelNotes } from './WaterIntelNotes';
+import { WaterIntelQaBanner } from './WaterIntelQaBanner';
 import { WaterIntelUpload } from './WaterIntelUpload';
 
 const SEV: Record<InsightSeverity, string> = {
@@ -61,14 +64,15 @@ export function WaterIntelDashboard({
     );
   }
 
-  const { kpis, rollups, insights, meta, accounts, notes } = intel;
+  const { kpis, rollups, insights, meta, accounts, notes, bills } = intel;
   const propertyName = meta?.property_name ?? 'Property';
   const guest = mode === 'magic';
   const canUpload = mode === 'staff';
   const deltaUp = (kpis.ytdDeltaPct ?? 0) > 0;
+  const qa = useMemo(() => auditWaterIntel(accounts, bills), [accounts, bills]);
 
   return (
-    <div className="space-y-6" data-testid="water-intel-dashboard">
+    <div className="space-y-6 pb-16" data-testid="water-intel-dashboard">
       <header className="overflow-hidden rounded-[28px] bg-[#08271f] px-6 py-8 text-white shadow-xl md:px-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -105,8 +109,19 @@ export function WaterIntelDashboard({
         </div>
       </header>
 
+      <WaterIntelQaBanner report={qa} />
+
       {canUpload && meta?.property_id && (
         <WaterIntelUpload propertyId={meta.property_id} accounts={accounts} />
+      )}
+
+      {bills.length === 0 && (
+        <div className="rounded-3xl border border-dashed border-[#dedbd1] bg-white p-10 text-center" data-testid="water-intel-empty">
+          <h2 className="font-display text-2xl text-[#08271f]">No bills on this property yet</h2>
+          <p className="mt-2 text-sm text-[#5c6863]">
+            Charts stay blank until WASD statements are ingested. Enable Water Intelligence in Admin, then upload PDFs or confirm the Glorieta overlay migration ran.
+          </p>
+        </div>
       )}
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -144,6 +159,8 @@ export function WaterIntelDashboard({
       </div>
 
       <WaterIntelCharts bills={filteredBills} rollups={accountFilter === 'all' ? rollups : rollups.filter((r) => r.accountId === accountFilter)} />
+
+      <WaterIntelBillLedger bills={filteredBills} accounts={accounts} />
 
       <section className="overflow-hidden rounded-3xl border border-[#dedbd1] bg-white shadow-sm">
         <div className="border-b border-[#dedbd1] px-5 py-4">
