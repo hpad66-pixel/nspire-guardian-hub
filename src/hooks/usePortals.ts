@@ -85,12 +85,17 @@ export interface OwnerPortalProjectMeta {
   module_config?: Record<string, boolean> | null;
   module_inherit_from_parent?: boolean | null;
   parent_project_id?: string | null;
+  client_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
 }
 
 export interface OwnerPortalData {
   primeContracts: OwnerPortalContract[];
   pendingOcos: OwnerPortalChangeOrder[];
   pendingPayApps: OwnerPortalPayApp[];
+  /** Flat project list — includes jobs without a prime contract. */
+  projects: OwnerPortalProjectMeta[];
   /** Project rows keyed by id — used for portal module visibility. */
   projectMeta: Record<string, OwnerPortalProjectMeta>;
 }
@@ -143,15 +148,23 @@ export function usePortalInvitations() {
       // see the intended owner's records. A null owner organization would
       // create a valid login with an empty portal, so fail clearly instead.
       if (input.portalKind === "owner" && !organizationId && input.projectId) {
-        const { data: contract, error: contractError } = await supabase
-          .from("prime_contracts" as any)
-          .select("owner_org_id")
-          .eq("project_id", input.projectId)
-          .not("owner_org_id", "is", null)
-          .limit(1)
-          .maybeSingle();
-        if (contractError) throw contractError;
-        organizationId = (contract as any)?.owner_org_id ?? null;
+        const { data: resolvedOrg, error: orgError } = await supabase.rpc(
+          "resolve_owner_org_for_project" as any,
+          { p_project_id: input.projectId } as any,
+        );
+        if (orgError) throw orgError;
+        organizationId = (resolvedOrg as string | null) ?? null;
+        if (!organizationId) {
+          const { data: contract, error: contractError } = await supabase
+            .from("prime_contracts" as any)
+            .select("owner_org_id")
+            .eq("project_id", input.projectId)
+            .not("owner_org_id", "is", null)
+            .limit(1)
+            .maybeSingle();
+          if (contractError) throw contractError;
+          organizationId = (contract as any)?.owner_org_id ?? null;
+        }
       }
 
       if (input.portalKind === "owner" && !organizationId) {
@@ -205,7 +218,7 @@ export function useOwnerPortalData() {
         supabase.from("prime_contracts" as any).select("*"),
         // module_config drives which portal nav items the client sees
         supabase.from("projects" as any).select(
-          "id, name, project_type, module_config, module_inherit_from_parent, parent_project_id",
+          "id, name, status, project_type, module_config, module_inherit_from_parent, parent_project_id, client_id, client:clients(name)",
         ),
         supabase.from("change_orders" as any).select("*")
           .eq("co_type", "OCO")
@@ -216,14 +229,28 @@ export function useOwnerPortalData() {
       const projectRows = (projects.data ?? []) as Array<{
         id: string;
         name: string;
+        status?: string | null;
         project_type?: string | null;
         module_config?: Record<string, boolean> | null;
         module_inherit_from_parent?: boolean | null;
         parent_project_id?: string | null;
+        client_id?: string | null;
+        client?: { name?: string | null } | null;
       }>;
-      const projectNames = new Map(projectRows.map((project) => [project.id, project.name]));
+      const projectList: OwnerPortalProjectMeta[] = projectRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        status: row.status ?? null,
+        project_type: row.project_type,
+        module_config: row.module_config,
+        module_inherit_from_parent: row.module_inherit_from_parent,
+        parent_project_id: row.parent_project_id,
+        client_id: row.client_id ?? null,
+        client_name: row.client?.name ?? null,
+      }));
+      const projectNames = new Map(projectList.map((project) => [project.id, project.name]));
       const metaRecord: Record<string, OwnerPortalProjectMeta> = {};
-      for (const row of projectRows) metaRecord[row.id] = row;
+      for (const row of projectList) metaRecord[row.id] = row;
       return {
         primeContracts: ((primeContracts.data ?? []) as unknown as OwnerPortalContract[]).map((contract) => ({
           ...contract,
@@ -231,6 +258,7 @@ export function useOwnerPortalData() {
         })),
         pendingOcos: (cos.data ?? []) as unknown as OwnerPortalChangeOrder[],
         pendingPayApps: (payApps.data ?? []) as unknown as OwnerPortalPayApp[],
+        projects: projectList,
         projectMeta: metaRecord,
       };
     },
@@ -307,6 +335,61 @@ export function useOwnerRejectPayApp() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["owner-portal-data"] });
       qc.invalidateQueries({ queryKey: ["pay-app"] });
+    },
+  });
+}
+
+export interface ClientPortfolioProject {
+  id: string;
+  name: string;
+  status: string | null;
+  client_id: string | null;
+}
+
+export interface ClientPortfolio {
+  clientId: string | null;
+  clientName: string | null;
+  projects: ClientPortfolioProject[];
+}
+
+/** Staff-side: every project that shares this job's client. */
+export function useClientPortfolio(projectId: string | undefined) {
+  return useQuery<ClientPortfolio>({
+    queryKey: ["client-portfolio", projectId],
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      const { data: project, error } = await supabase
+        .from("projects" as any)
+        .select("id, name, status, client_id, client:clients(name)")
+        .eq("id", projectId!)
+        .maybeSingle();
+      if (error) throw error;
+      const row = project as {
+        id: string;
+        name: string;
+        status?: string | null;
+        client_id?: string | null;
+        client?: { name?: string | null } | null;
+      } | null;
+      if (!row) return { clientId: null, clientName: null, projects: [] };
+      if (!row.client_id) {
+        return {
+          clientId: null,
+          clientName: row.client?.name ?? null,
+          projects: [{ id: row.id, name: row.name, status: row.status ?? null, client_id: null }],
+        };
+      }
+      const { data: siblings, error: siblingError } = await supabase
+        .from("projects" as any)
+        .select("id, name, status, client_id")
+        .eq("client_id", row.client_id)
+        .order("name");
+      if (siblingError) throw siblingError;
+      return {
+        clientId: row.client_id,
+        clientName: row.client?.name ?? null,
+        projects: ((siblings ?? []) as ClientPortfolioProject[]),
+      };
     },
   });
 }

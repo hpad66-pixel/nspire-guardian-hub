@@ -5,7 +5,10 @@ import { ownerPortalPath } from "@/lib/portal/ownerPortalPaths";
 export type OwnerPortalProjectTab = {
   id: string;
   name: string;
-  contract: OwnerPortalContract;
+  contract: OwnerPortalContract | null;
+  client_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
 };
 
 type ClientPortalProjectContextValue = {

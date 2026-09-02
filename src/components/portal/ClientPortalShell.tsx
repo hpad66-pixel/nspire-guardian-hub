@@ -24,9 +24,10 @@ import {
   ClientPortalProjectProvider,
 } from "./ClientPortalProjectContext";
 import {
+  buildOwnerProjectTabs,
+  filterOwnerProjectsForClient,
   ownerPortalPath,
   ownerPortalProjectSwitchPath,
-  uniqueOwnerProjects,
 } from "@/lib/portal/ownerPortalPaths";
 import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
 import type { OwnerPortalProjectMeta } from "@/hooks/usePortals";
@@ -80,10 +81,19 @@ export function ClientPortalShell() {
   const { data: portalKind } = useMyPortalKind();
 
   const contracts = ownerData?.primeContracts ?? [];
-  const projects = useMemo(() => uniqueOwnerProjects(contracts), [contracts]);
+  const catalog = ownerData?.projects ?? [];
   const requestedProjectId = routeProjectId
     ?? new URLSearchParams(location.search).get("project")
     ?? null;
+  const allProjects = useMemo(
+    () => buildOwnerProjectTabs(catalog, contracts),
+    [catalog, contracts],
+  );
+  const projects = useMemo(() => {
+    if (portalKind === "owner") return allProjects;
+    const anchor = requestedProjectId ?? allProjects[0]?.id ?? null;
+    return filterOwnerProjectsForClient(allProjects, anchor);
+  }, [allProjects, portalKind, requestedProjectId]);
   // Never silently fall back to projects[0] when a specific project was requested —
   // that made every client/preview see the same first contract.
   const matchedProject = projects.find((project) => project.id === requestedProjectId) ?? null;
@@ -239,7 +249,9 @@ export function ClientPortalShell() {
           <div className="client-portal-context__inner">
             <div className="client-portal-context__project">
               <span className="client-portal-context__eyebrow">
-                {projects.length > 1 ? "Your projects" : "Current project"}
+                {projects.length > 1
+                  ? `${companyName} · ${projects.length} projects`
+                  : "Current project"}
               </span>
               {projects.length > 1 ? (
                 <div className="client-portal-project-tabs" data-testid="owner-portal-project-tabs" role="tablist" aria-label="Projects">
@@ -254,7 +266,10 @@ export function ClientPortalShell() {
                         to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
                         className={`client-portal-project-tab${selected ? " is-active" : ""}`}
                       >
-                        {project.name}
+                        <span>{project.name}</span>
+                        {project.status && (
+                          <small className="client-portal-project-tab__status">{project.status.replace(/_/g, " ")}</small>
+                        )}
                       </Link>
                     );
                   })}

@@ -234,6 +234,49 @@
   background: #f4e4b4;
   border-color: #f4e4b4;
 }
+.client-portal-project-tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.2;
+}
+.client-portal-project-tab__status {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.client-portfolio { margin: 8px 0 28px; }
+.client-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.client-portfolio-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--client-line);
+  border-radius: 16px;
+  color: inherit;
+  background: var(--client-paper);
+  text-decoration: none;
+}
+.client-portfolio-card small {
+  color: var(--client-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.client-portfolio-card strong { font-size: 15px; }
+.client-portfolio-card span { color: var(--client-muted); font-size: 13px; line-height: 1.45; }
+.client-portfolio-card.is-active {
+  border-color: #d5aa52;
+  box-shadow: 0 0 0 3px rgba(213, 170, 82, 0.18);
+}
 .client-portal-context__secure { display: inline-flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.54); font-size: 11px; }
 .client-portal-context__secure svg { width: 14px; height: 14px; color: var(--client-gold); }
 

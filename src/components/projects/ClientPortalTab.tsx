@@ -30,7 +30,10 @@ import {
   type ActionItemPriority,
 } from '@/hooks/useClientCommunication';
 import { useAuth } from '@/hooks/useAuth';
-import { usePortalByProject, usePortalAccess, useInviteContact, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
+import { usePortalByProject, usePortalAccess, useInviteContact, useEnsureProjectPortal, setPortalSession, type PortalAccess } from '@/hooks/usePortal';
+import { useClientPortfolio } from '@/hooks/usePortals';
+import { useClientUpdatesForProjects } from '@/hooks/useClientUpdates';
+import { ownerPortalPath } from '@/lib/portal/ownerPortalPaths';
 import { ClientDocumentsCard } from '@/components/projects/ClientDocumentsCard';
 import { SendDigestDialog } from '@/components/projects/SendDigestDialog';
 import { useSendEmail } from '@/hooks/useSendEmail';
@@ -69,6 +72,8 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
   const { data: portal, isLoading: portalLoading } = usePortalByProject(projectId);
   const { data: accessList = [] } = usePortalAccess(portal?.id);
   const inviteContact = useInviteContact(portal?.id ?? '');
+  const ensurePortal = useEnsureProjectPortal();
+  const { data: portfolio } = useClientPortfolio(projectId);
   const sendEmail = useSendEmail();
   const [digestOpen, setDigestOpen] = useState(false);
 
@@ -81,15 +86,30 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
   if (portalLoading) return null;
   if (!portal) {
     return (
-      <div className="rounded-xl border border-dashed bg-muted/30 p-5 text-center">
+      <div className="rounded-xl border border-dashed bg-muted/30 p-5 text-center" data-testid="client-portal-setup">
         <CalendarRange className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
         <p className="text-sm font-medium">No portal linked to this project</p>
         <p className="text-xs text-muted-foreground mt-1 mb-3">
-          Create a client portal from the Portals page to enable the interactive schedule and magic-link sharing.
+          Set up this client&apos;s portal now. If they have more than one job, every project will appear as a tab on the same link.
         </p>
-        <Button size="sm" variant="outline" onClick={() => navigate('/portals')}>
-          Go to Portals
-        </Button>
+        <div className="flex justify-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => ensurePortal.mutate({
+              projectId,
+              projectName: portfolio?.projects.find((p) => p.id === projectId)?.name,
+              clientName: portfolio?.clientName ?? undefined,
+              clientId: portfolio?.clientId,
+            })}
+            disabled={ensurePortal.isPending}
+          >
+            {ensurePortal.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <UserPlus className="mr-1.5 h-3.5 w-3.5" />}
+            Set up client portal
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate('/portals')}>
+            All portals
+          </Button>
+        </div>
       </div>
     );
   }
@@ -170,7 +190,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.open(`${window.location.origin}/owner-portal/projects/${projectId}`, '_blank')} className="text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => window.open(ownerPortalPath(projectId), '_blank')} className="text-xs gap-1.5">
             <ExternalLink className="h-3 w-3" />
             Preview
           </Button>
@@ -286,7 +306,7 @@ function ScheduleAccessSection({ projectId }: { projectId: string }) {
 
 // ─── Portal Link ──────────────────────────────────────────────────────────────
 
-function PortalLink({ slug, portalId }: { slug: string; portalId: string }) {
+function PortalLink({ slug, portalId, projectId }: { slug: string; portalId: string; projectId: string }) {
   const [copied, setCopied] = useState(false);
   const url = `${window.location.origin}/portal/${slug}`;
 
@@ -296,9 +316,8 @@ function PortalLink({ slug, portalId }: { slug: string; portalId: string }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // One-click admin preview: drop a preview session and open the live portal.
-  // The viewer is the workspace owner (they're on their own project), so this
-  // shows exactly what the client sees, banner and all.
+  // Open the authenticated owner portal — the live client experience, including
+  // every project on this client (tabs), not the legacy magic-link homepage.
   function preview() {
     setPortalSession({
       portalId,
@@ -309,7 +328,7 @@ function PortalLink({ slug, portalId }: { slug: string; portalId: string }) {
       portalSlug: slug,
       isAdminPreview: true,
     });
-    window.open(`/portal/${slug}/home`, '_blank');
+    window.open(ownerPortalPath(projectId), '_blank');
   }
 
   return (
@@ -751,6 +770,60 @@ function PMUpdatesFeed({ projectId }: { projectId: string }) {
   );
 }
 
+function ClientPortfolioStrip({ projectId }: { projectId: string }) {
+  const navigate = useNavigate();
+  const { data: portfolio, isLoading } = useClientPortfolio(projectId);
+  const siblingIds = (portfolio?.projects ?? []).map((p) => p.id);
+  const { data: updates = [] } = useClientUpdatesForProjects(siblingIds);
+  if (isLoading || !portfolio || portfolio.projects.length <= 1) return null;
+
+  const latestByProject = new Map<string, (typeof updates)[number]>();
+  for (const update of updates) {
+    if (!latestByProject.has(update.project_id)) latestByProject.set(update.project_id, update);
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-3" data-testid="client-portfolio-strip">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+          {portfolio.clientName || 'Client'} portfolio
+        </p>
+        <h3 className="text-sm font-semibold">All {portfolio.projects.length} projects share one portal link</h3>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {portfolio.projects.map((project) => {
+          const latest = latestByProject.get(project.id);
+          const current = project.id === projectId;
+          return (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => navigate(`/projects/${project.id}?tab=client-portal`)}
+              className={cn(
+                'rounded-lg border p-3 text-left transition hover:border-primary/30',
+                current ? 'border-primary/40 bg-primary/5' : 'bg-background',
+              )}
+              data-testid={`client-portfolio-project-${project.id}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <strong className="truncate text-sm">{project.name}</strong>
+                {current && <Badge variant="secondary" className="text-[10px]">This project</Badge>}
+              </div>
+              {latest ? (
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {latest.status === 'published' ? 'Live' : 'Draft'} · {latest.title}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">No briefing yet</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface ClientPortalTabProps {
@@ -833,8 +906,9 @@ export function ClientPortalTab({ projectId, accentColor = 'hsl(217, 91%, 60%)' 
       {/* Views */}
       {activeView === 'overview' && (
         <div className="space-y-5">
+          <ClientPortfolioStrip projectId={projectId} />
           {/* Portal link — only when a portal row exists (#17) */}
-          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} portalId={portal.id} />}
+          {portal?.portal_slug && <PortalLink slug={portal.portal_slug} portalId={portal.id} projectId={projectId} />}
 
           {/* Interactive Schedule & Access */}
           <ScheduleAccessSection projectId={projectId} />

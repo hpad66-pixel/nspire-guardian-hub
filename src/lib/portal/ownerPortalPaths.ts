@@ -51,10 +51,33 @@ export function ownerPortalProjectSwitchPath(pathname: string, nextProjectId: st
   return rewriteOwnerPortalPath(pathname, nextProjectId) ?? ownerPortalPath(nextProjectId);
 }
 
-export function uniqueOwnerProjects<T extends { project_id: string; title: string; project_name?: string | null }>(
+export type OwnerProjectSource = {
+  id: string;
+  name: string;
+  client_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
+};
+
+export type OwnerContractSource = {
+  project_id: string;
+  title: string;
+  project_name?: string | null;
+};
+
+export type OwnerProjectTab<TContract = OwnerContractSource> = {
+  id: string;
+  name: string;
+  contract: TContract | null;
+  client_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
+};
+
+export function uniqueOwnerProjects<T extends OwnerContractSource>(
   contracts: T[],
 ) {
-  const seen = new Map<string, { id: string; name: string; contract: T }>();
+  const seen = new Map<string, OwnerProjectTab<T>>();
   for (const contract of contracts) {
     if (!contract.project_id || seen.has(contract.project_id)) continue;
     seen.set(contract.project_id, {
@@ -64,4 +87,57 @@ export function uniqueOwnerProjects<T extends { project_id: string; title: strin
     });
   }
   return [...seen.values()];
+}
+
+/**
+ * Build portal tabs from every project the client can see, not only jobs
+ * that already have a prime contract. Stormdrain / consulting work still
+ * appears next to contracted siblings.
+ */
+export function buildOwnerProjectTabs<T extends OwnerContractSource>(
+  projects: OwnerProjectSource[],
+  contracts: T[] = [],
+): OwnerProjectTab<T>[] {
+  const contractByProject = new Map<string, T>();
+  for (const contract of contracts) {
+    if (!contract.project_id || contractByProject.has(contract.project_id)) continue;
+    contractByProject.set(contract.project_id, contract);
+  }
+
+  const seen = new Map<string, OwnerProjectTab<T>>();
+  for (const project of projects) {
+    if (!project.id || seen.has(project.id)) continue;
+    seen.set(project.id, {
+      id: project.id,
+      name: project.name || contractByProject.get(project.id)?.title || "Project",
+      contract: contractByProject.get(project.id) ?? null,
+      client_id: project.client_id ?? null,
+      client_name: project.client_name ?? null,
+      status: project.status ?? null,
+    });
+  }
+  for (const contract of contracts) {
+    if (!contract.project_id || seen.has(contract.project_id)) continue;
+    seen.set(contract.project_id, {
+      id: contract.project_id,
+      name: contract.project_name || contract.title,
+      contract,
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Staff preview is tenant-wide; keep the tab strip scoped to one client. */
+export function filterOwnerProjectsForClient<T>(
+  projects: OwnerProjectTab<T>[],
+  anchorProjectId: string | null,
+) {
+  if (!anchorProjectId || projects.length <= 1) return projects;
+  const anchor = projects.find((project) => project.id === anchorProjectId);
+  if (!anchor) return projects;
+  if (anchor.client_id) {
+    const siblings = projects.filter((project) => project.client_id === anchor.client_id);
+    return siblings.length ? siblings : [anchor];
+  }
+  return [anchor];
 }

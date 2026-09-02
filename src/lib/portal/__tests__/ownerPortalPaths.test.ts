@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildOwnerProjectTabs,
+  filterOwnerProjectsForClient,
   isOwnerPortalProjectPath,
   ownerPortalPath,
   ownerPortalProjectSwitchPath,
@@ -46,5 +48,29 @@ describe("ownerPortalPaths", () => {
     expect(tabs.map((tab) => tab.id)).toEqual(["p1", "p2"]);
     expect(tabs[0].name).toBe("Glorieta");
     expect(tabs[1].name).toBe("Stucco");
+  });
+
+  it("includes projects that have no prime contract", () => {
+    const tabs = buildOwnerProjectTabs(
+      [
+        { id: "p1", name: "Conveyance", client_id: "r4", client_name: "R4 Capital" },
+        { id: "p2", name: "Stormdrain Maintenence", client_id: "r4", client_name: "R4 Capital" },
+      ],
+      [{ project_id: "p1", title: "PC-01", project_name: "Conveyance" }],
+    );
+    expect(tabs.map((tab) => tab.id)).toEqual(["p1", "p2"]);
+    expect(tabs[0].contract?.title).toBe("PC-01");
+    expect(tabs[1].contract).toBeNull();
+    expect(tabs[1].name).toBe("Stormdrain Maintenence");
+  });
+
+  it("scopes staff preview tabs to the same client", () => {
+    const tabs = buildOwnerProjectTabs([
+      { id: "p1", name: "Conveyance", client_id: "r4" },
+      { id: "p2", name: "Stormdrain", client_id: "r4" },
+      { id: "p3", name: "Larkin MRI", client_id: "larkin" },
+    ]);
+    expect(filterOwnerProjectsForClient(tabs, "p2").map((tab) => tab.id)).toEqual(["p1", "p2"]);
+    expect(filterOwnerProjectsForClient(tabs, "p3").map((tab) => tab.id)).toEqual(["p3"]);
   });
 });
