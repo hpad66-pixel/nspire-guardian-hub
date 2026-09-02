@@ -425,10 +425,12 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 body {
-  overflow-x: clip;
+  overflow-x: hidden;
+  overflow-y: auto;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
 }

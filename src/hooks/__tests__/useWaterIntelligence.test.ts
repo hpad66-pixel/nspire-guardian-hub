@@ -39,9 +39,10 @@ describe('useWaterIntelligence', () => {
       if (table === 'water_bills') {
         return makeBuilder({
           data: [{
-            id: 'b1', account_id: 'a1', bill_period_start: '2026-03-01', current_charges: 100,
-            amount_due: 100, water_charges: 40, sewer_charges: 50, other_fees: 10,
-            consumption_gallons: 4000, is_estimated: false, status: 'open',
+            id: 'b1', account_id: 'a1', bill_period_start: '2026-06-01',
+            current_charges: 8793.24, amount_due: 122667.65, water_charges: 3426.54,
+            sewer_charges: 4868.97, other_fees: 497.73, consumption_gallons: 423000,
+            is_estimated: false, status: 'disputed', source: 'ocr',
           }],
           error: null,
         });
@@ -54,6 +55,7 @@ describe('useWaterIntelligence', () => {
     expect(result.current.accounts[0].account_number).toBe('2745714336');
     expect(result.current.kpis.accountCount).toBe(1);
     expect(result.current.rollups[0].buildingLabel).toBe('Building 8');
+    expect(result.current.bills[0].amount_due).toBe(122667.65);
   });
 
   it('surfaces an invalid magic-link as an error (validation path)', async () => {
