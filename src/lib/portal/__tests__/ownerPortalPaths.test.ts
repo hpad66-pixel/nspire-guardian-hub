@@ -6,6 +6,7 @@ import {
   ownerPortalPath,
   ownerPortalProjectSwitchPath,
   ownerPortalSection,
+  pickOwnerPortalLandingProject,
   rewriteOwnerPortalPath,
   uniqueOwnerProjects,
 } from "@/lib/portal/ownerPortalPaths";
@@ -72,5 +73,20 @@ describe("ownerPortalPaths", () => {
     ]);
     expect(filterOwnerProjectsForClient(tabs, "p2").map((tab) => tab.id)).toEqual(["p1", "p2"]);
     expect(filterOwnerProjectsForClient(tabs, "p3").map((tab) => tab.id)).toEqual(["p3"]);
+    expect(filterOwnerProjectsForClient(tabs, null, "r4").map((tab) => tab.id)).toEqual(["p1", "p2"]);
+    // Explicit project anchor wins over a remembered client from another portal.
+    expect(filterOwnerProjectsForClient(tabs, "p3", "r4").map((tab) => tab.id)).toEqual(["p3"]);
+  });
+
+  it("lands on requested or first visible project, not only contracted jobs", () => {
+    expect(pickOwnerPortalLandingProject({
+      requestedProjectId: "storm",
+      projectIds: ["conveyance", "storm"],
+      contractProjectIds: ["conveyance"],
+    })).toBe("storm");
+    expect(pickOwnerPortalLandingProject({
+      projectIds: ["storm"],
+      contractProjectIds: [],
+    })).toBe("storm");
   });
 });

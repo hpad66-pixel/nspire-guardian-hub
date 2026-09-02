@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Loader2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePortalBySlug } from "@/hooks/usePortal";
 import { supabase } from "@/integrations/supabase/client";
-import { ownerPortalPath } from "@/lib/portal/ownerPortalPaths";
+import { ownerPortalPath, rememberOwnerPortalClient } from "@/lib/portal/ownerPortalPaths";
 import "./client-portal.css";
 
 /**
@@ -22,18 +22,22 @@ export default function PortalLoginPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (portal?.is_active && portal.status !== "archived") {
+      rememberOwnerPortalClient(portal.client_id);
+    }
+  }, [portal?.client_id, portal?.is_active, portal?.status]);
+
   if (isLoading) {
     return <div className="client-access-loading"><Loader2 className="animate-spin" /></div>;
   }
 
-  // Authenticated clients and project administrators share the same secure
-  // destination; the portal gate decides whether this is an owner view or an
-  // administrator preview.
-  if (user) {
-    return <Navigate to={ownerPortalPath(portal?.project_id)} replace />;
-  }
-
   if (!portal || !portal.is_active || portal.status === "archived") {
+    // Authenticated users with a dead slug still go to the owner portal shell;
+    // otherwise show the public unavailable state.
+    if (user) {
+      return <Navigate to="/owner-portal" replace />;
+    }
     return (
       <div className="client-access-loading">
         <div className="client-access-unavailable">
@@ -45,14 +49,22 @@ export default function PortalLoginPage() {
     );
   }
 
+  // Authenticated clients and project administrators share the same secure
+  // destination; the portal gate decides whether this is an owner view or an
+  // administrator preview.
+  if (user) {
+    return <Navigate to={ownerPortalPath(portal.project_id)} replace />;
+  }
+
   async function handleMagicLink(event: React.FormEvent) {
     event.preventDefault();
     setError("");
     setSubmitting(true);
+    rememberOwnerPortalClient(portal.client_id);
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        emailRedirectTo: `${window.location.origin}${ownerPortalPath(portal?.project_id)}`,
+        emailRedirectTo: `${window.location.origin}${ownerPortalPath(portal.project_id)}`,
         shouldCreateUser: false,
       },
     });

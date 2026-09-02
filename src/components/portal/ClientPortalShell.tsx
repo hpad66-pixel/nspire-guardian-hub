@@ -28,6 +28,7 @@ import {
   filterOwnerProjectsForClient,
   ownerPortalPath,
   ownerPortalProjectSwitchPath,
+  readRememberedOwnerPortalClient,
 } from "@/lib/portal/ownerPortalPaths";
 import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
 import type { OwnerPortalProjectMeta } from "@/hooks/usePortals";
@@ -89,11 +90,12 @@ export function ClientPortalShell() {
     () => buildOwnerProjectTabs(catalog, contracts),
     [catalog, contracts],
   );
+  const rememberedClientId = readRememberedOwnerPortalClient();
   const projects = useMemo(() => {
     if (portalKind === "owner") return allProjects;
     const anchor = requestedProjectId ?? allProjects[0]?.id ?? null;
-    return filterOwnerProjectsForClient(allProjects, anchor);
-  }, [allProjects, portalKind, requestedProjectId]);
+    return filterOwnerProjectsForClient(allProjects, anchor, rememberedClientId);
+  }, [allProjects, portalKind, rememberedClientId, requestedProjectId]);
   // Never silently fall back to projects[0] when a specific project was requested —
   // that made every client/preview see the same first contract.
   const matchedProject = projects.find((project) => project.id === requestedProjectId) ?? null;

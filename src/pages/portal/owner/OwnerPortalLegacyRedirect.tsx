@@ -1,6 +1,9 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useClientPortalProject } from "@/components/portal/ClientPortalProjectContext";
-import { rewriteOwnerPortalPath } from "@/lib/portal/ownerPortalPaths";
+import {
+  pickOwnerPortalLandingProject,
+  rewriteOwnerPortalPath,
+} from "@/lib/portal/ownerPortalPaths";
 
 /**
  * Compatibility handoff for pre-project-tab owner portal URLs.
@@ -8,17 +11,17 @@ import { rewriteOwnerPortalPath } from "@/lib/portal/ownerPortalPaths";
  */
 export default function OwnerPortalLegacyRedirect() {
   const location = useLocation();
-  const { contracts, selectedProjectId, isLoading } = useClientPortalProject();
+  const { contracts, projects, selectedProjectId, isLoading } = useClientPortalProject();
   const params = new URLSearchParams(location.search);
   const requested = params.get("project");
-  // Prefer explicit ?project= so invite/login deep-links are not overwritten by
-  // the first contract in the org-wide list.
-  const projectId = (requested && contracts.some((contract) => contract.project_id === requested))
-    ? requested
-    : selectedProjectId
-      ?? (contracts.length === 1 ? contracts[0]?.project_id : null)
-      ?? contracts[0]?.project_id
-      ?? null;
+  // Prefer explicit ?project=, then any RLS-visible project (including jobs
+  // without a prime contract), and only then fall back to contracts.
+  const projectId = pickOwnerPortalLandingProject({
+    requestedProjectId: requested,
+    selectedProjectId,
+    projectIds: projects.map((project) => project.id),
+    contractProjectIds: contracts.map((contract) => contract.project_id),
+  });
 
   if (isLoading) return <div className="client-dashboard-loading">Loading portal…</div>;
 
