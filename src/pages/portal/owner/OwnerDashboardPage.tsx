@@ -12,7 +12,7 @@ import {
   FolderOpen,
   Landmark,
   Loader2,
-  Map,
+  Map as MapIcon,
   Megaphone,
   ShieldCheck,
   WalletCards,
@@ -147,7 +147,7 @@ function LatestUpdate({ projectId }: { projectId: string | null }) {
 }
 
 const resources = [
-  { to: "/site-map", label: "Site map", detail: "Interactive property assets & pond", icon: Map },
+  { to: "/site-map", label: "Site map", detail: "Interactive property assets & pond", icon: MapIcon },
   { to: "/contract", label: "Contract", detail: "Executed agreement and changes", icon: FileText },
   { to: "/schedule", label: "Schedule", detail: "Milestones and critical path", icon: CalendarDays },
   { to: "/permits", label: "Permits", detail: "Closeout readiness and city status", icon: FileBadge2 },
