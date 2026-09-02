@@ -225,3 +225,15 @@ verify_jwt = true
 # Permit phone OCR — authenticated; Claude vision extracts permit fields
 [functions.extract-permit]
 verify_jwt = true
+
+# Water Intelligence — magic-link chat (token or JWT checked in-function)
+[functions.water-intel-chat]
+verify_jwt = false
+
+# Water Intelligence — magic-link instruction email
+[functions.water-intel-instruct]
+verify_jwt = false
+
+# Water Intelligence — authenticated PDF ingest upsert
+[functions.water-intel-ingest]
+verify_jwt = true

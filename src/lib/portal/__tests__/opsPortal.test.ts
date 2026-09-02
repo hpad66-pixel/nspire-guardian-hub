@@ -22,6 +22,7 @@ describe('opsPortal', () => {
     expect(mods.has('stores')).toBe(true);
     expect(mods.has('voice')).toBe(true);
     expect(mods.has('costs')).toBe(true);
+    expect(mods.has('water')).toBe(true);
     expect(mods.has('executive')).toBe(false);
     expect(isOpsPmOrOwner('ops_pm')).toBe(true);
     expect(isOpsOwnerRole('ops_pm')).toBe(false);

@@ -7,6 +7,7 @@ import {
   Package,
   ShieldCheck,
   Sparkles,
+  Droplets,
   Warehouse,
 } from 'lucide-react';
 import { useOpsPortalProperty } from '@/components/portal/OpsPortalPropertyContext';
@@ -39,6 +40,7 @@ export default function OpsHomePage() {
     { key: 'stores', to: opsPortalPath(propertyId, 'stores'), label: 'Stores & Materials', blurb: 'Stock room + WO-gated issue', icon: Warehouse, show: can('stores') },
     { key: 'voice', to: opsPortalPath(propertyId, 'voice'), label: 'Voice Complaints', blurb: 'Resident call-in → tickets', icon: Mic, show: can('voice') },
     { key: 'costs', to: opsPortalPath(propertyId, 'costs'), label: 'Costs & Receipts', blurb: 'Spend, units, trends', icon: Package, show: can('costs') },
+    { key: 'water', to: opsPortalPath(propertyId, 'water'), label: 'Water Intelligence', blurb: 'Bills, trends, dispute brief', icon: Droplets, show: can('water') },
   ].filter((item) => item.show);
 
   return (

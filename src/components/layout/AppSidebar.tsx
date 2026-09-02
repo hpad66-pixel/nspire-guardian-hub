@@ -45,6 +45,7 @@ import {
   QrCode,
   Gavel,
   ClipboardList,
+  Droplets,
   Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
@@ -233,6 +234,7 @@ export function AppSidebar() {
               <SectionLabel label="Property Management" collapsed={collapsed} />
               <div className="space-y-px">
                 <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
+                <NavItem to="/water-intel" icon={Droplets} label="Water Intelligence" collapsed={collapsed} />
                 <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
                 {isModuleEnabled('occupancyEnabled') && (
                   <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
