@@ -209,11 +209,9 @@ function OrganizationCard({ org, onEdit, onViewMembers, onViewProjects, onArchiv
               <span>project{(org.project_count ?? 0) !== 1 ? 's' : ''}</span>
             </button>
           </div>
-          {(org.member_count ?? 0) > 0 && (
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onViewMembers}>
-              View Members
-            </Button>
-          )}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onViewMembers}>
+            Manage Team
+          </Button>
         </div>
       </CardContent>
     </Card>

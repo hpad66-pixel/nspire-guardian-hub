@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus, UserRoundCheck,
+  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus, UserRoundCheck, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useModules } from '@/contexts/ModuleContext';
 import { groupProjectsByKind } from '@/lib/projectKind';
+import { OrganizationMembersSheet } from '@/components/organizations/OrganizationMembersSheet';
 
 const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
   internal_org: 'Internal Organization',
@@ -26,6 +27,7 @@ export default function OrganizationDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
   const { data: org, isLoading: orgLoading } = useClient(clientId);
   const { data: projectAccess, isLoading: accessLoading } = useClientProjectAccess(clientId);
   const { data: allProjects = [], isLoading: projectsLoading } = useProjects();
@@ -116,7 +118,11 @@ export default function OrganizationDetailPage() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">{canManageContractors && <Button variant="outline" className="shrink-0" onClick={() => navigate(`/organizations/${org.id}/contractors`)}><UserRoundCheck className="mr-2 h-4 w-4" />Contractors</Button>}{canCreateProject && <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Create project</Button>}</div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="shrink-0" onClick={() => setTeamOpen(true)}><Users className="mr-2 h-4 w-4" />Team {typeof org.member_count === 'number' ? `(${org.member_count})` : ''}</Button>
+            {canManageContractors && <Button variant="outline" className="shrink-0" onClick={() => navigate(`/organizations/${org.id}/contractors`)}><UserRoundCheck className="mr-2 h-4 w-4" />Contractors</Button>}
+            {canCreateProject && <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Create project</Button>}
+          </div>
         </div>
       </div>
 
@@ -175,6 +181,7 @@ export default function OrganizationDetailPage() {
           onCreated={(created) => navigate(`/projects/${created.id}`)}
         />
       )}
+      <OrganizationMembersSheet open={teamOpen} onOpenChange={setTeamOpen} organization={org} />
     </div>
   );
 }

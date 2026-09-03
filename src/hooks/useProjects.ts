@@ -86,6 +86,7 @@ export function useProjects() {
       let query = supabase
         .from('projects')
         .select(PROJECT_SELECT)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (!isAdmin) {
@@ -111,6 +112,7 @@ export function useActiveProjects() {
       let query = supabase
         .from('projects')
         .select(PROJECT_SELECT)
+        .is('deleted_at', null)
         .in('status', ['planning', 'active'])
         .order('created_at', { ascending: false });
 
@@ -138,6 +140,7 @@ export function useProject(projectId: string | null) {
       let query = supabase
         .from('projects')
         .select(PROJECT_SELECT_DETAIL)
+        .is('deleted_at', null)
         .eq('id', projectId);
 
       if (!isAdmin) {
@@ -168,6 +171,7 @@ export function useProjectsByProperty(propertyId: string | null) {
       const { data, error } = await supabase
         .from('projects')
         .select(PROJECT_SELECT)
+        .is('deleted_at', null)
         .eq('property_id', propertyId)
         .order('created_at', { ascending: false });
 
@@ -186,7 +190,8 @@ export function useProjectStats() {
     queryFn: async () => {
       let query = supabase
         .from('projects')
-        .select('status, budget, spent, property_id');
+        .select('status, budget, spent, property_id')
+        .is('deleted_at', null);
 
       if (!isAdmin) {
         query = await buildNonAdminFilter(query);
@@ -310,13 +315,21 @@ export function useUpdateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('projects').delete().eq('id', id);
+    mutationFn: async ({ id, deleteDescendants = false }: { id: string; deleteDescendants?: boolean }) => {
+      const { data, error } = await supabase.rpc('delete_project_as_super_admin', {
+        p_project_id: id,
+        p_delete_descendants: deleteDescendants,
+      });
       if (error) throw error;
+      if (!data) throw new Error('Project removal was not confirmed by the server');
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
+      queryClient.removeQueries({ queryKey: ['projects', id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Project deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['project-tree'] });
+      toast.success('Project removed from the active workspace');
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete project: ${error.message}`);

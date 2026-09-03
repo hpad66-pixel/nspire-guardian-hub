@@ -79,7 +79,7 @@ export default function PeoplePage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">People</h1>
           <p className="text-sm text-muted-foreground">
-            Manage team members across all properties
+            Invite people once, manage account roles, then assign them to any client, property, or project.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

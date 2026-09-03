@@ -12,9 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { useDeleteProject } from '@/hooks/useProjects';
 import { useProjectTree } from '@/hooks/useProjectTree';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 import { Trash2, AlertTriangle, FolderTree } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -40,6 +40,7 @@ export function DeleteProjectDialog({
   const [mode, setMode] = useState<'detach' | 'all'>('detach');
   const [busy, setBusy] = useState(false);
   const deleteProject = useDeleteProject();
+  const { isSuperAdmin: canDelete } = usePlatformSuperAdmin();
 
   const { tree } = useProjectTree();
   const descendants = tree.descendants(projectId);
@@ -49,16 +50,10 @@ export function DeleteProjectDialog({
   const confirmed = confirmName.trim() === projectName.trim();
 
   const handleDelete = async () => {
-    if (!confirmed || busy) return;
+    if (!confirmed || busy || !canDelete) return;
     setBusy(true);
     try {
-      // Delete the whole program: remove every descendant first, then the parent.
-      if (hasSubs && mode === 'all') {
-        const ids = descendants.map((d) => d.id);
-        const { error } = await supabase.from('projects').delete().in('id', ids);
-        if (error) throw error;
-      }
-      await deleteProject.mutateAsync(projectId);
+      await deleteProject.mutateAsync({ id: projectId, deleteDescendants: hasSubs && mode === 'all' });
       onOpenChange(false);
       setConfirmName('');
       setMode('detach');
@@ -92,8 +87,8 @@ export function DeleteProjectDialog({
             <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/20">
               <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm text-destructive font-medium">
-                This will permanently delete all associated milestones, daily reports, change orders,
-                RFIs, meetings, action items, and all other project data. This cannot be undone.
+                Only the platform super administrator can remove a project. It disappears everywhere
+                immediately, while its records remain preserved in the audit history.
               </p>
             </div>
           </AlertDialogDescription>
@@ -122,8 +117,8 @@ export function DeleteProjectDialog({
               onClick={() => setMode('all')}
               className={cn('w-full text-left rounded-lg border p-2.5 text-sm transition-colors', mode === 'all' ? 'border-destructive bg-destructive/5' : 'border-border hover:bg-muted/50')}
             >
-              <span className="font-medium text-destructive">Delete the whole program</span>
-              <span className="block text-xs text-muted-foreground">Also permanently deletes all {descendants.length} subproject{descendants.length !== 1 ? 's' : ''} and their data.</span>
+              <span className="font-medium text-destructive">Remove the whole program</span>
+              <span className="block text-xs text-muted-foreground">Also removes all {descendants.length} subproject{descendants.length !== 1 ? 's' : ''} from the active workspace.</span>
             </button>
           </div>
         )}
@@ -149,7 +144,7 @@ export function DeleteProjectDialog({
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={!confirmed || busy || deleteProject.isPending}
+            disabled={!confirmed || busy || deleteProject.isPending || !canDelete}
             className="gap-1.5"
           >
             <Trash2 className="h-4 w-4" />

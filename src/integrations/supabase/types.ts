@@ -1462,6 +1462,39 @@ export type Database = {
           },
         ]
       }
+      client_team_members: {
+        Row: {
+          added_by: string | null
+          client_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -9750,6 +9783,9 @@ export type Database = {
           client_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_batch_id: string | null
           description: string | null
           id: string
           name: string
@@ -9769,6 +9805,9 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_batch_id?: string | null
           description?: string | null
           id?: string
           name: string
@@ -9788,6 +9827,9 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_batch_id?: string | null
           description?: string | null
           id?: string
           name?: string
@@ -14736,6 +14778,69 @@ export type Database = {
       }
     }
     Functions: {
+      create_project_discussion_reply_with_mentions: {
+        Args: {
+          p_attachments?: string[]
+          p_content: string
+          p_discussion_id: string
+          p_mentioned_user_ids?: string[]
+        }
+        Returns: Database["public"]["Tables"]["project_discussion_replies"]["Row"]
+      }
+      create_project_discussion_with_mentions: {
+        Args: {
+          p_attachments?: string[]
+          p_content: string
+          p_mentioned_user_ids?: string[]
+          p_project_id: string
+          p_title: string
+        }
+        Returns: Database["public"]["Tables"]["project_discussions"]["Row"]
+      }
+      delete_project_as_super_admin: {
+        Args: { p_delete_descendants?: boolean; p_project_id: string }
+        Returns: Json
+      }
+      get_client_team_access: {
+        Args: { p_client_id: string }
+        Returns: { can_manage: boolean; can_view: boolean }[]
+      }
+      get_client_project_access: {
+        Args: { p_client_id: string }
+        Returns: { can_create: boolean; can_delete: boolean; can_edit: boolean; can_view: boolean }[]
+      }
+      get_project_mention_candidates: {
+        Args: { p_limit?: number; p_project_id: string; p_search?: string }
+        Returns: {
+          access_source: string
+          avatar_url: string | null
+          email: string | null
+          full_name: string | null
+          is_project_member: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      get_project_team_access: {
+        Args: { p_project_id: string }
+        Returns: { can_manage: boolean; can_view: boolean }[]
+      }
+      remove_client_team_member: {
+        Args: { p_client_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      remove_project_team_member: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      upsert_client_team_member: {
+        Args: { p_client_id: string; p_role?: Database["public"]["Enums"]["app_role"]; p_user_id: string }
+        Returns: string
+      }
+      upsert_project_team_member: {
+        Args: { p_project_id: string; p_role?: Database["public"]["Enums"]["app_role"]; p_user_id: string }
+        Returns: string
+      }
       assignable_workspace_roles: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"][]

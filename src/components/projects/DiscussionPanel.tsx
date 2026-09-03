@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MentionTextarea } from "./MentionTextarea";
-import { useCreateNotification } from "@/hooks/useNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -37,7 +36,6 @@ import {
   useDiscussionRealtime,
   type DiscussionWithDetails,
 } from "@/hooks/useProjectDiscussions";
-import { useAuth } from "@/hooks/useAuth";
 
 interface DiscussionPanelProps {
   projectId: string;
@@ -76,12 +74,10 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
   const [newMentionIds, setNewMentionIds] = useState<string[]>([]);
   const [replyMentionIds, setReplyMentionIds] = useState<string[]>([]);
 
-  const { user } = useAuth();
   const { data: discussions = [], isLoading } = useProjectDiscussions(projectId);
   const { data: replies = [] } = useDiscussionReplies(selectedDiscussion?.id ?? null);
   const createDiscussion = useCreateDiscussion();
   const createReply = useCreateReply();
-  const createNotification = useCreateNotification();
   useDiscussionRealtime(projectId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -144,18 +140,8 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       title: newTitle.trim(),
       content: newContent.trim(),
       attachments: newAttachments.length > 0 ? newAttachments : undefined,
+      mentionedUserIds: newMentionIds,
     });
-    // Notify mentioned users (including self for reminders)
-    for (const userId of newMentionIds) {
-      await createNotification.mutateAsync({
-        userId,
-        type: "mention",
-        title: userId === user?.id ? `Reminder: "${newTitle.trim()}"` : `You were tagged in a discussion`,
-        message: `"${newTitle.trim()}" — respond in the project discussions.`,
-        entityType: "project",
-        entityId: projectId,
-      });
-    }
     setNewTitle("");
     setNewContent("");
     setNewAttachments([]);
@@ -170,18 +156,8 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
       projectId,
       content: replyContent.trim() || "(photo)",
       attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
+      mentionedUserIds: replyMentionIds,
     });
-    // Notify mentioned users (including self for reminders)
-    for (const userId of replyMentionIds) {
-      await createNotification.mutateAsync({
-        userId,
-        type: "mention",
-        title: userId === user?.id ? `Reminder in "${selectedDiscussion.title}"` : `You were tagged in "${selectedDiscussion.title}"`,
-        message: `${replyContent.trim().slice(0, 100)}${replyContent.trim().length > 100 ? "..." : ""}`,
-        entityType: "project",
-        entityId: projectId,
-      });
-    }
     setReplyContent("");
     setReplyAttachments([]);
     setReplyMentionIds([]);
@@ -279,6 +255,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Message <span className="text-muted-foreground/60 font-normal">· Type @ to tag someone</span></label>
                 <MentionTextarea
+                  projectId={projectId}
                   placeholder="Start the conversation... Type @ to tag a team member"
                   value={newContent}
                   onChange={setNewContent}
@@ -615,6 +592,7 @@ export function DiscussionPanel({ projectId, open, onClose }: DiscussionPanelPro
               )}
             </Button>
             <MentionTextarea
+              projectId={projectId}
               placeholder="Reply... Type @ to tag someone"
               value={replyContent}
               onChange={setReplyContent}

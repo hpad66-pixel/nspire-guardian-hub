@@ -152,24 +152,15 @@ export function useCreateDiscussion() {
       linkedEntityType?: string;
       linkedEntityId?: string;
       attachments?: string[];
+      mentionedUserIds?: string[];
     }) => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("project_discussions")
-        .insert({
-          project_id: params.projectId,
-          title: params.title,
-          content: params.content,
-          content_html: params.contentHtml || null,
-          created_by: session.session.user.id,
-          linked_entity_type: params.linkedEntityType || null,
-          linked_entity_id: params.linkedEntityId || null,
-          attachments: params.attachments || [],
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("create_project_discussion_with_mentions", {
+        p_project_id: params.projectId,
+        p_title: params.title,
+        p_content: params.content,
+        p_attachments: params.attachments || [],
+        p_mentioned_user_ids: [...new Set(params.mentionedUserIds || [])],
+      });
 
       if (error) throw error;
       return data;
@@ -194,21 +185,14 @@ export function useCreateReply() {
       content: string;
       contentHtml?: string;
       attachments?: string[];
+      mentionedUserIds?: string[];
     }) => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("project_discussion_replies")
-        .insert({
-          discussion_id: params.discussionId,
-          content: params.content,
-          content_html: params.contentHtml || null,
-          created_by: session.session.user.id,
-          attachments: params.attachments || [],
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("create_project_discussion_reply_with_mentions", {
+        p_discussion_id: params.discussionId,
+        p_content: params.content,
+        p_attachments: params.attachments || [],
+        p_mentioned_user_ids: [...new Set(params.mentionedUserIds || [])],
+      });
 
       if (error) throw error;
       return data;
