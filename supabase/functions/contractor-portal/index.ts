@@ -104,6 +104,29 @@ serve(async (req) => {
       }
       if (Object.keys(orgPatch).length) await db.from("organizations").update(orgPatch).eq("id", qualification.organization_id).eq("tenant_id", qualification.tenant_id);
 
+      // Keep the invitation recipient as the durable primary contact in the
+      // tenant's contractor portfolio instead of leaving contact data inside
+      // a one-time onboarding link.
+      const contactName = String(body.actorName ?? "").trim() || access.email;
+      const contactEmail = String((body.organization ?? {}).email ?? access.email).trim().toLowerCase();
+      const contactPhone = String((body.organization ?? {}).phone ?? "").trim() || null;
+      const { data: primaryContact } = await db.from("contractor_contacts")
+        .select("id").eq("organization_id", qualification.organization_id)
+        .eq("is_primary", true).maybeSingle();
+      if (primaryContact?.id) {
+        await db.from("contractor_contacts").update({
+          name: contactName, email: contactEmail, phone: contactPhone,
+          can_manage_documents: true, updated_at: new Date().toISOString(),
+        }).eq("id", primaryContact.id);
+      } else {
+        await db.from("contractor_contacts").insert({
+          tenant_id: qualification.tenant_id,
+          organization_id: qualification.organization_id,
+          name: contactName, email: contactEmail, phone: contactPhone,
+          role: "primary", is_primary: true, can_manage_documents: true,
+        });
+      }
+
       const profilePatch: Record<string, unknown> = {};
       for (const field of ["dba_name","description","portfolio_url","emergency_phone"]) {
         if (field in (body.profile ?? {})) profilePatch[field] = String(body.profile[field] ?? "").trim() || null;

@@ -67,12 +67,13 @@ serve(async (req) => {
     if (already) { skipped++; continue; }
 
     const rawToken = newToken();
-    await db.from("contractor_portal_links").insert({
+    const { data: portalLink } = await db.from("contractor_portal_links").insert({
       tenant_id: requirement.tenant_id, case_id: requirement.case_id,
       email: latestLink.email, role: latestLink.role,
       token_hash: await sha256(rawToken),
       expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-    });
+      delivery_status: resend ? "pending" : "link_only",
+    }).select("id").single();
     const link = `${origin}/contractor/onboard/${rawToken}`;
     const headline = kind === "expired" ? "A required document has expired"
       : kind === "expiring" ? `A required document expires in ${days} day${days === 1 ? "" : "s"}`
@@ -97,6 +98,14 @@ serve(async (req) => {
       errorMessage = response.ok ? null : String(result?.message ?? `Email failed (${response.status})`);
       response.ok ? sent++ : failed++;
     } else skipped++;
+    if (portalLink?.id) {
+      await db.from("contractor_portal_links").update({
+        delivery_status: status === "sent" ? "sent" : status === "failed" ? "failed" : "link_only",
+        delivery_error: errorMessage,
+        provider_id: providerId,
+        delivered_at: status === "sent" ? new Date().toISOString() : null,
+      }).eq("id", portalLink.id);
+    }
     await db.from("contractor_reminder_log").insert({
       tenant_id: requirement.tenant_id, case_id: requirement.case_id,
       requirement_id: requirement.id, recipient_email: latestLink.email,
