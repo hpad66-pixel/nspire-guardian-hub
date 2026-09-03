@@ -40,6 +40,7 @@ export interface FieldPhoto {
   created_at: string;
   photo: {
     id: string;
+    uploader_id: string | null;
     storage_path: string;
     thumb_path: string | null;
     taken_at: string | null;
@@ -158,7 +159,7 @@ export function useFieldAccountability(projectId: string | null) {
       const [itemsResult, visitsResult, photosResult, annotationsResult, commentsResult, eventsResult] = await Promise.all([
         db.from('field_accountability_items').select('*').eq('project_id', projectId).is('archived_at', null),
         db.from('field_visits').select('*').eq('project_id', projectId).order('visited_at', { ascending: false }),
-        db.from('field_accountability_photos').select('*, photo:photos(id,storage_path,thumb_path,taken_at,lat,lng,caption,created_at)').eq('project_id', projectId),
+        db.from('field_accountability_photos').select('*, photo:photos(id,uploader_id,storage_path,thumb_path,taken_at,lat,lng,caption,created_at)').eq('project_id', projectId),
         db.from('field_photo_annotations').select('*').eq('project_id', projectId),
         db.from('field_accountability_comments').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
         db.from('field_accountability_events').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
@@ -340,7 +341,7 @@ export function useFieldAccountability(projectId: string | null) {
           evidence_type: input.evidenceType ?? 'observation',
           sort_order: index,
           created_by: userId,
-        }).select('*, photo:photos(id,storage_path,thumb_path,taken_at,lat,lng,caption,created_at)').single();
+        }).select('*, photo:photos(id,uploader_id,storage_path,thumb_path,taken_at,lat,lng,caption,created_at)').single();
         if (linkError) throw linkError;
         uploaded.push(link as FieldPhoto);
         // Thumbnail generation is advisory and must never make a confirmed
@@ -361,6 +362,18 @@ export function useFieldAccountability(projectId: string | null) {
         p_item_id: itemId,
         p_target_status: status,
         p_note: note?.trim() || null,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updatePhotoCaption = useMutation({
+    mutationFn: async ({ photoId, caption }: { photoId: string; caption: string }) => {
+      const { data, error } = await (supabase as any).rpc('update_field_photo_caption', {
+        p_photo_id: photoId,
+        p_caption: caption,
       });
       if (error) throw error;
       return data;
@@ -424,6 +437,7 @@ export function useFieldAccountability(projectId: string | null) {
     createItem,
     updateItem,
     uploadPhotos,
+    updatePhotoCaption,
     transitionItem,
     addComment,
     addAnnotation,

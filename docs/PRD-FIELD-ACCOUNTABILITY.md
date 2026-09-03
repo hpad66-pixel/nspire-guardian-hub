@@ -125,6 +125,8 @@ The primary mobile action is **Start site walk**. It opens a bottom-sheet style 
 3. Preserve EXIF capture time and GPS. If absent, offer explicit “Use current location”; never imply that an inferred location is verified.
 4. Show a resilient upload queue with preview, progress, retry, and per-photo caption.
 5. Let the user dictate the walk narrative or caption. Browser/OS speech input and Wispr Flow work naturally; ProjOS also provides its existing voice-dictation control.
+6. Preserve the uploaded image as immutable evidence. The uploader may revise their own caption, with every revision audited; no user may rewrite another uploader's caption. Other participants contribute through questions and non-destructive annotations.
+7. Give owner-portal users the same low-friction phone and batch capture path. Their uploads remain in a project-specific private inbox until the project team triages and publishes a condition.
 6. **Polish with AI** fixes clarity and grammar but preserves every fact. The original text remains available in audit metadata.
 7. Uploaded photos land in a triage inbox. The user may turn a photo into a new item, group it with others, or attach it to an existing item.
 

@@ -34,7 +34,7 @@ export default function FieldAccountabilityPage() {
   const params = useParams<{ projectId?: string; id?: string }>();
   const projectId = params.projectId || params.id || null;
   const { data: project } = useProject(projectId);
-  const { data, isLoading, error, analyzePhoto } = useFieldAccountability(projectId);
+  const { data, isLoading, error, analyzePhoto, updatePhotoCaption } = useFieldAccountability(projectId);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createPhotoId, setCreatePhotoId] = useState<string | null>(null);
@@ -150,7 +150,7 @@ export default function FieldAccountabilityPage() {
                 {data.untriagedPhotos.map((photo) => (
                   <Card key={photo.id} className="overflow-hidden rounded-3xl border-slate-200 shadow-sm">
                     <CardContent className="space-y-3 p-3">
-                      <AccountabilityPhotoViewer link={photo} compact canAnnotate={false} />
+                      <AccountabilityPhotoViewer link={photo} compact canAnnotate={false} onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })} />
                       <div className="px-1"><p className="line-clamp-2 text-sm font-semibold text-[#082b23]">{typeof photo.ai_suggestion?.caption === 'string' ? photo.ai_suggestion.caption : photo.photo.caption || 'Untriaged site observation'}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(photo.photo.taken_at || photo.photo.created_at).toLocaleString()}</p>{Object.keys(photo.ai_suggestion || {}).length > 0 && <div className="mt-2 flex flex-wrap gap-1"><Badge variant="outline" className="border-sky-200 bg-sky-50 text-[10px] text-sky-800"><Sparkles className="mr-1 h-3 w-3" />AI suggestion</Badge>{typeof photo.ai_suggestion.category === 'string' && <Badge variant="outline" className="text-[10px] capitalize">{photo.ai_suggestion.category.replace(/_/g, ' ')}</Badge>}</div>}</div>
                       {!Object.keys(photo.ai_suggestion || {}).length && <Button variant="outline" className="w-full rounded-xl" disabled={organizing === photo.id || Boolean(organizeProgress)} onClick={() => void organizeOne(photo.id)}>{organizing === photo.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}Suggest organization</Button>}
                       <Button className="w-full rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={() => { setCreatePhotoId(photo.id); setCreateOpen(true); }}>Turn into accountable item <ChevronRight className="ml-1 h-4 w-4" /></Button>

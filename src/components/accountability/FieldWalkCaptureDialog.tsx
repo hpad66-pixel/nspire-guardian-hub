@@ -20,14 +20,15 @@ interface FieldWalkCaptureDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   propertyId?: string | null;
+  audience?: 'staff' | 'owner';
 }
 
-export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, propertyId }: FieldWalkCaptureDialogProps) {
-  const { createVisit, uploadPhotos } = useFieldAccountability(projectId);
+export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, propertyId, audience = 'staff' }: FieldWalkCaptureDialogProps) {
+  const { createVisit, uploadPhotos, analyzePhoto } = useFieldAccountability(projectId);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
-  const [visitType, setVisitType] = useState('property_manager_walk');
+  const [visitType, setVisitType] = useState(audience === 'owner' ? 'owner_walk' : 'property_manager_walk');
   const [notes, setNotes] = useState('');
   const [queue, setQueue] = useState<QueuedPhoto[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
@@ -80,7 +81,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
     setQueue([]);
     setTitle('');
     setNotes('');
-    setVisitType('property_manager_walk');
+    setVisitType(audience === 'owner' ? 'owner_walk' : 'property_manager_walk');
     setLocation(null);
   }
 
@@ -95,7 +96,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
         notes,
         propertyId,
       });
-      await uploadPhotos.mutateAsync({
+      const uploaded = await uploadPhotos.mutateAsync({
         visitId: visit.id,
         evidenceType: 'observation',
         files: queue.map((item) => ({ file: item.file, caption: item.caption, currentLocation: location })),
@@ -103,6 +104,19 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
       toast.success(`${queue.length} photograph${queue.length === 1 ? '' : 's'} added to the walk inbox`);
       reset();
       onOpenChange(false);
+      void (async () => {
+        let drafted = 0;
+        for (const photo of uploaded) {
+          try {
+            await analyzePhoto.mutateAsync(photo.id);
+            drafted += 1;
+          } catch {
+            // The photograph is already saved. A failed advisory AI pass must
+            // never make the evidence upload appear to have failed.
+          }
+        }
+        if (drafted > 0) toast.success(`AI prepared ${drafted} starting caption${drafted === 1 ? '' : 's'} for review`);
+      })();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'The site walk could not be saved');
     } finally {
@@ -117,7 +131,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
           <DialogHeader>
             <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-200">Mobile field capture</p>
             <DialogTitle className="font-display text-3xl">Start a site walk</DialogTitle>
-            <DialogDescription className="max-w-xl text-emerald-50/80">Take pictures now or select a full batch. They enter a private triage inbox before anything is presented as a verified fact.</DialogDescription>
+            <DialogDescription className="max-w-xl text-emerald-50/80">Take pictures now or select a full batch. AI prepares a factual starting point, but your project team reviews it before anything becomes a finding.</DialogDescription>
           </DialogHeader>
         </div>
 
@@ -127,7 +141,13 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
               <Label htmlFor="walk-title">Walk title</Label>
               <Input id="walk-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="North courtyard follow-up" className="h-12" />
             </div>
-            <div className="space-y-2">
+            {audience === 'owner' ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-[.14em] text-emerald-700">Submitted by you</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-950">Owner / client site walk</p>
+                <p className="mt-1 text-xs text-emerald-800/70">Your photos enter the private project inbox for review.</p>
+              </div>
+            ) : <div className="space-y-2">
               <Label>Who is walking?</Label>
               <Select value={visitType} onValueChange={setVisitType}>
                 <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
@@ -140,7 +160,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
                   <SelectItem value="other">Other visit</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
           </div>
 
           <div className="space-y-2">
@@ -178,7 +198,9 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
                       <Button type="button" size="icon" variant="secondary" className="absolute right-2 top-2 h-9 w-9 rounded-full" onClick={() => removePhoto(index)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                     <div className="p-3">
-                      <Input value={item.caption} onChange={(event) => setQueue((current) => current.map((photo, photoIndex) => photoIndex === index ? { ...photo, caption: event.target.value } : photo))} placeholder="Optional factual caption" />
+                      <p className="mb-2 truncate text-[11px] font-medium text-muted-foreground">{item.file.name}</p>
+                      <Input value={item.caption} onChange={(event) => setQueue((current) => current.map((photo, photoIndex) => photoIndex === index ? { ...photo, caption: event.target.value } : photo))} placeholder="Your factual caption (optional)" maxLength={2000} />
+                      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Only you can revise this caption later. AI suggestions remain clearly labeled until you accept or edit them.</p>
                     </div>
                   </article>
                 ))}
@@ -187,7 +209,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
           )}
 
           <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-emerald-700" /> Private until triaged and approved for owner visibility</span>
+            <span className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-emerald-700" /> Original files stay unchanged; captions and annotations are tracked separately</span>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
               <Button type="button" onClick={submit} disabled={submitting || !title.trim() || !hasPhotos} className="bg-[#0d6b57] hover:bg-[#095746]">

@@ -83,7 +83,10 @@ serve(async (req) => {
     await logAiUsage({ req, skill: 'field_photo_assist', model, anthropicJson: result, projectId: link.project_id, latencyMs: Date.now() - started });
     const suggestion = parseJson(result.content?.[0]?.text || '{}');
 
-    const { error: updateError } = await userClient.from('field_accountability_photos').update({ ai_suggestion: suggestion }).eq('id', photoLinkId);
+    const { error: updateError } = await userClient.rpc('save_field_photo_ai_suggestion', {
+      p_photo_link_id: photoLinkId,
+      p_suggestion: suggestion,
+    });
     if (updateError) throw updateError;
     return new Response(JSON.stringify({ suggestion }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {

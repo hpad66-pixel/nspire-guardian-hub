@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, Expand, MapPin, MessageCircle, Plus, X } from 'lucide-react';
+import { Camera, Expand, Lock, MapPin, MessageCircle, Pencil, Plus, Save, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
+import { useAuth } from '@/hooks/useAuth';
 import { signedUrlFor } from '@/lib/pdf-viewer';
+import { canEditFieldPhotoCaption } from '@/lib/accountability/photoOwnership';
 import type { FieldAnnotation, FieldPhoto } from '@/hooks/useFieldAccountability';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface AccountabilityPhotoViewerProps {
   link: FieldPhoto;
@@ -14,6 +18,7 @@ interface AccountabilityPhotoViewerProps {
   canAnnotate?: boolean;
   onAnnotate?: (input: { photoId: string; x: number; y: number; label: string }) => Promise<unknown>;
   onAsk?: (photoId: string) => void;
+  onCaptionUpdate?: (photoId: string, caption: string) => Promise<unknown>;
 }
 export function AccountabilityPhotoViewer({
   link,
@@ -22,17 +27,23 @@ export function AccountabilityPhotoViewer({
   canAnnotate = true,
   onAnnotate,
   onAsk,
+  onCaptionUpdate,
 }: AccountabilityPhotoViewerProps) {
+  const { user } = useAuth();
   const [url, setUrl] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [pinMode, setPinMode] = useState(false);
   const [draftPin, setDraftPin] = useState<{ x: number; y: number } | null>(null);
   const [label, setLabel] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingCaption, setEditingCaption] = useState(false);
+  const [captionDraft, setCaptionDraft] = useState(link.photo.caption || '');
   const photoAnnotations = useMemo(
     () => annotations.filter((annotation) => annotation.photo_id === link.photo_id),
     [annotations, link.photo_id],
   );
+  const canEditCaption = canEditFieldPhotoCaption(link.photo.uploader_id, user?.id) && Boolean(onCaptionUpdate);
+  const aiCaption = typeof link.ai_suggestion?.caption === 'string' ? link.ai_suggestion.caption : null;
 
   useEffect(() => {
     let live = true;
@@ -41,6 +52,10 @@ export function AccountabilityPhotoViewer({
       .catch(() => { if (live) setUrl(null); });
     return () => { live = false; };
   }, [link.photo.storage_path, link.photo.thumb_path]);
+
+  useEffect(() => {
+    if (!editingCaption) setCaptionDraft(link.photo.caption || '');
+  }, [editingCaption, link.photo.caption]);
 
   function placePin(event: React.MouseEvent<HTMLDivElement>) {
     if (!pinMode || !canAnnotate) return;
@@ -60,6 +75,20 @@ export function AccountabilityPhotoViewer({
       setDraftPin(null);
       setLabel('');
       setPinMode(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveCaption() {
+    if (!onCaptionUpdate || !canEditCaption) return;
+    setSaving(true);
+    try {
+      await onCaptionUpdate(link.photo_id, captionDraft);
+      setEditingCaption(false);
+      toast.success('Your caption was updated');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Caption could not be updated');
     } finally {
       setSaving(false);
     }
@@ -127,7 +156,7 @@ export function AccountabilityPhotoViewer({
             <aside className="space-y-5 border-l border-white/10 bg-slate-900 p-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.16em] text-amber-300">{link.evidence_type} evidence</p>
-                <h3 className="mt-2 text-xl font-semibold">{link.photo.caption || 'Site photograph'}</h3>
+                {!editingCaption && <h3 className="mt-2 text-xl font-semibold">{link.photo.caption || 'Site photograph'}</h3>}
                 <div className="mt-3 space-y-1 text-xs text-slate-300">
                   <p>{new Date(taken).toLocaleString()}</p>
                   {link.photo.lat != null && link.photo.lng != null && (
@@ -135,6 +164,29 @@ export function AccountabilityPhotoViewer({
                   )}
                 </div>
               </div>
+
+              {canEditCaption ? (
+                editingCaption ? (
+                  <div className="space-y-3 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-3">
+                    <div><p className="text-sm font-semibold text-emerald-100">Edit your caption</p><p className="mt-0.5 text-xs leading-relaxed text-emerald-50/70">Describe only what you observed. Speak, type, or polish the wording; the original photograph is never altered.</p></div>
+                    <VoiceDictationTextareaWithAI value={captionDraft} onValueChange={setCaptionDraft} context="site_photo" maxLength={2000} placeholder="What is visible, and what needs attention?" className="min-h-32 border-white/20 bg-black/25 text-white placeholder:text-slate-400" />
+                    {aiCaption && captionDraft !== aiCaption && <Button type="button" size="sm" variant="ghost" className="w-full justify-start text-sky-200 hover:bg-white/10 hover:text-sky-100" onClick={() => setCaptionDraft(aiCaption)}><Sparkles className="mr-2 h-4 w-4" />Use AI starting caption</Button>}
+                    <div className="flex gap-2"><Button type="button" size="sm" onClick={() => void saveCaption()} disabled={saving}><Save className="mr-2 h-4 w-4" />Save my caption</Button><Button type="button" size="sm" variant="ghost" className="text-white" onClick={() => { setCaptionDraft(link.photo.caption || ''); setEditingCaption(false); }}>Cancel</Button></div>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" className="w-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setEditingCaption(true)}><Pencil className="mr-2 h-4 w-4" />Edit my caption</Button>
+                )
+              ) : (
+                <p className="flex gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-slate-300"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />The uploader owns this caption. Add an annotation or ask a question without changing their words.</p>
+              )}
+
+              {aiCaption && aiCaption !== link.photo.caption && !editingCaption && (
+                <div className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-sky-200"><Sparkles className="h-3.5 w-3.5" />AI starting point</p>
+                  <p className="mt-2 text-sm leading-relaxed text-sky-50">{aiCaption}</p>
+                  <p className="mt-2 text-[11px] text-sky-100/60">Suggestion only—not a verified finding.</p>
+                </div>
+              )}
 
               {canAnnotate && onAnnotate && (
                 <Button

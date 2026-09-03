@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, Eye,
-  Loader2, MessageCircleQuestion, Repeat2, ShieldCheck, Sparkles, UserRound,
+  Camera, Loader2, MessageCircleQuestion, Pencil, Repeat2, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AccountabilityPhotoViewer } from '@/components/accountability/AccountabilityPhotoViewer';
 import { FieldAccountabilityDetail } from '@/components/accountability/FieldAccountabilityDetail';
+import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
 import { useClientPortalProject, useOwnerPortalHref } from '@/components/portal/ClientPortalProjectContext';
 import { useFieldAccountability, type FieldItem } from '@/hooks/useFieldAccountability';
 import { cn } from '@/lib/utils';
@@ -16,9 +18,11 @@ const CLOSED = new Set(['verified', 'rejected']);
 export default function OwnerAccountabilityPage() {
   const href = useOwnerPortalHref();
   const { selectedProjectId: projectId, projects } = useClientPortalProject();
-  const { data, isLoading, error } = useFieldAccountability(projectId);
+  const { data, isLoading, error, updatePhotoCaption } = useFieldAccountability(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const items = useMemo(() => data?.items ?? [], [data?.items]);
+  const submittedPhotos = data?.untriagedPhotos ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const projectName = projects.find((project) => project.id === projectId)?.name || 'your project';
 
@@ -46,8 +50,41 @@ export default function OwnerAccountabilityPage() {
           <h1 className="mt-1 font-display text-4xl font-medium text-[#082b23] sm:text-5xl">Site Accountability</h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">A clear view of what was observed, who owns the next action, and the photographic proof behind every verified result at {projectName}.</p>
         </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800"><ShieldCheck className="h-4 w-4" />Private, project-specific record</span>
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800"><ShieldCheck className="h-4 w-4" />Private, project-specific record</span>
+          <Button className="h-11 rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Add site photos</Button>
+        </div>
       </header>
+
+      <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm">
+        <div className="grid lg:grid-cols-[1.05fr_1.95fr]">
+          <div className="bg-gradient-to-br from-[#082b23] to-[#0d6b57] p-6 text-white sm:p-7">
+            <p className="text-xs font-bold uppercase tracking-[.17em] text-emerald-200">Simple photo update</p>
+            <h2 className="mt-2 font-display text-3xl">Show the team what you see.</h2>
+            <p className="mt-2 text-sm leading-relaxed text-emerald-50/75">Upload from your phone, review the AI starting caption, and keep your own words under your control.</p>
+            <Button className="mt-5 bg-amber-400 text-amber-950 hover:bg-amber-300" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Start an owner walk</Button>
+          </div>
+          <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
+            <HowStep number="1" title="Capture" body="Take one photo or choose a full batch. Date and GPS metadata are preserved when available." />
+            <HowStep number="2" title="Explain" body="Use your voice or type a caption. AI may suggest wording, always labeled as a draft." />
+            <HowStep number="3" title="Follow through" body="The team triages the condition. Questions, responsibility, and completion proof stay connected." />
+          </div>
+        </div>
+      </section>
+
+      {submittedPhotos.length > 0 && (
+        <section className="space-y-4 rounded-3xl border border-sky-200 bg-sky-50/45 p-5 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-sky-700">Your walk inbox</p><h2 className="mt-1 font-display text-2xl text-[#082b23]">Submitted photos awaiting triage</h2><p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">Open a photo to review the AI suggestion or edit your caption. No one else can rewrite the caption you supplied.</p></div><Badge variant="outline" className="w-fit border-sky-200 bg-white text-sky-800">{submittedPhotos.length} pending</Badge></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {submittedPhotos.map((photo) => (
+              <div key={photo.id} className="space-y-2 rounded-2xl border border-sky-100 bg-white p-3 shadow-sm">
+                <AccountabilityPhotoViewer link={photo} compact canAnnotate={false} onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })} />
+                <p className="flex items-center gap-1.5 px-1 text-[11px] text-slate-500"><Pencil className="h-3.5 w-3.5 text-sky-700" />Open to review or edit your caption</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 rounded-3xl border bg-white p-16 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Loading site accountability…</div>
@@ -94,8 +131,13 @@ export default function OwnerAccountabilityPage() {
       )}
 
       <FieldAccountabilityDetail item={selected} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null); }} portalMode="owner" />
+      <FieldWalkCaptureDialog open={captureOpen} onOpenChange={setCaptureOpen} projectId={projectId} audience="owner" />
     </div>
   );
+}
+
+function HowStep({ number, title, body }: { number: string; title: string; body: string }) {
+  return <div className="bg-white p-5 sm:p-6"><span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-800">{number}</span><h3 className="mt-3 text-base font-semibold text-[#082b23]">{title}</h3><p className="mt-1 text-xs leading-relaxed text-slate-500">{body}</p></div>;
 }
 
 function OwnerMetric({ icon: Icon, label, value, tone }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; tone: string }) {

@@ -46,7 +46,7 @@ interface FieldAccountabilityDetailProps {
 
 export function FieldAccountabilityDetail({ item, open, onOpenChange, portalMode = 'staff' }: FieldAccountabilityDetailProps) {
   const projectId = item?.project_id ?? null;
-  const { uploadPhotos, addComment, addAnnotation, transitionItem, updateItem } = useFieldAccountability(projectId);
+  const { uploadPhotos, updatePhotoCaption, addComment, addAnnotation, transitionItem, updateItem } = useFieldAccountability(projectId);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
@@ -140,14 +140,14 @@ export function FieldAccountabilityDetail({ item, open, onOpenChange, portalMode
           <section className="space-y-4">
             <div className="flex items-center justify-between"><div><h3 className="font-display text-xl text-[#082b23]">Photographic evidence</h3><p className="text-xs text-muted-foreground">Open any photograph to inspect details, place a pin, or ask a question.</p></div>{portalMode === 'staff' && <Badge variant="outline">{item.photos.length} total</Badge>}</div>
             {(['observation', 'before', 'progress'] as FieldEvidenceType[]).map((type) => photosByType[type].length > 0 && (
-              <EvidenceLane key={type} title={EVIDENCE_LABELS[type]} photos={photosByType[type]} item={item} onAnnotate={async (input) => addAnnotation.mutateAsync({ itemId: item.id, ...input })} onAsk={(photoId) => { setCommentPhotoId(photoId); setTimeout(() => commentRef.current?.focus(), 100); }} />
+              <EvidenceLane key={type} title={EVIDENCE_LABELS[type]} photos={photosByType[type]} item={item} onAnnotate={async (input) => addAnnotation.mutateAsync({ itemId: item.id, ...input })} onAsk={(photoId) => { setCommentPhotoId(photoId); setTimeout(() => commentRef.current?.focus(), 100); }} onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })} />
             ))}
 
             <div className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-4">
               <div className="mb-3 flex items-center justify-between gap-3"><div><h4 className="font-semibold text-emerald-950">After / completion proof</h4><p className="text-xs text-emerald-800/70">Minimum 1 · maximum 3 photographs</p></div><span className="text-sm font-bold text-emerald-800">{photosByType.after.length}/3</span></div>
               <div className="grid grid-cols-3 gap-2">
                 {[0, 1, 2].map((slot) => photosByType.after[slot] ? (
-                  <AccountabilityPhotoViewer key={photosByType.after[slot].id} link={photosByType.after[slot]} annotations={item.annotations} compact onAnnotate={async (input) => addAnnotation.mutateAsync({ itemId: item.id, ...input })} onAsk={(photoId) => { setCommentPhotoId(photoId); setTimeout(() => commentRef.current?.focus(), 100); }} />
+                  <AccountabilityPhotoViewer key={photosByType.after[slot].id} link={photosByType.after[slot]} annotations={item.annotations} compact onAnnotate={async (input) => addAnnotation.mutateAsync({ itemId: item.id, ...input })} onAsk={(photoId) => { setCommentPhotoId(photoId); setTimeout(() => commentRef.current?.focus(), 100); }} onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })} />
                 ) : (
                   <button key={slot} type="button" disabled={portalMode === 'owner'} onClick={() => { setEvidenceType('after'); cameraRef.current?.click(); }} className="aspect-[4/3] rounded-2xl border-2 border-dashed border-emerald-200 bg-white/70 text-center text-emerald-800 transition hover:border-emerald-400 disabled:cursor-default disabled:opacity-60"><Camera className="mx-auto h-5 w-5" /><span className="mt-1 block text-[10px] font-semibold">Proof {slot + 1}</span></button>
                 ))}
@@ -221,6 +221,6 @@ function InfoTile({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
   return <div className="min-w-0 rounded-2xl border bg-white p-3"><Icon className="mb-2 h-4 w-4 text-[#0d6b57]" /><p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-sm font-semibold capitalize text-[#082b23]" title={value}>{value.replace(/_/g, ' ')}</p></div>;
 }
 
-function EvidenceLane({ title, photos, item, onAnnotate, onAsk }: { title: string; photos: FieldItem['photos']; item: FieldItem; onAnnotate: (input: { photoId: string; x: number; y: number; label: string }) => Promise<unknown>; onAsk: (photoId: string) => void }) {
-  return <div><h4 className="mb-2 text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">{title}</h4><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo) => <AccountabilityPhotoViewer key={photo.id} link={photo} annotations={item.annotations} compact onAnnotate={onAnnotate} onAsk={onAsk} />)}</div></div>;
+function EvidenceLane({ title, photos, item, onAnnotate, onAsk, onCaptionUpdate }: { title: string; photos: FieldItem['photos']; item: FieldItem; onAnnotate: (input: { photoId: string; x: number; y: number; label: string }) => Promise<unknown>; onAsk: (photoId: string) => void; onCaptionUpdate: (photoId: string, caption: string) => Promise<unknown> }) {
+  return <div><h4 className="mb-2 text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">{title}</h4><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo) => <AccountabilityPhotoViewer key={photo.id} link={photo} annotations={item.annotations} compact onAnnotate={onAnnotate} onAsk={onAsk} onCaptionUpdate={onCaptionUpdate} />)}</div></div>;
 }
