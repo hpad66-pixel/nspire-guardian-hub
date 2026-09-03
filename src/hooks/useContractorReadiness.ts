@@ -79,6 +79,52 @@ export interface ContractorCase {
   exceptions?: Array<{ id: string; requirement_id: string; reason: string; expires_at: string; revoked_at: string | null; created_at: string }>;
 }
 
+export interface ContractorPortalLink {
+  id: string;
+  case_id: string;
+  email: string;
+  recipient_name: string | null;
+  role: 'contractor' | 'broker';
+  expires_at: string;
+  revoked_at: string | null;
+  last_used_at: string | null;
+  use_count: number;
+  delivery_status: 'pending' | 'sent' | 'failed' | 'link_only';
+  delivery_error: string | null;
+  delivered_at: string | null;
+  created_at: string;
+}
+
+export interface ContractorReminderEvent {
+  id: string;
+  case_id: string;
+  recipient_email: string;
+  reminder_kind: 'missing' | 'correction' | 'expiring' | 'expired' | 'review_due';
+  status: 'queued' | 'sent' | 'failed' | 'skipped';
+  sent_at: string | null;
+  created_at: string;
+}
+
+export interface CreateContractorCaseInput {
+  organizationId?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  trades?: string[];
+  clientId?: string | null;
+  projectId?: string | null;
+  riskTier?: string;
+}
+
+export interface ContractorInvitationResult {
+  portalLinkId: string;
+  link: string;
+  emailSent: boolean;
+  deliveryStatus: ContractorPortalLink['delivery_status'];
+  expiresAt: string;
+}
+
 const CASE_SELECT = `
   *,
   organization:organizations(id,name,legal_name,email,phone,website,kind),
@@ -158,17 +204,12 @@ export function useContractorCase(caseId?: string | null) {
 export function useCreateContractorCase() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      organizationId?: string;
-      companyName?: string;
-      email?: string;
-      phone?: string;
-      website?: string;
-      trades?: string[];
-      clientId?: string | null;
-      projectId?: string | null;
-      riskTier?: string;
-    }) => {
+    mutationFn: createContractorCaseRecord,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contractor-readiness'] }),
+  });
+}
+
+async function createContractorCaseRecord(input: CreateContractorCaseInput) {
       const tenantId = await requireTenantId();
       let organizationId = input.organizationId;
       if (!organizationId) {
@@ -200,8 +241,65 @@ export function useCreateContractorCase() {
         if (profileError) throw profileError;
       }
       return String(caseId);
+}
+
+export function useStartContractorOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateContractorCaseInput & {
+      sendPortal: boolean;
+      recipientEmail?: string;
+      recipientName?: string;
+    }) => {
+      const caseId = await createContractorCaseRecord(input);
+      if (!input.sendPortal) return { caseId, invitation: null };
+      const recipientEmail = input.recipientEmail?.trim().toLowerCase();
+      if (!recipientEmail) throw Object.assign(new Error('The checklist was created, but a recipient email is required to send the portal.'), { caseId });
+      const { data, error } = await supabase.functions.invoke('contractor-invite', {
+        body: { caseId, email: recipientEmail, name: input.recipientName?.trim(), role: 'contractor' },
+      });
+      if (error || !data?.ok) {
+        throw Object.assign(new Error(data?.error || error?.message || 'The checklist was created, but the portal invitation could not be sent.'), { caseId });
+      }
+      return { caseId, invitation: data as ContractorInvitationResult };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contractor-readiness'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['contractor-readiness'] }),
+  });
+}
+
+export function useContractorAutomation(caseIds: string[]) {
+  const stableIds = [...caseIds].sort();
+  return useQuery({
+    queryKey: ['contractor-readiness', 'automation', stableIds],
+    enabled: stableIds.length > 0,
+    queryFn: async () => {
+      const [links, reminders, documents] = await Promise.all([
+        supabase.from('contractor_portal_links' as any)
+          .select('id,case_id,email,recipient_name,role,expires_at,revoked_at,last_used_at,use_count,delivery_status,delivery_error,delivered_at,created_at')
+          .in('case_id', stableIds).order('created_at', { ascending: false }),
+        supabase.from('contractor_reminder_log' as any)
+          .select('id,case_id,recipient_email,reminder_kind,status,sent_at,created_at')
+          .in('case_id', stableIds).order('created_at', { ascending: false }),
+        supabase.from('contractor_documents' as any)
+          .select('id,case_id,expiration_date,verification_status')
+          .in('case_id', stableIds).not('expiration_date', 'is', null),
+      ]);
+      if (links.error) throw links.error;
+      if (reminders.error) throw reminders.error;
+      if (documents.error) throw documents.error;
+      const now = Date.now();
+      const within90Days = now + 90 * 86400000;
+      const expiringDocumentIds = new Set((documents.data ?? []).filter((document: any) => {
+        const expires = new Date(`${document.expiration_date}T12:00:00Z`).getTime();
+        return expires >= now && expires <= within90Days;
+      }).map((document: any) => document.id));
+      return {
+        links: (links.data ?? []) as unknown as ContractorPortalLink[],
+        reminders: (reminders.data ?? []) as unknown as ContractorReminderEvent[],
+        expiringCount: expiringDocumentIds.size,
+      };
+    },
+    staleTime: 30_000,
   });
 }
 

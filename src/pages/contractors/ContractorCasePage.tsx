@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, Bot, Building2, Check, CheckCircle2, Clock3, Copy,
-  ExternalLink, FileCheck2, FileUp, Loader2, LockKeyhole, Mail, MessageSquare,
+  BellRing, ExternalLink, Eye, FileCheck2, FileUp, Loader2, LockKeyhole, Mail, MessageSquare,
   RefreshCcw, Send, ShieldAlert, ShieldCheck, Sparkles, X,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  getContractorDocumentUrl, useContractorCase, useContractorReviewActions,
+  getContractorDocumentUrl, useContractorAutomation, useContractorCase, useContractorReviewActions,
   type ContractorDocument, type ContractorRequirement,
 } from '@/hooks/useContractorReadiness';
 import { requireTenantId } from '@/lib/tenant';
@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function ContractorCasePage() {
   const { caseId } = useParams<{ caseId: string }>();
   const { data: item, isLoading, refetch } = useContractorCase(caseId);
+  const automation = useContractorAutomation(caseId ? [caseId] : []);
   const actions = useContractorReviewActions(caseId ?? '');
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -36,6 +37,7 @@ export default function ContractorCasePage() {
   const [inviteResult, setInviteResult] = useState<{ link: string; emailSent: boolean } | null>(null);
   const [notes, setNotes] = useState('');
   const docs = useMemo(() => new Map((item?.documents ?? []).map((d) => [d.id, d])), [item?.documents]);
+  const latestPortal = automation.data?.links[0];
   useEffect(() => { setNotes(item?.internal_notes ?? ''); }, [item?.id, item?.internal_notes]);
 
   if (isLoading) return <div className="mx-auto max-w-6xl space-y-4 p-6"><Skeleton className="h-24" /><Skeleton className="h-64" /></div>;
@@ -85,6 +87,7 @@ export default function ContractorCasePage() {
 
         <div className="space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Company record</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><Row label="Legal name" value={item.organization?.legal_name || item.organization?.name} /><Row label="Email" value={item.organization?.email} /><Row label="Phone" value={item.organization?.phone} /><Row label="Website" value={item.organization?.website} link /><Row label="Trades" value={(item.profile?.trade_categories ?? []).join(', ') || 'Not provided'} /><Row label="Service area" value={(item.profile?.service_areas ?? []).join(', ') || 'Not provided'} /></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-base">Portal automation</CardTitle><CardDescription>Invitation delivery, contractor activity, and automated follow-up.</CardDescription></CardHeader><CardContent className="space-y-3">{latestPortal ? <><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-emerald-700" /><span className="text-sm font-semibold">{latestPortal.delivery_status === 'sent' ? 'Email delivered' : latestPortal.delivery_status === 'failed' ? 'Email failed' : 'Secure link ready'}</span></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${latestPortal.delivery_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{latestPortal.delivery_status.replace('_', ' ')}</span></div><div className="grid grid-cols-2 gap-2"><PortalFact icon={Eye} label="Portal activity" value={latestPortal.last_used_at ? `Opened ${formatDistanceToNow(new Date(latestPortal.last_used_at), { addSuffix: true })}` : 'Not opened yet'} /><PortalFact icon={BellRing} label="Reminders sent" value={String(automation.data?.reminders.filter((event) => event.status === 'sent').length ?? 0)} /></div><p className="text-[11px] text-muted-foreground">Sent to {latestPortal.email} · link expires {format(new Date(latestPortal.expires_at), 'MMM d, yyyy')}</p></> : <div className="rounded-lg border border-dashed p-4 text-center"><Mail className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">No contractor portal issued</p><p className="mt-1 text-xs text-muted-foreground">Use “Send secure link” to start automated onboarding.</p></div>}</CardContent></Card>
           <Card><CardHeader><CardTitle className="text-base">Internal notes</CardTitle><CardDescription>Never shown in the contractor portal.</CardDescription></CardHeader><CardContent><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Risk, capacity, reference calls, conditions…" rows={5} /><Button className="mt-3 w-full" variant="outline" disabled={actions.updateCase.isPending} onClick={async () => { try { await actions.updateCase.mutateAsync({ internal_notes: notes }); toast.success('Notes saved'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Save failed'); } }}>Save notes</Button></CardContent></Card>
           <Card><CardHeader><CardTitle className="text-base">Audit trail</CardTitle></CardHeader><CardContent className="space-y-3">{(item.activity ?? []).slice(0, 8).map((event) => <div key={event.id} className="border-l-2 border-emerald-200 pl-3"><p className="text-xs font-semibold capitalize">{event.action.replace(/_/g, ' ')}</p><p className="text-[11px] text-muted-foreground">{format(new Date(event.created_at), 'MMM d, yyyy · h:mm a')}</p></div>)}{!(item.activity ?? []).length && <p className="text-sm text-muted-foreground">No activity yet.</p>}</CardContent></Card>
         </div>
@@ -166,4 +169,5 @@ function StaffUploadDialog({ open, onOpenChange, requirement, caseItem, currentD
 
 function AiDraft({ data }: { data: Record<string, unknown> }) { const contradictions = Array.isArray(data?.contradictions) ? data.contradictions as string[] : []; return <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-xs text-violet-950 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100"><div className="flex items-center gap-2 font-bold"><Bot className="h-4 w-4" />AI extraction draft — human review required</div><div className="mt-2 grid gap-1 sm:grid-cols-2">{['company_name','identifier','issuing_authority','issue_date','expiration_date','named_insured'].map((key) => data?.[key] ? <div key={key}><span className="capitalize text-violet-700 dark:text-violet-300">{key.replace(/_/g, ' ')}:</span> {String(data[key])}</div> : null)}</div>{contradictions.length > 0 && <div className="mt-2 rounded bg-red-100 p-2 text-red-900"><b>Review flags:</b> {contradictions.join(' · ')}</div>}</div>; }
 function GateCard({ label, ready, description }: { label: string; ready: boolean; description: string }) { return <Card className={ready ? 'border-emerald-200' : ''}><CardContent className="flex items-center gap-3 p-4"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${ready ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{ready ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}</div><div><p className="text-sm font-bold">{label}</p><p className="text-xs text-muted-foreground">{ready ? 'Cleared' : description}</p></div></CardContent></Card>; }
+function PortalFact({ icon: Icon, label, value }: { icon: typeof Eye; label: string; value: string }) { return <div className="rounded-lg bg-muted/60 p-2.5"><Icon className="h-3.5 w-3.5 text-emerald-700" /><p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-0.5 text-xs font-semibold">{value}</p></div>; }
 function Row({ label, value, link }: { label: string; value?: string | null; link?: boolean }) { return <div><p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>{link && value ? <a className="break-all text-emerald-700 hover:underline" href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noreferrer">{value}</a> : <p className="break-words">{value || 'Not provided'}</p>}</div>; }

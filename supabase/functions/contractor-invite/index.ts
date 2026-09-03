@@ -83,15 +83,51 @@ serve(async (req) => {
     const rawToken = newToken();
     const tokenHash = await sha256(rawToken);
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    const { error: insertError } = await admin.from("contractor_portal_links").insert({
+    const { data: primaryContact } = await admin.from("contractor_contacts")
+      .select("id")
+      .eq("organization_id", scopedCase.organization_id)
+      .eq("is_primary", true)
+      .maybeSingle();
+    let contactId = primaryContact?.id ?? null;
+    if (contactId) {
+      await admin.from("contractor_contacts").update({
+        name: recipientName || email,
+        email,
+        role: "primary",
+        can_manage_documents: true,
+        updated_at: new Date().toISOString(),
+      }).eq("id", contactId);
+    } else {
+      const { data: contact } = await admin.from("contractor_contacts").insert({
+        tenant_id: scopedCase.tenant_id,
+        organization_id: scopedCase.organization_id,
+        name: recipientName || email,
+        email,
+        role: "primary",
+        is_primary: true,
+        can_manage_documents: true,
+      }).select("id").single();
+      contactId = contact?.id ?? null;
+    }
+    await admin.from("organizations").update({ email }).eq("id", scopedCase.organization_id);
+
+    // Resending intentionally replaces older active links for this recipient.
+    await admin.from("contractor_portal_links").update({ revoked_at: new Date().toISOString() })
+      .eq("case_id", scopedCase.id).eq("email", email).eq("role", role)
+      .is("revoked_at", null);
+
+    const { data: portalLink, error: insertError } = await admin.from("contractor_portal_links").insert({
       tenant_id: scopedCase.tenant_id,
       case_id: scopedCase.id,
+      contact_id: contactId,
       email,
+      recipient_name: recipientName || null,
       token_hash: tokenHash,
       role,
       expires_at: expiresAt.toISOString(),
       created_by: auth.user.id,
-    });
+      delivery_status: Deno.env.get("RESEND_API_KEY") ? "pending" : "link_only",
+    }).select("id").single();
     if (insertError) throw insertError;
 
     await admin.from("contractor_case_requirements")
@@ -115,6 +151,9 @@ serve(async (req) => {
     const origin = Deno.env.get("PUBLIC_APP_URL") || Deno.env.get("SITE_URL") || "https://projos.ai";
     const link = `${origin}/contractor/onboard/${rawToken}`;
     let emailSent = false;
+    let deliveryStatus = "link_only";
+    let providerId: string | null = null;
+    let deliveryError: string | null = null;
     const resend = Deno.env.get("RESEND_API_KEY");
     if (resend) {
       const response = await fetch("https://api.resend.com/emails", {
@@ -134,9 +173,30 @@ serve(async (req) => {
         }),
       });
       emailSent = response.ok;
+      const result = await response.json().catch(() => ({}));
+      deliveryStatus = response.ok ? "sent" : "failed";
+      providerId = result?.id ?? null;
+      deliveryError = response.ok ? null : String(result?.message ?? `Email failed (${response.status})`);
     }
 
-    return json({ ok: true, link, emailSent, expiresAt: expiresAt.toISOString() });
+    await admin.from("contractor_portal_links").update({
+      delivery_status: deliveryStatus,
+      delivery_error: deliveryError,
+      provider_id: providerId,
+      delivered_at: emailSent ? new Date().toISOString() : null,
+    }).eq("id", portalLink.id);
+    await admin.from("contractor_activity_log").insert({
+      tenant_id: scopedCase.tenant_id,
+      case_id: caseId,
+      organization_id: scopedCase.organization_id,
+      actor_type: "system",
+      action: emailSent ? "portal_invitation_sent" : "portal_invitation_link_ready",
+      entity_type: "portal_link",
+      entity_id: portalLink.id,
+      details: { email, role, delivery_status: deliveryStatus, delivery_error: deliveryError },
+    });
+
+    return json({ ok: true, portalLinkId: portalLink.id, link, emailSent, deliveryStatus, expiresAt: expiresAt.toISOString() });
   } catch (error) {
     console.error(error);
     return json({ error: error instanceof Error ? error.message : "Could not create invitation" }, 500);
