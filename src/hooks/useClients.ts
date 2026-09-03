@@ -26,6 +26,13 @@ export interface Client {
   project_count?: number;
 }
 
+export interface ClientProjectAccess {
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 type ClientInsert = Omit<Client, 'id' | 'created_at' | 'updated_at' | 'member_count' | 'project_count'>;
 
 export function useClients() {
@@ -76,6 +83,37 @@ export function useClient(id: string | undefined) {
       } as Client;
     },
     enabled: !!id,
+  });
+}
+
+/**
+ * Server-authoritative project capabilities for one client. This deliberately
+ * comes from an RPC instead of inferring access from UI roles so client-level
+ * controls always match the RLS rules that protect project writes.
+ */
+export function useClientProjectAccess(clientId: string | undefined) {
+  return useQuery({
+    queryKey: ['client-project-access', clientId],
+    queryFn: async (): Promise<ClientProjectAccess> => {
+      if (!clientId) {
+        return { canView: false, canCreate: false, canEdit: false, canDelete: false };
+      }
+
+      const { data, error } = await (supabase.rpc as any)('get_client_project_access', {
+        p_client_id: clientId,
+      });
+      if (error) throw error;
+
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        canView: Boolean(row?.can_view),
+        canCreate: Boolean(row?.can_create),
+        canEdit: Boolean(row?.can_edit),
+        canDelete: Boolean(row?.can_delete),
+      };
+    },
+    enabled: !!clientId,
+    staleTime: 30 * 1000,
   });
 }
 

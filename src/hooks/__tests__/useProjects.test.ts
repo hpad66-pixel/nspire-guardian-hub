@@ -89,6 +89,26 @@ describe("useProjects", () => {
     expect(inserted).toMatchObject({ name: "New Tower", created_by: "u1" });
   });
 
+  it("creates a client-scoped project through the guarded RPC", async () => {
+    __mock.rpc.mockResolvedValueOnce({ data: { id: "proj-client" }, error: null });
+    const { result } = renderHookWithClient(() => useCreateProject());
+
+    await result.current.mutateAsync({
+      name: "R4 Capital Improvements",
+      client_id: "client-r4",
+      property_id: null,
+      project_type: "construction",
+      status: "planning",
+    } as any);
+
+    expect(__mock.rpc).toHaveBeenCalledWith("create_client_project", expect.objectContaining({
+      p_client_id: "client-r4",
+      p_name: "R4 Capital Improvements",
+      p_project_type: "construction",
+    }));
+    expect(__mock.from).not.toHaveBeenCalled();
+  });
+
   it("update applies the supplied fields", async () => {
     const builder = makeBuilder({ data: { id: "proj1", status: "completed" }, error: null });
     __mock.from.mockReturnValue(builder);
@@ -97,6 +117,26 @@ describe("useProjects", () => {
     await result.current.mutateAsync({ id: "proj1", status: "completed" } as any);
     const updated = (builder.update as any).mock.calls[0][0];
     expect(updated).toMatchObject({ status: "completed" });
+  });
+
+  it("updates a client-scoped project through the guarded RPC", async () => {
+    __mock.rpc.mockResolvedValueOnce({ data: { id: "proj-client" }, error: null });
+    const { result } = renderHookWithClient(() => useUpdateProject());
+
+    await result.current.mutateAsync({
+      id: "proj-client",
+      name: "Updated R4 Project",
+      client_id: "client-r4",
+      property_id: null,
+      project_type: "consulting",
+    } as any);
+
+    expect(__mock.rpc).toHaveBeenCalledWith("update_client_project", expect.objectContaining({
+      p_project_id: "proj-client",
+      p_name: "Updated R4 Project",
+      p_project_type: "consulting",
+    }));
+    expect(__mock.from).not.toHaveBeenCalled();
   });
 
   it("delete surfaces errors as a rejection", async () => {

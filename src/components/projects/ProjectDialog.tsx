@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2, Lightbulb } from 'lucide-react';
+import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2, Lightbulb, HardHat, LockKeyhole } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
 import { useActiveClients, useCreateClient } from '@/hooks/useClients';
@@ -36,18 +36,28 @@ interface ProjectDialogProps {
   // When set, the dialog creates a SUBPROJECT under this parent: it inherits the
   // parent's type + client/property and links parent_project_id on save.
   parentProject?: ProjectRow | null;
+  // When opened from a client record, lock project ownership to that client.
+  // The user can choose construction or consulting, but cannot move the new
+  // project into another organization through this workflow.
+  clientContext?: { id: string; name: string } | null;
+  onCreated?: (project: ProjectRow) => void;
 }
 
-type ProjectType = 'property' | 'client' | 'consulting';
+type ProjectType = 'property' | 'client' | 'construction' | 'consulting';
 
-export function ProjectDialog({ open, onOpenChange, project, parentProject }: ProjectDialogProps) {
+export function ProjectDialog({ open, onOpenChange, project, parentProject, clientContext, onCreated }: ProjectDialogProps) {
   const isEditing = !!project;
   const isSubproject = !isEditing && !!parentProject;
+  const isClientScoped = !isEditing && !isSubproject && !!clientContext;
 
   // Determine initial type from existing project, or inherit the parent's.
   const existingType = project ? (project as any).project_type : (parentProject ? (parentProject as any).project_type : null);
   const initialType: ProjectType =
-    existingType === 'client' || existingType === 'consulting' ? existingType : 'property';
+    isClientScoped
+      ? 'construction'
+      : existingType === 'client' || existingType === 'consulting' || existingType === 'construction'
+        ? existingType
+        : 'property';
 
   const { data: properties } = useProperties();
   const { data: clients } = useActiveClients();
@@ -59,7 +69,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
 
   const [formData, setFormData] = useState({
     property_id: project?.property_id || parentProject?.property_id || '',
-    client_id: (project as any)?.client_id || (parentProject as any)?.client_id || '',
+    client_id: (project as any)?.client_id || (parentProject as any)?.client_id || clientContext?.id || '',
     name: project?.name || '',
     description: project?.description || '',
     scope: project?.scope || '',
@@ -108,7 +118,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
       // Clear whichever is not in use. Consulting engagements are client-linked
       // (or standalone/internal) like the 'client' type — never property-linked.
       property_id: projectType === 'property' ? formData.property_id || null : null,
-      client_id: projectType !== 'property' ? formData.client_id || null : null,
+      client_id: projectType !== 'property' ? clientContext?.id || formData.client_id || null : null,
     };
     if (isSubproject && parentProject) payload.parent_project_id = parentProject.id;
 
@@ -116,7 +126,8 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
       if (isEditing && project) {
         await updateProject.mutateAsync({ id: project.id, ...payload });
       } else {
-        await createProject.mutateAsync(payload);
+        const created = await createProject.mutateAsync(payload);
+        onCreated?.(created as ProjectRow);
       }
       onOpenChange(false);
       resetForm();
@@ -126,15 +137,16 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
   };
 
   const resetForm = () => {
-    setFormData({ property_id: '', client_id: '', name: '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
-    setProjectType('property');
+    setFormData({ property_id: '', client_id: clientContext?.id || '', name: '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
+    setProjectType(isClientScoped ? 'construction' : 'property');
     setShowAddClient(false);
     setNewClientName('');
     setDateError(null);
   };
 
   const isPropertyValid = projectType === 'property' ? !!formData.property_id : true;
-  const isClientValid = projectType === 'client' ? !!formData.client_id : true;
+  const requiresClient = isClientScoped || projectType === 'client' || projectType === 'construction';
+  const isClientValid = requiresClient ? !!(clientContext?.id || formData.client_id) : true;
   const canSubmit = !!formData.name && isPropertyValid && isClientValid;
   const isPending = createProject.isPending || updateProject.isPending;
 
@@ -142,13 +154,15 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Subproject' : 'Create New Project'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Subproject' : isClientScoped ? `Create a project for ${clientContext?.name}` : 'Create New Project'}</DialogTitle>
           <DialogDescription>
             {isEditing
               ? 'Update the project details below.'
               : isSubproject
                 ? `A subproject of ${parentProject?.name} — its own scope, schedule, and budget, rolled up to the parent.`
-                : 'Enter the details for the new project.'}
+                : isClientScoped
+                  ? 'This project will be securely contained within this client account and visible to its authorized team.'
+                  : 'Enter the details for the new project.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -158,14 +172,23 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
             <Label>Project Type</Label>
             <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
               <TabsList className="w-full">
-                <TabsTrigger value="property" className="flex-1 gap-1.5">
-                  <Building2 className="h-3.5 w-3.5" />
-                  Property
-                </TabsTrigger>
-                <TabsTrigger value="client" className="flex-1 gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5" />
-                  Client
-                </TabsTrigger>
+                {isClientScoped ? (
+                  <TabsTrigger value="construction" className="flex-1 gap-1.5">
+                    <HardHat className="h-3.5 w-3.5" />
+                    Construction
+                  </TabsTrigger>
+                ) : (
+                  <>
+                    <TabsTrigger value="property" className="flex-1 gap-1.5">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Property
+                    </TabsTrigger>
+                    <TabsTrigger value="client" className="flex-1 gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5" />
+                      Client
+                    </TabsTrigger>
+                  </>
+                )}
                 <TabsTrigger value="consulting" className="flex-1 gap-1.5">
                   <Lightbulb className="h-3.5 w-3.5" />
                   Consulting
@@ -186,13 +209,29 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject }: Pr
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder={projectType === 'property' ? 'e.g. Roof Replacement Phase 2' : 'e.g. ERC Tax Credit 2024'}
+              placeholder={projectType === 'property' || projectType === 'construction' ? 'e.g. Roof Replacement Phase 2' : 'e.g. ERC Tax Credit 2024'}
               required
             />
           </div>
 
           {/* Property or Client selector */}
-          {projectType === 'property' ? (
+          {isClientScoped ? (
+            <div className="grid gap-2">
+              <Label>Client account</Label>
+              <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2.5">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                  <Briefcase className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="truncate">{clientContext?.name}</span>
+                </span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <LockKeyhole className="h-3.5 w-3.5" />Locked
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ownership is fixed to this client to prevent accidental cross-client records.
+              </p>
+            </div>
+          ) : projectType === 'property' ? (
             <div className="grid gap-2">
               <Label>Property *</Label>
               <Select

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus,
@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientProjectKindGrid } from '@/components/organizations/ClientProjectKindGrid';
-import { useClient, type ClientType } from '@/hooks/useClients';
+import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { useClient, useClientProjectAccess, type ClientType } from '@/hooks/useClients';
 import { useProjects } from '@/hooks/useProjects';
 import { groupProjectsByKind } from '@/lib/projectKind';
 
@@ -22,8 +23,11 @@ const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
 export default function OrganizationDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const { data: org, isLoading: orgLoading } = useClient(clientId);
+  const { data: projectAccess, isLoading: accessLoading } = useClientProjectAccess(clientId);
   const { data: allProjects = [], isLoading: projectsLoading } = useProjects();
+  const canCreateProject = projectAccess?.canCreate ?? false;
 
   // RLS already scopes projects to the tenant; filter to this organization.
   const projects = useMemo(
@@ -78,7 +82,7 @@ export default function OrganizationDetailPage() {
 
       {/* Org header */}
       <div className="rounded-xl border bg-card p-5">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col items-start gap-4 sm:flex-row">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Briefcase className="h-6 w-6" />
           </div>
@@ -106,6 +110,11 @@ export default function OrganizationDetailPage() {
               )}
             </div>
           </div>
+          {canCreateProject && (
+            <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />Create project
+            </Button>
+          )}
         </div>
       </div>
 
@@ -141,14 +150,29 @@ export default function OrganizationDetailPage() {
           <div className="rounded-xl border border-dashed bg-card py-12 text-center">
             <FolderKanban className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
             <p className="font-medium text-muted-foreground">No projects under this organization yet</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/projects')}>
-              <Plus className="mr-2 h-4 w-4" />Go to Projects
-            </Button>
+            {accessLoading ? (
+              <Skeleton className="mx-auto mt-4 h-9 w-40" />
+            ) : canCreateProject ? (
+              <Button className="mt-4" onClick={() => setCreateProjectOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />Create the first project
+              </Button>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">A client or workspace administrator can create the first project here.</p>
+            )}
           </div>
         ) : (
           <ClientProjectKindGrid projects={projects} />
         )}
       </section>
+
+      {canCreateProject && (
+        <ProjectDialog
+          open={createProjectOpen}
+          onOpenChange={setCreateProjectOpen}
+          clientContext={{ id: org.id, name: org.name }}
+          onCreated={(created) => navigate(`/projects/${created.id}`)}
+        />
+      )}
     </div>
   );
 }

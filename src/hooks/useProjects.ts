@@ -220,6 +220,28 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (project: Omit<ProjectInsert, 'id' | 'created_at' | 'updated_at'>) => {
+      const isClientScoped = Boolean(
+        project.client_id
+        && !project.property_id
+        && ['construction', 'consulting', 'client'].includes(project.project_type ?? ''),
+      );
+
+      if (isClientScoped) {
+        const { data, error } = await supabase.rpc('create_client_project' as any, {
+          p_client_id: project.client_id,
+          p_name: project.name,
+          p_project_type: project.project_type === 'client' ? 'consulting' : project.project_type,
+          p_description: project.description ?? null,
+          p_scope: project.scope ?? null,
+          p_budget: project.budget ?? null,
+          p_start_date: project.start_date ?? null,
+          p_target_end_date: project.target_end_date ?? null,
+          p_status: project.status ?? 'planning',
+        } as any);
+        if (error) throw error;
+        return data as ProjectRow;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('projects')
@@ -243,6 +265,28 @@ export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ProjectRow> & { id: string }) => {
+      const isClientScoped = Boolean(
+        updates.client_id
+        && !updates.property_id
+        && ['construction', 'consulting', 'client'].includes(updates.project_type ?? ''),
+      );
+
+      if (isClientScoped) {
+        const { data, error } = await supabase.rpc('update_client_project' as any, {
+          p_project_id: id,
+          p_name: updates.name,
+          p_project_type: updates.project_type === 'client' ? 'consulting' : updates.project_type,
+          p_description: updates.description ?? null,
+          p_scope: updates.scope ?? null,
+          p_budget: updates.budget ?? null,
+          p_start_date: updates.start_date ?? null,
+          p_target_end_date: updates.target_end_date ?? null,
+          p_status: updates.status ?? null,
+        } as any);
+        if (error) throw error;
+        return data as ProjectRow;
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .update(updates)
