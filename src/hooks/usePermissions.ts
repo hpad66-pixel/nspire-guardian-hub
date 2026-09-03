@@ -55,6 +55,11 @@ export function useUserPermissions() {
     if (currentRole === 'project_manager' && module === 'projects' && (action === 'view' || action === 'create' || action === 'update')) {
       return true;
     }
+    // Client-scoped administrators manage projects inside their assigned client.
+    // Database RLS remains authoritative and prevents cross-client access.
+    if (currentRole === 'administrator' && module === 'projects' && (action === 'view' || action === 'create' || action === 'update')) {
+      return true;
+    }
 
     return (permissions || []).some(
       p => p.module === module && p.action === action && p.allowed
