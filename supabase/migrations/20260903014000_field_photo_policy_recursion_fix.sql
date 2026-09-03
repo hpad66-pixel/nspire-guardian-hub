@@ -61,6 +61,12 @@ REVOKE ALL ON FUNCTION public.owner_can_read_field_photo_object(text) FROM PUBLI
 GRANT EXECUTE ON FUNCTION public.owner_can_read_field_photo(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_can_read_field_photo_object(text) TO authenticated;
 
+-- The original photo-library migration enabled RLS but omitted base table
+-- privileges. PostgREST therefore failed the embedded relationship before an
+-- applicable policy could even be evaluated. Uploads need INSERT; all portal
+-- photo reads need SELECT. Caption edits remain restricted to the audited RPC.
+GRANT SELECT, INSERT ON public.photos TO authenticated;
+
 DROP POLICY IF EXISTS field_photos_owner_read ON public.field_accountability_photos;
 CREATE POLICY field_photos_owner_read
   ON public.field_accountability_photos FOR SELECT TO authenticated
