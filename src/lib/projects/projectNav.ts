@@ -11,6 +11,7 @@ import {
   Images, Wallet, FileSignature, HelpCircle, Package, ListChecks, CheckSquare,
   TrendingUp, ShoppingCart, ShieldCheck, FlaskConical, MessageSquareText, Mail,
   Award, Receipt, Send, Megaphone, Brain, Settings2, FileBadge2, Map, Warehouse, Phone, ScanEye,
+  UserRoundCheck,
 } from 'lucide-react';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import {
@@ -76,6 +77,7 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'overview', label: 'Overview', shortLabel: 'Overview', icon: LayoutDashboard, group: 'engagement' },
   { value: 'subprojects', label: 'Subprojects', shortLabel: 'Subs', icon: FolderTree, group: 'engagement' },
   { value: 'directory', label: 'People & Team', shortLabel: 'People', icon: Users, group: 'engagement', route: (id) => `/projects/${id}/directory` },
+  { value: 'contractors', label: 'Contractor Readiness', shortLabel: 'Contractors', icon: UserRoundCheck, group: 'engagement', route: (id) => `/projects/${id}/contractors` },
   { value: 'scope', label: 'Scope', shortLabel: 'Scope', icon: ListTree, group: 'engagement' },
   { value: 'schedule', label: 'Schedule', shortLabel: 'Schedule', icon: CalendarDays, group: 'engagement' },
   { value: 'action-items', label: 'Action Items', shortLabel: 'Actions', icon: CheckSquare, group: 'engagement' },

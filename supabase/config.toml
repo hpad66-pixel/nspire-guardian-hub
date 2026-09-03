@@ -204,6 +204,20 @@ verify_jwt = false
 [functions.vendor-submit]
 verify_jwt = false
 
+# Contractor Readiness: staff invitation creation validates the user JWT inside;
+# the contractor portal is a scoped capability URL backed by a SHA-256 token.
+[functions.contractor-invite]
+verify_jwt = false
+
+[functions.contractor-portal]
+verify_jwt = false
+
+[functions.contractor-document-assist]
+verify_jwt = true
+
+[functions.contractor-reminders]
+verify_jwt = false
+
 # Public Gmail OAuth callback — Google redirects here with ?code&state and no
 # Supabase JWT; authenticity is enforced by the signed `state`.
 [functions.gmail-oauth-callback]

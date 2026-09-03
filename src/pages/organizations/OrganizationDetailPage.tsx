@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus,
+  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus, UserRoundCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { ClientProjectKindGrid } from '@/components/organizations/ClientProjectK
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { useClient, useClientProjectAccess, type ClientType } from '@/hooks/useClients';
 import { useProjects } from '@/hooks/useProjects';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { useModules } from '@/contexts/ModuleContext';
 import { groupProjectsByKind } from '@/lib/projectKind';
 
 const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
@@ -27,7 +29,11 @@ export default function OrganizationDetailPage() {
   const { data: org, isLoading: orgLoading } = useClient(clientId);
   const { data: projectAccess, isLoading: accessLoading } = useClientProjectAccess(clientId);
   const { data: allProjects = [], isLoading: projectsLoading } = useProjects();
+  const { currentRole } = useUserPermissions();
+  const { isModuleEnabled } = useModules();
   const canCreateProject = projectAccess?.canCreate ?? false;
+  const canManageContractors = isModuleEnabled('contractorReadinessEnabled')
+    && ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
 
   // RLS already scopes projects to the tenant; filter to this organization.
   const projects = useMemo(
@@ -110,11 +116,7 @@ export default function OrganizationDetailPage() {
               )}
             </div>
           </div>
-          {canCreateProject && (
-            <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />Create project
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">{canManageContractors && <Button variant="outline" className="shrink-0" onClick={() => navigate(`/organizations/${org.id}/contractors`)}><UserRoundCheck className="mr-2 h-4 w-4" />Contractors</Button>}{canCreateProject && <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Create project</Button>}</div>
         </div>
       </div>
 

@@ -24,6 +24,7 @@ const defaultModules: ModuleConfig = {
   cockpitEnabled: true,
   reportsEnabled: true,
   aiEnabled: true,
+  contractorReadinessEnabled: false,
   nspireEnabled: false,
   dailyGroundsEnabled: false,
   projectsEnabled: false,
@@ -84,11 +85,10 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
       // For workspace-level modules:
       // effective = platform gate AND workspace admin toggle (defaults to true if no row yet)
-      const wsEnabled = (platformField: string, wsField: string): boolean => {
-        if (!ws) return true; // no row yet → show as enabled (dev / first-run mode)
-        // Default both platform gate and workspace toggle to true if null/undefined
-        const platformOn = ws[platformField] !== false;
-        const wsOn = ws[wsField] !== false;
+      const wsEnabled = (platformField: string, wsField: string, fallback = true): boolean => {
+        if (!ws) return fallback;
+        const platformOn = ws[platformField] == null ? fallback : ws[platformField] !== false;
+        const wsOn = ws[wsField] == null ? fallback : ws[wsField] !== false;
         return platformOn && wsOn;
       };
 
@@ -102,6 +102,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         cockpitEnabled: wsEnabled('platform_cockpit', 'cockpit_enabled'),
         reportsEnabled: wsEnabled('platform_reports', 'reports_enabled'),
         aiEnabled: wsEnabled('platform_ai', 'ai_enabled'),
+        contractorReadinessEnabled: wsEnabled('platform_contractor_readiness', 'contractor_readiness_enabled', false),
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,

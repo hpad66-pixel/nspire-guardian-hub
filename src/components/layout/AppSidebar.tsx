@@ -48,6 +48,7 @@ import {
   Droplets,
   Lightbulb,
   type LucideIcon,
+  UserRoundCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OrgProjectTree } from '@/components/layout/OrgProjectTree';
@@ -137,6 +138,7 @@ export function AppSidebar() {
   const { data: issues = [] } = useIssues();
   const isAdmin = currentRole === 'admin';
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
+  const canManageContractors = ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
 
   const openIssueCount = (issues as Array<{ status: string | null }>).filter(
     (i) => i.status !== 'resolved' && i.status !== 'verified',
@@ -299,6 +301,9 @@ export function AppSidebar() {
               <NavItem to="/people" icon={Users} label="Team" collapsed={collapsed} />
             )}
             <NavItem to="/contacts" icon={Contact} label="Contacts" collapsed={collapsed} />
+            {isModuleEnabled('contractorReadinessEnabled') && canManageContractors && (
+              <NavItem to="/contractor-readiness" icon={UserRoundCheck} label="Contractor Readiness" collapsed={collapsed} />
+            )}
           </div>
 
           {/* ─── Insights (archive / analyze). Daily Reports lives under Property Mgmt

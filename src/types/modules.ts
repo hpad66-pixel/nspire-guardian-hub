@@ -9,6 +9,7 @@ export interface ModuleConfig {
   cockpitEnabled: boolean;          // Portfolio Cockpit
   reportsEnabled: boolean;          // Insights: reports, documents, CaseIQ
   aiEnabled: boolean;               // Cross-cutting AI (assistant, drafting, analysis, briefings)
+  contractorReadinessEnabled: boolean; // Contractor qualification, document controls, expiry and work/payment gates
   // ── nSpire / field-ops modules ──
   nspireEnabled: boolean;           // Inside unit inspections (NSPIRE compliance)
   dailyGroundsEnabled: boolean;     // Outside/grounds/asset inspections

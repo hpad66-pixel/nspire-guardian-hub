@@ -16,6 +16,7 @@ export type ProjectModuleSlug =
   | 'overview'
   | 'subprojects'
   | 'directory'
+  | 'contractors'
   | 'env-compliance'
   | 'permits'
   | 'site-map'
@@ -74,6 +75,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview', label: 'Overview', description: 'Project health, KPIs, and quick actions', group: 'engagement', locked: true },
   { slug: 'subprojects', label: 'Subprojects', description: 'Child projects rolled up under this one', group: 'engagement' },
   { slug: 'directory', label: 'People & Team', description: 'CRM contacts and project directory — feeds email & invoices', group: 'engagement' },
+  { slug: 'contractors', label: 'Contractor Readiness', description: 'Project-scoped vendor screening, documents, expirations, and mobilization gates', group: 'engagement' },
   { slug: 'scope', label: 'Scope', description: 'Workstreams, owners, % complete (consulting)', group: 'engagement' },
   { slug: 'schedule', label: 'Schedule', description: 'Milestones, deadlines, and timeline', group: 'engagement', portalSlug: 'schedule' },
   { slug: 'action-items', label: 'Action items', description: 'Tasks by date, owners, and updates', group: 'engagement' },
@@ -161,6 +163,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'overview',
   'subprojects',
   'directory',
+  'contractors',
   'env-compliance',
   'permits',
   'scope',

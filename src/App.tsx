@@ -187,6 +187,10 @@ const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'))
 const SignAuthoredDocumentPage = lazy(() => import('./pages/sign/SignAuthoredDocumentPage'));
 const ActionItemPublicPage = lazy(() => import('./pages/action/ActionItemPublicPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
+const ContractorReadinessPage = lazy(() => import('./pages/contractors/ContractorReadinessPage'));
+const ContractorCasePage = lazy(() => import('./pages/contractors/ContractorCasePage'));
+const ContractorOnboardingPage = lazy(() => import('./pages/contractors/ContractorOnboardingPage'));
+const ContractorSettingsPage = lazy(() => import('./pages/contractors/ContractorSettingsPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
 const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage'));
 const CaptureUploadPage = lazy(() => import('./pages/CaptureUploadPage'));
@@ -291,6 +295,7 @@ const App = () => (
                      <Route path="/sign/document/:token" element={<SignAuthoredDocumentPage />} />
                      <Route path="/action/:token" element={<ActionItemPublicPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
+                     <Route path="/contractor/onboard/:token" element={<ContractorOnboardingPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      <Route path="/client/:token" element={<ClientPortalPage />} />
                      <Route path="/capture/:token" element={<CaptureUploadPage />} />
@@ -371,6 +376,10 @@ const App = () => (
                               <Route path="/people" element={<PeoplePage />} />
                               <Route path="/organizations" element={<OrganizationsPage />} />
                               <Route path="/organizations/:clientId" element={<OrganizationDetailPage />} />
+                              <Route path="/organizations/:clientId/contractors" element={<ContractorReadinessPage />} />
+                              <Route path="/contractor-readiness" element={<ContractorReadinessPage />} />
+                              <Route path="/contractor-readiness/:caseId" element={<ContractorCasePage />} />
+                              <Route path="/contractor-readiness/settings" element={<ContractorSettingsPage />} />
                               <Route path="/inbox" element={<MailboxPage />} />
                               <Route path="/messages" element={<MessagesPage />} />
                               <Route path="/messages/:threadId" element={<MessagesPage />} />
@@ -456,6 +465,7 @@ const App = () => (
 
                               {/* ───── Procore Lite · Phase 2 ───── */}
                               <Route path="/projects/:projectId/directory" element={<ProjectDirectoryPage />} />
+                              <Route path="/projects/:projectId/contractors" element={<ContractorReadinessPage />} />
                               <Route path="/projects/:projectId/drawings" element={<DrawingsPage />} />
                               <Route path="/projects/:projectId/drawings/:drawingId" element={<DrawingViewerPage />} />
                               <Route path="/projects/:projectId/specifications" element={<SpecificationsPage />} />

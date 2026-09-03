@@ -13,6 +13,7 @@ export const MODULE_CATALOG: ModuleCategory[] = [
   ] },
   { key: 'construction', label: 'Construction', modules: [
     { key: 'constructionEnabled', label: 'Construction suite', description: 'Financials cascade, pay apps, change orders, RFIs, submittals, punch, daily logs' },
+    { key: 'contractorReadinessEnabled', label: 'Contractor Readiness', description: 'Vendor qualification, secure document collection, expiration monitoring, and deterministic work/payment gates' },
   ] },
   { key: 'consulting', label: 'Consulting', modules: [
     { key: 'consultingEnabled', label: 'Consulting engagements', description: 'Scopes, invoicing, meetings, action items, proposals' },
@@ -58,7 +59,7 @@ export interface PackageDef { key: string; name: string; description: string; mo
 // (Core is always on regardless). Rename / re-scope these to your commercial tiers.
 export const PACKAGES: PackageDef[] = [
   { key: 'construction', name: 'Construction', description: 'GC / construction management', modules: ['constructionEnabled', 'cockpitEnabled', 'reportsEnabled', 'clientPortalEnabled', 'aiEnabled'] },
-  { key: 'construction_nspire', name: 'Construction + nSpire', description: 'Construction plus property inspections', modules: ['constructionEnabled', 'propertyMgmtEnabled', 'nspireEnabled', 'dailyGroundsEnabled', 'equipmentTrackerEnabled', 'safetyModuleEnabled', 'cockpitEnabled', 'reportsEnabled', 'clientPortalEnabled', 'aiEnabled'] },
+  { key: 'construction_nspire', name: 'Construction + nSpire', description: 'Construction plus property inspections', modules: ['constructionEnabled', 'contractorReadinessEnabled', 'propertyMgmtEnabled', 'nspireEnabled', 'dailyGroundsEnabled', 'equipmentTrackerEnabled', 'safetyModuleEnabled', 'cockpitEnabled', 'reportsEnabled', 'clientPortalEnabled', 'aiEnabled'] },
   { key: 'consulting', name: 'Consulting', description: 'Consulting engagements', modules: ['consultingEnabled', 'cockpitEnabled', 'clientPortalEnabled', 'reportsEnabled', 'aiEnabled'] },
   { key: 'consulting_env', name: 'Consulting + Environmental', description: 'Consulting plus environmental compliance', modules: ['consultingEnabled', 'environmentalEnabled', 'cockpitEnabled', 'clientPortalEnabled', 'reportsEnabled', 'aiEnabled'] },
   { key: 'property', name: 'Property / nSpire', description: 'Property management and inspections', modules: ['propertyMgmtEnabled', 'nspireEnabled', 'dailyGroundsEnabled', 'occupancyEnabled', 'equipmentTrackerEnabled', 'safetyModuleEnabled', 'reportsEnabled', 'aiEnabled'] },
@@ -72,6 +73,7 @@ export const MODULE_WS_COLUMN: Partial<Record<ModuleKey, string>> = {
   occupancyEnabled: 'occupancy_enabled', emailInboxEnabled: 'email_inbox_enabled', qrScanningEnabled: 'qr_scanning_enabled',
   credentialWalletEnabled: 'credential_wallet_enabled', trainingHubEnabled: 'training_hub_enabled', safetyModuleEnabled: 'safety_module_enabled',
   equipmentTrackerEnabled: 'equipment_tracker_enabled', clientPortalEnabled: 'client_portal_enabled',
+  contractorReadinessEnabled: 'contractor_readiness_enabled',
 };
 
 /** Module key → matching platform gate column (`platform_*`). */
