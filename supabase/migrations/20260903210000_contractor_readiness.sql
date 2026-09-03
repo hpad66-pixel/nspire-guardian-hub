@@ -623,7 +623,7 @@ DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'contractor_documents','contractor_case_requirements','contractor_requirement_comments',
+    'contractor_documents','contractor_case_requirements',
     'contractor_exceptions','contractor_portal_links','contractor_project_assignments',
     'contractor_reminder_log','contractor_activity_log'
   ] LOOP
@@ -634,6 +634,22 @@ BEGIN
     );
   END LOOP;
 END $$;
+
+DROP POLICY IF EXISTS contractor_requirement_comments_case_scope ON public.contractor_requirement_comments;
+CREATE POLICY contractor_requirement_comments_case_scope
+  ON public.contractor_requirement_comments FOR ALL TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.contractor_case_requirements r
+      WHERE r.id = requirement_id AND public.can_manage_contractor_case(r.case_id)
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.contractor_case_requirements r
+      WHERE r.id = requirement_id AND public.can_manage_contractor_case(r.case_id)
+    )
+  );
 
 DROP POLICY IF EXISTS contractor_profiles_case_scope ON public.contractor_profiles;
 CREATE POLICY contractor_profiles_case_scope ON public.contractor_profiles FOR ALL TO authenticated
