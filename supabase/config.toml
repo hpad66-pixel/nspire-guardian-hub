@@ -165,6 +165,10 @@ verify_jwt = false
 [functions.photo-process]
 verify_jwt = true
 
+# Field Accountability — authenticated, RLS-scoped advisory photo analysis.
+[functions.field-photo-assist]
+verify_jwt = true
+
 # Daily weather — fills daily_reports forecast fields from Open-Meteo
 [functions.daily-weather]
 verify_jwt = true

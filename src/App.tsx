@@ -34,6 +34,7 @@ const InspectionHistoryPage = lazy(() => import('./pages/inspections/InspectionH
 const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'));
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProjectAdminPage = lazy(() => import('./pages/projects/ProjectAdminPage'));
+const FieldAccountabilityPage = lazy(() => import('./pages/projects/FieldAccountabilityPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
@@ -122,6 +123,7 @@ const OwnerUpdatesPage = lazy(() => import('./pages/portal/owner/OwnerUpdatesPag
 const OwnerPermitsPage = lazy(() => import('./pages/portal/owner/OwnerPermitsPage'));
 const OwnerSiteMapPage = lazy(() => import('./pages/portal/owner/OwnerSiteMapPage'));
 const OwnerOperationsPage = lazy(() => import('./pages/portal/owner/OwnerOperationsPage'));
+const OwnerAccountabilityPage = lazy(() => import('./pages/portal/owner/OwnerAccountabilityPage'));
 const OwnerPortalLegacyRedirect = lazy(() => import('./pages/portal/owner/OwnerPortalLegacyRedirect'));
 const ClientPortalShell = lazy(() => import('./components/portal/ClientPortalShell'));
 const OpsPortalShell = lazy(() => import('./components/portal/OpsPortalShell'));
@@ -321,6 +323,7 @@ const App = () => (
                         <Route path="/owner-portal/projects/:projectId/permits" element={<OwnerPermitsPage />} />
                         <Route path="/owner-portal/projects/:projectId/site-map" element={<OwnerSiteMapPage />} />
                         <Route path="/owner-portal/projects/:projectId/operations" element={<OwnerOperationsPage />} />
+                        <Route path="/owner-portal/projects/:projectId/accountability" element={<OwnerAccountabilityPage />} />
                       </Route>
                     </Route>
 
@@ -396,6 +399,7 @@ const App = () => (
                               {/* Legacy flat proposals hub — proposals live inside each project */}
                               <Route path="/projects/proposals" element={<Navigate to="/projects" replace />} />
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                              <Route path="/projects/:projectId/accountability" element={<FieldAccountabilityPage />} />
                               <Route path="/projects/:projectId/admin" element={<ProjectAdminPage />} />
                               
                               {/* Compliance Permits (property-level) — project Permits live under /projects/:id */}

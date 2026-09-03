@@ -25,6 +25,7 @@ export type ProjectModuleSlug =
   | 'action-items'
   | 'schedule'
   | 'daily-logs'
+  | 'accountability'
   | 'gallery'
   | 'financials'
   | 'contracts'
@@ -64,7 +65,7 @@ export interface ProjectModuleDef {
   /** Only workspace/project admins see this nav item. */
   adminOnly?: boolean;
   /** Surfaces on the authenticated owner portal when enabled. */
-  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | 'site-map' | 'operations' | null;
+  portalSlug?: 'updates' | 'schedule' | 'documents' | 'contract' | 'reports' | 'permits' | 'site-map' | 'operations' | 'accountability' | null;
 }
 
 // The admin panel renders from this catalog. Order + grouping drive the panel
@@ -78,6 +79,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'action-items', label: 'Action items', description: 'Tasks by date, owners, and updates', group: 'engagement' },
 
   { slug: 'daily-logs', label: 'Daily logs', description: 'Field daily logs and inspections', group: 'field' },
+  { slug: 'accountability', label: 'Field Accountability', description: 'Site walks, photo evidence, responsibility, and verified closeout', group: 'field', portalSlug: 'accountability' },
   { slug: 'rfis', label: 'RFIs', description: 'Requests for information', group: 'field' },
   { slug: 'submittals', label: 'Submittals', description: 'Submittal register and reviews', group: 'field' },
   { slug: 'punch-list', label: 'Punch list', description: 'Punch items and closeout tracking', group: 'field' },
@@ -164,6 +166,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'scope',
   'action-items',
   'schedule',
+  'accountability',
   'gallery',
   'repository',
   'project-log',

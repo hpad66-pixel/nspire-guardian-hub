@@ -15,6 +15,7 @@ import {
   Map,
   Menu,
   Package,
+  ScanEye,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -36,20 +37,21 @@ import "@/pages/portal/client-portal.css";
 
 function portalNav(
   projectId: string | null,
-  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map", "operations"]),
+  enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map", "operations", "accountability"]),
 ) {
   const primary = [
     { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
     { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true, key: "overview" },
+    { to: ownerPortalPath(projectId, "/accountability"), label: "Site accountability", icon: ScanEye, key: "accountability" },
     { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing, key: "updates" },
     { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
+  ].filter((item) => enabled.has(item.key));
+
+  const secondary = [
     { to: ownerPortalPath(projectId, "/site-map"), label: "Site map", icon: Map, key: "site-map" },
     { to: ownerPortalPath(projectId, "/permits"), label: "Permits", icon: FileBadge2, key: "permits" },
     { to: ownerPortalPath(projectId, "/operations"), label: "Operations", icon: Package, key: "operations" },
     { to: ownerPortalPath(projectId, "/documents"), label: "Documents", icon: FolderOpen, key: "documents" },
-  ].filter((item) => enabled.has(item.key));
-
-  const secondary = [
     { to: ownerPortalPath(projectId, "/contract"), label: "Contract", icon: FileText, key: "contract" },
     { to: ownerPortalPath(projectId, "/reports"), label: "Reports", icon: BarChart3, key: "reports" },
   ].filter((item) => enabled.has(item.key));
