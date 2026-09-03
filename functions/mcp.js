@@ -55,9 +55,9 @@ async function dispatch(message, request, env) {
     const requested = message.params?.protocolVersion;
     return {
       protocolVersion: SUPPORTED_PROTOCOLS.has(requested) ? requested : "2025-03-26",
-      capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "proj-os", title: "Proj OS", version: "1.2.0" },
-      instructions: "Use read tools freely. Before creating or updating contacts, tasks, projects, proposals, change orders, client invoices (pay apps), owner payment receipts, or client portal updates, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Draft financial records only unless the user explicitly asks to advance status. Published client_updates appear on the owner/client portal; drafts stay internal. For pay-app reconciliation, list payments and compare Line 7 cash to prior certificates.",
+      capabilities: { tools: { listChanged: true } },
+      serverInfo: { name: "proj-os", title: "Proj OS", version: "1.3.0" },
+      instructions: "The project registry is live and workspace-scoped: current and future projects appear automatically, with no per-project connection step. Use read tools freely. Before creating or updating contacts, tasks, projects, proposals, change orders, client invoices (pay apps), owner payment receipts, project updates, or client portal updates, show a concise preview and obtain explicit user confirmation. Resolve ambiguous projects before writing. Use proj_os_post_project_update with destination=project, client_portal, or both; destination=both is transactional. Published client updates appear on the owner/client portal; drafts stay internal. Draft financial records only unless the user explicitly asks to advance status.",
     };
   }
   if (message.method === "ping") return {};
@@ -100,8 +100,23 @@ async function dispatch(message, request, env) {
 const TOOL_HANDLERS = {
   proj_os_health: async (_a, c) => {
     const payload = await api(c, "GET", "/api-v1/projects", { limit: 1 });
-    return { ok: true, server: "proj-os", api: "reachable", sample_projects: Array.isArray(payload?.data) ? payload.data.length : 0 };
+    return {
+      ok: true,
+      server: "proj-os",
+      api: "reachable",
+      connection_mode: payload?.meta?.connection_mode || "workspace_dynamic",
+      project_count: Number(payload?.meta?.total ?? payload?.data?.length ?? 0),
+      future_projects: "automatic",
+    };
   },
+  proj_os_list_projects: (a, c) => api(c, "GET", "/api-v1/projects", {
+    client_id: a.client_id,
+    property_id: a.property_id,
+    status: a.status,
+    project_type: a.project_type,
+    limit: a.limit,
+    offset: a.offset,
+  }),
   proj_os_search_projects: (a, c) => api(c, "GET", "/api-v1/projects", { q: requireText(a.q, "q"), limit: a.limit }),
   proj_os_get_project_summary: (a, c) => api(c, "GET", "/api-v1/project-status", { project_id: requireUuid(a.project_id, "project_id") }),
   proj_os_update_project: (a, c) => {
@@ -180,6 +195,11 @@ const TOOL_HANDLERS = {
     return api(c, "PATCH", `/api-v1/client-updates/${updateId}`, null, body);
   },
   proj_os_publish_client_update: (a, c) => api(c, "PATCH", `/api-v1/client-updates/${requireUuid(a.update_id, "update_id")}`, null, { status: "published" }),
+  proj_os_list_project_updates: (a, c) => api(c, "GET", "/api-v1/project-updates", {
+    project_id: requireUuid(a.project_id, "project_id"),
+    limit: a.limit,
+  }),
+  proj_os_post_project_update: (a, c) => api(c, "POST", "/api-v1/project-updates", null, pick(a, PROJECT_UPDATE_FIELDS)),
 };
 
 async function api(ctx, method, path, query = null, body = undefined) {
@@ -190,7 +210,7 @@ async function api(ctx, method, path, query = null, body = undefined) {
   }
   let token = await accessToken(ctx.env);
   let response = await fetchApi(url, method, body, token, ctx);
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     tokenCache = null;
     token = await accessToken(ctx.env);
     response = await fetchApi(url, method, body, token, ctx);
@@ -330,6 +350,7 @@ const PAYMENT_FIELDS = ["project_id", "prime_contract_id", "pay_app_id", "amount
 const CLIENT_UPDATE_FIELDS = ["project_id", "title", "update_type", "period_label", "health", "summary", "accomplishments", "risks", "decisions", "action_items", "next_steps", "status"];
 const CLIENT_UPDATE_PATCH_FIELDS = ["title", "update_type", "period_label", "health", "summary", "accomplishments", "risks", "decisions", "action_items", "next_steps", "status"];
 const PROJECT_PATCH_FIELDS = ["name", "description", "scope", "status"];
+const PROJECT_UPDATE_FIELDS = ["project_id", "destination", "title", "summary", "update_type", "period_label", "health", "accomplishments", "risks", "decisions", "action_items", "next_steps", "portal_status", "project_status"];
 
 const string = (description) => ({ type: "string", description });
 const uuid = (description) => ({ type: "string", format: "uuid", description });
@@ -338,7 +359,8 @@ const writeAnnotations = { readOnlyHint: false, destructiveHint: false, idempote
 const readAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 
 const TOOLS = [
-  { name: "proj_os_health", title: "Check Proj OS connectivity", description: "Verify the MCP-to-API path is live and the agent OAuth client can read projects.", inputSchema: object({}), annotations: readAnnotations },
+  { name: "proj_os_health", title: "Check Proj OS connectivity", description: "Verify the MCP-to-API path and report how many projects are automatically connected in the live workspace registry.", inputSchema: object({}), annotations: readAnnotations },
+  { name: "proj_os_list_projects", title: "List all Proj OS projects", description: "List every authorized current project from the live workspace registry. Newly created projects appear automatically; no MCP mapping is required. Follow meta.has_more with the next offset when needed.", inputSchema: object({ client_id: uuid("Optional client ID"), property_id: uuid("Optional property ID"), status: { type: "string", enum: ["planning", "active", "on_hold", "completed", "closed"] }, project_type: string("Optional project type"), limit: { type: "integer", minimum: 1, maximum: 200 }, offset: { type: "integer", minimum: 0 } }), annotations: readAnnotations },
   { name: "proj_os_search_projects", title: "Search Proj OS projects", description: "Find authorized Proj OS projects by name, description, scope, program key, or project key.", inputSchema: object({ q: string("Search text"), limit: { type: "integer", minimum: 1, maximum: 200 } }, ["q"]), annotations: readAnnotations },
   { name: "proj_os_get_project_summary", title: "Get Proj OS project summary", description: "Return project details plus task and milestone status counts.", inputSchema: object({ project_id: uuid("Proj OS project ID") }, ["project_id"]), annotations: readAnnotations },
   { name: "proj_os_update_project", title: "Update Proj OS project", description: "Update name, description, scope, or status on an authorized project after confirmation. Does not publish to the client portal; use proj_os_create_client_update for portal briefings.", inputSchema: object({ project_id: uuid("Project ID"), name: string("Project name"), description: string("Project description"), scope: string("Project scope"), status: { type: "string", enum: ["planning", "active", "on_hold", "completed", "closed"] } }, ["project_id"]), annotations: writeAnnotations },
@@ -404,6 +426,9 @@ const TOOLS = [
     health: { type: "string", enum: ["on_track", "at_risk", "delayed"] },
     summary: string("Client-facing narrative"),
     accomplishments: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: object({ text: string("Risk and impact"), severity: { type: "string", enum: ["low", "medium", "high"] } }, ["text"]) },
+    decisions: { type: "array", items: object({ text: string("Decision"), status: { type: "string", enum: ["needed", "made"] } }, ["text"]) },
+    action_items: { type: "array", items: object({ text: string("Action"), owner: string("Responsible party"), done: { type: "boolean" } }, ["text"]) },
     next_steps: { type: "array", items: { type: "string" } },
     status: { type: "string", enum: ["draft", "published"] },
   }, ["project_id", "title"]), annotations: writeAnnotations },
@@ -415,8 +440,28 @@ const TOOLS = [
     health: { type: "string", enum: ["on_track", "at_risk", "delayed"] },
     summary: string("Client-facing narrative"),
     accomplishments: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: object({ text: string("Risk and impact"), severity: { type: "string", enum: ["low", "medium", "high"] } }, ["text"]) },
+    decisions: { type: "array", items: object({ text: string("Decision"), status: { type: "string", enum: ["needed", "made"] } }, ["text"]) },
+    action_items: { type: "array", items: object({ text: string("Action"), owner: string("Responsible party"), done: { type: "boolean" } }, ["text"]) },
     next_steps: { type: "array", items: { type: "string" } },
     status: { type: "string", enum: ["draft", "published"] },
   }, ["update_id"]), annotations: writeAnnotations },
   { name: "proj_os_publish_client_update", title: "Publish client portal update", description: "Publish one client briefing so it appears on the owner/client portal. Confirm with the user first.", inputSchema: object({ update_id: uuid("Client update ID") }, ["update_id"]), annotations: writeAnnotations },
+  { name: "proj_os_list_project_updates", title: "Read project and portal updates", description: "Return the internal activity feed and client-portal briefings for one authorized project.", inputSchema: object({ project_id: uuid("Project ID"), limit: { type: "integer", minimum: 1, maximum: 200 } }, ["project_id"]), annotations: readAnnotations },
+  { name: "proj_os_post_project_update", title: "Post project update", description: "Post an update to the internal project activity feed, the client portal, or both. The both option is atomic. Publishing to the client portal requires explicit confirmation.", inputSchema: object({
+    project_id: uuid("Project ID"),
+    destination: { type: "string", enum: ["project", "client_portal", "both"], description: "Where the update should appear" },
+    title: string("Short update title"),
+    summary: string("Verified update narrative"),
+    update_type: { type: "string", enum: ["general", "progress", "milestone", "decision", "risk"] },
+    period_label: string("Period label, e.g. Week of Sep 1–7, 2026"),
+    health: { type: "string", enum: ["on_track", "at_risk", "delayed"] },
+    accomplishments: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: object({ text: string("Risk and impact"), severity: { type: "string", enum: ["low", "medium", "high"] } }, ["text"]) },
+    decisions: { type: "array", items: object({ text: string("Decision"), status: { type: "string", enum: ["needed", "made"] } }, ["text"]) },
+    action_items: { type: "array", items: object({ text: string("Action"), owner: string("Responsible party"), done: { type: "boolean" } }, ["text"]) },
+    next_steps: { type: "array", items: { type: "string" } },
+    portal_status: { type: "string", enum: ["draft", "published"], description: "Draft stays internal; published is visible to the client" },
+    project_status: { type: "string", enum: ["planning", "active", "on_hold", "completed", "closed"], description: "Optional project lifecycle status change" },
+  }, ["project_id", "destination", "title", "summary"]), annotations: writeAnnotations },
 ];

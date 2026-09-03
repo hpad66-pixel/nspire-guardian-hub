@@ -23,8 +23,12 @@ VALUES (
   'TEST-01', 'Payment integrity SOV', 1
 );
 
-INSERT INTO public.projects (id, name)
-VALUES ('90000000-0000-4000-8000-000000000002', 'Payment Integrity Project');
+INSERT INTO public.projects (id, workspace_id, name)
+VALUES (
+  '90000000-0000-4000-8000-000000000002',
+  '90000000-0000-4000-8000-000000000001',
+  'Payment Integrity Project'
+);
 
 INSERT INTO public.commitments (
   id, tenant_id, project_id, commitment_no, title, commitment_type,

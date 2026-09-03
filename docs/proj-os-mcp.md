@@ -4,7 +4,7 @@ Proj OS exposes a remote Streamable HTTP MCP endpoint at `/mcp`. The endpoint ca
 
 ## 1. Deploy the API changes
 
-Apply `20260827220000_agent_api_audit_log.sql`, then deploy the updated `api-v1` Supabase Edge Function and Cloudflare Pages function `functions/mcp.js`. Recommended agent scopes:
+Apply the pending Supabase migrations, including `20260903190000_hermes_project_registry.sql`, then deploy the updated `api-v1` and `generate-client-update` Edge Functions plus the Cloudflare Pages function `functions/mcp.js`. Recommended agent scopes:
 
 - `read:projects`, `write:projects`
 - `read:contacts`, `write:contacts`
@@ -15,6 +15,7 @@ Apply `20260827220000_agent_api_audit_log.sql`, then deploy the updated `api-v1`
 - `read:proposals`, `write:proposals`
 - `read:pay-apps`, `write:pay-apps`
 - `read:client-updates`, `write:client-updates`
+- `read:project-updates`, `write:project-updates`
 
 Mint a dedicated API client for agents and grant only the scopes you want those agents to use.
 
@@ -46,6 +47,8 @@ Store the shared MCP bearer secret in `~/.hermes/.env` as `PROJ_OS_MCP_TOKEN`. M
 - `protocol: legacy` — this endpoint is Streamable HTTP JSON-RPC, not SSE discovery
 
 Then run `hermes mcp test proj_os`. In the Telegram topic use `/reload-mcp`. Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind it to that topic.
+
+There is no project-by-project setup. The API client's tenant determines the workspace, and the live project registry includes every existing project plus any project created later. `proj_os_list_projects` is paginated and reports `meta.total`, `meta.offset`, and `meta.has_more`.
 
 `GET /mcp` now returns JSON (`405` + `application/json`) so a current Hermes preflight can succeed even without `skip_preflight`. Keep the flag anyway.
 
@@ -82,10 +85,25 @@ Financial tools create **draft** records only:
 
 Copy `hermes/skills/proj-os/` into the Hermes skills directory and bind `proj-os` to a dedicated Telegram topic. The skill requires previews and user confirmation before writes.
 
+## Telegram project-update behavior
+
+Hermes can call `proj_os_post_project_update` with one of three destinations:
+
+| Destination | Result |
+|-------------|--------|
+| `project` | Adds a verified note to the project's Activity Feed. |
+| `client_portal` | Creates a draft or published client briefing. |
+| `both` | Performs both writes in one database transaction. |
+
+`portal_status=draft` is internal. `portal_status=published` is immediately visible to authorized owner/client portal users and must be confirmed by the user first. The endpoint also accepts an optional `project_status` update. Every write uses an idempotency key and records an API audit entry.
+
+After deploying MCP changes, the Telegram Hermes host must run `hermes mcp test proj_os` and the Telegram topic must receive `/reload-mcp`. Without that reload, an already-running Hermes gateway retains the older tool list even though Proj OS is live.
+
 ## Security properties
 
 - API tokens are workspace-scoped and scope-checked.
-- Project access is checked through each project's workspace-owned property or client.
+- Every project has a durable workspace identity, including standalone/master projects without a property or client.
+- Project access is checked against that workspace identity and the caller's project permissions.
 - Cross-workspace records return `404`, avoiding record-existence disclosure.
 - Create operations require idempotency keys and derive stable record IDs from them.
 - API writes are recorded in the immutable, tenant-scoped `agent_api_audit_log` with API client, requester, project, tenant, and correlation metadata.

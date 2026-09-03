@@ -4,9 +4,13 @@
 #   3. Bind the proj-os skill to the Telegram topic you use for client updates
 #   4. Run: hermes mcp test proj_os
 #   5. In Telegram: /reload-mcp
+#   6. Ask: "List all my Proj OS projects" and confirm connection_mode is
+#      workspace_dynamic. Current and future projects require no topic mapping.
 #
 # Do not put the bearer token in this file. Do not use tools.include with a
 # static name list — the glob below picks up new Proj OS tools automatically.
+# The OAuth client determines the workspace; never put project IDs or a
+# per-project allowlist in this file.
 
 mcp_servers:
   proj_os:
