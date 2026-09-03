@@ -30,6 +30,7 @@ import {
   MoreHorizontal,
   FolderKanban,
   Lightbulb,
+  UserRoundCheck,
   X,
 } from 'lucide-react';
 
@@ -266,6 +267,7 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
   const { isModuleEnabled } = useModules();
   const { canView, currentRole } = useUserPermissions();
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
+  const canManageContractors = ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
 
   const go = (path: string) => {
     onClose();
@@ -420,6 +422,15 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
             subtitle="Vendors & contacts"
             onClick={() => go('/contacts')}
           />
+          {isModuleEnabled('contractorReadinessEnabled') && canManageContractors && (
+            <DrawerTile
+              icon={<UserRoundCheck className={iconClass} />}
+              iconBg={greenIconBg}
+              title="Contractor Readiness"
+              subtitle="Screening, documents & work gates"
+              onClick={() => go('/contractor-readiness')}
+            />
+          )}
           <DrawerTile
             icon={<GraduationCap className={iconClass} />}
             iconBg={orgIconBg}

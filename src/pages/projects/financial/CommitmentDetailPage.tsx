@@ -25,6 +25,9 @@ import { useProject } from "@/hooks/useProjects";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useContractorCases } from "@/hooks/useContractorReadiness";
+import { ReadinessBadge } from "@/components/contractors/ReadinessBadge";
+import { ShieldCheck, ShieldAlert } from "lucide-react";
 
 export default function CommitmentDetailPage() {
   const { projectId, commitmentId } = useParams<{ projectId: string; commitmentId: string }>();
@@ -38,10 +41,12 @@ export default function CommitmentDetailPage() {
   const { data: invoices = [] } = useCommitmentInvoices(commitmentId ?? null);
   const { data: ccos = [] } = useChangeOrdersByType(projectId ?? null, "CCO");
   const filteredCcos = ccos.filter((co) => co.commitment_id === commitmentId);
+  const { data: contractorCases = [] } = useContractorCases(projectId);
 
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(() => searchParams.get("invoice"));
 
   if (!commitment) return <div className="p-6 text-muted-foreground">Loading commitment…</div>;
+  const readinessCase = contractorCases.find((item) => item.organization_id === commitment.vendor_org_id);
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
@@ -90,6 +95,23 @@ export default function CommitmentDetailPage() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase">Billed to date</CardTitle></CardHeader>
           <CardContent className="text-2xl font-bold">{money(Number((totals as any)?.billed_to_date ?? 0))}</CardContent></Card>
       </div>
+
+      {commitment.vendor_org_id && (
+        <Card className={readinessCase?.contract_ready ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40"}>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${readinessCase?.contract_ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {readinessCase?.contract_ready ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">Contractor Readiness</p>{readinessCase && <ReadinessBadge status={readinessCase.status} />}</div>
+                <p className="text-xs text-muted-foreground">{readinessCase ? `${Math.round(Number(readinessCase.score))}% complete · contract ${readinessCase.contract_ready ? "cleared" : "blocked until verified"}` : "No project qualification case is connected to this subcontractor."}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" asChild><Link to={readinessCase ? `/contractor-readiness/${readinessCase.id}` : `/projects/${projectId}/contractors`}>{readinessCase ? "Review qualification" : "Start qualification"}</Link></Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue={initialTab}>
         <TabsList>

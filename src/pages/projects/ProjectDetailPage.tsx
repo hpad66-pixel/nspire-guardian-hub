@@ -98,6 +98,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { QuickAssignDialog } from '@/components/projects/actionItems/QuickAssignDialog';
 import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
+import { useModules } from '@/contexts/ModuleContext';
 
 const statusConfig: Record<string, { label: string; class: string; dot: string }> = {
   planning:  { label: 'Planning',   class: 'bg-blue-500/10 text-blue-600 border-blue-500/20',   dot: 'bg-blue-500' },
@@ -121,6 +122,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
+  const { isModuleEnabled } = useModules();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
@@ -181,7 +183,7 @@ export default function ProjectDetailPage() {
     : contributorCount > 0
       ? `${contributorCount} contributor${contributorCount !== 1 ? 's' : ''}`
       : '0 members';
-  const { isAdmin } = useUserPermissions();
+  const { isAdmin, currentRole } = useUserPermissions();
   const updateProject = useUpdateProject();
 
   // Routed modules (financials, directory, admin, …) leave the detail page.
@@ -376,7 +378,7 @@ export default function ProjectDetailPage() {
 
   const punchOpen = (punchStats?.open ?? 0) + (punchStats?.inProgress ?? 0);
   const trackerOpen = closeout.trackerOpen;
-  const { groups: tabGroups, items: visibleTabs } = getProjectNav({
+  const { groups: tabGroups, items: resolvedTabs } = getProjectNav({
     project: project as never,
     parent: parentProject as never,
     isAdmin,
@@ -388,6 +390,12 @@ export default function ProjectDetailPage() {
       'project-log': trackerOpen > 0 ? trackerOpen : (unreadLogComments > 0 ? unreadLogComments : null),
     },
   });
+  const visibleTabs = resolvedTabs.filter(
+    (tab) => tab.value !== 'contractors' || (
+      isModuleEnabled('contractorReadinessEnabled')
+      && ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '')
+    ),
+  );
   const groupKeyOf = (value: string) =>
     visibleTabs.find((t) => t.value === value)?.group
     ?? tabGroups[0]?.key
