@@ -1,6 +1,8 @@
 export type WaterAccountStatus = 'active' | 'closed' | 'disputed' | 'inactive';
 export type WaterBillStatus = 'open' | 'paid' | 'past_due' | 'disputed' | 'credited';
 export type WaterBillSource = 'seed' | 'upload' | 'ocr' | 'manual' | 'api';
+export type WaterMeterScope = 'indoor' | 'mixed' | 'outdoor' | 'common';
+export type WaterAllocationSource = 'verified' | 'unit_roster' | 'inferred' | 'unmapped';
 
 export interface WaterServiceAccount {
   id: string;
@@ -15,8 +17,20 @@ export interface WaterServiceAccount {
   status: WaterAccountStatus | string;
   notes: string | null;
   sort_order: number;
+  connected_units?: number | null;
+  occupied_units?: number | null;
+  resident_count?: number | null;
+  occupancy_as_of?: string | null;
+  meter_scope?: WaterMeterScope | string;
+  allocation_source?: WaterAllocationSource | string;
+  allocation_notes?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface WaterUnitSummary {
+  totalUnits: number;
+  occupiedUnits: number;
 }
 
 export interface WaterBill {
@@ -118,6 +132,84 @@ export interface AccountRollup {
   estimatedSpend: number;
   latestBill: WaterBill | null;
   openAmount: number;
+}
+
+export type WaterPerformanceBand = 'below_reference' | 'near_reference' | 'above_reference' | 'unavailable';
+
+export interface MeterWaterPerformance {
+  accountId: string;
+  accountNumber: string;
+  meterNumber: string | null;
+  buildingLabel: string;
+  serviceAddress: string;
+  meterScope: string;
+  allocationSource: string;
+  allocationNotes: string | null;
+  occupancyAsOf: string | null;
+  connectedUnits: number | null;
+  occupiedUnits: number | null;
+  residentCount: number | null;
+  residentCountIsModeled: boolean;
+  reportingBillCount: number;
+  reportingDays: number;
+  readingCoveragePct: number;
+  actualGallons: number;
+  actualSpend: number;
+  variableCharges: number;
+  gallonsPerUnitDay: number | null;
+  gallonsPerCapitaDay: number | null;
+  annualizedCostPerUnit: number | null;
+  costPerThousandGallons: number | null;
+  baselineGallons: number;
+  comparedGallons: number;
+  avoidedGallons: number | null;
+  avoidedCost: number | null;
+  comparisonCoveragePct: number;
+  benchmarkVariancePct: number | null;
+  performanceBand: WaterPerformanceBand;
+}
+
+export interface MonthlyWaterPerformance {
+  month: string;
+  label: string;
+  actualGallons: number;
+  baselineGallons: number | null;
+  avoidedGallons: number | null;
+  avoidedCost: number | null;
+}
+
+export interface WaterEfficiencyAnalytics {
+  reportingStart: string | null;
+  reportingEnd: string | null;
+  baselineStart: string | null;
+  baselineEnd: string | null;
+  totalUnits: number;
+  occupiedUnits: number;
+  modeledResidents: number | null;
+  actualGallons: number;
+  actualSpend: number;
+  variableCharges: number;
+  gallonsPerUnitDay: number | null;
+  gallonsPerCapitaDay: number | null;
+  annualizedCostPerUnit: number | null;
+  costPerThousandGallons: number | null;
+  epaMedianGallonsPerUnitYear: number;
+  epaMedianGallonsPerUnitDay: number;
+  epaAverageIndoorGpcd: number;
+  waterSenseEfficientGpcd: number;
+  benchmarkGallons: number | null;
+  benchmarkCost: number | null;
+  benchmarkGapGallons: number | null;
+  benchmarkGapCost: number | null;
+  avoidedGallons: number | null;
+  avoidedCost: number | null;
+  readingCoveragePct: number;
+  sourceDocumentCoveragePct: number;
+  comparisonCoveragePct: number;
+  meterMappingCoveragePct: number;
+  status: 'verified' | 'modeled' | 'insufficient';
+  meters: MeterWaterPerformance[];
+  monthly: MonthlyWaterPerformance[];
 }
 
 export interface WaterKpis {

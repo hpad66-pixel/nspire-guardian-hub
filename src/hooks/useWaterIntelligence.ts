@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   compactSnapshot,
+  computeEfficiencyAnalytics,
   computeKpis,
   deriveInsights,
   inferPeriodFromFilename,
@@ -16,6 +17,7 @@ import {
   type WaterExecNote,
   type WaterPropertyMeta,
   type WaterServiceAccount,
+  type WaterUnitSummary,
 } from '@/lib/water-intel';
 
 export interface WaterIntelScope {
@@ -42,6 +44,25 @@ function numBill(row: Record<string, unknown>): WaterBill {
   };
 }
 
+function optionalCount(value: unknown) {
+  if (value == null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function numAccount(row: Record<string, unknown>): WaterServiceAccount {
+  return {
+    ...(row as unknown as WaterServiceAccount),
+    connected_units: optionalCount(row.connected_units),
+    occupied_units: optionalCount(row.occupied_units),
+    resident_count: optionalCount(row.resident_count),
+    occupancy_as_of: row.occupancy_as_of ? String(row.occupancy_as_of) : null,
+    meter_scope: String(row.meter_scope || 'mixed'),
+    allocation_source: String(row.allocation_source || 'unmapped'),
+    allocation_notes: row.allocation_notes ? String(row.allocation_notes) : null,
+  };
+}
+
 export function useWaterIntelligence(scope: WaterIntelScope) {
   const propertyId = scope.propertyId ?? null;
   const token = scope.token ?? null;
@@ -52,11 +73,12 @@ export function useWaterIntelligence(scope: WaterIntelScope) {
     enabled,
     queryFn: async () => {
       if (token) {
-        const [meta, accounts, bills, notes] = await Promise.all([
+        const [meta, accounts, bills, notes, unitSummary] = await Promise.all([
           supabase.rpc('water_intel_resolve_token' as any, { p_token: token }),
           supabase.rpc('water_intel_public_accounts' as any, { p_token: token }),
           supabase.rpc('water_intel_public_bills' as any, { p_token: token }),
           supabase.rpc('water_intel_public_notes' as any, { p_token: token }),
+          supabase.rpc('water_intel_public_unit_summary' as any, { p_token: token }),
         ]);
         if (meta.error) throw meta.error;
         const resolved = (Array.isArray(meta.data) ? meta.data[0] : meta.data) as WaterPropertyMeta | null;
@@ -64,18 +86,27 @@ export function useWaterIntelligence(scope: WaterIntelScope) {
         if (accounts.error) throw accounts.error;
         if (bills.error) throw bills.error;
         if (notes.error) throw notes.error;
+        if (unitSummary.error) throw unitSummary.error;
+        const units = (Array.isArray(unitSummary.data) ? unitSummary.data[0] : unitSummary.data) as {
+          total_units?: number | string;
+          occupied_units?: number | string;
+        } | null;
         return {
           meta: { ...resolved, water_intel_enabled: true, water_intel_token: token },
-          accounts: (accounts.data ?? []) as WaterServiceAccount[],
-          bills: ((bills.data ?? []) as Record<string, unknown>[]).map(numBill),
-          notes: (notes.data ?? []) as WaterExecNote[],
+          accounts: ((accounts.data ?? []) as unknown as Record<string, unknown>[]).map(numAccount),
+          bills: ((bills.data ?? []) as unknown as Record<string, unknown>[]).map(numBill),
+          notes: (notes.data ?? []) as unknown as WaterExecNote[],
+          unitSummary: {
+            totalUnits: Number(units?.total_units ?? 0),
+            occupiedUnits: Number(units?.occupied_units ?? 0),
+          } satisfies WaterUnitSummary,
         };
       }
 
-      const [prop, accounts, bills, notes] = await Promise.all([
+      const [prop, accounts, bills, notes, units] = await Promise.all([
         supabase
           .from('properties')
-          .select('id, name, workspace_id, water_intel_enabled, water_intel_token, water_intel_token_expires_at')
+          .select('id, name, workspace_id, total_units, water_intel_enabled, water_intel_token, water_intel_token_expires_at')
           .eq('id', propertyId!)
           .maybeSingle(),
         supabase
@@ -93,12 +124,19 @@ export function useWaterIntelligence(scope: WaterIntelScope) {
           .select('*')
           .eq('property_id', propertyId!)
           .order('created_at', { ascending: false }),
+        (supabase
+          .from('units') as any)
+          .select('id, status, demo_seed')
+          .eq('property_id', propertyId!)
+          .eq('demo_seed', false),
       ]);
       if (prop.error) throw prop.error;
       if (!prop.data) throw new Error('Property not found');
       if (accounts.error) throw accounts.error;
       if (bills.error) throw bills.error;
       if (notes.error) throw notes.error;
+      const unitRows = (units.data ?? []) as Array<{ status?: string | null }>;
+      const totalUnits = unitRows.length || Number((prop.data as any).total_units ?? 0);
       return {
         meta: {
           property_id: (prop.data as any).id,
@@ -108,20 +146,26 @@ export function useWaterIntelligence(scope: WaterIntelScope) {
           water_intel_token: (prop.data as any).water_intel_token ?? null,
           token_expires_at: (prop.data as any).water_intel_token_expires_at ?? null,
         } satisfies WaterPropertyMeta,
-        accounts: (accounts.data ?? []) as WaterServiceAccount[],
-        bills: ((bills.data ?? []) as Record<string, unknown>[]).map(numBill),
-        notes: (notes.data ?? []) as WaterExecNote[],
+        accounts: ((accounts.data ?? []) as unknown as Record<string, unknown>[]).map(numAccount),
+        bills: ((bills.data ?? []) as unknown as Record<string, unknown>[]).map(numBill),
+        notes: (notes.data ?? []) as unknown as WaterExecNote[],
+        unitSummary: {
+          totalUnits,
+          occupiedUnits: unitRows.filter((unit) => String(unit.status || '').toLowerCase() === 'occupied').length,
+        } satisfies WaterUnitSummary,
       };
     },
   });
 
   const accounts = query.data?.accounts ?? [];
   const bills = query.data?.bills ?? [];
+  const unitSummary = query.data?.unitSummary ?? { totalUnits: 0, occupiedUnits: 0 };
   const asOf = new Date();
   const kpis = computeKpis(accounts, bills, asOf);
   const rollups = rollupAccounts(accounts, bills, asOf);
-  const insights = deriveInsights(accounts, bills, asOf);
-  const snapshot = compactSnapshot(query.data?.meta.property_name ?? 'Property', accounts, bills, asOf);
+  const efficiency = computeEfficiencyAnalytics(accounts, bills, unitSummary);
+  const insights = deriveInsights(accounts, bills, asOf, unitSummary);
+  const snapshot = compactSnapshot(query.data?.meta.property_name ?? 'Property', accounts, bills, asOf, unitSummary);
 
   return {
     ...query,
@@ -129,11 +173,76 @@ export function useWaterIntelligence(scope: WaterIntelScope) {
     accounts,
     bills,
     notes: query.data?.notes ?? [],
+    unitSummary,
     kpis,
     rollups,
+    efficiency,
     insights,
     snapshot,
   };
+}
+
+export interface UpdateWaterMeterProfileInput {
+  accountId: string;
+  connectedUnits: number | null;
+  occupiedUnits: number | null;
+  residentCount: number | null;
+  occupancyAsOf: string | null;
+  meterScope: 'indoor' | 'mixed' | 'outdoor' | 'common';
+  allocationSource: 'verified' | 'unit_roster' | 'inferred' | 'unmapped';
+  allocationNotes: string | null;
+}
+
+export function useUpdateWaterMeterProfile(propertyId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateWaterMeterProfileInput) => {
+      if (!propertyId) throw new Error('Property is required');
+      for (const [label, value] of [
+        ['Connected units', input.connectedUnits],
+        ['Occupied units', input.occupiedUnits],
+        ['Residents', input.residentCount],
+      ] as const) {
+        if (value != null && (!Number.isFinite(value) || !Number.isInteger(value))) {
+          throw new Error(`${label} must be a whole number.`);
+        }
+      }
+      if (input.connectedUnits != null && input.connectedUnits < 0) throw new Error('Connected units cannot be negative.');
+      if (input.occupiedUnits != null && input.occupiedUnits < 0) throw new Error('Occupied units cannot be negative.');
+      if (input.residentCount != null && input.residentCount < 0) throw new Error('Residents cannot be negative.');
+      if (
+        input.connectedUnits != null
+        && input.occupiedUnits != null
+        && input.occupiedUnits > input.connectedUnits
+      ) {
+        throw new Error('Occupied units cannot exceed connected units.');
+      }
+
+      const { data, error } = await supabase
+        .from('water_service_accounts' as any)
+        .update({
+          connected_units: input.connectedUnits,
+          occupied_units: input.occupiedUnits,
+          resident_count: input.residentCount,
+          occupancy_as_of: input.occupancyAsOf,
+          meter_scope: input.meterScope,
+          allocation_source: input.allocationSource,
+          allocation_notes: input.allocationNotes,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', input.accountId)
+        .eq('property_id', propertyId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as WaterServiceAccount;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['water-intel', propertyId] });
+      toast.success('Meter population saved — analytics recalculated');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 }
 
 export function useWaterNotes(scope: WaterIntelScope) {

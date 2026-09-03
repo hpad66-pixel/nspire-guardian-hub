@@ -1,14 +1,54 @@
-import { billSpend, computeKpis, gallons, money, n, pct, rollupAccounts } from './analytics';
-import type { WaterBill, WaterInsight, WaterServiceAccount } from './types';
+import {
+  billSpend,
+  computeEfficiencyAnalytics,
+  computeKpis,
+  gallons,
+  money,
+  n,
+  pct,
+  rollupAccounts,
+} from './analytics';
+import type { WaterBill, WaterInsight, WaterServiceAccount, WaterUnitSummary } from './types';
 
 export function deriveInsights(
   accounts: WaterServiceAccount[],
   bills: WaterBill[],
   asOf = new Date(),
+  unitSummary: WaterUnitSummary = { totalUnits: 0, occupiedUnits: 0 },
 ): WaterInsight[] {
   const out: WaterInsight[] = [];
   const kpis = computeKpis(accounts, bills, asOf);
   const rollups = rollupAccounts(accounts, bills, asOf);
+  const efficiency = computeEfficiencyAnalytics(accounts, bills, unitSummary);
+
+  const highestIntensity = efficiency.meters
+    .filter((meter) => meter.performanceBand === 'above_reference')
+    .sort((a, b) => (b.benchmarkVariancePct ?? 0) - (a.benchmarkVariancePct ?? 0))[0];
+  if (highestIntensity) {
+    out.push({
+      id: `unit-intensity-${highestIntensity.accountId}`,
+      severity: 'watch',
+      title: `${highestIntensity.buildingLabel} is high per connected unit`,
+      body: `${highestIntensity.gallonsPerUnitDay?.toFixed(1)} gal/unit/day is ${pct(highestIntensity.benchmarkVariancePct)} against the EPA multifamily median reference.`,
+      action: 'Verify the meter-to-unit count, occupancy, and actual read; then inspect continuous-flow and common-area uses.',
+      accountId: highestIntensity.accountId,
+    });
+  }
+
+  if (efficiency.status !== 'insufficient' && efficiency.avoidedCost != null) {
+    const saving = efficiency.avoidedCost >= 0;
+    out.push({
+      id: 'rate-normalized-savings',
+      severity: saving ? 'opportunity' : 'watch',
+      title: saving
+        ? `${money(efficiency.avoidedCost)} in rate-normalized avoided cost`
+        : `${money(Math.abs(efficiency.avoidedCost))} above the normalized baseline`,
+      body: `${gallons(Math.abs(efficiency.avoidedGallons ?? 0))} ${saving ? 'below' : 'above'} the matched prior-year meter baseline. Estimated reads and duplicate bills are excluded.`,
+      action: saving
+        ? 'Document the efficiency measures responsible and keep actual-read coverage current before claiming verified savings.'
+        : 'Rank meters by normalized excess cost and investigate the largest avoidable-use driver first.',
+    });
+  }
 
   const building8 = accounts.find(
     (a) => a.account_number === '2745714336' || /building 8/i.test(a.building_label || ''),
@@ -124,8 +164,16 @@ export function localChatAnswer(question: string, snapshot: Record<string, unkno
   const q = question.toLowerCase();
   const kpis = (snapshot.kpis ?? {}) as Record<string, number | null>;
   const accounts = (snapshot.accounts ?? []) as Array<Record<string, unknown>>;
+  const efficiency = (snapshot.efficiency ?? {}) as Record<string, number | string | null>;
   if (/dispute|building 8|216|estimate/.test(q)) {
     return 'Building 8 (acct 2745714336) is the formal dispute. Miami-Dade estimated ~216k gallons/month while the building was vacant. Ask for actual reads and a credit memo; do not treat those estimates as consumption.';
+  }
+  if (/per capita|gpcd|per person|per unit|intensity|benchmark/.test(q)) {
+    return `The latest normalized period is ${Number(efficiency.gallonsPerUnitDay || 0).toFixed(1)} gallons per connected unit per day and ${Number(efficiency.gallonsPerCapitaDay || 0).toFixed(1)} modeled gallons per capita per day. The EPA multifamily median reference is 43,600 gallons per unit per year; confirm meter mappings and resident counts before treating the modeled result as verified.`;
+  }
+  if (/saving|avoided|efficien/.test(q)) {
+    const value = Number(efficiency.avoidedCost || 0);
+    return `Rate-normalized avoided cost is ${money(value)} for the aligned comparison period, based on ${gallons(efficiency.avoidedGallons)} versus matched prior-year meter bills. Status: ${String(efficiency.status || 'insufficient')}. Estimated reads and duplicate bills are excluded.`;
   }
   if (/ytd|year|spend|cost/.test(q)) {
     return `Year-to-date water/sewer spend is ${money(kpis.ytdSpend)} (${pct(kpis.ytdDeltaPct as number)} vs the same point last year). Trailing-12 is ${money(kpis.last12Spend)} on ${gallons(kpis.last12Gallons)}.`;

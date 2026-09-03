@@ -3,6 +3,7 @@ import {
   billSpend,
   buildMonthlySeries,
   compactSnapshot,
+  computeEfficiencyAnalytics,
   computeKpis,
   inferPeriodFromFilename,
   matchServiceAccount,
@@ -28,6 +29,13 @@ const account = (over: Partial<WaterServiceAccount> = {}): WaterServiceAccount =
   status: 'disputed',
   notes: 'Formal dispute',
   sort_order: 10,
+  connected_units: null,
+  occupied_units: null,
+  resident_count: null,
+  occupancy_as_of: null,
+  meter_scope: 'mixed',
+  allocation_source: 'unmapped',
+  allocation_notes: null,
   created_at: '2026-01-01',
   updated_at: '2026-01-01',
   ...over,
@@ -104,6 +112,89 @@ describe('water intel analytics', () => {
     expect(rollups).toHaveLength(2);
     expect(rollups[0].buildingLabel).toBe('Building 8');
     expect(rollups[0].openAmount).toBe(300);
+  });
+
+  it('normalizes use by units and population and converts avoided gallons to bill-rate dollars', () => {
+    const profiled = account({
+      connected_units: 10,
+      occupied_units: 8,
+      resident_count: 20,
+      allocation_source: 'verified',
+    });
+    const bills: WaterBill[] = [];
+    for (let month = 1; month <= 12; month += 1) {
+      const mm = String(month).padStart(2, '0');
+      bills.push(bill({
+        id: `base-${mm}`,
+        bill_period_start: `2025-${mm}-01`,
+        bill_period_end: `2025-${mm}-28`,
+        days_of_service: 30,
+        consumption_gallons: 10_000,
+        current_charges: 1_000,
+        water_charges: 600,
+        sewer_charges: 400,
+        other_fees: 0,
+        is_estimated: false,
+        source: 'upload',
+      }));
+      bills.push(bill({
+        id: `report-${mm}`,
+        bill_period_start: `2026-${mm}-01`,
+        bill_period_end: `2026-${mm}-28`,
+        days_of_service: 30,
+        consumption_gallons: 8_000,
+        current_charges: 800,
+        water_charges: 480,
+        sewer_charges: 320,
+        other_fees: 0,
+        is_estimated: false,
+        source: 'upload',
+      }));
+    }
+
+    const analytics = computeEfficiencyAnalytics([profiled], bills, { totalUnits: 10, occupiedUnits: 8 });
+    expect(analytics.reportingStart).toBe('2026-01-01');
+    expect(analytics.reportingEnd).toBe('2026-12-28');
+    expect(analytics.readingCoveragePct).toBe(100);
+    expect(analytics.sourceDocumentCoveragePct).toBe(100);
+    expect(analytics.comparisonCoveragePct).toBe(100);
+    expect(analytics.avoidedGallons).toBe(24_000);
+    expect(analytics.avoidedCost).toBe(2_400);
+    expect(analytics.meters[0].gallonsPerUnitDay).toBeCloseTo(26.667, 2);
+    expect(analytics.meters[0].gallonsPerCapitaDay).toBeCloseTo(13.333, 2);
+    expect(analytics.meters[0].costPerThousandGallons).toBe(100);
+    expect(analytics.status).toBe('verified');
+  });
+
+  it('keeps seeded history modeled even when reads and comparisons are complete', () => {
+    const profiled = account({
+      connected_units: 10,
+      occupied_units: 8,
+      resident_count: 20,
+      allocation_source: 'verified',
+    });
+    const bills = Array.from({ length: 12 }, (_, index) => {
+      const month = String(index + 1).padStart(2, '0');
+      return [
+        bill({ id: `prior-${month}`, bill_period_start: `2025-${month}-01`, is_estimated: false }),
+        bill({ id: `current-${month}`, bill_period_start: `2026-${month}-01`, is_estimated: false }),
+      ];
+    }).flat();
+
+    const analytics = computeEfficiencyAnalytics([profiled], bills, { totalUnits: 10, occupiedUnits: 8 });
+    expect(analytics.sourceDocumentCoveragePct).toBe(0);
+    expect(analytics.status).toBe('modeled');
+  });
+
+  it('excludes estimated reads from performance and marks incomplete evidence', () => {
+    const analytics = computeEfficiencyAnalytics(
+      [account({ connected_units: 10, occupied_units: 5, allocation_source: 'unit_roster' })],
+      [bill({ is_estimated: true, bill_period_start: '2026-06-01' })],
+      { totalUnits: 10, occupiedUnits: 5 },
+    );
+    expect(analytics.actualGallons).toBe(0);
+    expect(analytics.avoidedCost).toBeNull();
+    expect(analytics.status).toBe('insufficient');
   });
 
   it('flags the Building 8 dispute as a critical insight', () => {

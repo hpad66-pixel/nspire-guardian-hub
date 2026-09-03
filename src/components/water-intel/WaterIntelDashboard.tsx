@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  CircleDollarSign,
   Droplets,
   Gauge,
   Loader2,
@@ -10,7 +11,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { gallons, money, pct } from '@/lib/water-intel';
+import { computeEfficiencyAnalytics, gallons, money, pct } from '@/lib/water-intel';
 import type { InsightSeverity } from '@/lib/water-intel';
 import {
   useWaterIntelligence,
@@ -23,6 +24,8 @@ import { WaterIntelChat } from './WaterIntelChat';
 import { WaterIntelNotes } from './WaterIntelNotes';
 import { WaterIntelQaBanner } from './WaterIntelQaBanner';
 import { WaterIntelUpload } from './WaterIntelUpload';
+import { WaterEfficiencyPanel } from './WaterEfficiencyPanel';
+import { WaterMeterPerformance } from './WaterMeterPerformance';
 
 const SEV: Record<InsightSeverity, string> = {
   critical: 'bg-[#F43F5E]/10 text-[#9f1239] border-[#F43F5E]/30',
@@ -47,6 +50,18 @@ export function WaterIntelDashboard({
     return intel.bills.filter((b) => b.account_id === accountFilter);
   }, [intel.bills, accountFilter]);
 
+  const viewEfficiency = useMemo(() => {
+    if (accountFilter === 'all') return intel.efficiency;
+    const selected = intel.accounts.filter((account) => account.id === accountFilter);
+    const account = selected[0];
+    return computeEfficiencyAnalytics(selected, filteredBills, {
+      totalUnits: account?.connected_units ?? 0,
+      occupiedUnits: account?.occupied_units ?? 0,
+    });
+  }, [accountFilter, filteredBills, intel.accounts, intel.efficiency]);
+
+  const qa = useMemo(() => auditWaterIntel(intel.accounts, intel.bills), [intel.accounts, intel.bills]);
+
   if (intel.isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-[#8a8478]" data-testid="water-intel-loading">
@@ -64,13 +79,11 @@ export function WaterIntelDashboard({
     );
   }
 
-  const { kpis, rollups, insights, meta, accounts, notes, bills } = intel;
+  const { kpis, rollups, insights, meta, accounts, notes, bills, efficiency } = intel;
   const propertyName = meta?.property_name ?? 'Property';
   const guest = mode === 'magic';
   const canUpload = mode === 'staff';
   const deltaUp = (kpis.ytdDeltaPct ?? 0) > 0;
-  const qa = useMemo(() => auditWaterIntel(accounts, bills), [accounts, bills]);
-
   return (
     <div className="space-y-6 pb-16" data-testid="water-intel-dashboard">
       <header className="overflow-hidden rounded-[28px] bg-[#08271f] px-6 py-8 text-white shadow-xl md:px-10">
@@ -95,7 +108,7 @@ export function WaterIntelDashboard({
           </Button>
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Kpi
             label="YTD spend"
             value={money(kpis.ytdSpend)}
@@ -106,6 +119,13 @@ export function WaterIntelDashboard({
           <Kpi label="Trailing 12 months" value={money(kpis.last12Spend)} hint={gallons(kpis.last12Gallons)} icon={Droplets} />
           <Kpi label="Open / unpaid" value={money(kpis.openAmount)} hint={`${money(kpis.pastDueAmount)} past due`} icon={Scale} />
           <Kpi label="Estimated exposure" value={money(kpis.estimatedSpend)} hint={`${money(kpis.disputedSpend)} in dispute`} icon={Gauge} />
+          <Kpi
+            label="Normalized avoided cost"
+            value={efficiency.avoidedCost == null ? '—' : money(efficiency.avoidedCost)}
+            hint={`${efficiency.status} · excludes estimated reads`}
+            icon={CircleDollarSign}
+            tone={(efficiency.avoidedCost ?? 0) < 0 ? 'rose' : 'gold'}
+          />
         </div>
       </header>
 
@@ -158,60 +178,18 @@ export function WaterIntelDashboard({
         </select>
       </div>
 
+      <WaterEfficiencyPanel analytics={viewEfficiency} />
+
+      <WaterMeterPerformance
+        propertyId={meta?.property_id ?? null}
+        accounts={accounts}
+        meters={viewEfficiency.meters}
+        canManage={mode !== 'magic'}
+      />
+
       <WaterIntelCharts bills={filteredBills} rollups={accountFilter === 'all' ? rollups : rollups.filter((r) => r.accountId === accountFilter)} />
 
       <WaterIntelBillLedger bills={filteredBills} accounts={accounts} />
-
-      <section className="overflow-hidden rounded-3xl border border-[#dedbd1] bg-white shadow-sm">
-        <div className="border-b border-[#dedbd1] px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Service accounts</div>
-          <h3 className="font-display text-2xl text-[#08271f]">Every meter on the property</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
-            <thead className="bg-[#F7F4EC] text-[11px] uppercase tracking-wide text-[#8a8478]">
-              <tr>
-                <th className="px-5 py-3 font-semibold">Building / address</th>
-                <th className="px-3 py-3 font-semibold">Account</th>
-                <th className="px-3 py-3 font-semibold">Status</th>
-                <th className="px-3 py-3 text-right font-semibold">YTD</th>
-                <th className="px-3 py-3 text-right font-semibold">T12 spend</th>
-                <th className="px-3 py-3 text-right font-semibold">T12 gallons</th>
-                <th className="px-3 py-3 text-right font-semibold">Δ vs prior</th>
-                <th className="px-5 py-3 text-right font-semibold">Open</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rollups.map((r) => (
-                <tr
-                  key={r.accountId}
-                  className={`border-t border-[#efe9da] ${accountFilter === r.accountId ? 'bg-[#d5aa52]/10' : ''}`}
-                >
-                  <td className="px-5 py-3">
-                    <div className="font-semibold text-[#08271f]">{r.buildingLabel}</div>
-                    <div className="text-xs text-[#8a8478]">{r.serviceAddress}</div>
-                  </td>
-                  <td className="px-3 py-3 font-mono text-xs">{r.accountNumber}</td>
-                  <td className="px-3 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-                      r.status === 'disputed' ? 'bg-[#F43F5E]/10 text-[#9f1239]' : 'bg-[#08271f]/5 text-[#08271f]'
-                    }`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-right font-mono">{money(r.ytdSpend)}</td>
-                  <td className="px-3 py-3 text-right font-mono">{money(r.last12Spend)}</td>
-                  <td className="px-3 py-3 text-right font-mono text-xs">{gallons(r.last12Gallons)}</td>
-                  <td className={`px-3 py-3 text-right font-mono ${(r.spendDeltaPct ?? 0) > 0 ? 'text-[#9f1239]' : 'text-[#065f46]'}`}>
-                    {pct(r.spendDeltaPct)}
-                  </td>
-                  <td className="px-5 py-3 text-right font-mono">{money(r.openAmount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       <WaterIntelNotes
         scope={scope}
