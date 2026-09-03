@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, UserPlus, UserMinus, Search, ChevronDown, Mail, Loader2, ContactRound, MessageSquareText, Phone } from 'lucide-react';
+import { Users, UserPlus, UserMinus, ChevronDown, Mail, Loader2, ContactRound, MessageSquareText, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateInvitation, useSendInvitation } from '@/hooks/useInvitations';
 import {
@@ -38,6 +38,7 @@ import {
   useAddProjectTeamMember,
   useRemoveProjectTeamMember,
   useUpdateProjectTeamMemberRole,
+  useProjectTeamAccess,
 } from '@/hooks/useProjectTeam';
 import { useUsers } from '@/hooks/useUserManagement';
 import { useProjectContacts } from '@/hooks/useProjectPeople';
@@ -45,6 +46,9 @@ import { useProjectDirectory } from '@/hooks/useProjectDirectory';
 import { AddFromCrmDialog } from '@/components/crm/AddFromCrmDialog';
 import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
 import { ProjectSmsComposer, type SmsRecipient } from '@/components/projects/correspondence/ProjectSmsComposer';
+import { ScopedTeamManager, type ScopedTeamMember } from '@/components/teams/ScopedTeamManager';
+import { useProject } from '@/hooks/useProjects';
+import { useClientMembers } from '@/hooks/useClients';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -57,18 +61,6 @@ const PROJECT_ROLES: { value: AppRole; label: string }[] = [
   { value: 'clerk', label: 'Clerk' },
   { value: 'viewer', label: 'Viewer' },
 ];
-
-const ROLE_COLORS: Record<string, string> = {
-  project_manager: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-  superintendent:  'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
-  inspector:       'bg-green-500/10 text-green-600 border-green-500/20',
-  subcontractor:   'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  clerk:           'bg-teal-500/10 text-teal-600 border-teal-500/20',
-  viewer:          'bg-muted text-muted-foreground border-muted',
-  admin:           'bg-red-500/10 text-red-600 border-red-500/20',
-  manager:         'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  owner:           'bg-amber-500/10 text-amber-600 border-amber-500/20',
-};
 
 function getInitials(name?: string | null, email?: string | null) {
   if (name) return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -84,7 +76,6 @@ interface ProjectTeamSheetProps {
 }
 
 export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }: ProjectTeamSheetProps) {
-  const [searchQuery, setSearchQuery] = useState('');
   const [addRole, setAddRole] = useState<AppRole>('viewer');
   const [inviteEmail, setInviteEmail] = useState('');
   const [attachContactOpen, setAttachContactOpen] = useState(false);
@@ -93,6 +84,9 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
 
   const { data: members = [], isLoading: membersLoading } = useProjectTeamMembers(projectId);
   const { data: allUsers = [], isLoading: usersLoading } = useUsers();
+  const { data: access } = useProjectTeamAccess(projectId);
+  const { data: project } = useProject(projectId);
+  const { data: clientMembers = [] } = useClientMembers(project?.client_id ?? undefined);
   const { data: projectContacts = [], isLoading: contactsLoading } = useProjectContacts(projectId);
   const projectDirectory = useProjectDirectory(projectId);
   const addMember = useAddProjectTeamMember();
@@ -115,22 +109,28 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
     }
   };
 
-  const memberUserIds = new Set(members.map(m => m.user_id));
-
-  // Users not yet on the project, filtered by search
-  const availableUsers = allUsers.filter(u => {
-    if (memberUserIds.has(u.user_id)) return false;
-    const q = searchQuery.toLowerCase();
-    return (
-      u.full_name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q)
-    );
-  });
-
-  const handleAdd = (userId: string) => {
-    addMember.mutate({ projectId, userId, role: addRole });
-    setSearchQuery('');
-  };
+  const scopedMembers: ScopedTeamMember[] = members.map((member) => ({
+    id: member.id,
+    userId: member.user_id,
+    role: member.role,
+    name: member.profile?.full_name ?? null,
+    email: member.profile?.email ?? null,
+    phone: member.profile?.phone ?? null,
+    avatarUrl: member.profile?.avatar_url ?? null,
+  }));
+  const directUserIds = new Set(scopedMembers.map((member) => member.userId));
+  const inheritedClientMembers: ScopedTeamMember[] = clientMembers
+    .filter((member) => !directUserIds.has(member.user_id))
+    .map((member) => ({
+      id: `client-${member.id}`,
+      userId: member.user_id,
+      role: member.role,
+      name: member.profile?.full_name ?? null,
+      email: member.profile?.email ?? null,
+      phone: member.profile?.phone ?? null,
+      avatarUrl: member.profile?.avatar_url ?? null,
+    }));
+  const inheritedLabels = new Map(inheritedClientMembers.map((member) => [member.userId, 'Client team · inherited']));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -199,205 +199,28 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
             )}
           </section>
 
-          {/* ── Current members ─────────────────────────────────────── */}
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              Internal Team ({members.length})
-            </h3>
-            <p className="-mt-2 mb-3 text-xs text-muted-foreground">Login users with a project role and application access.</p>
-
-            {membersLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex items-center gap-3 p-3 border rounded-lg">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-4 w-28" />
-                      <Skeleton className="h-3 w-40" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : members.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground rounded-xl border border-dashed">
-                <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No team members yet</p>
-                <p className="text-xs mt-1">Add people from the section below</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {members.map(member => {
-                  const name = member.profile?.full_name;
-                  const email = member.profile?.email;
-                  const roleLabel = PROJECT_ROLES.find(r => r.value === member.role)?.label ?? member.role;
-                  const roleColor = ROLE_COLORS[member.role] ?? ROLE_COLORS.viewer;
-                  return (
-                    <div key={member.id} className="flex items-center gap-3 p-3 border rounded-lg bg-card">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarImage src={member.profile?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {getInitials(name, email)}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{name || 'Unnamed User'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{email}</p>
-                      </div>
-
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!email} title={email ? `Email ${name || email}` : 'No email'} onClick={() => email && setEmailContact({ name: name || email, email })}>
-                        <Mail className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!member.profile?.phone} title={member.profile?.phone ? `Text ${name || email}` : 'Add a mobile number to this user profile'} onClick={() => setSmsContact({ recipientUserId: member.user_id, name: name || email || 'Team member', phone: member.profile?.phone ?? null })}>
-                        <MessageSquareText className="h-4 w-4" />
-                      </Button>
-
-                      {/* Role badge + change */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="shrink-0">
-                            <Badge variant="outline" className={`${roleColor} gap-1 cursor-pointer hover:opacity-80 transition-opacity`}>
-                              {roleLabel}
-                              <ChevronDown className="h-3 w-3" />
-                            </Badge>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {PROJECT_ROLES.map(r => (
-                            <DropdownMenuItem
-                              key={r.value}
-                              onClick={() => updateRole.mutate({ id: member.id, projectId, role: r.value })}
-                              className={member.role === r.value ? 'bg-accent' : ''}
-                            >
-                              {r.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Remove — confirmed (#15) */}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                            disabled={removeMember.isPending}
-                            title="Remove from project"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove team member</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Remove {name || email || 'this user'} from {projectName}? They will
-                              lose access to this project. You can add them back later.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => removeMember.mutate({ id: member.id, projectId })}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* ── Add people ──────────────────────────────────────────── */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              Add Internal Team Member
-            </h3>
-
-            <div className="flex gap-2 mb-3">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or email…"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 text-sm"
-                />
-              </div>
-
-              {/* Role picker for adding */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 shrink-0 h-9 text-xs">
-                    {PROJECT_ROLES.find(r => r.value === addRole)?.label ?? 'Role'}
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Add as Role</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {PROJECT_ROLES.map(r => (
-                    <DropdownMenuItem key={r.value} onClick={() => setAddRole(r.value)}>
-                      {r.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {usersLoading ? (
-              <div className="space-y-2">
-                {[1, 2].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-              </div>
-            ) : availableUsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                {searchQuery ? 'No users match your search' : "No one else in your workspace yet — invite someone below."}
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {availableUsers.map(user => (
-                  <div key={user.user_id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent/5 transition-colors">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src={user.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(user.full_name, user.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{user.full_name || 'Unnamed'}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 shrink-0 gap-1 text-xs"
-                      onClick={() => handleAdd(user.user_id)}
-                      disabled={addMember.isPending}
-                    >
-                      <UserPlus className="h-3 w-3" />
-                      Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ScopedTeamManager
+              scopeLabel="Project team"
+              members={[...scopedMembers, ...inheritedClientMembers]}
+              accountUsers={allUsers}
+              isLoading={membersLoading}
+              usersLoading={usersLoading}
+              canManage={access?.canManage ?? false}
+              inheritedLabels={inheritedLabels}
+              onAdd={(userId, role) => addMember.mutateAsync({ projectId, userId, role: role as AppRole })}
+              onRemove={(member) => removeMember.mutateAsync({ projectId, userId: member.userId })}
+              onRoleChange={(member, role) => updateRole.mutateAsync({ projectId, userId: member.userId, role: role as AppRole })}
+            />
 
             {/* ── Invite someone new by email ─────────────────────────── */}
+            {access?.canManage && (
             <div className="mt-5 pt-4 border-t">
               <h4 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Invite someone new</h4>
               <p className="text-xs text-muted-foreground mb-2.5">
-                Not in your workspace yet? Send them an invite — they join with the role selected above and then show up here to add.
+                Not in your account yet? Send an invitation. After they join, assign them above to give project access and enable @mentions.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
@@ -409,12 +232,26 @@ export function ProjectTeamSheet({ open, onOpenChange, projectId, projectName }:
                     className="pl-9 h-9 text-sm"
                   />
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1 text-xs">
+                      {PROJECT_ROLES.find(r => r.value === addRole)?.label ?? 'Role'}
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Account role</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {PROJECT_ROLES.map(r => <DropdownMenuItem key={r.value} onClick={() => setAddRole(r.value)}>{r.label}</DropdownMenuItem>)}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button size="sm" className="h-9 gap-1.5 shrink-0" onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
                   {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
                   Invite
                 </Button>
               </div>
             </div>
+            )}
           </section>
         </div>
       </SheetContent>

@@ -3,11 +3,14 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('@/hooks/useProjectTeam', () => ({
   useProjectTeamMembers: () => ({ data: [], isLoading: false }),
+  useProjectTeamAccess: () => ({ data: { canView: true, canManage: true } }),
   useAddProjectTeamMember: () => ({ mutate: vi.fn(), isPending: false }),
   useRemoveProjectTeamMember: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateProjectTeamMemberRole: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('@/hooks/useUserManagement', () => ({ useUsers: () => ({ data: [], isLoading: false }) }));
+vi.mock('@/hooks/useProjects', () => ({ useProject: () => ({ data: { id: 'project-1', client_id: 'client-1' } }) }));
+vi.mock('@/hooks/useClients', () => ({ useClientMembers: () => ({ data: [] }) }));
 vi.mock('@/hooks/useInvitations', () => ({
   useCreateInvitation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSendInvitation: () => ({ mutateAsync: vi.fn(), isPending: false }),

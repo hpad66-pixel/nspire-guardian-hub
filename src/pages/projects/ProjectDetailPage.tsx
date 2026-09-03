@@ -99,6 +99,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { QuickAssignDialog } from '@/components/projects/actionItems/QuickAssignDialog';
 import { CorrespondenceComposer } from '@/components/projects/correspondence/CorrespondenceComposer';
 import { useModules } from '@/contexts/ModuleContext';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 
 const statusConfig: Record<string, { label: string; class: string; dot: string }> = {
   planning:  { label: 'Planning',   class: 'bg-blue-500/10 text-blue-600 border-blue-500/20',   dot: 'bg-blue-500' },
@@ -184,6 +185,7 @@ export default function ProjectDetailPage() {
       ? `${contributorCount} contributor${contributorCount !== 1 ? 's' : ''}`
       : '0 members';
   const { isAdmin, currentRole } = useUserPermissions();
+  const { isSuperAdmin: canDeleteProject } = usePlatformSuperAdmin();
   const updateProject = useUpdateProject();
 
   // Routed modules (financials, directory, admin, …) leave the detail page.
@@ -588,7 +590,7 @@ export default function ProjectDetailPage() {
                   <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
                     <Archive className="h-4 w-4 mr-2" />Archive Project
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {canDeleteProject && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

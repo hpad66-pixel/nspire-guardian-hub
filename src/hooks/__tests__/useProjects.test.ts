@@ -140,9 +140,13 @@ describe("useProjects", () => {
   });
 
   it("delete surfaces errors as a rejection", async () => {
-    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "denied" } as any }));
+    __mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "denied" } as any });
     const { result } = renderHookWithClient(() => useDeleteProject());
-    await expect(result.current.mutateAsync("proj1")).rejects.toBeTruthy();
+    await expect(result.current.mutateAsync({ id: "proj1" })).rejects.toBeTruthy();
+    expect(__mock.rpc).toHaveBeenCalledWith('delete_project_as_super_admin', {
+      p_project_id: 'proj1',
+      p_delete_descendants: false,
+    });
   });
 
   it("create surfaces an insert error as a rejection", async () => {

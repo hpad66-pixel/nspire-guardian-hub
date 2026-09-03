@@ -50,6 +50,7 @@ import {
 } from '@/lib/projectSector';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 
 type ViewMode = 'cards' | 'list' | 'table';
 type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed';
@@ -77,6 +78,7 @@ const HEALTH_ORDER: Record<HealthStatus, number> = { overdue: 0, at_risk: 1, sta
 
 export default function ProjectsDashboard() {
   const navigate = useNavigate();
+  const { isSuperAdmin: canDeleteProjects } = usePlatformSuperAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyFilterId = searchParams.get('propertyId');
 
@@ -314,7 +316,7 @@ export default function ProjectsDashboard() {
               <DropdownMenuItem onClick={() => handleArchive(project)}>
                 <Archive className="h-4 w-4 mr-2" />Archive
               </DropdownMenuItem>
-              {isAdmin && (
+              {canDeleteProjects && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -707,7 +709,7 @@ export default function ProjectsDashboard() {
         ) : viewMode === 'list' ? (
           <ProjectListView
             projects={displayProjects}
-            isAdmin={isAdmin}
+            isAdmin={canDeleteProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}
@@ -715,7 +717,7 @@ export default function ProjectsDashboard() {
         ) : (
           <ProjectTableView
             projects={displayProjects}
-            isAdmin={isAdmin}
+            isAdmin={canDeleteProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}

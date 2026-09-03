@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useSearchProfiles, type Profile } from "@/hooks/useProfiles";
+import { useProjectMentionCandidates, type ProjectMentionCandidate } from "@/hooks/useProjectTeam";
 
 interface MentionTextareaProps {
+  projectId: string;
   value: string;
   onChange: (value: string) => void;
   onMentionsChange?: (mentionedUserIds: string[]) => void;
@@ -15,6 +17,7 @@ interface MentionTextareaProps {
 }
 
 export function MentionTextarea({
+  projectId,
   value,
   onChange,
   onMentionsChange,
@@ -30,7 +33,7 @@ export function MentionTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: suggestions = [] } = useSearchProfiles(mentionQuery ?? "");
+  const { data: suggestions = [], isFetching } = useProjectMentionCandidates(projectId, mentionQuery);
 
   const getInitials = (name: string | null) =>
     name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -39,6 +42,14 @@ export function MentionTextarea({
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
     onChange(newValue);
+
+    const retainedMentions = new Map(
+      Array.from(mentionedUsers.entries()).filter(([, name]) => newValue.includes(`@${name}`)),
+    );
+    if (retainedMentions.size !== mentionedUsers.size) {
+      setMentionedUsers(retainedMentions);
+      onMentionsChange?.(Array.from(retainedMentions.keys()));
+    }
 
     // Check if we're in a mention context
     const textBeforeCursor = newValue.slice(0, cursorPos);
@@ -56,9 +67,9 @@ export function MentionTextarea({
       }
     }
     setMentionQuery(null);
-  }, [onChange]);
+  }, [mentionedUsers, onChange, onMentionsChange]);
 
-  const insertMention = useCallback((profile: Profile) => {
+  const insertMention = useCallback((profile: ProjectMentionCandidate) => {
     const name = profile.full_name || profile.email || "Unknown";
     const before = value.slice(0, mentionStartIndex);
     const after = value.slice(mentionStartIndex + (mentionQuery?.length ?? 0) + 1);
@@ -126,14 +137,21 @@ export function MentionTextarea({
       />
 
       {/* Mention dropdown */}
-      {mentionQuery !== null && suggestions.length > 0 && (
+      {mentionQuery !== null && (
         <div
           ref={dropdownRef}
           className="absolute bottom-full mb-1 left-0 w-full z-50 bg-popover border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto"
         >
           <div className="p-1">
             <p className="text-[10px] text-muted-foreground px-2 py-1 font-medium">Tag a team member</p>
-            {suggestions.map((profile, i) => (
+            {isFetching && suggestions.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">Finding project team…</p>
+            ) : suggestions.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs font-medium">No project team member found</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">Add them under People &amp; Team first, then tag them here.</p>
+              </div>
+            ) : suggestions.map((profile, i) => (
               <button
                 key={profile.user_id}
                 type="button"
@@ -155,6 +173,7 @@ export function MentionTextarea({
                     <p className="text-[10px] text-muted-foreground truncate">{profile.email}</p>
                   )}
                 </div>
+                <Badge variant="secondary" className="shrink-0 text-[9px]">{profile.access_source}</Badge>
               </button>
             ))}
           </div>
