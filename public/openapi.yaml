@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Proj OS Public API
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
     OAuth2-protected REST API for integrating Proj OS with Hermes, ERP,
     accounting, and partner systems. All requests require a Bearer access token from
@@ -29,6 +29,7 @@ tags:
   - name: pay-apps
   - name: payments
   - name: client-updates
+  - name: project-updates
   - name: budget
   - name: rfis
   - name: direct-costs
@@ -69,7 +70,16 @@ paths:
   /api-v1/projects:
     get:
       tags: [projects]
-      summary: List projects
+      summary: List the live workspace project registry
+      description: Every current and future project in the OAuth client's workspace is included automatically. Use offset pagination when meta.has_more is true.
+      parameters:
+        - { in: query, name: q, schema: { type: string } }
+        - { in: query, name: client_id, schema: { type: string, format: uuid } }
+        - { in: query, name: property_id, schema: { type: string, format: uuid } }
+        - { in: query, name: status, schema: { type: string, enum: [planning, active, on_hold, completed, closed] } }
+        - { in: query, name: project_type, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { in: query, name: offset, schema: { type: integer, minimum: 0, default: 0 } }
       responses:
         "200":
           description: Projects array (RLS scoped)
@@ -81,6 +91,15 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/Project" }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      returned: { type: integer }
+                      offset: { type: integer }
+                      has_more: { type: boolean }
+                      connection_mode: { type: string, enum: [workspace_dynamic] }
+                      future_projects: { type: string, enum: [automatic] }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -493,6 +512,28 @@ paths:
                 health: { type: string, enum: [on_track, at_risk, delayed] }
                 summary: { type: string }
                 accomplishments: { type: array, items: { type: string } }
+                risks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text: { type: string }
+                      severity: { type: string, enum: [low, medium, high] }
+                decisions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text: { type: string }
+                      status: { type: string, enum: [needed, made] }
+                action_items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text: { type: string }
+                      owner: { type: string }
+                      done: { type: boolean }
                 next_steps: { type: array, items: { type: string } }
                 status: { type: string, enum: [draft, published] }
       responses:
@@ -511,6 +552,50 @@ paths:
             schema: { type: object }
       responses:
         "200": { description: Updated client update }
+
+  /api-v1/project-updates:
+    get:
+      tags: [project-updates]
+      summary: Read a project's internal activity and client portal briefings
+      parameters:
+        - { in: query, name: project_id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200": { description: Project activity and portal updates }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [project-updates]
+      summary: Post to the project, client portal, or both atomically
+      description: The `both` destination commits the internal Activity Feed note and client briefing in one transaction. Published portal updates are immediately client-visible.
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, destination, title, summary]
+              properties:
+                project_id: { type: string, format: uuid }
+                destination: { type: string, enum: [project, client_portal, both] }
+                title: { type: string }
+                summary: { type: string }
+                update_type: { type: string, enum: [general, progress, milestone, decision, risk] }
+                period_label: { type: string }
+                health: { type: string, enum: [on_track, at_risk, delayed] }
+                accomplishments: { type: array, items: { type: string } }
+                risks: { type: array, items: { type: object } }
+                decisions: { type: array, items: { type: object } }
+                action_items: { type: array, items: { type: object } }
+                next_steps: { type: array, items: { type: string } }
+                portal_status: { type: string, enum: [draft, published], default: draft }
+                project_status: { type: string, enum: [planning, active, on_hold, completed, closed] }
+      responses:
+        "201": { description: Update committed to every requested destination }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
 components:
   securitySchemes:
@@ -553,8 +638,12 @@ components:
       type: object
       properties:
         id:          { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
         name:        { type: string }
         status:      { type: string }
+        project_type: { type: string }
+        property_id: { type: string, format: uuid, nullable: true }
+        client_id:   { type: string, format: uuid, nullable: true }
         created_at:  { type: string, format: date-time }
 
     Commitment:

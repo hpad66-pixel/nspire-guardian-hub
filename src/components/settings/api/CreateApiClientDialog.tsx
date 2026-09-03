@@ -31,6 +31,7 @@ export const AVAILABLE_SCOPES = [
   "read:pay-apps", "write:pay-apps",
   "read:payments", "write:payments",
   "read:client-updates", "write:client-updates",
+  "read:project-updates", "write:project-updates",
   "write:direct-costs",
 ];
 

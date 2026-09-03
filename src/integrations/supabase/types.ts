@@ -9761,6 +9761,7 @@ export type Database = {
           status: Database["public"]["Enums"]["project_status"]
           target_end_date: string | null
           updated_at: string
+          workspace_id: string
         }
         Insert: {
           actual_end_date?: string | null
@@ -9779,6 +9780,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["project_status"]
           target_end_date?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           actual_end_date?: string | null
@@ -9797,8 +9799,16 @@ export type Database = {
           status?: Database["public"]["Enums"]["project_status"]
           target_end_date?: string | null
           updated_at?: string
+          workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_client_id_fkey"
             columns: ["client_id"]

@@ -9,8 +9,12 @@ SELECT plan(8);
 INSERT INTO public.workspaces (id, name)
 VALUES ('91000000-0000-4000-8000-000000000001', 'CO Margin Revision Test');
 
-INSERT INTO public.projects (id, name)
-VALUES ('91000000-0000-4000-8000-000000000002', 'CO Margin Revision Project');
+INSERT INTO public.projects (id, workspace_id, name)
+VALUES (
+  '91000000-0000-4000-8000-000000000002',
+  '91000000-0000-4000-8000-000000000001',
+  'CO Margin Revision Project'
+);
 
 INSERT INTO public.prime_contracts (
   id, tenant_id, project_id, contract_no, title, original_value, status

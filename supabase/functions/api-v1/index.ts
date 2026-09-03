@@ -81,6 +81,7 @@ serve(async (req) => {
     let response: Response;
     switch (resource) {
       case "projects": response = await routeProjects(req.method, ctx, id, req, url); break;
+      case "project-updates": response = await routeProjectUpdates(req.method, ctx, req, url); break;
       case "contacts": response = await routeContacts(req.method, ctx, id, req, url); break;
       case "project-directory": response = await routeProjectDirectory(req.method, ctx, req, url); break;
       case "action-items": response = await routeActionItems(req.method, ctx, id, req, url); break;
@@ -122,12 +123,34 @@ function enforceRateLimit(client: ApiClient): Response | null {
 async function routeProjects(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
   if (method === "GET") {
     if (id) return json({ data: await requireProject(ctx.tenantId, id) });
-    const projects = await listAuthorizedProjects(ctx.tenantId);
+    let projects = await listAuthorizedProjects(ctx.tenantId);
     const q = cleanOptionalText(url.searchParams.get("q"), 120)?.toLowerCase();
-    const data = q
-      ? projects.filter((p: any) => projectSearchHaystack(p).includes(q))
-      : projects;
-    return json({ data: data.slice(0, boundedLimit(url, 100)) });
+    const clientId = optionalUuid(url.searchParams.get("client_id"), "client_id");
+    const propertyId = optionalUuid(url.searchParams.get("property_id"), "property_id");
+    const status = cleanOptionalText(url.searchParams.get("status"), 30);
+    const projectType = cleanOptionalText(url.searchParams.get("project_type"), 60);
+    if (status && !["planning", "active", "on_hold", "completed", "closed"].includes(status)) {
+      throw new ApiError(400, "invalid_project_status");
+    }
+    if (q) projects = projects.filter((p: any) => projectSearchHaystack(p).includes(q));
+    if (clientId) projects = projects.filter((p: any) => p.client_id === clientId);
+    if (propertyId) projects = projects.filter((p: any) => p.property_id === propertyId);
+    if (status) projects = projects.filter((p: any) => p.status === status);
+    if (projectType) projects = projects.filter((p: any) => p.project_type === projectType);
+    const limit = boundedLimit(url, 100);
+    const offset = boundedOffset(url);
+    const data = projects.slice(offset, offset + limit);
+    return json({
+      data,
+      meta: {
+        total: projects.length,
+        returned: data.length,
+        offset,
+        has_more: offset + data.length < projects.length,
+        connection_mode: "workspace_dynamic",
+        future_projects: "automatic",
+      },
+    });
   }
 
   if (method === "PATCH" && id) {
@@ -846,50 +869,103 @@ async function routeClientUpdates(method: string, ctx: RequestContext, id: strin
   throw new ApiError(405, "method_not_allowed");
 }
 
+async function routeProjectUpdates(method: string, ctx: RequestContext, req: Request, url: URL) {
+  if (method === "GET") {
+    const projectId = requiredUuid(url.searchParams.get("project_id"), "project_id");
+    const project = await requireProject(ctx.tenantId, projectId);
+    const limit = boundedLimit(url, 50);
+    const [{ data: internalUpdates, error: internalError }, { data: clientUpdates, error: clientError }] = await Promise.all([
+      admin.from("project_communications")
+        .select("id, project_id, type, subject, content, participants, created_by, created_at, updated_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      admin.from("client_updates")
+        .select(CLIENT_UPDATE_SELECT)
+        .eq("tenant_id", ctx.tenantId)
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+    ]);
+    if (internalError) throw internalError;
+    if (clientError) throw clientError;
+    return json({ data: { project, internal_updates: internalUpdates ?? [], client_updates: clientUpdates ?? [] } });
+  }
+
+  if (method !== "POST") throw new ApiError(405, "method_not_allowed");
+  requireActor(ctx);
+  const body = asObject(await req.json());
+  const projectId = requiredUuid(body.project_id, "project_id");
+  await requireProject(ctx.tenantId, projectId);
+  const destination = String(body.destination ?? "project");
+  if (!["project", "client_portal", "both"].includes(destination)) {
+    throw new ApiError(400, "invalid_project_update_destination");
+  }
+  const title = requiredText(body.title, "title", 240);
+  const summary = requiredText(body.summary, "summary", 12_000);
+  const updateType = cleanOptionalText(body.update_type, 30) ?? "general";
+  const health = cleanOptionalText(body.health, 30) ?? "on_track";
+  const portalStatus = cleanOptionalText(body.portal_status, 30) ?? "draft";
+  const projectStatus = cleanOptionalText(body.project_status, 30);
+  validateClientUpdate({ update_type: updateType, health, status: portalStatus });
+  validateProject({ status: projectStatus });
+
+  const projectUpdateId = destination === "client_portal"
+    ? null
+    : await idempotentUuid(req, ctx.apiClient.id, "project-updates:internal");
+  const clientUpdateId = destination === "project"
+    ? null
+    : await idempotentUuid(req, ctx.apiClient.id, "project-updates:client-portal");
+
+  const { data, error } = await admin.rpc("agent_post_project_update", {
+    p_tenant_id: ctx.tenantId,
+    p_project_id: projectId,
+    p_actor_user_id: ctx.actorUserId,
+    p_project_update_id: projectUpdateId,
+    p_client_update_id: clientUpdateId,
+    p_destination: destination,
+    p_title: title,
+    p_summary: summary,
+    p_update_type: updateType,
+    p_period_label: cleanOptionalText(body.period_label, 160),
+    p_health: health,
+    p_accomplishments: jsonArray(body.accomplishments, "accomplishments"),
+    p_risks: jsonArray(body.risks, "risks"),
+    p_decisions: jsonArray(body.decisions, "decisions"),
+    p_action_items: jsonArray(body.action_items, "action_items"),
+    p_next_steps: jsonArray(body.next_steps, "next_steps"),
+    p_client_update_status: portalStatus,
+    p_project_status: projectStatus,
+  } as any);
+  if (error) throw error;
+
+  if (projectUpdateId) await auditWrite(ctx, "project_communication", projectUpdateId, "create", projectId);
+  if (clientUpdateId) await auditWrite(ctx, "client_update", clientUpdateId, "create", projectId);
+  if (projectStatus) await auditWrite(ctx, "project", projectId, "status_update", projectId);
+  return json({ data }, 201);
+}
+
 function projectSearchHaystack(project: any): string {
   const meta = project?.program_meta && typeof project.program_meta === "object" ? project.program_meta : {};
   return [
     project?.name, project?.description, project?.scope, project?.status,
+    project?.project_type, project?.client?.name, project?.property?.name,
     meta.project_key, meta.program_key, meta.status_label, meta.headline, meta.bucket_key,
   ].filter(Boolean).join(" ").toLowerCase();
 }
 
 async function listAuthorizedProjects(tenantId: string): Promise<ProjectRow[]> {
-  const [{ data: properties, error: propertyError }, { data: clients, error: clientError }] = await Promise.all([
-    admin.from("properties").select("id").eq("workspace_id", tenantId),
-    admin.from("clients").select("id").eq("workspace_id", tenantId),
-  ]);
-  if (propertyError) throw propertyError;
-  if (clientError) throw clientError;
-  const propertyIds = (properties ?? []).map((row: any) => row.id);
-  const clientIds = (clients ?? []).map((row: any) => row.id);
-  if (propertyIds.length === 0 && clientIds.length === 0) return [];
-  const filters: string[] = [];
-  if (propertyIds.length) filters.push(`property_id.in.(${propertyIds.join(",")})`);
-  if (clientIds.length) filters.push(`client_id.in.(${clientIds.join(",")})`);
   const { data, error } = await admin.from("projects").select(PROJECT_SELECT)
-    .or(filters.join(",")).order("updated_at", { ascending: false });
+    .eq("workspace_id", tenantId).order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as ProjectRow[];
 }
 
 async function requireProject(tenantId: string, projectId: string): Promise<ProjectRow> {
   const { data: project, error } = await admin.from("projects").select(PROJECT_SELECT)
-    .eq("id", projectId).maybeSingle();
+    .eq("id", projectId).eq("workspace_id", tenantId).maybeSingle();
   if (error) throw error;
   if (!project) throw new ApiError(404, "project_not_found");
-  let allowed = false;
-  if ((project as any).property_id) {
-    const { data } = await admin.from("properties").select("id")
-      .eq("id", (project as any).property_id).eq("workspace_id", tenantId).maybeSingle();
-    allowed ||= Boolean(data);
-  }
-  if ((project as any).client_id) {
-    const { data } = await admin.from("clients").select("id")
-      .eq("id", (project as any).client_id).eq("workspace_id", tenantId).maybeSingle();
-    allowed ||= Boolean(data);
-  }
-  if (!allowed) throw new ApiError(404, "project_not_found");
   return project as ProjectRow;
 }
 
@@ -1052,6 +1128,11 @@ function cleanOptionalText(value: unknown, max: number): string | null {
   const text = String(value).trim();
   return text ? text.slice(0, max) : null;
 }
+function jsonArray(value: unknown, field: string): unknown[] {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value)) throw new ApiError(400, `${field}_must_be_array`);
+  return value;
+}
 function requiredUuid(value: unknown, field: string) {
   const text = String(value ?? "");
   if (!UUID_RE.test(text)) throw new ApiError(400, `${field}_invalid`);
@@ -1068,6 +1149,10 @@ function sanitizeSearch(value: string | null) { return cleanOptionalText(value, 
 function boundedLimit(url: URL, fallback: number) {
   const value = Number(url.searchParams.get("limit") ?? fallback);
   return Number.isFinite(value) ? Math.max(1, Math.min(200, Math.floor(value))) : fallback;
+}
+function boundedOffset(url: URL) {
+  const value = Number(url.searchParams.get("offset") ?? 0);
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 }
 async function meter(tenantId: string, clientId: string, isError: boolean) {
   await admin.rpc("bump_api_usage", { p_tenant_id: tenantId, p_client_id: clientId, p_is_error: isError } as any);
@@ -1086,7 +1171,7 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PROJECT_SELECT = "id, name, description, scope, status, budget, spent, start_date, target_end_date, actual_end_date, property_id, client_id, parent_project_id, program_meta, updated_at";
+const PROJECT_SELECT = "id, workspace_id, name, description, scope, status, project_type, budget, spent, start_date, target_end_date, actual_end_date, property_id, client_id, parent_project_id, program_meta, updated_at, property:properties(name), client:clients(name)";
 const PROJECT_WRITE_FIELDS = ["name", "description", "scope", "status"] as const;
 const CONTACT_SELECT = "id, first_name, last_name, company_name, job_title, contact_type, email, phone, mobile, address_line1, address_line2, city, state, zip_code, country, website, tags, notes, is_favorite, is_active, created_at, updated_at";
 const CONTACT_WRITE_FIELDS = ["first_name", "last_name", "company_name", "job_title", "contact_type", "email", "phone", "mobile", "fax", "address_line1", "address_line2", "city", "state", "zip_code", "country", "website", "license_number", "insurance_expiry", "tags", "notes", "is_favorite", "is_active"] as const;

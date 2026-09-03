@@ -47,6 +47,7 @@ serve(async (req) => {
     const actions = await grab(async () => (await supabase.from("project_action_items").select("title, description, status, priority, due_date, completed_at, updated_at").eq("project_id", projectId).order("updated_at", { ascending: false })).data);
     const consultingMeetings = await grab(async () => (await supabase.from("consulting_meetings").select("title, meeting_date").eq("project_id", projectId).gte("meeting_date", start).lte("meeting_date", end).order("meeting_date")).data);
     const consultingInvoices = await grab(async () => (await supabase.from("consulting_invoices").select("invoice_no, status, issue_date, due_date, total, updated_at").eq("project_id", projectId).order("invoice_no", { ascending: false })).data);
+    const projectCommunications = await grab(async () => (await supabase.from("project_communications").select("subject, content, participants, created_at").eq("project_id", projectId).order("created_at", { ascending: false }).limit(100)).data);
 
     const inPeriod = (d?: string) => d && d.slice(0, 10) >= start && d.slice(0, 10) <= end;
     const openRfis = (rfis as any[]).filter((r) => r.status === "open" || r.status === "pending");
@@ -62,6 +63,15 @@ serve(async (req) => {
       period: periodLabel || `${start} to ${end}`,
       requested_update_type: ["general", "progress", "milestone", "decision", "risk"].includes(updateType) ? updateType : "progress",
       source_notes: typeof rawNotes === "string" ? rawNotes.trim() : "",
+      verified_project_updates: (projectCommunications as any[])
+        .filter((entry) => inPeriod(entry.created_at))
+        .map((entry) => ({
+          title: String(entry.subject ?? "").replace(/^__uiType:[^|]+\|/, ""),
+          update: entry.content,
+          source: entry.participants,
+          recorded_at: entry.created_at,
+        }))
+        .slice(0, 40),
       daily_reports: (dailies as any[]).map((d) => ({ date: d.report_date, work: d.work_performed, notes: d.notes })).slice(0, 30),
       open_rfis: openRfis.length,
       overdue_rfis: overdueRfis.map((r) => `RFI-${r.rfi_number}: ${r.subject}`).slice(0, 10),
@@ -98,7 +108,7 @@ serve(async (req) => {
 
     const system = `You format client/owner project updates for a construction and consulting project team. Be concise, factual, and client-appropriate (no internal jargon). ${STYLE}
 
-The source_notes field contains facts supplied directly by the project administrator. Organize and lightly edit those notes, but never add a fact, number, date, commitment, cause, or conclusion that is not supported by source_notes or the supplied project data. If source_notes is empty, draft only from the supplied project data. The requested_update_type controls emphasis: milestone celebrates a completed or reached milestone; progress summarizes current work; decision makes the required client decision prominent; risk clearly states the issue and impact; general is a concise informational note.
+The source_notes field and verified_project_updates contain facts supplied directly by project administrators, including updates recorded through Hermes on Telegram. Organize and lightly edit those notes, but never add a fact, number, date, commitment, cause, or conclusion that is not supported by source_notes, verified_project_updates, or the supplied project data. If source_notes is empty, draft only from the other supplied project data. The requested_update_type controls emphasis: milestone celebrates a completed or reached milestone; progress summarizes current work; decision makes the required client decision prominent; risk clearly states the issue and impact; general is a concise informational note.
 
 From the supplied project data, output ONLY a JSON object (no markdown, no prose) with EXACTLY these keys:
 {
