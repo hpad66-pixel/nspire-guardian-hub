@@ -15,8 +15,16 @@ function localAnswer(question: string, snapshot: Record<string, unknown>) {
   const q = (question || "").toLowerCase();
   const kpis = (snapshot.kpis ?? {}) as Record<string, number>;
   const accounts = (snapshot.accounts ?? []) as Array<Record<string, unknown>>;
+  const efficiency = (snapshot.efficiency ?? {}) as Record<string, number | string | null>;
   if (/dispute|building 8|216|estimate/.test(q)) {
     return "Building 8 (acct 2745714336) is the formal dispute. Miami-Dade estimated ~216k gallons/month while the building was vacant. Ask for actual reads and a credit memo; do not treat those estimates as consumption.";
+  }
+  if (/per capita|gpcd|per person|per unit|intensity|benchmark/.test(q)) {
+    return `The latest normalized period is ${Number(efficiency.gallonsPerUnitDay || 0).toFixed(1)} gallons per connected unit per day and ${Number(efficiency.gallonsPerCapitaDay || 0).toFixed(1)} modeled GPCD. Confirm meter mappings and resident counts before treating the result as verified.`;
+  }
+  if (/saving|avoided|efficien/.test(q)) {
+    const avoided = Number(efficiency.avoidedCost || 0);
+    return `Rate-normalized avoided cost is ${avoided.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}; status ${String(efficiency.status || 'insufficient')}. Estimated reads and duplicate bills are excluded.`;
   }
   if (/ytd|year|spend|cost/.test(q)) {
     return `Year-to-date water/sewer spend is $${Number(kpis.ytdSpend || 0).toLocaleString()} across ${accounts.length} service accounts. Trailing-12 is $${Number(kpis.last12Spend || 0).toLocaleString()}.`;
@@ -79,6 +87,9 @@ serve(async (req) => {
     const sys = `You are Water Intelligence, an executive briefing partner for APAS and the property owner.
 Speak like a CFO + utility analyst. Be concise, specific, and actionable.
 Never invent meter reads. Use only the JSON snapshot.
+Distinguish billing exposure from consumption performance. Never call modeled savings verified.
+For savings, use the rate-normalized avoided-cost result in the snapshot and state its confidence status.
+For per-capita use, say whether population is verified or modeled.
 If Building 8 / account 2745714336 appears, treat estimated ~216k gal/mo during vacancy as a live dispute — recommend actual reads and a credit memo.
 Always name the next action for the owner or consultant.
 Snapshot:\n${JSON.stringify(snapshot).slice(0, 14000)}`;
