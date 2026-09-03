@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, Eye,
-  Camera, Loader2, MessageCircleQuestion, Pencil, Repeat2, ShieldCheck, Sparkles, UserRound,
+  Camera, Images, Loader2, MessageCircleQuestion, Pencil, Repeat2, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,19 @@ export default function OwnerAccountabilityPage() {
   const { data, isLoading, error, updatePhotoCaption } = useFieldAccountability(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const submittedPhotos = data?.untriagedPhotos ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const projectName = projects.find((project) => project.id === projectId)?.name || 'your project';
+  const allPhotos = useMemo(() => items.flatMap((item) => item.photos.map((photo) => ({
+    itemId: item.id,
+    itemTitle: item.title,
+    photo,
+  }))).sort((a, b) => new Date(b.photo.photo.taken_at || b.photo.photo.created_at).getTime()
+    - new Date(a.photo.photo.taken_at || a.photo.photo.created_at).getTime()), [items]);
+
+  useEffect(() => setShowAllPhotos(false), [projectId]);
 
   const view = useMemo(() => {
     const verified = items.filter((item) => item.status === 'verified');
@@ -100,13 +109,28 @@ export default function OwnerAccountabilityPage() {
             </section>
           )}
 
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <OwnerMetric icon={Images} label="Photos" value={allPhotos.length} tone="sky" />
             <OwnerMetric icon={CheckCircle2} label="Verified" value={view.verified.length} tone="emerald" />
             <OwnerMetric icon={Clock3} label="Open" value={view.open} tone="slate" />
             <OwnerMetric icon={Eye} label="Your review" value={view.waitingOwner.length} tone="amber" />
             <OwnerMetric icon={AlertTriangle} label="Overdue" value={view.overdue.length} tone="rose" />
             <OwnerMetric icon={Repeat2} label="Repeat" value={view.repeats} tone="violet" />
           </section>
+
+          {allPhotos.length > 0 && (
+            <section className="space-y-4" data-testid="owner-site-photo-library">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div><div className="flex items-center gap-2 text-sky-700"><Images className="h-4 w-4" /><p className="text-xs font-bold uppercase tracking-[.16em]">Complete evidence library</p></div><h2 className="mt-1 font-display text-3xl text-[#082b23]">All site photographs</h2><p className="mt-1 text-sm text-slate-500">Every imported and field-captured photograph remains attached to its accountability record.</p></div>
+                <div className="flex items-center gap-2"><Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-800">{allPhotos.length} photos</Badge>{allPhotos.length > 12 && <Button variant="outline" className="rounded-xl" onClick={() => setShowAllPhotos((current) => !current)}>{showAllPhotos ? 'Show recent' : `View all ${allPhotos.length}`}</Button>}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+                {(showAllPhotos ? allPhotos : allPhotos.slice(0, 12)).map(({ itemId, itemTitle, photo }) => (
+                  <OwnerLibraryPhoto key={photo.id} photo={photo} itemTitle={itemTitle} onClick={() => setSelectedId(itemId)} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {view.verified.length > 0 && (
             <section className="space-y-4">
@@ -141,8 +165,14 @@ function HowStep({ number, title, body }: { number: string; title: string; body:
 }
 
 function OwnerMetric({ icon: Icon, label, value, tone }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; tone: string }) {
-  const colors: Record<string, string> = { emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900', slate: 'border-slate-200 bg-white text-slate-800', amber: 'border-amber-200 bg-amber-50 text-amber-900', rose: 'border-rose-200 bg-rose-50 text-rose-900', violet: 'border-violet-200 bg-violet-50 text-violet-900' };
+  const colors: Record<string, string> = { sky: 'border-sky-200 bg-sky-50 text-sky-900', emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900', slate: 'border-slate-200 bg-white text-slate-800', amber: 'border-amber-200 bg-amber-50 text-amber-900', rose: 'border-rose-200 bg-rose-50 text-rose-900', violet: 'border-violet-200 bg-violet-50 text-violet-900' };
   return <div className={cn('rounded-2xl border p-4 shadow-sm', colors[tone])}><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[.12em] opacity-70">{label}</p><Icon className="h-4 w-4" /></div><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p></div>;
+}
+
+function OwnerLibraryPhoto({ photo, itemTitle, onClick }: { photo: FieldItem['photos'][number]; itemTitle: string; onClick: () => void }) {
+  const suggestion = typeof photo.ai_suggestion?.caption === 'string' ? photo.ai_suggestion.caption : null;
+  const label = photo.evidence_type === 'observation' ? 'Site walk' : photo.evidence_type;
+  return <button type="button" onClick={onClick} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg"><div className="aspect-square"><OwnerPhotoStill photo={photo} label={label} after={photo.evidence_type === 'after'} /></div><div className="p-3"><p className="line-clamp-2 text-xs font-semibold leading-relaxed text-[#082b23]">{suggestion || photo.photo.caption || itemTitle}</p><p className="mt-1 truncate text-[10px] text-slate-500">{itemTitle}</p></div></button>;
 }
 
 function OwnerItemCard({ item, onClick, complete = false }: { item: FieldItem; onClick: () => void; complete?: boolean }) {

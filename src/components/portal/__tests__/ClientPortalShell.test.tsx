@@ -53,6 +53,8 @@ describe("ClientPortalShell project tabs", () => {
 
   it("renders a tab for each of the client's projects", () => {
     renderAt("/owner-portal/projects/p1");
+    expect(screen.getByRole("complementary", { name: "Client project navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Selected project" })).toBeInTheDocument();
     expect(screen.getByTestId("owner-portal-project-tabs")).toBeInTheDocument();
     expect(screen.getByTestId("owner-portal-project-tab-p1")).toHaveTextContent("Sewer close-out");
     expect(screen.getByTestId("owner-portal-project-tab-p2")).toHaveTextContent("Stucco repairs");
