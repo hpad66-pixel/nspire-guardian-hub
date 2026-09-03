@@ -10,7 +10,7 @@ import {
   LayoutDashboard, FolderTree, Users, ListTree, CalendarDays, ClipboardList,
   Images, Wallet, FileSignature, HelpCircle, Package, ListChecks, CheckSquare,
   TrendingUp, ShoppingCart, ShieldCheck, FlaskConical, MessageSquareText, Mail,
-  Award, Receipt, Send, Megaphone, Brain, Settings2, FileBadge2, Map, Warehouse, Phone,
+  Award, Receipt, Send, Megaphone, Brain, Settings2, FileBadge2, Map, Warehouse, Phone, ScanEye,
 } from 'lucide-react';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import {
@@ -82,6 +82,7 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
 
   // Field / Delivery — Permits near the top so scan/upload is easy to find on PWA
   { value: 'daily-logs', label: 'Daily Logs', shortLabel: 'Logs', icon: ClipboardList, group: 'field' },
+  { value: 'accountability', label: 'Field Accountability', shortLabel: 'Accountability', icon: ScanEye, group: 'field', route: (id) => `/projects/${id}/accountability` },
   { value: 'permits', label: 'Permits', shortLabel: 'Permits', icon: FileBadge2, group: 'field' },
   { value: 'rfis', label: 'RFIs', shortLabel: 'RFIs', icon: HelpCircle, group: 'field' },
   { value: 'submittals', label: 'Submittals', shortLabel: 'Submit', icon: Package, group: 'field' },

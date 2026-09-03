@@ -75,6 +75,13 @@ describe('moduleVisibility', () => {
     expect(isModuleVisible({ project_type: 'client' }, 'client-updates')).toBe(true);
   });
 
+  it('keeps Field Accountability and its owner portal view on every project type', () => {
+    expect(defaultModuleVisible('accountability', 'consulting')).toBe(true);
+    expect(defaultModuleVisible('accountability', 'property')).toBe(true);
+    expect(portalModulesForProject({ project_type: 'consulting' }).has('accountability')).toBe(true);
+    expect(portalModulesForProject({ project_type: 'construction' }).has('accountability')).toBe(true);
+  });
+
   it('still hides field-construction modules by default on consulting projects', () => {
     expect(isModuleVisible({ project_type: 'consulting' }, 'rfis')).toBe(false);
     expect(isModuleVisible({ project_type: 'consulting' }, 'daily-logs')).toBe(false);

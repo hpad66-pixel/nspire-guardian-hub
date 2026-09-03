@@ -16,6 +16,7 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'admin')).toBeTruthy();
     // Permits available on consulting for phone OCR / closeout
     expect(items.find((i) => i.value === 'permits')).toBeTruthy();
+    expect(items.find((i) => i.value === 'accountability')?.route?.('proj-1')).toBe('/projects/proj-1/accountability');
     // Field construction modules hidden by default
     expect(items.find((i) => i.value === 'rfis')).toBeFalsy();
     expect(items.find((i) => i.value === 'safety')).toBeFalsy();
@@ -80,6 +81,7 @@ describe('projectNav', () => {
     expect(routes.directory).toBe('/projects/proj-1/directory');
     expect(routes.admin).toBe('/projects/proj-1/admin');
     expect(routes.invoicing).toBe('/projects/proj-1/financials/client-invoices');
+    expect(routes.accountability).toBe('/projects/proj-1/accountability');
   });
 
   it('keeps a single catalog entry per module slug', () => {
