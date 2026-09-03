@@ -1,5 +1,12 @@
 # Client Photo Intake — AI Starting Assessment
 
+## Project classification
+
+This is a property-wide Glorieta Gardens owner walk. The complete batch belongs
+to the dedicated **Glorieta Gardens — Site Accountability** project under the
+Program Management & ProjOS workstream. It is not evidence limited to the sewer
+extension or any other individual construction project.
+
 **Source:** `Files (3).zip`
 
 **Reviewed:** September 2, 2026
