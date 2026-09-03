@@ -231,6 +231,136 @@ CREATE POLICY enterprise_project_update_permission ON public.projects AS RESTRIC
     )
   );
 
+-- Client project writes use narrowly-scoped SECURITY DEFINER functions rather
+-- than broad table grants. The functions derive the tenant boundary from the
+-- authenticated user and never accept property_id, created_by, or spent from
+-- the browser.
+CREATE OR REPLACE FUNCTION public.create_client_project(
+  p_client_id uuid,
+  p_name text,
+  p_project_type text DEFAULT 'construction',
+  p_description text DEFAULT NULL,
+  p_scope text DEFAULT NULL,
+  p_budget numeric DEFAULT NULL,
+  p_start_date date DEFAULT NULL,
+  p_target_end_date date DEFAULT NULL,
+  p_status public.project_status DEFAULT 'planning'
+)
+RETURNS public.projects
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_project public.projects;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Authentication is required';
+  END IF;
+
+  IF NOT public.can_manage_client_projects(auth.uid(), p_client_id) THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Not authorized to create projects for this client';
+  END IF;
+
+  IF NULLIF(btrim(p_name), '') IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Project name is required';
+  END IF;
+
+  IF p_project_type NOT IN ('construction', 'consulting') THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Client projects must be construction or consulting projects';
+  END IF;
+
+  INSERT INTO public.projects (
+    client_id,
+    property_id,
+    name,
+    project_type,
+    description,
+    scope,
+    budget,
+    start_date,
+    target_end_date,
+    status,
+    created_by
+  )
+  VALUES (
+    p_client_id,
+    NULL,
+    btrim(p_name),
+    p_project_type,
+    p_description,
+    p_scope,
+    p_budget,
+    p_start_date,
+    p_target_end_date,
+    COALESCE(p_status, 'planning'),
+    auth.uid()
+  )
+  RETURNING * INTO v_project;
+
+  RETURN v_project;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_client_project(
+  p_project_id uuid,
+  p_name text,
+  p_project_type text,
+  p_description text DEFAULT NULL,
+  p_scope text DEFAULT NULL,
+  p_budget numeric DEFAULT NULL,
+  p_start_date date DEFAULT NULL,
+  p_target_end_date date DEFAULT NULL,
+  p_status public.project_status DEFAULT NULL
+)
+RETURNS public.projects
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_existing public.projects;
+  v_project public.projects;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Authentication is required';
+  END IF;
+
+  SELECT * INTO v_existing
+  FROM public.projects
+  WHERE id = p_project_id;
+
+  IF NOT FOUND
+     OR v_existing.client_id IS NULL
+     OR v_existing.property_id IS NOT NULL
+     OR NOT public.can_manage_client_projects(auth.uid(), v_existing.client_id) THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Not authorized to update this client project';
+  END IF;
+
+  IF NULLIF(btrim(p_name), '') IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Project name is required';
+  END IF;
+
+  IF p_project_type NOT IN ('construction', 'consulting') THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Client projects must be construction or consulting projects';
+  END IF;
+
+  UPDATE public.projects
+  SET name = btrim(p_name),
+      project_type = p_project_type,
+      description = p_description,
+      scope = p_scope,
+      budget = p_budget,
+      start_date = p_start_date,
+      target_end_date = p_target_end_date,
+      status = COALESCE(p_status, v_existing.status)
+  WHERE id = p_project_id
+  RETURNING * INTO v_project;
+
+  RETURN v_project;
+END;
+$$;
+
 -- A small, read-only capability RPC keeps the UI aligned with the database.
 CREATE OR REPLACE FUNCTION public.get_client_project_access(p_client_id uuid)
 RETURNS TABLE (
@@ -253,9 +383,13 @@ $$;
 
 REVOKE ALL ON FUNCTION public.is_client_member(uuid, uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.can_manage_client_projects(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.create_client_project(uuid, text, text, text, text, numeric, date, date, public.project_status) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.update_client_project(uuid, text, text, text, text, numeric, date, date, public.project_status) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_client_project_access(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_client_member(uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_manage_client_projects(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_client_project(uuid, text, text, text, text, numeric, date, date, public.project_status) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_client_project(uuid, text, text, text, text, numeric, date, date, public.project_status) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_client_project_access(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

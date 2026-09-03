@@ -1,8 +1,10 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(17);
 
 SELECT has_function('public', 'is_client_member', ARRAY['uuid','uuid'], 'client membership predicate exists');
 SELECT has_function('public', 'can_manage_client_projects', ARRAY['uuid','uuid'], 'client project administrator predicate exists');
+SELECT has_function('public', 'create_client_project', ARRAY['uuid','text','text','text','text','numeric','date','date','project_status'], 'guarded client project creation RPC exists');
+SELECT has_function('public', 'update_client_project', ARRAY['uuid','text','text','text','text','numeric','date','date','project_status'], 'guarded client project update RPC exists');
 SELECT has_function('public', 'get_client_project_access', ARRAY['uuid'], 'client project capability RPC exists');
 
 INSERT INTO auth.users (id, email, raw_user_meta_data)
@@ -117,47 +119,56 @@ SELECT is(
 );
 
 SELECT lives_ok(
-  $$ INSERT INTO public.projects (id, client_id, name, project_type, created_by)
-     VALUES (
-       '94000000-0000-4000-8000-000000000022',
+  $$ SELECT public.create_client_project(
        '94000000-0000-4000-8000-000000000011',
        'New R4 Client Project',
-       'construction',
-       auth.uid()
+       'construction'
      ) $$,
-  'client administrator can create a project inside the assigned client'
+  'client administrator can create through the guarded client RPC'
 );
 
 SELECT throws_ok(
-  $$ INSERT INTO public.projects (id, client_id, name, project_type, created_by)
-     VALUES (
-       '94000000-0000-4000-8000-000000000023',
+  $$ SELECT public.create_client_project(
        '94000000-0000-4000-8000-000000000012',
        'Forbidden Larkin Project',
-       'consulting',
-       auth.uid()
+       'consulting'
      ) $$,
   '42501',
-  NULL,
-  'client administrator cannot create a project for another client'
+  'Not authorized to create projects for this client',
+  'guarded RPC rejects creation for another client'
 );
 
 SELECT lives_ok(
-  $$ UPDATE public.projects
-     SET scope = 'Client administrator updated scope'
-     WHERE id = '94000000-0000-4000-8000-000000000022' $$,
-  'client administrator can update a standalone project for the assigned client'
+  $$ SELECT public.update_client_project(
+       (SELECT id FROM public.projects WHERE name = 'New R4 Client Project'),
+       'New R4 Client Project - Updated',
+       'construction',
+       NULL,
+       'Client administrator updated scope'
+     ) $$,
+  'client administrator can update through the guarded client RPC'
 );
-
-DELETE FROM public.projects
-WHERE id = '94000000-0000-4000-8000-000000000022';
 
 SELECT is(
   (SELECT count(*)::integer
    FROM public.projects
-   WHERE id = '94000000-0000-4000-8000-000000000022'),
+   WHERE name = 'New R4 Client Project - Updated'
+     AND scope = 'Client administrator updated scope'),
   1,
-  'client administrator cannot delete projects'
+  'guarded write persists the client project changes'
+);
+
+SELECT throws_ok(
+  $$ INSERT INTO public.projects (client_id, name, project_type, created_by)
+     VALUES (
+       '94000000-0000-4000-8000-000000000011',
+       'Direct Write Must Stay Closed',
+       'construction',
+       auth.uid()
+     ) $$,
+  '42501',
+  NULL,
+  'direct client project table writes remain closed'
 );
 
 SELECT is(
