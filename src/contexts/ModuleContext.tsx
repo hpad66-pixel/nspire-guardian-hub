@@ -25,6 +25,7 @@ const defaultModules: ModuleConfig = {
   reportsEnabled: true,
   aiEnabled: true,
   contractorReadinessEnabled: false,
+  apasCrmIntegrationEnabled: false,
   nspireEnabled: false,
   dailyGroundsEnabled: false,
   projectsEnabled: false,
@@ -81,7 +82,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       if (propError) throw propError;
       if (wsError) throw wsError;
 
-      const ws = wsModules as any;
+      const ws = wsModules as Record<string, unknown> | null;
 
       // For workspace-level modules:
       // effective = platform gate AND workspace admin toggle (defaults to true if no row yet)
@@ -103,6 +104,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
         reportsEnabled: wsEnabled('platform_reports', 'reports_enabled'),
         aiEnabled: wsEnabled('platform_ai', 'ai_enabled'),
         contractorReadinessEnabled: wsEnabled('platform_contractor_readiness', 'contractor_readiness_enabled', false),
+        apasCrmIntegrationEnabled: wsEnabled('platform_apas_crm_integration', 'apas_crm_integration_enabled', false),
         nspireEnabled: properties?.some(p => p.nspire_enabled) || false,
         dailyGroundsEnabled: properties?.some(p => p.daily_grounds_enabled) || false,
         projectsEnabled: properties?.some(p => p.projects_enabled) || false,
@@ -168,7 +170,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase
         .from('properties')
-        .update({ [columnName]: newValue } as any)
+        .update({ [columnName]: newValue } as never)
         .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all properties
 
       if (error) throw error;
@@ -193,7 +195,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase
         .from('properties')
-        .update({ [columnName]: enabled } as any)
+        .update({ [columnName]: enabled } as never)
         .eq('id', propertyId);
 
       if (error) throw error;

@@ -218,6 +218,17 @@ verify_jwt = true
 [functions.contractor-reminders]
 verify_jwt = false
 
+# Authenticated Proj OS orchestration boundary. It validates the current user
+# and project itself so current asymmetric Supabase JWTs reach the function.
+# APAS CRM service credentials remain server-only deployment secrets.
+[functions.crm-integration-gateway]
+verify_jwt = false
+
+# Public only at the gateway: APAS CRM signs the exact body, timestamp, issuer,
+# and audience. The function enforces a five-minute window and event replay log.
+[functions.crm-integration-events]
+verify_jwt = false
+
 # Public Gmail OAuth callback — Google redirects here with ?code&state and no
 # Supabase JWT; authenticity is enforced by the signed `state`.
 [functions.gmail-oauth-callback]

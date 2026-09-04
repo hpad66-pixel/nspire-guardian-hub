@@ -25,8 +25,14 @@ import { Input } from "@/components/ui/input";
 import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from "@/components/ui/tabs";
-import { Star, UserPlus, Trash2, Building2 } from "lucide-react";
+import { Star, UserPlus, Trash2, Building2, ExternalLink, ScanLine } from "lucide-react";
 import { toast } from "sonner";
+import { CrmCardIntakeDialog, CrmIntakeStatusPanel } from "@/components/crm/CrmCardIntakeDialog";
+import { useModules } from "@/contexts/ModuleContext";
+
+// This page already uses the dynamic project-directory relation; the generated
+// Supabase snapshot will learn the new APAS CRM columns on its next refresh.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 function DirectoryRow({
   entry, onRemove, onToggleKey, onPickOrg,
@@ -38,21 +44,33 @@ function DirectoryRow({
 }) {
   const { data: person } = usePersonByReference(entry.user_id, entry.contact_id);
   const { data: org } = useOrganization(entry.organization_id);
+  const isApasContact = Boolean(entry.apas_contact_id);
+  const displayName = isApasContact
+    ? entry.external_display_name || entry.external_primary_email || 'APAS CRM contact'
+    : person?.name ?? '(loading)';
 
   return (
     <div className="flex items-start justify-between gap-3 p-3 border-b last:border-b-0">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 truncate">
-          <span className="font-medium truncate">{person?.name ?? "(loading)"}</span>
+          <span className="font-medium truncate">{displayName}</span>
           {person?.kind && (
             <Badge variant="outline" className="text-[10px]">{person.kind}</Badge>
           )}
+          {isApasContact && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700">APAS CRM</Badge>}
           {entry.is_key_contact && <Badge>Key</Badge>}
         </div>
         <div className="text-xs text-muted-foreground flex flex-wrap gap-2 mt-0.5">
           {entry.role_label && <span>{entry.role_label}</span>}
           {person?.email && <span>· {person.email}</span>}
           {person?.phone && <span>· {person.phone}</span>}
+          {entry.external_primary_email && <span>· {entry.external_primary_email}</span>}
+          {entry.external_company_name && <span>· {entry.external_company_name}</span>}
+          {entry.external_contact_url && (
+            <a href={entry.external_contact_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+              Master contact <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
           {org && (
             <button
               type="button"
@@ -91,8 +109,11 @@ export default function ProjectDirectoryPage() {
   const { data: entries = [], isLoading, remove } = useProjectDirectory(projectId ?? null);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [drawerOrgId, setDrawerOrgId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const { isModuleEnabled } = useModules();
+  const crmIntegrationEnabled = isModuleEnabled('apasCrmIntegrationEnabled');
 
   // Toggle key_contact inline.
   const toggleKey = useMutation({
@@ -128,7 +149,9 @@ export default function ProjectDirectoryPage() {
     const q = search.trim().toLowerCase();
     if (!q) return entries;
     return entries.filter((e) => {
-      return (e.role_label ?? "").toLowerCase().includes(q);
+      return [e.role_label, e.external_display_name, e.external_company_name, e.external_primary_email]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q));
     });
   }, [entries, search]);
 
@@ -148,11 +171,21 @@ export default function ProjectDirectoryPage() {
             People and companies assigned to this project.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!projectId}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add person
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {crmIntegrationEnabled && (
+            <Button variant="outline" onClick={() => setScanOpen(true)} disabled={!projectId}>
+              <ScanLine className="h-4 w-4 mr-2" />
+              Scan card
+            </Button>
+          )}
+          <Button onClick={() => setAddOpen(true)} disabled={!projectId}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add person
+          </Button>
+        </div>
       </div>
+
+      {crmIntegrationEnabled && projectId && <CrmIntakeStatusPanel projectId={projectId} />}
 
       <Tabs defaultValue="people">
         <TabsList>
@@ -220,6 +253,14 @@ export default function ProjectDirectoryPage() {
           open={addOpen}
           onOpenChange={setAddOpen}
           projectId={projectId}
+        />
+      )}
+      {crmIntegrationEnabled && projectId && (
+        <CrmCardIntakeDialog
+          open={scanOpen}
+          onOpenChange={setScanOpen}
+          projects={[{ id: projectId, name: 'Current project' }]}
+          initialProjectId={projectId}
         />
       )}
       <CompanyDrawer

@@ -24,6 +24,8 @@ export interface WorkspaceModuleRow {
   cockpit_enabled: boolean;
   reports_enabled: boolean;
   ai_enabled: boolean;
+  contractor_readiness_enabled: boolean;
+  apas_crm_integration_enabled: boolean;
   // workspace-admin flags
   credential_wallet_enabled: boolean;
   training_hub_enabled: boolean;
@@ -41,6 +43,8 @@ export interface WorkspaceModuleRow {
   platform_cockpit: boolean;
   platform_reports: boolean;
   platform_ai: boolean;
+  platform_contractor_readiness: boolean;
+  platform_apas_crm_integration: boolean;
   platform_credential_wallet: boolean;
   platform_training_hub: boolean;
   platform_safety_module: boolean;
@@ -61,7 +65,7 @@ async function fetchWorkspaceModules(): Promise<WorkspaceModuleRow | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return data as WorkspaceModuleRow | null;
+  return data as unknown as WorkspaceModuleRow | null;
 }
 
 async function upsertWorkspaceModules(
@@ -70,7 +74,7 @@ async function upsertWorkspaceModules(
 ): Promise<void> {
   const { error } = await supabase
     .from('workspace_modules')
-    .upsert({ workspace_id: workspaceId, ...patch }, { onConflict: 'workspace_id' });
+    .upsert({ workspace_id: workspaceId, ...patch } as never, { onConflict: 'workspace_id' });
 
   if (error) throw error;
 }
@@ -117,13 +121,13 @@ export function useApplyPackage() {
   return useMutation({
     mutationFn: async ({ workspaceId, packageKey }: { workspaceId: string; packageKey: string }) => {
       const patch = buildPackageModulePatch(packageKey);
-      await upsertWorkspaceModules(workspaceId, patch as any);
+      await upsertWorkspaceModules(workspaceId, patch as Partial<Omit<WorkspaceModuleRow, 'id' | 'workspace_id'>>);
 
       // nspire / daily-grounds / projects are read from the PROPERTIES table, not
       // workspace_modules — set them there too so the package name is truthful.
       const propFlags = buildPackagePropertyFlags(packageKey);
       const { error: propErr } = await supabase.from('properties')
-        .update(propFlags as any)
+        .update(propFlags)
         .neq('id', '00000000-0000-0000-0000-000000000000');
       if (propErr) throw propErr;
     },
