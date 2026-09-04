@@ -2398,6 +2398,57 @@ export type Database = {
           },
         ]
       }
+      crm_card_scan_entitlements: {
+        Row: {
+          cohort: string
+          created_at: string
+          created_by: string | null
+          id: string
+          project_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cohort: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cohort?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_card_scan_entitlements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_card_scan_entitlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_contacts: {
         Row: {
           address_line1: string | null
@@ -14723,6 +14774,19 @@ export type Database = {
       }
     }
     Functions: {
+      has_crm_card_scan_entitlement: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
+      set_crm_card_scan_entitlement: {
+        Args: {
+          p_cohort: string
+          p_enabled: boolean
+          p_project_id: string
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["crm_card_scan_entitlements"]["Row"]
+      }
       assignable_workspace_roles: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"][]

@@ -19,9 +19,21 @@ function mcpRequest(method: string, params: unknown = {}) {
   });
 }
 
-const env = { PROJ_OS_MCP_SHARED_SECRET: "test-secret" };
+const env = {
+  PROJ_OS_LEGACY_MCP_ENABLED: "true",
+  PROJ_OS_MCP_SHARED_SECRET: "test-secret",
+};
 
 test.describe("AI1 Proj OS agent API and MCP", () => {
+  test("legacy MCP is disabled unless explicitly enabled", async () => {
+    const response = await onRequest({
+      request: mcpRequest("tools/list"),
+      env: { PROJ_OS_MCP_SHARED_SECRET: "test-secret" },
+    });
+    expect(response.status).toBe(503);
+    expect(await response.text()).toContain("Proj OS Agent Gateway");
+  });
+
   test("MCP initializes as Proj OS", async () => {
     const response = await onRequest({
       request: mcpRequest("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } }),

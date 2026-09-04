@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import {
   X,
   Filter,
   Sparkles,
+  Camera,
 } from "lucide-react";
 import {
   useCRMContacts,
@@ -46,11 +48,14 @@ import { useContactAssignmentsMap } from "@/hooks/useContactAssignments";
 import { ContactAssignmentBadges } from "@/components/crm/ContactAssignmentsEditor";
 import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 import { cn } from "@/lib/utils";
+import { BusinessCardScanDialog } from "@/components/crm/BusinessCardScanDialog";
+import { CRM_CARD_SCAN_ENABLED } from "@/lib/crm/cardIntake";
 
 type ViewMode = "grid" | "list";
 type OwnershipTab = "all" | "personal" | "property";
 
 export default function ContactsPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "all">("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -63,6 +68,7 @@ export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<CRMContact | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [cardScanOpen, setCardScanOpen] = useState(false);
 
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
@@ -197,6 +203,12 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          {CRM_CARD_SCAN_ENABLED && (
+            <Button variant="outline" onClick={() => setCardScanOpen(true)} disabled={projects.length === 0}>
+              <Camera className="h-4 w-4 mr-2" />
+              Scan business card
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Sparkles className="h-4 w-4 mr-2" />
             Import from activity
@@ -542,6 +554,16 @@ export default function ContactsPage() {
       />
 
       <ImportContactsDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
+      {CRM_CARD_SCAN_ENABLED && (
+        <BusinessCardScanDialog
+          projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+          initialProjectId={projectFilter !== "all" ? projectFilter : undefined}
+          open={cardScanOpen}
+          onOpenChange={setCardScanOpen}
+          onCompleted={() => void queryClient.invalidateQueries({ queryKey: ["crm-contacts"] })}
+        />
+      )}
     </div>
   );
 }

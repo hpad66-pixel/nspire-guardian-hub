@@ -2,6 +2,7 @@
  * Stateless Streamable HTTP MCP endpoint for Proj OS.
  *
  * Runtime secrets (Cloudflare Pages environment):
+ *   PROJ_OS_LEGACY_MCP_ENABLED (must be the literal "true" during migration)
  *   PROJ_OS_MCP_SHARED_SECRET
  *   PROJ_OS_CLIENT_ID
  *   PROJ_OS_CLIENT_SECRET
@@ -16,6 +17,12 @@ export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === "GET") return new Response("SSE not supported", { status: 405 });
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  // This shared-secret endpoint predates the scoped Agent Gateway. Keep it
+  // available only behind an explicit temporary flag while callers migrate.
+  if (env.PROJ_OS_LEGACY_MCP_ENABLED !== "true") {
+    return rpcHttpError(null, -32000, "Legacy MCP is disabled; use the Proj OS Agent Gateway", 503);
+  }
 
   const originError = validateOrigin(request, env);
   if (originError) return rpcHttpError(null, -32001, originError, 403);
@@ -60,7 +67,7 @@ async function dispatch(message, request, env) {
     const args = message.params?.arguments || {};
     const tool = TOOL_HANDLERS[name];
     if (!tool) throw rpcError(-32602, `Unknown tool: ${String(name)}`);
-    const requester = cleanHeader(request.headers.get("x-proj-requester-id")) || "hermes";
+    const requester = "legacy-mcp-service";
     const correlationId = crypto.randomUUID();
     const argumentHash = await sha256Hex(JSON.stringify(args));
     try {
@@ -250,7 +257,6 @@ function rpcHttpError(id, code, message, status) {
   });
 }
 function rpcError(rpcCode, message) { const error = new Error(message); error.rpcCode = rpcCode; return error; }
-function cleanHeader(value) { return String(value || "").replace(/[\r\n]/g, "").slice(0, 200); }
 function requireText(value, field) { const text = String(value || "").trim(); if (!text) throw new Error(`${field} is required`); return text; }
 function requireUuid(value, field) { const text = String(value || ""); if (!UUID_RE.test(text)) throw new Error(`${field} must be a UUID`); return text; }
 function pick(source, fields) { return Object.fromEntries(fields.filter((key) => source[key] !== undefined).map((key) => [key, source[key]])); }

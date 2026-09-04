@@ -148,6 +148,19 @@ verify_jwt = false
 [functions.api-key-mint]
 verify_jwt = false
 
+# Proj OS Agent Gateway. agent-session verifies the Supabase user itself;
+# agent-tools verifies the short-lived ES256 agent session itself.
+[functions.agent-session]
+verify_jwt = false
+
+[functions.agent-tools]
+verify_jwt = false
+
+# APAS CRM card intake verifies the current Supabase user itself, then binds
+# every read/write to server-derived workspace and project scope.
+[functions.crm-card-intake]
+verify_jwt = false
+
 # Webhook dispatcher — invoked by Supabase cron only
 [functions.webhook-dispatch]
 verify_jwt = false

@@ -18,6 +18,7 @@ import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { OwnerAssistantLauncher } from '@/components/assistant/OwnerAssistantLauncher';
+import { AgentLauncher } from '@/components/agent/AgentLauncher';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { Database } from '@/integrations/supabase/types';
+import { AGENT_FOUNDATION_ENABLED } from '@/lib/agent/runtime';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -290,8 +292,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* AI assistants — only when the workspace has the AI module. */}
       {isModuleEnabled('aiEnabled') && (
         <>
-          {/* Floating financial assistant — only when enabled in Settings + on a project route */}
-          <AssistantLauncher />
+          {/* New scoped Agent replaces the legacy financial assistant only when
+              its deployment flag is explicitly enabled. */}
+          {AGENT_FOUNDATION_ENABLED ? <AgentLauncher /> : <AssistantLauncher />}
           {/* Client assistant — always available in the owner portal (owner-safe tools) */}
           <OwnerAssistantLauncher />
         </>

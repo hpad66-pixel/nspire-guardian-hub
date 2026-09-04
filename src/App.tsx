@@ -17,6 +17,9 @@ import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
 // Pages — lazy loaded for code splitting
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
 const RootRedirect = lazy(() => import('./pages/RootRedirect'));
+const AgentFoundationPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/dev/AgentFoundationPreviewPage'))
+  : null;
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const ProductIdeasPage = lazy(() => import('./pages/ProductIdeasPage'));
 const InstallPage = lazy(() => import('./pages/InstallPage'));
@@ -228,7 +231,28 @@ function OfflineQueueManager() {
   return null;
 }
 
-const App = () => (
+const App = () => {
+  if (AgentFoundationPreviewPage && window.location.pathname === "/agent-foundation-preview") {
+    return (
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Suspense fallback={
+              <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            }>
+              <AgentFoundationPreviewPage />
+            </Suspense>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    );
+  }
+
+  return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -257,6 +281,9 @@ const App = () => (
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
                     <Route path="/home-legacy" element={<Navigate to="/" replace />} />
                     <Route path="/auth" element={<AuthPage />} />
+                    {AgentFoundationPreviewPage && (
+                      <Route path="/agent-foundation-preview" element={<AgentFoundationPreviewPage />} />
+                    )}
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
@@ -510,6 +537,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;
