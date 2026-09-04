@@ -51,6 +51,46 @@ export type CanonicalContact = {
   status: string;
 };
 
+export type ContactImportItem = {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  jobTitle?: string;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  website?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  contactType?: string;
+  tags?: string[];
+  notes?: string;
+  isActive?: boolean;
+};
+
+export type ContactImportResult = {
+  contractVersion: typeof CRM_CONTRACT_VERSION;
+  importId: string;
+  sourceCount: number;
+  createdCount: number;
+  matchedCount: number;
+  updatedCount: number;
+  failedCount: number;
+  idempotentReplay: boolean;
+  results: Array<{
+    sourceContactId: string;
+    canonicalContactId: string;
+    action: string;
+    matchRule: string;
+    possibleNameMatchCount: number;
+  }>;
+};
+
 export type ApasEvent = {
   contractVersion: typeof CRM_CONTRACT_VERSION;
   eventId: string;
@@ -298,12 +338,6 @@ export function validateUploadDescriptors(value: unknown): UploadDescriptor[] {
       throw new ApasCrmError("invalid_upload", "Card files must be JPEG, PNG, WebP, or PDF and no larger than 12 MB", false, 400);
     }
     seen.add(side);
-    let uploadUrl: URL;
-    try { uploadUrl = new URL(requiredString(raw.uploadUrl, "uploadUrl", 2_000)); }
-    catch { throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an invalid upload URL", false); }
-    if (uploadUrl.protocol !== "https:") {
-      throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an insecure upload URL", false);
-    }
     return {
       side,
       contentType,
@@ -332,6 +366,12 @@ export async function requestUploadGrants(
     const side = raw.side === "front" || raw.side === "back" ? raw.side : null;
     if (!side || raw.method !== "PUT" || !isRecord(raw.headers)) {
       throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an invalid upload grant", false);
+    }
+    let uploadUrl: URL;
+    try { uploadUrl = new URL(requiredString(raw.uploadUrl, "uploadUrl", 2_000)); }
+    catch { throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an invalid upload URL", false); }
+    if (uploadUrl.protocol !== "https:") {
+      throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an insecure upload URL", false);
     }
     const headers: Record<string, string> = {};
     for (const [key, val] of Object.entries(raw.headers)) {
@@ -439,6 +479,55 @@ export async function getCanonicalContact(
     primaryEmail: optionalString(value.primaryEmail, "contact.primaryEmail", 320),
     contactUrl: optionalString(value.contactUrl, "contact.contactUrl", 2_000),
     status: requiredString(value.status, "contact.status", 100),
+  };
+}
+
+function nonNegativeInteger(value: unknown, field: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new ApasCrmError("invalid_contract_response", `APAS CRM returned an invalid ${field}`, false);
+  }
+  return parsed;
+}
+
+export async function importContacts(
+  context: AdapterContext,
+  contacts: ContactImportItem[],
+): Promise<ContactImportResult> {
+  if (!Array.isArray(contacts) || contacts.length > 500) {
+    throw new ApasCrmError("invalid_contacts", "No more than 500 contacts can be synchronized at once", false, 400);
+  }
+  const value = await requestJson("POST", "/v1/integrations/proj-os/contacts/import", context, {
+    contractVersion: CRM_CONTRACT_VERSION,
+    contacts,
+  });
+  if (!Array.isArray(value.results)) {
+    throw new ApasCrmError("invalid_contract_response", "APAS CRM returned invalid contact synchronization results", false);
+  }
+  const results = value.results.map((raw) => {
+    if (!isRecord(raw)) throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an invalid contact synchronization result", false);
+    return {
+      sourceContactId: uuid(raw.sourceContactId, "sourceContactId"),
+      canonicalContactId: uuid(raw.canonicalContactId, "canonicalContactId"),
+      action: requiredString(raw.action, "action", 40),
+      matchRule: requiredString(raw.matchRule, "matchRule", 80),
+      possibleNameMatchCount: nonNegativeInteger(raw.possibleNameMatchCount, "possibleNameMatchCount"),
+    };
+  });
+  const sourceCount = nonNegativeInteger(value.sourceCount, "sourceCount");
+  if (sourceCount !== contacts.length || results.length !== contacts.length) {
+    throw new ApasCrmError("invalid_contract_response", "APAS CRM returned an incomplete contact synchronization result", false);
+  }
+  return {
+    contractVersion: CRM_CONTRACT_VERSION,
+    importId: uuid(value.importId, "importId"),
+    sourceCount,
+    createdCount: nonNegativeInteger(value.createdCount, "createdCount"),
+    matchedCount: nonNegativeInteger(value.matchedCount, "matchedCount"),
+    updatedCount: nonNegativeInteger(value.updatedCount, "updatedCount"),
+    failedCount: nonNegativeInteger(value.failedCount, "failedCount"),
+    idempotentReplay: value.idempotentReplay === true,
+    results,
   };
 }
 
