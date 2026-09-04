@@ -201,6 +201,15 @@ ALTER TABLE public.agent_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_tool_runs ENABLE ROW LEVEL SECURITY;
 
+-- Browser access is read-only and remains constrained by the policies below.
+-- All writes go through the admin RPC or the service-role Edge gateways.
+REVOKE ALL ON TABLE public.agent_entitlements, public.agent_profiles,
+  public.agent_sessions, public.agent_tool_runs FROM anon, authenticated;
+GRANT SELECT ON TABLE public.agent_entitlements, public.agent_profiles,
+  public.agent_sessions, public.agent_tool_runs TO authenticated;
+GRANT ALL ON TABLE public.agent_entitlements, public.agent_profiles,
+  public.agent_sessions, public.agent_tool_runs TO service_role;
+
 CREATE POLICY agent_entitlements_owner_select ON public.agent_entitlements
   FOR SELECT TO authenticated
   USING (
