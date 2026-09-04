@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccountabilityPhotoViewer } from '@/components/accountability/AccountabilityPhotoViewer';
+import { PhotoIntelligenceWorkspace } from '@/components/accountability/PhotoIntelligenceWorkspace';
 import { CreateFieldItemDialog } from '@/components/accountability/CreateFieldItemDialog';
 import { FieldAccountabilityDetail } from '@/components/accountability/FieldAccountabilityDetail';
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
@@ -34,7 +35,7 @@ export default function FieldAccountabilityPage() {
   const params = useParams<{ projectId?: string; id?: string }>();
   const projectId = params.projectId || params.id || null;
   const { data: project } = useProject(projectId);
-  const { data, isLoading, error, analyzePhoto, updatePhotoCaption } = useFieldAccountability(projectId);
+  const { data, isLoading, error, analyzePhoto, updatePhotoCaption, updatePhotoReview, addAnnotation } = useFieldAccountability(projectId);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createPhotoId, setCreatePhotoId] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function FieldAccountabilityPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [ball, setBall] = useState('all');
+  const [activeTab, setActiveTab] = useState('board');
   const [organizing, setOrganizing] = useState<string | null>(null);
   const [organizeProgress, setOrganizeProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -121,17 +123,18 @@ export default function FieldAccountabilityPage() {
           <Metric icon={Repeat2} label="Repeats" value={metrics.repeats} tone="violet" />
         </section>
 
-        <Tabs defaultValue="board" className="space-y-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <TabsList className="h-12 w-full rounded-2xl bg-slate-200/70 p-1 lg:w-auto">
-              <TabsTrigger value="board" className="h-10 flex-1 rounded-xl px-5 lg:flex-none">Accountability board</TabsTrigger>
-              <TabsTrigger value="inbox" className="h-10 flex-1 rounded-xl px-5 lg:flex-none"><Inbox className="mr-2 h-4 w-4" />Walk inbox <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{data?.untriagedPhotos.length ?? 0}</span></TabsTrigger>
+            <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-2xl bg-slate-200/70 p-1 sm:grid-cols-3 lg:flex lg:w-auto">
+              <TabsTrigger value="board" className="h-10 rounded-xl px-4 lg:flex-none">Accountability board</TabsTrigger>
+              <TabsTrigger value="inbox" className="h-10 rounded-xl px-4 lg:flex-none"><Inbox className="mr-2 h-4 w-4" />Walk inbox <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{data?.untriagedPhotos.length ?? 0}</span></TabsTrigger>
+              <TabsTrigger value="intelligence" className="h-10 rounded-xl px-4 lg:flex-none"><Sparkles className="mr-2 h-4 w-4" />Photo intelligence <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">{data?.allPhotos.length ?? 0}</span></TabsTrigger>
             </TabsList>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            {activeTab !== 'intelligence' && <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative min-w-0 sm:w-72"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search conditions or locations" className="h-11 rounded-xl bg-white pl-9" /></div>
               <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-44"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
               <Select value={ball} onValueChange={setBall}><SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-48"><UserRound className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Everyone</SelectItem>{Object.entries(BALL_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
-            </div>
+            </div>}
           </div>
 
           <TabsContent value="board" className="mt-0">
@@ -158,6 +161,20 @@ export default function FieldAccountabilityPage() {
                   </Card>
                 ))}
               </div></div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="intelligence" className="mt-0">
+            {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Photo intelligence is not available" body="Apply the photo-intelligence database migration, then refresh this page." /> : (
+              <PhotoIntelligenceWorkspace
+                projectName={project?.name || 'Field Accountability'}
+                photos={data?.allPhotos ?? []}
+                items={items}
+                onAnalyze={(photoLinkId) => analyzePhoto.mutateAsync(photoLinkId)}
+                onReview={(input) => updatePhotoReview.mutateAsync(input)}
+                onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })}
+                onAnnotate={(input) => addAnnotation.mutateAsync(input)}
+              />
             )}
           </TabsContent>
         </Tabs>

@@ -55,10 +55,10 @@ Other fees are excluded when itemized because they may be fixed, non-volumetric,
 
 ## “What it should be” references
 
-- EPA WaterSense/ENERGY STAR reports a multifamily median of **43,600 gallons per unit per year**, equivalent to about **119.5 gallons per unit per day**.
-- EPA’s residential end-use supporting statement reports **58.6 gallons per capita per day** as average indoor use and **36.7 GPCD** for high-efficiency new homes.
+- The June 2023 ENERGY STAR/WaterSense technical reference reports a multifamily median property-specific metric of **43,600 gallons per unit per year**, equivalent to about **119.5 gallons per unit per day**.
+- EPA WaterSense currently reports **82 gallons per person per day at home** as broad national residential context. Proj OS does not use that number as a multifamily threshold or compliance limit.
 
-These are management references, not regulatory limits or a substitute for an ENERGY STAR Portfolio Manager Water Score. Mixed-use meters can include irrigation, common-area, construction, or process water and should be interpreted accordingly.
+The dashboard uses the documented per-unit multifamily median as its primary property comparison and shows the complete calculation. It no longer presents the prior 58.6/36.7 GPCD figures as an unexplained “EPA range.” These are management references, not regulatory limits or a substitute for an ENERGY STAR Portfolio Manager Water Score. Mixed-use meters can include irrigation, common-area, construction, or process water and should be interpreted accordingly.
 
 ## Rate-normalized savings
 
@@ -99,6 +99,7 @@ The remaining address-based meter relationships are intentionally left unmapped.
 ## Authoritative references
 
 - [EPA WaterSense at Work — Benchmarking](https://www.epa.gov/system/files/documents/2024-03/ws-commercial-bmp-watersenseatwork_section2.3_benchmarking.pdf)
-- [EPA WaterSense Specification for Homes, Version 2.0 — Supporting Statement](https://nepis.epa.gov/Exe/ZyPURL.cgi?Dockey=P101E5MX.TXT)
+- [ENERGY STAR/WaterSense — U.S. Water Use Intensity by Property Type (June 2023)](https://www.energystar.gov/sites/default/files/tools/National%20WUI%20Technical%20Reference%202023_0719b.pdf)
+- [EPA WaterSense — Statistics and Facts](https://www.epa.gov/watersense/statistics-and-facts)
 - [DOE FEMP Measurement and Verification Options](https://www.energy.gov/cmei/femp/measurement-and-verification-options-federal-energy-and-water-saving-projects)
 - [DOE FEMP M&V Guidelines, Version 5.0](https://www.energy.gov/cmei/femp/articles/mv-guidelines-measurement-and-verification-performance-based-contracts-version-0)

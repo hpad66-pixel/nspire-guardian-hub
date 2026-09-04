@@ -3,15 +3,27 @@ import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { WaterIntelDashboard } from '@/components/water-intel/WaterIntelDashboard';
 import { useWaterIntelAdmin } from '@/hooks/useWaterIntelligence';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
+
+interface WaterAdminProperty {
+  id: string;
+  name: string;
+  water_intel_enabled?: boolean | null;
+}
 
 export default function WaterIntelHomePage() {
-  const { data = [], isLoading } = useWaterIntelAdmin();
+  const { data: rawData = [], isLoading } = useWaterIntelAdmin();
+  const data = rawData as WaterAdminProperty[];
+  const { isPropertyManager, isAdmin } = useUserPermissions();
+  const { isSuperAdmin } = usePlatformSuperAdmin();
+  const dashboardMode = isPropertyManager && !isAdmin && !isSuperAdmin ? 'property_manager' : 'staff';
   const enabled = useMemo(
-    () => [...data].filter((p: any) => p.water_intel_enabled),
+    () => [...data].filter((property) => property.water_intel_enabled),
     [data],
   );
   const defaultId = useMemo(() => {
-    const glorieta = enabled.find((p: any) => String(p.name || '').toLowerCase().includes('glorieta'));
+    const glorieta = enabled.find((property) => String(property.name || '').toLowerCase().includes('glorieta'));
     return (glorieta ?? enabled[0])?.id as string | undefined;
   }, [enabled]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -24,12 +36,14 @@ export default function WaterIntelHomePage() {
           <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#C4A35A]">Standalone module</div>
           <h1 className="font-display text-4xl text-[#08271f]">Water Intelligence</h1>
           <p className="mt-2 max-w-2xl text-sm text-[#5c6863]">
-            Executive water/sewer ledger for the whole property — trends, every ingested bill, and a live QA check.
+            {dashboardMode === 'property_manager'
+              ? 'Upload each utility cycle and confirm that every service account is represented.'
+              : 'Executive water/sewer ledger for the whole property — trends, every ingested bill, and a live QA check.'}
           </p>
         </div>
-        <Link to="/admin/water-intelligence" className="text-sm font-semibold text-[#1D6FE8] underline">
+        {dashboardMode === 'staff' && <Link to="/admin/water-intelligence" className="text-sm font-semibold text-[#1D6FE8] underline">
           Admin / magic links
-        </Link>
+        </Link>}
       </div>
 
       {isLoading ? (
@@ -43,23 +57,23 @@ export default function WaterIntelHomePage() {
         <>
           {enabled.length > 1 && (
             <div className="flex flex-wrap gap-2">
-              {enabled.map((p: any) => (
+              {enabled.map((property) => (
                 <button
-                  key={p.id}
+                  key={property.id}
                   type="button"
-                  onClick={() => setSelectedId(p.id)}
+                  onClick={() => setSelectedId(property.id)}
                   className={`rounded-full border px-4 py-2 text-sm font-semibold ${
-                    propertyId === p.id
+                    propertyId === property.id
                       ? 'border-[#08271f] bg-[#08271f] text-white'
                       : 'border-[#dedbd1] bg-white text-[#08271f]'
                   }`}
                 >
-                  {p.name}
+                  {property.name}
                 </button>
               ))}
             </div>
           )}
-          {propertyId && <WaterIntelDashboard scope={{ propertyId }} mode="staff" />}
+          {propertyId && <WaterIntelDashboard scope={{ propertyId }} mode={dashboardMode} />}
         </>
       )}
     </div>

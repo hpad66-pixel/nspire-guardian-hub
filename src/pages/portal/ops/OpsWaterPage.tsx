@@ -13,7 +13,7 @@ export default function OpsWaterPage() {
   return (
     <div className="space-y-4" data-testid="ops-water-page">
       <Link to={opsPortalPath(propertyId)} className="text-sm text-muted-foreground hover:underline">← Home</Link>
-      <WaterIntelDashboard scope={{ propertyId }} mode="ops" />
+      <WaterIntelDashboard scope={{ propertyId }} mode="property_manager" />
     </div>
   );
 }

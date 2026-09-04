@@ -195,8 +195,6 @@ export interface WaterEfficiencyAnalytics {
   costPerThousandGallons: number | null;
   epaMedianGallonsPerUnitYear: number;
   epaMedianGallonsPerUnitDay: number;
-  epaAverageIndoorGpcd: number;
-  waterSenseEfficientGpcd: number;
   benchmarkGallons: number | null;
   benchmarkCost: number | null;
   benchmarkGapGallons: number | null;

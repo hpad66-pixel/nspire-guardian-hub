@@ -37,6 +37,18 @@ export interface FieldPhoto {
   evidence_type: FieldEvidenceType;
   sort_order: number;
   ai_suggestion: Record<string, unknown>;
+  ai_status?: 'not_analyzed' | 'queued' | 'analyzing' | 'drafted' | 'failed';
+  ai_error?: string | null;
+  analyzed_at?: string | null;
+  analysis_model?: string | null;
+  review_status?: 'unreviewed' | 'ai_drafted' | 'needs_clarification' | 'confirmed';
+  reviewed_category?: string | null;
+  reviewed_severity?: FieldSeverity | null;
+  reviewed_narrative?: string | null;
+  recommended_action?: string | null;
+  reviewed_location?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
   photo: {
     id: string;
@@ -47,6 +59,7 @@ export interface FieldPhoto {
     lat: number | null;
     lng: number | null;
     caption: string | null;
+    exif?: Record<string, unknown> | null;
     created_at: string;
   };
 }
@@ -128,6 +141,7 @@ export interface FieldItem {
 export interface FieldAccountabilityData {
   items: FieldItem[];
   visits: FieldVisit[];
+  allPhotos: FieldPhoto[];
   untriagedPhotos: FieldPhoto[];
 }
 
@@ -159,7 +173,7 @@ export function useFieldAccountability(projectId: string | null) {
       const [itemsResult, visitsResult, photosResult, annotationsResult, commentsResult, eventsResult] = await Promise.all([
         db.from('field_accountability_items').select('*').eq('project_id', projectId).is('archived_at', null),
         db.from('field_visits').select('*').eq('project_id', projectId).order('visited_at', { ascending: false }),
-        db.from('field_accountability_photos').select('*, photo:photos(id,uploader_id,storage_path,thumb_path,taken_at,lat,lng,caption,created_at)').eq('project_id', projectId),
+        db.from('field_accountability_photos').select('*, photo:photos(id,uploader_id,storage_path,thumb_path,taken_at,lat,lng,caption,exif,created_at)').eq('project_id', projectId).order('sort_order'),
         db.from('field_photo_annotations').select('*').eq('project_id', projectId),
         db.from('field_accountability_comments').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
         db.from('field_accountability_events').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
@@ -188,6 +202,10 @@ export function useFieldAccountability(projectId: string | null) {
       return {
         items,
         visits: (visitsResult.data ?? []) as FieldVisit[],
+        allPhotos: photoLinks.slice().sort((a, b) =>
+          new Date(a.photo.taken_at || a.photo.created_at).getTime()
+          - new Date(b.photo.taken_at || b.photo.created_at).getTime(),
+        ),
         untriagedPhotos: photoLinks.filter((photo) => !photo.item_id),
       };
     },
@@ -431,6 +449,31 @@ export function useFieldAccountability(projectId: string | null) {
     onSuccess: invalidate,
   });
 
+  const updatePhotoReview = useMutation({
+    mutationFn: async (input: {
+      photoLinkId: string;
+      reviewStatus: 'unreviewed' | 'ai_drafted' | 'needs_clarification' | 'confirmed';
+      category: string;
+      severity: FieldSeverity;
+      narrative: string;
+      action: string;
+      location: string;
+    }) => {
+      const { data, error } = await (supabase as any).rpc('update_field_photo_review', {
+        p_photo_link_id: input.photoLinkId,
+        p_review_status: input.reviewStatus,
+        p_category: input.category || null,
+        p_severity: input.severity || null,
+        p_narrative: input.narrative || null,
+        p_action: input.action || null,
+        p_location: input.location || null,
+      });
+      if (error) throw error;
+      return data as FieldPhoto;
+    },
+    onSuccess: invalidate,
+  });
+
   return {
     ...list,
     createVisit,
@@ -442,5 +485,6 @@ export function useFieldAccountability(projectId: string | null) {
     addComment,
     addAnnotation,
     analyzePhoto,
+    updatePhotoReview,
   };
 }

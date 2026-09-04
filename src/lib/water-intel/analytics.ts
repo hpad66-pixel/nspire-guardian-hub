@@ -12,8 +12,6 @@ import type {
 } from './types';
 
 export const EPA_MULTIFAMILY_MEDIAN_GALLONS_PER_UNIT_YEAR = 43_600;
-export const EPA_AVERAGE_INDOOR_GPCD = 58.6;
-export const WATERSENSE_EFFICIENT_HOME_GPCD = 36.7;
 export const MODELED_RESIDENTS_PER_OCCUPIED_UNIT = 2;
 
 export const n = (v: unknown) => {
@@ -334,8 +332,6 @@ export function computeEfficiencyAnalytics(
       costPerThousandGallons: null,
       epaMedianGallonsPerUnitYear: EPA_MULTIFAMILY_MEDIAN_GALLONS_PER_UNIT_YEAR,
       epaMedianGallonsPerUnitDay: epaUnitDay,
-      epaAverageIndoorGpcd: EPA_AVERAGE_INDOOR_GPCD,
-      waterSenseEfficientGpcd: WATERSENSE_EFFICIENT_HOME_GPCD,
       benchmarkGallons: null,
       benchmarkCost: null,
       benchmarkGapGallons: null,
@@ -539,8 +535,6 @@ export function computeEfficiencyAnalytics(
     costPerThousandGallons,
     epaMedianGallonsPerUnitYear: EPA_MULTIFAMILY_MEDIAN_GALLONS_PER_UNIT_YEAR,
     epaMedianGallonsPerUnitDay: epaUnitDay,
-    epaAverageIndoorGpcd: EPA_AVERAGE_INDOOR_GPCD,
-    waterSenseEfficientGpcd: WATERSENSE_EFFICIENT_HOME_GPCD,
     benchmarkGallons,
     benchmarkCost,
     benchmarkGapGallons,
