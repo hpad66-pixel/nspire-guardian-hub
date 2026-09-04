@@ -48,7 +48,9 @@ serve(async (request) => {
     });
   } catch (error) {
     const code = error instanceof AgentContractError ? error.code : "INVALID_SESSION";
-    return errorResponse(code, code === "SESSION_EXPIRED" ? "The agent session has expired." : "The agent session is invalid.", 403);
+    const message = safeSessionVerificationMessage(error, code);
+    console.error("[agent-tools] session verification", message);
+    return errorResponse(code, message, 403);
   }
 
   let toolRequest: ToolRequest;
@@ -217,6 +219,31 @@ function publicKeyRing(): Array<JsonWebKey & { kid?: string }> {
 }
 
 function bearerToken(value: string | null) { return value?.startsWith("Bearer ") ? value.slice(7) : ""; }
+function safeSessionVerificationMessage(error: unknown, code: string) {
+  if (code === "SESSION_EXPIRED") return "The agent session has expired.";
+  const allowedMessages = new Set([
+    "Agent session is too large.",
+    "Agent session format is invalid.",
+    "Agent session header is invalid.",
+    "Agent session key ID is not accepted.",
+    "Agent session signature is invalid.",
+    "Unsupported session contract.",
+    "Session issuer or audience is invalid.",
+    "Session lifetime is invalid.",
+    "Session issue time is invalid.",
+    "Session subject does not match its user.",
+    "workspaceId must be a UUID.",
+    "userId must be a UUID.",
+    "projectId must be a UUID.",
+    "agentProfileId must be a UUID.",
+    "sessionId must be a UUID.",
+    "jti must be a UUID.",
+    "scopes is invalid.",
+    "tools is invalid.",
+  ]);
+  const candidate = error instanceof Error ? error.message : "";
+  return allowedMessages.has(candidate) ? candidate : "The agent session is invalid.";
+}
 function hasCallerIdentityHeaders(headers: Headers) {
   return ["x-workspace-id", "x-tenant-id", "x-user-id", "x-project-id", "x-agent-profile-id", "x-profile-id"]
     .some((name) => headers.has(name));
