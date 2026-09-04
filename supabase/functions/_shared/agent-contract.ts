@@ -4,7 +4,11 @@ export const AGENT_RUNTIME_AUDIENCE = "proj-os-agent-runtime" as const;
 export const AGENT_SESSION_MAX_SECONDS = 600;
 export const PROJECT_TASKS_TOOL = "project.tasks.list" as const;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// PostgreSQL's uuid type accepts the full canonical 8-4-4-4-12 form. Legacy
+// Proj OS tenants include the seeded UUID 00000000-0000-0000-0000-000000000001,
+// which is valid database identity even though it has no RFC version/variant
+// bits. Keep the gateway aligned with the authoritative database type.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA256 = /^[a-f0-9]{64}$/;
 const TASK_STATUSES = new Set(["todo", "in_progress", "in_review", "done", "cancelled"]);
 

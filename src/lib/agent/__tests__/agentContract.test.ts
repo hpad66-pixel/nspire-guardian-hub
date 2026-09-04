@@ -112,4 +112,35 @@ describe("Proj OS Agent Gateway contract", () => {
       exp: now + 601,
     }, { issuer: claims.iss, audience: claims.aud, nowSeconds: now }), "INVALID_SESSION");
   });
+
+  it("accepts canonical PostgreSQL UUIDs used by legacy seeded workspaces", () => {
+    const now = 1_800_000_000;
+    const claims = {
+      contractVersion: AGENT_CONTRACT_VERSION,
+      iss: "https://projos.ai",
+      aud: AGENT_RUNTIME_AUDIENCE,
+      sub: UUIDS.user,
+      workspaceId: "00000000-0000-0000-0000-000000000001",
+      userId: UUIDS.user,
+      projectId: UUIDS.project,
+      agentProfileId: UUIDS.profile,
+      sessionId: UUIDS.session,
+      scopes: ["project:read"],
+      tools: [PROJECT_TASKS_TOOL],
+      iat: now,
+      exp: now + 600,
+      jti: UUIDS.jti,
+    };
+
+    expect(validateAgentSessionClaims(claims, {
+      issuer: claims.iss,
+      audience: claims.aud,
+      nowSeconds: now,
+    }).workspaceId).toBe(claims.workspaceId);
+
+    expectContractError(() => validateAgentSessionClaims({
+      ...claims,
+      workspaceId: "not-a-postgres-uuid",
+    }, { issuer: claims.iss, audience: claims.aud, nowSeconds: now }), "VALIDATION_FAILED");
+  });
 });
