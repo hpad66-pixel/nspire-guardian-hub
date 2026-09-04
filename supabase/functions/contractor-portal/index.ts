@@ -47,7 +47,7 @@ serve(async (req) => {
       .eq("id", access.case_id).eq("tenant_id", access.tenant_id).maybeSingle();
     if (!qualification) return json({ error: "Qualification request was not found" }, 404);
 
-    if (access.role === "broker" && !["view", "upload_intent", "complete_upload", "comment"].includes(action)) {
+    if (access.role === "broker" && !["view", "upload_intent", "complete_upload", "save_response", "acknowledge", "comment"].includes(action)) {
       return json({ error: "Broker links may upload insurance evidence and answer checklist questions only." }, 403);
     }
     if (qualification.status === "under_review" && !["view", "comment"].includes(action)) {
@@ -66,7 +66,7 @@ serve(async (req) => {
         qualification.project_id ? db.from("projects").select("id,name").eq("id", qualification.project_id).maybeSingle() : Promise.resolve({ data: null }),
         qualification.client_id ? db.from("clients").select("id,name").eq("id", qualification.client_id).maybeSingle() : Promise.resolve({ data: null }),
         db.from("contractor_case_requirements")
-          .select("id,requirement_code,title,description,category,gate_type,required,legally_required,verification_required,expiration_required,instructions,sort_order,status,current_document_id,due_date,waiver_reason")
+          .select("id,requirement_code,title,description,category,gate_type,required,legally_required,verification_required,expiration_required,response_type,response_text,response_submitted_at,response_submitted_by_name,response_submitted_by_email,instructions,sort_order,status,current_document_id,due_date,waiver_reason")
           .eq("case_id", qualification.id).order("sort_order"),
         db.from("contractor_requirement_comments")
           .select("id,requirement_id,author_type,author_name,body,created_at")
@@ -163,9 +163,12 @@ serve(async (req) => {
       if (!allowedTypes.has(mimeType)) return json({ error: "Use a PDF, Word document, JPG, PNG, or WebP file." }, 400);
       if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > 15 * 1024 * 1024) return json({ error: "File must be 15 MB or smaller." }, 400);
       const { data: requirement } = await db.from("contractor_case_requirements")
-        .select("id,requirement_code,title,current_document_id")
+        .select("id,requirement_code,title,current_document_id,response_type")
         .eq("id", requirementId).eq("case_id", qualification.id).maybeSingle();
       if (!requirement) return json({ error: "Checklist item not found" }, 404);
+      if (!["document", "either"].includes(requirement.response_type ?? "document")) {
+        return json({ error: "This checklist item asks for a written response rather than a document upload." }, 409);
+      }
       const path = `${qualification.tenant_id}/${qualification.organization_id}/${qualification.id}/${requirement.requirement_code}/${crypto.randomUUID()}-${fileName}`;
       const { data: signed, error } = await db.storage.from("contractor-readiness").createSignedUploadUrl(path, { upsert: false });
       if (error || !signed) throw error || new Error("Could not prepare upload");
@@ -178,9 +181,12 @@ serve(async (req) => {
       const expectedPrefix = `${qualification.tenant_id}/${qualification.organization_id}/${qualification.id}/`;
       if (!storagePath.startsWith(expectedPrefix)) return json({ error: "Invalid upload path" }, 400);
       const { data: requirement } = await db.from("contractor_case_requirements")
-        .select("id,requirement_code,title,current_document_id,expiration_required")
+        .select("id,requirement_code,title,current_document_id,expiration_required,response_type,verification_required")
         .eq("id", requirementId).eq("case_id", qualification.id).maybeSingle();
       if (!requirement) return json({ error: "Checklist item not found" }, 404);
+      if (!["document", "either"].includes(requirement.response_type ?? "document")) {
+        return json({ error: "This checklist item does not accept document uploads." }, 409);
+      }
       const expirationDate = body.expirationDate ? String(body.expirationDate) : null;
       if (requirement.expiration_required && !expirationDate) return json({ error: "Expiration date is required for this document." }, 400);
       if (expirationDate && expirationDate < new Date().toISOString().slice(0, 10)) return json({ error: "This document is already expired." }, 400);
@@ -194,6 +200,7 @@ serve(async (req) => {
       if (requirement.current_document_id) {
         await db.from("contractor_documents").update({ verification_status: "superseded" }).eq("id", requirement.current_document_id);
       }
+      const completionStatus = requirement.verification_required ? "submitted" : "verified";
       const { data: document, error } = await db.from("contractor_documents").insert({
         tenant_id: qualification.tenant_id,
         organization_id: qualification.organization_id,
@@ -210,12 +217,15 @@ serve(async (req) => {
         issuing_authority: String(body.issuingAuthority ?? "").trim() || null,
         source: access.role === "broker" ? "broker" : "contractor",
         uploaded_by_email: access.email,
+        verification_status: completionStatus,
+        verification_source: requirement.verification_required ? null : "automatic_portal_rule",
+        verified_at: requirement.verification_required ? null : new Date().toISOString(),
         supersedes_document_id: requirement.current_document_id,
       }).select("id").single();
       if (error || !document) throw error || new Error("Could not record upload");
       await db.from("contractor_case_requirements").update({
         current_document_id: document.id,
-        status: "submitted",
+        status: completionStatus,
       }).eq("id", requirement.id);
       await db.from("contractor_qualification_cases").update({ status: "in_progress" }).eq("id", qualification.id).in("status", ["draft","invited"]);
       await db.from("contractor_activity_log").insert({
@@ -226,6 +236,68 @@ serve(async (req) => {
         details: { requirement_id: requirement.id, document_type: requirement.requirement_code },
       });
       return json({ ok: true, documentId: document.id });
+    }
+
+    if (action === "save_response") {
+      const requirementId = String(body.requirementId ?? "");
+      const responseText = String(body.responseText ?? "").trim();
+      if (!responseText || responseText.length > 5000) {
+        return json({ error: "Enter a response under 5,000 characters." }, 400);
+      }
+      const { data: requirement } = await db.from("contractor_case_requirements")
+        .select("id,response_type,verification_required")
+        .eq("id", requirementId).eq("case_id", qualification.id).maybeSingle();
+      if (!requirement) return json({ error: "Checklist item not found" }, 404);
+      if (!["questionnaire", "either"].includes(requirement.response_type ?? "document")) {
+        return json({ error: "This checklist item requires a document upload." }, 409);
+      }
+      await db.from("contractor_case_requirements").update({
+        response_text: responseText,
+        response_submitted_at: new Date().toISOString(),
+        response_submitted_by_name: String(body.actorName ?? "").trim() || null,
+        response_submitted_by_email: access.email,
+        status: requirement.verification_required ? "submitted" : "verified",
+        updated_at: new Date().toISOString(),
+      }).eq("id", requirement.id);
+      await db.from("contractor_qualification_cases").update({ status: "in_progress" })
+        .eq("id", qualification.id).in("status", ["draft", "invited"]);
+      await db.from("contractor_activity_log").insert({
+        tenant_id: qualification.tenant_id, case_id: qualification.id,
+        organization_id: qualification.organization_id, actor_type: access.role,
+        actor_name: body.actorName || null, action: "written_response_submitted",
+        entity_type: "contractor_requirement", entity_id: requirement.id,
+      });
+      return json({ ok: true });
+    }
+
+    if (action === "acknowledge") {
+      const requirementId = String(body.requirementId ?? "");
+      const { data: requirement } = await db.from("contractor_case_requirements")
+        .select("id,response_type,verification_required")
+        .eq("id", requirementId).eq("case_id", qualification.id).maybeSingle();
+      if (!requirement) return json({ error: "Checklist item not found" }, 404);
+      if (requirement.response_type !== "acknowledgement") {
+        return json({ error: "This checklist item is not an acknowledgement." }, 409);
+      }
+      const actorName = String(body.actorName ?? "").trim() || access.email;
+      const submittedAt = new Date().toISOString();
+      await db.from("contractor_case_requirements").update({
+        response_text: `Acknowledged by ${actorName}`,
+        response_submitted_at: submittedAt,
+        response_submitted_by_name: actorName,
+        response_submitted_by_email: access.email,
+        status: requirement.verification_required ? "submitted" : "verified",
+        updated_at: submittedAt,
+      }).eq("id", requirement.id);
+      await db.from("contractor_qualification_cases").update({ status: "in_progress" })
+        .eq("id", qualification.id).in("status", ["draft", "invited"]);
+      await db.from("contractor_activity_log").insert({
+        tenant_id: qualification.tenant_id, case_id: qualification.id,
+        organization_id: qualification.organization_id, actor_type: access.role,
+        actor_name: actorName, action: "requirement_acknowledged",
+        entity_type: "contractor_requirement", entity_id: requirement.id,
+      });
+      return json({ ok: true });
     }
 
     if (action === "comment") {
