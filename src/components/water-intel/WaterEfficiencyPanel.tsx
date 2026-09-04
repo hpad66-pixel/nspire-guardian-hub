@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import { gallons, money, pct } from '@/lib/water-intel';
 import type { WaterEfficiencyAnalytics } from '@/lib/water-intel';
+import { WaterTerm } from './WaterTerm';
 
 const FOREST = '#08271f';
 const GOLD = '#C4A35A';
@@ -46,6 +47,13 @@ function periodLabel(start: string | null, end: string | null) {
     timeZone: 'UTC',
   });
   return `${format(start)}–${format(end)}`;
+}
+
+function periodDays(start: string | null, end: string | null) {
+  if (!start || !end) return 0;
+  const first = new Date(`${start}T00:00:00Z`).getTime();
+  const last = new Date(`${end}T00:00:00Z`).getTime();
+  return Number.isFinite(first) && Number.isFinite(last) && last >= first ? Math.round((last - first) / 86_400_000) + 1 : 0;
 }
 
 function QualityPill({ label, value }: { label: string; value: number }) {
@@ -101,6 +109,10 @@ export function WaterEfficiencyPanel({ analytics }: { analytics: WaterEfficiency
       / analytics.epaMedianGallonsPerUnitDay) * 100;
   const savingsPositive = (analytics.avoidedCost ?? 0) >= 0;
   const benchmarkPositive = (analytics.benchmarkGapCost ?? 0) <= 0;
+  const measuredDays = periodDays(analytics.reportingStart, analytics.reportingEnd);
+  const benchmarkVariance = analytics.benchmarkGapGallons == null || !analytics.benchmarkGallons
+    ? null
+    : (analytics.benchmarkGapGallons / analytics.benchmarkGallons) * 100;
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[#dedbd1] bg-[#f8f6ef] shadow-sm" data-testid="water-efficiency-panel">
@@ -133,28 +145,28 @@ export function WaterEfficiencyPanel({ analytics }: { analytics: WaterEfficiency
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 md:p-6">
         <MetricCard
           icon={Building2}
-          label="Actual unit intensity"
+          label={<WaterTerm term="gpud">Actual unit intensity</WaterTerm>}
           value={metric(analytics.gallonsPerUnitDay, 'gal/unit/day')}
-          detail={`${metric(analytics.epaMedianGallonsPerUnitDay, 'EPA median')} · ${pct(unitVariance)}`}
+          detail={`${metric(analytics.epaMedianGallonsPerUnitDay, 'national median')} · ${pct(unitVariance)}`}
           tone={unitVariance != null && unitVariance > 10 ? 'rose' : 'green'}
         />
         <MetricCard
           icon={Users}
-          label="Modeled per capita"
+          label={<WaterTerm term="gpcd">Modeled per capita</WaterTerm>}
           value={metric(analytics.gallonsPerCapitaDay, 'GPCD')}
-          detail={`${analytics.epaAverageIndoorGpcd} average · ${analytics.waterSenseEfficientGpcd} efficient reference`}
-          tone={analytics.gallonsPerCapitaDay != null && analytics.gallonsPerCapitaDay > analytics.epaAverageIndoorGpcd ? 'rose' : 'blue'}
+          detail={`${analytics.modeledResidents?.toLocaleString() ?? 'No'} modeled residents · verify population for a factual result`}
+          tone="blue"
         />
         <MetricCard
           icon={BadgeDollarSign}
-          label="Rate-normalized avoided cost"
+          label={<WaterTerm term="avoided">Rate-normalized avoided cost</WaterTerm>}
           value={signedMoney(analytics.avoidedCost)}
           detail={`${signedGallons(analytics.avoidedGallons)} vs matched prior year`}
           tone={savingsPositive ? 'green' : 'rose'}
         />
         <MetricCard
           icon={CircleGauge}
-          label="Annualized cost intensity"
+          label={<WaterTerm term="intensity">Annualized cost intensity</WaterTerm>}
           value={analytics.annualizedCostPerUnit == null ? '—' : `${money(analytics.annualizedCostPerUnit)}/unit`}
           detail={`${analytics.costPerThousandGallons == null ? '—' : money(analytics.costPerThousandGallons, 2)} per 1,000 gal`}
           tone="gold"
@@ -190,14 +202,15 @@ export function WaterEfficiencyPanel({ analytics }: { analytics: WaterEfficiency
         <div className="space-y-4">
           <div className="rounded-3xl border border-[#dedbd1] bg-white p-5">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
-              <Droplets className="h-4 w-4 text-[#1D6FE8]" /> EPA multifamily reference
+              <Droplets className="h-4 w-4 text-[#1D6FE8]" /> National multifamily median reference
             </div>
             <div className="mt-3 font-display text-3xl text-[#08271f]">
               {analytics.epaMedianGallonsPerUnitYear.toLocaleString()} gal/unit/year
             </div>
             <p className="mt-2 text-sm leading-relaxed text-[#5c6863]">
-              The property is currently {analytics.benchmarkGapGallons == null ? 'not comparable' : benchmarkPositive ? `${gallons(Math.abs(analytics.benchmarkGapGallons))} below` : `${gallons(Math.abs(analytics.benchmarkGapGallons))} above`} that median-volume reference for the measured period.
+              The property is currently {analytics.benchmarkGapGallons == null ? 'not comparable' : benchmarkPositive ? `${gallons(Math.abs(analytics.benchmarkGapGallons))} (${Math.abs(benchmarkVariance ?? 0).toFixed(1)}%) below` : `${gallons(Math.abs(analytics.benchmarkGapGallons))} (${Math.abs(benchmarkVariance ?? 0).toFixed(1)}%) above`} that median-volume reference for the measured period.
             </p>
+            {analytics.benchmarkGallons != null && <div className="mt-4 space-y-2 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 text-xs text-sky-950"><p className="font-bold uppercase tracking-wide">Visible calculation</p><p><strong>Measured:</strong> {gallons(analytics.actualGallons)} from non-estimated statements.</p><p><strong>Reference:</strong> 43,600 × {analytics.totalUnits.toLocaleString()} connected units × {measuredDays.toLocaleString()} days ÷ 365 = {gallons(analytics.benchmarkGallons)}.</p><p><strong>Difference:</strong> measured minus reference = {signedGallons(analytics.benchmarkGapGallons)}.</p></div>}
             <div className={`mt-4 rounded-2xl px-4 py-3 ${benchmarkPositive ? 'bg-emerald-50 text-emerald-900' : 'bg-rose-50 text-rose-900'}`}>
               <div className="text-[10px] font-bold uppercase tracking-wide">Rate-equivalent gap</div>
               <div className="mt-1 font-mono text-xl font-semibold">{signedMoney(analytics.benchmarkGapCost)}</div>
@@ -222,7 +235,7 @@ export function WaterEfficiencyPanel({ analytics }: { analytics: WaterEfficiency
       </div>
 
       <div className="border-t border-[#dedbd1] bg-white px-5 py-4 text-xs leading-relaxed text-[#6d746f] md:px-7">
-        Method: EPA WaterSense/ENERGY STAR multifamily median of 43,600 gallons per unit per year; residential indoor references of 58.6 average and 36.7 efficient gallons per capita per day. Savings follow whole-meter M&amp;V logic: matched prior-year use, service-day adjustment, and reporting-period water/sewer rates. Benchmarks are management references, not compliance findings.
+        <p><strong>Source and method:</strong> The 43,600 gal/unit/year value is the multifamily median property-specific metric in the June 2023 ENERGY STAR/WaterSense <a className="font-semibold text-[#1D6FE8] underline" href="https://www.energystar.gov/sites/default/files/tools/National%20WUI%20Technical%20Reference%202023_0719b.pdf" target="_blank" rel="noreferrer">U.S. Water Use Intensity by Property Type technical reference</a>. Savings use matched prior-year meter use, service-day adjustment, and reporting-period water/sewer rates. This is a management comparison—not a compliance finding, efficiency certification, or diagnosis.</p>
       </div>
     </section>
   );
@@ -236,7 +249,7 @@ function MetricCard({
   tone,
 }: {
   icon: typeof Droplets;
-  label: string;
+  label: React.ReactNode;
   value: string;
   detail: string;
   tone: 'green' | 'rose' | 'blue' | 'gold';

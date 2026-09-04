@@ -18,7 +18,9 @@ const FOREST = '#08271f';
 const SAPPHIRE = '#1D6FE8';
 const ROSE = '#F43F5E';
 
-function Tip({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) {
+interface ChartTipEntry { dataKey?: string; name?: string; value?: number }
+
+function Tip({ active, payload, label }: { active?: boolean; payload?: ChartTipEntry[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-[#dedbd1] bg-white px-3 py-2 text-xs shadow-lg">
@@ -38,9 +40,11 @@ function Tip({ active, payload, label }: { active?: boolean; payload?: any[]; la
 export function WaterIntelCharts({
   bills,
   rollups,
+  simple = false,
 }: {
   bills: WaterBill[];
   rollups: AccountRollup[];
+  simple?: boolean;
 }) {
   const monthly = buildMonthlySeries(bills);
   const years = yearOverYear(bills);
@@ -63,7 +67,7 @@ export function WaterIntelCharts({
 
   return (
     <div className="grid gap-4 xl:grid-cols-3" data-testid="water-intel-charts">
-      <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm xl:col-span-2">
+      <section className={`rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm ${simple ? 'xl:col-span-3' : 'xl:col-span-2'}`}>
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Trend</div>
@@ -99,7 +103,7 @@ export function WaterIntelCharts({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm">
+      {!simple && <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm">
         <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Year over year</div>
         <h3 className="mb-4 font-display text-2xl text-[#08271f]">Annual cost</h3>
         <div className="h-[280px]">
@@ -117,9 +121,9 @@ export function WaterIntelCharts({
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </section>}
 
-      <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm xl:col-span-3">
+      {!simple && <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm xl:col-span-3">
         <div className="mb-4 flex items-end justify-between">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">By service account</div>
@@ -133,7 +137,7 @@ export function WaterIntelCharts({
               <XAxis type="number" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(v) => money(v)} />
               <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: '#08271f' }} axisLine={false} tickLine={false} />
               <Tooltip content={<Tip />} />
-              <Bar dataKey="spend" name="T12 spend" radius={[0, 8, 8, 0]}>
+              <Bar dataKey="spend" name="Selected-period spend" radius={[0, 8, 8, 0]}>
                 {byAccount.map((row, i) => (
                   <Cell key={row.name} fill={i === 0 ? ROSE : i === 1 ? SAPPHIRE : FOREST} />
                 ))}
@@ -141,7 +145,7 @@ export function WaterIntelCharts({
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

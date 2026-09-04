@@ -82,6 +82,12 @@ serve(async (req) => {
     const result = await response.json();
     await logAiUsage({ req, skill: 'field_photo_assist', model, anthropicJson: result, projectId: link.project_id, latencyMs: Date.now() - started });
     const suggestion = parseJson(result.content?.[0]?.text || '{}');
+    suggestion._analysis = {
+      model,
+      analyzed_at: new Date().toISOString(),
+      source: 'single_project_photo',
+      requires_human_review: true,
+    };
 
     const { error: updateError } = await userClient.rpc('save_field_photo_ai_suggestion', {
       p_photo_link_id: photoLinkId,

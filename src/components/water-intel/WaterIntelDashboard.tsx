@@ -11,12 +11,19 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { computeEfficiencyAnalytics, gallons, money, pct } from '@/lib/water-intel';
+import { billSpend, computeEfficiencyAnalytics, gallons, money, n, pct } from '@/lib/water-intel';
 import type { InsightSeverity } from '@/lib/water-intel';
 import {
   useWaterIntelligence,
   type WaterIntelScope,
 } from '@/hooks/useWaterIntelligence';
+import {
+  filterWaterBills,
+  findWaterDataGaps,
+  resolveWaterPeriod,
+  summarizeWaterPeriod,
+  type WaterPeriodPreset,
+} from '@/lib/water-intel/period';
 import { auditWaterIntel } from '@/lib/water-intel/qa';
 import { WaterIntelBillLedger } from './WaterIntelBillLedger';
 import { WaterIntelCharts } from './WaterIntelCharts';
@@ -26,6 +33,9 @@ import { WaterIntelQaBanner } from './WaterIntelQaBanner';
 import { WaterIntelUpload } from './WaterIntelUpload';
 import { WaterEfficiencyPanel } from './WaterEfficiencyPanel';
 import { WaterMeterPerformance } from './WaterMeterPerformance';
+import { WaterDataReadiness } from './WaterDataReadiness';
+import { WaterPeriodFilter } from './WaterPeriodFilter';
+import { WaterGlossary, WaterTerm } from './WaterTerm';
 
 const SEV: Record<InsightSeverity, string> = {
   critical: 'bg-[#F43F5E]/10 text-[#9f1239] border-[#F43F5E]/30',
@@ -39,28 +49,60 @@ export function WaterIntelDashboard({
   mode,
 }: {
   scope: WaterIntelScope;
-  mode: 'staff' | 'magic' | 'ops';
+  mode: 'staff' | 'magic' | 'property_manager';
 }) {
   const intel = useWaterIntelligence(scope);
   const [chatOpen, setChatOpen] = useState(false);
   const [accountFilter, setAccountFilter] = useState<string>('all');
+  const [periodPreset, setPeriodPreset] = useState<WaterPeriodPreset>('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  const periodSelection = useMemo(
+    () => resolveWaterPeriod(intel.bills, periodPreset, customStart, customEnd),
+    [customEnd, customStart, intel.bills, periodPreset],
+  );
+  const periodBills = useMemo(
+    () => filterWaterBills(intel.bills, periodSelection),
+    [intel.bills, periodSelection],
+  );
 
   const filteredBills = useMemo(() => {
-    if (accountFilter === 'all') return intel.bills;
-    return intel.bills.filter((b) => b.account_id === accountFilter);
-  }, [intel.bills, accountFilter]);
+    if (accountFilter === 'all') return periodBills;
+    return periodBills.filter((b) => b.account_id === accountFilter);
+  }, [periodBills, accountFilter]);
+
+  const periodSummary = useMemo(() => summarizeWaterPeriod(filteredBills), [filteredBills]);
+  const dataGaps = useMemo(() => findWaterDataGaps(intel.accounts, intel.bills), [intel.accounts, intel.bills]);
+  const periodRollups = useMemo(() => intel.rollups.map((rollup) => {
+    const accountBills = periodBills.filter((bill) => bill.account_id === rollup.accountId);
+    return {
+      ...rollup,
+      last12Spend: accountBills.reduce((sum, bill) => sum + billSpend(bill), 0),
+      last12Gallons: accountBills.reduce((sum, bill) => sum + n(bill.consumption_gallons), 0),
+    };
+  }), [intel.rollups, periodBills]);
 
   const viewEfficiency = useMemo(() => {
     if (accountFilter === 'all') return intel.efficiency;
     const selected = intel.accounts.filter((account) => account.id === accountFilter);
     const account = selected[0];
-    return computeEfficiencyAnalytics(selected, filteredBills, {
+    return computeEfficiencyAnalytics(selected, intel.bills.filter((bill) => bill.account_id === accountFilter), {
       totalUnits: account?.connected_units ?? 0,
       occupiedUnits: account?.occupied_units ?? 0,
     });
-  }, [accountFilter, filteredBills, intel.accounts, intel.efficiency]);
+  }, [accountFilter, intel.accounts, intel.bills, intel.efficiency]);
 
   const qa = useMemo(() => auditWaterIntel(intel.accounts, intel.bills), [intel.accounts, intel.bills]);
+
+  function changePeriodPreset(next: WaterPeriodPreset) {
+    if (next === 'custom' && (!customStart || !customEnd)) {
+      const all = resolveWaterPeriod(intel.bills, 'all');
+      setCustomStart(all.start ?? '');
+      setCustomEnd(all.end ?? '');
+    }
+    setPeriodPreset(next);
+  }
 
   if (intel.isLoading) {
     return (
@@ -82,8 +124,39 @@ export function WaterIntelDashboard({
   const { kpis, rollups, insights, meta, accounts, notes, bills, efficiency } = intel;
   const propertyName = meta?.property_name ?? 'Property';
   const guest = mode === 'magic';
-  const canUpload = mode === 'staff';
+  const canUpload = mode !== 'magic';
   const deltaUp = (kpis.ytdDeltaPct ?? 0) > 0;
+
+  if (mode === 'property_manager') {
+    return (
+      <div className="space-y-5 pb-16" data-testid="water-property-manager-dashboard">
+        <header className="overflow-hidden rounded-[28px] bg-[#08271f] px-6 py-8 text-white shadow-xl md:px-10">
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#d5aa52]">Water statements · property operations</div>
+          <h1 className="mt-2 font-display text-4xl font-medium md:text-5xl">{propertyName}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c5c0]">Keep the water record current by uploading each monthly statement. Proj OS handles extraction and matching; administrators control analytical settings.</p>
+        </header>
+        <WaterDataReadiness gaps={dataGaps} simple />
+        {meta?.property_id && <WaterIntelUpload propertyId={meta.property_id} accounts={accounts} />}
+        <WaterPeriodFilter
+          preset={periodPreset}
+          selection={periodSelection}
+          summary={periodSummary}
+          onPresetChange={changePeriodPreset}
+          onCustomChange={(start, end) => { setCustomStart(start); setCustomEnd(end); }}
+          compact
+        />
+        <WaterIntelCharts bills={periodBills} rollups={periodRollups} simple />
+        <WaterGlossary compact />
+        <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Recent source records</div>
+          <h2 className="mt-1 font-display text-2xl text-[#08271f]">Latest uploads</h2>
+          <div className="mt-4 divide-y divide-[#ece9e0]">{bills.slice(0, 8).map((bill) => { const account = accounts.find((row) => row.id === bill.account_id); return <div key={bill.id} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-[#08271f]">{account?.building_label || account?.service_address || 'Service account'}</p><p className="text-xs text-[#8a8478]">{bill.bill_period_start} · {bill.document_name || 'Ledger record'}</p></div><span className="font-mono text-[#08271f]">{gallons(bill.consumption_gallons)}</span></div>; })}</div>
+          {!bills.length && <p className="mt-4 text-sm text-[#8a8478]">No statements uploaded yet.</p>}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16" data-testid="water-intel-dashboard">
       <header className="overflow-hidden rounded-[28px] bg-[#08271f] px-6 py-8 text-white shadow-xl md:px-10">
@@ -135,6 +208,8 @@ export function WaterIntelDashboard({
         <WaterIntelUpload propertyId={meta.property_id} accounts={accounts} />
       )}
 
+      {!guest && <WaterDataReadiness gaps={dataGaps} />}
+
       {bills.length === 0 && (
         <div className="rounded-3xl border border-dashed border-[#dedbd1] bg-white p-10 text-center" data-testid="water-intel-empty">
           <h2 className="font-display text-2xl text-[#08271f]">No bills on this property yet</h2>
@@ -178,16 +253,24 @@ export function WaterIntelDashboard({
         </select>
       </div>
 
+      <WaterPeriodFilter
+        preset={periodPreset}
+        selection={periodSelection}
+        summary={periodSummary}
+        onPresetChange={changePeriodPreset}
+        onCustomChange={(start, end) => { setCustomStart(start); setCustomEnd(end); }}
+      />
+
       <WaterEfficiencyPanel analytics={viewEfficiency} />
 
       <WaterMeterPerformance
         propertyId={meta?.property_id ?? null}
         accounts={accounts}
         meters={viewEfficiency.meters}
-        canManage={mode !== 'magic'}
+        canManage={mode === 'staff'}
       />
 
-      <WaterIntelCharts bills={filteredBills} rollups={accountFilter === 'all' ? rollups : rollups.filter((r) => r.accountId === accountFilter)} />
+      <WaterIntelCharts bills={filteredBills} rollups={accountFilter === 'all' ? periodRollups : periodRollups.filter((r) => r.accountId === accountFilter)} />
 
       <WaterIntelBillLedger bills={filteredBills} accounts={accounts} />
 
@@ -199,6 +282,8 @@ export function WaterIntelDashboard({
         propertyName={propertyName}
         guest={guest}
       />
+
+      <WaterGlossary />
 
       <WaterIntelChat
         scope={scope}
@@ -226,7 +311,7 @@ function Kpi({
   return (
     <div className="rounded-2xl bg-white/5 px-4 py-4 ring-1 ring-white/10">
       <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-[#b8c5c0]">
-        {label}
+        {label === 'YTD spend' ? <WaterTerm term="ytd" className="text-[#b8c5c0]">YTD spend</WaterTerm> : label === 'Trailing 12 months' ? <WaterTerm term="t12" className="text-[#b8c5c0]">Trailing 12 months</WaterTerm> : label}
         <Icon className={`h-4 w-4 ${tone === 'rose' ? 'text-[#F43F5E]' : 'text-[#d5aa52]'}`} />
       </div>
       <div className="mt-2 font-mono text-3xl tracking-tight">{value}</div>
