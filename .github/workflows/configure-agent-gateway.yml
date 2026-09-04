@@ -20,7 +20,6 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-      KEY_DIRECTORY: ${{ runner.temp }}/proj-os-agent-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,14 +34,14 @@ jobs:
         run: |
           set -euo pipefail
           key_id="proj-os-agent-prod-$(date -u +%Y%m%d)-${GITHUB_RUN_ID}"
-          npm run agent:keys -- --output-dir "$KEY_DIRECTORY" --key-id "$key_id"
+          npm run agent:keys -- --output-dir "$RUNNER_TEMP/proj-os-agent-key" --key-id "$key_id"
 
       - name: Validate and install the Edge Function secrets
         run: |
           set -euo pipefail
-          private_jwk="$(tr -d '\n' < "$KEY_DIRECTORY/agent-session-private.jwk")"
-          public_jwks="$(tr -d '\n' < "$KEY_DIRECTORY/agent-session-public.jwks")"
-          key_id="$(node -e "const fs=require('fs'); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1])).keyId)" "$KEY_DIRECTORY/agent-session-key.json")"
+          private_jwk="$(tr -d '\n' < "$RUNNER_TEMP/proj-os-agent-key/agent-session-private.jwk")"
+          public_jwks="$(tr -d '\n' < "$RUNNER_TEMP/proj-os-agent-key/agent-session-public.jwks")"
+          key_id="$(node -e "const fs=require('fs'); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1])).keyId)" "$RUNNER_TEMP/proj-os-agent-key/agent-session-key.json")"
           echo "::add-mask::$private_jwk"
 
           AGENT_DEPLOYMENT_ENV=production \
