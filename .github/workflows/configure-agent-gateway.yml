@@ -1,0 +1,75 @@
+name: Configure Agent Gateway Keys
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type ROTATE to create and install a new production signing key"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    name: Rotate production Agent key
+    if: github.event.inputs.confirmation == 'ROTATE'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+      KEY_DIRECTORY: ${{ runner.temp }}/proj-os-agent-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+
+      - name: Generate an ephemeral P-256 signing pair
+        run: |
+          set -euo pipefail
+          key_id="proj-os-agent-prod-$(date -u +%Y%m%d)-${GITHUB_RUN_ID}"
+          npm run agent:keys -- --output-dir "$KEY_DIRECTORY" --key-id "$key_id"
+
+      - name: Validate and install the Edge Function secrets
+        run: |
+          set -euo pipefail
+          private_jwk="$(tr -d '\n' < "$KEY_DIRECTORY/agent-session-private.jwk")"
+          public_jwks="$(tr -d '\n' < "$KEY_DIRECTORY/agent-session-public.jwks")"
+          key_id="$(node -e "const fs=require('fs'); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1])).keyId)" "$KEY_DIRECTORY/agent-session-key.json")"
+          echo "::add-mask::$private_jwk"
+
+          AGENT_DEPLOYMENT_ENV=production \
+          AGENT_SESSION_ISSUER=https://projos.ai \
+          AGENT_SESSION_AUDIENCE=proj-os-agent-runtime \
+          AGENT_SESSION_KEY_ID="$key_id" \
+          AGENT_SESSION_PRIVATE_JWK="$private_jwk" \
+          AGENT_SESSION_PUBLIC_JWKS="$public_jwks" \
+          AGENT_GATEWAY_ALLOWED_ORIGINS=https://projos.ai \
+          PROJ_OS_APP_URL=https://projos.ai \
+          npm run agent:preflight-edge
+
+          supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
+            "AGENT_SESSION_ISSUER=https://projos.ai" \
+            "AGENT_SESSION_AUDIENCE=proj-os-agent-runtime" \
+            "AGENT_SESSION_KEY_ID=$key_id" \
+            "AGENT_SESSION_PRIVATE_JWK=$private_jwk" \
+            "AGENT_SESSION_PUBLIC_JWKS=$public_jwks" \
+            "AGENT_GATEWAY_ALLOWED_ORIGINS=https://projos.ai" \
+            "PROJ_OS_APP_URL=https://projos.ai"
+
+      - name: Publish the non-secret runtime verifier bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-runtime-public-jwks-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/proj-os-agent-key/agent-session-public.jwks
+            ${{ runner.temp }}/proj-os-agent-key/agent-session-key.json
+          if-no-files-found: error
+          retention-days: 1

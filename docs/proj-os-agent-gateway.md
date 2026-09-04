@@ -22,6 +22,51 @@ Authenticated Proj OS user
 
 `api-v1` authenticates hashed OAuth tokens, derives its tenant from the token record, applies allowlisted scopes, verifies project ownership, rate-limits calls, and writes `agent_api_audit_log`. Hermes can report CRM intake status only through a future allowlisted read tool. It must not call APAS CRM, invoke `crm-integration-events`, consume approvals, or mutate either database directly.
 
+## Signed Agent runtime path
+
+The interactive Proj OS Agent uses a narrower session and tool gateway in front
+of a replaceable Hermes runtime:
+
+1. The signed-in browser calls `agent-session` with a project request,
+   correlation ID, and idempotency key. The function derives the employee from
+   the Supabase token and rejects identity headers and unknown body fields.
+2. Proj OS rechecks the active workspace profile, project access,
+   `workflows:view` permission, and an explicit user/project pilot entitlement.
+3. Proj OS issues an ES256 session valid for at most ten minutes. The claims fix
+   the user, workspace, project, profile, scopes, tools, issuer, and runtime
+   audience; the browser cannot replace any of them.
+4. Hermes verifies the public key and sends only bounded tool requests to
+   `agent-tools`. It never receives a database credential or the signing key.
+5. `agent-tools` verifies the signed claims and independently rechecks the live
+   session, employee, entitlement, project access, and permission before each
+   read. Identity-like values are forbidden recursively in tool arguments.
+6. Proj OS returns source links and writes the sanitized, correlated tool audit.
+
+The first production slice exposes only `project.tasks.list`. Business-card
+entry in the panel opens the existing Proj OS `CrmCardIntakeDialog`, which uses
+the approval-bound APAS CRM gateway described below. Hermes does not call APAS
+CRM and no master contact data is copied into this runtime repository.
+
+Workspace administrators enroll or disable one existing project team member
+through `set_agent_pilot_entitlement(user_id, project_id, enabled)`. Disabling
+the row revokes active sessions. The schema grants nobody access by default.
+
+Generate the P-256 key pair outside every repository with
+`npm run agent:keys -- --output-dir <secure-directory> --key-id <key-id>`, test
+the proposed configuration with `npm run agent:preflight-edge`, and keep
+`AGENT_SESSION_PRIVATE_JWK` only in Supabase Edge secrets. Hermes and
+`agent-tools` receive the bounded public JWKS. For rotation, distribute the new
+public key before changing the signer and retain the old public key for the
+ten-minute session lifetime plus clock skew.
+
+The native panel is enabled only when the workspace AI module and
+`VITE_AGENT_FOUNDATION_ENABLED=true` are both present. Its runtime origin comes
+from `VITE_AGENT_RUNTIME_URL`. The panel shows plain-language progress, source
+links, cancellation, current project/profile, memory-off state, errors,
+approval previews, and the current APAS CRM scan entry. Production UI remains
+owned by this repository; the Hermes repository's panel is only a contract
+reference.
+
 ## CRM orchestration boundary
 
 `crm-integration-gateway` accepts the current Proj OS user JWT and validates it with Supabase Auth inside the function. It treats a caller-supplied project ID only as a requested target; current access is recomputed through `can_access_project` and the project workspace must match the active profile. The server derives every identity and source-attribution field.
