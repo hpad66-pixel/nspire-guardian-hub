@@ -12,6 +12,7 @@ import { useProject } from '@/hooks/useProjects';
 import { useClient } from '@/hooks/useClients';
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 import { UpgradeRequired } from '@/components/portal/UpgradeRequired';
 import { AddContractorDialog } from '@/components/contractors/AddContractorDialog';
 import { ReadinessBadge } from '@/components/contractors/ReadinessBadge';
@@ -26,6 +27,7 @@ export default function ContractorReadinessPage() {
   const { projectId, clientId } = useParams<{ projectId: string; clientId: string }>();
   const { isModuleEnabled } = useModules();
   const { currentRole } = useUserPermissions();
+  const { isSuperAdmin } = usePlatformSuperAdmin();
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(clientId);
   const { data: cases = [], isLoading } = useContractorCases(projectId, clientId);
@@ -60,7 +62,7 @@ export default function ContractorReadinessPage() {
           <h1 className="text-3xl font-bold tracking-tight">{projectId ? `${project?.name ?? 'Project'} contractors` : clientId ? `${client?.name ?? 'Client'} contractors` : 'Contractor Readiness'}</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">One reusable company portfolio, passwordless onboarding, expiration monitoring, and deterministic work, contract, and payment gates.</p>
         </div>
-        <div className="flex gap-2">{['admin', 'owner'].includes(currentRole ?? '') && <Button variant="outline" asChild><Link to="/contractor-readiness/settings"><Settings2 className="mr-2 h-4 w-4" />Policy</Link></Button>}<Button onClick={() => setAddOpen(true)}><Plus className="mr-2 h-4 w-4" />Onboard contractor</Button></div>
+        <div className="flex gap-2">{(isSuperAdmin || ['admin', 'owner'].includes(currentRole ?? '')) && <Button variant="outline" asChild><Link to="/contractor-readiness/settings"><Settings2 className="mr-2 h-4 w-4" />Checklist settings</Link></Button>}<Button onClick={() => setAddOpen(true)}><Plus className="mr-2 h-4 w-4" />Onboard contractor</Button></div>
       </div>
 
       <AutomationPanel

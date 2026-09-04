@@ -10,6 +10,8 @@ export type RequirementStatus =
   | 'missing' | 'requested' | 'submitted' | 'under_review' | 'needs_correction'
   | 'verified' | 'waived' | 'not_applicable' | 'expired';
 
+export type ContractorResponseType = 'document' | 'questionnaire' | 'either' | 'acknowledgement';
+
 export interface ContractorRequirement {
   id: string;
   case_id: string;
@@ -22,6 +24,11 @@ export interface ContractorRequirement {
   legally_required: boolean;
   verification_required: boolean;
   expiration_required: boolean;
+  response_type: ContractorResponseType;
+  response_text: string | null;
+  response_submitted_at: string | null;
+  response_submitted_by_name: string | null;
+  response_submitted_by_email: string | null;
   instructions: string | null;
   sort_order: number;
   status: RequirementStatus;
@@ -314,7 +321,8 @@ export function useContractorReviewActions(caseId: string) {
     mutationFn: async (input: { requirement: ContractorRequirement; decision: 'verified' | 'needs_correction' | 'not_applicable'; note?: string }) => {
       const { data: auth } = await supabase.auth.getUser();
       if (input.decision === 'not_applicable' && input.requirement.legally_required) throw new Error('A legally required item cannot be marked not applicable.');
-      if (input.decision === 'verified' && !input.requirement.current_document_id && input.requirement.verification_required) throw new Error('Upload a document before verifying this item.');
+      const hasEvidence = Boolean(input.requirement.current_document_id || input.requirement.response_text?.trim());
+      if (input.decision === 'verified' && !hasEvidence && input.requirement.verification_required) throw new Error('A document, written response, or acknowledgement is required before verification.');
       if (input.requirement.current_document_id) {
         const { error } = await supabase.from('contractor_documents' as any).update({
           verification_status: input.decision === 'verified' ? 'verified' : input.decision === 'needs_correction' ? 'rejected' : 'under_review',
@@ -370,6 +378,26 @@ export function useContractorReviewActions(caseId: string) {
     onSuccess: refresh,
   });
 
+  const configureRequirement = useMutation({
+    mutationFn: async (input: {
+      requirementId: string;
+      required: boolean;
+      responseType: ContractorResponseType;
+      verificationRequired: boolean;
+      expirationRequired: boolean;
+    }) => {
+      const { error } = await (supabase.rpc as any)('configure_contractor_case_requirement', {
+        p_requirement_id: input.requirementId,
+        p_required: input.required,
+        p_response_type: input.responseType,
+        p_verification_required: input.verificationRequired,
+        p_expiration_required: input.expirationRequired,
+      });
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
   const analyzeDocument = useMutation({
     mutationFn: async (documentId: string) => {
       const { data, error } = await supabase.functions.invoke('contractor-document-assist', { body: { documentId } });
@@ -403,7 +431,7 @@ export function useContractorReviewActions(caseId: string) {
     onSuccess: refresh,
   });
 
-  return { reviewRequirement, updateCase, addComment, analyzeDocument, invite, createException };
+  return { reviewRequirement, updateCase, addComment, configureRequirement, analyzeDocument, invite, createException };
 }
 
 export async function getContractorDocumentUrl(path: string) {

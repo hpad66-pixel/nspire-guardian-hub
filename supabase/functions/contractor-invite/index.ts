@@ -29,13 +29,14 @@ function invitationHtml(input: { recipient: string; company: string; project?: s
     <div style="max-width:620px;margin:auto;overflow:hidden;border:1px solid #e1ded5;border-radius:20px;background:white;box-shadow:0 12px 36px rgba(19,44,37,.08)">
       <div style="padding:24px 28px;background:linear-gradient(135deg,#092d25,#174d40);color:#fff">
         <div style="font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#d7b86a">APAS Project Controls</div>
-        <div style="margin-top:8px;font-size:26px;font-weight:800">Contractor Readiness</div>
-        <div style="margin-top:5px;color:#d8e8e2">A secure request for ${esc(input.company)}</div>
+        <div style="margin-top:8px;font-size:26px;font-weight:800">Welcome to our contractor community</div>
+        <div style="margin-top:5px;color:#d8e8e2">A secure readiness invitation for ${esc(input.company)}</div>
       </div>
       <div style="padding:28px">
         <p style="margin:0 0 12px">Hello ${esc(input.recipient)},</p>
-        <p style="margin:0 0 18px;line-height:1.6;color:#4c5e58">Please complete the qualification checklist${input.project ? ` for <strong>${esc(input.project)}</strong>` : ""}. You can save your progress, upload documents from your phone, and invite your insurance broker. No account or password is required.</p>
-        <a href="${esc(input.link)}" style="display:inline-block;border-radius:12px;background:#16775f;color:white;text-decoration:none;padding:13px 20px;font-weight:800">Open secure checklist</a>
+        <p style="margin:0 0 12px;line-height:1.6;color:#4c5e58">We are glad to invite <strong>${esc(input.company)}</strong> to complete our contractor readiness process${input.project ? ` for <strong>${esc(input.project)}</strong>` : ""}. We value dependable, safety-minded companies and want qualified contractors to have an easy path to future opportunities with our team.</p>
+        <p style="margin:0 0 18px;line-height:1.6;color:#4c5e58">Your checklist clearly shows what is mandatory, what is optional, and whether each item needs a document or a short response. Save your progress and upload from your phone—no account or password is required.</p>
+        <a href="${esc(input.link)}" style="display:inline-block;border-radius:12px;background:#16775f;color:white;text-decoration:none;padding:13px 20px;font-weight:800">Start my secure checklist</a>
         <div style="margin-top:20px;padding:14px;border-radius:12px;background:#f7f6f2;color:#66736f;font-size:12px;line-height:1.5">This private link expires ${esc(input.expires)}. Do not forward it except to an authorized company representative.</div>
       </div>
     </div>
@@ -162,7 +163,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: "APAS Project Controls <hardeep@apas.ai>",
           to: [email],
-          subject: `Qualification documents requested${project?.name ? ` — ${project.name}` : ""}`,
+          subject: `Welcome — contractor readiness invitation${project?.name ? ` for ${project.name}` : ""}`,
           html: invitationHtml({
             recipient: recipientName,
             company: org?.name ?? "your company",
