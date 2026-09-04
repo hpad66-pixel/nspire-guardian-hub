@@ -25,6 +25,8 @@ import {
   Filter,
   Sparkles,
   ScanLine,
+  CloudUpload,
+  Loader2,
 } from "lucide-react";
 import {
   useCRMContacts,
@@ -49,6 +51,8 @@ import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 import { cn } from "@/lib/utils";
 import { useModules } from "@/contexts/ModuleContext";
 import { CrmCardIntakeDialog } from "@/components/crm/CrmCardIntakeDialog";
+import { useCrmMasterSync } from "@/hooks/useCrmIntegration";
+import { usePlatformSuperAdmin } from "@/hooks/usePlatformAdmin";
 
 type ViewMode = "grid" | "list";
 type OwnershipTab = "all" | "personal" | "property";
@@ -80,6 +84,8 @@ export default function ContactsPage() {
 
   const { data: properties = [] } = useProperties();
   const { data: projects = [] } = useProjects();
+  const { isSuperAdmin } = usePlatformSuperAdmin();
+  const masterSync = useCrmMasterSync(projects[0]?.id);
   const { data: assignments } = useContactAssignmentsMap();
   const deleteContact = useDeleteCRMContact();
   const toggleFavorite = useToggleFavorite();
@@ -201,8 +207,26 @@ export default function ContactsPage() {
           <p className="text-muted-foreground">
             Manage your network of vendors, regulators, and partners
           </p>
+          {masterSync.data && (
+            <p className="mt-1 text-sm text-emerald-700" role="status">
+              Master CRM current: {masterSync.data.sourceCount} source contacts synchronized
+              {masterSync.data.matchedCount > 0 ? `, ${masterSync.data.matchedCount} safely matched` : ""}.
+            </p>
+          )}
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap shrink-0 gap-2">
+          {crmIntegrationEnabled && isSuperAdmin && (
+            <Button
+              onClick={() => masterSync.mutate()}
+              disabled={!projects[0]?.id || masterSync.isPending}
+              title="Synchronize every workspace contact, including archived records, into the canonical APAS CRM"
+            >
+              {masterSync.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <CloudUpload className="h-4 w-4 mr-2" />}
+              {masterSync.isPending ? "Synchronizing…" : "Sync APAS CRM"}
+            </Button>
+          )}
           {crmIntegrationEnabled && (
             <Button variant="outline" onClick={() => setScanDialogOpen(true)}>
               <ScanLine className="h-4 w-4 mr-2" />

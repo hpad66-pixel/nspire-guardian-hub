@@ -8,11 +8,13 @@ import {
   getCategories,
   getContactIntake,
   hmacHex,
+  importContacts,
   requestUploadGrants,
   safeFailure,
   sha256Hex,
   submitContactProposal,
   validateUploadDescriptors,
+  type ContactImportItem,
   type UploadDescriptor,
 } from "../_shared/apas-crm-integration.ts";
 
@@ -32,6 +34,7 @@ type Scope = {
   workspaceId: string;
   projectId: string;
   displayName: string;
+  isSuperAdmin: boolean;
   userDb: SupabaseClient;
   admin: SupabaseClient;
 };
@@ -182,9 +185,10 @@ async function authenticate(req: Request, projectIdValue: unknown): Promise<Scop
   });
   if (accessError || allowed !== true) throw new GatewayError("project_not_found", "Project not found or not authorized", 404);
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-  const [{ data: project }, { data: profile }] = await Promise.all([
+  const [{ data: project }, { data: profile }, { data: isSuperAdmin }] = await Promise.all([
     admin.from("projects").select("id,workspace_id,deleted_at").eq("id", projectId).maybeSingle(),
     admin.from("profiles").select("workspace_id,full_name,email,status").eq("user_id", auth.user.id).maybeSingle(),
+    userDb.rpc("is_super_admin"),
   ]);
   if (!project || project.deleted_at || !project.workspace_id || project.workspace_id !== profile?.workspace_id || (profile?.status && profile.status !== "active")) {
     throw new GatewayError("project_not_found", "Project not found or not authorized", 404);
@@ -200,6 +204,7 @@ async function authenticate(req: Request, projectIdValue: unknown): Promise<Scop
     workspaceId: project.workspace_id,
     projectId,
     displayName: profile?.full_name || profile?.email || auth.user.email || "Proj OS user",
+    isSuperAdmin: isSuperAdmin === true,
     userDb,
     admin,
   };
@@ -382,6 +387,150 @@ async function categories(scope: Scope) {
   return getCategories(context);
 }
 
+function importString(value: unknown, max: number): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : undefined;
+}
+
+function contactImportItem(value: Json): ContactImportItem {
+  const tags = Array.isArray(value.tags)
+    ? [...new Set(value.tags.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+      .map((item) => item.trim().slice(0, 80)))].slice(0, 50)
+    : [];
+  return {
+    id: String(value.id),
+    firstName: importString(value.first_name, 100),
+    lastName: importString(value.last_name, 100),
+    companyName: importString(value.company_name, 200),
+    jobTitle: importString(value.job_title, 160),
+    email: importString(value.email, 500),
+    phone: importString(value.phone, 500),
+    mobile: importString(value.mobile, 500),
+    website: importString(value.website, 500),
+    addressLine1: importString(value.address_line1, 200),
+    addressLine2: importString(value.address_line2, 200),
+    city: importString(value.city, 120),
+    state: importString(value.state, 120),
+    zipCode: importString(value.zip_code, 40),
+    country: importString(value.country, 120),
+    contactType: importString(value.contact_type, 80) ?? "other",
+    tags,
+    notes: importString(value.notes, 1_200),
+    isActive: value.is_active !== false,
+  };
+}
+
+async function syncContacts(scope: Scope, body: Json) {
+  if (!scope.isSuperAdmin) {
+    throw new GatewayError("platform_admin_required", "Only the platform super administrator can synchronize the master APAS CRM", 403);
+  }
+  const clientRequestId = requiredString(body.clientRequestId, "clientRequestId", 200);
+  const idempotencyKey = await sha256Hex(`${scope.workspaceId}:master-contact-sync:${scope.userId}:${clientRequestId}`);
+  const { data: existing, error: existingError } = await scope.admin.from("crm_master_sync_runs")
+    .select("*").eq("workspace_id", scope.workspaceId).eq("idempotency_key", idempotencyKey).maybeSingle();
+  if (existingError) throw existingError;
+  if (existing?.status === "completed") {
+    return { ...(isRecord(existing.result_summary) ? existing.result_summary : {}), idempotentReplay: true };
+  }
+
+  const runId = existing?.id ?? crypto.randomUUID();
+  const correlationId = existing?.correlation_id ?? crypto.randomUUID();
+  const sourceContacts: Json[] = [];
+  const pageSize = 1_000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await scope.admin.from("crm_contacts")
+      .select("*").eq("workspace_id", scope.workspaceId).order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as Json[];
+    sourceContacts.push(...page);
+    if (page.length < pageSize) break;
+  }
+  const contacts = sourceContacts.map(contactImportItem);
+
+  const { error: runError } = await scope.admin.from("crm_master_sync_runs").upsert({
+    id: runId,
+    workspace_id: scope.workspaceId,
+    initiated_by: scope.userId,
+    project_id: scope.projectId,
+    status: "running",
+    idempotency_key: idempotencyKey,
+    correlation_id: correlationId,
+    source_count: contacts.length,
+    safe_failure_code: null,
+    safe_failure_reason: null,
+    completed_at: null,
+  }, { onConflict: "workspace_id,idempotency_key" });
+  if (runError) throw runError;
+
+  try {
+    const aggregate = {
+      sourceCount: contacts.length,
+      createdCount: 0,
+      matchedCount: 0,
+      updatedCount: 0,
+      failedCount: 0,
+      results: [] as Array<{
+        sourceContactId: string;
+        canonicalContactId: string;
+        action: string;
+        matchRule: string;
+        possibleNameMatchCount: number;
+      }>,
+    };
+    const chunkSize = 100;
+    for (let offset = 0; offset < contacts.length; offset += chunkSize) {
+      const chunk = contacts.slice(offset, offset + chunkSize);
+      const imported = await importContacts({
+        workspaceId: scope.workspaceId,
+        correlationId,
+        idempotencyKey: `${idempotencyKey}:${Math.floor(offset / chunkSize) + 1}`,
+      }, chunk);
+      aggregate.createdCount += imported.createdCount;
+      aggregate.matchedCount += imported.matchedCount;
+      aggregate.updatedCount += imported.updatedCount;
+      aggregate.failedCount += imported.failedCount;
+      aggregate.results.push(...imported.results);
+    }
+
+    const syncedAt = new Date().toISOString();
+    for (const result of aggregate.results) {
+      const { error } = await scope.admin.from("crm_contacts").update({
+        apas_contact_id: result.canonicalContactId,
+        apas_sync_status: "synced",
+        apas_synced_at: syncedAt,
+        apas_sync_error: null,
+      }).eq("workspace_id", scope.workspaceId).eq("id", result.sourceContactId);
+      if (error) throw error;
+    }
+    const summary = {
+      runId,
+      ...aggregate,
+      idempotentReplay: false,
+    };
+    const { error: completeError } = await scope.admin.from("crm_master_sync_runs").update({
+      status: "completed",
+      created_count: aggregate.createdCount,
+      matched_count: aggregate.matchedCount,
+      updated_count: aggregate.updatedCount,
+      failed_count: aggregate.failedCount,
+      result_summary: summary,
+      completed_at: new Date().toISOString(),
+    }).eq("id", runId);
+    if (completeError) throw completeError;
+    return summary;
+  } catch (error) {
+    const failure = safeFailure(error);
+    await scope.admin.from("crm_master_sync_runs").update({
+      status: "failed",
+      failed_count: contacts.length,
+      safe_failure_code: failure.code,
+      safe_failure_reason: failure.reason,
+      completed_at: new Date().toISOString(),
+    }).eq("id", runId);
+    throw new GatewayError(failure.code, failure.reason, failure.status);
+  }
+}
+
 async function prepareApproval(scope: Scope, body: Json) {
   const intake = await requireIntake(scope, body.intakeId);
   if (intake.submitter_user_id !== scope.userId) throw new GatewayError("forbidden", "Only the submitter can approve this contact proposal", 403);
@@ -549,6 +698,7 @@ serve(async (req) => {
       case "start_intake": result = await startIntake(scope, body); break;
       case "complete_upload": result = await completeUpload(scope, body); break;
       case "categories": result = await categories(scope); break;
+      case "sync_contacts": result = await syncContacts(scope, body); break;
       case "prepare_approval": result = await prepareApproval(scope, body); break;
       case "execute_approval": result = await executeApproval(scope, body); break;
       case "refresh_status": result = await refreshStatus(scope, body); break;

@@ -6,12 +6,23 @@ import {
   type CrmIntegrationIntake,
   type UploadGrant,
 } from '@/lib/crm-integration/contract';
+import { toast } from 'sonner';
 
 // The forward migration is intentionally not folded into the large generated
 // Supabase type file; remove this exception after the next schema regeneration.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type GatewayResponse<T> = { ok: boolean; data?: T; error?: string; message?: string; correlationId?: string };
+
+export type CrmMasterSyncResult = {
+  runId: string;
+  sourceCount: number;
+  createdCount: number;
+  matchedCount: number;
+  updatedCount: number;
+  failedCount: number;
+  idempotentReplay: boolean;
+};
 
 async function invokeGateway<T>(projectId: string, operation: string, body: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.functions.invoke('crm-integration-gateway', {
@@ -63,6 +74,23 @@ export function useCrmCategories(projectId?: string) {
     queryFn: () => invokeGateway<CrmCategoryCatalog>(projectId!, 'categories'),
     staleTime: 5 * 60_000,
     retry: false,
+  });
+}
+
+export function useCrmMasterSync(projectId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!projectId) throw new Error('At least one active project is required to authorize the APAS CRM synchronization.');
+      return invokeGateway<CrmMasterSyncResult>(projectId, 'sync_contacts', {
+        clientRequestId: crypto.randomUUID(),
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['crm-contacts'] });
+      toast.success(`${result.sourceCount} contacts synchronized with the master APAS CRM.`);
+    },
+    onError: (error: Error) => toast.error(error.message || 'The APAS CRM synchronization could not be completed.'),
   });
 }
 

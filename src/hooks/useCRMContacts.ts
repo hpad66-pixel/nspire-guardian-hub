@@ -41,6 +41,10 @@ export interface CRMContact {
   notes: string | null;
   is_favorite: boolean;
   is_active: boolean;
+  apas_contact_id?: string | null;
+  apas_sync_status?: "not_synced" | "synced" | "failed";
+  apas_synced_at?: string | null;
+  apas_sync_error?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
