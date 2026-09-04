@@ -229,6 +229,14 @@ verify_jwt = false
 [functions.crm-integration-events]
 verify_jwt = false
 
+# Proj OS Agent Gateway. agent-session verifies the Supabase user itself;
+# agent-tools verifies the short-lived ES256 agent session itself.
+[functions.agent-session]
+verify_jwt = false
+
+[functions.agent-tools]
+verify_jwt = false
+
 # Public Gmail OAuth callback — Google redirects here with ?code&state and no
 # Supabase JWT; authenticity is enforced by the signed `state`.
 [functions.gmail-oauth-callback]

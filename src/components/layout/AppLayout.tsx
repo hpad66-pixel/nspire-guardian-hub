@@ -18,6 +18,8 @@ import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { AssistantLauncher } from '@/components/assistant/AssistantLauncher';
 import { OwnerAssistantLauncher } from '@/components/assistant/OwnerAssistantLauncher';
+import { AgentLauncher } from '@/components/agent/AgentLauncher';
+import { AGENT_FOUNDATION_ENABLED } from '@/lib/agent/runtime';
 import { PWAUpdateBanner } from '@/components/pwa/PWAUpdateBanner';
 import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner';
 import { MOBILE_MAIN_PADDING_CLASS } from '@/lib/mobileShell';
@@ -300,8 +302,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* AI assistants — only when the workspace has the AI module. */}
       {isModuleEnabled('aiEnabled') && (
         <>
-          {/* Floating financial assistant — only when enabled in Settings + on a project route */}
-          <AssistantLauncher />
+          {/* The signed, project-scoped Agent replaces the legacy assistant only
+              after its production runtime flag is enabled. */}
+          {AGENT_FOUNDATION_ENABLED ? <AgentLauncher /> : <AssistantLauncher />}
           {/* Client assistant — always available in the owner portal (owner-safe tools) */}
           <OwnerAssistantLauncher />
         </>

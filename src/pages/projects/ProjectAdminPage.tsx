@@ -14,6 +14,8 @@ import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { projectKind } from '@/lib/projectKind';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { AgentPilotAdminCard } from '@/components/agent/AgentPilotAdminCard';
+import { AGENT_FOUNDATION_ENABLED } from '@/lib/agent/runtime';
 
 /**
  * Per-project administration: module on/off, project type, and cross-links
@@ -260,6 +262,8 @@ export default function ProjectAdminPage() {
           />
         </CardContent>
       </Card>
+
+      {AGENT_FOUNDATION_ENABLED && <AgentPilotAdminCard projectId={project.id} />}
 
       <ProjectTypeDialog
         open={typeOpen}
