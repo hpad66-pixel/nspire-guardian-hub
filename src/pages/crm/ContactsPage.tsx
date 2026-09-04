@@ -24,6 +24,7 @@ import {
   X,
   Filter,
   Sparkles,
+  ScanLine,
 } from "lucide-react";
 import {
   useCRMContacts,
@@ -46,6 +47,8 @@ import { useContactAssignmentsMap } from "@/hooks/useContactAssignments";
 import { ContactAssignmentBadges } from "@/components/crm/ContactAssignmentsEditor";
 import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
 import { cn } from "@/lib/utils";
+import { useModules } from "@/contexts/ModuleContext";
+import { CrmCardIntakeDialog } from "@/components/crm/CrmCardIntakeDialog";
 
 type ViewMode = "grid" | "list";
 type OwnershipTab = "all" | "personal" | "property";
@@ -63,6 +66,9 @@ export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<CRMContact | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const { isModuleEnabled } = useModules();
+  const crmIntegrationEnabled = isModuleEnabled('apasCrmIntegrationEnabled');
 
   const { data: contacts = [], isLoading } = useCRMContacts({
     search,
@@ -197,6 +203,12 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          {crmIntegrationEnabled && (
+            <Button variant="outline" onClick={() => setScanDialogOpen(true)}>
+              <ScanLine className="h-4 w-4 mr-2" />
+              Scan into APAS CRM
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Sparkles className="h-4 w-4 mr-2" />
             Import from activity
@@ -542,6 +554,13 @@ export default function ContactsPage() {
       />
 
       <ImportContactsDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      {crmIntegrationEnabled && (
+        <CrmCardIntakeDialog
+          open={scanDialogOpen}
+          onOpenChange={setScanDialogOpen}
+          projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+        />
+      )}
     </div>
   );
 }

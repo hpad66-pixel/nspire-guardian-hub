@@ -40,6 +40,7 @@ export const MODULE_CATALOG: ModuleCategory[] = [
   ] },
   { key: 'communication', label: 'Communication', modules: [
     { key: 'emailInboxEnabled', label: 'Email inbox integration', description: 'Unified email inbox with AI-powered triage' },
+    { key: 'apasCrmIntegrationEnabled', label: 'APAS CRM card intake', description: 'Secure project-scoped card review and canonical APAS CRM linking' },
   ] },
   { key: 'insights', label: 'Insights', modules: [
     { key: 'reportsEnabled', label: 'Reports & documents', description: 'Reports center, documents, CaseIQ' },
@@ -74,6 +75,7 @@ export const MODULE_WS_COLUMN: Partial<Record<ModuleKey, string>> = {
   credentialWalletEnabled: 'credential_wallet_enabled', trainingHubEnabled: 'training_hub_enabled', safetyModuleEnabled: 'safety_module_enabled',
   equipmentTrackerEnabled: 'equipment_tracker_enabled', clientPortalEnabled: 'client_portal_enabled',
   contractorReadinessEnabled: 'contractor_readiness_enabled',
+  apasCrmIntegrationEnabled: 'apas_crm_integration_enabled',
 };
 
 /** Module key → matching platform gate column (`platform_*`). */

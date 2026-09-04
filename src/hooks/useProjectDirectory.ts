@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
 
+// Project-directory external CRM columns land through a forward migration and
+// are not present in the checked-in generated database type snapshot yet.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export interface DirectoryEntry {
   id: string;
   tenant_id: string;
@@ -12,6 +16,12 @@ export interface DirectoryEntry {
   role_label: string | null;
   is_key_contact: boolean;
   permission_template_id: string | null;
+  apas_contact_id: string | null;
+  source_intake_id: string | null;
+  external_display_name: string | null;
+  external_company_name: string | null;
+  external_primary_email: string | null;
+  external_contact_url: string | null;
   created_at: string;
 }
 
