@@ -9,6 +9,14 @@ const intakeUi = readFileSync('src/components/financial/UploadParseDocument.tsx'
 const extraction = readFileSync('supabase/functions/extract-document/index.ts', 'utf8');
 const crmGateway = readFileSync('supabase/functions/crm-integration-gateway/index.ts', 'utf8');
 const consultingPage = readFileSync('src/pages/projects/financial/ConsultingCostsPage.tsx', 'utf8');
+const adminMigration = readFileSync(
+  'supabase/migrations/20260906010000_admin_invoice_override_and_vendor_requests.sql',
+  'utf8',
+);
+const requestDialog = readFileSync(
+  'src/components/financial/VendorMissingInfoRequestDialog.tsx',
+  'utf8',
+);
 
 describe('AI vendor invoice intake', () => {
   it('requires authenticated project access and bounded financial evidence', () => {
@@ -40,6 +48,24 @@ describe('AI vendor invoice intake', () => {
     expect(intakeUi).toContain('Contractor readiness and commitment execution remain required');
     expect(intakeUi).not.toMatch(/type=["']password["']/i);
     expect(intakeUi).not.toMatch(/bank.*credential/i);
+  });
+
+  it('lets administrators document an exception without silently approving or paying', () => {
+    expect(intakeUi).toContain('Process as an administrator exception');
+    expect(intakeUi).toContain('overrideReason.trim().length >= 10');
+    expect(adminMigration).toContain('created_with_admin_override');
+    expect(adminMigration).toContain('ADMIN_EXCEPTION_UNRESOLVED');
+    expect(adminMigration).toContain('contractor_can_proceed');
+    expect(intakeUi).toContain('It does not approve the invoice');
+  });
+
+  it('provides a selectable, branded missing-information request and project audit trail', () => {
+    expect(requestDialog).toContain('Send branded request');
+    expect(requestDialog).toContain('VENDOR_REQUIREMENTS.map');
+    expect(intakeUi).toContain('vendor_invoice_missing_information');
+    expect(intakeUi).toContain("status: 'needs_review'");
+    expect(intakeUi).toContain('projectEmails.create.mutateAsync');
+    expect(adminMigration).toContain('missing_info_requirements');
   });
 
   it('synchronizes confirmed project vendors through the existing APAS CRM adapter', () => {
