@@ -195,15 +195,23 @@ export function useSubPortalData() {
   return useQuery({
     queryKey: ["sub-portal-data"],
     queryFn: async () => {
-      const [commitments, invoices, rfis] = await Promise.all([
+      const [commitments, invoices, rfis, consultingAssignments, consultingInvoices] = await Promise.all([
         supabase.from("commitments" as any).select("*"),
         supabase.from("commitment_invoices" as any).select("*"),
         supabase.from("project_rfis" as any).select("*"),
+        supabase.from("consulting_vendor_assignments" as any)
+          .select("id,tenant_id,project_id,organization_id,is_active,project:projects(id,name,status)")
+          .eq("is_active", true),
+        supabase.from("consulting_costs" as any)
+          .select("id,project_id,vendor_org_id,reference_no,bill_date,due_date,amount,status,rejection_reason,submitted_at,paid_at")
+          .order("bill_date", { ascending: false }),
       ]);
       return {
         commitments: commitments.data ?? [],
         invoices: invoices.data ?? [],
         rfis: rfis.data ?? [],
+        consultingAssignments: consultingAssignments.data ?? [],
+        consultingInvoices: consultingInvoices.data ?? [],
       };
     },
   });

@@ -1,6 +1,6 @@
 import { projectKind, type ProjectKind } from "@/lib/projectKind";
 
-/** Paths that belong on consulting financial nav (no pay apps / vendor A/P). */
+/** Paths that belong on consulting financial nav (invoice-first vendor A/P; no construction pay apps). */
 export const CONSULTING_FINANCIAL_PATHS = new Set([
   "overview",
   "proposals",

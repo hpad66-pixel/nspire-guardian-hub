@@ -42,18 +42,41 @@ INSERT INTO public.consulting_invoice_payments (
   70000, current_date, 'Wire'
 );
 
-INSERT INTO public.consulting_costs (
-  id, tenant_id, project_id, vendor_name, cost_type, reference_no, amount, status
+INSERT INTO public.project_artifacts (
+  id, tenant_id, project_id, artifact_type, source_system, title,
+  period_date, reference_no, amount, file_path, file_name, file_size, mime_type, tags
 ) VALUES (
-  '95000000-0000-4000-8000-000000000005', '95000000-0000-4000-8000-000000000001',
-  '95000000-0000-4000-8000-000000000002', 'Test Subcontractor', 'subcontractor', 'SUB-001', 15000, 'approved'
+  '95000000-0000-4000-8000-000000000006',
+  '95000000-0000-4000-8000-000000000001',
+  '95000000-0000-4000-8000-000000000002',
+  'invoice', 'manual', 'Test Subcontractor invoice SUB-001', current_date,
+  'SUB-001', 15000, 'test/consulting/SUB-001.pdf', 'SUB-001.pdf', 128,
+  'application/pdf', ARRAY['consulting','vendor-invoice','admin-on-behalf']
+), (
+  '95000000-0000-4000-8000-000000000007',
+  '95000000-0000-4000-8000-000000000001',
+  '95000000-0000-4000-8000-000000000002',
+  'other', 'manual', 'Test bank payment evidence', current_date,
+  'WIRE-TEST-001', 15000, 'test/consulting/WIRE-TEST-001.pdf', 'WIRE-TEST-001.pdf', 128,
+  'application/pdf', ARRAY['consulting','payment-evidence','wire']
 );
 
-INSERT INTO public.consulting_cost_payments (
-  tenant_id, cost_id, amount, paid_date, method
+INSERT INTO public.consulting_costs (
+  id, tenant_id, project_id, vendor_name, cost_type, reference_no, amount, status,
+  invoice_artifact_id, source_kind, source_status, source_note
 ) VALUES (
-  '95000000-0000-4000-8000-000000000001', '95000000-0000-4000-8000-000000000005',
-  15000, current_date, 'Wire'
+  '95000000-0000-4000-8000-000000000005', '95000000-0000-4000-8000-000000000001',
+  '95000000-0000-4000-8000-000000000002', 'Test Subcontractor', 'subcontractor', 'SUB-001', 15000, 'draft',
+  '95000000-0000-4000-8000-000000000006', 'admin_on_behalf', 'received',
+  'Controlled invoice prepared for the consulting cash-flow regression test'
+);
+
+SELECT set_config('request.jwt.claims', '{"app_metadata":{"role":"super_admin"}}', true);
+SELECT public.approve_consulting_cost('95000000-0000-4000-8000-000000000005');
+SELECT public.record_consulting_cost_payment(
+  '95000000-0000-4000-8000-000000000005', 15000, current_date, 'wire',
+  'WIRE-TEST-001', '95000000-0000-4000-8000-000000000007',
+  '95000000-0000-4000-8000-000000000008', 'Regression test payment'
 );
 
 SELECT is((SELECT approved_revenue FROM public.v_consulting_financial_position WHERE project_id = '95000000-0000-4000-8000-000000000002'), 70000::numeric, 'executed proposals establish approved revenue');
@@ -76,7 +99,6 @@ SELECT throws_ok(
   'subcontractor cost cannot be overpaid'
 );
 
-SELECT set_config('request.jwt.claims', '{"app_metadata":{"role":"super_admin"}}', true);
 SELECT lives_ok(
   $$ SELECT public.close_consulting_project('95000000-0000-4000-8000-000000000002', 'Reconciled test closeout') $$,
   'reconciled consulting project closes through the controlled function'
