@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, ClipboardList, Inbox, ListChecks } from "lucide-react";
+import { FileText, ClipboardList, Inbox, ListChecks, ReceiptText } from "lucide-react";
 
 export default function SubDashboardPage() {
   const { data, isLoading } = useSubPortalData();
@@ -15,16 +15,18 @@ export default function SubDashboardPage() {
       <h1 className="text-3xl font-bold mb-1">Subcontractor Portal</h1>
       <p className="text-muted-foreground mb-6">Your commitments, invoices, and open items.</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
         <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Commitments</CardTitle></CardHeader>
           <CardContent className="text-3xl font-bold">{data?.commitments.length ?? 0}</CardContent></Card>
         <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Invoices</CardTitle></CardHeader>
           <CardContent className="text-3xl font-bold">{data?.invoices.length ?? 0}</CardContent></Card>
+        <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">Consulting invoices</CardTitle></CardHeader>
+          <CardContent className="text-3xl font-bold">{data?.consultingInvoices.length ?? 0}</CardContent></Card>
         <Card><CardHeader className="pb-1"><CardTitle className="text-xs uppercase">In my court</CardTitle></CardHeader>
           <CardContent className="text-3xl font-bold">{court.length}</CardContent></Card>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 mb-6 md:grid-cols-4">
         <Button asChild variant="outline">
           <Link to="/sub-portal/commitments"><FileText className="h-4 w-4 mr-1" /> Commitments</Link>
         </Button>
@@ -36,6 +38,9 @@ export default function SubDashboardPage() {
         </Button>
         <Button asChild variant="outline">
           <Link to="/sub-portal/submittals"><ClipboardList className="h-4 w-4 mr-1" /> Submittals</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/sub-portal/consulting-invoices"><ReceiptText className="h-4 w-4 mr-1" /> Consulting invoices</Link>
         </Button>
       </div>
 

@@ -54,7 +54,7 @@ const CONSULTING_PRIMARY: Tab[] = [
   { label: "Overview", path: "overview", icon: LayoutDashboard },
   { label: "Proposals", path: "proposals", icon: FileText },
   { label: "Client Invoices", path: "client-invoices", icon: Receipt },
-  { label: "Costs & Subs", path: "costs", icon: BriefcaseBusiness },
+  { label: "Vendor A/P", path: "costs", icon: BriefcaseBusiness },
   { label: "Amendments", path: "change-orders", icon: GitPullRequest },
   { label: "Cash Flow", path: "payments", icon: Banknote },
   { label: "Closeout", path: "closeout", icon: Award },

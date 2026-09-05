@@ -111,6 +111,7 @@ const OwnerDashboardPage = lazy(() => import('./pages/portal/owner/OwnerDashboar
 const SubCommitmentsPage = lazy(() => import('./pages/portal/sub/SubCommitmentsPage'));
 const SubCommitmentDetailPage = lazy(() => import('./pages/portal/sub/SubCommitmentDetailPage'));
 const SubInvoiceBuilderPage = lazy(() => import('./pages/portal/sub/SubInvoiceBuilderPage'));
+const SubConsultingInvoicesPage = lazy(() => import('./pages/portal/sub/SubConsultingInvoicesPage'));
 const SubRfisPage = lazy(() => import('./pages/portal/sub/SubRfisPage'));
 const SubSubmittalsPage = lazy(() => import('./pages/portal/sub/SubSubmittalsPage'));
 const OwnerContractPage = lazy(() => import('./pages/portal/owner/OwnerContractPage'));
@@ -189,6 +190,7 @@ const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'))
 const SignAuthoredDocumentPage = lazy(() => import('./pages/sign/SignAuthoredDocumentPage'));
 const ActionItemPublicPage = lazy(() => import('./pages/action/ActionItemPublicPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
+const ConsultingVendorInvoicePage = lazy(() => import('./pages/vendor/ConsultingVendorInvoicePage'));
 const ContractorReadinessPage = lazy(() => import('./pages/contractors/ContractorReadinessPage'));
 const ContractorCasePage = lazy(() => import('./pages/contractors/ContractorCasePage'));
 const ContractorOnboardingPage = lazy(() => import('./pages/contractors/ContractorOnboardingPage'));
@@ -297,6 +299,7 @@ const App = () => (
                      <Route path="/sign/document/:token" element={<SignAuthoredDocumentPage />} />
                      <Route path="/action/:token" element={<ActionItemPublicPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
+                     <Route path="/vendor/consulting-invoice/:token" element={<ConsultingVendorInvoicePage />} />
                      <Route path="/contractor/onboard/:token" element={<ContractorOnboardingPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      <Route path="/client/:token" element={<ClientPortalPage />} />
@@ -538,6 +541,7 @@ const App = () => (
                                 <Route path="/sub-portal/commitments" element={<SubCommitmentsPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                                <Route path="/sub-portal/consulting-invoices" element={<SubConsultingInvoicesPage />} />
                                 <Route path="/sub-portal/punch" element={<SubPunchListsPage />} />
                                 <Route path="/sub-portal/rfis" element={<SubRfisPage />} />
                                 <Route path="/sub-portal/submittals" element={<SubSubmittalsPage />} />
