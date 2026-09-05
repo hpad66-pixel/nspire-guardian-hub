@@ -48,7 +48,11 @@ function optional(value: unknown, field: string, max = 500): string | undefined 
 
 function uuid(value: unknown, field: string): string {
   const text = required(value, field, 80);
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)) {
+  // Older Proj OS tenants use deterministic PostgreSQL UUIDs (including the
+  // original 00000000-0000-0000-0000-000000000001 workspace) that do not
+  // encode an RFC version nibble. PostgreSQL accepts these UUIDs, so validate
+  // the database shape without rejecting an otherwise pinned tenant ID.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) {
     throw new HttpError(400, "invalid_request", `${field} is invalid`);
   }
   return text;
