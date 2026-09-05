@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ConsultingInvoiceDraftDialog } from '@/components/financial/ConsultingInvoiceDraftDialog';
 import { ConsultingInvoiceRequestDialog } from '@/components/financial/ConsultingInvoiceRequestDialog';
 import { ConsultingPaymentDialog } from '@/components/financial/ConsultingPaymentDialog';
+import { UploadParseDocument } from '@/components/financial/UploadParseDocument';
 import { InviteSubDialog } from '@/components/portal/InviteSubDialog';
 import { ProcessedPaidStamp } from '@/components/financial/ProcessedPaidStamp';
 import {
@@ -82,6 +83,8 @@ export default function ConsultingCostsPage() {
       <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-white p-4">
         <div className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" /><div><p className="font-semibold text-emerald-950">Secure hybrid payment control</p><p className="mt-0.5 text-sm text-emerald-800">ProjOS verifies and documents the invoice, prepares the payment, and requires bank evidence. You complete Zelle, ACH, wire, or check in the bank—bank credentials and MFA never enter ProjOS.</p></div></div>
       </div>
+
+      {isAdmin && <UploadParseDocument projectId={projectId} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <Metric label="Pending review" value={String(pending)} tone="amber" />
