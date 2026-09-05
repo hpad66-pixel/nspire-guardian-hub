@@ -46,6 +46,11 @@ function optional(value: unknown, field: string, max = 500): string | undefined 
   return value.trim() || undefined;
 }
 
+function optionalResultText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.trim() || undefined;
+}
+
 function uuid(value: unknown, field: string): string {
   const text = required(value, field, 80);
   // Older Proj OS tenants use deterministic PostgreSQL UUIDs (including the
@@ -192,12 +197,14 @@ async function requireProject(identity: Identity, projectId: string) {
 }
 
 function projectResult(project: Json) {
+  const description = optionalResultText(project.description);
+  const projectType = optionalResultText(project.project_type) ?? "other";
   return {
     id: String(project.id),
     name: String(project.name),
-    description: typeof project.description === "string" ? project.description : undefined,
+    ...(description ? { description } : {}),
     status: String(project.status),
-    projectType: typeof project.project_type === "string" ? project.project_type : "other",
+    projectType,
     clientId: typeof project.client_id === "string" ? project.client_id : undefined,
     propertyId: typeof project.property_id === "string" ? project.property_id : undefined,
     startDate: typeof project.start_date === "string" ? project.start_date : undefined,
@@ -207,6 +214,11 @@ function projectResult(project: Json) {
 }
 
 function partyResult(row: Json) {
+  const companyName = optionalResultText(row.company_name_snapshot);
+  const primaryEmail = optionalResultText(row.primary_email_snapshot);
+  const phone = optionalResultText(row.phone_snapshot);
+  const website = optionalResultText(row.website_snapshot);
+  const apasCrmUrl = optionalResultText(row.apas_crm_url);
   return {
     id: String(row.id),
     projectId: String(row.project_id),
@@ -216,11 +228,11 @@ function partyResult(row: Json) {
     relationshipRole: row.relationship_role,
     relationshipStatus: row.relationship_status,
     displayName: row.display_name_snapshot,
-    companyName: row.company_name_snapshot ?? undefined,
-    primaryEmail: row.primary_email_snapshot ?? undefined,
-    phone: row.phone_snapshot ?? undefined,
-    website: row.website_snapshot ?? undefined,
-    apasCrmUrl: row.apas_crm_url ?? undefined,
+    ...(companyName ? { companyName } : {}),
+    ...(primaryEmail ? { primaryEmail } : {}),
+    ...(phone ? { phone } : {}),
+    ...(website ? { website } : {}),
+    ...(apasCrmUrl ? { apasCrmUrl } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at ?? undefined,
