@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateProposalPdf } from "@/lib/pdf/proposalPdf";
 import {
-  CheckCircle2, ChevronLeft, Download, FileCheck, FileDown, FileText, Hash, Lock, Pencil, PenLine, Plus, RotateCcw, Save, Send, Trash2,
+  CheckCircle2, ChevronLeft, Download, FileCheck, FileDown, FileText, Hash, Lock, Pencil, PenLine, Plus, Receipt, RotateCcw, Save, Send, Trash2,
 } from "lucide-react";
 
 const CATEGORIES: FinancialProposalLine["category"][] = ["labor", "material", "equipment", "subcontract", "other"];
@@ -281,6 +281,7 @@ export default function ProposalBuilderPage() {
           {executed && proposal.pdf_path
             ? <Button asChild variant="outline" size="sm"><a href={proposal.pdf_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open executed PDF</a></Button>
             : <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>}
+          {executed && <Button asChild size="sm" className="bg-emerald-700 hover:bg-emerald-800"><Link to={`/projects/${projectId}/financials/client-invoices?new=1&proposal=${proposal.id}`}><Receipt className="mr-1.5 h-4 w-4" />Create client invoice</Link></Button>}
         </div>
       </div>
 

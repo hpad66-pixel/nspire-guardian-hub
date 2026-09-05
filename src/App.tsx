@@ -158,6 +158,8 @@ const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial
 const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCostsPage'));
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const ClientInvoicesPage = lazy(() => import('./pages/projects/financial/ClientInvoicesPage'));
+const ConsultingCostsPage = lazy(() => import('./pages/projects/financial/ConsultingCostsPage'));
+const ConsultingCloseoutPage = lazy(() => import('./pages/projects/financial/ConsultingCloseoutPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
 const LedgerPage = lazy(() => import('./pages/projects/financial/LedgerPage'));
@@ -510,6 +512,8 @@ const App = () => (
                                 <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                                 <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                                 <Route path="/projects/:projectId/financials/client-invoices" element={<ClientInvoicesPage />} />
+                                <Route path="/projects/:projectId/financials/costs" element={<ConsultingCostsPage />} />
+                                <Route path="/projects/:projectId/financials/closeout" element={<ConsultingCloseoutPage />} />
                                 <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                                 <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
                                 <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />

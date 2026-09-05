@@ -9,7 +9,7 @@ import {
 import {
   ChevronRight, ChevronDown, LayoutDashboard, FileSignature, GitPullRequest, ReceiptText, Ruler,
   Banknote, Wallet, Handshake, Receipt, Inbox, Coins, ShieldCheck, BookOpen,
-  BarChart3, Megaphone, MoreHorizontal, TrendingUp, Users, Scale, FileText, type LucideIcon,
+  BarChart3, Megaphone, MoreHorizontal, TrendingUp, Users, Scale, FileText, BriefcaseBusiness, Award, type LucideIcon,
 } from "lucide-react";
 
 interface Tab { label: string; path: string; icon: LucideIcon }
@@ -54,14 +54,15 @@ const CONSULTING_PRIMARY: Tab[] = [
   { label: "Overview", path: "overview", icon: LayoutDashboard },
   { label: "Proposals", path: "proposals", icon: FileText },
   { label: "Client Invoices", path: "client-invoices", icon: Receipt },
+  { label: "Costs & Subs", path: "costs", icon: BriefcaseBusiness },
   { label: "Amendments", path: "change-orders", icon: GitPullRequest },
-  { label: "Payments", path: "payments", icon: Banknote },
+  { label: "Cash Flow", path: "payments", icon: Banknote },
+  { label: "Closeout", path: "closeout", icon: Award },
 ];
 
 const CONSULTING_MORE: Group[] = [
   { caption: "Records", tabs: [
     { label: "Ledger", path: "ledger", icon: BookOpen },
-    { label: "Reports", path: "reports", icon: BarChart3 },
     { label: "Client Updates", path: "client-updates", icon: Megaphone },
   ] },
 ];

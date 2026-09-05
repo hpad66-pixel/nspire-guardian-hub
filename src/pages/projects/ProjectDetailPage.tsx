@@ -587,8 +587,10 @@ export default function ProjectDetailPage() {
                       <Lightbulb className="h-4 w-4 mr-2" />Change type
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
-                    <Archive className="h-4 w-4 mr-2" />Archive Project
+                  <DropdownMenuItem onClick={() => isConsulting
+                    ? navigate(`/projects/${project.id}/financials/closeout`)
+                    : updateProject.mutate({ id: project.id, status: 'closed' })}>
+                    <Archive className="h-4 w-4 mr-2" />{isConsulting ? 'Reconcile & close project' : 'Archive Project'}
                   </DropdownMenuItem>
                   {canDeleteProject && (
                     <>

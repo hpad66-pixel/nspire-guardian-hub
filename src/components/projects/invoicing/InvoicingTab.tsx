@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -30,11 +30,13 @@ export function InvoicingTab({
   projectName,
   clientName,
   clientSeed,
+  autoCreateProposalId,
 }: {
   projectId: string;
   projectName: string;
   clientName?: string | null;
   clientSeed?: InvoiceClientSeed | null;
+  autoCreateProposalId?: string | null;
 }) {
   const { data: invoices, isLoading, remove } = useConsultingInvoices(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
@@ -43,6 +45,14 @@ export function InvoicingTab({
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [handledAutoCreate, setHandledAutoCreate] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!autoCreateProposalId || handledAutoCreate === autoCreateProposalId) return;
+    setEditId(null);
+    setBuilderOpen(true);
+    setHandledAutoCreate(autoCreateProposalId);
+  }, [autoCreateProposalId, handledAutoCreate]);
 
   const summary = useMemo(() => summarizeScopes(scopes), [scopes]);
   const approvedFee = useMemo(
@@ -214,6 +224,7 @@ export function InvoicingTab({
         projectName={projectName}
         clientSeed={clientSeed}
         editInvoiceId={editId}
+        initialProposalId={autoCreateProposalId}
       />
       <InvoiceDetailDialog
         open={!!detailId}
