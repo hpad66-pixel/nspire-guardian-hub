@@ -6,6 +6,11 @@ Proj OS authenticates the employee, resolves the current workspace, verifies pro
 
 No integration in this repository may connect directly to another product database or use another product's Supabase service-role key. Cross-product work uses a versioned HTTP contract.
 
+The inverse, administrator-directed company assignment flow is documented in
+[`apas-crm-project-linkage.md`](./apas-crm-project-linkage.md). It lets APAS CRM
+assign a canonical company and role to a Proj OS project through a separate,
+scoped, idempotent server boundary; it does not grant Hermes additional access.
+
 ```text
 Authenticated Proj OS user
   -> current Supabase user session

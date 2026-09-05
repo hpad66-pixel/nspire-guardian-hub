@@ -229,6 +229,11 @@ verify_jwt = false
 [functions.crm-integration-events]
 verify_jwt = false
 
+# Server-to-server APAS CRM project directory bridge. The function verifies a
+# short-lived APAS CRM assertion and never accepts a browser session as authority.
+[functions.apas-crm-project-links]
+verify_jwt = false
+
 # Proj OS Agent Gateway. agent-session verifies the Supabase user itself;
 # agent-tools verifies the short-lived ES256 agent session itself.
 [functions.agent-session]
