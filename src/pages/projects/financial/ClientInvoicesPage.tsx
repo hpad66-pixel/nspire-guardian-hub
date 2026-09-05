@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { InvoicingTab } from "@/components/projects/invoicing/InvoicingTab";
 import { useProject } from "@/hooks/useProjects";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function ClientInvoicesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const { data: project, isLoading } = useProject(projectId ?? null);
 
   return (
@@ -35,6 +36,7 @@ export default function ClientInvoicesPage() {
             city: project?.client?.city || null,
             state: project?.client?.state || null,
           }}
+          autoCreateProposalId={searchParams.get("new") === "1" ? searchParams.get("proposal") : null}
         />
       )}
     </div>

@@ -5,9 +5,11 @@ export const CONSULTING_FINANCIAL_PATHS = new Set([
   "overview",
   "proposals",
   "client-invoices",
+  "costs",
   "change-orders",
   "payments",
   "ledger",
+  "closeout",
   "reports",
   "client-updates",
   // Engagement agreement / prime contract record (routed from Contracts nav).

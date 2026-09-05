@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Send, CheckCircle2, Plus, Loader2, Mail, Pencil } from 'lucide-react';
+import { Download, Send, Plus, Loader2, Mail, Pencil } from 'lucide-react';
 import {
   useInvoiceDetail,
   useConsultingInvoices,
@@ -54,8 +54,8 @@ export function InvoiceDetailDialog({
   >();
 
   const inv: ConsultingInvoice | undefined = data?.invoice;
-  const lines = data?.lines ?? [];
-  const payments = data?.payments ?? [];
+  const lines = useMemo(() => data?.lines ?? [], [data?.lines]);
+  const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
   const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const balance = (Number(inv?.total) || 0) - paid;
   const meta = inv ? INVOICE_STATUS_META[inv.status] : null;
@@ -200,6 +200,7 @@ export function InvoiceDetailDialog({
   const recordPayment = async () => {
     const amt = Number(payAmount.replace(/[^0-9.]/g, ''));
     if (!amt) return;
+    if (amt > balance + 0.005) return;
     await addPayment.mutateAsync({
       amount: amt,
       received_date: payDate,
@@ -210,6 +211,8 @@ export function InvoiceDetailDialog({
     setPayNote('');
     if (inv && amt + paid >= Number(inv.total) && inv.status !== 'paid') {
       setStatus.mutate({ id: inv.id, status: 'paid' });
+    } else if (inv?.status === 'draft') {
+      setStatus.mutate({ id: inv.id, status: 'sent' });
     }
   };
 
@@ -345,7 +348,7 @@ export function InvoiceDetailDialog({
                     <span className="text-xs text-muted-foreground">Method</span>
                     <Input value={payMethod} onChange={(e) => setPayMethod(e.target.value)} placeholder="Wire / check" className="h-8" />
                   </div>
-                  <Button size="sm" variant="outline" onClick={recordPayment} disabled={addPayment.isPending || !payAmount} className="gap-1">
+                  <Button size="sm" variant="outline" onClick={recordPayment} disabled={addPayment.isPending || !payAmount || Number(payAmount.replace(/[^0-9.]/g, '')) > balance} className="gap-1">
                     <Plus className="h-4 w-4" /> Record
                   </Button>
                 </div>
@@ -369,9 +372,6 @@ export function InvoiceDetailDialog({
                   <Button size="sm" onClick={markSent} disabled={setStatus.isPending} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
                     {setStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Mark as sent
                   </Button>
-                )}
-                {inv.status === 'sent' && (
-                  <Button size="sm" onClick={() => setStatus.mutate({ id: inv.id, status: 'paid' })} disabled={setStatus.isPending} className="gap-1.5"><CheckCircle2 className="h-4 w-4" />Mark as paid</Button>
                 )}
                 {inv.status !== 'void' && (
                   <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={() => setStatus.mutate({ id: inv.id, status: 'void' })}>Void</Button>
