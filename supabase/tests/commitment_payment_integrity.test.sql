@@ -429,8 +429,8 @@ SELECT throws_ok(
          submitted_at = now(),
          apas_waiver_ack = true
      WHERE id = '90000000-0000-4000-8000-000000000021' $$,
-  'P0001', 'VENDOR_SUBMISSION_BACKEND_REQUIRED: save and submit through the token-scoped vendor endpoint',
-  'authenticated direct REST cannot forge requested pay app evidence'
+  '42501', NULL,
+  'authenticated direct REST has no privilege to forge requested pay app evidence'
 );
 
 RESET ROLE;
