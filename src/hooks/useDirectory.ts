@@ -47,6 +47,10 @@ export interface Organization {
   tax_id: string | null;
   insurance_expiry: string | null;
   bonding_capacity_cents: number | null;
+  apas_crm_contact_id?: string | null;
+  apas_crm_sync_status?: 'not_synced' | 'syncing' | 'synced' | 'failed';
+  apas_crm_synced_at?: string | null;
+  apas_crm_sync_error?: string | null;
   created_at: string;
   updated_at: string;
 }

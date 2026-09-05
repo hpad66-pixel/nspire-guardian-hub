@@ -6075,6 +6075,10 @@ export type Database = {
         Row: {
           address_line1: string | null
           address_line2: string | null
+          apas_crm_contact_id: string | null
+          apas_crm_sync_error: string | null
+          apas_crm_sync_status: string
+          apas_crm_synced_at: string | null
           bonding_capacity_cents: number | null
           city: string | null
           country: string | null
@@ -6101,6 +6105,10 @@ export type Database = {
         Insert: {
           address_line1?: string | null
           address_line2?: string | null
+          apas_crm_contact_id?: string | null
+          apas_crm_sync_error?: string | null
+          apas_crm_sync_status?: string
+          apas_crm_synced_at?: string | null
           bonding_capacity_cents?: number | null
           city?: string | null
           country?: string | null
@@ -6127,6 +6135,10 @@ export type Database = {
         Update: {
           address_line1?: string | null
           address_line2?: string | null
+          apas_crm_contact_id?: string | null
+          apas_crm_sync_error?: string | null
+          apas_crm_sync_status?: string
+          apas_crm_synced_at?: string | null
           bonding_capacity_cents?: number | null
           city?: string | null
           country?: string | null
@@ -13491,6 +13503,7 @@ export type Database = {
           commitment_id: string | null
           created_at: string
           created_commitment_invoice_id: string | null
+          created_consulting_cost_id: string | null
           created_lien_release_id: string | null
           doc_type: string
           error: string | null
@@ -13510,6 +13523,7 @@ export type Database = {
           commitment_id?: string | null
           created_at?: string
           created_commitment_invoice_id?: string | null
+          created_consulting_cost_id?: string | null
           created_lien_release_id?: string | null
           doc_type?: string
           error?: string | null
@@ -13529,6 +13543,7 @@ export type Database = {
           commitment_id?: string | null
           created_at?: string
           created_commitment_invoice_id?: string | null
+          created_consulting_cost_id?: string | null
           created_lien_release_id?: string | null
           doc_type?: string
           error?: string | null
@@ -14778,6 +14793,31 @@ export type Database = {
       }
     }
     Functions: {
+      create_consulting_invoice_from_submission: {
+        Args: {
+          p_amount: number
+          p_bill_date: string
+          p_cost_type?: string
+          p_description: string
+          p_due_date: string | null
+          p_reference_no: string | null
+          p_submission_id: string
+          p_vendor_organization_id: string
+        }
+        Returns: string
+      }
+      create_small_vendor_invoice_from_submission: {
+        Args: {
+          p_amount: number
+          p_cost_code_id: string
+          p_description: string
+          p_invoice_no: string | null
+          p_period_end: string
+          p_submission_id: string
+          p_vendor_organization_id: string
+        }
+        Returns: Json
+      }
       create_project_discussion_reply_with_mentions: {
         Args: {
           p_attachments?: string[]
@@ -14825,6 +14865,17 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: { can_manage: boolean; can_view: boolean }[]
       }
+      process_vendor_submission_invoice: {
+        Args: {
+          p_commitment_id: string
+          p_invoice_no: string | null
+          p_period_end: string
+          p_retainage_held?: number
+          p_submission_id: string
+          p_submitted_amount: number
+        }
+        Returns: string
+      }
       remove_client_team_member: {
         Args: { p_client_id: string; p_user_id: string }
         Returns: boolean
@@ -14840,6 +14891,24 @@ export type Database = {
       upsert_project_team_member: {
         Args: { p_project_id: string; p_role?: Database["public"]["Enums"]["app_role"]; p_user_id: string }
         Returns: string
+      }
+      upsert_project_vendor_from_invoice: {
+        Args: {
+          p_address_line1?: string | null
+          p_address_line2?: string | null
+          p_city?: string | null
+          p_country?: string | null
+          p_email?: string | null
+          p_existing_organization_id?: string | null
+          p_kind?: string | null
+          p_name?: string | null
+          p_phone?: string | null
+          p_postal_code?: string | null
+          p_project_id: string
+          p_state?: string | null
+          p_website?: string | null
+        }
+        Returns: Json
       }
       assignable_workspace_roles: {
         Args: Record<PropertyKey, never>

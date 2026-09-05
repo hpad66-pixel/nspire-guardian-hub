@@ -531,6 +531,94 @@ async function syncContacts(scope: Scope, body: Json) {
   }
 }
 
+async function syncVendor(scope: Scope, body: Json) {
+  const organizationId = uuid(body.organizationId, "organizationId");
+  const { data: canManage } = await scope.userDb.rpc("can_manage_consulting_ap", {
+    p_tenant_id: scope.workspaceId,
+  });
+  if (canManage !== true) {
+    throw new GatewayError("admin_required", "Only an administrator can synchronize a project vendor", 403);
+  }
+
+  const [vendorResult, assignmentResult, projectResult] = await Promise.all([
+    scope.admin.from("organizations").select("*")
+      .eq("id", organizationId).eq("tenant_id", scope.workspaceId).eq("is_active", true).maybeSingle(),
+    scope.admin.from("project_vendor_assignments").select("id")
+      .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
+      .eq("organization_id", organizationId).eq("is_active", true).maybeSingle(),
+    scope.admin.from("projects").select("name").eq("id", scope.projectId).maybeSingle(),
+  ]);
+  if (vendorResult.error || assignmentResult.error) throw vendorResult.error || assignmentResult.error;
+  const vendor = vendorResult.data;
+  const assignment = assignmentResult.data;
+  const project = projectResult.data;
+  if (!vendor || !assignment) {
+    throw new GatewayError("vendor_not_assigned", "Confirm this vendor on the project before CRM synchronization", 409);
+  }
+
+  await scope.admin.from("organizations").update({
+    apas_crm_sync_status: "syncing", apas_crm_sync_error: null,
+  }).eq("id", organizationId).eq("tenant_id", scope.workspaceId);
+
+  const contact: ContactImportItem = {
+    id: vendor.id,
+    firstName: vendor.name,
+    companyName: vendor.name,
+    email: vendor.email ?? undefined,
+    phone: vendor.phone ?? undefined,
+    website: vendor.website ?? undefined,
+    addressLine1: vendor.address_line1 ?? undefined,
+    addressLine2: vendor.address_line2 ?? undefined,
+    city: vendor.city ?? undefined,
+    state: vendor.state ?? undefined,
+    zipCode: vendor.postal_code ?? undefined,
+    country: vendor.country ?? undefined,
+    contactType: vendor.kind === "sub" ? "contractor" : "vendor",
+    tags: [
+      "ProjOS Vendor",
+      vendor.kind === "sub" ? "Subcontractor" : "Vendor",
+      project?.name ? `Project: ${project.name}` : "Project Vendor",
+    ],
+    notes: `Confirmed from a ProjOS invoice intake and linked to ${project?.name ?? "a project"}.`,
+    isActive: true,
+  };
+  const idempotencyKey = await sha256Hex(`${scope.workspaceId}:vendor-sync:${vendor.id}:${vendor.updated_at}`);
+  try {
+    const imported = await importContacts({
+      workspaceId: scope.workspaceId,
+      correlationId: crypto.randomUUID(),
+      idempotencyKey,
+    }, [contact]);
+    const result = imported.results.find((item) => item.sourceContactId === vendor.id) ?? imported.results[0];
+    if (!result?.canonicalContactId) {
+      throw new GatewayError("invalid_crm_response", "APAS CRM did not return the canonical vendor record", 502);
+    }
+    const syncedAt = new Date().toISOString();
+    const { error: updateError } = await scope.admin.from("organizations").update({
+      apas_crm_contact_id: result.canonicalContactId,
+      apas_crm_sync_status: "synced",
+      apas_crm_synced_at: syncedAt,
+      apas_crm_sync_error: null,
+    }).eq("id", organizationId).eq("tenant_id", scope.workspaceId);
+    if (updateError) throw updateError;
+    return {
+      organizationId,
+      canonicalContactId: result.canonicalContactId,
+      status: "synced",
+      action: result.action,
+      matchRule: result.matchRule,
+      syncedAt,
+    };
+  } catch (error) {
+    const failure = safeFailure(error);
+    await scope.admin.from("organizations").update({
+      apas_crm_sync_status: "failed",
+      apas_crm_sync_error: failure.reason,
+    }).eq("id", organizationId).eq("tenant_id", scope.workspaceId);
+    throw new GatewayError(failure.code, failure.reason, failure.status);
+  }
+}
+
 async function prepareApproval(scope: Scope, body: Json) {
   const intake = await requireIntake(scope, body.intakeId);
   if (intake.submitter_user_id !== scope.userId) throw new GatewayError("forbidden", "Only the submitter can approve this contact proposal", 403);
@@ -699,6 +787,7 @@ serve(async (req) => {
       case "complete_upload": result = await completeUpload(scope, body); break;
       case "categories": result = await categories(scope); break;
       case "sync_contacts": result = await syncContacts(scope, body); break;
+      case "sync_vendor": result = await syncVendor(scope, body); break;
       case "prepare_approval": result = await prepareApproval(scope, body); break;
       case "execute_approval": result = await executeApproval(scope, body); break;
       case "refresh_status": result = await refreshStatus(scope, body); break;
