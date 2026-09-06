@@ -29,7 +29,7 @@ import {
   Edit, Archive, Trash2, Filter, X, FolderTree, ChevronDown, ChevronRight, Network,
 } from 'lucide-react';
 import { buildProjectTree } from '@/lib/projectTree';
-import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
+import { useProjects, useProjectStats } from '@/hooks/useProjects';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { projectKind, projectKindTileClass, type ProjectKind } from '@/lib/projectKind';
@@ -39,6 +39,7 @@ import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOr
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { ProjectCloseDialog } from '@/components/projects/ProjectCloseDialog';
 import { ProjectListView } from '@/components/projects/ProjectListView';
 import { ProjectTableView } from '@/components/projects/ProjectTableView';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
@@ -53,7 +54,7 @@ import type { Project } from '@/hooks/useProjects';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 
 type ViewMode = 'cards' | 'list' | 'table';
-type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed';
+type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed' | 'closed';
 type HealthFilter = HealthStatus | 'all';
 type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
@@ -86,6 +87,7 @@ export default function ProjectsDashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [closeTarget, setCloseTarget] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [kindFilter, setKindFilter] = useState<'all' | ProjectKind>('all');
@@ -105,9 +107,9 @@ export default function ProjectsDashboard() {
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
   const { data: properties } = useProperties();
-  const { canCreate, isAdmin } = useUserPermissions();
-  const updateProject = useUpdateProject();
+  const { canCreate, isAdmin, currentRole } = useUserPermissions();
   const canCreateProjects = canCreate('projects');
+  const canCloseProjects = canDeleteProjects || isAdmin || currentRole === 'owner' || currentRole === 'administrator';
 
   const filteredProperty = propertyFilterId
     ? properties?.find((p) => p.id === propertyFilterId) ?? null
@@ -266,7 +268,15 @@ export default function ProjectsDashboard() {
   const toggleProgram = (pid: string) => setCollapsedPrograms((prev) => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
 
   const handleArchive = (project: Project) => {
-    updateProject.mutate({ id: project.id, status: 'closed' });
+    if (project.status === 'closed') {
+      navigate(`/projects/${project.id}`);
+      return;
+    }
+    if (projectKind(project) === 'consulting') {
+      navigate(`/projects/${project.id}/financials/closeout`);
+      return;
+    }
+    setCloseTarget(project);
   };
 
   // --- Card sub-component (inline to avoid prop-drilling) ---
@@ -310,13 +320,17 @@ export default function ProjectsDashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditProject(project)}>
-                <Edit className="h-4 w-4 mr-2" />Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleArchive(project)}>
-                <Archive className="h-4 w-4 mr-2" />Archive
-              </DropdownMenuItem>
-              {canDeleteProjects && (
+              {project.status !== 'closed' && (
+                <DropdownMenuItem onClick={() => setEditProject(project)}>
+                  <Edit className="h-4 w-4 mr-2" />Edit
+                </DropdownMenuItem>
+              )}
+              {(project.status === 'closed' || canCloseProjects) && (
+                <DropdownMenuItem onClick={() => handleArchive(project)}>
+                  <Archive className="h-4 w-4 mr-2" />{project.status === 'closed' ? 'View closeout' : 'Close & lock'}
+                </DropdownMenuItem>
+              )}
+              {canDeleteProjects && project.status !== 'closed' && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -336,7 +350,7 @@ export default function ProjectsDashboard() {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold">{project.name}</h4>
               <ProjectKindBadge project={project} />
-              <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+              <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">
                 {project.status === 'active' ? 'Active' : project.status}
               </Badge>
               <span className={cn(
@@ -594,6 +608,7 @@ export default function ProjectsDashboard() {
               <SelectItem value="planning">Planning</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
 
@@ -710,6 +725,7 @@ export default function ProjectsDashboard() {
           <ProjectListView
             projects={displayProjects}
             isAdmin={canDeleteProjects}
+            canClose={canCloseProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}
@@ -718,6 +734,7 @@ export default function ProjectsDashboard() {
           <ProjectTableView
             projects={displayProjects}
             isAdmin={canDeleteProjects}
+            canClose={canCloseProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}
@@ -743,6 +760,15 @@ export default function ProjectsDashboard() {
           projectId={deleteTarget.id}
           projectName={deleteTarget.name}
           navigateAfter={false}
+        />
+      )}
+      {closeTarget && (
+        <ProjectCloseDialog
+          open={!!closeTarget}
+          onOpenChange={(open) => { if (!open) setCloseTarget(null); }}
+          projectId={closeTarget.id}
+          projectName={closeTarget.name}
+          consulting={projectKind(closeTarget) === 'consulting'}
         />
       )}
     </div>

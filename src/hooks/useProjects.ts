@@ -312,6 +312,67 @@ export function useUpdateProject() {
   });
 }
 
+export function useCloseProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      reason,
+      allowUnreconciled = false,
+    }: {
+      projectId: string;
+      reason: string;
+      allowUnreconciled?: boolean;
+    }) => {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 5) {
+        throw new Error('Enter a closeout reason of at least 5 characters.');
+      }
+      const { data, error } = await supabase.rpc('close_project' as never, {
+        p_project_id: projectId,
+        p_reason: normalizedReason,
+        p_allow_unreconciled: allowUnreconciled,
+      } as never);
+      if (error) throw error;
+      return data as unknown as ProjectRow;
+    },
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-closeout', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-position', project.id] });
+      toast.success('Project closed and locked');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useReopenProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, reason }: { projectId: string; reason: string }) => {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 5) {
+        throw new Error('Enter a reopen reason of at least 5 characters.');
+      }
+      const { data, error } = await supabase.rpc('reopen_project' as never, {
+        p_project_id: projectId,
+        p_reason: normalizedReason,
+      } as never);
+      if (error) throw error;
+      return data as unknown as ProjectRow;
+    },
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-closeout', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-position', project.id] });
+      toast.success('Project reopened for authorized work');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({

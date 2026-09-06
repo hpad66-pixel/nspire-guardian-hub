@@ -9793,6 +9793,10 @@ export type Database = {
           actual_end_date: string | null
           budget: number | null
           client_id: string | null
+          close_reason: string | null
+          close_snapshot: Json | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -9803,6 +9807,10 @@ export type Database = {
           name: string
           project_type: string
           property_id: string | null
+          pre_close_status: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
           scope: string | null
           spent: number | null
           start_date: string | null
@@ -9815,6 +9823,10 @@ export type Database = {
           actual_end_date?: string | null
           budget?: number | null
           client_id?: string | null
+          close_reason?: string | null
+          close_snapshot?: Json | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -9825,6 +9837,10 @@ export type Database = {
           name: string
           project_type?: string
           property_id?: string | null
+          pre_close_status?: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -9837,6 +9853,10 @@ export type Database = {
           actual_end_date?: string | null
           budget?: number | null
           client_id?: string | null
+          close_reason?: string | null
+          close_snapshot?: Json | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -9847,6 +9867,10 @@ export type Database = {
           name?: string
           project_type?: string
           property_id?: string | null
+          pre_close_status?: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null

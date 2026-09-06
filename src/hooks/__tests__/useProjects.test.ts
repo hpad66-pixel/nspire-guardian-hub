@@ -37,6 +37,8 @@ import {
   useProjectStats,
   useCreateProject,
   useUpdateProject,
+  useCloseProject,
+  useReopenProject,
   useDeleteProject,
 } from "../useProjects";
 import { renderHookWithClient } from "@/test/utils";
@@ -146,6 +148,38 @@ describe("useProjects", () => {
     expect(__mock.rpc).toHaveBeenCalledWith('delete_project_as_super_admin', {
       p_project_id: 'proj1',
       p_delete_descendants: false,
+    });
+  });
+
+  it("closes a project through the certified lifecycle RPC", async () => {
+    __mock.rpc.mockResolvedValueOnce({ data: { id: "proj1", status: "closed" }, error: null });
+    const { result } = renderHookWithClient(() => useCloseProject());
+
+    await result.current.mutateAsync({
+      projectId: "proj1",
+      reason: "  Closed with a documented net loss.  ",
+      allowUnreconciled: true,
+    });
+
+    expect(__mock.rpc).toHaveBeenCalledWith("close_project", {
+      p_project_id: "proj1",
+      p_reason: "Closed with a documented net loss.",
+      p_allow_unreconciled: true,
+    });
+  });
+
+  it("requires an administrator reason and reopens through the lifecycle RPC", async () => {
+    __mock.rpc.mockResolvedValueOnce({ data: { id: "proj1", status: "active" }, error: null });
+    const { result } = renderHookWithClient(() => useReopenProject());
+
+    await expect(result.current.mutateAsync({ projectId: "proj1", reason: "no" })).rejects.toThrow(
+      "at least 5 characters",
+    );
+    await result.current.mutateAsync({ projectId: "proj1", reason: "Authorized correction" });
+
+    expect(__mock.rpc).toHaveBeenCalledWith("reopen_project", {
+      p_project_id: "proj1",
+      p_reason: "Authorized correction",
     });
   });
 
