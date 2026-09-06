@@ -54,9 +54,14 @@ import {
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
+import {
+  compareClosedProjectsFirst,
+  matchesPortfolioStatus,
+  type PortfolioStatusFilter,
+} from '@/lib/projects/portfolioProjectVisibility';
 
 type ViewMode = 'cards' | 'list' | 'table';
-type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed' | 'closed';
+type StatusFilter = PortfolioStatusFilter;
 type HealthFilter = HealthStatus | 'all';
 type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
@@ -167,13 +172,8 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(p => p.status === statusFilter);
-    } else {
-      // Default: show only active projects (shared selector — see lib/projects).
-      filtered = filtered.filter(isActiveProject);
-    }
+    // "All Projects" is literal: certified closed cards remain visible after refresh.
+    filtered = filtered.filter((project) => matchesPortfolioStatus(project, statusFilter));
 
     // Kind filter (construction vs consulting) — they measure different things.
     if (kindFilter !== 'all') {
@@ -192,6 +192,11 @@ export default function ProjectsDashboard() {
 
     // Sort
     filtered.sort((a, b) => {
+      if (statusFilter === 'all') {
+        const closeoutOrder = compareClosedProjectsFirst(a, b);
+        if (closeoutOrder !== 0) return closeoutOrder;
+      }
+
       let av: any, bv: any;
       switch (sortBy) {
         case 'name': av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
@@ -617,7 +622,7 @@ export default function ProjectsDashboard() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Active</SelectItem>
+              <SelectItem value="all">All Projects</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="planning">Planning</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
