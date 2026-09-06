@@ -98,6 +98,10 @@ export interface ConsultingFinancialCloseout {
   notes: string | null;
   reconciled_at: string;
   closed_at: string;
+  is_reconciled: boolean;
+  closed_with_exception: boolean;
+  closure_reason: string | null;
+  is_active: boolean;
 }
 
 // Generated database types intentionally lag the forward migration in this branch.
@@ -324,7 +328,7 @@ export function useConsultingFinancialPosition(projectId: string | null | undefi
     enabled: !!projectId,
     queryFn: async () => {
       const { data, error } = await supabase.from('consulting_financial_closeouts' as never)
-        .select('*').eq('project_id', projectId).maybeSingle();
+        .select('*').eq('project_id', projectId).eq('is_active', true).maybeSingle();
       if (error) throw error;
       if (!data) return null;
       const raw = data as unknown as Record<string, unknown>;
@@ -332,14 +336,17 @@ export function useConsultingFinancialPosition(projectId: string | null | undefi
     },
   });
   const closeProject = useMutation({
-    mutationFn: async (notes?: string) => {
+    mutationFn: async ({ reason, allowUnreconciled = false }: { reason: string; allowUnreconciled?: boolean }) => {
       if (!projectId) throw new Error('No project selected.');
-      const { data, error } = await supabase.rpc('close_consulting_project' as never, {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 5) throw new Error('Enter a closeout reason of at least 5 characters.');
+      const { data, error } = await supabase.rpc('close_project' as never, {
         p_project_id: projectId,
-        p_notes: notes?.trim() || null,
+        p_reason: normalizedReason,
+        p_allow_unreconciled: allowUnreconciled,
       } as never);
       if (error) throw error;
-      return data as unknown as ConsultingFinancialCloseout;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['consulting-financial-position', projectId] });

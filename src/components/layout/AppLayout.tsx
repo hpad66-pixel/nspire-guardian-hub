@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { Database } from '@/integrations/supabase/types';
+import { ProjectClosureBoundary } from '@/components/projects/ProjectClosureBoundary';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -286,7 +287,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <span className="text-left">You are offline — your changes will sync when connection is restored</span>
                 </div>
               )}
-              {children}
+              <ProjectClosureBoundary>{children}</ProjectClosureBoundary>
             </main>
           </div>
         </div>

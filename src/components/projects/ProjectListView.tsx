@@ -23,6 +23,7 @@ import type { Project } from '@/hooks/useProjects';
 interface ProjectListViewProps {
   projects: Project[];
   isAdmin: boolean;
+  canClose: boolean;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
   onArchive: (project: Project) => void;
@@ -45,7 +46,7 @@ const formatCurrency = (amount: number | string | null | undefined) => {
   }).format(Number(amount));
 };
 
-export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive }: ProjectListViewProps) {
+export function ProjectListView({ projects, isAdmin, canClose, onEdit, onDelete, onArchive }: ProjectListViewProps) {
   const navigate = useNavigate();
   const { financials } = useAllProjectFinancials();
   const { consultingTotals } = useAllApprovedProposalTotals();
@@ -152,15 +153,19 @@ export function ProjectListView({ projects, isAdmin, onEdit, onDelete, onArchive
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit(project)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onArchive(project)}>
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive
-                  </DropdownMenuItem>
-                  {isAdmin && (
+                  {project.status !== 'closed' && (
+                    <DropdownMenuItem onClick={() => onEdit(project)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                  {(project.status === 'closed' || canClose) && (
+                    <DropdownMenuItem onClick={() => onArchive(project)}>
+                      <Archive className="h-4 w-4 mr-2" />
+                      {project.status === 'closed' ? 'View closeout' : 'Close & lock'}
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && project.status !== 'closed' && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
