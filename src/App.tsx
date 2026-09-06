@@ -74,6 +74,7 @@ const AiUsageAnalyticsPage = lazy(() => import('./pages/admin/AiUsageAnalyticsPa
 const ModulePackagesPage = lazy(() => import('./pages/admin/ModulePackagesPage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
 const FeatureRegistryPage = lazy(() => import('./pages/admin/FeatureRegistryPage'));
+const CardPayoffsPage = lazy(() => import('./pages/admin/CardPayoffsPage'));
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
 const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
 const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
@@ -434,6 +435,7 @@ const App = () => (
                               <Route path="/admin/water-intelligence" element={<WaterIntelAdminPage />} />
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
                               <Route path="/admin/registry" element={<FeatureRegistryPage />} />
+                              <Route path="/admin/card-payoffs" element={<CardPayoffsPage />} />
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />

@@ -22,6 +22,7 @@ import {
   Phone,
   Warehouse,
   Droplets,
+  CircleDollarSign,
   type LucideIcon,
 } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/usePermissions';
@@ -49,6 +50,7 @@ const WORKSPACE_TILES: AdminTile[] = [
   { title: 'Cost Code Libraries', description: 'Master cost codes that drive budgets and financials.', icon: Coins, to: '/admin/cost-codes', scope: 'owner' },
   { title: 'Workflows', description: 'Approval flows and ball-in-court routing.', icon: Workflow, to: '/admin/workflows', scope: 'owner' },
   { title: 'Distribution Lists', description: 'Named recipient groups for notifications and sends.', icon: Send, to: '/settings/distribution-lists', scope: 'owner' },
+  { title: 'Card Payoffs', description: 'Prepare and reconcile secure Wells Fargo Business payments to American Express.', icon: CircleDollarSign, to: '/admin/card-payoffs', scope: 'owner' },
   { title: 'Client Portals', description: 'Owner and subcontractor portal access.', icon: Globe, to: '/portals', scope: 'owner', module: 'clientPortalEnabled' },
   {
     title: 'Property Ops Portal',

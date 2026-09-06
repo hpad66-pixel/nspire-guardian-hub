@@ -31,6 +31,7 @@ import {
   FolderKanban,
   Lightbulb,
   UserRoundCheck,
+  CircleDollarSign,
   X,
 } from 'lucide-react';
 
@@ -467,6 +468,13 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
                 title="Admin"
                 subtitle="Modules, packages, hub"
                 onClick={() => go('/admin')}
+              />
+              <DrawerTile
+                icon={<CircleDollarSign className={iconClass} />}
+                iconBg={adminIconBg}
+                title="Card Payoffs"
+                subtitle="American Express payments"
+                onClick={() => go('/admin/card-payoffs')}
               />
               <DrawerTile
                 icon={<Lightbulb className={iconClass} />}
