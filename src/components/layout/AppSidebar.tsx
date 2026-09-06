@@ -47,6 +47,7 @@ import {
   ClipboardList,
   Droplets,
   Lightbulb,
+  CircleDollarSign,
   type LucideIcon,
   UserRoundCheck,
 } from 'lucide-react';
@@ -334,6 +335,7 @@ export function AppSidebar() {
               <SectionLabel label="Admin" collapsed={collapsed} />
               <div className="space-y-px">
                 <NavItem to="/admin" icon={ShieldCheck} label="Admin" collapsed={collapsed} end />
+                <NavItem to="/admin/card-payoffs" icon={CircleDollarSign} label="Card Payoffs" collapsed={collapsed} />
                 <NavItem to="/product-ideas" icon={Lightbulb} label="Product Ideas" collapsed={collapsed} />
               </div>
             </>
