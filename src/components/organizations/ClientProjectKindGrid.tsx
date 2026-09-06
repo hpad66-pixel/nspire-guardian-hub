@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Calendar, HardHat, Lightbulb } from 'lucide-react';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectClosedCardStamp } from '@/components/projects/ProjectClosedCardStamp';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import type { Project } from '@/hooks/useProjects';
 import {
@@ -11,6 +12,7 @@ import {
   type ProjectKind,
 } from '@/lib/projectKind';
 import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
+import { compareClosedProjectsFirst } from '@/lib/projects/portfolioProjectVisibility';
 import { cn } from '@/lib/utils';
 
 /** Status chips on blue (consulting) tiles — light on dark. */
@@ -118,6 +120,7 @@ function ClientProjectTile({
     (kind === 'consulting' ? STATUS_ON_BLUE : STATUS_ON_IVORY)[project.status] ??
     (kind === 'consulting' ? STATUS_ON_BLUE.planning : STATUS_ON_IVORY.planning);
   const Icon = kind === 'consulting' ? Lightbulb : HardHat;
+  const isClosed = project.status === 'closed';
 
   return (
     <button
@@ -127,12 +130,14 @@ function ClientProjectTile({
         'group relative overflow-hidden rounded-2xl border border-l-4 p-4 text-left transition-all',
         'hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         projectKindTileClass(kind),
+        isClosed && 'border-amber-300/80 ring-1 ring-amber-300/30 shadow-lg',
         kind === 'consulting'
           ? 'focus-visible:ring-[var(--kind-consulting)]'
           : 'focus-visible:ring-[var(--kind-construction-accent)]',
       )}
       data-testid={`client-project-tile-${project.id}`}
       data-kind={kind}
+      data-status={project.status ?? 'planning'}
     >
       <div
         className={cn(
@@ -172,20 +177,24 @@ function ClientProjectTile({
           </p>
         </div>
       </div>
-      <div className="relative mt-4 flex items-end justify-between gap-2 border-t border-current/10 pt-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {amountLabel}
-          </p>
-          <p className="text-sm font-bold tabular-nums">{amount ?? '—'}</p>
+      {isClosed ? (
+        <ProjectClosedCardStamp project={project} />
+      ) : (
+        <div className="relative mt-4 flex items-end justify-between gap-2 border-t border-current/10 pt-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {amountLabel}
+            </p>
+            <p className="text-sm font-bold tabular-nums">{amount ?? '—'}</p>
+          </div>
+          {project.target_end_date && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(project.target_end_date), 'MMM d, yyyy')}
+            </span>
+          )}
         </div>
-        {project.target_end_date && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            {format(new Date(project.target_end_date), 'MMM d, yyyy')}
-          </span>
-        )}
-      </div>
+      )}
     </button>
   );
 }
@@ -195,8 +204,8 @@ export function ClientProjectKindGrid({ projects }: { projects: Project[] }) {
   const { construction, consulting } = groupProjectsByKind(projects);
 
   const rows: Array<{ kind: ProjectKind; items: Project[] }> = [
-    { kind: 'construction', items: construction },
-    { kind: 'consulting', items: consulting },
+    { kind: 'construction', items: [...construction].sort(compareClosedProjectsFirst) },
+    { kind: 'consulting', items: [...consulting].sort(compareClosedProjectsFirst) },
   ].filter((row) => row.items.length > 0);
 
   if (rows.length === 0) return null;
