@@ -21,6 +21,33 @@ vi.mock('@/hooks/useProjects', () => ({
   useUpdateProject: () => ({ mutateAsync: mocks.update, isPending: false }),
 }));
 
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'user-hardeep' } }),
+}));
+
+vi.mock('@/hooks/useProfiles', () => ({
+  useProfiles: () => ({
+    data: [{
+      id: 'profile-hardeep',
+      user_id: 'user-hardeep',
+      full_name: 'Hardeep Anand',
+      email: 'hardeep@apas.ai',
+      work_email: 'hardeep@apas.ai',
+      avatar_url: null,
+      status: 'active',
+    }],
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/hooks/usePermissions', () => ({
+  useUserPermissions: () => ({ isAdmin: true, currentRole: 'admin' }),
+}));
+
+vi.mock('@/hooks/usePlatformAdmin', () => ({
+  usePlatformSuperAdmin: () => ({ isSuperAdmin: false }),
+}));
+
 vi.mock('@/components/ui/voice-dictation-textarea-ai', () => ({
   VoiceDictationTextareaWithAI: ({ value, onValueChange, ...props }: any) => (
     <textarea value={value} onChange={(event) => onValueChange(event.target.value)} {...props} />
@@ -63,6 +90,7 @@ describe('ProjectDialog client-scoped creation', () => {
       project_type: 'construction',
       client_id: 'client-r4',
       property_id: null,
+      owner_user_id: 'user-hardeep',
     }));
     expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'project-new' }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -90,6 +118,7 @@ describe('ProjectDialog client-scoped creation', () => {
       project_type: 'consulting',
       client_id: 'client-larkin',
       property_id: null,
+      owner_user_id: 'user-hardeep',
     }));
   });
 });
