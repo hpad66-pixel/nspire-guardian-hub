@@ -13533,6 +13533,11 @@ export type Database = {
       }
       vendor_submissions: {
         Row: {
+          admin_override: boolean
+          admin_override_at: string | null
+          admin_override_by: string | null
+          admin_override_fields: string[]
+          admin_override_reason: string | null
           artifact_id: string | null
           commitment_id: string | null
           created_at: string
@@ -13543,6 +13548,10 @@ export type Database = {
           error: string | null
           from_email: string | null
           id: string
+          missing_info_requested_at: string | null
+          missing_info_requested_by: string | null
+          missing_info_requested_to: string | null
+          missing_info_requirements: string[]
           parsed: Json | null
           project_id: string
           received_at: string
@@ -13553,6 +13562,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_override?: boolean
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_fields?: string[]
+          admin_override_reason?: string | null
           artifact_id?: string | null
           commitment_id?: string | null
           created_at?: string
@@ -13563,6 +13577,10 @@ export type Database = {
           error?: string | null
           from_email?: string | null
           id?: string
+          missing_info_requested_at?: string | null
+          missing_info_requested_by?: string | null
+          missing_info_requested_to?: string | null
+          missing_info_requirements?: string[]
           parsed?: Json | null
           project_id: string
           received_at?: string
@@ -13573,6 +13591,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_override?: boolean
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_fields?: string[]
+          admin_override_reason?: string | null
           artifact_id?: string | null
           commitment_id?: string | null
           created_at?: string
@@ -13583,6 +13606,10 @@ export type Database = {
           error?: string | null
           from_email?: string | null
           id?: string
+          missing_info_requested_at?: string | null
+          missing_info_requested_by?: string | null
+          missing_info_requested_to?: string | null
+          missing_info_requirements?: string[]
           parsed?: Json | null
           project_id?: string
           received_at?: string

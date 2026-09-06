@@ -106,7 +106,7 @@ export default function ConsultingCostsPage() {
                 const isExpanded = expanded.has(cost.id);
                 return <div key={cost.id} className="p-4 sm:p-5">
                   <div className="grid items-center gap-4 lg:grid-cols-[minmax(220px,1.45fr)_minmax(150px,.8fr)_repeat(3,minmax(105px,.6fr))_auto]">
-                    <div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{cost.vendor_name}</p><StatusBadge status={cost.status} /></div><p className="mt-1 text-xs text-muted-foreground">{TYPE_LABEL[cost.cost_type]} · {cost.source_kind === 'vendor_upload' || cost.source_kind === 'vendor_portal' ? 'Vendor attested' : cost.source_kind === 'historical_exception' ? 'Historical exception' : 'Prepared by APAS'}</p></div>
+                    <div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{cost.vendor_name}</p><StatusBadge status={cost.status} />{cost.is_admin_override && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-800">Admin exception</Badge>}</div><p className="mt-1 text-xs text-muted-foreground">{TYPE_LABEL[cost.cost_type]} · {cost.source_kind === 'vendor_upload' || cost.source_kind === 'vendor_portal' ? 'Vendor attested' : cost.source_kind === 'historical_exception' ? 'Historical exception' : 'Prepared by APAS'}</p></div>
                     <div><p className="font-mono text-xs">{cost.reference_no || 'No reference'}</p><p className="mt-1 text-xs text-muted-foreground">{format(new Date(`${cost.bill_date}T00:00:00`), 'MMM d, yyyy')}</p></div>
                     <Amount label="Approved" value={cost.amount} />
                     <Amount label="Paid" value={cost.paid_to_date} tone="emerald" />
@@ -120,6 +120,7 @@ export default function ConsultingCostsPage() {
                     </div>
                   </div>
                   {cost.status === 'paid' && cost.paid_at && <div className="mt-4"><ProcessedPaidStamp processedDate={cost.approved_at} paidDate={cost.paid_at} totalPaid={cost.paid_to_date} latestReference={cost.payments.at(0)?.reference} /></div>}
+                  {cost.is_admin_override && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"><span className="font-semibold">Administrator exception:</span> {cost.admin_override_reason || 'Reason unavailable'}{cost.admin_override_fields?.length > 0 && <p className="mt-1 text-xs text-amber-800">Pending verification: {cost.admin_override_fields.join(', ')}</p>}</div>}
                   {cost.rejection_reason && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"><span className="font-semibold">Returned:</span> {cost.rejection_reason}</p>}
                   {isExpanded && <InvoiceDetail cost={cost} canReconcile={isAdmin} onReconcile={(paymentId) => reconcilePayment.mutate({ paymentId })} />}
                 </div>;

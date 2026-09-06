@@ -4,13 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   ArrowRight, Building2, Check, CircleAlert, FileSearch2, FileText, Loader2,
-  RefreshCw, ShieldCheck, Sparkles, Upload, X,
+  MailQuestion, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, Upload, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { resolveCurrentWorkspaceId } from '@/lib/tenant';
@@ -21,6 +22,15 @@ import { useCommitments } from '@/hooks/useCommitments';
 import { useCostCodes, useDefaultLibrary } from '@/hooks/useCostCodes';
 import { useOrganizations, type Organization } from '@/hooks/useDirectory';
 import { useProject } from '@/hooks/useProjects';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { useSendEmail } from '@/hooks/useSendEmail';
+import { useProjectEmails } from '@/hooks/useProjectEmails';
+import {
+  VendorMissingInfoRequestDialog,
+  type VendorMissingInfoRequest,
+} from '@/components/financial/VendorMissingInfoRequestDialog';
+import { buildMissingInfoEmail } from '@/lib/financial/vendorMissingInfoRequest';
 
 interface Fields {
   doc_type?: string;
@@ -51,6 +61,7 @@ interface Fields {
   missing_fields?: string[];
   line_items?: Array<{ description?: string; amount?: number; scheduled_value?: number; this_period?: number }>;
   summary?: string;
+  description?: string;
 }
 
 type SavedSource = { artifactId: string; submissionId: string };
@@ -90,6 +101,10 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const artifacts = useProjectArtifacts(projectId);
+  const sendEmail = useSendEmail();
+  const projectEmails = useProjectEmails(projectId);
+  const { isAdmin } = useUserPermissions();
+  const { isSuperAdmin } = usePlatformSuperAdmin();
   const { data: project } = useProject(projectId);
   const { data: organizations = [] } = useOrganizations();
   const { data: commitments = [] } = useCommitments(projectId);
@@ -105,26 +120,46 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const [costCodeId, setCostCodeId] = useState('');
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [savedSource, setSavedSource] = useState<SavedSource | null>(null);
+  const [adminOverride, setAdminOverride] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   const kind = project ? projectKind(project) : null;
   const isConsulting = kind === 'consulting';
   const isInvoice = fields?.doc_type === 'invoice' || fields?.doc_type === 'pay_app';
+  const canAdminOverride = isAdmin || isSuperAdmin;
   const matchingVendors = useMemo(() => organizations.filter((organization) =>
     ['sub', 'vendor', 'consultant', 'other'].includes(organization.kind)), [organizations]);
   const selectedVendor = vendorChoice && vendorChoice !== 'create_new'
     ? matchingVendors.find((organization) => organization.id === vendorChoice) ?? null
     : null;
-  const description = fields?.line_items?.map((item) => item.description).filter(Boolean).join('; ')
+  const description = fields?.description?.trim()
+    || fields?.line_items?.map((item) => item.description).filter(Boolean).join('; ')
     || fields?.summary || 'Vendor services';
   const missingFields = useMemo(() => {
     if (!fields) return [];
-    const missing = new Set(fields.missing_fields ?? []);
+    const missing = new Set((fields.missing_fields ?? []).map((item) => item.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()));
     if (!fields.vendor_email) missing.add('vendor email');
     if (!fields.vendor_address_line1) missing.add('vendor address');
     if (!fields.due_date) missing.add('due date');
     missing.add('verified payment destination');
     return [...missing];
   }, [fields]);
+  const accountingRoute = commitmentId || (adminOverride ? 'new_small' : '');
+  const overrideFields = useMemo(() => {
+    if (!fields) return [];
+    const items = new Set(missingFields);
+    if (!fields.vendor_name?.trim() && vendorChoice === 'create_new') items.add('vendor identity');
+    if (!(Number(fields.amount) > 0)) items.add('invoice amount');
+    if (!fields.invoice_number?.trim()) items.add('invoice number');
+    if (!fields.invoice_date) items.add('invoice date');
+    if (!isConsulting && !commitmentId) items.add('commitment route');
+    if (!isConsulting && accountingRoute === 'new_small' && !costCodeId) items.add('cost code');
+    return [...items];
+  }, [fields, missingFields, vendorChoice, isConsulting, commitmentId, accountingRoute, costCodeId]);
+  const adminOverrideReady = canAdminOverride && adminOverride && overrideReason.trim().length >= 10;
+  const reviewSatisfied = reviewConfirmed || adminOverrideReady;
 
   useEffect(() => {
     if (!fields) return;
@@ -158,6 +193,7 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
   const reset = () => {
     setFile(null); setFields(null); setVendorChoice(''); setCommitmentId(''); setCostCodeId('');
     setReviewConfirmed(false); setSavedSource(null);
+    setAdminOverride(false); setOverrideReason(''); setRequestOpen(false);
     if (fileRef.current) fileRef.current.value = '';
   };
   const set = (key: keyof Fields, value: unknown) => setFields((current) => ({ ...(current ?? {}), [key]: value }));
@@ -185,10 +221,13 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
 
   async function ensureVendor(): Promise<{ id: string; name: string }> {
     if (!fields) throw new Error('Upload and review the invoice first.');
+    const sourceName = file?.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || 'uploaded invoice';
+    const vendorName = fields.vendor_name?.trim()
+      || (adminOverrideReady ? `Vendor pending identification — ${sourceName}` : null);
     const { data, error } = await supabase.rpc('upsert_project_vendor_from_invoice', {
       p_project_id: projectId,
       p_existing_organization_id: selectedVendor?.id ?? null,
-      p_name: fields.vendor_name?.trim() || null,
+      p_name: vendorName,
       p_kind: isConsulting ? 'consultant' : 'vendor',
       p_email: fields.vendor_email?.trim() || null,
       p_phone: fields.vendor_phone?.trim() || null,
@@ -237,6 +276,18 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
     return source;
   }
 
+  async function persistAdminException(submissionId: string) {
+    const { error } = await supabase.from('vendor_submissions')
+      .update({
+        admin_override: adminOverrideReady,
+        admin_override_reason: adminOverrideReady ? overrideReason.trim() : null,
+        admin_override_fields: adminOverrideReady ? overrideFields : [],
+      })
+      .eq('id', submissionId)
+      .eq('project_id', projectId);
+    if (error) throw error;
+  }
+
   async function syncVendorToCrm(vendorId: string) {
     const { data, error } = await supabase.functions.invoke('crm-integration-gateway', {
       body: { operation: 'sync_vendor', projectId, organizationId: vendorId },
@@ -246,15 +297,18 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
 
   async function processInvoice() {
     if (!fields || !file || !isInvoice) return;
-    if (!reviewConfirmed) return toast.error('Confirm that you reviewed the extracted vendor and invoice fields.');
-    if (vendorChoice === 'create_new' && !fields.vendor_name?.trim()) return toast.error('Confirm the vendor name.');
-    if (!(Number(fields.amount) > 0)) return toast.error('Confirm an invoice amount greater than zero.');
-    if (!isConsulting && !commitmentId) return toast.error('Choose an existing commitment or the small-vendor path.');
-    if (!isConsulting && commitmentId === 'new_small' && !costCodeId) return toast.error('Choose the cost code for the small-vendor commitment.');
+    if (!reviewSatisfied) return toast.error('Confirm your review, or document an administrator exception.');
+    if (adminOverride && !adminOverrideReady) return toast.error('Explain the administrator exception in at least 10 characters.');
+    if (vendorChoice === 'create_new' && !fields.vendor_name?.trim() && !adminOverrideReady) return toast.error('Confirm the vendor name.');
+    if (Number(fields.amount) < 0) return toast.error('An invoice amount cannot be negative.');
+    if (!(Number(fields.amount) > 0) && !adminOverrideReady) return toast.error('Confirm an invoice amount greater than zero.');
+    if (!isConsulting && !accountingRoute) return toast.error('Choose an existing commitment or the small-vendor path.');
+    if (!isConsulting && accountingRoute === 'new_small' && !costCodeId && !adminOverrideReady) return toast.error('Choose the cost code for the small-vendor commitment.');
     setSaving(true);
     try {
       const vendor = await ensureVendor();
       const source = await attach();
+      await persistAdminException(source.submissionId);
       let destination = '';
       if (isConsulting) {
         const { data: costId, error } = await supabase.rpc('create_consulting_invoice_from_submission', {
@@ -269,22 +323,22 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
         });
         if (error) throw error;
         destination = String(costId);
-      } else if (commitmentId === 'new_small') {
-        const { data, error } = await supabase.rpc('create_small_vendor_invoice_from_submission', {
+      } else if (accountingRoute === 'new_small') {
+        const { data, error } = await supabase.rpc('create_small_vendor_invoice_from_submission' as never, {
           p_submission_id: source.submissionId,
           p_vendor_organization_id: vendor.id,
-          p_cost_code_id: costCodeId,
+          p_cost_code_id: costCodeId || null,
           p_invoice_no: fields.invoice_number || null,
           p_period_end: fields.period_end || fields.invoice_date || isoToday(),
           p_amount: Number(fields.amount),
           p_description: description,
-        });
+        } as never);
         if (error) throw error;
         destination = (data as unknown as SmallVendorInvoiceResult).commitmentId;
       } else {
         const { data: invoiceId, error } = await supabase.rpc('process_vendor_submission_invoice', {
           p_submission_id: source.submissionId,
-          p_commitment_id: commitmentId,
+          p_commitment_id: accountingRoute,
           p_invoice_no: fields.invoice_number || null,
           p_period_end: fields.period_end || fields.invoice_date || isoToday(),
           p_submitted_amount: Number(fields.amount),
@@ -308,9 +362,9 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
       }
       const route = isConsulting
         ? `/projects/${projectId}/financials/costs`
-        : commitmentId === 'new_small'
+        : accountingRoute === 'new_small'
           ? `/projects/${projectId}/financials/commitments/${destination}`
-          : `/projects/${projectId}/financials/commitments/${commitmentId}`;
+          : `/projects/${projectId}/financials/commitments/${accountingRoute}`;
       reset();
       navigate(route);
     } catch (error) {
@@ -322,11 +376,12 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
 
   async function saveForLater() {
     if (!fields || !file) return;
-    if (!reviewConfirmed) return toast.error('Confirm your review before saving the vendor record.');
+    if (!reviewSatisfied) return toast.error('Confirm your review, or document an administrator exception.');
     setSaving(true);
     try {
       const vendor = await ensureVendor();
-      await attach();
+      const source = await attach();
+      await persistAdminException(source.submissionId);
       try { await syncVendorToCrm(vendor.id); } catch { /* sync status is retained for follow-up */ }
       await queryClient.invalidateQueries({ queryKey: ['vendor-submissions', projectId] });
       toast.success('Vendor confirmed and source invoice saved in the project inbox.');
@@ -335,6 +390,74 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
       toast.error(error instanceof Error ? error.message : 'Could not save invoice');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function requestMissingInformation(request: VendorMissingInfoRequest) {
+    if (!fields || !file) return;
+    setRequesting(true);
+    try {
+      const source = await attach();
+      const email = buildMissingInfoEmail({
+        vendorName: fields.vendor_name || selectedVendor?.name,
+        projectName: project?.name || 'Project',
+        invoiceNumber: fields.invoice_number,
+        sourceFileName: file.name,
+        requirementIds: request.requirementIds,
+        customRequirements: request.customRequirements,
+        dueDate: request.dueDate,
+        message: request.message,
+      });
+      await sendEmail.mutateAsync({
+        recipients: [request.recipientEmail],
+        subject: email.subject,
+        bodyHtml: email.bodyHtml,
+        bodyText: email.bodyText,
+      });
+
+      const auditFailures: string[] = [];
+      try {
+        const { error } = await supabase.from('vendor_submissions')
+          .update({
+            status: 'needs_review',
+            missing_info_requested_at: new Date().toISOString(),
+            missing_info_requested_to: request.recipientEmail,
+            missing_info_requirements: email.requirements,
+          })
+          .eq('id', source.submissionId)
+          .eq('project_id', projectId);
+        if (error) throw error;
+      } catch {
+        auditFailures.push('invoice follow-up');
+      }
+      try {
+        await projectEmails.create.mutateAsync({
+          direction: 'outbound',
+          status: 'sent',
+          channel: 'resend',
+          subject: email.subject,
+          to_emails: [request.recipientEmail],
+          body_html: email.bodyHtml,
+          body_text: email.bodyText,
+          snippet: `Requested ${email.requirements.join(', ')}`.slice(0, 200),
+          letter_meta: {
+            category: 'vendor_invoice_missing_information',
+            vendor: fields.vendor_name || selectedVendor?.name || 'Vendor',
+            invoice: fields.invoice_number || file.name,
+            submissionId: source.submissionId,
+          },
+        });
+      } catch {
+        auditFailures.push('project correspondence');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['vendor-submissions', projectId] });
+      if (auditFailures.length) toast.warning(`Email sent, but ${auditFailures.join(' and ')} logging needs attention.`);
+      else toast.success('Branded request sent and recorded in project correspondence.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not send the vendor request');
+      throw error;
+    } finally {
+      setRequesting(false);
     }
   }
 
@@ -379,12 +502,14 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
                 <div className="flex items-center gap-2"><FileSearch2 className="h-4 w-4 text-[var(--apas-sapphire)]" /><h4 className="text-sm font-semibold">Invoice fields</h4><span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">Editable before processing</span></div>
                 {fields.summary && <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">{fields.summary}</p>}
                 <div className="grid grid-cols-2 gap-3">
+                  <Field label="Document type"><Select value={fields.doc_type || 'other'} onValueChange={(value) => set('doc_type', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="invoice">Invoice</SelectItem><SelectItem value="pay_app">AIA pay app</SelectItem><SelectItem value="lien_waiver">Lien waiver</SelectItem><SelectItem value="change_order">Change order</SelectItem><SelectItem value="other">Other document</SelectItem></SelectContent></Select></Field>
                   <Field label="Invoice number"><Input value={fields.invoice_number ?? ''} onChange={(event) => set('invoice_number', event.target.value)} /></Field>
                   <Field label="Invoice date"><Input type="date" value={fields.invoice_date ?? ''} onChange={(event) => set('invoice_date', event.target.value)} /></Field>
                   <Field label="Total due"><Input type="number" min="0" step="0.01" value={fields.amount ?? ''} onChange={(event) => set('amount', Number(event.target.value) || 0)} /></Field>
                   <Field label="Due date (if confirmed)"><Input type="date" value={fields.due_date ?? ''} onChange={(event) => set('due_date', event.target.value)} /></Field>
+                  <Field label="Project reference"><Input value={fields.project_name ?? ''} onChange={(event) => set('project_name', event.target.value)} /></Field>
                 </div>
-                <Field label="Description"><Input value={description} readOnly className="bg-muted/20" /></Field>
+                <Field label="Description"><Textarea rows={3} value={description} onChange={(event) => set('description', event.target.value)} /></Field>
                 {!!fields.line_items?.length && <p className="text-xs text-muted-foreground">{fields.line_items.length} line item(s) captured - {usd(fields.amount)} total.</p>}
               </div>
 
@@ -410,7 +535,7 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
               </div>
             </div>
 
-            {missingFields.length > 0 && <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-semibold">Confirm before payment</p><p className="mt-0.5 text-xs">Not shown or not verified in the PDF: {missingFields.join(', ')}. These do not block intake, but readiness and payment controls still apply.</p></div></div>}
+            {missingFields.length > 0 && <div className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0 flex-1"><p className="font-semibold">Information still needed</p><p className="mt-0.5 text-xs">Not shown or not verified in the PDF: {missingFields.join(', ')}.</p><p className="mt-1 text-xs text-amber-800">Request the missing items from the vendor, or use the documented administrator exception below to keep the draft moving.</p></div><Button type="button" size="sm" variant="outline" className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100" onClick={() => setRequestOpen(true)}><MailQuestion className="mr-1.5 h-4 w-4" />Request from vendor</Button></div>}
 
             {isInvoice && !isConsulting && <div className="rounded-xl border p-4">
               <div className="mb-3 flex items-center gap-2"><ArrowRight className="h-4 w-4 text-[var(--apas-sapphire)]" /><h4 className="text-sm font-semibold">Construction accounting route</h4></div>
@@ -434,22 +559,46 @@ export function UploadParseDocument({ projectId }: { projectId: string }) {
               {commitmentId === 'new_small' && <p className="mt-2 text-xs text-muted-foreground">Creates a draft purchase commitment, one SOV line, and one draft invoice. Contractor readiness and commitment execution remain required before approval or payment.</p>}
             </div>}
 
+            {canAdminOverride && <div className={`rounded-xl border p-4 transition ${adminOverride ? 'border-[var(--apas-sapphire)]/40 bg-[var(--apas-sapphire)]/5' : 'bg-muted/10'}`}>
+              <label className="flex cursor-pointer items-start gap-3">
+                <Checkbox checked={adminOverride} onCheckedChange={(value) => setAdminOverride(value === true)} className="mt-0.5" />
+                <span className="min-w-0 flex-1"><span className="flex items-center gap-2 text-sm font-semibold"><ShieldAlert className="h-4 w-4 text-[var(--apas-sapphire)]" />Process as an administrator exception</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Allows an authorized administrator to create a clearly flagged draft when intake information or routing is incomplete. It does not approve the invoice, waive contractor readiness, or initiate payment.</span></span>
+              </label>
+              {adminOverride && <div className="mt-4 space-y-2 border-t pt-4">
+                <Field label="Override reason *"><Textarea rows={3} value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Explain why processing must continue and what remains to be verified" /></Field>
+                <p className={`text-xs ${overrideReason.trim().length >= 10 ? 'text-emerald-700' : 'text-amber-700'}`}>{overrideReason.trim().length >= 10 ? 'Reason ready — it will be stored in the audit trail.' : 'Enter at least 10 characters so the exception is accountable and auditable.'}</p>
+                {overrideFields.length > 0 && <div className="flex flex-wrap gap-1.5">{overrideFields.map((item) => <span key={item} className="rounded-full border border-[var(--apas-sapphire)]/20 bg-white px-2 py-1 text-[10px] font-medium text-[var(--apas-sapphire)]">Override: {item}</span>)}</div>}
+              </div>}
+            </div>}
+
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-muted/15 p-3">
               <Checkbox checked={reviewConfirmed} onCheckedChange={(value) => setReviewConfirmed(value === true)} className="mt-0.5" />
               <span><span className="block text-sm font-semibold">I reviewed the PDF against these fields</span><span className="mt-0.5 block text-xs text-muted-foreground">AI assisted with transcription only. I confirm the vendor, invoice number, date, description, and total before ProjOS creates accounting records.</span></span>
             </label>
 
             <div className="flex flex-wrap gap-2">
-              {isInvoice && <Button onClick={processInvoice} disabled={saving || !reviewConfirmed}>
+              {isInvoice && <Button onClick={processInvoice} disabled={saving || !reviewSatisfied}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                {isConsulting ? 'Create vendor A/P draft' : 'Create project invoice draft'}
+                {adminOverrideReady ? 'Process as admin exception' : isConsulting ? 'Create vendor A/P draft' : 'Create project invoice draft'}
               </Button>}
-              <Button variant="outline" onClick={saveForLater} disabled={saving || !reviewConfirmed}>Save to inbox for later</Button>
+              <Button variant="outline" onClick={saveForLater} disabled={saving || !reviewSatisfied}>Save to inbox for later</Button>
+              <Button variant="outline" onClick={() => setRequestOpen(true)} disabled={saving}><MailQuestion className="mr-1.5 h-4 w-4" />Request information</Button>
               <Button variant="ghost" onClick={reset} disabled={saving}><X className="mr-1.5 h-4 w-4" />Discard</Button>
             </div>
           </div>
         )}
       </div>
+      {fields && <VendorMissingInfoRequestDialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        vendorName={fields.vendor_name || selectedVendor?.name}
+        defaultEmail={fields.vendor_email || selectedVendor?.email || undefined}
+        projectName={project?.name || 'Project'}
+        invoiceNumber={fields.invoice_number}
+        missingFields={missingFields}
+        sending={requesting || sendEmail.isPending}
+        onSend={requestMissingInformation}
+      />}
     </section>
   );
 }

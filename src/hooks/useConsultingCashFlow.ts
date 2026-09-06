@@ -25,10 +25,14 @@ export interface ConsultingCost {
   status: ConsultingCostStatus;
   attachment_path: string | null;
   invoice_artifact_id: string | null;
+  vendor_submission_id: string | null;
   source_kind: ConsultingCostSource;
   source_status: 'draft' | 'vendor_attested' | 'received' | 'verified' | 'rejected';
   source_note: string | null;
   is_legacy_exception: boolean;
+  is_admin_override: boolean;
+  admin_override_reason: string | null;
+  admin_override_fields: string[];
   submitted_at: string | null;
   vendor_attested_at: string | null;
   reviewed_at: string | null;
