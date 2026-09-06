@@ -385,6 +385,15 @@ BEGIN
   END IF;
 
   IF NEW.status = 'closed' AND OLD.status <> 'closed' THEN
+    -- Preserve the existing platform-super-admin tombstone workflow. This is
+    -- a protected removal path, not a user-visible lifecycle closeout. A
+    -- project that was already certified closed must still be reopened first.
+    IF public.is_super_admin()
+       AND NEW.deleted_at IS NOT NULL
+       AND NEW.deleted_by IS NOT DISTINCT FROM auth.uid() THEN
+      RETURN NEW;
+    END IF;
+
     IF public.can_close_project(OLD.id)
        AND NEW.closed_at IS NOT NULL
        AND NEW.closed_by IS NOT DISTINCT FROM auth.uid()
