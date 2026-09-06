@@ -18,6 +18,7 @@ import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import type { Project } from '@/hooks/useProjects';
 
 interface ProjectListViewProps {
@@ -100,6 +101,7 @@ export function ProjectListView({ projects, isAdmin, canClose, onEdit, onDelete,
                     {parentName}
                   </span>
                 )}
+                <ProjectOwnerBadge project={project} compact />
               </div>
             </div>
 

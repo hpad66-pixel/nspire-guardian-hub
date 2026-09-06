@@ -43,6 +43,8 @@ import { ProjectCloseDialog } from '@/components/projects/ProjectCloseDialog';
 import { ProjectListView } from '@/components/projects/ProjectListView';
 import { ProjectTableView } from '@/components/projects/ProjectTableView';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
+import { ProjectClosedCardStamp } from '@/components/projects/ProjectClosedCardStamp';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { computeHealth, HEALTH_CONFIG, type HealthStatus } from '@/lib/projectHealth';
@@ -299,12 +301,14 @@ export default function ProjectsDashboard() {
     const HIcon = hc.icon;
     const sc = SECTOR_CONFIG[getProjectSector(project)];
     const SIcon = sc.icon;
+    const isClosed = project.status === 'closed';
 
     return (
       <div
         className={cn(
           'p-4 rounded-lg border border-l-4 hover:shadow-md transition-all cursor-pointer group relative',
           projectKindTileClass(kind),
+          isClosed && 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-card to-emerald-50/50 shadow-sm hover:shadow-lg',
         )}
         onClick={() => navigate(`/projects/${project.id}`)}
       >
@@ -350,7 +354,10 @@ export default function ProjectsDashboard() {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold">{project.name}</h4>
               <ProjectKindBadge project={project} />
-              <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">
+              <Badge
+                variant={project.status === 'active' ? 'default' : 'secondary'}
+                className={cn('text-xs capitalize', isClosed && 'border border-amber-300 bg-amber-100 text-amber-950')}
+              >
                 {project.status === 'active' ? 'Active' : project.status}
               </Badge>
               <span className={cn(
@@ -378,27 +385,33 @@ export default function ProjectsDashboard() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">
-                {kind === 'consulting' ? 'Approved fees' : 'Budget'}
-              </span>
-              <span className="text-xs font-medium">
-                {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
-              </span>
+        <ProjectOwnerBadge project={project} className="mb-1" />
+
+        {isClosed ? (
+          <ProjectClosedCardStamp project={project} />
+        ) : (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-muted-foreground">
+                  {kind === 'consulting' ? 'Approved fees' : 'Budget'}
+                </span>
+                <span className="text-xs font-medium">
+                  {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
+                </span>
+              </div>
+              <Progress value={progress} className="h-1.5" />
             </div>
-            <Progress value={progress} className="h-1.5" />
+            {project.target_end_date && (
+              <div className="text-right shrink-0">
+                <span className="text-xs text-muted-foreground">Due</span>
+                <p className="text-xs font-medium">
+                  {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            )}
           </div>
-          {project.target_end_date && (
-            <div className="text-right shrink-0">
-              <span className="text-xs text-muted-foreground">Due</span>
-              <p className="text-xs font-medium">
-                {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   };
@@ -430,6 +443,7 @@ export default function ProjectsDashboard() {
             </div>
             <div className="text-[11px] text-muted-foreground">{kids.length} subproject{kids.length !== 1 ? 's' : ''}</div>
           </button>
+          <ProjectOwnerBadge project={project} compact className="hidden lg:inline-flex" />
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden sm:block w-40">
               <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5"><span>{formatCurrency(rBilled)}</span><span>{formatCurrency(rBudget)}</span></div>

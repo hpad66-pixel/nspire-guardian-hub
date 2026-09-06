@@ -8,6 +8,7 @@ export interface Profile {
   email: string | null;
   work_email: string | null;
   avatar_url: string | null;
+  status: string | null;
 }
 
 export function useProfiles() {
@@ -16,7 +17,7 @@ export function useProfiles() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, email, work_email, avatar_url')
+        .select('id, user_id, full_name, email, work_email, avatar_url, status')
         .order('full_name', { ascending: true });
       
       if (error) throw error;
@@ -32,7 +33,7 @@ export function useSearchProfiles(search: string) {
       if (!search || search.length < 1) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, user_id, full_name, email, work_email, avatar_url')
+          .select('id, user_id, full_name, email, work_email, avatar_url, status')
           .order('full_name', { ascending: true })
           .limit(10);
         
@@ -42,7 +43,7 @@ export function useSearchProfiles(search: string) {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, email, work_email, avatar_url')
+        .select('id, user_id, full_name, email, work_email, avatar_url, status')
         .or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
         .order('full_name', { ascending: true })
         .limit(10);

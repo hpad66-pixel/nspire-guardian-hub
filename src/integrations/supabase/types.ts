@@ -9805,6 +9805,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          owner_user_id: string | null
           project_type: string
           property_id: string | null
           pre_close_status: Database["public"]["Enums"]["project_status"] | null
@@ -9835,6 +9836,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          owner_user_id?: string | null
           project_type?: string
           property_id?: string | null
           pre_close_status?: Database["public"]["Enums"]["project_status"] | null
@@ -9865,6 +9867,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          owner_user_id?: string | null
           project_type?: string
           property_id?: string | null
           pre_close_status?: Database["public"]["Enums"]["project_status"] | null
@@ -9880,6 +9883,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "projects_workspace_id_fkey"
             columns: ["workspace_id"]

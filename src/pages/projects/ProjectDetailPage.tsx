@@ -59,6 +59,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { useConsultingArLedger } from '@/hooks/useConsultingInvoices';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
@@ -674,6 +675,7 @@ export default function ProjectDetailPage() {
                     ? ((project as any).client?.name || 'Standalone Client')
                     : (project.property?.name || 'No Property')}
                 </span>
+                <ProjectOwnerBadge project={project} compact />
                 {project.start_date && (
                   <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
                     <Calendar className="h-3 w-3" />

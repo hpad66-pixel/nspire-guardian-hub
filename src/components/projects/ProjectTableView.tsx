@@ -30,6 +30,7 @@ import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import { format } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
 
@@ -144,6 +145,7 @@ export function ProjectTableView({ projects, isAdmin, canClose, onEdit, onDelete
           <TableRow>
             <Th col="name">Name</Th>
             <TableHead>Type / Parent</TableHead>
+            <TableHead>Owner</TableHead>
             <Th col="status">Status</Th>
             <Th col="budget">Budget</Th>
             <Th col="spent_pct">Spent %</Th>
@@ -193,6 +195,9 @@ export function ProjectTableView({ projects, isAdmin, canClose, onEdit, onDelete
                     </span>
                     <span className="truncate max-w-[120px] text-sm text-muted-foreground">{parentName || '—'}</span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <ProjectOwnerBadge project={project} compact />
                 </TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[project.status ?? 'planning'] ?? 'outline'} className="text-xs">

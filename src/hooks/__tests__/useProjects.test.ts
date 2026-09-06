@@ -103,10 +103,11 @@ describe("useProjects", () => {
       status: "planning",
     } as any);
 
-    expect(__mock.rpc).toHaveBeenCalledWith("create_client_project", expect.objectContaining({
+    expect(__mock.rpc).toHaveBeenCalledWith("create_client_project_with_owner", expect.objectContaining({
       p_client_id: "client-r4",
       p_name: "R4 Capital Improvements",
       p_project_type: "construction",
+      p_owner_user_id: null,
     }));
     expect(__mock.from).not.toHaveBeenCalled();
   });
@@ -133,10 +134,11 @@ describe("useProjects", () => {
       project_type: "consulting",
     } as any);
 
-    expect(__mock.rpc).toHaveBeenCalledWith("update_client_project", expect.objectContaining({
+    expect(__mock.rpc).toHaveBeenCalledWith("update_client_project_with_owner", expect.objectContaining({
       p_project_id: "proj-client",
       p_name: "Updated R4 Project",
       p_project_type: "consulting",
+      p_owner_user_id: null,
     }));
     expect(__mock.from).not.toHaveBeenCalled();
   });
