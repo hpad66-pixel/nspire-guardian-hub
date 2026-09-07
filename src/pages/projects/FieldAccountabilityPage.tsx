@@ -182,7 +182,7 @@ export default function FieldAccountabilityPage() {
 
           <TabsContent value="owner-report" className="mt-0">
             {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Owner scope report is not available" body="Apply the photo-intelligence database migration, then refresh this page." /> : (
-              <OwnerPhotoScopeReport key={projectId} projectName={project?.name || 'Field Accountability'} photos={data?.allPhotos ?? []} items={items} audience="staff" />
+              <OwnerPhotoScopeReport key={projectId} projectId={projectId} projectName={project?.name || 'Field Accountability'} photos={data?.allPhotos ?? []} items={items} audience="staff" />
             )}
           </TabsContent>
         </Tabs>

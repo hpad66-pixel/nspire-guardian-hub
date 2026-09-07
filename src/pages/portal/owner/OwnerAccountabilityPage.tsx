@@ -119,7 +119,7 @@ export default function OwnerAccountabilityPage() {
             <OwnerMetric icon={Repeat2} label="Repeat" value={view.repeats} tone="violet" />
           </section>
 
-          <OwnerPhotoScopeReport key={projectId} projectName={projectName} photos={data?.allPhotos ?? []} items={items} audience="owner" />
+          <OwnerPhotoScopeReport key={projectId} projectId={projectId} projectName={projectName} photos={data?.allPhotos ?? []} items={items} audience="owner" />
 
           {allPhotos.length > 0 && (
             <section className="space-y-4" data-testid="owner-site-photo-library">

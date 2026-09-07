@@ -14,6 +14,7 @@ import {
   Images,
   Leaf,
   Loader2,
+  Mail,
   MapPinned,
   Paintbrush,
   Ruler,
@@ -23,12 +24,14 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { BrandedReportEmailDialog } from '@/components/reports/BrandedReportEmailDialog';
 import type { FieldItem, FieldPhoto } from '@/hooks/useFieldAccountability';
 import {
   buildPhotoScopeGroups,
   classifyScopeIssue,
   HUD_READINESS_DELIVERY_PACKAGES,
   openFieldPhotoScopeReport,
+  prepareFieldPhotoScopeReportDelivery,
   photoFileLabel,
   type PhotoScopeGroup,
   type ScopeDiscipline,
@@ -37,11 +40,13 @@ import { cn } from '@/lib/utils';
 
 export function OwnerPhotoScopeReport({
   projectName,
+  projectId,
   photos,
   items,
   audience = 'staff',
 }: {
   projectName: string;
+  projectId?: string | null;
   photos: FieldPhoto[];
   items: FieldItem[];
   audience?: 'staff' | 'owner';
@@ -52,6 +57,7 @@ export function OwnerPhotoScopeReport({
   const immediate = groups.filter((group) => group.priority === 'Immediate field check').length;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(groups.slice(0, 2).map((group) => group.key)));
   const [printing, setPrinting] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   async function printReport() {
     setPrinting(true);
@@ -75,6 +81,9 @@ export function OwnerPhotoScopeReport({
     setExpanded(expanded.size === groups.length ? new Set() : new Set(groups.map((group) => group.key)));
   }
 
+  const fileProject = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'project';
+  const reportUrl = projectId ? `${window.location.origin}/owner-portal/projects/${projectId}/accountability` : '';
+
   if (!photos.length) {
     return <div className="rounded-3xl border border-dashed bg-white p-12 text-center"><Images className="mx-auto h-8 w-8 text-slate-300" /><h2 className="mt-3 font-display text-2xl text-[#082b23]">The owner scope report is waiting for photographs</h2><p className="mt-1 text-sm text-slate-500">Once a site walk is uploaded, its evidence groups and scope-development language will appear here.</p></div>;
   }
@@ -92,6 +101,7 @@ export function OwnerPhotoScopeReport({
           </div>
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
             <Button variant="outline" className="h-11 rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={toggleAll}>{expanded.size === groups.length ? 'Collapse detailed scope' : `Expand all ${issueCount} scope items`}<ChevronDown className={cn('ml-2 h-4 w-4 transition', expanded.size === groups.length && 'rotate-180')} /></Button>
+            {audience === 'staff' && <Button variant="outline" className="h-11 rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setEmailOpen(true)}><Mail className="mr-2 h-4 w-4" />Email client · HTML + PDF</Button>}
             <Button className="h-11 rounded-xl bg-amber-300 font-bold text-amber-950 hover:bg-amber-200" onClick={() => void printReport()} disabled={printing}>{printing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}Open print / PDF report</Button>
           </div>
         </div>
@@ -133,6 +143,21 @@ export function OwnerPhotoScopeReport({
           <div className="grid gap-px bg-slate-200 md:grid-cols-4"><PathStep icon={MapPinned} number="01" title="Verify" body="Walk each referenced location and confirm the condition, ownership and urgency." /><PathStep icon={Ruler} number="02" title="Quantify" body="Measure count, area, length, depth and material so bidders price the same scope." /><PathStep icon={HardHat} number="03" title="Execute" body="Approve the repair package, responsible contractor, schedule and resident protection." /><PathStep icon={CheckCircle2} number="04" title="Prove" body="Require matching-angle before, progress and after evidence before acceptance." /></div>
         </section>
       </div>
+      {audience === 'staff' && (
+        <BrandedReportEmailDialog
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          reportTitle="Owner Condition & Scope Intelligence"
+          projectName={projectName}
+          projectId={projectId}
+          filename={`${fileProject}-owner-condition-scope-report.pdf`}
+          defaultSubject={`${projectName} — Owner Condition & Scope Intelligence`}
+          defaultMessage={`Please review the attached owner condition and scope report for ${projectName}. The HTML report is included below, and the matching PDF is attached for your records.`}
+          sourceModule="site_accountability"
+          reportType="owner_photo_scope"
+          prepareDelivery={(personalMessage) => prepareFieldPhotoScopeReportDelivery({ projectName, photos, items, personalMessage, reportUrl })}
+        />
+      )}
     </article>
   );
 }
