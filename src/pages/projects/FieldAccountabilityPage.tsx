@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { formatDistanceToNow, isBefore, startOfToday } from 'date-fns';
 import {
   AlertTriangle, ArrowLeft, Camera, CheckCircle2, ChevronRight, ClipboardCheck,
-  Clock3, Filter, Inbox, Loader2, MapPin, Plus, Repeat2, Search, ShieldCheck, UserRound,
+  Clock3, FileText, Filter, Inbox, Loader2, MapPin, Plus, Repeat2, Search, ShieldCheck, UserRound,
   Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccountabilityPhotoViewer } from '@/components/accountability/AccountabilityPhotoViewer';
 import { PhotoIntelligenceWorkspace } from '@/components/accountability/PhotoIntelligenceWorkspace';
+import { OwnerPhotoScopeReport } from '@/components/accountability/OwnerPhotoScopeReport';
 import { CreateFieldItemDialog } from '@/components/accountability/CreateFieldItemDialog';
 import { FieldAccountabilityDetail } from '@/components/accountability/FieldAccountabilityDetail';
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
@@ -125,12 +126,13 @@ export default function FieldAccountabilityPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-2xl bg-slate-200/70 p-1 sm:grid-cols-3 lg:flex lg:w-auto">
+            <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-2xl bg-slate-200/70 p-1 sm:grid-cols-2 xl:flex xl:w-auto">
               <TabsTrigger value="board" className="h-10 rounded-xl px-4 lg:flex-none">Accountability board</TabsTrigger>
               <TabsTrigger value="inbox" className="h-10 rounded-xl px-4 lg:flex-none"><Inbox className="mr-2 h-4 w-4" />Walk inbox <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{data?.untriagedPhotos.length ?? 0}</span></TabsTrigger>
               <TabsTrigger value="intelligence" className="h-10 rounded-xl px-4 lg:flex-none"><Sparkles className="mr-2 h-4 w-4" />Photo intelligence <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">{data?.allPhotos.length ?? 0}</span></TabsTrigger>
+              <TabsTrigger value="owner-report" className="h-10 rounded-xl px-4 lg:flex-none"><FileText className="mr-2 h-4 w-4" />Owner scope report</TabsTrigger>
             </TabsList>
-            {activeTab !== 'intelligence' && <div className="flex flex-col gap-2 sm:flex-row">
+            {(activeTab === 'board' || activeTab === 'inbox') && <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative min-w-0 sm:w-72"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search conditions or locations" className="h-11 rounded-xl bg-white pl-9" /></div>
               <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-44"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
               <Select value={ball} onValueChange={setBall}><SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-48"><UserRound className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Everyone</SelectItem>{Object.entries(BALL_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
@@ -175,6 +177,12 @@ export default function FieldAccountabilityPage() {
                 onCaptionUpdate={(photoId, caption) => updatePhotoCaption.mutateAsync({ photoId, caption })}
                 onAnnotate={(input) => addAnnotation.mutateAsync(input)}
               />
+            )}
+          </TabsContent>
+
+          <TabsContent value="owner-report" className="mt-0">
+            {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Owner scope report is not available" body="Apply the photo-intelligence database migration, then refresh this page." /> : (
+              <OwnerPhotoScopeReport key={projectId} projectName={project?.name || 'Field Accountability'} photos={data?.allPhotos ?? []} items={items} audience="staff" />
             )}
           </TabsContent>
         </Tabs>
