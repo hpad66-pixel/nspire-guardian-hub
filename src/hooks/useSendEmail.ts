@@ -17,6 +17,11 @@ export interface SendEmailParams {
   bodyHtml: string;
   bodyText?: string;
   attachments?: EmailAttachment[];
+  projectId?: string;
+  sourceModule?: string;
+  reportType?: string;
+  attachmentFilename?: string;
+  attachmentSize?: number;
 }
 
 export function useSendEmail() {
@@ -41,11 +46,11 @@ export function useSendEmail() {
         // platform-level body-size rejection which has no JSON body at all.
         let detail = error.message || "Failed to send email";
         try {
-          const ctx: any = (error as any).context;
+          const ctx = (error as { context?: Response }).context;
           if (ctx && typeof ctx.clone === "function") {
             const raw = await ctx.clone().text().catch(() => "");
             if (raw) {
-              try { const j = JSON.parse(raw); detail = j?.error || j?.message || raw; }
+              try { const j = JSON.parse(raw) as { error?: string; message?: string }; detail = j.error || j.message || raw; }
               catch { detail = raw.slice(0, 300); }
             }
             const status = ctx.status;

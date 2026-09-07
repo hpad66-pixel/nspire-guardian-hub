@@ -19,6 +19,11 @@ interface SendEmailRequest {
   /** Optional override for the From display name (e.g. signer or company). */
   fromName?: string;
   attachments?: { filename: string; contentBase64: string; contentType?: string; size?: number }[];
+  projectId?: string;
+  sourceModule?: string;
+  reportType?: string;
+  attachmentFilename?: string;
+  attachmentSize?: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -67,6 +72,11 @@ const handler = async (req: Request): Promise<Response> => {
       bodyText,
       fromName,
       attachments,
+      projectId,
+      sourceModule,
+      reportType,
+      attachmentFilename,
+      attachmentSize,
     } = body;
 
     // Get user's profile for auto-BCC if not provided
@@ -123,13 +133,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Validate email addresses
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = recipients.filter((email: string) => !emailRegex.test(email));
+    const invalidEmails = [...(recipients || []), ...(ccRecipients || []), ...(bccRecipients || [])]
+      .filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
       console.error("Invalid email addresses:", invalidEmails);
       return new Response(
         JSON.stringify({ error: `Invalid email addresses: ${invalidEmails.join(", ")}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validate project scope before the external send. This prevents a delivery
+    // from succeeding while its project audit record is rejected afterward.
+    let verifiedProjectId: string | null = null;
+    if (projectId) {
+      const { data: allowedProject } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("id", projectId)
+        .maybeSingle();
+      if (!allowedProject) {
+        return new Response(
+          JSON.stringify({ error: "You do not have access to the selected project" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      verifiedProjectId = allowedProject.id;
     }
 
     console.log(`Sending email to ${recipients.length} recipient(s):`, recipients);
@@ -252,17 +281,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
     // ── END AUTO-CONTACT EXTRACTION ─────────────────────────────────────────
 
+    const primaryAttachment = attachments?.find((attachment) => attachment?.filename && attachment?.contentBase64);
     const emailRecord = {
       recipients,
+      cc_recipients: ccRecipients || [],
       bcc_recipients: finalBccRecipients,
       subject,
-      report_type: "general",
+      report_type: reportType || "general",
       sent_by: userId,
       status: "sent",
       body_html: bodyHtml,
       body_text: bodyText || "",
       is_read: true,
-      source_module: "mailbox",
+      source_module: sourceModule || "mailbox",
+      project_id: verifiedProjectId,
+      attachment_filename: attachmentFilename || primaryAttachment?.filename || null,
+      attachment_size: attachmentSize || primaryAttachment?.size || null,
     };
 
     const { error: insertError } = await supabaseAdmin

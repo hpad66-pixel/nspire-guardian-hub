@@ -34,7 +34,7 @@ export default function FinancialReportsPage() {
   const [emailOpen, setEmailOpen] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const s: any = coSettings ?? {};
+  const s = coSettings ?? {};
   const brand: ReportBrand | null = contract
     ? {
         wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
@@ -60,8 +60,8 @@ export default function FinancialReportsPage() {
     try {
       await downloadReportPdf(reportRef.current, `${def.key}-report-${brand?.contractNo || "financial"}.pdf`);
       toast.success(`${def.title} exported.`, { id: t });
-    } catch (e: any) {
-      toast.error(`PDF failed: ${e.message}`, { id: t });
+    } catch (error) {
+      toast.error(`PDF failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: t });
     } finally { setExporting(false); }
   }
 
@@ -141,6 +141,8 @@ export default function FinancialReportsPage() {
             open={emailOpen}
             onOpenChange={setEmailOpen}
             reportTitle={def.title}
+            projectName={brand.projectName}
+            projectId={projectId}
             defaultSubject={`${brand.projectName} — ${def.title}`}
             filename={`${def.key}-report-${brand.contractNo || "financial"}.pdf`}
             getNode={() => reportRef.current}

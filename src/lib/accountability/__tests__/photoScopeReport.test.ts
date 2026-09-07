@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildFieldPhotoScopeReport,
+  buildFieldPhotoScopeEmail,
+  buildFieldPhotoScopeEmailText,
   buildPhotoScopeGroups,
   classifyScopeIssue,
   HUD_READINESS_DELIVERY_PACKAGES,
@@ -96,5 +98,29 @@ describe('field photo scope report', () => {
     const planting = issues.find((issue) => issue.title === 'Fence-line planting-bed restoration')!;
     expect(classifyScopeIssue(planting)).toEqual(expect.arrayContaining(['Plumbing', 'Landscaping']));
     expect(HUD_READINESS_DELIVERY_PACKAGES).toHaveLength(6);
+  });
+
+  it('builds a complete email-safe HTML and plain-text report edition', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const input = {
+      projectName: 'Glorieta <Gardens>',
+      photos,
+      items: [],
+      personalMessage: 'Please review & respond.',
+      reportUrl: 'https://projos.ai/owner-portal/projects/project/accountability?view=scope&safe=true',
+    };
+    const html = buildFieldPhotoScopeEmail(input);
+    const text = buildFieldPhotoScopeEmailText(input);
+
+    expect(html).toContain('This HTML edition');
+    expect(html).toContain('Owner Condition &amp; Scope Intelligence');
+    expect(html).toContain('Glorieta &lt;Gardens&gt;');
+    expect(html).toContain('Please review &amp; respond.');
+    expect(html).toContain('Combined stucco + civil restoration package');
+    expect(html).toContain('Uncovered gate-control device');
+    expect(html).toContain('Open the live owner report');
+    expect(html).not.toContain('Glorieta <Gardens>');
+    expect(text).toContain('74 scope items');
+    expect(text).toContain('Electrical, Stucco / Envelope, General Contractor');
   });
 });
