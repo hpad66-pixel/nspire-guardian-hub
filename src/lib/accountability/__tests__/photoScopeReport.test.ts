@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildFieldPhotoScopeReport, buildPhotoScopeGroups } from '../photoScopeReport';
+import {
+  buildFieldPhotoScopeReport,
+  buildPhotoScopeGroups,
+  classifyScopeIssue,
+  HUD_READINESS_DELIVERY_PACKAGES,
+} from '../photoScopeReport';
 import type { FieldPhoto } from '@/hooks/useFieldAccountability';
 
 function photo(overrides: Partial<FieldPhoto> = {}): FieldPhoto {
@@ -71,5 +76,25 @@ describe('field photo scope report', () => {
     expect(html).toContain('74</b><span>Scope line items');
     expect(html).toContain('https://example.test/signed-photo.jpg?token=secure&amp;view=owner');
     expect(html).toContain('Uncovered gate-control device');
+    expect(html).toContain('Expedited owner direction · HUD inspection readiness');
+    expect(html).toContain('Combined stucco + civil restoration package');
+    expect(html).toContain('Trade assignment');
+  });
+
+  it('assigns every recommendation to one or more accountable disciplines', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const groups = buildPhotoScopeGroups(photos, []);
+    const issues = groups.flatMap((group) => group.issues);
+    expect(issues.every((issue) => classifyScopeIssue(issue).length > 0)).toBe(true);
+
+    const gateControl = issues.find((issue) => issue.title.includes('gate-control'))!;
+    expect(classifyScopeIssue(gateControl)).toEqual(expect.arrayContaining(['Electrical', 'General Contractor']));
+
+    const walkVoid = issues.find((issue) => issue.title === 'Open void beside concrete walk')!;
+    expect(classifyScopeIssue(walkVoid)).toEqual(expect.arrayContaining(['Civil', 'Structural Engineering', 'General Contractor']));
+
+    const planting = issues.find((issue) => issue.title === 'Fence-line planting-bed restoration')!;
+    expect(classifyScopeIssue(planting)).toEqual(expect.arrayContaining(['Plumbing', 'Landscaping']));
+    expect(HUD_READINESS_DELIVERY_PACKAGES).toHaveLength(6);
   });
 });
