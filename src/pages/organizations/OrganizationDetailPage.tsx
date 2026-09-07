@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Plus, UserRoundCheck, Users,
+  ArrowLeft, ArrowRight, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Images, Plus, ScanEye, UserRoundCheck, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 import { useModules } from '@/contexts/ModuleContext';
 import { groupProjectsByKind } from '@/lib/projectKind';
 import { OrganizationMembersSheet } from '@/components/organizations/OrganizationMembersSheet';
+import { useAccountabilityPortfolio } from '@/hooks/useFieldAccountability';
+import { selectSiteAccountabilityProject, staffSiteAccountabilityPath } from '@/lib/accountability/accountabilityNavigation';
 
 const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
   internal_org: 'Internal Organization',
@@ -50,6 +52,16 @@ export default function OrganizationDetailPage() {
       consulting: grouped.consulting.length,
     };
   }, [projects]);
+  const accountabilityProject = useMemo(
+    () => selectSiteAccountabilityProject(projects as Array<(typeof projects)[number] & { program_meta?: Record<string, unknown> | null }>),
+    [projects],
+  );
+  const accountabilityProjectIds = useMemo(
+    () => accountabilityProject ? [accountabilityProject.id] : [],
+    [accountabilityProject],
+  );
+  const { data: accountabilitySummaries = [] } = useAccountabilityPortfolio(accountabilityProjectIds);
+  const accountabilitySummary = accountabilitySummaries[0];
 
   if (orgLoading) {
     return (
@@ -125,6 +137,32 @@ export default function OrganizationDetailPage() {
           </div>
         </div>
       </div>
+
+      {accountabilityProject && (
+        <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-r from-[#082b23] via-[#0a473a] to-[#0d6b57] text-white shadow-[0_18px_48px_rgba(8,43,35,.16)]" data-testid="client-site-accountability-spotlight">
+          <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-300 text-amber-950"><ScanEye className="h-6 w-6" /></span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-200">Featured owner record</p>
+                <h2 className="mt-1 font-display text-2xl">Glorieta Gardens Site Accountability</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-emerald-50/70">Chris Sullivan’s property-wide photographs, AI starting assessments, responsibility, questions, and completion proof—kept outside any single sewer or repair project.</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-4 rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
+                <Images className="h-5 w-5 text-amber-300" />
+                <div><strong className="block text-2xl tabular-nums">{accountabilitySummary?.photos ?? '—'}</strong><span className="block text-[10px] uppercase tracking-wider text-white/60">site photographs</span></div>
+                <div className="h-8 w-px bg-white/15" />
+                <div><strong className="block text-2xl tabular-nums">{accountabilitySummary?.items ?? '—'}</strong><span className="block text-[10px] uppercase tracking-wider text-white/60">condition groups</span></div>
+              </div>
+              <Button asChild className="h-11 rounded-xl bg-amber-300 text-amber-950 hover:bg-amber-200">
+                <Link to={staffSiteAccountabilityPath(accountabilityProject.id)}>Open evidence <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Projects — Construction row + Consulting row */}
       <section className="space-y-4">

@@ -1,6 +1,8 @@
 /**
  * F1/F2 · Portal invitations + memberships.
  */
+/* Generated Supabase types intentionally lag additive portal migrations. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requireTenantId } from "@/lib/tenant";
@@ -88,6 +90,7 @@ export interface OwnerPortalProjectMeta {
   client_id?: string | null;
   client_name?: string | null;
   status?: string | null;
+  program_meta?: Record<string, unknown> | null;
 }
 
 export interface OwnerPortalData {
@@ -226,7 +229,7 @@ export function useOwnerPortalData() {
         supabase.from("prime_contracts" as any).select("*"),
         // module_config drives which portal nav items the client sees
         supabase.from("projects" as any).select(
-          "id, name, status, project_type, module_config, module_inherit_from_parent, parent_project_id, client_id, client:clients(name)",
+          "id, name, status, project_type, module_config, module_inherit_from_parent, parent_project_id, client_id, program_meta, client:clients(name)",
         ),
         supabase.from("change_orders" as any).select("*")
           .eq("co_type", "OCO")
@@ -244,6 +247,7 @@ export function useOwnerPortalData() {
         parent_project_id?: string | null;
         client_id?: string | null;
         client?: { name?: string | null } | null;
+        program_meta?: Record<string, unknown> | null;
       }>;
       const projectList: OwnerPortalProjectMeta[] = projectRows.map((row) => ({
         id: row.id,
@@ -255,6 +259,7 @@ export function useOwnerPortalData() {
         parent_project_id: row.parent_project_id,
         client_id: row.client_id ?? null,
         client_name: row.client?.name ?? null,
+        program_meta: row.program_meta ?? null,
       }));
       const projectNames = new Map(projectList.map((project) => [project.id, project.name]));
       const metaRecord: Record<string, OwnerPortalProjectMeta> = {};

@@ -46,6 +46,7 @@ import {
   Gavel,
   ClipboardList,
   Droplets,
+  ScanEye,
   Lightbulb,
   CircleDollarSign,
   type LucideIcon,
@@ -55,6 +56,8 @@ import { cn } from '@/lib/utils';
 import { OrgProjectTree } from '@/components/layout/OrgProjectTree';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
+import { useProjects } from '@/hooks/useProjects';
+import { isDedicatedSiteAccountabilityProject } from '@/lib/accountability/accountabilityNavigation';
 import {
   Tooltip,
   TooltipContent,
@@ -129,6 +132,8 @@ export function AppSidebar() {
   const { isModuleEnabled } = useModules();
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
+  const { data: projects = [] } = useProjects();
+  const hasSiteAccountability = projects.some(isDedicatedSiteAccountabilityProject);
   const collapsed = state === 'collapsed';
   const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();
@@ -206,6 +211,7 @@ export function AppSidebar() {
                     inside each project. */}
                 <NavItem to="/projects" icon={FolderKanban} label="All Projects" collapsed={collapsed} end />
                 <NavItem to="/organizations" icon={Briefcase} label="Clients" collapsed={collapsed} />
+                {hasSiteAccountability && <NavItem to="/site-accountability" icon={ScanEye} label="Site Accountability" collapsed={collapsed} />}
                 {/* Your clients nested to their projects: click a client to open it,
                     expand to jump straight into any of its projects. */}
                 <OrgProjectTree collapsed={collapsed} />
