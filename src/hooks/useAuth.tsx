@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { isPlatformSuperAdmin } from '@/lib/auth/platformAdmin';
+import { AUTH0_ENABLED, auth0LogoutUrl, startAuth0, type StartAuth0Options } from '@/lib/auth/auth0';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -13,6 +14,8 @@ interface AuthContextType {
   userRole: AppRole | null;
   signUp: (email: string, password: string, fullName?: string, companyName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** Hands off to Auth0 Universal Login. Navigates away on success. */
+  signInWithAuth0: (options?: StartAuth0Options) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -148,13 +151,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const signInWithAuth0 = async (options: StartAuth0Options = {}) => {
+    try {
+      await startAuth0(options);
+      return { error: null };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Could not start sign-in.') };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUserRole(null);
+
+    // Auth0 holds its own session cookie. Skipping this would make the next
+    // sign-in silently re-authenticate the user who just signed out.
+    if (AUTH0_ENABLED) {
+      const logoutUrl = auth0LogoutUrl(`${window.location.origin}/auth`);
+      if (logoutUrl) window.location.assign(logoutUrl);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, signUp, signIn, signInWithAuth0, signOut }}>
       {children}
     </AuthContext.Provider>
   );

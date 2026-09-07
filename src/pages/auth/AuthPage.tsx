@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { AUTH0_ENABLED } from '@/lib/auth/auth0';
 import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -19,7 +20,7 @@ const features = [
 ];
 
 export default function AuthPage() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, signInWithAuth0 } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedPath = searchParams.get('next');
@@ -27,12 +28,34 @@ export default function AuthPage() {
   const isClientPortal = searchParams.get('portal') === 'client' || safeNext?.startsWith('/owner-portal') === true;
   const destination = safeNext ?? (isClientPortal ? '/owner-portal' : '/dashboard');
   const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [auth0Pending, setAuth0Pending]   = useState<'login' | 'signup' | null>(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(!AUTH0_ENABLED);
   const [loginEmail, setLoginEmail]       = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   useEffect(() => {
     if (user && !loading) navigate(destination, { replace: true });
   }, [user, loading, navigate, destination]);
+
+  // The Auth0 callback function redirects failures back here with a message it
+  // has already made safe to show (no client ids, no Auth0 internals).
+  const authError = searchParams.get('error');
+  const authErrorMessage = searchParams.get('message');
+  useEffect(() => {
+    if (!authError) return;
+    toast.error(authErrorMessage || 'Sign-in could not be completed. Please try again.');
+  }, [authError, authErrorMessage]);
+
+  const handleAuth0 = async (mode: 'login' | 'signup') => {
+    setAuth0Pending(mode);
+    const { error } = await signInWithAuth0({ mode, next: safeNext ?? undefined });
+    // On success the browser is already navigating to Auth0; only a failure
+    // returns here, so the pending state is cleared exactly when it should be.
+    if (error) {
+      toast.error(error.message);
+      setAuth0Pending(null);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,11 +239,53 @@ export default function AuthPage() {
               <p className="text-sm text-muted-foreground">
                 {isClientPortal
                   ? 'Sign in with the account connected to your private project portal'
-                  : 'Sign in to access your APAS Project Controls workspace'}
+                  : AUTH0_ENABLED
+                    ? 'One APAS ID signs you in to APAS Project Controls and every connected product'
+                    : 'Sign in to access your APAS Project Controls workspace'}
               </p>
             </div>
 
+            {/* APAS ID (Auth0 Universal Login) — the front door across products */}
+            {AUTH0_ENABLED && (
+              <div className="space-y-3">
+                <button
+                  type="button" onClick={() => handleAuth0('login')} disabled={auth0Pending !== null}
+                  className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {auth0Pending === 'login'
+                    ? (<><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>)
+                    : ('Continue with APAS ID')}
+                </button>
+
+                {!isClientPortal && (
+                  <button
+                    type="button" onClick={() => handleAuth0('signup')} disabled={auth0Pending !== null}
+                    className="w-full h-12 rounded-xl text-sm font-semibold text-foreground bg-background border border-input transition-colors hover:bg-muted disabled:opacity-60 flex items-center justify-center gap-2">
+                    {auth0Pending === 'signup'
+                      ? (<><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>)
+                      : ('Start a new workspace')}
+                  </button>
+                )}
+
+                {!showPasswordForm && (
+                  <button
+                    type="button" onClick={() => setShowPasswordForm(true)}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors pt-1">
+                    Use an email and password instead
+                  </button>
+                )}
+              </div>
+            )}
+
+            {AUTH0_ENABLED && showPasswordForm && (
+              <div className="flex items-center gap-3 my-6">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">or</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            )}
+
             {/* Form */}
+            {showPasswordForm && (
             <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">Email address</label>
@@ -246,9 +311,12 @@ export default function AuthPage() {
                   {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to projOS')}
                 </button>
             </form>
+            )}
 
             {!isClientPortal && <p className="text-xs text-center mt-5 text-muted-foreground">
-              New accounts are created by a Proj OS administrator and activated from a private invitation.
+              {AUTH0_ENABLED
+                ? 'Invited to an existing workspace? Open the private invitation your administrator sent you.'
+                : 'New accounts are created by a Proj OS administrator and activated from a private invitation.'}
             </p>}
             {isClientPortal && (
               <p className="text-xs text-center mt-5 text-muted-foreground">

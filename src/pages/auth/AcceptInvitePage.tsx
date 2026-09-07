@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { useInvitationByToken } from '@/hooks/useInvitations';
 import { supabase } from '@/integrations/supabase/client';
+import { AUTH0_ENABLED, startAuth0 } from '@/lib/auth/auth0';
 import { toast } from 'sonner';
 
 const acceptSchema = z.object({
@@ -39,6 +40,7 @@ export default function AcceptInvitePage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [showPasswordFallback, setShowPasswordFallback] = useState(!AUTH0_ENABLED);
 
   const { data: invitation, isLoading, error } = useInvitationByToken(token);
 
@@ -62,6 +64,22 @@ export default function AcceptInvitePage() {
   const isAlreadyAccepted = !!invitation?.accepted_at;
   const isRevoked = !!invitation?.revoked_at;
   const isValid = invitation && !isExpired && !isAlreadyAccepted && !isRevoked;
+
+  const acceptWithAuth0 = async () => {
+    if (!token) return;
+    setIsSubmitting(true);
+    try {
+      await startAuth0({
+        mode: 'signup',
+        invitationToken: token,
+        fullName: form.getValues('fullName') || invitation?.full_name || undefined,
+      });
+      // Success navigates to Auth0; only a failure falls through to the catch.
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not start sign-in.');
+      setIsSubmitting(false);
+    }
+  };
 
   const onSubmit = async (data: AcceptFormData) => {
     if (!invitation || !token) return;
@@ -234,6 +252,33 @@ export default function AcceptInvitePage() {
                 </p>
               </div>
 
+              {/* APAS ID path. The invitation token rides through the bridge in
+                  server-side state, so the trigger still consumes it atomically
+                  and applies the invited property scope. Auth0 collects the
+                  name, and handle_new_user falls back to the name on the
+                  invitation, so nothing extra is asked for here. */}
+              {AUTH0_ENABLED && (
+                <div className="space-y-3">
+                  <Button className="w-full" disabled={isSubmitting} onClick={acceptWithAuth0}>
+                    {isSubmitting ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting…</>
+                    ) : (
+                      'Accept invitation with APAS ID'
+                    )}
+                  </Button>
+                  {!showPasswordFallback && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordFallback(true)}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Set an email and password instead
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {showPasswordFallback && (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -312,6 +357,7 @@ export default function AcceptInvitePage() {
                   </Button>
                 </form>
               </Form>
+              )}
             </div>
           )}
         </CardContent>

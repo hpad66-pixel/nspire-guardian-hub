@@ -266,3 +266,13 @@ verify_jwt = false
 # Water Intelligence — authenticated PDF ingest upsert
 [functions.water-intel-ingest]
 verify_jwt = true
+
+# Auth0 Universal Login bridge. Both are pre-authentication by definition: the
+# caller has no Supabase session yet, and the callback is a browser redirect
+# arriving straight from Auth0. Origin allowlisting, single-use PKCE state, and
+# ID-token signature/nonce verification are enforced in-function.
+[functions.auth0-authorize]
+verify_jwt = false
+
+[functions.auth0-callback]
+verify_jwt = false
