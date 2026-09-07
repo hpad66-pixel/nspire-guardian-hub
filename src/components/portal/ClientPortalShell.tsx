@@ -35,19 +35,22 @@ import {
 } from "@/lib/portal/ownerPortalPaths";
 import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
 import type { OwnerPortalProjectMeta } from "@/hooks/usePortals";
+import { selectSiteAccountabilityProject } from "@/lib/accountability/accountabilityNavigation";
 import "@/pages/portal/client-portal.css";
 
 function portalNav(
   projectId: string | null,
   enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map", "operations", "accountability"]),
+  siteAccountabilityProjectId: string | null = null,
 ) {
+  const accountabilityProjectId = siteAccountabilityProjectId ?? projectId;
   const primary = [
     { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
     { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true, key: "overview" },
-    { to: ownerPortalPath(projectId, "/accountability"), label: "Site accountability", icon: ScanEye, key: "accountability" },
+    { to: ownerPortalPath(accountabilityProjectId, "/accountability"), label: "Site accountability", icon: ScanEye, key: "accountability", force: Boolean(siteAccountabilityProjectId) },
     { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing, key: "updates" },
     { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
-  ].filter((item) => enabled.has(item.key));
+  ].filter((item) => item.force || enabled.has(item.key));
 
   const secondary = [
     { to: ownerPortalPath(projectId, "/site-map"), label: "Site map", icon: Map, key: "site-map" },
@@ -159,7 +162,14 @@ export function ClientPortalShell() {
   const selectedContractId = selectedContract?.id ?? null;
   const projectUnavailable = Boolean(requestedProjectId && !ownerLoading && !matchedProject && projects.length > 0);
   const { data: portalContext } = useClientPortalContext(activeProjectId);
-  const projectMeta = (ownerData?.projectMeta ?? {}) as Record<string, OwnerPortalProjectMeta>;
+  const projectMeta = useMemo(
+    () => (ownerData?.projectMeta ?? {}) as Record<string, OwnerPortalProjectMeta>,
+    [ownerData?.projectMeta],
+  );
+  const availableProjectMeta = useMemo(
+    () => projects.map((project) => projectMeta[project.id] ?? (ownerData?.projects ?? []).find((row) => row.id === project.id)).filter(Boolean) as OwnerPortalProjectMeta[],
+    [ownerData?.projects, projectMeta, projects],
+  );
   const activeMeta = activeProjectId ? projectMeta[activeProjectId] : null;
   const parentMeta = activeMeta?.parent_project_id
     ? projectMeta[activeMeta.parent_project_id] ?? null
@@ -168,9 +178,15 @@ export function ClientPortalShell() {
     () => portalModulesForProject(activeMeta, parentMeta),
     [activeMeta, parentMeta],
   );
+  const siteAccountabilityProjectId = useMemo(() => {
+    const dedicated = selectSiteAccountabilityProject(availableProjectMeta, selectedProject?.client_id ?? null);
+    if (dedicated) return dedicated.id;
+    return enabledPortalModules.has('accountability') ? activeProjectId : null;
+  }, [activeProjectId, availableProjectMeta, enabledPortalModules, selectedProject?.client_id]);
   const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(
     activeProjectId,
     enabledPortalModules,
+    siteAccountabilityProjectId,
   );
 
   const decisions = (ownerData?.pendingOcos ?? []).filter((item) => item.prime_contract_id === selectedContractId).length

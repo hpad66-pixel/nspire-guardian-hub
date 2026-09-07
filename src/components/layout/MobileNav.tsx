@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useModules } from '@/contexts/ModuleContext';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
+import { useProjects } from '@/hooks/useProjects';
+import { isDedicatedSiteAccountabilityProject } from '@/lib/accountability/accountabilityNavigation';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
@@ -32,6 +34,7 @@ import {
   Lightbulb,
   UserRoundCheck,
   CircleDollarSign,
+  ScanEye,
   X,
 } from 'lucide-react';
 
@@ -50,7 +53,7 @@ function getActiveSection(pathname: string): ActiveSection {
   )
     return 'daily';
   if (pathname.startsWith('/inspections')) return 'compliance';
-  if (pathname.startsWith('/projects')) return 'projects';
+  if (pathname.startsWith('/projects') || pathname.startsWith('/site-accountability')) return 'projects';
   return 'more';
 }
 
@@ -147,7 +150,7 @@ function SecondaryBarItem({
   );
 }
 
-function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
+function SecondaryBar({ activeSection, hasSiteAccountability }: { activeSection: ActiveSection; hasSiteAccountability: boolean }) {
   const { pathname } = useLocation();
 
   if (activeSection === 'portals' || activeSection === 'more') return null;
@@ -179,6 +182,7 @@ function SecondaryBar({ activeSection }: { activeSection: ActiveSection }) {
     items = [
       { to: '/projects', label: 'All Projects' },
       { to: '/organizations', label: 'Clients' },
+      ...(hasSiteAccountability ? [{ to: '/site-accountability', label: 'Site Accountability' }] : []),
     ];
   }
 
@@ -261,9 +265,10 @@ interface MoreDrawerProps {
   open: boolean;
   onClose: () => void;
   unreadCount: number;
+  hasSiteAccountability: boolean;
 }
 
-function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
+function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreDrawerProps) {
   const navigate = useNavigate();
   const { isModuleEnabled } = useModules();
   const { canView, currentRole } = useUserPermissions();
@@ -335,6 +340,15 @@ function MoreDrawer({ open, onClose, unreadCount }: MoreDrawerProps) {
             subtitle="Property compliance docs & scan"
             onClick={() => go('/permits')}
           />
+          {hasSiteAccountability && (
+            <DrawerTile
+              icon={<ScanEye className={iconClass} />}
+              iconBg={greenIconBg}
+              title="Site Accountability"
+              subtitle="Owner walks, photos & closeout proof"
+              onClick={() => go('/site-accountability')}
+            />
+          )}
           {(canView('reports') || isAdminOrOwner) && (
             <DrawerTile
               icon={<ClipboardList className={iconClass} />}
@@ -525,6 +539,8 @@ export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const { data: unreadCount = 0 } = useUnreadThreadCount();
+  const { data: projects = [] } = useProjects();
+  const hasSiteAccountability = projects.some(isDedicatedSiteAccountabilityProject);
   useUnreadThreadCountRealtime();
 
   const isDailyGrounds = isModuleEnabled('dailyGroundsEnabled');
@@ -542,7 +558,7 @@ export function MobileNav() {
     <>
       {/* iPad secondary bar — only on md viewports */}
       <div className="hidden md:block lg:hidden">
-        <SecondaryBar activeSection={activeSection} />
+        <SecondaryBar activeSection={activeSection} hasSiteAccountability={hasSiteAccountability} />
       </div>
 
       {/* Primary bar — 4rem tap row + home-indicator safe area */}
@@ -610,6 +626,7 @@ export function MobileNav() {
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         unreadCount={unreadCount}
+        hasSiteAccountability={hasSiteAccountability}
       />
     </>
   );

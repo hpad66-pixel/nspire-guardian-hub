@@ -35,6 +35,7 @@ const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProjectAdminPage = lazy(() => import('./pages/projects/ProjectAdminPage'));
 const FieldAccountabilityPage = lazy(() => import('./pages/projects/FieldAccountabilityPage'));
+const SiteAccountabilityHomePage = lazy(() => import('./pages/accountability/SiteAccountabilityHomePage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
@@ -410,6 +411,7 @@ const App = () => (
                               <Route path="/inspections/units" element={<UnitInspections />} />
                               
                               {/* Projects Module */}
+                              <Route path="/site-accountability" element={<SiteAccountabilityHomePage />} />
                               <Route path="/projects" element={<ProjectsDashboard />} />
                               {/* Legacy flat proposals hub — proposals live inside each project */}
                               <Route path="/projects/proposals" element={<Navigate to="/projects" replace />} />
