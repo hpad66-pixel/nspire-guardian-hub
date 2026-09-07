@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { AccountabilityPhotoViewer } from '@/components/accountability/AccountabilityPhotoViewer';
 import { FieldAccountabilityDetail } from '@/components/accountability/FieldAccountabilityDetail';
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
+import { OwnerPhotoScopeReport } from '@/components/accountability/OwnerPhotoScopeReport';
 import { useClientPortalProject, useOwnerPortalHref } from '@/components/portal/ClientPortalProjectContext';
 import { useFieldAccountability, type FieldItem } from '@/hooks/useFieldAccountability';
 import { cn } from '@/lib/utils';
@@ -117,6 +118,8 @@ export default function OwnerAccountabilityPage() {
             <OwnerMetric icon={AlertTriangle} label="Overdue" value={view.overdue.length} tone="rose" />
             <OwnerMetric icon={Repeat2} label="Repeat" value={view.repeats} tone="violet" />
           </section>
+
+          <OwnerPhotoScopeReport key={projectId} projectName={projectName} photos={data?.allPhotos ?? []} items={items} audience="owner" />
 
           {allPhotos.length > 0 && (
             <section className="space-y-4" data-testid="owner-site-photo-library">
