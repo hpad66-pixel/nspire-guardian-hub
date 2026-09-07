@@ -78,9 +78,12 @@ describe('field photo scope report', () => {
     expect(html).toContain('74</b><span>Scope line items');
     expect(html).toContain('https://example.test/signed-photo.jpg?token=secure&amp;view=owner');
     expect(html).toContain('Uncovered gate-control device');
-    expect(html).toContain('Expedited owner direction · HUD inspection readiness');
+    expect(html).toContain('Expedited owner direction | HUD inspection readiness');
     expect(html).toContain('Combined stucco + civil restoration package');
     expect(html).toContain('Trade assignment');
+    expect(html).toContain('body{font-size:14px;line-height:1.6}');
+    expect(html).toContain('.issue-grid p{font-size:12px;line-height:1.5}');
+    expect(html).not.toMatch(/[—–‑]/);
   });
 
   it('assigns every recommendation to one or more accountable disciplines', () => {
@@ -122,5 +125,7 @@ describe('field photo scope report', () => {
     expect(html).not.toContain('Glorieta <Gardens>');
     expect(text).toContain('74 scope items');
     expect(text).toContain('Electrical, Stucco / Envelope, General Contractor');
+    expect(html).not.toMatch(/[—–‑]/);
+    expect(text).not.toMatch(/[—–‑]/);
   });
 });

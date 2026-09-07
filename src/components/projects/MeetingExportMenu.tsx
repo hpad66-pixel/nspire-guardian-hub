@@ -9,16 +9,13 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { useCompanyBranding } from "@/hooks/useCompanyBranding";
-import { useSendEmail } from "@/hooks/useSendEmail";
 import { generatePDF, generatePDFBase64, printReport } from "@/lib/generatePDF";
 import { PrintableMeetingMinutes, type MeetingMinutesAttendee } from "./PrintableMeetingMinutes";
+import { BrandedReportEmailDialog, type PreparedReportDelivery } from "@/components/reports/BrandedReportEmailDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Printer, Download, Mail, MoreHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,10 +68,8 @@ export function MeetingExportMenu({
   layout?: "menu" | "inline";
 }) {
   const { data: branding } = useCompanyBranding();
-  const sendEmail = useSendEmail();
   const [busy, setBusy] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState("");
 
   const companyName = branding?.company_name ?? "APAS Consulting";
   const exportId = `meeting-export-${meeting.id}`;
@@ -90,9 +85,12 @@ export function MeetingExportMenu({
   const handlePrint = () => withBusy(() => printReport(exportId));
   const handlePdf = () => withBusy(() => generatePDF({ filename: `${fileBase}.pdf`, elementId: exportId, scale: 2 }));
 
-  function buildEmailHtml(): string {
-    const dateBits = [safeDate(meeting.meeting_date), meeting.meeting_time, meeting.location].filter(Boolean).join("  ·  ");
-    const contact = [branding?.address_line1, branding?.phone, branding?.email, branding?.website].filter(Boolean).join("  ·  ");
+  function buildEmailHtml(personalMessage = ""): string {
+    const dateBits = [safeDate(meeting.meeting_date), meeting.meeting_time, meeting.location].filter(Boolean).join(" | ");
+    const contact = [branding?.address_line1, branding?.phone, branding?.email, branding?.website].filter(Boolean).join(" | ");
+    const personal = personalMessage
+      ? `<div style="margin:0 0 18px;border-left:4px solid ${GOLD};background:#FFF9E8;padding:13px 15px;color:#4B452F;font:14px/1.6 Arial,sans-serif;">${personalMessage.replace(/[—–‑]/g, "-").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</div>`
+      : "";
     return `
       <div style="font-family:Georgia,'Times New Roman',serif;max-width:680px;margin:0 auto;color:${INK};background:#ffffff;">
         <div style="border-top:6px solid ${GOLD};padding:20px 28px 10px;">
@@ -106,42 +104,25 @@ export function MeetingExportMenu({
           <div style="font-size:12px;color:${MUTED};margin-top:5px;">${dateBits}</div>
         </div>
         <div style="padding:8px 28px 24px;font-size:13px;line-height:1.6;color:${INK};">
+          ${personal}
           ${inlineForEmail(minutesHtml)}
         </div>
         <div style="border-top:1px solid ${LINE};padding:12px 28px;font-size:11px;color:${MUTED};">
-          ${companyName} — Meeting Minutes. A formatted PDF copy is attached.
+          ${companyName} - Meeting Minutes. A formatted PDF copy is attached.
         </div>
       </div>`;
   }
 
-  async function handleEmail() {
-    const recipients = emailTo.split(",").map((e) => e.trim()).filter(Boolean);
-    if (!recipients.length) { toast.error("Enter a recipient email."); return; }
-
-    // The minutes live in the email BODY, so the PDF attachment is a bonus. Build
-    // it best-effort: if it fails or is too large for the mail provider, send the
-    // branded body alone rather than failing the whole send.
-    let pdfBase64 = "";
-    try { pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 1.5 }); }
-    catch (e) { console.warn("Meeting PDF generation failed; sending body only.", e); }
-
-    const ATTACH_CAP = 3_500_000; // ~2.5MB PDF. Above this the Supabase function request
-                                  // gateway rejects the payload (generic non-2xx, no body),
-                                  // so skip the attachment and send the minutes in the body.
-    const attachments = pdfBase64 && pdfBase64.length < ATTACH_CAP
-      ? [{ filename: `${fileBase}.pdf`, contentBase64: pdfBase64, contentType: "application/pdf", size: pdfBase64.length }]
-      : [];
-
-    try {
-      await sendEmail.mutateAsync({
-        recipients,
-        subject: `Meeting minutes — ${meeting.title} · ${projectName}`,
-        bodyHtml: buildEmailHtml(),
-        attachments, // useSendEmail toasts success/failure itself
-      });
-      if (!attachments.length) toast.message("Minutes sent in the email body (PDF attachment skipped — too large).");
-      setEmailOpen(false); setEmailTo("");
-    } catch { /* hook already surfaced the real error */ }
+  async function prepareEmailDelivery(personalMessage: string): Promise<PreparedReportDelivery> {
+    const pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 1.35 });
+    const bodyText = [
+      personalMessage,
+      `MEETING MINUTES - ${meeting.title}`,
+      `Project: ${projectName}`,
+      [safeDate(meeting.meeting_date), meeting.meeting_time, meeting.location].filter(Boolean).join(" | "),
+      "The complete minutes are included in this email and attached as a formatted PDF.",
+    ].filter(Boolean).join("\n\n").replace(/[—–‑]/g, "-");
+    return { bodyHtml: buildEmailHtml(personalMessage), bodyText, pdfBase64, pdfSize: Math.round(pdfBase64.length * 0.75) };
   }
 
   const hidden = (
@@ -170,22 +151,21 @@ export function MeetingExportMenu({
   );
 
   const emailDialog = (
-    <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Email meeting minutes</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <Label>Recipient email(s)</Label>
-          <Input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="name@example.com, second@example.com" />
-          <p className="text-xs text-muted-foreground">The branded minutes are sent in the email body, with a PDF copy attached.</p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
-          <Button onClick={handleEmail} disabled={sendEmail.isPending || !emailTo.trim()}>
-            {sendEmail.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</> : <><Mail className="h-4 w-4 mr-2" /> Send</>}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <BrandedReportEmailDialog
+      open={emailOpen}
+      onOpenChange={setEmailOpen}
+      reportTitle={meeting.title}
+      projectName={projectName}
+      filename={`${fileBase}.pdf`}
+      defaultSubject={`Meeting minutes - ${meeting.title} | ${projectName}`}
+      defaultMessage="Please review the meeting minutes and advise if any correction is needed."
+      projectId={projectId}
+      sourceModule="project-meetings"
+      reportType="meeting_minutes"
+      prepareDelivery={prepareEmailDelivery}
+      dialogTitle="Email the client-ready meeting minutes"
+      htmlDescription="The complete minutes are readable directly in the message."
+    />
   );
 
   // ── Inline: prominent Print / PDF / Email buttons ─────────────────────────

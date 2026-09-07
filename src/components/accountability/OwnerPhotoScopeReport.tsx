@@ -151,7 +151,7 @@ export function OwnerPhotoScopeReport({
           projectName={projectName}
           projectId={projectId}
           filename={`${fileProject}-owner-condition-scope-report.pdf`}
-          defaultSubject={`${projectName} — Owner Condition & Scope Intelligence`}
+          defaultSubject={`${projectName} - Owner Condition & Scope Intelligence`}
           defaultMessage={`Please review the attached owner condition and scope report for ${projectName}. The HTML report is included below, and the matching PDF is attached for your records.`}
           sourceModule="site_accountability"
           reportType="owner_photo_scope"

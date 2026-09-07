@@ -335,7 +335,11 @@ export function DailyReportsList({
           open={!!emailReport}
           onClose={() => setEmailReport(null)}
           report={emailReport}
+          projectId={projectId}
           projectName={projectName || 'Project'}
+          propertyName={propertyName}
+          propertyAddress={propertyAddress}
+          projectType={projectType}
           reportFilename={filename(emailReport)}
         />
       )}

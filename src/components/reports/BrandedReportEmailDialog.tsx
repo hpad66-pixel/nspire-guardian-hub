@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CheckCircle2, FileText, Loader2, Mail, Paperclip, Send, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContactPicker } from '@/components/crm/ContactPicker';
@@ -31,6 +31,14 @@ interface BrandedReportEmailDialogProps {
   sourceModule: string;
   reportType: string;
   prepareDelivery: (message: string) => Promise<PreparedReportDelivery>;
+  dialogTitle?: string;
+  htmlLabel?: string;
+  htmlDescription?: string;
+  attachmentLabel?: string;
+  sendLabel?: string;
+  dailyInspectionId?: string;
+  reportId?: string;
+  extraOptions?: ReactNode;
 }
 
 function normalizedEmails(entries: string[]) {
@@ -119,6 +127,14 @@ export function BrandedReportEmailDialog({
   sourceModule,
   reportType,
   prepareDelivery,
+  dialogTitle = 'Email the client-ready report',
+  htmlLabel = 'Branded HTML email',
+  htmlDescription = 'The report is readable directly in the message.',
+  attachmentLabel = 'Matching PDF attached',
+  sendLabel = 'Send HTML + PDF',
+  dailyInspectionId,
+  reportId,
+  extraOptions,
 }: BrandedReportEmailDialogProps) {
   const sendEmail = useSendEmail();
   const [to, setTo] = useState<string[]>([]);
@@ -169,6 +185,8 @@ export function BrandedReportEmailDialog({
         reportType,
         attachmentFilename: filename,
         attachmentSize: delivery.pdfSize,
+        dailyInspectionId,
+        reportId,
       });
       toast.success(`Sent ${reportTitle} as HTML and PDF.`, { id: progress });
       onOpenChange(false);
@@ -188,13 +206,13 @@ export function BrandedReportEmailDialog({
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl" data-testid="branded-report-email-dialog">
         <DialogHeader>
           <div className="mb-1 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#082b23] text-amber-300"><Mail className="h-5 w-5" /></div>
-          <DialogTitle className="font-display text-2xl text-[#082b23]">Email the client-ready report</DialogTitle>
-          <DialogDescription>{projectName} · {reportTitle}</DialogDescription>
+          <DialogTitle className="font-display text-2xl text-[#082b23]">{dialogTitle}</DialogTitle>
+          <DialogDescription>{projectName} | {reportTitle}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 sm:grid-cols-2">
-          <div className="flex items-start gap-2.5 rounded-xl bg-white p-3"><FileText className="mt-0.5 h-4 w-4 text-emerald-700" /><div><p className="text-sm font-semibold text-[#082b23]">Branded HTML email</p><p className="text-xs text-muted-foreground">The report is readable directly in the message.</p></div><CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" /></div>
-          <div className="flex items-start gap-2.5 rounded-xl bg-white p-3"><Paperclip className="mt-0.5 h-4 w-4 text-emerald-700" /><div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">Matching PDF attached</p><p className="truncate text-xs text-muted-foreground">{filename}</p></div><CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-emerald-600" /></div>
+          <div className="flex items-start gap-2.5 rounded-xl bg-white p-3"><FileText className="mt-0.5 h-4 w-4 text-emerald-700" /><div><p className="text-sm font-semibold text-[#082b23]">{htmlLabel}</p><p className="text-xs text-muted-foreground">{htmlDescription}</p></div><CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" /></div>
+          <div className="flex items-start gap-2.5 rounded-xl bg-white p-3"><Paperclip className="mt-0.5 h-4 w-4 text-emerald-700" /><div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{attachmentLabel}</p><p className="truncate text-xs text-muted-foreground">{filename}</p></div><CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-emerald-600" /></div>
         </div>
 
         <div className="space-y-4 py-1">
@@ -203,6 +221,7 @@ export function BrandedReportEmailDialog({
             <RecipientField id="report-cc" label="CC" hint="(optional)" value={cc} onChange={setCc} projectId={projectId} />
             <RecipientField id="report-bcc" label="BCC" hint="(private)" value={bcc} onChange={setBcc} projectId={projectId} />
           </div>
+          {extraOptions}
           <div className="space-y-2"><Label htmlFor="report-subject">Subject</Label><Input id="report-subject" value={subject} onChange={(event) => setSubject(event.target.value)} /></div>
           <div className="space-y-2"><Label htmlFor="report-message">Personal note <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="report-message" rows={4} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Add the decision, response, or next action you want from the client…" /></div>
           <p className="text-xs leading-relaxed text-muted-foreground">BCC recipients remain hidden. Your configured sender copy is added automatically, and the delivery is recorded in the project email audit trail.</p>
@@ -212,7 +231,7 @@ export function BrandedReportEmailDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <Button onClick={() => void handleSend()} disabled={busy || !to.length} className="bg-[#082b23] text-white hover:bg-[#0d493c]">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            {busy ? 'Preparing and sending…' : 'Send HTML + PDF'}
+            {busy ? 'Preparing and sending…' : sendLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

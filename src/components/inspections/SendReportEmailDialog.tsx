@@ -1,23 +1,6 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { useSendReportEmail } from "@/hooks/useReportEmails";
-import { generatePDFBase64 } from "@/lib/generatePDF";
-import { X, Loader2, Mail, Paperclip, Send, Users } from "lucide-react";
-import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
-import { ContactPicker } from "@/components/crm/ContactPicker";
+import { format, parseISO } from 'date-fns';
+import { BrandedReportEmailDialog, type PreparedReportDelivery } from '@/components/reports/BrandedReportEmailDialog';
+import { generatePDFBase64 } from '@/lib/generatePDF';
 
 interface SendReportEmailDialogProps {
   open: boolean;
@@ -34,6 +17,16 @@ interface SendReportEmailDialogProps {
   };
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/[—–‑]/g, '-')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function SendReportEmailDialog({
   open,
   onOpenChange,
@@ -44,215 +37,36 @@ export function SendReportEmailDialog({
   reportElementId,
   statusSummary,
 }: SendReportEmailDialogProps) {
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [emailInput, setEmailInput] = useState("");
-  const [subject, setSubject] = useState(
-    `Daily Grounds Inspection - ${propertyName} - ${format(parseISO(inspectionDate), "MMM d, yyyy")}`
-  );
-  const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const formattedDate = format(parseISO(inspectionDate), 'MMMM d, yyyy');
+  const pdfFilename = `daily-grounds-inspection-${format(parseISO(inspectionDate), 'yyyy-MM-dd')}.pdf`;
+  const summary = statusSummary ?? { ok: 0, attention: 0, defect: 0 };
 
-  const sendEmail = useSendReportEmail();
-
-  const pdfFilename = `daily-grounds-inspection-${format(parseISO(inspectionDate), "yyyy-MM-dd")}.pdf`;
-
-  const validateEmail = (email: string): boolean => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email.trim());
-  };
-
-  const addRecipient = () => {
-    const email = emailInput.trim().toLowerCase();
-    if (!email) return;
-
-    if (!validateEmail(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    if (recipients.includes(email)) {
-      toast.error("This email is already added");
-      return;
-    }
-
-    setRecipients([...recipients, email]);
-    setEmailInput("");
-  };
-
-  const removeRecipient = (email: string) => {
-    setRecipients(recipients.filter((r) => r !== email));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addRecipient();
-    }
-  };
-
-  const handleSend = async () => {
-    if (recipients.length === 0) {
-      toast.error("Please add at least one recipient");
-      return;
-    }
-
-    if (!subject.trim()) {
-      toast.error("Please enter a subject");
-      return;
-    }
-
-    setIsSending(true);
-
-    try {
-      // Generate PDF as base64
-      const pdfBase64 = await generatePDFBase64({
-        elementId: reportElementId,
-        scale: 2,
-      });
-
-      await sendEmail.mutateAsync({
-        recipients,
-        subject: subject.trim(),
-        reportType: "daily_inspection",
-        reportId: inspectionId,
-        propertyName,
-        inspectorName,
-        inspectionDate: format(parseISO(inspectionDate), "MMMM d, yyyy"),
-        message: message.trim() || undefined,
-        pdfBase64,
-        pdfFilename,
-        statusSummary,
-      });
-
-      onOpenChange(false);
-      // Reset form
-      setRecipients([]);
-      setEmailInput("");
-      setMessage("");
-    } catch (error) {
-      console.error("Failed to send email:", error);
-    } finally {
-      setIsSending(false);
-    }
-  };
+  async function prepareDelivery(personalMessage: string): Promise<PreparedReportDelivery> {
+    const pdfBase64 = await generatePDFBase64({ elementId: reportElementId, scale: 2 });
+    const personal = personalMessage
+      ? `<div style="margin:0 0 20px;border-left:4px solid #dfbd67;background:#fff9e8;padding:14px 16px;color:#4b452f;font-size:15px;line-height:1.6;">${escapeHtml(personalMessage).replace(/\n/g, '<br>')}</div>`
+      : '';
+    const stat = (value: number, label: string, color: string) => `<td style="width:33.33%;background:#f4f8f6;border-radius:10px;padding:14px;"><b style="font-size:24px;color:${color};">${value}</b><br><span style="font-size:10px;color:#66756f;text-transform:uppercase;">${label}</span></td>`;
+    const bodyHtml = `<div style="margin:0;background:#edf2ef;padding:20px 8px;font-family:Arial,sans-serif;color:#173a32;"><div style="max-width:700px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;"><div style="height:6px;background:#dfbd67;"></div><div style="background:#082b23;color:#fff;padding:28px;"><div style="color:#edce79;font-size:10px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;">APAS Project Controls | Proj OS</div><h1 style="margin:16px 0 7px;font:700 28px/1.15 Georgia,serif;">Daily Grounds Inspection</h1><div style="color:#c9ddd6;font-size:14px;">${escapeHtml(propertyName)} | ${escapeHtml(formattedDate)}</div></div><div style="padding:24px 28px;">${personal}<table role="presentation" width="100%" cellspacing="8" cellpadding="0" style="margin:0 -8px 22px;"><tr>${stat(summary.ok, 'Acceptable', '#16794d')}${stat(summary.attention, 'Needs attention', '#a16107')}${stat(summary.defect, 'Defects', '#b42318')}</tr></table><p style="margin:0 0 8px;color:#485b54;font-size:14px;line-height:1.6;"><b>Inspector:</b> ${escapeHtml(inspectorName)}</p><p style="margin:0;color:#72817c;font-size:11px;line-height:1.5;">The attached PDF contains the complete inspection findings, photographs, and recorded field details.</p></div></div></div>`;
+    const bodyText = [personalMessage, `DAILY GROUNDS INSPECTION - ${propertyName} - ${formattedDate}`, `Inspector: ${inspectorName}`, `Acceptable: ${summary.ok} | Needs attention: ${summary.attention} | Defects: ${summary.defect}`, 'The complete inspection report is attached as a PDF.'].filter(Boolean).join('\n\n').replace(/[—–‑]/g, '-');
+    return { bodyHtml, bodyText, pdfBase64, pdfSize: Math.round(pdfBase64.length * 0.75) };
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Send Inspection Report
-          </DialogTitle>
-          <DialogDescription>
-            Send this inspection report as a PDF attachment to one or more recipients.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {/* Recipients */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="recipients">To</Label>
-              <ContactPicker
-                selectedEmails={recipients}
-                onSelect={setRecipients}
-                trigger={
-                  <Button variant="ghost" size="sm" className="h-7 gap-1">
-                    <Users className="h-3 w-3" />
-                    From Contacts
-                  </Button>
-                }
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 p-2 min-h-[42px] border rounded-md bg-background">
-              {recipients.map((email) => (
-                <Badge
-                  key={email}
-                  variant="secondary"
-                  className="flex items-center gap-1 py-1"
-                >
-                  {email}
-                  <button
-                    type="button"
-                    onClick={() => removeRecipient(email)}
-                    className="ml-1 hover:bg-muted rounded-full p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              <Input
-                id="recipients"
-                type="email"
-                placeholder="Add email address..."
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={addRecipient}
-                className="flex-1 min-w-[200px] border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Press Enter or comma to add recipients, or select from your contacts
-            </p>
-          </div>
-
-          {/* Subject */}
-          <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Email subject"
-            />
-          </div>
-
-          {/* Message */}
-          <div className="space-y-2">
-            <Label htmlFor="message">Message (optional)</Label>
-            <Textarea
-              id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add a personal message..."
-              rows={3}
-            />
-          </div>
-
-          {/* Attachment Preview */}
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-            <Paperclip className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              Attachment: <span className="font-medium text-foreground">{pdfFilename}</span>
-            </span>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSending}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSend} disabled={isSending || recipients.length === 0}>
-            {isSending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Send Email
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <BrandedReportEmailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      reportTitle={`Daily Grounds Inspection | ${formattedDate}`}
+      projectName={propertyName}
+      filename={pdfFilename}
+      defaultSubject={`Daily Grounds Inspection - ${propertyName} - ${format(parseISO(inspectionDate), 'MMM d, yyyy')}`}
+      defaultMessage="Please review the attached inspection report and the items requiring attention."
+      sourceModule="daily-inspections"
+      reportType="daily_inspection"
+      dailyInspectionId={inspectionId}
+      prepareDelivery={prepareDelivery}
+      dialogTitle="Email the client-ready inspection report"
+      htmlDescription="The inspection summary is readable directly in the message."
+    />
   );
 }

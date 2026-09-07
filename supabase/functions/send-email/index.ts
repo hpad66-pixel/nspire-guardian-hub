@@ -24,6 +24,8 @@ interface SendEmailRequest {
   reportType?: string;
   attachmentFilename?: string;
   attachmentSize?: number;
+  dailyInspectionId?: string;
+  reportId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -77,6 +79,8 @@ const handler = async (req: Request): Promise<Response> => {
       reportType,
       attachmentFilename,
       attachmentSize,
+      dailyInspectionId,
+      reportId,
     } = body;
 
     // Get user's profile for auto-BCC if not provided
@@ -297,6 +301,8 @@ const handler = async (req: Request): Promise<Response> => {
       project_id: verifiedProjectId,
       attachment_filename: attachmentFilename || primaryAttachment?.filename || null,
       attachment_size: attachmentSize || primaryAttachment?.size || null,
+      daily_inspection_id: dailyInspectionId || null,
+      report_id: reportId || null,
     };
 
     const { error: insertError } = await supabaseAdmin
