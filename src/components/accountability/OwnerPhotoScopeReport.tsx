@@ -2,27 +2,36 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
+  Building2,
   Camera,
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  DraftingCompass,
+  Droplets,
   FileDown,
   HardHat,
   Images,
+  Leaf,
   Loader2,
   MapPinned,
+  Paintbrush,
   Ruler,
   ShieldCheck,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { FieldItem, FieldPhoto } from '@/hooks/useFieldAccountability';
 import {
   buildPhotoScopeGroups,
+  classifyScopeIssue,
+  HUD_READINESS_DELIVERY_PACKAGES,
   openFieldPhotoScopeReport,
   photoFileLabel,
   type PhotoScopeGroup,
+  type ScopeDiscipline,
 } from '@/lib/accountability/photoScopeReport';
 import { cn } from '@/lib/utils';
 
@@ -109,6 +118,8 @@ export function OwnerPhotoScopeReport({
           </div>
         </section>
 
+        <HudReadinessPlan groups={groups} />
+
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Scope package index">
           {groups.map((group) => <a key={group.key} href={`#scope-${group.key}`} className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-800">{String(group.sequence).padStart(2, '0')} · {group.title}</a>)}
         </nav>
@@ -127,6 +138,7 @@ export function OwnerPhotoScopeReport({
 }
 
 function ScopePackage({ group, open, onToggle }: { group: PhotoScopeGroup; open: boolean; onToggle: () => void }) {
+  const disciplines = [...new Set(group.issues.flatMap(classifyScopeIssue))];
   const priorityStyle = group.priority === 'Immediate field check'
     ? 'border-rose-200 bg-rose-50 text-rose-800'
     : group.priority === 'Priority repair'
@@ -135,7 +147,7 @@ function ScopePackage({ group, open, onToggle }: { group: PhotoScopeGroup; open:
   return (
     <section id={`scope-${group.key}`} className="scroll-mt-24 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-4 bg-[#082b23] p-5 text-white sm:flex-row sm:items-start sm:justify-between sm:p-6">
-        <div><p className="text-[10px] font-black uppercase tracking-[.17em] text-amber-300">Work package {String(group.sequence).padStart(2, '0')}</p><h3 className="mt-1 font-display text-2xl sm:text-3xl">{group.title}</h3><p className="mt-1 text-xs text-emerald-100/65">{group.photoRange} · {group.photos.length} photographs · {group.confirmedCount} human-confirmed</p></div>
+        <div><p className="text-[10px] font-black uppercase tracking-[.17em] text-amber-300">Work package {String(group.sequence).padStart(2, '0')}</p><h3 className="mt-1 font-display text-2xl sm:text-3xl">{group.title}</h3><p className="mt-1 text-xs text-emerald-100/65">{group.photoRange} · {group.photos.length} photographs · {group.confirmedCount} human-confirmed</p><div className="mt-3 flex flex-wrap gap-1.5">{disciplines.map((discipline) => <span key={discipline} className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-50">{discipline}</span>)}</div></div>
         <Badge variant="outline" className={cn('w-fit shrink-0 border px-3 py-1.5 text-[10px] font-black uppercase', priorityStyle)}>{group.priority}</Badge>
       </div>
 
@@ -154,12 +166,63 @@ function ScopePackage({ group, open, onToggle }: { group: PhotoScopeGroup; open:
         {group.issues.map((issue, index) => (
           <div key={`${group.key}-${issue.title}`} className="grid gap-3 p-5 sm:grid-cols-[44px_1fr] sm:p-6">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700">{group.sequence}.{index + 1}</span>
-            <div><div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><h4 className="font-semibold text-[#082b23]">{issue.title}</h4><span className="shrink-0 text-[10px] font-bold text-slate-400">{issue.photoRefs}</span></div><div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1.35fr_1fr]"><ScopeColumn label="Visible condition" body={issue.observation} /><ScopeColumn label="Proposed scope" body={issue.scope} strong /><ScopeColumn label="Owner result" body={issue.ownerOutcome} /></div></div>
+            <div><div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><h4 className="font-semibold text-[#082b23]">{issue.title}</h4><span className="shrink-0 text-[10px] font-bold text-slate-400">{issue.photoRefs}</span></div><div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="mr-1 text-[9px] font-black uppercase tracking-[.12em] text-slate-400">Trade assignment</span>{classifyScopeIssue(issue).map((discipline) => <DisciplineBadge key={discipline} discipline={discipline} />)}</div><div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1.35fr_1fr]"><ScopeColumn label="Visible condition" body={issue.observation} /><ScopeColumn label="Proposed scope" body={issue.scope} strong /><ScopeColumn label="Owner result" body={issue.ownerOutcome} /></div></div>
           </div>
         ))}
       </div>}
 
       <div className="border-t bg-emerald-50/60 p-5 sm:p-6"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-[.12em] text-emerald-800"><BadgeCheck className="h-4 w-4" />Closeout evidence required</div><div className="mt-3 flex flex-wrap gap-2">{group.verification.map((entry) => <span key={entry} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[11px] font-semibold text-emerald-900"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />{entry}</span>)}</div></div>
+    </section>
+  );
+}
+
+const disciplineStyles: Record<ScopeDiscipline, string> = {
+  Civil: 'border-blue-200 bg-blue-50 text-blue-800',
+  Electrical: 'border-amber-200 bg-amber-50 text-amber-800',
+  Plumbing: 'border-cyan-200 bg-cyan-50 text-cyan-800',
+  Landscaping: 'border-green-200 bg-green-50 text-green-800',
+  'Stucco / Envelope': 'border-orange-200 bg-orange-50 text-orange-800',
+  'Structural Engineering': 'border-violet-200 bg-violet-50 text-violet-800',
+  'General Contractor': 'border-slate-200 bg-slate-100 text-slate-700',
+};
+
+const disciplineIcons: Record<ScopeDiscipline, React.ComponentType<{ className?: string }>> = {
+  Civil: Building2,
+  Electrical: Zap,
+  Plumbing: Droplets,
+  Landscaping: Leaf,
+  'Stucco / Envelope': Paintbrush,
+  'Structural Engineering': DraftingCompass,
+  'General Contractor': HardHat,
+};
+
+function DisciplineBadge({ discipline }: { discipline: ScopeDiscipline }) {
+  const Icon = disciplineIcons[discipline];
+  return <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-black uppercase', disciplineStyles[discipline])}><Icon className="h-3 w-3" />{discipline}</span>;
+}
+
+function HudReadinessPlan({ groups }: { groups: PhotoScopeGroup[] }) {
+  const counts = new Map<ScopeDiscipline, number>();
+  groups.flatMap((group) => group.issues).forEach((issue) => classifyScopeIssue(issue).forEach((discipline) => counts.set(discipline, (counts.get(discipline) ?? 0) + 1)));
+  return (
+    <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white" data-testid="hud-readiness-trade-plan">
+      <div className="bg-[#082b23] p-5 text-white sm:p-6">
+        <p className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Expedited owner direction · HUD inspection readiness</p>
+        <h3 className="mt-2 font-display text-3xl">One APAS-controlled program. Licensed responsibility by trade.</h3>
+        <p className="mt-2 max-w-4xl text-sm leading-relaxed text-emerald-50/75">APAS will consolidate the scope, pricing, schedule, decisions and closeout evidence for R4 in one place. Proceed immediately with a general contractor, licensed plumbing/underground utility contractor, electrical contractor and structural engineer, while coordinating the civil, stucco and landscape work beneath the approved delivery plan.</p>
+        <div className="mt-4 flex flex-wrap gap-2">{[...counts.entries()].map(([discipline, count]) => <span key={discipline} className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold">{discipline} · {count} items</span>)}</div>
+      </div>
+      <div className="grid gap-px bg-slate-200 md:grid-cols-2">
+        {HUD_READINESS_DELIVERY_PACKAGES.map((entry) => (
+          <div key={entry.key} className="bg-white p-5 sm:p-6">
+            <p className="text-[9px] font-black uppercase tracking-[.13em] text-emerald-700">Lead · {entry.lead}</p>
+            <h4 className="mt-1 font-semibold text-[#082b23]">{entry.title}</h4>
+            <div className="mt-3 flex flex-wrap gap-1.5">{entry.disciplines.map((discipline) => <DisciplineBadge key={discipline} discipline={discipline} />)}</div>
+            <p className="mt-3 text-xs leading-relaxed text-slate-600">{entry.direction}</p>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-amber-200 bg-amber-50 px-5 py-4 text-xs leading-relaxed text-amber-950/75 sm:px-6"><strong className="text-amber-950">License boundary:</strong> the combined civil and stucco package is a procurement and scheduling strategy. Each activity must still be performed, permitted and inspected under the correctly licensed contractor or design professional.</div>
     </section>
   );
 }
