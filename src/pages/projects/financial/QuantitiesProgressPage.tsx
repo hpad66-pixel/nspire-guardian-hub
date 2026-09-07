@@ -240,6 +240,7 @@ export default function QuantitiesProgressPage() {
         rows={base}
         selectedIds={selected}
         showMoney={showMoney}
+        projectId={projectId}
         projectName={project?.name ?? "Project"}
         payAppNo={latestPayApp}
       />

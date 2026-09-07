@@ -22,6 +22,8 @@ export interface SendEmailParams {
   reportType?: string;
   attachmentFilename?: string;
   attachmentSize?: number;
+  dailyInspectionId?: string;
+  reportId?: string;
 }
 
 export function useSendEmail() {

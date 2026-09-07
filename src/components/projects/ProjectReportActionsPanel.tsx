@@ -12,6 +12,7 @@ type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
 
 interface ProjectReportActionsPanelProps {
   report: DailyReportRow;
+  projectId?: string;
   projectName: string;
   propertyName?: string;
   propertyAddress?: string;
@@ -21,7 +22,7 @@ interface ProjectReportActionsPanelProps {
 }
 
 export function ProjectReportActionsPanel({
-  report, projectName, propertyName, propertyAddress, projectType, inspectorName, onBack,
+  report, projectId, projectName, propertyName, propertyAddress, projectType, inspectorName, onBack,
 }: ProjectReportActionsPanelProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -140,7 +141,11 @@ export function ProjectReportActionsPanel({
         open={showEmailSheet}
         onClose={() => setShowEmailSheet(false)}
         report={report}
+        projectId={projectId}
         projectName={projectName}
+        propertyName={propertyName}
+        propertyAddress={propertyAddress}
+        projectType={projectType}
         inspectorName={inspectorName}
         reportFilename={reportFilename}
       />

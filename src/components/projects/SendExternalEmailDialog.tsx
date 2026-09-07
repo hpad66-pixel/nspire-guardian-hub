@@ -39,6 +39,7 @@ import {
   BarChart3,
   UserPlus,
   Check,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -115,6 +116,16 @@ const DOC_CONFIG: Record<
     Icon: ReceiptText,
   },
 };
+
+function escapeEmailHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/[—–‑]/g, '-')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 // ── Save-to-Contacts mini popover shown on each email tag ─────────────────────
 function SaveContactPopover({ email }: { email: string }) {
@@ -343,19 +354,19 @@ export function SendExternalEmailDialog({
 
   const buildEmailBody = () => {
     const greeting = message
-      ? `<p style="margin:0 0 20px; font-size:15px; color:#374151;">${message.replace(/\n/g, '<br/>')}</p>`
+      ? `<p style="margin:0 0 20px; font-size:15px; line-height:1.65; color:#374151;">${escapeEmailHtml(message).replace(/\n/g, '<br/>')}</p>`
       : '';
     const divider = '<hr style="border:none; border-top:1px solid #E5E7EB; margin:24px 0;"/>';
     const docBlock = contentHtml
       ? `${divider}${contentHtml}`
-      : `${divider}<p style="font-size:13px; color:#6B7280;">Document: <strong>${documentTitle}</strong> — ${cfg.label} from project <strong>${projectName}</strong></p>`;
+      : `${divider}<p style="font-size:13px; color:#6B7280;">Document: <strong>${escapeEmailHtml(documentTitle)}</strong> - ${escapeEmailHtml(cfg.label)} from project <strong>${escapeEmailHtml(projectName)}</strong></p>`;
 
     return `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width:620px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #E5E7EB;">
   <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%); padding:28px 32px 24px;">
-    <p style="margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#94A3B8;">${cfg.label}</p>
-    <h1 style="margin:0; font-size:20px; font-weight:700; color:#F8FAFC; line-height:1.3;">${documentTitle}</h1>
-    <p style="margin:8px 0 0; font-size:13px; color:#64748B;">Project: ${projectName}</p>
+    <p style="margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#EDCE79;">${escapeEmailHtml(cfg.label)}</p>
+    <h1 style="margin:0; font-size:22px; font-weight:700; color:#F8FAFC; line-height:1.3;">${escapeEmailHtml(documentTitle)}</h1>
+    <p style="margin:8px 0 0; font-size:13px; color:#C6D9D3;">Project: ${escapeEmailHtml(projectName)}</p>
   </div>
   <div style="padding:28px 32px;">
     ${greeting}
@@ -363,7 +374,7 @@ export function SendExternalEmailDialog({
   </div>
   <div style="background:#F8FAFC; padding:16px 32px; border-top:1px solid #E5E7EB;">
     <p style="margin:0; font-size:11px; color:#94A3B8;">
-      Sent via Proj OS Project Management Platform &bull; This email was sent on behalf of your project team.
+      Sent via Proj OS Project Management Platform. This email was sent on behalf of your project team.
     </p>
   </div>
 </div>`;
@@ -388,6 +399,11 @@ export function SendExternalEmailDialog({
             size: Math.round((pdfAttachment.contentBase64.length * 3) / 4),
           }]
         : undefined,
+      projectId,
+      sourceModule: 'project-client-email',
+      reportType: documentType,
+      attachmentFilename: pdfAttachment?.filename,
+      attachmentSize: pdfAttachment ? Math.round((pdfAttachment.contentBase64.length * 3) / 4) : undefined,
     });
     handleOpenChange(false);
     onSent?.();
@@ -395,22 +411,22 @@ export function SendExternalEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-h-[92vh] max-w-2xl gap-0 overflow-hidden p-0">
         {/* Header */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b bg-muted/30">
+        <DialogHeader className="border-b bg-[#f7faf8] px-6 pb-4 pt-5">
           <div className="flex items-center gap-3">
-            <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center', cfg.bg)}>
-              <Mail className={cn('h-5 w-5', cfg.color)} />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#082b23] text-amber-300">
+              <Mail className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <DialogTitle className="text-base flex items-center gap-2">
-                Send via Email
+              <DialogTitle className="flex items-center gap-2 font-display text-2xl text-[#082b23]">
+                Email the client-ready document
                 <Badge variant="secondary" className={cn('text-xs font-medium', cfg.color, cfg.bg)}>
                   {cfg.label}
                 </Badge>
               </DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Send this document to any external contact
+                {projectName} | {documentTitle}
               </p>
             </div>
           </div>
@@ -419,18 +435,17 @@ export function SendExternalEmailDialog({
         <ScrollArea className="max-h-[70vh]">
           <div className="px-6 py-5 space-y-5">
             {/* Document preview */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border">
-              <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', cfg.bg)}>
-                <DocIcon className={cn('h-4 w-4', cfg.color)} />
+            <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 sm:grid-cols-2">
+              <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
+                <DocIcon className="mt-0.5 h-4 w-4 text-emerald-700" />
+                <div><p className="text-sm font-semibold text-[#082b23]">Branded HTML email</p><p className="text-xs text-muted-foreground">The document summary is readable in the message.</p></div>
+                <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{documentTitle}</p>
-                <p className="text-xs text-muted-foreground">{projectName}</p>
+              <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
+                <Paperclip className="mt-0.5 h-4 w-4 text-emerald-700" />
+                <div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{pdfAttachment ? 'Matching file attached' : 'Project document included'}</p><p className="truncate text-xs text-muted-foreground">{pdfAttachment ? pdfAttachment.filename : documentTitle}</p></div>
+                <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-emerald-600" />
               </div>
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border rounded-full px-2 py-0.5 shrink-0">
-                <Paperclip className="h-3 w-3" />
-                {pdfAttachment ? pdfAttachment.filename : 'Summary included'}
-              </span>
             </div>
 
             {/* To */}
@@ -489,7 +504,7 @@ export function SendExternalEmailDialog({
             <div className="flex items-start gap-2">
               <div className="flex-1">
                 <EmailTagInput
-                  label="BCC"
+                  label="BCC (private)"
                   tags={bccEmails}
                   onChange={setBccEmails}
                   placeholder="Add BCC recipients..."
@@ -528,7 +543,7 @@ export function SendExternalEmailDialog({
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Add a note to the recipient — this will appear above the document details..."
+                placeholder="Add the decision, response, or next action you want from the client..."
                 rows={3}
                 className="text-sm resize-none"
               />
@@ -540,14 +555,14 @@ export function SendExternalEmailDialog({
         <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {toEmails.length === 0
-              ? 'Add at least one recipient to send'
+              ? 'Add at least one client or recipient to send'
               : [
                   `To: ${toEmails.length}`,
                   ccEmails.length > 0 ? `CC: ${ccEmails.length}` : null,
                   bccEmails.length > 0 ? `BCC: ${bccEmails.length}` : null,
                 ]
                   .filter(Boolean)
-                  .join(' · ')}
+                  .join(' | ')}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
@@ -557,14 +572,14 @@ export function SendExternalEmailDialog({
               size="sm"
               onClick={handleSend}
               disabled={toEmails.length === 0 || sendEmail.isPending}
-              className="gap-2"
+              className="gap-2 bg-[#082b23] text-white hover:bg-[#0d493c]"
             >
               {sendEmail.isPending ? (
                 'Sending...'
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  Send Email
+                  {pdfAttachment ? 'Send HTML + attachment' : 'Send branded email'}
                 </>
               )}
             </Button>
