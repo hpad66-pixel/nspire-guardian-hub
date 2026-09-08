@@ -540,15 +540,20 @@ async function syncVendor(scope: Scope, body: Json) {
     throw new GatewayError("admin_required", "Only an administrator can synchronize a project vendor", 403);
   }
 
-  const [vendorResult, assignmentResult, projectResult] = await Promise.all([
+  const [vendorResult, assignmentResult, projectResult, directoryResult] = await Promise.all([
     scope.admin.from("organizations").select("*")
       .eq("id", organizationId).eq("tenant_id", scope.workspaceId).eq("is_active", true).maybeSingle(),
     scope.admin.from("project_vendor_assignments").select("id")
       .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
       .eq("organization_id", organizationId).eq("is_active", true).maybeSingle(),
     scope.admin.from("projects").select("name").eq("id", scope.projectId).maybeSingle(),
+    scope.admin.from("project_directory_entries").select("contact_id")
+      .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
+      .eq("organization_id", organizationId).not("contact_id", "is", null),
   ]);
-  if (vendorResult.error || assignmentResult.error) throw vendorResult.error || assignmentResult.error;
+  if (vendorResult.error || assignmentResult.error || projectResult.error || directoryResult.error) {
+    throw vendorResult.error || assignmentResult.error || projectResult.error || directoryResult.error;
+  }
   const vendor = vendorResult.data;
   const assignment = assignmentResult.data;
   const project = projectResult.data;
@@ -560,42 +565,73 @@ async function syncVendor(scope: Scope, body: Json) {
     apas_crm_sync_status: "syncing", apas_crm_sync_error: null,
   }).eq("id", organizationId).eq("tenant_id", scope.workspaceId);
 
-  const contact: ContactImportItem = {
-    id: vendor.id,
-    firstName: vendor.name,
-    companyName: vendor.name,
-    email: vendor.email ?? undefined,
-    phone: vendor.phone ?? undefined,
-    website: vendor.website ?? undefined,
-    addressLine1: vendor.address_line1 ?? undefined,
-    addressLine2: vendor.address_line2 ?? undefined,
-    city: vendor.city ?? undefined,
-    state: vendor.state ?? undefined,
-    zipCode: vendor.postal_code ?? undefined,
-    country: vendor.country ?? undefined,
-    contactType: vendor.kind === "sub" ? "contractor" : "vendor",
-    tags: [
-      "ProjOS Vendor",
-      vendor.kind === "sub" ? "Subcontractor" : "Vendor",
-      project?.name ? `Project: ${project.name}` : "Project Vendor",
-    ],
-    notes: `Confirmed from a ProjOS invoice intake and linked to ${project?.name ?? "a project"}.`,
-    isActive: true,
-  };
-  const idempotencyKey = await sha256Hex(`${scope.workspaceId}:vendor-sync:${vendor.id}:${vendor.updated_at}`);
+  const contactIds = [...new Set((directoryResult.data ?? [])
+    .map((row) => row.contact_id)
+    .filter((id): id is string => typeof id === "string" && Boolean(id)))];
+  const { data: contactRows, error: contactError } = contactIds.length
+    ? await scope.admin.from("crm_contacts").select("*")
+      .eq("workspace_id", scope.workspaceId).in("id", contactIds).eq("is_active", true)
+    : { data: [], error: null };
+  if (contactError) throw contactError;
+
+  const projectTag = project?.name ? `Project: ${project.name}` : "Project Vendor";
+  const contacts: ContactImportItem[] = (contactRows ?? []).map((row) => {
+    const item = contactImportItem(row as Json);
+    return {
+      ...item,
+      companyName: item.companyName ?? vendor.name,
+      contactType: item.contactType === "other"
+        ? (vendor.kind === "sub" ? "contractor" : "vendor")
+        : item.contactType,
+      tags: [...new Set([...(item.tags ?? []), "ProjOS Vendor", projectTag])],
+      notes: item.notes ?? `Linked to ${project?.name ?? "a ProjOS project"} for vendor invoicing.`,
+    };
+  });
+  if (contacts.length === 0) {
+    contacts.push({
+      id: vendor.id,
+      firstName: vendor.name,
+      companyName: vendor.name,
+      email: vendor.email ?? undefined,
+      phone: vendor.phone ?? undefined,
+      website: vendor.website ?? undefined,
+      addressLine1: vendor.address_line1 ?? undefined,
+      addressLine2: vendor.address_line2 ?? undefined,
+      city: vendor.city ?? undefined,
+      state: vendor.state ?? undefined,
+      zipCode: vendor.postal_code ?? undefined,
+      country: vendor.country ?? undefined,
+      contactType: vendor.kind === "sub" ? "contractor" : "vendor",
+      tags: ["ProjOS Vendor", vendor.kind === "sub" ? "Subcontractor" : "Vendor", projectTag],
+      notes: `Confirmed from a ProjOS invoice intake and linked to ${project?.name ?? "a project"}.`,
+      isActive: true,
+    });
+  }
+  const sourceVersion = contacts.map((contact) => contact.id).sort().join(":");
+  const idempotencyKey = await sha256Hex(`${scope.workspaceId}:vendor-sync:${vendor.id}:${vendor.updated_at}:${sourceVersion}`);
   try {
     const imported = await importContacts({
       workspaceId: scope.workspaceId,
       correlationId: crypto.randomUUID(),
       idempotencyKey,
-    }, [contact]);
-    const result = imported.results.find((item) => item.sourceContactId === vendor.id) ?? imported.results[0];
-    if (!result?.canonicalContactId) {
+    }, contacts);
+    const primaryResult = imported.results[0];
+    if (!primaryResult?.canonicalContactId) {
       throw new GatewayError("invalid_crm_response", "APAS CRM did not return the canonical vendor record", 502);
     }
     const syncedAt = new Date().toISOString();
+    for (const result of imported.results) {
+      if (!contactIds.includes(result.sourceContactId)) continue;
+      const { error: contactUpdateError } = await scope.admin.from("crm_contacts").update({
+        apas_contact_id: result.canonicalContactId,
+        apas_sync_status: "synced",
+        apas_synced_at: syncedAt,
+        apas_sync_error: null,
+      }).eq("workspace_id", scope.workspaceId).eq("id", result.sourceContactId);
+      if (contactUpdateError) throw contactUpdateError;
+    }
     const { error: updateError } = await scope.admin.from("organizations").update({
-      apas_crm_contact_id: result.canonicalContactId,
+      apas_crm_contact_id: primaryResult.canonicalContactId,
       apas_crm_sync_status: "synced",
       apas_crm_synced_at: syncedAt,
       apas_crm_sync_error: null,
@@ -603,10 +639,12 @@ async function syncVendor(scope: Scope, body: Json) {
     if (updateError) throw updateError;
     return {
       organizationId,
-      canonicalContactId: result.canonicalContactId,
+      canonicalContactId: primaryResult.canonicalContactId,
+      canonicalContactIds: imported.results.map((item) => item.canonicalContactId),
+      contactCount: contacts.length,
       status: "synced",
-      action: result.action,
-      matchRule: result.matchRule,
+      action: primaryResult.action,
+      matchRule: primaryResult.matchRule,
       syncedAt,
     };
   } catch (error) {

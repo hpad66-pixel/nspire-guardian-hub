@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, Mail, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useOrganizations, type Organization } from '@/hooks/useDirectory';
+import { useOrganizations } from '@/hooks/useDirectory';
+import { useCRMContacts } from '@/hooks/useCRMContacts';
 import { useConsultingInvoiceRequests } from '@/hooks/useConsultingCashFlow';
+import { buildVendorInvoiceRecipients } from '@/lib/financial/vendorInvoiceRecipients';
 import { toast } from 'sonner';
 
-type Result = { link: string; emailSent: boolean; deliveryError: string | null };
+type Result = {
+  link: string;
+  emailSent: boolean;
+  deliveryError: string | null;
+  linkedContactCount: number;
+  crmSyncStatus: 'synced' | 'failed';
+  crmSyncError: string | null;
+};
 
 export function ConsultingInvoiceRequestDialog({
   open, onOpenChange, projectId, initialOrganizationId,
@@ -21,39 +30,60 @@ export function ConsultingInvoiceRequestDialog({
   initialOrganizationId?: string;
 }) {
   const { data: organizations = [] } = useOrganizations();
+  const { data: contacts = [] } = useCRMContacts();
   const { requestInvoice } = useConsultingInvoiceRequests(projectId);
-  const vendors = useMemo(() => organizations.filter((item) => ['sub', 'vendor', 'consultant', 'other'].includes(item.kind)), [organizations]);
-  const [organizationId, setOrganizationId] = useState(initialOrganizationId ?? '');
+  const recipients = useMemo(() => buildVendorInvoiceRecipients(organizations, contacts), [organizations, contacts]);
+  const contactRecipients = useMemo(() => recipients.filter((item) => item.source === 'contact'), [recipients]);
+  const organizationRecipients = useMemo(() => recipients.filter((item) => item.source === 'organization'), [recipients]);
+  const [recipientKey, setRecipientKey] = useState(initialOrganizationId ? `organization:${initialOrganizationId}` : '');
   const [email, setEmail] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [message, setMessage] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
+  const initializedForOpen = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
-    setOrganizationId(initialOrganizationId ?? '');
-    const initial = organizations.find((item) => item.id === initialOrganizationId);
+    if (!open) {
+      initializedForOpen.current = false;
+      return;
+    }
+    if (initializedForOpen.current) return;
+    initializedForOpen.current = true;
+    const initialKey = initialOrganizationId ? `organization:${initialOrganizationId}` : '';
+    const initial = recipients.find((item) => item.key === initialKey);
+    setRecipientKey(initialKey);
     setEmail(initial?.email ?? '');
     setRecipientName('');
     setDueDate('');
     setMessage('');
     setResult(null);
     setCopied(false);
-  }, [open, initialOrganizationId, organizations]);
+  }, [open, initialOrganizationId, recipients]);
 
-  function chooseVendor(id: string) {
-    setOrganizationId(id);
-    const vendor = vendors.find((item) => item.id === id);
+  function chooseVendor(key: string) {
+    setRecipientKey(key);
+    const vendor = recipients.find((item) => item.key === key);
     setEmail(vendor?.email ?? '');
+    setRecipientName(vendor?.contactName ?? '');
   }
 
   async function request() {
-    const response = await requestInvoice.mutateAsync({ organizationId, email, recipientName, dueDate, message });
+    const selected = recipients.find((item) => item.key === recipientKey);
+    if (!selected) return;
+    const response = await requestInvoice.mutateAsync({
+      organizationId: selected.organizationId,
+      contactId: selected.contactId,
+      email,
+      recipientName,
+      dueDate,
+      message,
+    });
     setResult(response);
-    if (response.emailSent) toast.success('Secure invoice request emailed');
-    else toast.success('Secure request created — copy or share the link');
+    if (response.emailSent && response.crmSyncStatus === 'synced') toast.success('Invoice request sent and vendor synchronized');
+    else if (response.emailSent) toast.success('Secure invoice request emailed');
+    else toast.success('Secure request created - copy or share the link');
   }
 
   async function copy() {
@@ -63,7 +93,7 @@ export function ConsultingInvoiceRequestDialog({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
-  const selected = vendors.find((item) => item.id === organizationId) as Organization | undefined;
+  const selected = recipients.find((item) => item.key === recipientKey);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[620px]">
@@ -77,12 +107,15 @@ export function ConsultingInvoiceRequestDialog({
               <div className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4" /> Secure by design</div>
               <p className="mt-1 text-xs text-emerald-800">The raw link token is never stored. It expires after 14 days and stops working immediately after submission.</p>
             </div>
-            <Field label="Vendor company *"><Select value={organizationId} onValueChange={chooseVendor}><SelectTrigger><SelectValue placeholder="Choose a vendor or consultant" /></SelectTrigger><SelectContent>{vendors.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Vendor company or CRM contact *"><Select value={recipientKey} onValueChange={chooseVendor}><SelectTrigger><SelectValue placeholder="Choose from contacts or vendor companies" /></SelectTrigger><SelectContent>
+              {contactRecipients.length > 0 && <SelectGroup><SelectLabel>CRM contacts</SelectLabel>{contactRecipients.map((item) => <SelectItem key={item.key} value={item.key}>{item.vendorName}{item.contactName && item.contactName !== item.vendorName ? ` - ${item.contactName}` : ''}</SelectItem>)}</SelectGroup>}
+              {organizationRecipients.length > 0 && <SelectGroup><SelectLabel>Vendor companies</SelectLabel>{organizationRecipients.map((item) => <SelectItem key={item.key} value={item.key}>{item.vendorName}</SelectItem>)}</SelectGroup>}
+            </SelectContent></Select><p className="text-xs text-muted-foreground">Existing CRM contacts are automatically attached to this project and resolved to a reusable vendor company.</p></Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Recipient email *"><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="billing@vendor.com" /></Field>
               <Field label="Recipient name"><Input value={recipientName} onChange={(event) => setRecipientName(event.target.value)} placeholder="Accounts receivable" /></Field>
               <Field label="Requested by"><Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></Field>
-              <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Company on record</span><br />{selected?.email || 'No company email saved—use the recipient field.'}</div>
+              <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Record on file</span><br />{selected?.detail || 'Choose an existing contact or company.'}</div>
             </div>
             <Field label="Instructions"><Textarea rows={3} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Billing period, deliverable, or other invoice instructions" /></Field>
           </div>
@@ -91,7 +124,9 @@ export function ConsultingInvoiceRequestDialog({
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <div className="flex items-center gap-2 font-semibold text-emerald-900"><Check className="h-4 w-4" /> Request ready</div>
               <p className="mt-1 text-sm text-emerald-800">{result.emailSent ? `Email sent to ${email}.` : 'Email delivery is not configured, so share the secure link below.'}</p>
+              <p className="mt-1 text-xs text-emerald-800">{result.linkedContactCount > 0 ? `${result.linkedContactCount} contact${result.linkedContactCount === 1 ? '' : 's'} attached to the project. ` : ''}{result.crmSyncStatus === 'synced' ? 'APAS CRM is synchronized.' : 'The ProjOS link is complete; APAS CRM synchronization needs attention.'}</p>
               {result.deliveryError && <p className="mt-1 text-xs text-amber-700">Delivery note: {result.deliveryError}</p>}
+              {result.crmSyncError && <p className="mt-1 text-xs text-amber-700">CRM note: {result.crmSyncError}</p>}
             </div>
             <div className="flex items-center gap-2 rounded-xl border p-3">
               <code className="min-w-0 flex-1 break-all text-xs">{result.link}</code>
@@ -101,7 +136,7 @@ export function ConsultingInvoiceRequestDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{result ? 'Done' : 'Cancel'}</Button>
-          {!result && <Button onClick={request} disabled={requestInvoice.isPending || !organizationId || !/^\S+@\S+\.\S+$/.test(email)}><Mail className="mr-2 h-4 w-4" />{requestInvoice.isPending ? 'Creating…' : 'Send secure request'}</Button>}
+          {!result && <Button onClick={request} disabled={requestInvoice.isPending || !recipientKey || !/^\S+@\S+\.\S+$/.test(email)}><Mail className="mr-2 h-4 w-4" />{requestInvoice.isPending ? 'Creating…' : 'Send secure request'}</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
