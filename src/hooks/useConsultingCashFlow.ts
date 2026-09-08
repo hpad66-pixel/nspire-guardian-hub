@@ -262,21 +262,34 @@ export function useConsultingInvoiceRequests(projectId: string | null | undefine
   });
   const requestInvoice = useMutation({
     mutationFn: async (input: {
-      organizationId: string; email: string; recipientName?: string;
+      organizationId?: string | null; contactId?: string | null; email: string; recipientName?: string;
       dueDate?: string; message?: string;
     }) => {
       if (!projectId) throw new Error('No project selected.');
       const { data, error } = await supabase.functions.invoke('consulting-vendor-invoice', {
         body: {
-          action: 'request', projectId, organizationId: input.organizationId,
+          action: 'request', projectId,
+          organizationId: input.organizationId || null,
+          contactId: input.contactId || null,
           email: input.email, recipientName: input.recipientName,
           dueDate: input.dueDate || null, message: input.message || null,
         },
       });
       if (error || !data?.ok) throw new Error(data?.error || error?.message || 'Could not create invoice request');
-      return data as { requestId: string; link: string; emailSent: boolean; deliveryError: string | null };
+      return data as {
+        requestId: string; organizationId: string; linkedContactCount: number;
+        link: string; emailSent: boolean; deliveryError: string | null;
+        crmSyncStatus: 'synced' | 'failed'; crmSyncError: string | null;
+      };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ['organizations'] });
+      qc.invalidateQueries({ queryKey: ['project-directory', projectId] });
+      qc.invalidateQueries({ queryKey: ['project-contacts', projectId] });
+      qc.invalidateQueries({ queryKey: ['project-contact-ids', projectId] });
+      qc.invalidateQueries({ queryKey: ['crm-contacts'] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
   return { ...list, requestInvoice };

@@ -23,6 +23,43 @@ function newToken(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+async function syncProjectVendorToCrm(input: {
+  url: string;
+  anon: string;
+  authorization: string;
+  projectId: string;
+  organizationId: string;
+}) {
+  try {
+    const response = await fetch(`${input.url}/functions/v1/crm-integration-gateway`, {
+      method: "POST",
+      headers: {
+        Authorization: input.authorization,
+        apikey: input.anon,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        operation: "sync_vendor",
+        projectId: input.projectId,
+        organizationId: input.organizationId,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok !== true) {
+      return {
+        status: "failed" as const,
+        error: String(payload?.message ?? `APAS CRM synchronization failed (${response.status})`),
+      };
+    }
+    return { status: "synced" as const, error: null, data: payload.data ?? null };
+  } catch {
+    return {
+      status: "failed" as const,
+      error: "APAS CRM is temporarily unavailable; the vendor remains linked in ProjOS for retry.",
+    };
+  }
+}
+
 function hasExpectedSignature(bytes: Uint8Array, type: string): boolean {
   if (type === "application/pdf") return new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
   if (type === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -190,24 +227,32 @@ serve(async (req) => {
       if (!auth.user) return json({ error: "Authentication required" }, 401);
       const projectId = String(body.projectId ?? "");
       const organizationId = String(body.organizationId ?? "");
+      const contactId = String(body.contactId ?? "");
       const email = String(body.email ?? "").trim().toLowerCase();
-      if (!projectId || !organizationId || !/^\S+@\S+\.\S+$/.test(email)) {
-        return json({ error: "Project, vendor, and a valid email are required" }, 400);
+      if (!projectId || (!organizationId && !contactId) || !/^\S+@\S+\.\S+$/.test(email)) {
+        return json({ error: "Project, vendor contact, and a valid email are required" }, 400);
       }
       const rawToken = newToken();
       const tokenDigest = await sha256(rawToken);
-      const { data: requestId, error: createError } = await userDb.rpc("create_consulting_invoice_request", {
+      const { data: created, error: createError } = await userDb.rpc("create_consulting_invoice_request_v2", {
         p_project_id: projectId,
-        p_organization_id: organizationId,
         p_recipient_email: email,
         p_token_digest: tokenDigest,
+        p_organization_id: organizationId || null,
+        p_contact_id: contactId || null,
         p_due_date: body.dueDate || null,
         p_message: body.message || null,
       });
       if (createError) return json({ error: createError.message }, 403);
+      const createdRequest = (created ?? {}) as Record<string, unknown>;
+      const requestId = String(createdRequest.requestId ?? "");
+      const resolvedOrganizationId = String(createdRequest.organizationId ?? organizationId);
+      if (!requestId || !resolvedOrganizationId) {
+        return json({ error: "The vendor invoice request could not be linked" }, 500);
+      }
       const [{ data: project }, { data: vendor }] = await Promise.all([
         admin.from("projects").select("name").eq("id", projectId).single(),
-        admin.from("organizations").select("name").eq("id", organizationId).single(),
+        admin.from("organizations").select("name").eq("id", resolvedOrganizationId).single(),
       ]);
       const origin = Deno.env.get("PUBLIC_APP_URL") || Deno.env.get("SITE_URL") || "https://projos.ai";
       const link = `${origin}/vendor/consulting-invoice/${rawToken}`;
@@ -236,7 +281,25 @@ serve(async (req) => {
         emailSent = response.ok;
         deliveryError = response.ok ? null : String(result?.message ?? `Email failed (${response.status})`);
       }
-      return json({ ok: true, requestId, link, emailSent, deliveryError, expiresInDays: 14 });
+      const crmSync = await syncProjectVendorToCrm({
+        url,
+        anon,
+        authorization,
+        projectId,
+        organizationId: resolvedOrganizationId,
+      });
+      return json({
+        ok: true,
+        requestId,
+        organizationId: resolvedOrganizationId,
+        linkedContactCount: Number(createdRequest.linkedContactCount ?? 0),
+        link,
+        emailSent,
+        deliveryError,
+        crmSyncStatus: crmSync.status,
+        crmSyncError: crmSync.error,
+        expiresInDays: 14,
+      });
     }
 
     const token = String(body.token ?? "");
