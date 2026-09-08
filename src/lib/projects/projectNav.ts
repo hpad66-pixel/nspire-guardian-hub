@@ -11,7 +11,7 @@ import {
   Images, Wallet, FileSignature, HelpCircle, Package, ListChecks, CheckSquare,
   TrendingUp, ShoppingCart, ShieldCheck, FlaskConical, MessageSquareText, Mail,
   Award, Receipt, Send, Megaphone, FileText, Settings2, FileBadge2, Map, Warehouse, Phone, ScanEye,
-  UserRoundCheck,
+  UserRoundCheck, FileChartColumn,
 } from 'lucide-react';
 import { projectKind, type ProjectKind } from '@/lib/projectKind';
 import {
@@ -107,6 +107,7 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'invoicing', label: 'Client Invoices', shortLabel: 'Invoices', icon: Receipt, group: 'commercial', route: (id) => `/projects/${id}/financials/client-invoices` },
 
   // Docs & Comms
+  { value: 'reports', label: 'Reports', shortLabel: 'Reports', icon: FileChartColumn, group: 'documents', route: (id) => `/projects/${id}/reports` },
   { value: 'repository', label: 'Documents', shortLabel: 'Docs', icon: FileText, group: 'documents', route: (id) => `/projects/${id}/repository` },
   { value: 'gallery', label: 'Gallery', shortLabel: 'Gallery', icon: Images, group: 'documents' },
   { value: 'correspondence', label: 'Correspondence', shortLabel: 'Mail', icon: Mail, group: 'documents' },

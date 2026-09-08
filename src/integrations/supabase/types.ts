@@ -2089,6 +2089,157 @@ export type Database = {
           },
         ]
       }
+      consulting_report_sources: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          drive_file_id: string | null
+          drive_web_url: string | null
+          extracted_text: string | null
+          id: string
+          included: boolean
+          mime_type: string | null
+          project_id: string
+          report_id: string
+          size_bytes: number | null
+          sort_order: number
+          source_name: string
+          source_type: string
+          storage_path: string | null
+          tenant_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_web_url?: string | null
+          extracted_text?: string | null
+          id?: string
+          included?: boolean
+          mime_type?: string | null
+          project_id: string
+          report_id: string
+          size_bytes?: number | null
+          sort_order?: number
+          source_name: string
+          source_type: string
+          storage_path?: string | null
+          tenant_id?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_web_url?: string | null
+          extracted_text?: string | null
+          id?: string
+          included?: boolean
+          mime_type?: string | null
+          project_id?: string
+          report_id?: string
+          size_bytes?: number | null
+          sort_order?: number
+          source_name?: string
+          source_type?: string
+          storage_path?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulting_report_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_report_sources_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "consulting_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_report_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consulting_reports: {
+        Row: {
+          body_html: string
+          conversation: Json
+          created_at: string
+          created_by: string | null
+          generation_notes: Json
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          project_id: string
+          report_date: string
+          status: string
+          subtitle: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          conversation?: Json
+          created_at?: string
+          created_by?: string | null
+          generation_notes?: Json
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          project_id: string
+          report_date?: string
+          status?: string
+          subtitle?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          conversation?: Json
+          created_at?: string
+          created_by?: string | null
+          generation_notes?: Json
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          project_id?: string
+          report_date?: string
+          status?: string
+          subtitle?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulting_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_code_libraries: {
         Row: {
           created_at: string

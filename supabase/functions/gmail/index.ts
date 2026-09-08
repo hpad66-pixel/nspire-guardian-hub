@@ -4,7 +4,7 @@
 //   disconnect → revoke at Google + delete the row
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { signState, authorizeUrl, safeReturnPath, refreshAccessToken } from "../_shared/gmailOAuth.ts";
+import { signState, authorizeUrl, safeReturnPath, refreshAccessToken, GOOGLE_DRIVE_SCOPE } from "../_shared/gmailOAuth.ts";
 import { sendMessage, type GmailSendAttachment } from "../_shared/gmailApi.ts";
 
 const cors = {
@@ -38,20 +38,134 @@ serve(async (req) => {
     const action = String(body.action ?? "");
 
     const loadConn = async () =>
-      (await admin.from("gmail_connections").select("email,last_synced_at,status").eq("tenant_id", tenantId).eq("user_id", user.id).maybeSingle()).data;
+      (await admin.from("gmail_connections").select("email,last_synced_at,status,scopes").eq("tenant_id", tenantId).eq("user_id", user.id).maybeSingle()).data;
 
     const loadFullConn = async () =>
       (await admin.from("gmail_connections").select("*").eq("tenant_id", tenantId).eq("user_id", user.id).maybeSingle()).data;
 
     if (action === "status") {
       const conn = await loadConn();
-      return json({ connected: !!conn && conn.status === "active", email: conn?.email ?? null, last_synced_at: conn?.last_synced_at ?? null, status: conn?.status ?? null });
+      return json({ connected: !!conn && conn.status === "active", driveConnected: !!conn && conn.status === "active" && String(conn.scopes ?? "").includes(GOOGLE_DRIVE_SCOPE), email: conn?.email ?? null, last_synced_at: conn?.last_synced_at ?? null, status: conn?.status ?? null });
     }
 
     if (action === "start") {
       if (!Deno.env.get("GOOGLE_OAUTH_CLIENT_ID")) return json({ error: "Gmail is not configured (missing GOOGLE_OAUTH_CLIENT_ID)." }, 500);
       const state = await signState(serviceKey, { t: tenantId, u: user.id, r: safeReturnPath(body.returnTo), o: typeof body.origin === "string" ? body.origin : undefined });
-      return json({ url: authorizeUrl(state, user.email ?? undefined) });
+      return json({ url: authorizeUrl(state, user.email ?? undefined, body.service === "drive") });
+    }
+
+    const accessTokenFor = async (requiredScope?: string) => {
+      const conn = await loadFullConn();
+      if (!conn || conn.status !== "active") throw new Error("Connect Google before continuing.");
+      if (requiredScope && !String(conn.scopes ?? "").includes(requiredScope)) {
+        throw new Error("Reconnect Google Drive to grant read-only file access.");
+      }
+      let accessToken = String(conn.access_token ?? "");
+      const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : 0;
+      if (!accessToken || expiresAt < Date.now() + 60_000) {
+        const refreshed = await refreshAccessToken(String(conn.refresh_token));
+        accessToken = refreshed.access_token;
+        await admin.from("gmail_connections").update({
+          access_token: accessToken,
+          token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+          status: "active",
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", conn.id);
+      }
+      return { accessToken, conn };
+    };
+
+    if (action === "drive-list") {
+      const raw = String(body.folderUrl ?? body.folderId ?? "").trim();
+      const match = raw.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      const folderId = match?.[1] ?? (/^[a-zA-Z0-9_-]+$/.test(raw) ? raw : "");
+      if (!folderId) return json({ error: "Paste a valid Google Drive folder link." }, 400);
+      const { accessToken } = await accessTokenFor(GOOGLE_DRIVE_SCOPE);
+      const params = new URLSearchParams({
+        q: `'${folderId}' in parents and trashed = false`,
+        pageSize: "200",
+        orderBy: "folder,name",
+        fields: "files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink,iconLink)",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
+      });
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) return json({ error: `Google Drive could not open that folder (${response.status}). Check sharing access.` }, response.status === 404 ? 404 : 502);
+      const data = await response.json();
+      return json({ folderId, files: Array.isArray(data.files) ? data.files : [] });
+    }
+
+    if (action === "drive-import") {
+      const projectId = String(body.projectId ?? "");
+      const reportId = String(body.reportId ?? "");
+      const fileIds = Array.isArray(body.fileIds) ? [...new Set(body.fileIds.map((id: unknown) => String(id)).filter(Boolean))].slice(0, 100) : [];
+      if (!projectId || !reportId || !fileIds.length) return json({ error: "Select one or more Drive files to import." }, 400);
+      const [{ data: project }, { data: report }] = await Promise.all([
+        userClient.from("projects").select("id").eq("id", projectId).maybeSingle(),
+        userClient.from("consulting_reports").select("id,project_id").eq("id", reportId).eq("project_id", projectId).maybeSingle(),
+      ]);
+      if (!project || !report) return json({ error: "Report not found or not accessible." }, 404);
+      const { accessToken } = await accessTokenFor(GOOGLE_DRIVE_SCOPE);
+      const imported: Array<{ id: string; name: string }> = [];
+      let totalBytes = 0;
+      for (const fileId of fileIds) {
+        const metaResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size,webViewLink&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (!metaResponse.ok) continue;
+        const meta = await metaResponse.json();
+        const sourceMime = String(meta.mimeType ?? "application/octet-stream");
+        let targetMime = sourceMime;
+        let targetName = String(meta.name ?? "Drive source");
+        let extractedText: string | null = null;
+        let downloadUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
+        if (sourceMime.startsWith("application/vnd.google-apps.")) {
+          if (sourceMime.endsWith("folder")) continue;
+          const extractMime = sourceMime.endsWith("document") ? "text/plain" : sourceMime.endsWith("spreadsheet") ? "text/csv" : null;
+          if (extractMime) {
+            const textResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(extractMime)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+            if (textResponse.ok) extractedText = (await textResponse.text()).slice(0, 120_000);
+          }
+          targetMime = "application/pdf";
+          targetName = `${targetName}.pdf`;
+          downloadUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(targetMime)}`;
+        }
+        const fileResponse = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (!fileResponse.ok) continue;
+        const bytes = new Uint8Array(await fileResponse.arrayBuffer());
+        if (bytes.byteLength > 15_000_000 || totalBytes + bytes.byteLength > 100_000_000) continue;
+        totalBytes += bytes.byteLength;
+        if (!extractedText && (targetMime.startsWith("text/") || targetMime.includes("csv"))) {
+          extractedText = new TextDecoder().decode(bytes).slice(0, 120_000);
+        }
+        const sourceId = crypto.randomUUID();
+        const safeName = targetName.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").slice(0, 140) || "drive-source";
+        const path = `${tenantId}/${projectId}/reports/${reportId}/${sourceId}-${safeName}`;
+        const { error: uploadError } = await admin.storage.from("project-documents").upload(path, bytes, { contentType: targetMime, upsert: false });
+        if (uploadError) continue;
+        const { error: insertError } = await admin.from("consulting_report_sources").insert({
+          id: sourceId,
+          tenant_id: tenantId,
+          project_id: projectId,
+          report_id: reportId,
+          source_type: "google_drive",
+          source_name: targetName,
+          mime_type: targetMime,
+          size_bytes: bytes.byteLength,
+          storage_path: path,
+          drive_file_id: fileId,
+          drive_web_url: meta.webViewLink ?? null,
+          extracted_text: extractedText,
+          caption: targetMime.startsWith("image/") ? String(meta.name ?? "").replace(/[-_]+/g, " ").replace(/\.[^.]+$/, "") : null,
+          created_by: user.id,
+          sort_order: imported.length,
+        });
+        if (insertError) {
+          await admin.storage.from("project-documents").remove([path]);
+          continue;
+        }
+        imported.push({ id: sourceId, name: targetName });
+      }
+      return json({ imported, skipped: fileIds.length - imported.length });
     }
 
     if (action === "disconnect") {
