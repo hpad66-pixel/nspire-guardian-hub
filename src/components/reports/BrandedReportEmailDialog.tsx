@@ -39,6 +39,7 @@ interface BrandedReportEmailDialogProps {
   dailyInspectionId?: string;
   reportId?: string;
   extraOptions?: ReactNode;
+  onSent?: (recipients: string[]) => void | Promise<void>;
 }
 
 function normalizedEmails(entries: string[]) {
@@ -135,6 +136,7 @@ export function BrandedReportEmailDialog({
   dailyInspectionId,
   reportId,
   extraOptions,
+  onSent,
 }: BrandedReportEmailDialogProps) {
   const sendEmail = useSendEmail();
   const [to, setTo] = useState<string[]>([]);
@@ -188,6 +190,7 @@ export function BrandedReportEmailDialog({
         dailyInspectionId,
         reportId,
       });
+      await onSent?.(recipients);
       toast.success(`Sent ${reportTitle} as HTML and PDF.`, { id: progress });
       onOpenChange(false);
       setTo([]);

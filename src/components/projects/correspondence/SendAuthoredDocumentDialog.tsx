@@ -16,6 +16,7 @@ import { useSendEmail } from "@/hooks/useSendEmail";
 import { useProjectEmails } from "@/hooks/useProjectEmails";
 import { useSavedRecipients } from "@/hooks/useSavedRecipients";
 import { htmlToPdfAttachment } from "@/lib/docs/render";
+import { clientReadyDocumentHtml } from "@/lib/docs/clientReadyDocument";
 import { stampedPdfAttachment } from "@/lib/correspondence/stampSignedPdf";
 import type { AuthoredDocument } from "@/hooks/useAuthoredDocuments";
 import { RecipientsInput } from "./RecipientsInput";
@@ -70,7 +71,7 @@ export function SendAuthoredDocumentDialog({
       const html = editedHtml;
       if (html) {
         try {
-          const att = await htmlToPdfAttachment(html, doc.title);
+          const att = await htmlToPdfAttachment(clientReadyDocumentHtml(doc, html, projectName), doc.title);
           attachments = [att];
         } catch {
           /* PDF attach is best-effort; the sign link is the primary path */
@@ -145,7 +146,11 @@ export function SendAuthoredDocumentDialog({
         bodyHtml,
         bodyText: `${message}\n\nReview & sign: ${signLink}`,
         attachments,
-        fromName: doc.contractor_signed_name || undefined,
+        projectId: doc.project_id,
+        sourceModule: "project_documents",
+        reportType: "signature_request",
+        attachmentFilename: attachments?.[0]?.filename,
+        attachmentSize: attachments?.[0]?.size,
       });
 
       try {

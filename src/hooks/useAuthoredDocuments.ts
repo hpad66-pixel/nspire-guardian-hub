@@ -151,11 +151,20 @@ export function useAuthoredDocuments(projectId: string | null) {
   const saveEdit = useMutation({
     mutationFn: async ({ id, html, text, label = "Edited" }: { id: string; html: string; text?: string; label?: string }) => {
       const { data: auth } = await supabase.auth.getUser();
-      const { data: current } = await supabase.from("authored_documents" as any).select("version").eq("id", id).single();
+      const { data: current } = await supabase.from("authored_documents" as any).select("version,source").eq("id", id).single();
       const nextVersion = ((current as any)?.version ?? 1) + 1;
+      const isNativeDocument = ["blank", "ai_draft"].includes((current as any)?.source ?? "");
       const { error: e1 } = await supabase
         .from("authored_documents" as any)
-        .update({ edited_html: html, content_text: text ?? null, version: nextVersion, updated_at: new Date().toISOString() })
+        .update({
+          edited_html: html,
+          // Native documents do not have a separate uploaded source. Keep their
+          // list payload current so reopening the editor never shows version 1.
+          ...(isNativeDocument ? { content_html: html } : {}),
+          content_text: text ?? null,
+          version: nextVersion,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", id);
       if (e1) throw e1;
       const { error: e2 } = await supabase

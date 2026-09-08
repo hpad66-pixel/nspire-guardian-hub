@@ -70,7 +70,9 @@ async function htmlToPdfBlob(html: string): Promise<Blob> {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
 
   const host = document.createElement("div");
-  host.style.cssText = "position:fixed;left:-99999px;top:0;background:#ffffff;";
+  // A stable letter-size working width keeps pasted/native documents readable
+  // and deterministic across laptop, tablet, and phone viewport sizes.
+  host.style.cssText = "position:fixed;left:-99999px;top:0;width:816px;box-sizing:border-box;background:#ffffff;";
   host.innerHTML = html;
   document.body.appendChild(host);
   // Let web fonts/layout settle before rasterizing.
@@ -123,12 +125,41 @@ async function htmlToPdfBlob(html: string): Promise<Blob> {
     const margin = 0;
 
     for (let i = 0; i < nodes.length; i++) {
-      if (i > 0) pdf.addPage("letter", "portrait");
       const canvas = await html2canvas(nodes[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true });
-      const ratio = Math.min((pageW - margin * 2) / canvas.width, (pageH - margin * 2) / canvas.height);
-      const w = canvas.width * ratio;
-      const h = canvas.height * ratio;
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", (pageW - w) / 2, margin, w, h);
+
+      if (pages.length) {
+        if (i > 0) pdf.addPage("letter", "portrait");
+        const ratio = Math.min((pageW - margin * 2) / canvas.width, (pageH - margin * 2) / canvas.height);
+        const w = canvas.width * ratio;
+        const h = canvas.height * ratio;
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", (pageW - w) / 2, margin, w, h);
+        continue;
+      }
+
+      // Native/pasted HTML can be several pages long. Never shrink the entire
+      // document onto one sheet (which produced unreadably tiny client PDFs).
+      // Render it at a fixed readable width and paginate the canvas vertically.
+      const pageMargin = 18;
+      const printableW = pageW - pageMargin * 2;
+      const ratio = printableW / canvas.width;
+      const sliceHeightPx = Math.max(1, Math.floor((pageH - pageMargin * 2) / ratio));
+      let top = 0;
+      let pageIndex = 0;
+      while (top < canvas.height) {
+        if (pageIndex > 0) pdf.addPage("letter", "portrait");
+        const heightPx = Math.min(sliceHeightPx, canvas.height - top);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = heightPx;
+        const ctx = slice.getContext("2d");
+        if (!ctx) throw new Error("Couldn't prepare the PDF page.");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, top, canvas.width, heightPx, 0, 0, canvas.width, heightPx);
+        pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", pageMargin, pageMargin, printableW, heightPx * ratio);
+        top += heightPx;
+        pageIndex += 1;
+      }
     }
     return pdf.output("blob");
   } finally {
