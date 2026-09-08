@@ -36,6 +36,7 @@ const ProjectsDashboard = lazy(() => import('./pages/projects/ProjectsDashboard'
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
 const ProjectAdminPage = lazy(() => import('./pages/projects/ProjectAdminPage'));
 const FieldAccountabilityPage = lazy(() => import('./pages/projects/FieldAccountabilityPage'));
+const SiteAccountabilityHomePage = lazy(() => import('./pages/accountability/SiteAccountabilityHomePage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WorkspaceProfilePage = lazy(() => import('./pages/settings/WorkspaceProfilePage'));
 const ActivityLogPage = lazy(() => import('./pages/settings/ActivityLogPage'));
@@ -75,6 +76,7 @@ const AiUsageAnalyticsPage = lazy(() => import('./pages/admin/AiUsageAnalyticsPa
 const ModulePackagesPage = lazy(() => import('./pages/admin/ModulePackagesPage'));
 const SchoolManagementPage = lazy(() => import('./pages/admin/SchoolManagementPage'));
 const FeatureRegistryPage = lazy(() => import('./pages/admin/FeatureRegistryPage'));
+const CardPayoffsPage = lazy(() => import('./pages/admin/CardPayoffsPage'));
 const SafetyDashboardPage = lazy(() => import('./pages/safety/SafetyDashboardPage'));
 const EquipmentDashboardPage = lazy(() => import('./pages/equipment/EquipmentDashboardPage'));
 const EquipmentSetupPage = lazy(() => import('./pages/equipment/EquipmentSetupPage'));
@@ -112,6 +114,7 @@ const OwnerDashboardPage = lazy(() => import('./pages/portal/owner/OwnerDashboar
 const SubCommitmentsPage = lazy(() => import('./pages/portal/sub/SubCommitmentsPage'));
 const SubCommitmentDetailPage = lazy(() => import('./pages/portal/sub/SubCommitmentDetailPage'));
 const SubInvoiceBuilderPage = lazy(() => import('./pages/portal/sub/SubInvoiceBuilderPage'));
+const SubConsultingInvoicesPage = lazy(() => import('./pages/portal/sub/SubConsultingInvoicesPage'));
 const SubRfisPage = lazy(() => import('./pages/portal/sub/SubRfisPage'));
 const SubSubmittalsPage = lazy(() => import('./pages/portal/sub/SubSubmittalsPage'));
 const OwnerContractPage = lazy(() => import('./pages/portal/owner/OwnerContractPage'));
@@ -159,6 +162,8 @@ const PhaseThreeChangeOrdersPage = lazy(() => import('./pages/projects/financial
 const DirectCostsPage = lazy(() => import('./pages/projects/financial/DirectCostsPage'));
 const InvoicesPage = lazy(() => import('./pages/projects/financial/InvoicesPage'));
 const ClientInvoicesPage = lazy(() => import('./pages/projects/financial/ClientInvoicesPage'));
+const ConsultingCostsPage = lazy(() => import('./pages/projects/financial/ConsultingCostsPage'));
+const ConsultingCloseoutPage = lazy(() => import('./pages/projects/financial/ConsultingCloseoutPage'));
 const BudgetPage = lazy(() => import('./pages/projects/financial/BudgetPage'));
 const PaymentsPage = lazy(() => import('./pages/projects/financial/PaymentsPage'));
 const LedgerPage = lazy(() => import('./pages/projects/financial/LedgerPage'));
@@ -188,6 +193,7 @@ const SignLienWaiverPage = lazy(() => import('./pages/sign/SignLienWaiverPage'))
 const SignAuthoredDocumentPage = lazy(() => import('./pages/sign/SignAuthoredDocumentPage'));
 const ActionItemPublicPage = lazy(() => import('./pages/action/ActionItemPublicPage'));
 const VendorSubmitPage = lazy(() => import('./pages/vendor/VendorSubmitPage'));
+const ConsultingVendorInvoicePage = lazy(() => import('./pages/vendor/ConsultingVendorInvoicePage'));
 const ContractorReadinessPage = lazy(() => import('./pages/contractors/ContractorReadinessPage'));
 const ContractorCasePage = lazy(() => import('./pages/contractors/ContractorCasePage'));
 const ContractorOnboardingPage = lazy(() => import('./pages/contractors/ContractorOnboardingPage'));
@@ -215,6 +221,7 @@ const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplate
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
 const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
+const ConsultingReportsPage = lazy(() => import('./pages/projects/ConsultingReportsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -223,8 +230,9 @@ const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
-      retry: (failureCount, error: any) => {
-        if (error?.status === 404 || error?.status === 403) return false;
+      retry: (failureCount, error: unknown) => {
+        const status = (error as { status?: number } | null)?.status;
+        if (status === 404 || status === 403) return false;
         return failureCount < 2;
       },
     },
@@ -298,6 +306,7 @@ const App = () => (
                      <Route path="/sign/document/:token" element={<SignAuthoredDocumentPage />} />
                      <Route path="/action/:token" element={<ActionItemPublicPage />} />
                      <Route path="/vendor/submit/:token" element={<VendorSubmitPage />} />
+                     <Route path="/vendor/consulting-invoice/:token" element={<ConsultingVendorInvoicePage />} />
                      <Route path="/contractor/onboard/:token" element={<ContractorOnboardingPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      <Route path="/client/:token" element={<ClientPortalPage />} />
@@ -407,6 +416,7 @@ const App = () => (
                               <Route path="/inspections/units" element={<UnitInspections />} />
                               
                               {/* Projects Module */}
+                              <Route path="/site-accountability" element={<SiteAccountabilityHomePage />} />
                               <Route path="/projects" element={<ProjectsDashboard />} />
                               {/* Legacy flat proposals hub — proposals live inside each project */}
                               <Route path="/projects/proposals" element={<Navigate to="/projects" replace />} />
@@ -432,6 +442,7 @@ const App = () => (
                               <Route path="/admin/water-intelligence" element={<WaterIntelAdminPage />} />
                               <Route path="/admin/schools" element={<SchoolManagementPage />} />
                               <Route path="/admin/registry" element={<FeatureRegistryPage />} />
+                              <Route path="/admin/card-payoffs" element={<CardPayoffsPage />} />
 
                               {/* Settings */}
                               <Route path="/settings" element={<SettingsPage />} />
@@ -479,6 +490,8 @@ const App = () => (
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
                               <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
+                              <Route path="/projects/:projectId/reports" element={<ConsultingReportsPage />} />
+                              <Route path="/projects/:projectId/reports/:reportId" element={<ConsultingReportsPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />
@@ -513,6 +526,8 @@ const App = () => (
                                 <Route path="/projects/:projectId/financials/direct-costs" element={<DirectCostsPage />} />
                                 <Route path="/projects/:projectId/financials/invoices" element={<InvoicesPage />} />
                                 <Route path="/projects/:projectId/financials/client-invoices" element={<ClientInvoicesPage />} />
+                                <Route path="/projects/:projectId/financials/costs" element={<ConsultingCostsPage />} />
+                                <Route path="/projects/:projectId/financials/closeout" element={<ConsultingCloseoutPage />} />
                                 <Route path="/projects/:projectId/financials/budget" element={<BudgetPage />} />
                                 <Route path="/projects/:projectId/financials/payments" element={<PaymentsPage />} />
                                 <Route path="/projects/:projectId/financials/ledger" element={<LedgerPage />} />
@@ -537,6 +552,7 @@ const App = () => (
                                 <Route path="/sub-portal/commitments" element={<SubCommitmentsPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId" element={<SubCommitmentDetailPage />} />
                                 <Route path="/sub-portal/commitments/:commitmentId/invoices/new" element={<SubInvoiceBuilderPage />} />
+                                <Route path="/sub-portal/consulting-invoices" element={<SubConsultingInvoicesPage />} />
                                 <Route path="/sub-portal/punch" element={<SubPunchListsPage />} />
                                 <Route path="/sub-portal/rfis" element={<SubRfisPage />} />
                                 <Route path="/sub-portal/submittals" element={<SubSubmittalsPage />} />

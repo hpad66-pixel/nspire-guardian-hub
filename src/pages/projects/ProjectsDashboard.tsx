@@ -29,7 +29,7 @@ import {
   Edit, Archive, Trash2, Filter, X, FolderTree, ChevronDown, ChevronRight, Network,
 } from 'lucide-react';
 import { buildProjectTree } from '@/lib/projectTree';
-import { useProjects, useProjectStats, useUpdateProject } from '@/hooks/useProjects';
+import { useProjects, useProjectStats } from '@/hooks/useProjects';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { projectKind, projectKindTileClass, type ProjectKind } from '@/lib/projectKind';
@@ -39,9 +39,12 @@ import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOr
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { ProjectCloseDialog } from '@/components/projects/ProjectCloseDialog';
 import { ProjectListView } from '@/components/projects/ProjectListView';
 import { ProjectTableView } from '@/components/projects/ProjectTableView';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
+import { ProjectClosedCardStamp } from '@/components/projects/ProjectClosedCardStamp';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { computeHealth, HEALTH_CONFIG, type HealthStatus } from '@/lib/projectHealth';
@@ -51,9 +54,14 @@ import {
 import { cn } from '@/lib/utils';
 import type { Project } from '@/hooks/useProjects';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
+import {
+  compareClosedProjectsFirst,
+  matchesPortfolioStatus,
+  type PortfolioStatusFilter,
+} from '@/lib/projects/portfolioProjectVisibility';
 
 type ViewMode = 'cards' | 'list' | 'table';
-type StatusFilter = 'all' | 'active' | 'planning' | 'on_hold' | 'completed';
+type StatusFilter = PortfolioStatusFilter;
 type HealthFilter = HealthStatus | 'all';
 type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
@@ -86,6 +94,7 @@ export default function ProjectsDashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [closeTarget, setCloseTarget] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [kindFilter, setKindFilter] = useState<'all' | ProjectKind>('all');
@@ -105,9 +114,9 @@ export default function ProjectsDashboard() {
   const { data: changeOrderStats } = useChangeOrderStats();
   const { data: upcomingMilestones } = useUpcomingMilestones(7);
   const { data: properties } = useProperties();
-  const { canCreate, isAdmin } = useUserPermissions();
-  const updateProject = useUpdateProject();
+  const { canCreate, isAdmin, currentRole } = useUserPermissions();
   const canCreateProjects = canCreate('projects');
+  const canCloseProjects = canDeleteProjects || isAdmin || currentRole === 'owner' || currentRole === 'administrator';
 
   const filteredProperty = propertyFilterId
     ? properties?.find((p) => p.id === propertyFilterId) ?? null
@@ -163,13 +172,8 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(p => p.status === statusFilter);
-    } else {
-      // Default: show only active projects (shared selector — see lib/projects).
-      filtered = filtered.filter(isActiveProject);
-    }
+    // "All Projects" is literal: certified closed cards remain visible after refresh.
+    filtered = filtered.filter((project) => matchesPortfolioStatus(project, statusFilter));
 
     // Kind filter (construction vs consulting) — they measure different things.
     if (kindFilter !== 'all') {
@@ -188,6 +192,11 @@ export default function ProjectsDashboard() {
 
     // Sort
     filtered.sort((a, b) => {
+      if (statusFilter === 'all') {
+        const closeoutOrder = compareClosedProjectsFirst(a, b);
+        if (closeoutOrder !== 0) return closeoutOrder;
+      }
+
       let av: any, bv: any;
       switch (sortBy) {
         case 'name': av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
@@ -266,7 +275,15 @@ export default function ProjectsDashboard() {
   const toggleProgram = (pid: string) => setCollapsedPrograms((prev) => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
 
   const handleArchive = (project: Project) => {
-    updateProject.mutate({ id: project.id, status: 'closed' });
+    if (project.status === 'closed') {
+      navigate(`/projects/${project.id}`);
+      return;
+    }
+    if (projectKind(project) === 'consulting') {
+      navigate(`/projects/${project.id}/financials/closeout`);
+      return;
+    }
+    setCloseTarget(project);
   };
 
   // --- Card sub-component (inline to avoid prop-drilling) ---
@@ -289,12 +306,14 @@ export default function ProjectsDashboard() {
     const HIcon = hc.icon;
     const sc = SECTOR_CONFIG[getProjectSector(project)];
     const SIcon = sc.icon;
+    const isClosed = project.status === 'closed';
 
     return (
       <div
         className={cn(
           'p-4 rounded-lg border border-l-4 hover:shadow-md transition-all cursor-pointer group relative',
           projectKindTileClass(kind),
+          isClosed && 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-card to-emerald-50/50 shadow-sm hover:shadow-lg',
         )}
         onClick={() => navigate(`/projects/${project.id}`)}
       >
@@ -310,13 +329,17 @@ export default function ProjectsDashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditProject(project)}>
-                <Edit className="h-4 w-4 mr-2" />Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleArchive(project)}>
-                <Archive className="h-4 w-4 mr-2" />Archive
-              </DropdownMenuItem>
-              {canDeleteProjects && (
+              {project.status !== 'closed' && (
+                <DropdownMenuItem onClick={() => setEditProject(project)}>
+                  <Edit className="h-4 w-4 mr-2" />Edit
+                </DropdownMenuItem>
+              )}
+              {(project.status === 'closed' || canCloseProjects) && (
+                <DropdownMenuItem onClick={() => handleArchive(project)}>
+                  <Archive className="h-4 w-4 mr-2" />{project.status === 'closed' ? 'View closeout' : 'Close & lock'}
+                </DropdownMenuItem>
+              )}
+              {canDeleteProjects && project.status !== 'closed' && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -336,7 +359,10 @@ export default function ProjectsDashboard() {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold">{project.name}</h4>
               <ProjectKindBadge project={project} />
-              <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+              <Badge
+                variant={project.status === 'active' ? 'default' : 'secondary'}
+                className={cn('text-xs capitalize', isClosed && 'border border-amber-300 bg-amber-100 text-amber-950')}
+              >
                 {project.status === 'active' ? 'Active' : project.status}
               </Badge>
               <span className={cn(
@@ -364,27 +390,33 @@ export default function ProjectsDashboard() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">
-                {kind === 'consulting' ? 'Approved fees' : 'Budget'}
-              </span>
-              <span className="text-xs font-medium">
-                {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
-              </span>
+        <ProjectOwnerBadge project={project} className="mb-1" />
+
+        {isClosed ? (
+          <ProjectClosedCardStamp project={project} />
+        ) : (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-muted-foreground">
+                  {kind === 'consulting' ? 'Approved fees' : 'Budget'}
+                </span>
+                <span className="text-xs font-medium">
+                  {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
+                </span>
+              </div>
+              <Progress value={progress} className="h-1.5" />
             </div>
-            <Progress value={progress} className="h-1.5" />
+            {project.target_end_date && (
+              <div className="text-right shrink-0">
+                <span className="text-xs text-muted-foreground">Due</span>
+                <p className="text-xs font-medium">
+                  {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            )}
           </div>
-          {project.target_end_date && (
-            <div className="text-right shrink-0">
-              <span className="text-xs text-muted-foreground">Due</span>
-              <p className="text-xs font-medium">
-                {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   };
@@ -416,6 +448,7 @@ export default function ProjectsDashboard() {
             </div>
             <div className="text-[11px] text-muted-foreground">{kids.length} subproject{kids.length !== 1 ? 's' : ''}</div>
           </button>
+          <ProjectOwnerBadge project={project} compact className="hidden lg:inline-flex" />
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden sm:block w-40">
               <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5"><span>{formatCurrency(rBilled)}</span><span>{formatCurrency(rBudget)}</span></div>
@@ -589,11 +622,12 @@ export default function ProjectsDashboard() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Active</SelectItem>
+              <SelectItem value="all">All Projects</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="planning">Planning</SelectItem>
               <SelectItem value="on_hold">On Hold</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
 
@@ -710,6 +744,7 @@ export default function ProjectsDashboard() {
           <ProjectListView
             projects={displayProjects}
             isAdmin={canDeleteProjects}
+            canClose={canCloseProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}
@@ -718,6 +753,7 @@ export default function ProjectsDashboard() {
           <ProjectTableView
             projects={displayProjects}
             isAdmin={canDeleteProjects}
+            canClose={canCloseProjects}
             onEdit={setEditProject}
             onDelete={setDeleteTarget}
             onArchive={handleArchive}
@@ -743,6 +779,15 @@ export default function ProjectsDashboard() {
           projectId={deleteTarget.id}
           projectName={deleteTarget.name}
           navigateAfter={false}
+        />
+      )}
+      {closeTarget && (
+        <ProjectCloseDialog
+          open={!!closeTarget}
+          onOpenChange={(open) => { if (!open) setCloseTarget(null); }}
+          projectId={closeTarget.id}
+          projectName={closeTarget.name}
+          consulting={projectKind(closeTarget) === 'consulting'}
         />
       )}
     </div>

@@ -145,6 +145,17 @@ export interface FieldAccountabilityData {
   untriagedPhotos: FieldPhoto[];
 }
 
+export interface AccountabilityProjectSummary {
+  projectId: string;
+  items: number;
+  photos: number;
+  open: number;
+  ownerReview: number;
+  overdue: number;
+  verified: number;
+  lastActivityAt: string | null;
+}
+
 type UploadInput = {
   file: File;
   caption?: string;
@@ -159,6 +170,52 @@ async function tenantAndUser() {
   if (!tenantId) throw new Error('No workspace for current user');
   if (!userData.user) throw new Error('Please sign in again');
   return { tenantId, userId: userData.user.id };
+}
+
+/** Lightweight cross-project counts for the standalone Site Accountability hub. */
+export function useAccountabilityPortfolio(projectIds: string[]) {
+  const stableIds = [...new Set(projectIds.filter(Boolean))].sort();
+  return useQuery<AccountabilityProjectSummary[]>({
+    queryKey: ['field-accountability-portfolio', stableIds],
+    enabled: stableIds.length > 0,
+    queryFn: async () => {
+      const db = supabase as any;
+      const [itemsResult, photosResult] = await Promise.all([
+        db.from('field_accountability_items')
+          .select('id,project_id,status,due_date,owner_verification_required,updated_at')
+          .in('project_id', stableIds)
+          .is('archived_at', null),
+        db.from('field_accountability_photos')
+          .select('id,project_id,created_at')
+          .in('project_id', stableIds),
+      ]);
+      if (itemsResult.error) throw itemsResult.error;
+      if (photosResult.error) throw photosResult.error;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const closed = new Set<FieldStatus>(['verified', 'rejected', 'deferred']);
+      return stableIds.map((projectId) => {
+        const items = (itemsResult.data ?? []).filter((item: any) => item.project_id === projectId);
+        const photos = (photosResult.data ?? []).filter((photo: any) => photo.project_id === projectId);
+        const activity = [
+          ...items.map((item: any) => item.updated_at),
+          ...photos.map((photo: any) => photo.created_at),
+        ].filter(Boolean).sort().at(-1) ?? null;
+        return {
+          projectId,
+          items: items.length,
+          photos: photos.length,
+          open: items.filter((item: any) => !closed.has(item.status)).length,
+          ownerReview: items.filter((item: any) => item.status === 'ready_for_review' && item.owner_verification_required).length,
+          overdue: items.filter((item: any) => item.due_date && new Date(`${item.due_date}T12:00:00`) < today && !closed.has(item.status)).length,
+          verified: items.filter((item: any) => item.status === 'verified').length,
+          lastActivityAt: activity,
+        };
+      });
+    },
+    staleTime: 30_000,
+  });
 }
 
 export function useFieldAccountability(projectId: string | null) {

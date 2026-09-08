@@ -12,8 +12,10 @@ import {
   FolderOpen,
   Landmark,
   Loader2,
+  Images,
   Map as MapIcon,
   Megaphone,
+  ScanEye,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
@@ -29,6 +31,8 @@ import { SiteAssetMap } from "@/components/projects/site-map/SiteAssetMap";
 import { useAssets } from "@/hooks/useAssets";
 import { useProject } from "@/hooks/useProjects";
 import { GLORIETA_SITE_LAYOUT } from "@/lib/site-map/glorietaSiteLayout";
+import { useFieldAccountability } from "@/hooks/useFieldAccountability";
+import { selectSiteAccountabilityProject } from "@/lib/accountability/accountabilityNavigation";
 
 function fmt(value: number | null | undefined) {
   return `$${(Number(value) || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -107,6 +111,41 @@ function PortfolioStrip() {
   );
 }
 
+function SiteAccountabilitySpotlight({ projectId, projectName }: { projectId: string; projectName: string }) {
+  const { data, isLoading } = useFieldAccountability(projectId);
+  const items = data?.items ?? [];
+  const open = items.filter((item) => !['verified', 'rejected', 'deferred'].includes(item.status)).length;
+  const ownerReview = items.filter((item) => item.status === 'ready_for_review' && item.owner_verification_required).length;
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-emerald-200 bg-gradient-to-r from-[#082b23] via-[#0a473a] to-[#0d6b57] text-white shadow-[0_22px_60px_rgba(8,43,35,.14)]" data-testid="owner-site-accountability-spotlight">
+      <div className="flex flex-col gap-5 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-300 text-amber-950"><ScanEye className="h-6 w-6" /></span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-200">Owner evidence center</p>
+            <h2 className="mt-1 font-display text-2xl sm:text-3xl">Site Accountability</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-emerald-50/70">Open every property-wide photograph, AI-assisted starting assessment, question, responsible party, and before-and-after closeout record for {projectName}.</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/15 bg-white/15 text-center">
+            <PortalEvidenceMetric label="Photos" value={data?.allPhotos.length} loading={isLoading} icon={Images} />
+            <PortalEvidenceMetric label="Open" value={open} loading={isLoading} icon={Clock3} />
+            <PortalEvidenceMetric label="Your review" value={ownerReview} loading={isLoading} icon={ClipboardCheck} />
+          </div>
+          <Link to={ownerPortalPath(projectId, '/accountability')} className="inline-flex h-11 items-center justify-center rounded-xl bg-amber-300 px-5 text-sm font-bold text-amber-950 transition hover:bg-amber-200">
+            Review site evidence <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PortalEvidenceMetric({ label, value, loading, icon: Icon }: { label: string; value: number | undefined; loading: boolean; icon: React.ComponentType<{ className?: string }> }) {
+  return <div className="min-w-20 bg-white/10 px-3 py-3"><Icon className="mx-auto h-3.5 w-3.5 text-amber-300" /><strong className="mt-1 block text-xl tabular-nums">{loading ? '—' : value ?? 0}</strong><span className="block whitespace-nowrap text-[9px] uppercase tracking-wider text-white/55">{label}</span></div>;
+}
+
 function LatestUpdate({ projectId }: { projectId: string | null }) {
   const href = useOwnerPortalHref();
   const { projects } = useClientPortalProject();
@@ -160,6 +199,8 @@ export default function OwnerDashboardPage() {
   const href = useOwnerPortalHref();
   const { data, isLoading } = useOwnerPortalData();
   const { selectedProjectId: projectId, selectedContract } = useClientPortalProject();
+  const selectedPortalProject = data?.projects.find((item) => item.id === projectId) ?? null;
+  const accountabilityProject = selectSiteAccountabilityProject(data?.projects ?? [], selectedPortalProject?.client_id ?? null);
   const pendingOcos = (data?.pendingOcos ?? [])
     .filter((item) => item.prime_contract_id === selectedContract?.id);
   const pendingPayApps = (data?.pendingPayApps ?? [])
@@ -193,6 +234,10 @@ export default function OwnerDashboardPage() {
       </section>
 
       <PortfolioStrip />
+
+      {accountabilityProject && (
+        <SiteAccountabilitySpotlight projectId={accountabilityProject.id} projectName={accountabilityProject.name} />
+      )}
 
       {showSiteMap && (
         <section className="space-y-3" data-testid="owner-dashboard-site-map">

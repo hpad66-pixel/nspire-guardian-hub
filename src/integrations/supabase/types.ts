@@ -2089,6 +2089,166 @@ export type Database = {
           },
         ]
       }
+      consulting_report_sources: {
+        Row: {
+          placement_mode: string
+          selected_for_report: boolean
+          visual_analysis: Json
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          drive_file_id: string | null
+          drive_web_url: string | null
+          extracted_text: string | null
+          id: string
+          included: boolean
+          mime_type: string | null
+          project_id: string
+          report_id: string
+          size_bytes: number | null
+          sort_order: number
+          source_name: string
+          source_type: string
+          storage_path: string | null
+          tenant_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_web_url?: string | null
+          extracted_text?: string | null
+          id?: string
+          included?: boolean
+          mime_type?: string | null
+          project_id: string
+          report_id: string
+          size_bytes?: number | null
+          sort_order?: number
+          source_name: string
+          source_type: string
+          storage_path?: string | null
+          tenant_id?: string
+          placement_mode?: string
+          selected_for_report?: boolean
+          visual_analysis?: Json
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_web_url?: string | null
+          extracted_text?: string | null
+          id?: string
+          included?: boolean
+          mime_type?: string | null
+          project_id?: string
+          report_id?: string
+          size_bytes?: number | null
+          sort_order?: number
+          source_name?: string
+          source_type?: string
+          storage_path?: string | null
+          tenant_id?: string
+          placement_mode?: string
+          selected_for_report?: boolean
+          visual_analysis?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulting_report_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_report_sources_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "consulting_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_report_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consulting_reports: {
+        Row: {
+          body_html: string
+          conversation: Json
+          created_at: string
+          created_by: string | null
+          generation_notes: Json
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          project_id: string
+          report_date: string
+          status: string
+          subtitle: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          conversation?: Json
+          created_at?: string
+          created_by?: string | null
+          generation_notes?: Json
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          project_id: string
+          report_date?: string
+          status?: string
+          subtitle?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          conversation?: Json
+          created_at?: string
+          created_by?: string | null
+          generation_notes?: Json
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          project_id?: string
+          report_date?: string
+          status?: string
+          subtitle?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consulting_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consulting_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_code_libraries: {
         Row: {
           created_at: string
@@ -6075,6 +6235,10 @@ export type Database = {
         Row: {
           address_line1: string | null
           address_line2: string | null
+          apas_crm_contact_id: string | null
+          apas_crm_sync_error: string | null
+          apas_crm_sync_status: string
+          apas_crm_synced_at: string | null
           bonding_capacity_cents: number | null
           city: string | null
           country: string | null
@@ -6101,6 +6265,10 @@ export type Database = {
         Insert: {
           address_line1?: string | null
           address_line2?: string | null
+          apas_crm_contact_id?: string | null
+          apas_crm_sync_error?: string | null
+          apas_crm_sync_status?: string
+          apas_crm_synced_at?: string | null
           bonding_capacity_cents?: number | null
           city?: string | null
           country?: string | null
@@ -6127,6 +6295,10 @@ export type Database = {
         Update: {
           address_line1?: string | null
           address_line2?: string | null
+          apas_crm_contact_id?: string | null
+          apas_crm_sync_error?: string | null
+          apas_crm_sync_status?: string
+          apas_crm_synced_at?: string | null
           bonding_capacity_cents?: number | null
           city?: string | null
           country?: string | null
@@ -9781,6 +9953,10 @@ export type Database = {
           actual_end_date: string | null
           budget: number | null
           client_id: string | null
+          close_reason: string | null
+          close_snapshot: Json | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -9789,8 +9965,13 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          owner_user_id: string | null
           project_type: string
           property_id: string | null
+          pre_close_status: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
           scope: string | null
           spent: number | null
           start_date: string | null
@@ -9803,6 +9984,10 @@ export type Database = {
           actual_end_date?: string | null
           budget?: number | null
           client_id?: string | null
+          close_reason?: string | null
+          close_snapshot?: Json | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -9811,8 +9996,13 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          owner_user_id?: string | null
           project_type?: string
           property_id?: string | null
+          pre_close_status?: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -9825,6 +10015,10 @@ export type Database = {
           actual_end_date?: string | null
           budget?: number | null
           client_id?: string | null
+          close_reason?: string | null
+          close_snapshot?: Json | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -9833,8 +10027,13 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          owner_user_id?: string | null
           project_type?: string
           property_id?: string | null
+          pre_close_status?: Database["public"]["Enums"]["project_status"] | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           scope?: string | null
           spent?: number | null
           start_date?: string | null
@@ -9844,6 +10043,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "projects_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -13487,15 +13693,25 @@ export type Database = {
       }
       vendor_submissions: {
         Row: {
+          admin_override: boolean
+          admin_override_at: string | null
+          admin_override_by: string | null
+          admin_override_fields: string[]
+          admin_override_reason: string | null
           artifact_id: string | null
           commitment_id: string | null
           created_at: string
           created_commitment_invoice_id: string | null
+          created_consulting_cost_id: string | null
           created_lien_release_id: string | null
           doc_type: string
           error: string | null
           from_email: string | null
           id: string
+          missing_info_requested_at: string | null
+          missing_info_requested_by: string | null
+          missing_info_requested_to: string | null
+          missing_info_requirements: string[]
           parsed: Json | null
           project_id: string
           received_at: string
@@ -13506,15 +13722,25 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_override?: boolean
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_fields?: string[]
+          admin_override_reason?: string | null
           artifact_id?: string | null
           commitment_id?: string | null
           created_at?: string
           created_commitment_invoice_id?: string | null
+          created_consulting_cost_id?: string | null
           created_lien_release_id?: string | null
           doc_type?: string
           error?: string | null
           from_email?: string | null
           id?: string
+          missing_info_requested_at?: string | null
+          missing_info_requested_by?: string | null
+          missing_info_requested_to?: string | null
+          missing_info_requirements?: string[]
           parsed?: Json | null
           project_id: string
           received_at?: string
@@ -13525,15 +13751,25 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_override?: boolean
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_override_fields?: string[]
+          admin_override_reason?: string | null
           artifact_id?: string | null
           commitment_id?: string | null
           created_at?: string
           created_commitment_invoice_id?: string | null
+          created_consulting_cost_id?: string | null
           created_lien_release_id?: string | null
           doc_type?: string
           error?: string | null
           from_email?: string | null
           id?: string
+          missing_info_requested_at?: string | null
+          missing_info_requested_by?: string | null
+          missing_info_requested_to?: string | null
+          missing_info_requirements?: string[]
           parsed?: Json | null
           project_id?: string
           received_at?: string
@@ -14778,6 +15014,35 @@ export type Database = {
       }
     }
     Functions: {
+      apply_consulting_report_selection: {
+        Args: { p_report_id: string; p_selected_ids: string[] }
+        Returns: undefined
+      }
+      create_consulting_invoice_from_submission: {
+        Args: {
+          p_amount: number
+          p_bill_date: string
+          p_cost_type?: string
+          p_description: string
+          p_due_date: string | null
+          p_reference_no: string | null
+          p_submission_id: string
+          p_vendor_organization_id: string
+        }
+        Returns: string
+      }
+      create_small_vendor_invoice_from_submission: {
+        Args: {
+          p_amount: number
+          p_cost_code_id: string
+          p_description: string
+          p_invoice_no: string | null
+          p_period_end: string
+          p_submission_id: string
+          p_vendor_organization_id: string
+        }
+        Returns: Json
+      }
       create_project_discussion_reply_with_mentions: {
         Args: {
           p_attachments?: string[]
@@ -14825,6 +15090,17 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: { can_manage: boolean; can_view: boolean }[]
       }
+      process_vendor_submission_invoice: {
+        Args: {
+          p_commitment_id: string
+          p_invoice_no: string | null
+          p_period_end: string
+          p_retainage_held?: number
+          p_submission_id: string
+          p_submitted_amount: number
+        }
+        Returns: string
+      }
       remove_client_team_member: {
         Args: { p_client_id: string; p_user_id: string }
         Returns: boolean
@@ -14840,6 +15116,24 @@ export type Database = {
       upsert_project_team_member: {
         Args: { p_project_id: string; p_role?: Database["public"]["Enums"]["app_role"]; p_user_id: string }
         Returns: string
+      }
+      upsert_project_vendor_from_invoice: {
+        Args: {
+          p_address_line1?: string | null
+          p_address_line2?: string | null
+          p_city?: string | null
+          p_country?: string | null
+          p_email?: string | null
+          p_existing_organization_id?: string | null
+          p_kind?: string | null
+          p_name?: string | null
+          p_phone?: string | null
+          p_postal_code?: string | null
+          p_project_id: string
+          p_state?: string | null
+          p_website?: string | null
+        }
+        Returns: Json
       }
       assignable_workspace_roles: {
         Args: Record<PropertyKey, never>

@@ -30,6 +30,7 @@ import { PhotoGallery } from '@/components/gallery/PhotoGallery';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { LogIncidentSheet } from '@/components/safety/LogIncidentSheet';
 import { ProjectTeamSheet } from '@/components/projects/ProjectTeamSheet';
+import { ProjectCloseDialog } from '@/components/projects/ProjectCloseDialog';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUpdateProject } from '@/hooks/useProjects';
 import { DiscussionPanel } from '@/components/projects/DiscussionPanel';
@@ -58,6 +59,7 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDialog';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { useConsultingArLedger } from '@/hooks/useConsultingInvoices';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
@@ -136,6 +138,7 @@ export default function ProjectDetailPage() {
   const [teamSheetOpen, setTeamSheetOpen] = useState(false);
   const [quickAssignOpen, setQuickAssignOpen] = useState(false);
   const [quickEmailOpen, setQuickEmailOpen] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   // Honor a ?tab= deep link (e.g. global search → /projects/:id?tab=rfis).
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -186,6 +189,7 @@ export default function ProjectDetailPage() {
       : '0 members';
   const { isAdmin, currentRole } = useUserPermissions();
   const { isSuperAdmin: canDeleteProject } = usePlatformSuperAdmin();
+  const canCloseProject = canDeleteProject || isAdmin || currentRole === 'owner' || currentRole === 'administrator';
   const updateProject = useUpdateProject();
 
   // Routed modules (financials, directory, admin, …) leave the detail page.
@@ -532,24 +536,26 @@ export default function ProjectDetailPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={() => setReportDialogOpen(true)}
+                onClick={() => isConsulting ? navigate(`/projects/${id}/reports`) : setReportDialogOpen(true)}
               >
                 <FileBarChart2 className="h-4 w-4" />
-                <span className="hidden md:inline">Reports</span>
+                <span>Reports</span>
               </Button>
 
               {/* Edit */}
-              <Button
-                size="sm"
-                className="gap-1.5 bg-module-projects hover:bg-module-projects/90 text-white shadow-sm"
-                onClick={() => setEditDialogOpen(true)}
-              >
-                <Edit className="h-4 w-4" />
-                <span className="hidden sm:inline">Edit</span>
-              </Button>
+              {project.status !== 'closed' && (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-module-projects hover:bg-module-projects/90 text-white shadow-sm"
+                  onClick={() => setEditDialogOpen(true)}
+                >
+                  <Edit className="h-4 w-4" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+              )}
 
               {/* Log Incident — only when Safety module is on */}
-              {safetyEnabled && (
+              {safetyEnabled && project.status !== 'closed' && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -569,28 +575,35 @@ export default function ProjectDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-                    <Edit className="h-4 w-4 mr-2" />Edit Project
-                  </DropdownMenuItem>
+                  {project.status !== 'closed' && (
+                    <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                      <Edit className="h-4 w-4 mr-2" />Edit Project
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/admin`)}>
                       <Settings2 className="h-4 w-4 mr-2" />Project Admin
                     </DropdownMenuItem>
                   )}
-                  {isAdmin && (
+                  {isAdmin && project.status !== 'closed' && (
                     <DropdownMenuItem onClick={() => setModuleDialogOpen(true)}>
                       <Settings2 className="h-4 w-4 mr-2" />Modules…
                     </DropdownMenuItem>
                   )}
-                  {isAdmin && (
+                  {isAdmin && project.status !== 'closed' && (
                     <DropdownMenuItem onClick={() => setTypeDialogOpen(true)}>
                       <Lightbulb className="h-4 w-4 mr-2" />Change type
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => updateProject.mutate({ id: project.id, status: 'closed' })}>
-                    <Archive className="h-4 w-4 mr-2" />Archive Project
-                  </DropdownMenuItem>
-                  {canDeleteProject && (
+                  {canCloseProject && project.status !== 'closed' && (
+                    <DropdownMenuItem onClick={() => isConsulting
+                      ? navigate(`/projects/${project.id}/financials/closeout`)
+                      : setCloseDialogOpen(true)}>
+                      <Archive className="h-4 w-4 mr-2" />
+                      {isConsulting ? 'Reconcile & close project' : 'Close & lock project'}
+                    </DropdownMenuItem>
+                  )}
+                  {canDeleteProject && project.status !== 'closed' && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -629,7 +642,12 @@ export default function ProjectDetailPage() {
               <ProjectTypeMissingAlert project={project as { project_type?: string | null }} className="mb-2" />
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Construction phase — inline editable; drives the client portal tracker */}
-                <DropdownMenu>
+                {project.status === 'closed' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                    <Archive className="h-3 w-3" />
+                    Closed · read-only
+                  </span>
+                ) : <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)] transition-colors hover:bg-[var(--apas-sapphire)]/20"
@@ -650,13 +668,14 @@ export default function ProjectDetailPage() {
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu>}
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
                   {isClientProject ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
                   {isClientProject
                     ? ((project as any).client?.name || 'Standalone Client')
                     : (project.property?.name || 'No Property')}
                 </span>
+                <ProjectOwnerBadge project={project} compact />
                 {project.start_date && (
                   <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
                     <Calendar className="h-3 w-3" />
@@ -1543,6 +1562,12 @@ export default function ProjectDetailPage() {
         projectId={project.id}
         projectName={project.name}
         navigateAfter
+      />
+      <ProjectCloseDialog
+        open={closeDialogOpen}
+        onOpenChange={setCloseDialogOpen}
+        projectId={project.id}
+        projectName={project.name}
       />
 
       <LogIncidentSheet

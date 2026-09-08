@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildFieldPhotoScopeReport } from '../photoScopeReport';
+import {
+  buildFieldPhotoScopeReport,
+  buildFieldPhotoScopeEmail,
+  buildFieldPhotoScopeEmailText,
+  buildPhotoScopeGroups,
+  classifyScopeIssue,
+  HUD_READINESS_DELIVERY_PACKAGES,
+} from '../photoScopeReport';
 import type { FieldPhoto } from '@/hooks/useFieldAccountability';
 
 function photo(overrides: Partial<FieldPhoto> = {}): FieldPhoto {
@@ -11,6 +18,21 @@ function photo(overrides: Partial<FieldPhoto> = {}): FieldPhoto {
     photo: { id: 'photo-1', uploader_id: 'user', storage_path: 'tenant/project/IMG_1209.JPEG', thumb_path: null, taken_at: '2026-08-31T18:00:00Z', lat: 25.9, lng: -80.3, caption: null, exif: { source_filename: 'IMG_1209.JPEG' }, created_at: '2026-08-31T18:00:00Z' },
     ...overrides,
   };
+}
+
+function numberedPhoto(number: number): FieldPhoto {
+  const filename = `IMG_${number}.JPEG`;
+  return photo({
+    id: `link-${number}`,
+    photo_id: `photo-${number}`,
+    sort_order: number - 1209,
+    photo: {
+      ...photo().photo,
+      id: `photo-${number}`,
+      storage_path: `tenant/project/${filename}`,
+      exif: { source_filename: filename },
+    },
+  });
 }
 
 describe('field photo scope report', () => {
@@ -30,5 +52,80 @@ describe('field photo scope report', () => {
     const html = buildFieldPhotoScopeReport({ projectName: '<Unsafe>', photos: [photo({ reviewed_narrative: '<script>alert(1)</script>' })], items: [] });
     expect(html).toContain('&lt;Unsafe&gt;');
     expect(html).not.toContain('<script>alert(1)</script>');
+  });
+
+  it('turns the complete Glorieta walk into ten granular owner work packages', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const groups = buildPhotoScopeGroups(photos, []);
+    expect(groups).toHaveLength(10);
+    expect(groups.reduce((sum, group) => sum + group.issues.length, 0)).toBe(74);
+    expect(groups[0].representativePhotos.map((entry) => entry.photo.exif?.source_filename)).toEqual([
+      'IMG_1209.JPEG', 'IMG_1214.JPEG', 'IMG_1223.JPEG',
+    ]);
+    expect(groups[8].title).toContain('sidewalk-edge voids');
+    expect(groups[9].issues.some((issue) => issue.title.includes('gate-control'))).toBe(true);
+  });
+
+  it('places secure representative thumbnails in the printable HTML', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const html = buildFieldPhotoScopeReport({
+      projectName: 'Glorieta Gardens — Site Accountability',
+      photos,
+      items: [],
+      imageUrls: { 'link-1209': 'https://example.test/signed-photo.jpg?token=secure&view=owner' },
+    });
+    expect(html).toContain('Owner Condition &amp;');
+    expect(html).toContain('74</b><span>Scope line items');
+    expect(html).toContain('https://example.test/signed-photo.jpg?token=secure&amp;view=owner');
+    expect(html).toContain('Uncovered gate-control device');
+    expect(html).toContain('Expedited owner direction | HUD inspection readiness');
+    expect(html).toContain('Combined stucco + civil restoration package');
+    expect(html).toContain('Trade assignment');
+    expect(html).toContain('body{font-size:14px;line-height:1.6}');
+    expect(html).toContain('.issue-grid p{font-size:12px;line-height:1.5}');
+    expect(html).not.toMatch(/[—–‑]/);
+  });
+
+  it('assigns every recommendation to one or more accountable disciplines', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const groups = buildPhotoScopeGroups(photos, []);
+    const issues = groups.flatMap((group) => group.issues);
+    expect(issues.every((issue) => classifyScopeIssue(issue).length > 0)).toBe(true);
+
+    const gateControl = issues.find((issue) => issue.title.includes('gate-control'))!;
+    expect(classifyScopeIssue(gateControl)).toEqual(expect.arrayContaining(['Electrical', 'General Contractor']));
+
+    const walkVoid = issues.find((issue) => issue.title === 'Open void beside concrete walk')!;
+    expect(classifyScopeIssue(walkVoid)).toEqual(expect.arrayContaining(['Civil', 'Structural Engineering', 'General Contractor']));
+
+    const planting = issues.find((issue) => issue.title === 'Fence-line planting-bed restoration')!;
+    expect(classifyScopeIssue(planting)).toEqual(expect.arrayContaining(['Plumbing', 'Landscaping']));
+    expect(HUD_READINESS_DELIVERY_PACKAGES).toHaveLength(6);
+  });
+
+  it('builds a complete email-safe HTML and plain-text report edition', () => {
+    const photos = Array.from({ length: 153 }, (_, index) => numberedPhoto(1209 + index));
+    const input = {
+      projectName: 'Glorieta <Gardens>',
+      photos,
+      items: [],
+      personalMessage: 'Please review & respond.',
+      reportUrl: 'https://projos.ai/owner-portal/projects/project/accountability?view=scope&safe=true',
+    };
+    const html = buildFieldPhotoScopeEmail(input);
+    const text = buildFieldPhotoScopeEmailText(input);
+
+    expect(html).toContain('This HTML edition');
+    expect(html).toContain('Owner Condition &amp; Scope Intelligence');
+    expect(html).toContain('Glorieta &lt;Gardens&gt;');
+    expect(html).toContain('Please review &amp; respond.');
+    expect(html).toContain('Combined stucco + civil restoration package');
+    expect(html).toContain('Uncovered gate-control device');
+    expect(html).toContain('Open the live owner report');
+    expect(html).not.toContain('Glorieta <Gardens>');
+    expect(text).toContain('74 scope items');
+    expect(text).toContain('Electrical, Stucco / Envelope, General Contractor');
+    expect(html).not.toMatch(/[—–‑]/);
+    expect(text).not.toMatch(/[—–‑]/);
   });
 });

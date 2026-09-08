@@ -57,6 +57,7 @@ export function safeOrigin(o?: string | null): string {
 }
 
 export const GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send";
+export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
 // Read an env var and strip surrounding whitespace — dashboard-pasted secrets
 // frequently carry a trailing space or newline that silently breaks OAuth.
@@ -66,12 +67,12 @@ export function redirectUri(): string {
   return `${env("SUPABASE_URL")}/functions/v1/gmail-oauth-callback`;
 }
 
-export function authorizeUrl(state: string, loginHint?: string): string {
+export function authorizeUrl(state: string, loginHint?: string, includeDrive = false): string {
   const p = new URLSearchParams({
     client_id: env("GOOGLE_OAUTH_CLIENT_ID"),
     redirect_uri: redirectUri(),
     response_type: "code",
-    scope: GMAIL_SCOPES,
+    scope: includeDrive ? `${GMAIL_SCOPES} ${GOOGLE_DRIVE_SCOPE}` : GMAIL_SCOPES,
     access_type: "offline",
     prompt: "consent",       // force a refresh_token every time
     include_granted_scopes: "true",

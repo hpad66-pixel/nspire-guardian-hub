@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip } from "lucide-react";
+import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { proposalTotals } from "@/lib/financial/proposalPricing";
 
@@ -210,6 +210,17 @@ export default function ProposalsPage() {
                         <td className="p-3 text-center text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {p.status === "approved" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-emerald-700"
+                                title="Create client invoice"
+                                onClick={event => { event.stopPropagation(); navigate(`/projects/${projectId}/financials/client-invoices?new=1&proposal=${p.id}`); }}
+                              >
+                                <Receipt className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             {(p.pdf_path || p.signed_hardcopy_path) && <a href={p.pdf_path || p.signed_hardcopy_path || "#"} target="_blank" rel="noopener noreferrer" onClick={event => event.stopPropagation()} title="Open primary proposal PDF"><Paperclip className="h-3.5 w-3.5 text-[var(--apas-sapphire)]" /></a>}
                             <Link to={`/projects/${projectId}/financials/proposals/${p.id}`} onClick={event => event.stopPropagation()}>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Open">

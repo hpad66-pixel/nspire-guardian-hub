@@ -30,6 +30,7 @@ import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import { format } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
 
@@ -39,6 +40,7 @@ type SortDir = 'asc' | 'desc';
 interface ProjectTableViewProps {
   projects: Project[];
   isAdmin: boolean;
+  canClose: boolean;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
   onArchive: (project: Project) => void;
@@ -78,7 +80,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
     : <ArrowDown className="h-3 w-3 text-primary" />;
 }
 
-export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchive }: ProjectTableViewProps) {
+export function ProjectTableView({ projects, isAdmin, canClose, onEdit, onDelete, onArchive }: ProjectTableViewProps) {
   const navigate = useNavigate();
   const { financials } = useAllProjectFinancials();
   const { consultingTotals } = useAllApprovedProposalTotals();
@@ -143,6 +145,7 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
           <TableRow>
             <Th col="name">Name</Th>
             <TableHead>Type / Parent</TableHead>
+            <TableHead>Owner</TableHead>
             <Th col="status">Status</Th>
             <Th col="budget">Budget</Th>
             <Th col="spent_pct">Spent %</Th>
@@ -194,6 +197,9 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
                   </div>
                 </TableCell>
                 <TableCell>
+                  <ProjectOwnerBadge project={project} compact />
+                </TableCell>
+                <TableCell>
                   <Badge variant={STATUS_VARIANT[project.status ?? 'planning'] ?? 'outline'} className="text-xs">
                     {STATUS_LABELS[project.status ?? 'planning'] ?? project.status}
                   </Badge>
@@ -228,13 +234,17 @@ export function ProjectTableView({ projects, isAdmin, onEdit, onDelete, onArchiv
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(project)}>
-                        <Edit className="h-4 w-4 mr-2" />Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onArchive(project)}>
-                        <Archive className="h-4 w-4 mr-2" />Archive
-                      </DropdownMenuItem>
-                      {isAdmin && (
+                      {project.status !== 'closed' && (
+                        <DropdownMenuItem onClick={() => onEdit(project)}>
+                          <Edit className="h-4 w-4 mr-2" />Edit
+                        </DropdownMenuItem>
+                      )}
+                      {(project.status === 'closed' || canClose) && (
+                        <DropdownMenuItem onClick={() => onArchive(project)}>
+                          <Archive className="h-4 w-4 mr-2" />{project.status === 'closed' ? 'View closeout' : 'Close & lock'}
+                        </DropdownMenuItem>
+                      )}
+                      {isAdmin && project.status !== 'closed' && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

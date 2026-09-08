@@ -30,6 +30,9 @@ import {
   type AdminPrimeContractPayment,
 } from "@/hooks/usePrimeContractPayments";
 import { toast } from "sonner";
+import { useProject } from "@/hooks/useProjects";
+import { projectKind } from "@/lib/projectKind";
+import { ConsultingCashFlowView } from "@/components/financial/ConsultingCashFlowView";
 
 const fmt = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -38,6 +41,14 @@ const fmtDate = (d: string | null | undefined) =>
 const EMPTY_IDS: Set<string> = new Set();
 
 export default function PaymentsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: project, isLoading } = useProject(projectId ?? null);
+  if (isLoading) return <div className="p-8 text-center text-sm text-muted-foreground">Loading project financials…</div>;
+  if (project && projectKind(project) === "consulting") return <ConsultingCashFlowView project={project} />;
+  return <ConstructionPaymentsPage />;
+}
+
+function ConstructionPaymentsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "paid" ? "paid" : "received";

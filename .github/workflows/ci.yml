@@ -54,6 +54,8 @@ jobs:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+      VITE_AGENT_FOUNDATION_ENABLED: ${{ vars.VITE_AGENT_FOUNDATION_ENABLED }}
+      VITE_AGENT_RUNTIME_URL: ${{ vars.VITE_AGENT_RUNTIME_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -204,6 +204,11 @@ verify_jwt = false
 [functions.vendor-submit]
 verify_jwt = false
 
+# Consulting vendor invoices use a SHA-256 one-time capability link for public
+# upload. Staff request creation is separately authorized inside the function.
+[functions.consulting-vendor-invoice]
+verify_jwt = false
+
 # Contractor Readiness: staff invitation creation validates the user JWT inside;
 # the contractor portal is a scoped capability URL backed by a SHA-256 token.
 [functions.contractor-invite]
@@ -229,10 +234,27 @@ verify_jwt = false
 [functions.crm-integration-events]
 verify_jwt = false
 
+# Server-to-server APAS CRM project directory bridge. The function verifies a
+# short-lived APAS CRM assertion and never accepts a browser session as authority.
+[functions.apas-crm-project-links]
+verify_jwt = false
+
+# Proj OS Agent Gateway. agent-session verifies the Supabase user itself;
+# agent-tools verifies the short-lived ES256 agent session itself.
+[functions.agent-session]
+verify_jwt = false
+
+[functions.agent-tools]
+verify_jwt = false
+
 # Public Gmail OAuth callback — Google redirects here with ?code&state and no
 # Supabase JWT; authenticity is enforced by the signed `state`.
 [functions.gmail-oauth-callback]
 verify_jwt = false
+
+# Narrative and selected-source report drafting for consulting projects.
+[functions.consulting-report-ai]
+verify_jwt = true
 
 # Authenticated project texting through a server-only Twilio connection.
 [functions.sms]

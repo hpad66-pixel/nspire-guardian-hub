@@ -46,6 +46,8 @@ interface Props {
   clientSeed?: InvoiceClientSeed | null;
   /** When set, opens in edit mode for an existing draft. */
   editInvoiceId?: string | null;
+  /** Preselect one executed proposal when launched from its Create invoice action. */
+  initialProposalId?: string | null;
 }
 
 interface ScopeRow extends NewInvoiceLine {
@@ -78,6 +80,7 @@ export function ConsultingInvoiceBuilder({
   projectName = 'Project',
   clientSeed,
   editInvoiceId,
+  initialProposalId,
 }: Props) {
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
@@ -170,6 +173,13 @@ export function ConsultingInvoiceBuilder({
       }
     }
     let mappedProposals = buildProposalBillingRows(proposals, billedForEdit, paidForEdit);
+    if (!existing && initialProposalId) {
+      mappedProposals = mappedProposals.map((row) => ({
+        ...row,
+        included: row.proposal_id === initialProposalId && row.remaining > 0,
+        this_amount: row.proposal_id === initialProposalId ? row.this_amount : 0,
+      }));
+    }
     if (existing && editDetail?.lines?.length) {
       // Restore this draft's amounts onto the matching proposal rows.
       mappedProposals = mappedProposals.map((r) => {
@@ -242,7 +252,7 @@ export function ConsultingInvoiceBuilder({
           : [{ key: newKey(), description: 'Professional services', amount: 0 }],
       );
     }
-  }, [open, scopes, proposals, billedByProposal, paidByProposal, existing, editDetail, clientSeed, projectName]);
+  }, [open, scopes, proposals, billedByProposal, paidByProposal, existing, editDetail, clientSeed, projectName, initialProposalId]);
 
   // Keep subject in sync when proposal selection changes (create only).
   useEffect(() => {
@@ -265,10 +275,10 @@ export function ConsultingInvoiceBuilder({
     );
   };
 
-  const includedScopes = rows.filter((r) => r.included);
+  const includedScopes = useMemo(() => rows.filter((r) => r.included), [rows]);
   const scopeTotal = useMemo(
     () => includedScopes.reduce((s, r) => s + (Number(r.amount) || 0), 0),
-    [rows],
+    [includedScopes],
   );
   const proposalFeeTotal = useMemo(
     () => proposalRows.reduce((s, r) => s + r.fee_amount, 0),
@@ -468,7 +478,7 @@ export function ConsultingInvoiceBuilder({
                         disabled={r.remaining <= 0 && !r.included}
                         onCheckedChange={(v) => setProposalRows((prev) =>
                           prev.map((x) => x.proposal_id === r.proposal_id
-                            ? { ...x, included: !!v, this_amount: !!v ? (x.this_amount || x.remaining) : 0 }
+                            ? { ...x, included: Boolean(v), this_amount: v ? (x.this_amount || x.remaining) : 0 }
                             : x))}
                       />
                     </td>

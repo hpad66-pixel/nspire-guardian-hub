@@ -3,38 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
-const chunkPackages = {
-  "vendor-react": ["react", "react-dom", "react-router", "react-router-dom"],
-  "vendor-radix": [
-    "@radix-ui/react-dialog",
-    "@radix-ui/react-dropdown-menu",
-    "@radix-ui/react-select",
-    "@radix-ui/react-tabs",
-    "@radix-ui/react-tooltip",
-    "@radix-ui/react-popover",
-    "@radix-ui/react-accordion",
-    "@radix-ui/react-checkbox",
-  ],
-  "vendor-charts": ["recharts"],
-  "vendor-tiptap": [
-    "@tiptap/react",
-    "@tiptap/starter-kit",
-    "@tiptap/extension-placeholder",
-  ],
-} as const;
-
-function manualChunks(id: string): string | undefined {
-  const normalizedId = id.replaceAll("\\", "/");
-
-  for (const [chunkName, packages] of Object.entries(chunkPackages)) {
-    if (packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}/`))) {
-      return chunkName;
-    }
-  }
-
-  return undefined;
-}
-
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
@@ -42,13 +10,6 @@ export default defineConfig(() => ({
     port: 8080,
     hmr: {
       overlay: false,
-    },
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks,
-      },
     },
   },
   plugins: [

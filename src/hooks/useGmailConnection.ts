@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface GmailStatus {
   connected: boolean;
+  driveConnected?: boolean;
   email: string | null;
   last_synced_at: string | null;
   status: string | null;
@@ -40,6 +41,18 @@ export function useGmailConnection() {
     },
   });
 
+  const connectDrive = useMutation({
+    mutationFn: async (returnTo?: string) => {
+      const { data, error } = await supabase.functions.invoke("gmail", {
+        body: { action: "start", service: "drive", returnTo: returnTo ?? window.location.pathname, origin: window.location.origin },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url) throw new Error("Could not start the Google Drive connection.");
+      window.location.href = data.url;
+    },
+  });
+
   const disconnect = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.functions.invoke("gmail", { body: { action: "disconnect" } });
@@ -48,5 +61,5 @@ export function useGmailConnection() {
     onSettled: () => qc.invalidateQueries({ queryKey: ["gmail-connection"] }),
   });
 
-  return { status, connect, disconnect };
+  return { status, connect, connectDrive, disconnect };
 }

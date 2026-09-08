@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { requireTenantId } from '@/lib/tenant';
 import {
   allocatePaymentsByProposal,
   buildConsultingLedger,
@@ -122,10 +123,12 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
     mutationFn: async (input: InvoiceHeaderInput & { lines: NewInvoiceLine[] }) => {
       if (!projectId) throw new Error('No project');
       const { data: auth } = await supabase.auth.getUser();
+      const tenant_id = await requireTenantId(auth.user?.id);
       const nextNo = (list.data?.reduce((m, i) => Math.max(m, i.invoice_no), 0) ?? 0) + 1;
       const subtotal = input.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
       const { data: inv, error } = await invoices().insert({
+        tenant_id,
         project_id: projectId,
         invoice_no: nextNo,
         status: 'draft',
@@ -151,6 +154,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
 
       if (input.lines.length) {
         const rows = input.lines.map((l, i) => ({
+          tenant_id,
           invoice_id: inv.id,
           scope_id: l.scope_id,
           proposal_id: l.proposal_id ?? null,
@@ -177,6 +181,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
         throw new Error('Only draft invoices can be fully edited. Void and recreate, or record a payment.');
       }
       const subtotal = input.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      const tenant_id = await requireTenantId();
       const { error } = await invoices().update({
         issue_date: input.issue_date,
         due_date: input.due_date,
@@ -203,6 +208,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
       if (delErr) throw delErr;
       if (input.lines.length) {
         const rows = input.lines.map((l, i) => ({
+          tenant_id,
           invoice_id: input.id,
           scope_id: l.scope_id,
           proposal_id: l.proposal_id ?? null,
@@ -282,14 +288,18 @@ export function useInvoiceDetail(invoiceId: string | null | undefined) {
   const addPayment = useMutation({
     mutationFn: async (input: { amount: number; received_date: string; method: string | null; note: string | null }) => {
       if (!invoiceId) throw new Error('No invoice');
+      const tenant_id = await requireTenantId();
       const { data: auth } = await supabase.auth.getUser();
-      const { error } = await payments().insert({ invoice_id: invoiceId, ...input, created_by: auth?.user?.id ?? null });
+      const { error } = await payments().insert({ invoice_id: invoiceId, tenant_id, ...input, created_by: auth?.user?.id ?? null });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['consulting-invoice-detail', invoiceId] });
       qc.invalidateQueries({ queryKey: ['consulting-ar-ledger'] });
       qc.invalidateQueries({ queryKey: ['consulting-proposal-billing'] });
+      qc.invalidateQueries({ queryKey: ['consulting-invoices'] });
+      qc.invalidateQueries({ queryKey: ['consulting-financial-position'] });
+      qc.invalidateQueries({ queryKey: ['consulting-cash-transactions'] });
       toast.success('Payment recorded');
     },
     onError: (e: Error) => toast.error(`Couldn't record payment: ${e.message}`),
@@ -370,7 +380,9 @@ export function useConsultingArLedger(projectId: string | null | undefined) {
         lines().select('invoice_id, proposal_id, description').in('invoice_id', ids),
       ]);
       const entries = buildConsultingLedger(active, payRows ?? [], lineRows ?? []);
-      const totalInvoiced = entries.reduce((s, e) => s + e.total, 0);
+      // Drafts remain visible in the ledger but are not A/R until issued.
+      const issuedEntries = entries.filter((entry) => entry.status === 'sent' || entry.status === 'paid');
+      const totalInvoiced = issuedEntries.reduce((s, e) => s + e.total, 0);
       const totalPaid = entries.reduce((s, e) => s + e.paid, 0);
       return {
         entries,

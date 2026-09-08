@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   projects: 'Projects',
+  'site-accountability': 'Site Accountability',
   organizations: 'Clients',
   clients: 'Clients',
   meetings: 'Meetings',
@@ -43,6 +44,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   people: 'People',
   insights: 'Insights',
   'product-ideas': 'Product Ideas',
+  'card-payoffs': 'Card Payoffs',
 };
 
 const isIdSegment = (s: string) =>

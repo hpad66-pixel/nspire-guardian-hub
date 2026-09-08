@@ -26,6 +26,13 @@ export interface Project extends ProjectRow {
     city?: string | null;
     state?: string | null;
   } | null;
+  owner?: {
+    user_id: string;
+    full_name: string | null;
+    email: string | null;
+    work_email: string | null;
+    avatar_url: string | null;
+  } | null;
   milestones?: Array<{
     id: string;
     name: string;
@@ -38,6 +45,7 @@ const PROJECT_SELECT = `
   *,
   property:properties(name),
   client:clients(name, client_type),
+  owner:profiles!projects_owner_user_id_fkey(user_id, full_name, email, work_email, avatar_url),
   milestones:project_milestones(id, name, due_date, status)
 `;
 
@@ -45,6 +53,7 @@ const PROJECT_SELECT_DETAIL = `
   *,
   property:properties(name),
   client:clients(name, client_type, contact_name, contact_email, contact_phone, address, city, state),
+  owner:profiles!projects_owner_user_id_fkey(user_id, full_name, email, work_email, avatar_url),
   milestones:project_milestones(id, name, due_date, status, notes, completed_at)
 `;
 
@@ -232,7 +241,7 @@ export function useCreateProject() {
       );
 
       if (isClientScoped) {
-        const { data, error } = await supabase.rpc('create_client_project' as any, {
+        const { data, error } = await supabase.rpc('create_client_project_with_owner' as any, {
           p_client_id: project.client_id,
           p_name: project.name,
           p_project_type: project.project_type === 'client' ? 'consulting' : project.project_type,
@@ -242,6 +251,7 @@ export function useCreateProject() {
           p_start_date: project.start_date ?? null,
           p_target_end_date: project.target_end_date ?? null,
           p_status: project.status ?? 'planning',
+          p_owner_user_id: project.owner_user_id ?? null,
         } as any);
         if (error) throw error;
         return data as ProjectRow;
@@ -277,7 +287,7 @@ export function useUpdateProject() {
       );
 
       if (isClientScoped) {
-        const { data, error } = await supabase.rpc('update_client_project' as any, {
+        const { data, error } = await supabase.rpc('update_client_project_with_owner' as any, {
           p_project_id: id,
           p_name: updates.name,
           p_project_type: updates.project_type === 'client' ? 'consulting' : updates.project_type,
@@ -287,6 +297,7 @@ export function useUpdateProject() {
           p_start_date: updates.start_date ?? null,
           p_target_end_date: updates.target_end_date ?? null,
           p_status: updates.status ?? null,
+          p_owner_user_id: updates.owner_user_id ?? null,
         } as any);
         if (error) throw error;
         return data as ProjectRow;
@@ -309,6 +320,67 @@ export function useUpdateProject() {
     onError: (error: Error) => {
       toast.error(`Failed to update project: ${error.message}`);
     },
+  });
+}
+
+export function useCloseProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      reason,
+      allowUnreconciled = false,
+    }: {
+      projectId: string;
+      reason: string;
+      allowUnreconciled?: boolean;
+    }) => {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 5) {
+        throw new Error('Enter a closeout reason of at least 5 characters.');
+      }
+      const { data, error } = await supabase.rpc('close_project' as never, {
+        p_project_id: projectId,
+        p_reason: normalizedReason,
+        p_allow_unreconciled: allowUnreconciled,
+      } as never);
+      if (error) throw error;
+      return data as unknown as ProjectRow;
+    },
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-closeout', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-position', project.id] });
+      toast.success('Project closed and locked');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useReopenProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, reason }: { projectId: string; reason: string }) => {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 5) {
+        throw new Error('Enter a reopen reason of at least 5 characters.');
+      }
+      const { data, error } = await supabase.rpc('reopen_project' as never, {
+        p_project_id: projectId,
+        p_reason: normalizedReason,
+      } as never);
+      if (error) throw error;
+      return data as unknown as ProjectRow;
+    },
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-closeout', project.id] });
+      queryClient.invalidateQueries({ queryKey: ['consulting-financial-position', project.id] });
+      toast.success('Project reopened for authorized work');
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 }
 

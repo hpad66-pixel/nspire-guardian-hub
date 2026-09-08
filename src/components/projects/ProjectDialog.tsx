@@ -6,10 +6,14 @@ import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2, Lightbulb, HardHat, LockKeyhole } from 'lucide-react';
+import { Building2, Briefcase, Home, Shield, Globe, Plus, Loader2, Lightbulb, HardHat, LockKeyhole, UserRoundCheck } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects';
 import { useActiveClients, useCreateClient } from '@/hooks/useClients';
+import { useProfiles } from '@/hooks/useProfiles';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserPermissions } from '@/hooks/usePermissions';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 import type { Database } from '@/integrations/supabase/types';
 import { z } from 'zod';
 
@@ -61,6 +65,12 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
 
   const { data: properties } = useProperties();
   const { data: clients } = useActiveClients();
+  const { data: profiles = [], isLoading: profilesLoading } = useProfiles();
+  const { user } = useAuth();
+  const { isAdmin, currentRole } = useUserPermissions();
+  const { isSuperAdmin } = usePlatformSuperAdmin();
+  const activeProfiles = profiles.filter((profile) => !profile.status || profile.status === 'active');
+  const canChangeOwner = !isEditing || isAdmin || isSuperAdmin || currentRole === 'owner';
 
   const [projectType, setProjectType] = useState<ProjectType>(initialType);
   const [showAddClient, setShowAddClient] = useState(false);
@@ -71,6 +81,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
     property_id: project?.property_id || parentProject?.property_id || '',
     client_id: (project as any)?.client_id || (parentProject as any)?.client_id || clientContext?.id || '',
     name: project?.name || '',
+    owner_user_id: project?.owner_user_id || parentProject?.owner_user_id || user?.id || '',
     description: project?.description || '',
     scope: project?.scope || '',
     budget: project?.budget ? Number(project.budget) : undefined as number | undefined,
@@ -109,6 +120,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
 
     const payload: any = {
       name: formData.name,
+      owner_user_id: formData.owner_user_id || null,
       description: formData.description,
       scope: formData.scope,
       budget: formData.budget || null,
@@ -137,7 +149,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   };
 
   const resetForm = () => {
-    setFormData({ property_id: '', client_id: clientContext?.id || '', name: '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
+    setFormData({ property_id: '', client_id: clientContext?.id || '', name: '', owner_user_id: user?.id || '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
     setProjectType(isClientScoped ? 'construction' : 'property');
     setShowAddClient(false);
     setNewClientName('');
@@ -147,12 +159,13 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   const isPropertyValid = projectType === 'property' ? !!formData.property_id : true;
   const requiresClient = isClientScoped || projectType === 'client' || projectType === 'construction';
   const isClientValid = requiresClient ? !!(clientContext?.id || formData.client_id) : true;
-  const canSubmit = !!formData.name && isPropertyValid && isClientValid;
+  const isOwnerValid = isEditing || !!formData.owner_user_id;
+  const canSubmit = !!formData.name && isPropertyValid && isClientValid && isOwnerValid;
   const isPending = createProject.isPending || updateProject.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Subproject' : isClientScoped ? `Create a project for ${clientContext?.name}` : 'Create New Project'}</DialogTitle>
           <DialogDescription>
@@ -212,6 +225,46 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
               placeholder={projectType === 'property' || projectType === 'construction' ? 'e.g. Roof Replacement Phase 2' : 'e.g. ERC Tax Credit 2024'}
               required
             />
+          </div>
+
+          {/* Accountable project owner */}
+          <div className="grid gap-2 rounded-xl border border-amber-200/80 bg-amber-50/50 p-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-900">
+                <UserRoundCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <Label>Project Owner {!isEditing && '*'}</Label>
+                <p className="text-xs text-muted-foreground">The accountable person displayed on every project card.</p>
+              </div>
+            </div>
+            <Select
+              value={formData.owner_user_id}
+              onValueChange={(value) => setFormData({ ...formData, owner_user_id: value })}
+              disabled={profilesLoading || !canChangeOwner}
+            >
+              <SelectTrigger aria-label="Project Owner">
+                <SelectValue placeholder={profilesLoading ? 'Loading account members…' : 'Select a project owner'} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeProfiles.map((profile) => (
+                  <SelectItem key={profile.user_id} value={profile.user_id}>
+                    <span className="flex flex-col text-left">
+                      <span className="font-medium">{profile.full_name || profile.work_email || profile.email || 'Account member'}</span>
+                      {profile.full_name && (profile.work_email || profile.email) && (
+                        <span className="text-xs text-muted-foreground">{profile.work_email || profile.email}</span>
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isEditing && !formData.owner_user_id && (
+              <p className="text-xs font-medium text-amber-800">This historical project is unassigned. Choose Rohit, Simi, or another active account member when known.</p>
+            )}
+            {isEditing && !canChangeOwner && (
+              <p className="text-xs text-muted-foreground">Only a workspace administrator can reassign project ownership.</p>
+            )}
           </div>
 
           {/* Property or Client selector */}

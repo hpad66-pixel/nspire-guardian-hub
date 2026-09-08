@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ClientPortalShell } from "../ClientPortalShell";
 
@@ -26,6 +26,13 @@ vi.mock("@/hooks/usePortals", () => ({
         { id: "p1", name: "Sewer close-out", client_id: "r4" },
         { id: "p2", name: "Stucco repairs", client_id: "r4" },
         { id: "p3", name: "Stormdrain Maintenence", client_id: "r4" },
+        {
+          id: "p4",
+          name: "Glorieta Gardens — Site Accountability",
+          client_id: "r4",
+          status: "active",
+          program_meta: { feature_key: "site_accountability", owner_navigation_priority: true },
+        },
       ],
       pendingOcos: [],
       pendingPayApps: [],
@@ -70,5 +77,14 @@ describe("ClientPortalShell project tabs", () => {
       "/owner-portal/projects/p2/documents",
     );
     expect(screen.getByText("DOCS")).toBeInTheDocument();
+  });
+
+  it("keeps Site Accountability visible and routes it to the dedicated property-wide record", () => {
+    renderAt("/owner-portal/projects/p1");
+    const projectNavigation = screen.getByRole("navigation", { name: "Selected project" });
+    expect(within(projectNavigation).getByRole("link", { name: "Site accountability" })).toHaveAttribute(
+      "href",
+      "/owner-portal/projects/p4/accountability",
+    );
   });
 });

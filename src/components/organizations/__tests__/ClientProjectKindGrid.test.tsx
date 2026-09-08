@@ -60,4 +60,36 @@ describe('ClientProjectKindGrid', () => {
     // Consulting amount from approved proposals
     expect(screen.getByText('$12,000')).toBeTruthy();
   });
+
+  it('shows the certified closeout emblem and final loss on a closed client project card', () => {
+    const projects = [
+      makeProject({ id: 'open', name: 'Open Engagement', project_type: 'consulting' }),
+      makeProject({
+        id: 'closed',
+        name: 'Painting of Ashish Office',
+        project_type: 'consulting',
+        status: 'closed',
+        closed_at: '2026-09-05T18:00:00Z',
+        close_snapshot: {
+          financial_position: {
+            net_profit: -2450.75,
+          },
+        },
+      }),
+    ];
+
+    render(
+      <MemoryRouter>
+        <ClientProjectKindGrid projects={projects} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Certified closeout')).toBeTruthy();
+    expect(screen.getByText('Final net loss')).toBeTruthy();
+    expect(screen.getByText('−$2,450.75')).toBeTruthy();
+
+    const tiles = screen.getAllByTestId(/^client-project-tile-/);
+    expect(tiles[0]).toHaveAttribute('data-testid', 'client-project-tile-closed');
+    expect(tiles[0]).toHaveAttribute('data-status', 'closed');
+  });
 });

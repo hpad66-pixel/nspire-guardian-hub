@@ -13,6 +13,7 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'financials')).toBeTruthy();
     expect(items.find((i) => i.value === 'invoicing')).toBeTruthy();
     expect(items.find((i) => i.value === 'directory')).toBeTruthy();
+    expect(items.find((i) => i.value === 'reports')?.route?.('proj-1')).toBe('/projects/proj-1/reports');
     expect(items.find((i) => i.value === 'admin')).toBeTruthy();
     // Permits available on consulting for phone OCR / closeout
     expect(items.find((i) => i.value === 'permits')).toBeTruthy();
@@ -44,6 +45,7 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'admin')).toBeFalsy();
     // Consulting-only hidden
     expect(items.find((i) => i.value === 'invoicing')).toBeFalsy();
+    expect(items.find((i) => i.value === 'reports')).toBeFalsy();
   });
 
   it('shows Stores when the admin turns the optional module on', () => {
@@ -82,6 +84,7 @@ describe('projectNav', () => {
     expect(routes.admin).toBe('/projects/proj-1/admin');
     expect(routes.invoicing).toBe('/projects/proj-1/financials/client-invoices');
     expect(routes.accountability).toBe('/projects/proj-1/accountability');
+    expect(routes.reports).toBe('/projects/proj-1/reports');
   });
 
   it('keeps a single catalog entry per module slug', () => {

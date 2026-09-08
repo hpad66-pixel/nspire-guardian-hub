@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Receipt, ArrowRight, Plus, Banknote } from "lucide-react";
+import { FileText, Receipt, ArrowRight, Plus, Banknote, Award, BriefcaseBusiness } from "lucide-react";
 import { useConsultingInvoices, useConsultingArLedger } from "@/hooks/useConsultingInvoices";
 import { useProjectScopes, summarizeScopes } from "@/hooks/useProjectScopes";
 import { useFinancialProposals } from "@/hooks/useFinancialProposals";
@@ -11,6 +11,7 @@ import { INVOICE_STATUS_META } from "@/components/projects/invoicing/invoiceMeta
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMemo } from "react";
+import { useConsultingFinancialPosition } from "@/hooks/useConsultingCashFlow";
 
 /**
  * Lean financial home for consulting / client engagements:
@@ -27,6 +28,7 @@ export function ConsultingFinancialOverview({
   const { data: ledger } = useConsultingArLedger(projectId);
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
+  const { position } = useConsultingFinancialPosition(projectId);
   const summary = summarizeScopes(scopes);
 
   const active = invoices.filter((i) => i.status !== "void");
@@ -41,6 +43,7 @@ export function ConsultingFinancialOverview({
     [proposals],
   );
   const unbilledApproved = Math.max(0, approvedFee - invoiced);
+  const cashPosition = position.data;
 
   return (
     <div className="space-y-6">
@@ -86,6 +89,18 @@ export function ConsultingFinancialOverview({
           </Card>
         ))}
       </div>
+
+      <Card className="overflow-hidden border-emerald-200 bg-gradient-to-r from-emerald-50 via-card to-amber-50">
+        <CardContent className="flex flex-wrap items-center gap-4 p-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-double border-emerald-600 bg-white text-emerald-700 shadow-sm"><Award className="h-6 w-6" /></div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Live cash result</p>
+            <p className="font-[Playfair_Display] text-2xl font-bold">Net Profit: <span className="text-emerald-700">{money(cashPosition?.net_profit ?? 0)}</span></p>
+            <p className="text-xs text-muted-foreground">Cash received {money(cashPosition?.cash_received ?? paid)} − cash paid {money(cashPosition?.cash_paid ?? 0)} · {(cashPosition?.margin_pct ?? 0).toFixed(1)}% margin</p>
+          </div>
+          <div className="ml-auto flex gap-2"><Button asChild variant="outline" size="sm"><Link to={`/projects/${projectId}/financials/costs`}><BriefcaseBusiness className="mr-1.5 h-4 w-4" />Costs &amp; subs</Link></Button><Button asChild size="sm"><Link to={`/projects/${projectId}/financials/closeout`}>Reconcile &amp; close</Link></Button></div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         {[

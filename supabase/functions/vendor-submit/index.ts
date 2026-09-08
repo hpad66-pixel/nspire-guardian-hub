@@ -11,16 +11,34 @@ const cors = {
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
+function hasExpectedSignature(bytes: Uint8Array, type: string): boolean {
+  if (type === "application/pdf") return new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
+  if (type === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (type === "image/png") return [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value);
+  if (type === "image/webp") return new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" && new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP";
+  return false;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const body = await req.json().catch(() => ({}));
+    const contentType = req.headers.get("content-type") ?? "";
+    let body: Record<string, unknown> = {};
+    let attachment: File | null = null;
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      body = { token: String(form.get("token") ?? ""), action: String(form.get("action") ?? "attach") };
+      const candidate = form.get("file");
+      attachment = candidate instanceof File ? candidate : null;
+    } else {
+      body = await req.json().catch(() => ({}));
+    }
     const { token, action } = body as { token?: string; action?: string };
     if (!token) return json({ error: "Missing token" }, 400);
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: sub } = await db.from("vendor_payapp_submissions")
-      .select("id, tenant_id, project_id, commitment_id, status, vendor_name, vendor_email, app_no, period_from, period_to, lines, retainage_pct, prior_payments, conditional_signed_at, conditional_signed_name, submitted_at, apas_waiver_ack, waiver_type")
+      .select("id, tenant_id, project_id, commitment_id, status, vendor_name, vendor_email, app_no, period_from, period_to, lines, retainage_pct, prior_payments, conditional_signed_at, conditional_signed_name, submitted_at, apas_waiver_ack, waiver_type, invoice_artifact_id")
       .eq("token", token).maybeSingle();
     if (!sub) return json({ error: "Submission not found" }, 404);
 
@@ -83,6 +101,62 @@ serve(async (req) => {
       };
     };
 
+    if (action === "attach") {
+      if (sub.status === "void") return json({ error: "This submission link was voided." }, 409);
+      if (sub.submitted_at || sub.status !== "requested") return json({ error: "This pay application has already been submitted and is locked." }, 409);
+      if (!attachment) return json({ error: "Choose an invoice PDF or image" }, 400);
+      const allowed = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+      if (!allowed.has(attachment.type)) return json({ error: "Only PDF, JPG, PNG, or WebP invoices are accepted" }, 415);
+      if (attachment.size <= 0 || attachment.size > 12 * 1024 * 1024) return json({ error: "Invoice file must be 12 MB or smaller" }, 413);
+      const bytes = new Uint8Array(await attachment.arrayBuffer());
+      if (!hasExpectedSignature(bytes, attachment.type)) return json({ error: "The selected file content does not match its file type" }, 415);
+      const ext = attachment.type === "application/pdf" ? "pdf" : attachment.type.split("/")[1].replace("jpeg", "jpg");
+      const path = `${sub.tenant_id}/${sub.project_id}/vendor-payapp-invoices/${sub.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await db.storage.from("project-artifacts")
+        .upload(path, bytes, { contentType: attachment.type, cacheControl: "3600", upsert: false });
+      if (uploadError) throw uploadError;
+      const safeName = attachment.name.replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 180) || `invoice.${ext}`;
+      const { data: artifact, error: artifactError } = await db.from("project_artifacts").insert({
+        tenant_id: sub.tenant_id,
+        project_id: sub.project_id,
+        artifact_type: "invoice",
+        source_system: "manual",
+        title: `${sub.vendor_name || "Vendor"} supporting invoice`,
+        description: "Vendor-supplied invoice attached to a construction pay application",
+        file_path: path,
+        file_name: safeName,
+        file_size: attachment.size,
+        mime_type: attachment.type,
+        tags: ["construction", "vendor-invoice", "vendor-attested"],
+        linked_entity_type: "vendor_payapp_submission",
+        linked_entity_id: sub.id,
+      }).select("id").single();
+      if (artifactError || !artifact) {
+        await db.storage.from("project-artifacts").remove([path]);
+        throw artifactError ?? new Error("Invoice artifact was not created");
+      }
+      const { data: linked, error: linkError } = await db.from("vendor_payapp_submissions")
+        .update({ invoice_artifact_id: artifact.id }).eq("id", sub.id).eq("status", "requested")
+        .is("submitted_at", null).select("id").maybeSingle();
+      if (linkError || !linked) {
+        await db.from("project_artifacts").delete().eq("id", artifact.id);
+        await db.storage.from("project-artifacts").remove([path]);
+        if (linkError) throw linkError;
+        return json({ error: "This pay application changed while the invoice was uploading. Reload the link." }, 409);
+      }
+      if (sub.invoice_artifact_id && sub.invoice_artifact_id !== artifact.id) {
+        const { data: previous } = await db.from("project_artifacts")
+          .select("id, file_path").eq("id", sub.invoice_artifact_id).eq("project_id", sub.project_id).maybeSingle();
+        if (previous) {
+          const { error: removeMetadataError } = await db.from("project_artifacts").delete().eq("id", previous.id);
+          if (!removeMetadataError && previous.file_path) {
+            await db.storage.from("project-artifacts").remove([previous.file_path]);
+          }
+        }
+      }
+      return json({ ok: true, artifactId: artifact.id, fileName: safeName });
+    }
+
     if (!action || action === "load") {
       const billing = await loadBillingBasis();
       const commitment = billing?.commitment ?? null;
@@ -96,6 +170,7 @@ serve(async (req) => {
           lines: Array.isArray(sub.lines) ? sub.lines : [], retainage_pct: sub.retainage_pct,
           prior_payments: sub.prior_payments, conditional_signed_name: sub.conditional_signed_name,
           apas_waiver_ack: sub.apas_waiver_ack, waiver_type: sub.waiver_type ?? "conditional_progress",
+          invoice_artifact_id: sub.invoice_artifact_id,
           submitted: !!sub.submitted_at,
         },
         commitment: commitment ? {

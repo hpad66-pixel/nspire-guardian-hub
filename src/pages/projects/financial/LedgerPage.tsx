@@ -7,6 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Download } from "lucide-react";
+import { useProject } from "@/hooks/useProjects";
+import { projectKind } from "@/lib/projectKind";
+import { ConsultingLedgerView } from "@/components/financial/ConsultingLedgerView";
 
 const fmt = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n ?? 0);
@@ -20,6 +23,14 @@ const ENTRY_LABEL: Record<LedgerEntry["entry_type"], string> = {
 type Filter = "all" | "receivable" | "payable";
 
 export default function LedgerPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: project, isLoading } = useProject(projectId ?? null);
+  if (isLoading) return <div className="p-8 text-center text-sm text-muted-foreground">Loading project financials…</div>;
+  if (project && projectKind(project) === "consulting") return <ConsultingLedgerView project={project} />;
+  return <ConstructionLedgerPage />;
+}
+
+function ConstructionLedgerPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { ledger } = useProjectFinancials(projectId ?? null);
   const [filter, setFilter] = useState<Filter>("all");
