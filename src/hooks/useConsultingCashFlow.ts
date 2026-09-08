@@ -263,7 +263,7 @@ export function useConsultingInvoiceRequests(projectId: string | null | undefine
   const requestInvoice = useMutation({
     mutationFn: async (input: {
       organizationId?: string | null; contactId?: string | null; email: string; recipientName?: string;
-      dueDate?: string; message?: string;
+      dueDate?: string; message?: string; billingType: 'consulting' | 'construction'; commitmentId?: string | null;
     }) => {
       if (!projectId) throw new Error('No project selected.');
       const { data, error } = await supabase.functions.invoke('consulting-vendor-invoice', {
@@ -272,12 +272,14 @@ export function useConsultingInvoiceRequests(projectId: string | null | undefine
           organizationId: input.organizationId || null,
           contactId: input.contactId || null,
           email: input.email, recipientName: input.recipientName,
+          billingType: input.billingType, commitmentId: input.commitmentId || null,
           dueDate: input.dueDate || null, message: input.message || null,
         },
       });
       if (error || !data?.ok) throw new Error(data?.error || error?.message || 'Could not create invoice request');
       return data as {
         requestId: string; organizationId: string; linkedContactCount: number;
+        billingType: 'consulting' | 'construction';
         link: string; emailSent: boolean; deliveryError: string | null;
         crmSyncStatus: 'synced' | 'failed'; crmSyncError: string | null;
       };
@@ -289,6 +291,7 @@ export function useConsultingInvoiceRequests(projectId: string | null | undefine
       qc.invalidateQueries({ queryKey: ['project-contacts', projectId] });
       qc.invalidateQueries({ queryKey: ['project-contact-ids', projectId] });
       qc.invalidateQueries({ queryKey: ['crm-contacts'] });
+      qc.invalidateQueries({ queryKey: ['vendor-payapps', projectId] });
     },
     onError: (error: Error) => toast.error(error.message),
   });

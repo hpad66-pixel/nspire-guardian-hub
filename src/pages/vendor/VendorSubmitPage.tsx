@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Loader2, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, CheckCircle2, FileCheck2, Send, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateFinancialEvidenceFile } from '@/lib/secureFinancialUpload';
 
 interface Line { sov_line_id: string; line_no?: number; description: string; scheduled_value: number; from_previous: number; this_period: number; materials: number }
 const usd = (n: number) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const numIn = (v: string) => { const n = parseFloat(v.replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; };
+const numIn = (v: string) => { const n = parseFloat(v.replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : 0; };
 
 export default function VendorSubmitPage() {
   const { token } = useParams<{ token: string }>();
@@ -23,6 +24,8 @@ export default function VendorSubmitPage() {
   const [ackWaiver, setAckWaiver] = useState(true);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [hasAttachedInvoice, setHasAttachedInvoice] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +52,7 @@ export default function VendorSubmitPage() {
             materials: Number(saved.get(line.sov_line_id)?.materials ?? 0),
           })));
           if (s.submitted) setDone(true);
+          setHasAttachedInvoice(Boolean(s.invoice_artifact_id));
         }
       } catch (e) { setErr(e instanceof Error ? e.message : 'Error'); }
       finally { setLoading(false); }
@@ -73,6 +77,16 @@ export default function VendorSubmitPage() {
     if (totals.currentDue <= 0) return toast.error('Add current-period work or materials before submitting.');
     setBusy(true);
     try {
+      if (file) {
+        await validateFinancialEvidenceFile(file);
+        const attachment = new FormData();
+        attachment.append('action', 'attach');
+        attachment.append('token', token ?? '');
+        attachment.append('file', file);
+        const { data: uploadData, error: uploadError } = await supabase.functions.invoke('vendor-submit', { body: attachment });
+        if (uploadError || !uploadData?.ok) throw new Error(uploadData?.error || uploadError?.message || 'Invoice upload failed');
+        setHasAttachedInvoice(true);
+      }
       const { data, error } = await supabase.functions.invoke('vendor-submit', {
         body: {
           token, action: 'submit', lines,
@@ -157,6 +171,19 @@ export default function VendorSubmitPage() {
           <Row label={`Current retainage (${Number(commitment?.retainage_pct ?? 0)}%)`} value={`(${usd(totals.currentRetainage)})`} />
           <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[15px] font-bold"><span>Current payment due</span><span style={{ color: accent }}>{usd(totals.currentDue)}</span></div>
           <p className="mt-2 text-[11.5px] text-muted-foreground">Contract retainage and prior certified work are supplied by projOS and cannot be changed on this form.</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-emerald-50 p-2"><FileCheck2 className="h-5 w-5 text-emerald-700" /></div>
+            <div><div className="text-[13px] font-semibold">Your supporting invoice</div><p className="mt-0.5 text-[12px] text-muted-foreground">Optional. The completed Schedule of Values remains the controlling pay application, and you may also attach your own invoice for the project record.</p></div>
+          </div>
+          <label className="mt-3 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-border bg-muted/20 px-4 py-6 text-center transition hover:border-[var(--apas-sapphire)]/60">
+            <Upload className="h-6 w-6" style={{ color: accent }} />
+            <span className="mt-2 text-[13px] font-semibold">{file ? file.name : hasAttachedInvoice ? 'Invoice already attached - choose a replacement if needed' : 'Upload your PDF or invoice image'}</span>
+            <span className="mt-1 text-[11px] text-muted-foreground">PDF, JPG, PNG, or WebP, maximum 12 MB</span>
+            <input className="hidden" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          </label>
         </div>
 
         {/* Conditional lien waiver */}
