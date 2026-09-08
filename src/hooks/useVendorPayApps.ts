@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 // Vendor-built AIA pay-app submissions (distinct from the vendor_submissions
 // ingestion queue). Table not in generated types yet → (supabase as any).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated types intentionally lag this migration-backed table
 const db = supabase as any;
 
 export interface VendorPayApp {
@@ -15,7 +16,7 @@ export interface VendorPayApp {
   status: string;
   app_no: number | null;
   period_to: string | null;
-  lines: any[];
+  lines: Array<Record<string, unknown>>;
   retainage_pct: number | null;
   prior_payments: number | null;
   current_due: number | null;
@@ -26,6 +27,7 @@ export interface VendorPayApp {
   apas_waiver_ack: boolean | null;
   waiver_type: string | null;
   commitment_invoice_id: string | null;
+  invoice_artifact_id: string | null;
   submitted_at: string | null;
   created_at: string;
 }
@@ -39,27 +41,6 @@ export function useVendorPayApps(projectId: string | undefined) {
       if (error) throw error;
       return (data ?? []) as VendorPayApp[];
     },
-  });
-}
-
-// GC mints a submission token for a vendor; returns the token for the magic link.
-export function useRequestVendorPayApp(projectId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ commitmentId, vendorName, vendorEmail }: { commitmentId: string; vendorName?: string; vendorEmail?: string }) => {
-      if (!commitmentId) throw new Error('Select the subcontract this pay app bills against.');
-      const token = crypto.randomUUID().replace(/-/g, '');
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await db.from('vendor_payapp_submissions').insert({
-        project_id: projectId, commitment_id: commitmentId, token,
-        vendor_name: vendorName || null, vendor_email: vendorEmail || null,
-        status: 'requested', created_by: user?.id ?? null,
-      });
-      if (error) throw error;
-      return token as string;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-payapps', projectId] }),
-    onError: (e: Error) => toast.error(e.message || 'Could not create link'),
   });
 }
 
@@ -87,31 +68,17 @@ export function useConvertVendorPayApp() {
   });
 }
 
-// Delete a vendor submission AND clean up what it spawned: its draft commitment
-// invoice (which cascades to the invoice lines + the unconditional waiver linked
-// to it). A paid invoice (with recorded payments) is RESTRICT-protected by the DB,
-// so we keep it and report that.
+// Remove only an unsubmitted request through a finance-authorized RPC. Submitted
+// evidence remains immutable and must move through the review workflow.
 export function useDeleteVendorPayApp() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; projectId: string }): Promise<{ keptInvoice: boolean }> => {
-      const { data: sub } = await db.from('vendor_payapp_submissions').select('commitment_invoice_id').eq('id', id).maybeSingle();
-      let keptInvoice = false;
-      if (sub?.commitment_invoice_id) {
-        const { error: invErr } = await db.from('commitment_invoices').delete().eq('id', sub.commitment_invoice_id);
-        if (invErr) {
-          if (/foreign key|violates|restrict/i.test(invErr.message)) keptInvoice = true; // has payments → protected
-          else throw invErr;
-        }
-      }
-      const { error } = await db.from('vendor_payapp_submissions').delete().eq('id', id);
+    mutationFn: async ({ id }: { id: string; projectId: string }): Promise<void> => {
+      const { error } = await db.rpc('delete_vendor_payapp_request', { p_submission_id: id });
       if (error) throw error;
-      return { keptInvoice };
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] });
-      qc.invalidateQueries({ queryKey: ['commitment-invoices'] });
-      qc.invalidateQueries({ queryKey: ['lien-releases', v.projectId] });
     },
     onError: (e: Error) => toast.error(e.message || 'Could not delete'),
   });
@@ -121,7 +88,8 @@ export function useUpdateVendorPayAppStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string; projectId: string }) => {
-      const { error } = await db.from('vendor_payapp_submissions').update({ status }).eq('id', id);
+      if (status !== 'void') throw new Error('Vendor invoice status is controlled by its workflow.');
+      const { error } = await db.rpc('void_vendor_payapp_request', { p_submission_id: id });
       if (error) throw error;
     },
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['vendor-payapps', v.projectId] }),

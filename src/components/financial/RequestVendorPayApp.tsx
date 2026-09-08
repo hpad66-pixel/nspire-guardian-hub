@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Link2, Copy, Check, Loader2, Eye, CheckCircle2, Banknote, MoreVertical, Trash2 } from 'lucide-react';
+import { FileText, Copy, Check, Eye, CheckCircle2, Banknote, MailPlus, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useProject } from '@/hooks/useProjects';
 import { useCommitments } from '@/hooks/useCommitments';
-import { useVendorPayApps, useRequestVendorPayApp, useUpdateVendorPayAppStatus, useDeleteVendorPayApp, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
+import { useVendorPayApps, useUpdateVendorPayAppStatus, useDeleteVendorPayApp, useConvertVendorPayApp, type VendorPayApp } from '@/hooks/useVendorPayApps';
 import { useInvoice } from '@/hooks/useInvoices';
 import { useCommitmentPayments } from '@/hooks/useCommitmentPayments';
-import { useSendEmail } from '@/hooks/useSendEmail';
+import { ConsultingInvoiceRequestDialog } from '@/components/financial/ConsultingInvoiceRequestDialog';
 import { openVendorPayAppReport } from '@/lib/financial/vendorPayAppReport';
 import { toast } from 'sonner';
 
@@ -29,54 +27,14 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId ?? null);
   const { data: commitments = [] } = useCommitments(projectId);
   const { data: requests = [] } = useVendorPayApps(projectId);
-  const request = useRequestVendorPayApp(projectId);
   const updateStatus = useUpdateVendorPayAppStatus();
   const del = useDeleteVendorPayApp();
-  const sendEmail = useSendEmail();
-  const [commitmentId, setCommitmentId] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [requestOpen, setRequestOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [review, setReview] = useState<VendorPayApp | null>(null);
 
   const linkFor = (token: string) => `${window.location.origin}/vendor/submit/${token}`;
-  const titleFor = (cid: string | null) => commitments.find((c: any) => c.id === cid)?.title as string | undefined;
-
-  const create = async () => {
-    if (!commitmentId) return toast.error('Select the subcontract this pay app bills against.');
-    let token: string;
-    try {
-      token = await request.mutateAsync({ commitmentId, vendorName: name.trim() || undefined, vendorEmail: email.trim() || undefined });
-    } catch (e: any) {
-      return toast.error(e?.message || 'Could not create the request.');
-    }
-    const url = linkFor(token);
-    // The link always works and is in the list below. Email is best-effort —
-    // if it fails (provider config, bad address) we copy the link so you can send it.
-    navigator.clipboard?.writeText(url);
-    if (email.trim()) {
-      try {
-        await sendEmail.mutateAsync({
-          recipients: [email.trim()],
-          subject: `Submit your pay application — APAS Consulting`,
-          bodyHtml: `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
-            <div style="background:#1D6FE8;padding:18px 24px;border-radius:12px 12px 0 0;color:#fff"><div style="font-size:18px;font-weight:700">Submit your pay application</div></div>
-            <div style="border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;padding:22px 24px">
-              <p style="color:#333;font-size:14px;line-height:1.6">${name.trim() ? `Hi ${name.trim()},` : 'Hi,'}<br/>APAS Consulting has invited you to submit your AIA pay application and conditional lien waiver online — no account needed.</p>
-              <p style="margin:18px 0"><a href="${url}" style="background:#1D6FE8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open the submission portal →</a></p>
-              <p style="color:#999;font-size:12px">Or paste this link: ${url}</p>
-            </div>
-          </div>`,
-        });
-        toast.success(`Invite sent to ${email.trim()}`);
-      } catch {
-        toast.warning('Request created & link copied — email didn’t send. Paste the link to the vendor.');
-      }
-    } else {
-      toast.success('Link created and copied');
-    }
-    setName(''); setEmail(''); setCommitmentId('');
-  };
+  const titleFor = (cid: string | null) => commitments.find((commitment) => commitment.id === cid)?.title;
 
   const copy = (token: string) => { navigator.clipboard?.writeText(linkFor(token)); setCopied(token); setTimeout(() => setCopied(null), 1500); };
 
@@ -84,23 +42,11 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
     <div className="rounded-xl border bg-card">
       <div className="flex items-center gap-2.5 border-b p-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--apas-sapphire)]/10"><FileText className="h-4 w-4 text-[var(--apas-sapphire)]" /></div>
-        <div>
-          <h3 className="text-sm font-semibold">Request a pay app from a vendor</h3>
-          <p className="text-[11px] text-muted-foreground">Sends a magic link where they build an AIA G702/G703 and e-sign the conditional lien waiver.</p>
-        </div>
+        <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">Request an invoice or pay application</h3><p className="text-[11px] text-muted-foreground">Choose consulting or construction, select the CRM contact, and send the correct branded billing template.</p></div>
+        <Button size="sm" onClick={() => setRequestOpen(true)}><MailPlus className="mr-1.5 h-4 w-4" />Request invoice</Button>
       </div>
       <div className="space-y-3 p-4">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Select value={commitmentId} onValueChange={setCommitmentId}>
-            <SelectTrigger><SelectValue placeholder="Subcontract (required)" /></SelectTrigger>
-            <SelectContent>{commitments.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.commitment_no ? c.commitment_no + ' · ' : ''}{c.title}</SelectItem>)}</SelectContent>
-          </Select>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Vendor name" />
-          <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vendor@email.com" />
-        </div>
-        <Button onClick={create} disabled={!commitmentId || request.isPending || sendEmail.isPending} className="gap-1.5">
-          {(request.isPending || sendEmail.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />} {email.trim() ? 'Create & email link' : 'Create link'}
-        </Button>
+        <div className="rounded-xl border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Construction billing:</span> the vendor completes the commitment Schedule of Values and may attach its own invoice. <span className="font-semibold text-foreground">Consulting billing:</span> the vendor receives a simple service-and-amount template with no SOV.</div>
 
         {requests.length > 0 && (
           <div className="space-y-1.5 pt-1">
@@ -121,7 +67,7 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
                         {r.status === 'void' && <Check className="mr-1 h-3.5 w-3.5" />}Void submission
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this vendor invoice (${r.vendor_name || 'Vendor'})?\n\nThis also removes its draft invoice and unconditional waiver. This can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: (res) => toast.success(res?.keptInvoice ? 'Deleted — its invoice has payments recorded, so it was kept. Remove it from Commitments if needed.' : 'Deleted (and its draft invoice + waiver)') }); }}>
+                      <DropdownMenuItem disabled={r.status !== 'requested'} className="text-destructive focus:text-destructive" onClick={() => { if (confirm(`Delete this unsubmitted vendor invoice request (${r.vendor_name || 'Vendor'})?\n\nThis can’t be undone.`)) del.mutate({ id: r.id, projectId }, { onSuccess: () => toast.success('Unsubmitted vendor invoice request deleted') }); }}>
                         <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -132,6 +78,8 @@ export function RequestVendorPayApp({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
+
+      <ConsultingInvoiceRequestDialog open={requestOpen} onOpenChange={setRequestOpen} projectId={projectId} />
 
       {review && <ReviewDialog sub={review} projectId={projectId} projectName={project?.name || 'Project'} commitmentTitle={titleFor(review.commitment_id)} onClose={() => setReview(null)} />}
     </div>
@@ -147,11 +95,13 @@ function ReviewDialog({ sub, projectId, projectName, commitmentTitle, onClose }:
   const ret = Number(sub.retainage_amount ?? 0);
   const due = Number(sub.current_due ?? 0);
   const paidTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  const invoiceStatus = (detail.data as any)?.status as string | undefined;
-  const invoiceAmount = Number((detail.data as any)?.approved_amount ?? (detail.data as any)?.submitted_amount ?? due);
-  const invoiceRetainage = Number((detail.data as any)?.retainage_held ?? 0);
+  const invoice = detail.data as { status?: string; approved_amount?: number | null; submitted_amount?: number | null; retainage_held?: number | null } | undefined;
+  const invoiceBalanceRow = balance.data as { balance_due?: number | null } | undefined;
+  const invoiceStatus = invoice?.status;
+  const invoiceAmount = Number(invoice?.approved_amount ?? invoice?.submitted_amount ?? due);
+  const invoiceRetainage = Number(invoice?.retainage_held ?? 0);
   const invoiceBalance = Number(
-    (balance.data as any)?.balance_due
+    invoiceBalanceRow?.balance_due
       ?? Math.max(0, invoiceAmount - invoiceRetainage - paidTotal),
   );
   const fullyPaid = invoiceStatus === 'paid' && payments.length > 0 && invoiceBalance <= 0.005;

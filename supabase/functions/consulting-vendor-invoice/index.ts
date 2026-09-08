@@ -71,7 +71,7 @@ function hasExpectedSignature(bytes: Uint8Array, type: string): boolean {
   return false;
 }
 
-function requestEmail(input: { recipient: string; vendor: string; project: string; link: string; dueDate?: string | null; message?: string | null }) {
+function requestEmail(input: { recipient: string; vendor: string; project: string; link: string; billingType: "consulting" | "construction"; dueDate?: string | null; message?: string | null }) {
   const due = input.dueDate
     ? `<div style="margin-top:12px;font-weight:700">Requested by ${esc(input.dueDate)}</div>`
     : "";
@@ -82,14 +82,16 @@ function requestEmail(input: { recipient: string; vendor: string; project: strin
     <div style="max-width:620px;margin:auto;overflow:hidden;border:1px solid #e1ded5;border-radius:20px;background:white;box-shadow:0 12px 36px rgba(19,44,37,.08)">
       <div style="padding:24px 28px;background:linear-gradient(135deg,#092d25,#174d40);color:#fff">
         <div style="font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#d7b86a">APAS Project Controls</div>
-        <div style="margin-top:8px;font-size:26px;font-weight:800">Invoice requested</div>
+        <div style="margin-top:8px;font-size:26px;font-weight:800">${input.billingType === "construction" ? "Pay application requested" : "Invoice requested"}</div>
         <div style="margin-top:5px;color:#d8e8e2">${esc(input.project)}</div>
       </div>
       <div style="padding:28px">
         <p style="margin:0 0 12px">Hello ${esc(input.recipient)},</p>
-        <p style="margin:0;line-height:1.6;color:#4c5e58">Please submit the invoice for <strong>${esc(input.vendor)}</strong> through the secure project link below. It takes only a few minutes and does not require a password.</p>
+        <p style="margin:0;line-height:1.6;color:#4c5e58">${input.billingType === "construction"
+          ? `Please complete the project Schedule of Values, confirm retainage, and optionally attach your own invoice for <strong>${esc(input.vendor)}</strong>.`
+          : `Please complete the simple professional-services invoice and optionally attach your own invoice for <strong>${esc(input.vendor)}</strong>. No Schedule of Values is required.`}</p>
         ${due}${note}
-        <a href="${esc(input.link)}" style="display:inline-block;margin-top:20px;border-radius:12px;background:#16775f;color:white;text-decoration:none;padding:13px 20px;font-weight:800">Upload invoice securely</a>
+        <a href="${esc(input.link)}" style="display:inline-block;margin-top:20px;border-radius:12px;background:#16775f;color:white;text-decoration:none;padding:13px 20px;font-weight:800">Complete invoice securely</a>
         <div style="margin-top:20px;padding:14px;border-radius:12px;background:#f7f6f2;color:#66736f;font-size:12px;line-height:1.5">This private, one-time link expires in 14 days. Do not forward it except to an authorized representative of ${esc(input.vendor)}.</div>
       </div>
     </div>
@@ -228,21 +230,35 @@ serve(async (req) => {
       const projectId = String(body.projectId ?? "");
       const organizationId = String(body.organizationId ?? "");
       const contactId = String(body.contactId ?? "");
+      const billingType = body.billingType === "construction" ? "construction" : "consulting";
+      const commitmentId = String(body.commitmentId ?? "");
       const email = String(body.email ?? "").trim().toLowerCase();
       if (!projectId || (!organizationId && !contactId) || !/^\S+@\S+\.\S+$/.test(email)) {
         return json({ error: "Project, vendor contact, and a valid email are required" }, 400);
       }
       const rawToken = newToken();
       const tokenDigest = await sha256(rawToken);
-      const { data: created, error: createError } = await userDb.rpc("create_consulting_invoice_request_v2", {
-        p_project_id: projectId,
-        p_recipient_email: email,
-        p_token_digest: tokenDigest,
-        p_organization_id: organizationId || null,
-        p_contact_id: contactId || null,
-        p_due_date: body.dueDate || null,
-        p_message: body.message || null,
-      });
+      if (billingType === "construction" && !commitmentId) {
+        return json({ error: "Choose the subcontract or purchase order whose Schedule of Values will be billed" }, 400);
+      }
+      const { data: created, error: createError } = billingType === "construction"
+        ? await userDb.rpc("create_construction_invoice_request_v2", {
+            p_project_id: projectId,
+            p_commitment_id: commitmentId,
+            p_recipient_email: email,
+            p_token: rawToken,
+            p_organization_id: organizationId || null,
+            p_contact_id: contactId || null,
+          })
+        : await userDb.rpc("create_consulting_invoice_request_v3", {
+            p_project_id: projectId,
+            p_recipient_email: email,
+            p_token_digest: tokenDigest,
+            p_organization_id: organizationId || null,
+            p_contact_id: contactId || null,
+            p_due_date: body.dueDate || null,
+            p_message: body.message || null,
+          });
       if (createError) return json({ error: createError.message }, 403);
       const createdRequest = (created ?? {}) as Record<string, unknown>;
       const requestId = String(createdRequest.requestId ?? "");
@@ -255,7 +271,9 @@ serve(async (req) => {
         admin.from("organizations").select("name").eq("id", resolvedOrganizationId).single(),
       ]);
       const origin = Deno.env.get("PUBLIC_APP_URL") || Deno.env.get("SITE_URL") || "https://projos.ai";
-      const link = `${origin}/vendor/consulting-invoice/${rawToken}`;
+      const link = billingType === "construction"
+        ? `${origin}/vendor/submit/${rawToken}`
+        : `${origin}/vendor/consulting-invoice/${rawToken}`;
       let emailSent = false;
       let deliveryError: string | null = null;
       const resend = Deno.env.get("RESEND_API_KEY");
@@ -266,12 +284,13 @@ serve(async (req) => {
           body: JSON.stringify({
             from: "APAS Project Controls <hardeep@apas.ai>",
             to: [email],
-            subject: `Invoice requested for ${project?.name ?? "your project"}`,
+            subject: `${billingType === "construction" ? "Pay application" : "Invoice"} requested for ${project?.name ?? "your project"}`,
             html: requestEmail({
               recipient: body.recipientName || "there",
               vendor: vendor?.name ?? "your company",
               project: project?.name ?? "Project",
               link,
+              billingType,
               dueDate: body.dueDate || null,
               message: body.message || null,
             }),
@@ -291,6 +310,7 @@ serve(async (req) => {
       return json({
         ok: true,
         requestId,
+        billingType,
         organizationId: resolvedOrganizationId,
         linkedContactCount: Number(createdRequest.linkedContactCount ?? 0),
         link,

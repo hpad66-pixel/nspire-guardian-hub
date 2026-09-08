@@ -16,7 +16,7 @@ describe('vendor invoice contact auto-linking', () => {
   });
 
   it('synchronizes the resolved vendor and its attached people through APAS CRM', () => {
-    expect(requestEdge).toContain('create_consulting_invoice_request_v2');
+    expect(requestEdge).toContain('create_consulting_invoice_request_v3');
     expect(requestEdge).toContain('operation: "sync_vendor"');
     expect(crmGateway).toContain('project_directory_entries');
     expect(crmGateway).toContain('const contacts: ContactImportItem[]');
