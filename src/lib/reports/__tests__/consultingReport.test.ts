@@ -35,6 +35,18 @@ describe('consulting report template', () => {
     expect(reportHeadings(report.body_html).map((entry) => entry.title)).toEqual(['Executive Summary', 'Recommendations']);
   });
 
+  it('places selected and mandatory evidence while retaining other sources only in the manifest', () => {
+    const optional = { ...source, id: 'optional', selected_for_report: false };
+    const mandatory = { ...source, id: 'required', included: false, placement_mode: 'mandatory' as const, selected_for_report: false };
+    const receipt = { ...source, id: 'receipt', mime_type: 'application/pdf', placement_mode: 'mandatory' as const, source_name: 'Required receipt.pdf' };
+    const html = buildConsultingReportHtml({ projectName: 'R4', report, sources: [optional, mandatory, receipt], imageUrls: { optional: 'https://example.com/omit.jpg', required: 'https://example.com/keep.jpg' }, documentPages: { receipt: ['https://example.com/page1.jpg', 'https://example.com/page2.jpg'] } });
+    expect(html).not.toContain('https://example.com/omit.jpg');
+    expect(html).toContain('https://example.com/keep.jpg');
+    expect(html).toContain('https://example.com/page1.jpg');
+    expect(html).toContain('https://example.com/page2.jpg');
+    expect(html).toContain('Required receipt.pdf | Page 2');
+  });
+
   it('removes executable markup from edited report content', () => {
     const unsafeReport = {
       ...report,

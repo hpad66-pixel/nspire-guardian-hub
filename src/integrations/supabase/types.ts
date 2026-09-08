@@ -2091,6 +2091,9 @@ export type Database = {
       }
       consulting_report_sources: {
         Row: {
+          placement_mode: string
+          selected_for_report: boolean
+          visual_analysis: Json
           caption: string | null
           created_at: string
           created_by: string | null
@@ -2127,6 +2130,9 @@ export type Database = {
           source_type: string
           storage_path?: string | null
           tenant_id?: string
+          placement_mode?: string
+          selected_for_report?: boolean
+          visual_analysis?: Json
         }
         Update: {
           caption?: string | null
@@ -2146,6 +2152,9 @@ export type Database = {
           source_type?: string
           storage_path?: string | null
           tenant_id?: string
+          placement_mode?: string
+          selected_for_report?: boolean
+          visual_analysis?: Json
         }
         Relationships: [
           {
@@ -15005,6 +15014,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_consulting_report_selection: {
+        Args: { p_report_id: string; p_selected_ids: string[] }
+        Returns: undefined
+      }
       create_consulting_invoice_from_submission: {
         Args: {
           p_amount: number

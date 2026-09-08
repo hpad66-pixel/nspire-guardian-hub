@@ -86,14 +86,15 @@ serve(async (req) => {
         q: `'${folderId}' in parents and trashed = false`,
         pageSize: "200",
         orderBy: "folder,name",
-        fields: "files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink,iconLink)",
+        fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink,iconLink)",
         supportsAllDrives: "true",
         includeItemsFromAllDrives: "true",
       });
+      if (body.pageToken) params.set('pageToken', String(body.pageToken));
       const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!response.ok) return json({ error: `Google Drive could not open that folder (${response.status}). Check sharing access.` }, response.status === 404 ? 404 : 502);
       const data = await response.json();
-      return json({ folderId, files: Array.isArray(data.files) ? data.files : [] });
+      return json({ folderId, files: Array.isArray(data.files) ? data.files : [], nextPageToken: data.nextPageToken || null });
     }
 
     if (action === "drive-import") {
@@ -130,6 +131,7 @@ serve(async (req) => {
           downloadUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(targetMime)}`;
         }
         const fileResponse = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (body.placementMode === 'mandatory' && !targetMime.startsWith('image/') && targetMime !== 'application/pdf') continue;
         if (!fileResponse.ok) continue;
         const bytes = new Uint8Array(await fileResponse.arrayBuffer());
         if (bytes.byteLength > 15_000_000 || totalBytes + bytes.byteLength > 100_000_000) continue;
@@ -148,6 +150,8 @@ serve(async (req) => {
           project_id: projectId,
           report_id: reportId,
           source_type: "google_drive",
+          placement_mode: body.placementMode === "mandatory" ? "mandatory" : "supporting",
+          selected_for_report: body.placementMode === "mandatory",
           source_name: targetName,
           mime_type: targetMime,
           size_bytes: bytes.byteLength,
