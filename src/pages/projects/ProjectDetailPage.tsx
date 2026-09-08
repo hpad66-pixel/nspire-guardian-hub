@@ -536,10 +536,10 @@ export default function ProjectDetailPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={() => setReportDialogOpen(true)}
+                onClick={() => isConsulting ? navigate(`/projects/${id}/reports`) : setReportDialogOpen(true)}
               >
                 <FileBarChart2 className="h-4 w-4" />
-                <span className="hidden md:inline">Reports</span>
+                <span>Reports</span>
               </Button>
 
               {/* Edit */}

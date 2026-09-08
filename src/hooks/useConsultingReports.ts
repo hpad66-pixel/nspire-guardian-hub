@@ -31,6 +31,9 @@ export interface ConsultingReport {
 }
 
 export interface ConsultingReportSource {
+  placement_mode?: 'supporting' | 'mandatory';
+  selected_for_report?: boolean;
+  visual_analysis?: { summary?: string; group?: string; score?: number; reason?: string };
   id: string;
   tenant_id: string;
   project_id: string;
@@ -52,7 +55,7 @@ export interface ConsultingReportSource {
 }
 
 const REPORT_COLUMNS = 'id,tenant_id,project_id,title,subtitle,report_date,status,conversation,body_html,generation_notes,created_by,issued_at,issued_by,created_at,updated_at';
-const SOURCE_COLUMNS = 'id,tenant_id,project_id,report_id,source_type,source_name,mime_type,size_bytes,storage_path,drive_file_id,drive_web_url,extracted_text,caption,included,sort_order,created_by,created_at';
+const SOURCE_COLUMNS = 'id,tenant_id,project_id,report_id,source_type,source_name,mime_type,size_bytes,storage_path,drive_file_id,drive_web_url,extracted_text,caption,included,sort_order,created_by,created_at,placement_mode,selected_for_report,visual_analysis';
 
 type ReportUpdate = Database['public']['Tables']['consulting_reports']['Update'];
 type SourceUpdate = Database['public']['Tables']['consulting_report_sources']['Update'];
@@ -73,6 +76,8 @@ function serializeReportUpdate(patch: Partial<ConsultingReport>): ReportUpdate {
 
 function serializeSourceUpdate(patch: Partial<ConsultingReportSource>): SourceUpdate {
   return {
+    placement_mode: patch.placement_mode,
+    selected_for_report: patch.selected_for_report,
     source_name: patch.source_name,
     mime_type: patch.mime_type,
     size_bytes: patch.size_bytes,
@@ -200,7 +205,7 @@ export function useConsultingReportSources(reportId: string | null, projectId: s
   });
 
   const upload = useMutation({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async ({ files, placementMode = 'supporting' }: { files: File[]; placementMode?: 'supporting' | 'mandatory' }) => {
       if (!reportId || !projectId) throw new Error('Open a report before adding sources.');
       const tenantId = await requireTenantId();
       const { data: auth } = await supabase.auth.getUser();
@@ -218,6 +223,8 @@ export function useConsultingReportSources(reportId: string | null, projectId: s
           project_id: projectId,
           report_id: reportId,
           source_type: 'upload',
+          placement_mode: placementMode,
+          selected_for_report: placementMode === 'mandatory',
           source_name: file.name,
           mime_type: file.type || null,
           size_bytes: file.size,
@@ -233,7 +240,7 @@ export function useConsultingReportSources(reportId: string | null, projectId: s
         }
       }
     },
-    onSuccess: invalidate,
+    onSettled: invalidate,
   });
 
   const update = useMutation({
@@ -253,5 +260,25 @@ export function useConsultingReportSources(reportId: string | null, projectId: s
     onSuccess: invalidate,
   });
 
-  return { ...list, upload, update, remove };
+  const extractDocuments = async () => {
+    for (const source of list.data || []) {
+      if ((!source.included && source.placement_mode !== 'mandatory') || source.extracted_text || !source.storage_path || source.mime_type?.startsWith('image/')) continue;
+      const { data, error } = await supabase.storage.from(DOCS_BUCKET).download(source.storage_path);
+      if (error || !data) throw new Error('Could not read source document: ' + source.source_name);
+      const extracted_text = await sourceText(new File([data], source.source_name, { type: source.mime_type || data.type }));
+      if (extracted_text) {
+        const { error: saveError } = await supabase.from('consulting_report_sources').update({ extracted_text }).eq('id', source.id);
+        if (saveError) throw saveError;
+      }
+    }
+    await invalidate();
+  };
+
+  const applySelection = async (ids: string[]) => {
+    const { error } = await supabase.rpc('apply_consulting_report_selection', { p_report_id: reportId!, p_selected_ids: ids });
+    if (error) throw error;
+    await invalidate();
+  };
+
+  return { ...list, upload, update, remove, extractDocuments, applySelection };
 }

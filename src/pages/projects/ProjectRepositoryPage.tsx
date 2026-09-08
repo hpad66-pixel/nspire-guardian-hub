@@ -6,6 +6,7 @@ import { RepositoryTab } from "@/components/projects/RepositoryTab";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProject } from "@/hooks/useProjects";
+import { projectKind } from "@/lib/projectKind";
 
 type DocumentsView = "studio" | "files";
 
@@ -69,6 +70,12 @@ export default function ProjectRepositoryPage() {
         </div>
       </div>
 
+      {project && projectKind(project) === 'consulting' && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <div><h2 className="font-semibold text-[#082b23]">Reports with photographs and receipts</h2><p className="mt-1 text-sm text-muted-foreground">Add source documents, let AI choose the best photos, and require essential evidence in your branded PDF.</p></div>
+          <Button onClick={() => navigate(`/projects/${projectId}/reports`)}><Sparkles className="mr-2 h-4 w-4" />Open Reports</Button>
+        </div>
+      )}
       <Tabs value={view} onValueChange={changeView} className="space-y-5">
         <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl p-1 sm:w-[480px]">
           <TabsTrigger value="studio" className="gap-2 rounded-lg py-2.5">

@@ -24,15 +24,31 @@ export function useGoogleDriveReport(reportId: string | null, projectId: string 
 
   const listFolder = useMutation({
     mutationFn: async (folderUrl: string): Promise<GoogleDriveFile[]> => {
-      const data = await invokeGmail({ action: 'drive-list', folderUrl });
-      return Array.isArray(data?.files) ? data.files as GoogleDriveFile[] : [];
+      const files: GoogleDriveFile[] = [];
+      let pageToken: string | null = null;
+      do {
+        const data = await invokeGmail({ action: 'drive-list', folderUrl, pageToken });
+        if (Array.isArray(data.files)) files.push(...data.files);
+        pageToken = data.nextPageToken || null;
+      } while (pageToken);
+      return files;
     },
   });
 
   const importFiles = useMutation({
-    mutationFn: async (fileIds: string[]): Promise<{ imported: Array<{ id: string; name: string }>; skipped: number }> => {
+    mutationFn: async ({ fileIds, placementMode = 'supporting' }: { fileIds: string[]; placementMode?: 'supporting' | 'mandatory' }): Promise<{ imported: Array<{ id: string; name: string }>; skipped: number }> => {
       if (!reportId || !projectId) throw new Error('Open a report before importing files.');
-      return await invokeGmail({ action: 'drive-import', reportId, projectId, fileIds });
+      const result: { imported: Array<{ id: string; name: string }>; skipped: number } = { imported: [], skipped: 0 };
+      try {
+        for (let start = 0; start < fileIds.length; start += 15) {
+          const batch = await invokeGmail({ action: 'drive-import', reportId, projectId, fileIds: fileIds.slice(start, start + 15), placementMode });
+          result.imported.push(...(batch.imported || []));
+          result.skipped += Number(batch.skipped || 0);
+        }
+        return result;
+      } finally {
+        await qc.invalidateQueries({ queryKey: ['consulting-report-sources', reportId] });
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['consulting-report-sources', reportId] }),
   });
