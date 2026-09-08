@@ -40,6 +40,7 @@ export type ProjectModuleSlug =
   | 'meetings'
   | 'closeout'
   | 'proposals'
+  | 'reports'
   | 'repository'
   | 'invoicing'
   | 'correspondence'
@@ -123,6 +124,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'proposals', label: 'Proposals', description: 'Proposal builder and approvals', group: 'commercial' },
   { slug: 'invoicing', label: 'Client invoices', description: 'Bill against approved proposals / scope', group: 'commercial' },
 
+  { slug: 'reports', label: 'Reports', description: 'Narrative-to-report studio with source manifests, photographs, PDF, and client delivery', group: 'documents', portalSlug: 'reports' },
   { slug: 'repository', label: 'Documents', description: 'Deliverables, files, knowledge base', group: 'documents', portalSlug: 'documents' },
   { slug: 'gallery', label: 'Gallery', description: 'Photos and site imagery', group: 'documents' },
   { slug: 'meetings', label: 'Meetings & agenda', description: 'Agendas, minutes, transcript → actions', group: 'documents' },
@@ -171,6 +173,7 @@ export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Se
   'schedule',
   'accountability',
   'gallery',
+  'reports',
   'repository',
   'project-log',
   'meetings',
@@ -190,6 +193,7 @@ export const CONSULTING_ONLY_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<P
   'action-items',
   'invoicing',
   'env-compliance',
+  'reports',
 ]);
 
 // Construction field modules — hidden by default on consulting/client.
@@ -268,6 +272,7 @@ export const MODULE_PRESETS: ModulePreset[] = [
       lean['client-portal'] = true;
       lean.meetings = true;
       lean.repository = true;
+      lean.reports = projectKind({ project_type: projectType }) === 'consulting';
       lean.financials = true;
       lean.proposals = projectKind({ project_type: projectType }) === 'consulting';
       lean.invoicing = projectKind({ project_type: projectType }) === 'consulting';

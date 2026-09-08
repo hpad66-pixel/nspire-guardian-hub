@@ -220,6 +220,7 @@ const MeetingTemplatesPage = lazy(() => import('./pages/projects/MeetingTemplate
 const SchedulePage = lazy(() => import('./pages/projects/SchedulePage'));
 const IncidentsPage = lazy(() => import('./pages/projects/IncidentsPage'));
 const ProjectRepositoryPage = lazy(() => import('./pages/projects/ProjectRepositoryPage'));
+const ConsultingReportsPage = lazy(() => import('./pages/projects/ConsultingReportsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -228,8 +229,9 @@ const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
-      retry: (failureCount, error: any) => {
-        if (error?.status === 404 || error?.status === 403) return false;
+      retry: (failureCount, error: unknown) => {
+        const status = (error as { status?: number } | null)?.status;
+        if (status === 404 || status === 403) return false;
         return failureCount < 2;
       },
     },
@@ -485,6 +487,8 @@ const App = () => (
                               <Route path="/projects/:projectId/daily-log" element={<DailyLogPage />} />
                               <Route path="/projects/:projectId/meetings" element={<MeetingsProcorePage />} />
                               <Route path="/projects/:projectId/repository" element={<ProjectRepositoryPage />} />
+                              <Route path="/projects/:projectId/reports" element={<ConsultingReportsPage />} />
+                              <Route path="/projects/:projectId/reports/:reportId" element={<ConsultingReportsPage />} />
                               <Route path="/projects/:projectId/meetings/templates" element={<MeetingTemplatesPage />} />
                               <Route path="/projects/:projectId/meetings/:meetingId" element={<MeetingRunPage />} />
                               <Route path="/projects/:projectId/schedule" element={<SchedulePage />} />

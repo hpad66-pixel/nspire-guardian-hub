@@ -19,7 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   FileText, Upload, Plus, ArrowLeft, Loader2, Lock, Unlock, FileDown, Trash2, Check,
   Pencil, Eye, AlertTriangle, Bold, Italic, Underline, Save, Mail, History, RotateCcw, X, Sparkles,
-  PenLine, Send, FileCheck2, Inbox,
+  PenLine, Send, FileCheck2, Inbox, WandSparkles, LayoutTemplate,
+  Heading2, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Undo2, Redo2, Eraser,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ import { ESignStamp } from "@/components/correspondence/ESignStamp";
 import { DOC_WORKFLOW_META, DOC_WORKFLOW_FILTERS, resolveDocWorkflow, type DocWorkflowStatus } from "@/lib/correspondence/docWorkflow";
 import { stampSignedHtml } from "@/lib/correspondence/stampSignedHtml";
 import { stampSignedPdfBlob } from "@/lib/correspondence/stampSignedPdf";
+import { clientReadyDocumentHtml } from "@/lib/docs/clientReadyDocument";
 import { cn } from "@/lib/utils";
 
 const fmtAgo = (d: string): string => {
@@ -126,10 +128,10 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[var(--apas-sapphire)]" /> Correspondence Doc Studio
+            <FileText className="h-5 w-5 text-[var(--apas-sapphire)]" /> Project Document Studio
           </h3>
           <p className="text-sm text-muted-foreground">
-            Upload Word or PDF · edit in place · e-sign · send to the client. Track uploaded, signed, and sent on the sidebar.
+            Draft with AI, paste and format, save versions, then email a branded PDF to the client.
           </p>
         </div>
         <div className="flex gap-2">
@@ -137,7 +139,7 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
             {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />} Upload Word / PDF
           </Button>
           <Button size="sm" onClick={newBlank} disabled={docs.create.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> New blank
+            <Plus className="h-4 w-4 mr-1" /> New document
           </Button>
         </div>
       </div>
@@ -149,16 +151,16 @@ export function DocumentWorkspace({ projectId, projectName }: { projectId: strin
           <CardContent className="p-0">
             <div className="bg-gradient-to-br from-[#0D3B30] via-[#1A1714] to-[#1A1714] px-8 py-10 text-[#FAF8F4]">
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#C4A35A]">Project correspondence</div>
-              <h4 className="mt-2 font-display text-2xl font-bold">A living document trail for every letter you send</h4>
+              <h4 className="mt-2 font-display text-2xl font-bold">A professional document from first draft to client delivery</h4>
               <p className="mt-2 max-w-xl text-sm text-[#D9D4CB]">
-                Upload a Word letter or PDF, edit it here, electronically sign it, and send it to the client the same way you send change orders and proposals.
+                Draft with AI or paste existing content, format it in the full editor, save every version, then send a branded PDF through the project email trail.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button size="sm" className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => fileRef.current?.click()}>
                   <Upload className="h-4 w-4 mr-1.5" /> Upload Word / PDF
                 </Button>
                 <Button size="sm" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10" onClick={newBlank}>
-                  <Plus className="h-4 w-4 mr-1.5" /> Start blank letter
+                  <Plus className="h-4 w-4 mr-1.5" /> Start new document
                 </Button>
               </div>
             </div>
@@ -333,7 +335,7 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
     try {
       const html = payload?.edited ?? doc.content_html;
       if (html) {
-        const att = await htmlToPdfAttachment(html, doc.title);
+        const att = await htmlToPdfAttachment(clientReadyDocumentHtml(doc, html, projectName), doc.title);
         setEmailAtt(att);
         setEmailOpen(true);
         return;
@@ -375,7 +377,7 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
     try {
       const html = payload?.edited ?? doc.content_html;
       if (html) {
-        await downloadHtmlAsPdf(html, `${doc.title}-signed`);
+        await downloadHtmlAsPdf(clientReadyDocumentHtml(doc, html, projectName), `${doc.title}-signed`);
         return;
       }
       if (isPdf && payload?.b64) {
@@ -469,7 +471,7 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground p-10 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading document…</div>
-      ) : isDocx && (payload?.edited || payload?.b64) ? (
+      ) : doc.has_original && isDocx && (payload?.edited || payload?.b64) ? (
         <FormattedDocEditor doc={doc} docs={docs} projectName={projectName} base64={payload?.b64 ?? null} html={payload?.edited ?? null} locked={isFinal} onSaved={(html) => setPayload((p) => (p ? { ...p, edited: html } : { b64: null, mime: MIME.docx, edited: html }))} />
       ) : isPdf && payload?.b64 ? (
         <div className="space-y-3">
@@ -482,14 +484,31 @@ function DocDetail({ doc, docs, projectName, onBack }: { doc: AuthoredDocument; 
           />
         </div>
       ) : (
-        <BlankEditor doc={doc} docs={docs} projectName={projectName} locked={isFinal} />
+        <BlankEditor
+          doc={doc}
+          docs={docs}
+          projectName={projectName}
+          locked={isFinal}
+          initialHtml={payload?.edited ?? doc.content_html}
+          onSaved={(nextHtml) => setPayload((current) => current
+            ? { ...current, edited: nextHtml }
+            : { b64: null, mime: "", edited: nextHtml })}
+        />
       )}
 
       <div className="border-t pt-3">
         <DocumentTasksPanel documentId={doc.id} projectId={doc.project_id} projectName={projectName} />
       </div>
 
-      <EmailDocumentDialog open={emailOpen} onOpenChange={setEmailOpen} projectId={doc.project_id} defaultSubject={doc.title} attachment={emailAtt} />
+      <EmailDocumentDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        projectId={doc.project_id}
+        projectName={projectName}
+        defaultSubject={doc.title}
+        attachment={emailAtt}
+        onSent={async (recipients) => { await docs.markSent.mutateAsync({ id: doc.id, email: recipients[0] }); }}
+      />
       <SignAuthoredDocumentDialog
         open={signOpen}
         onOpenChange={setSignOpen}
@@ -649,7 +668,7 @@ function FormattedDocEditor({ doc, docs, projectName, base64, html, locked, onSa
   };
   const done = async () => { if (dirty) await save(); setSectionsEditable(false); setEditing(false); };
 
-  const fmt = (cmd: string) => document.execCommand(cmd);
+  const fmt = (cmd: string, value?: string) => document.execCommand(cmd, false, value);
   const currentHtml = () => ref.current?.innerHTML ?? html ?? "";
 
   return (
@@ -665,6 +684,15 @@ function FormattedDocEditor({ doc, docs, projectName, base64, html, locked, onSa
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("bold")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Bold"><Bold className="h-3.5 w-3.5" /></button>
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("italic")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Italic"><Italic className="h-3.5 w-3.5" /></button>
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("underline")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Underline"><Underline className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("formatBlock", "H2")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Heading"><Heading2 className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("insertUnorderedList")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Bullet list"><List className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("insertOrderedList")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Numbered list"><ListOrdered className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("justifyLeft")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Align left"><AlignLeft className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("justifyCenter")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Align center"><AlignCenter className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("justifyRight")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Align right"><AlignRight className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("removeFormat")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Clear formatting"><Eraser className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("undo")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Undo"><Undo2 className="h-3.5 w-3.5" /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("redo")} className="h-7 w-7 grid place-items-center rounded hover:bg-muted" title="Redo"><Redo2 className="h-3.5 w-3.5" /></button>
             </div>
             <Button variant="outline" size="sm" onMouseDown={(e) => e.preventDefault()} onClick={openAiPanel} title="Ask AI to continue writing, rewrite a selection, or draft a paragraph">
               <Sparkles className="h-3.5 w-3.5 mr-1 text-[var(--apas-sapphire)]" /> Ask AI
@@ -816,37 +844,191 @@ function SignedPdfView({
   );
 }
 
-// Plain editor for blank documents (no uploaded letterhead to preserve).
-function BlankEditor({ doc, docs, projectName, locked }: { doc: AuthoredDocument; docs: Docs; projectName?: string | null; locked: boolean }) {
-  const [title, setTitle] = useState(doc.title);
-  const [html, setHtml] = useState(doc.content_html || "<p></p>");
-  const [dirty, setDirty] = useState(false);
-  const timer = useRef<number | null>(null);
-  const persist = async () => {
-    if (!dirty) return;
-    await docs.update.mutateAsync({ id: doc.id, title: title.trim() || "Untitled document", content_html: html, content_text: htmlToText(html) } as any);
-    setDirty(false);
-  };
-  const schedule = () => { setDirty(true); if (timer.current) window.clearTimeout(timer.current); timer.current = window.setTimeout(persist, 1400); };
+function sanitizeAiDocumentHtml(value: string): string {
+  const withoutFence = value.trim().replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/i, "");
+  if (!/<[a-z][\s\S]*>/i.test(withoutFence)) {
+    return withoutFence.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+      .map((p) => `<p>${p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>`).join("");
+  }
+  const parsed = new DOMParser().parseFromString(`<div>${withoutFence}</div>`, "text/html");
+  const root = parsed.body.firstElementChild as HTMLElement | null;
+  if (!root) return "<p></p>";
+  root.querySelectorAll("script,style,iframe,object,embed,link,meta,form,input,button").forEach((node) => node.remove());
+  root.querySelectorAll("*").forEach((node) => {
+    for (const attr of Array.from(node.attributes)) node.removeAttribute(attr.name);
+  });
+  return root.innerHTML || "<p></p>";
+}
 
-  // "Ask AI" continuation — opt-in (the editor's own AI Continue button).
-  const aiContinue = async (context: string): Promise<string> => {
+// Native document editor: full TipTap formatting, explicit versioned saves,
+// AI drafting/polishing, branded PDF output, and clean copy/paste handling.
+function BlankEditor({
+  doc,
+  docs,
+  projectName,
+  locked,
+  initialHtml,
+  onSaved,
+}: {
+  doc: AuthoredDocument;
+  docs: Docs;
+  projectName?: string | null;
+  locked: boolean;
+  initialHtml?: string | null;
+  onSaved: (html: string) => void;
+}) {
+  const [title, setTitle] = useState(doc.title);
+  const [html, setHtml] = useState(initialHtml || "<p></p>");
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    setHtml(initialHtml || "<p></p>");
+    setDirty(false);
+  }, [initialHtml]);
+
+  const markChanged = () => setDirty(true);
+  const save = async (label = "Edited") => {
+    if (locked) return;
+    setSaving(true);
+    try {
+      const cleanTitle = title.trim() || "Untitled document";
+      await docs.update.mutateAsync({ id: doc.id, title: cleanTitle } as any);
+      await docs.saveEdit.mutateAsync({ id: doc.id, html, text: htmlToText(html), label });
+      setTitle(cleanTitle);
+      onSaved(html);
+      setDirty(false);
+      toast.success("Document saved and added to version history.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't save the document.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const invokeAi = async (mode: "continue" | "draft" | "polish" | "structure", context: string, instruction?: string) => {
     const { data, error } = await supabase.functions.invoke("document-ai-assist", {
-      body: { projectName, mode: "continue", context, projectId: doc.project_id },
+      body: { projectName, mode, context, instruction, projectId: doc.project_id },
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    return String(data?.text ?? "");
+    return String(data?.text ?? "").trim();
   };
 
+  // Opt-in inline continuation from the editor toolbar.
+  const aiContinue = async (context: string): Promise<string> => invokeAi("continue", context);
+
+  const transformDocument = async (mode: "draft" | "polish" | "structure") => {
+    const currentText = htmlToText(html).trim();
+    if (mode === "draft" && !aiInstruction.trim()) {
+      toast.error("Tell AI what you want the document to say.");
+      return;
+    }
+    if (mode !== "draft" && !currentText) {
+      toast.error("Add or paste some content first.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const result = await invokeAi(mode, currentText.slice(0, 14000), aiInstruction.trim() || undefined);
+      if (!result) throw new Error("AI returned an empty document.");
+      setHtml(sanitizeAiDocumentHtml(result));
+      setDirty(true);
+      setAiOpen(false);
+      setAiInstruction("");
+      toast.success(mode === "draft" ? "Draft created. Review it, then save." : "Document improved. Review it, then save.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't improve the document.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const downloadPdf = () => downloadHtmlAsPdf(
+    clientReadyDocumentHtml({ ...doc, title: title.trim() || doc.title }, html, projectName),
+    title || "document",
+  );
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} onBlur={persist} disabled={locked} placeholder="Document title" className="text-base font-semibold" />
-        <Button variant="outline" size="sm" onClick={() => downloadHtmlAsPdf(html, title || "document")}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); markChanged(); }}
+          disabled={locked}
+          placeholder="Document title"
+          className="text-base font-semibold"
+        />
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {!locked && (
+            <Button variant="outline" size="sm" onClick={() => setAiOpen((open) => !open)}>
+              <WandSparkles className="h-4 w-4 mr-1" /> Write with AI
+            </Button>
+          )}
+          {!locked && (
+            <Button size="sm" onClick={() => void save()} disabled={saving || !dirty}>
+              {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />} Save
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void downloadPdf()}>
+            <FileDown className="h-4 w-4 mr-1" /> PDF
+          </Button>
+        </div>
       </div>
-      {dirty ? <div className="text-xs text-muted-foreground">Saving…</div> : <div className="text-xs text-muted-foreground flex items-center gap-1"><Check className="h-3 w-3 text-emerald-600" /> Saved</div>}
-      <ProRichTextEditor content={html} onChange={(h) => { setHtml(h); schedule(); }} editable={!locked} minHeight="440px" placeholder="Write or paste your document…" onAiComplete={locked ? undefined : aiContinue} />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Paste from Word or email, then use headings, lists, tables, images, colors, alignment, find and replace.</span>
+        {dirty
+          ? <span className="font-medium text-amber-700">Unsaved changes</span>
+          : <span className="flex items-center gap-1 text-emerald-700"><Check className="h-3.5 w-3.5" /> Saved</span>}
+      </div>
+
+      {aiOpen && !locked && (
+        <Card className="overflow-hidden border-[var(--apas-sapphire)]/30">
+          <CardContent className="p-0">
+            <div className="bg-gradient-to-r from-[#082b23] to-[#164c3f] px-4 py-3 text-white">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 font-semibold"><WandSparkles className="h-4 w-4 text-amber-300" /> AI document assistant</p>
+                  <p className="mt-0.5 text-xs text-emerald-50/75">AI preserves your facts. You review and save every change.</p>
+                </div>
+                <button type="button" onClick={() => setAiOpen(false)} className="rounded-md p-1 hover:bg-white/10" aria-label="Close AI assistant"><X className="h-4 w-4" /></button>
+              </div>
+            </div>
+            <div className="space-y-3 p-4">
+              <Textarea
+                value={aiInstruction}
+                onChange={(e) => setAiInstruction(e.target.value)}
+                rows={3}
+                placeholder="Describe the document you need, or add instructions for tone, audience, and purpose…"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => void transformDocument("draft")} disabled={aiLoading || !aiInstruction.trim()}>
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />} Draft document
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void transformDocument("polish")} disabled={aiLoading}>
+                  <WandSparkles className="h-3.5 w-3.5 mr-1" /> Polish professionally
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void transformDocument("structure")} disabled={aiLoading}>
+                  <LayoutTemplate className="h-3.5 w-3.5 mr-1" /> Improve structure
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <ProRichTextEditor
+        content={html}
+        onChange={(next) => { setHtml(next); markChanged(); }}
+        editable={!locked}
+        minHeight="520px"
+        placeholder="Write or paste your document here…"
+        onAiComplete={locked ? undefined : aiContinue}
+      />
     </div>
   );
 }

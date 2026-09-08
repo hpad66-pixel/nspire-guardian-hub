@@ -252,6 +252,10 @@ verify_jwt = false
 [functions.gmail-oauth-callback]
 verify_jwt = false
 
+# Narrative and selected-source report drafting for consulting projects.
+[functions.consulting-report-ai]
+verify_jwt = true
+
 # Authenticated project texting through a server-only Twilio connection.
 [functions.sms]
 verify_jwt = true
