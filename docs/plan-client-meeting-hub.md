@@ -23,7 +23,7 @@ One client-level journal across consulting and construction projects. Staff edit
 ## Verification and operation
 - Implemented the client-level navigation, complete on-screen editor, interactive actions, branded HTML/PDF composer, weekly preferences, AI preview, and scoped MCP tools.
 - Local full unit suite: 1,031 passed. Typecheck gate and production build passed.
-- Local rollback-only database suite: 29 assertions covering revisions, client boundaries, private sources, shared workflow closure, immutable publications, agent restrictions, and delivery deduplication.
+- Local rollback-only database suite: 33 assertions covering revisions, client boundaries, private sources, shared workflow closure and reassignment, immutable publications, agent restrictions, and delivery deduplication. Ten focused unit tests cover report validation and RPC errors.
 - Browser checks exercise the actual React page with isolated test data: narrative editing, mobile client comments, existing-action editing, PDF generation, and MCP restrictions. No real client messages or production test records are created.
 - Weekly preferences start disabled. An administrator must select recipients and enable them. Only new approved versions send, during the selected hour. The scheduled job retrieves its service credential securely from the existing Supabase management credential and never stores it in the repository.
 - The portable Hermes skill is checked in under `hermes/skills/client-meeting-brief/`. Installing it in a separate Hermes runtime and reloading its MCP tools is a separate configuration step, not claimed as completed here.

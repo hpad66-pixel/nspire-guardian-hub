@@ -210,6 +210,15 @@ BEGIN
        assignee_name=COALESCE(p_payload->>'assignee_name',''),ball_in_court=COALESCE(p_payload->>'ball_in_court',''),due_date=NULLIF(p_payload->>'due_date','')::date,
        source_quote=COALESCE(p_payload->>'source_quote',''),source_locator=COALESCE(p_payload->>'source_locator',''),revision=revision+1,updated_at=now() WHERE id=rid;
      INSERT INTO client_meeting_comments(tenant_id,client_id,action_id,author_id,author_name,body) VALUES(tid,p_client_id,rid,uid,'Project team','Action details updated: '||(p_payload->>'title'));
+     IF a.assignee_id IS DISTINCT FROM NULLIF(p_payload->>'assignee_id','')::uuid
+       AND EXISTS(SELECT 1 FROM workflow_instances WHERE id=a.workflow_id AND state='open' AND current_step=1) THEN
+       PERFORM advance_workflow(a.workflow_id,'reassign','Action responsibility updated',NULLIF(p_payload->>'assignee_id','')::uuid);
+       -- The engine treats a null next assignee as "keep existing". Explicitly
+       -- clear it for an unassignment after recording the shared workflow event.
+       IF NULLIF(p_payload->>'assignee_id','') IS NULL THEN
+         UPDATE workflow_instances SET current_assignee_id=NULL WHERE id=a.workflow_id;
+       END IF;
+     END IF;
    END IF;
    UPDATE client_meetings SET revision=revision+1,updated_at=now() WHERE id=m.id;
    RETURN jsonb_build_object('id',rid);

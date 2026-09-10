@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(29);
+SELECT plan(33);
 INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
 ('97000000-0000-4000-8000-000000000001','meeting-staff@example.com','{"full_name":"Meeting staff","company_name":"Meeting tests"}'),
 ('97000000-0000-4000-8000-000000000002','meeting-owner@example.com','{"full_name":"Meeting owner","company_name":"Temporary test"}');
@@ -22,7 +22,11 @@ SELECT throws_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000
 SELECT throws_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','save','{"id":"97000000-0000-4000-8000-000000000051","revision":2,"title":"Review","meeting_date":"2026-09-09","project_ids":["97000000-0000-4000-8000-000000000022"],"sections":[]}')$$,'P0001','Meeting projects must belong to this client','cross-client project rejected');
 SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','action','{"meeting_id":"97000000-0000-4000-8000-000000000051","project_id":"97000000-0000-4000-8000-000000000021","title":"Confirm access","assignee_id":"97000000-0000-4000-8000-000000000002","assignee_name":"Owner"}')$$,'create action through shared workflow');
 SELECT is((SELECT count(*)::int FROM workflow_instances WHERE record_type='client_meeting_action'),1,'shared engine instance exists');
-SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','publish','{"id":"97000000-0000-4000-8000-000000000051","revision":3}')$$,'release approved snapshot');
+SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','action',(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'actions'->0)||'{"assignee_id":""}'::jsonb)$$,'unassign open action');
+SELECT ok((SELECT current_assignee_id IS NULL FROM workflow_instances WHERE record_type='client_meeting_action'),'shared workflow clears previous assignee');
+SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','action',(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'actions'->0)||'{"assignee_id":"97000000-0000-4000-8000-000000000002"}'::jsonb)$$,'reassign open action');
+SELECT is((SELECT current_assignee_id::text FROM workflow_instances WHERE record_type='client_meeting_action'),'97000000-0000-4000-8000-000000000002','shared workflow and checklist assignees match');
+SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','publish','{"id":"97000000-0000-4000-8000-000000000051","revision":5}')$$,'release approved snapshot');
 SELECT ok(NOT EXISTS(SELECT 1 FROM client_meeting_publications WHERE snapshot::text LIKE '%Private transcript%'),'published snapshot excludes transcript');
 RESET ROLE;
 SELECT set_config('request.jwt.claims','{"sub":"97000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
